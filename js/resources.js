@@ -546,150 +546,316 @@ class ResourcesModule {
     // ============================================================
     // 🎙️ GENERATE NOTEBOOKLM-STYLE PODCAST SCRIPT
     // ============================================================
+    // ============================================================
+// 🎙️ INTELLIGENT PODCAST GENERATOR - EXTRACTS & EXPLAINS
+// ============================================================
+
+generatePodcastScript(text, title = '') {
+    const lines = [];
     
-    generatePodcastScript(text, title = '') {
-        const lines = [];
-        
-        // Clean the text
-        const cleanText = text.replace(/\s+/g, ' ').trim();
-        
-        // ===== STEP 1: EXTRACT KEY CONCEPTS =====
-        const keyConcepts = this.extractKeyConcepts(cleanText);
-        const definitions = this.extractDefinitions(cleanText);
-        const keyPoints = this.extractKeyPoints(cleanText);
-        
-        // ===== STEP 2: GENERATE PODCAST SCRIPT =====
-        
-        // INTRO
+    // Clean the text
+    const cleanText = text.replace(/\s+/g, ' ').trim();
+    
+    // ===== STEP 1: INTELLIGENTLY EXTRACT CONTENT =====
+    const extracted = this.intelligentlyExtractContent(cleanText);
+    
+    // ===== STEP 2: GENERATE PODCAST SCRIPT =====
+    
+    // INTRO
+    lines.push({
+        speaker: 'host1',
+        text: `Welcome back to the podcast. Today we're exploring "${title || 'this topic'}".`,
+        pauseAfter: 0.7
+    });
+    lines.push({
+        speaker: 'host2',
+        text: `This is a fascinating topic. Let's dive in and really understand it.`,
+        pauseAfter: 0.6
+    });
+    lines.push({
+        speaker: 'host1',
+        text: `Absolutely. Let's start with the big picture.`,
+        pauseAfter: 0.5
+    });
+    
+    // ===== EXPLAIN MAIN CONCEPT =====
+    if (extracted.mainConcept) {
         lines.push({
             speaker: 'host1',
-            text: `Welcome back to the podcast. Today we're exploring "${title || 'this topic'}".`,
-            pauseAfter: 0.7
-        });
-        lines.push({
-            speaker: 'host2',
-            text: `This is a fascinating subject. Let's break it down and really understand it.`,
+            text: `So, the core idea here is ${extracted.mainConcept}.`,
             pauseAfter: 0.6
         });
         lines.push({
+            speaker: 'host2',
+            text: `That's right. ${extracted.mainDefinition || 'Let me explain what that means.'}`,
+            pauseAfter: 0.6
+        });
+    }
+    
+    // ===== EXPLAIN KEY POINTS (NOT READ) =====
+    if (extracted.keyPoints && extracted.keyPoints.length > 0) {
+        // Host 1 introduces
+        lines.push({
             speaker: 'host1',
-            text: `Absolutely. Let's start by looking at the key concepts.`,
+            text: `Let's break this down into the key things you need to know.`,
             pauseAfter: 0.5
         });
         
-        // ===== EXPLAIN KEY CONCEPTS =====
-        if (keyConcepts.length > 0) {
-            // Host 1 introduces the concept
+        // Explain each key point (max 4)
+        const pointsToExplain = extracted.keyPoints.slice(0, 4);
+        for (let i = 0; i < pointsToExplain.length; i++) {
+            const point = pointsToExplain[i];
+            const speaker = i % 2 === 0 ? 'host2' : 'host1';
+            const otherSpeaker = i % 2 === 0 ? 'host1' : 'host2';
+            
+            // Each point becomes a mini-discussion
             lines.push({
-                speaker: 'host1',
-                text: `So, the first key concept we need to understand is ${keyConcepts[0]}.`,
-                pauseAfter: 0.6
-            });
-            
-            // Host 2 explains it
-            if (definitions[keyConcepts[0]]) {
-                lines.push({
-                    speaker: 'host2',
-                    text: `That's right. ${definitions[keyConcepts[0]]}`,
-                    pauseAfter: 0.6
-                });
-            }
-            
-            // Host 1 adds context
-            if (keyPoints.length > 0) {
-                lines.push({
-                    speaker: 'host1',
-                    text: `And what's important to remember is that ${keyPoints[0].toLowerCase()}`,
-                    pauseAfter: 0.6
-                });
-            }
-            
-            // Continue with more concepts
-            for (let i = 1; i < Math.min(keyConcepts.length, 4); i++) {
-                // Toggle speakers for variety
-                const speaker = i % 2 === 0 ? 'host2' : 'host1';
-                const otherSpeaker = i % 2 === 0 ? 'host1' : 'host2';
-                
-                lines.push({
-                    speaker: speaker,
-                    text: `Now, let's also consider ${keyConcepts[i]}.`,
-                    pauseAfter: 0.5
-                });
-                
-                if (definitions[keyConcepts[i]]) {
-                    lines.push({
-                        speaker: otherSpeaker,
-                        text: `Essentially, ${definitions[keyConcepts[i]]}`,
-                        pauseAfter: 0.6
-                    });
-                }
-            }
-        }
-        
-        // ===== EXPLAIN KEY POINTS =====
-        if (keyPoints.length > 1) {
-            lines.push({
-                speaker: 'host1',
-                text: `Let's dive deeper into the main points.`,
+                speaker: speaker,
+                text: `First, ${point}`,
                 pauseAfter: 0.5
             });
             
-            // Host 2 explains the first key point
-            if (keyPoints.length > 1) {
+            // Add context/explanation
+            if (extracted.explanations && extracted.explanations[i]) {
                 lines.push({
-                    speaker: 'host2',
-                    text: `The first thing to understand is that ${keyPoints[1].toLowerCase()}`,
-                    pauseAfter: 0.6
-                });
-            }
-            
-            // More key points
-            for (let i = 2; i < Math.min(keyPoints.length, 5); i++) {
-                const speaker = i % 2 === 0 ? 'host1' : 'host2';
-                const intro = i % 2 === 0 ? 'In addition, ' : 'Also, ';
-                lines.push({
-                    speaker: speaker,
-                    text: `${intro}${keyPoints[i].toLowerCase()}`,
+                    speaker: otherSpeaker,
+                    text: `In other words, ${extracted.explanations[i]}`,
                     pauseAfter: 0.5
                 });
             }
         }
-        
-        // ===== CONCLUSION - Summarize what was explained =====
+    }
+    
+    // ===== EXPLAIN IMPORTANT TERMS =====
+    if (extracted.importantTerms && extracted.importantTerms.length > 0) {
         lines.push({
-            speaker: 'host2',
-            text: `So, to summarize what we've learned today, we explored ${keyConcepts.slice(0, 3).join(', ')}.`,
-            pauseAfter: 0.7
-        });
-        
-        if (keyPoints.length > 0) {
-            lines.push({
-                speaker: 'host1',
-                text: `The key takeaways are ${keyPoints.slice(0, 2).join(' and ').toLowerCase()}.`,
-                pauseAfter: 0.6
-            });
-        }
-        
-        lines.push({
-            speaker: 'host2',
-            text: `I hope this explanation helped you understand ${title || 'this topic'} better.`,
+            speaker: 'host1',
+            text: `Now, let's clarify some important terms.`,
             pauseAfter: 0.5
         });
         
+        for (let i = 0; i < Math.min(extracted.importantTerms.length, 3); i++) {
+            const term = extracted.importantTerms[i];
+            const definition = extracted.termDefinitions[term] || '';
+            const speaker = i % 2 === 0 ? 'host2' : 'host1';
+            
+            lines.push({
+                speaker: speaker,
+                text: `${term} - ${definition}`,
+                pauseAfter: 0.4
+            });
+        }
+    }
+    
+    // ===== SUMMARIZE WHAT WAS LEARNED =====
+    lines.push({
+        speaker: 'host2',
+        text: `So, to summarize, we've learned about ${extracted.mainConcept || 'this topic'}.`,
+        pauseAfter: 0.6
+    });
+    
+    if (extracted.keyPoints && extracted.keyPoints.length > 0) {
+        const summaryPoints = extracted.keyPoints.slice(0, 2).join(' and ');
         lines.push({
             speaker: 'host1',
-            text: `Thanks for listening! If you found this helpful, check out more resources.`,
-            pauseAfter: 0.4
+            text: `The main takeaways are ${summaryPoints.toLowerCase()}.`,
+            pauseAfter: 0.6
         });
-        
-        lines.push({
-            speaker: 'host2',
-            text: `Until next time, keep learning and stay curious!`,
-            pauseAfter: 0.0
-        });
-        
-        return lines;
     }
+    
+    // OUTRO
+    lines.push({
+        speaker: 'host2',
+        text: `I hope this explanation helped you understand ${title || 'this topic'} better.`,
+        pauseAfter: 0.5
+    });
+    lines.push({
+        speaker: 'host1',
+        text: `Thanks for listening! If you found this helpful, check out more resources.`,
+        pauseAfter: 0.4
+    });
+    lines.push({
+        speaker: 'host2',
+        text: `Until next time, keep learning and stay curious!`,
+        pauseAfter: 0.0
+    });
+    
+    return lines;
+}
+
+// ============================================================
+// 🎯 INTELLIGENT CONTENT EXTRACTION
+// ============================================================
+
+intelligentlyExtractContent(text) {
+    const result = {
+        mainConcept: '',
+        mainDefinition: '',
+        keyPoints: [],
+        explanations: [],
+        importantTerms: [],
+        termDefinitions: {}
+    };
+    
+    // Split into sentences
+    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+    
+    // ===== FIND MAIN CONCEPT =====
+    // Look for first sentence that defines something
+    for (const sentence of sentences) {
+        const clean = sentence.trim();
+        // Check for definition patterns
+        const defMatch = clean.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves|includes|comprises)\s+(.+)/i);
+        if (defMatch) {
+            result.mainConcept = defMatch[1].trim();
+            result.mainDefinition = defMatch[2].trim();
+            break;
+        }
+    }
+    
+    // If no definition found, use first meaningful sentence
+    if (!result.mainConcept) {
+        for (const sentence of sentences) {
+            const clean = sentence.trim();
+            if (clean.length > 20 && clean.length < 200) {
+                const words = clean.split(' ');
+                // Get the first capitalized phrase as concept
+                const conceptMatch = clean.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/);
+                if (conceptMatch && conceptMatch[1].length > 3) {
+                    result.mainConcept = conceptMatch[1];
+                    result.mainDefinition = clean;
+                    break;
+                }
+            }
+        }
+    }
+    
+    // ===== EXTRACT KEY POINTS =====
+    // Look for bullet points
+    const bulletMatches = text.match(/[•\-*]\s*([^.!?]+[.!?]?)/g) || [];
+    for (const bullet of bulletMatches) {
+        const clean = bullet.replace(/[•\-*]\s*/, '').trim();
+        if (clean && clean.length > 10 && clean.length < 150) {
+            result.keyPoints.push(clean);
+        }
+    }
+    
+    // If no bullet points, find important sentences
+    if (result.keyPoints.length === 0) {
+        const importantKeywords = ['important', 'key', 'essential', 'critical', 'significant', 'fundamental', 'crucial'];
+        for (const sentence of sentences) {
+            const clean = sentence.trim();
+            if (clean.length > 20) {
+                const lower = clean.toLowerCase();
+                if (importantKeywords.some(kw => lower.includes(kw))) {
+                    // Extract the key part
+                    let point = clean;
+                    for (const kw of importantKeywords) {
+                        if (lower.includes(kw)) {
+                            const idx = lower.indexOf(kw);
+                            const start = Math.max(0, idx - 5);
+                            point = clean.substring(start).trim();
+                            break;
+                        }
+                    }
+                    if (point.length > 15 && point.length < 200) {
+                        result.keyPoints.push(point);
+                    }
+                }
+            }
+        }
+    }
+    
+    // ===== EXTRACT IMPORTANT TERMS =====
+    // Look for capitalized terms
+    const termMatches = text.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g) || [];
+    const uniqueTerms = [...new Set(termMatches)];
+    const filteredTerms = uniqueTerms.filter(term => 
+        term.length > 3 && 
+        term.length < 40 &&
+        !['This', 'That', 'These', 'Those', 'There', 'Their', 'They'].includes(term) &&
+        !result.keyPoints.some(point => point.includes(term))
+    );
+    result.importantTerms = filteredTerms.slice(0, 5);
+    
+    // ===== FIND DEFINITIONS FOR TERMS =====
+    for (const term of result.importantTerms) {
+        for (const sentence of sentences) {
+            const clean = sentence.trim();
+            if (clean.toLowerCase().includes(term.toLowerCase()) && 
+                (clean.includes('is ') || clean.includes('are ') || clean.includes('means '))) {
+                const defMatch = clean.match(new RegExp(`${term}\\s+(?:is|are|means|refers to|involves)\\s+(.+?)(?:\\.|\\!|\\?)`, 'i'));
+                if (defMatch) {
+                    result.termDefinitions[term] = defMatch[1].trim();
+                    break;
+                }
+            }
+        }
+        // If no definition found, use a simple one
+        if (!result.termDefinitions[term]) {
+            result.termDefinitions[term] = `a key concept in ${result.mainConcept || 'this topic'}`;
+        }
+    }
+    
+    // ===== GENERATE EXPLANATIONS FOR KEY POINTS =====
+    for (let i = 0; i < result.keyPoints.length; i++) {
+        const point = result.keyPoints[i];
+        // Simplify/explain the point
+        let explanation = point;
+        // Remove redundant phrases
+        explanation = explanation.replace(/^[Ii]t\s+is\s+/, '');
+        explanation = explanation.replace(/^[Tt]he\s+(?:key|main|important)\s+/, '');
+        explanation = explanation.replace(/\s+that\s+/, ' ');
+        if (explanation.length > 100) {
+            explanation = explanation.substring(0, 100) + '...';
+        }
+        result.explanations.push(explanation);
+    }
+    
+    // Ensure we have at least some content
+    if (!result.mainConcept && sentences.length > 0) {
+        const firstSentence = sentences[0].trim();
+        result.mainConcept = firstSentence.substring(0, 50);
+        result.mainDefinition = firstSentence;
+    }
+    
+    if (result.keyPoints.length === 0 && sentences.length > 1) {
+        for (let i = 0; i < Math.min(3, sentences.length); i++) {
+            const clean = sentences[i].trim();
+            if (clean.length > 20) {
+                result.keyPoints.push(clean);
+            }
+        }
+    }
+    
+    return result;
+}
+
+// ============================================================
+// 🎙️ OVERRIDE extractKeyConcepts to use new extraction
+// ============================================================
+
+extractKeyConcepts(text) {
+    const extracted = this.intelligentlyExtractContent(text);
+    const concepts = [extracted.mainConcept];
+    
+    // Add important terms
+    for (const term of extracted.importantTerms) {
+        if (!concepts.includes(term)) {
+            concepts.push(term);
+        }
+    }
+    
+    // Add key points as concepts
+    for (const point of extracted.keyPoints.slice(0, 3)) {
+        const shortPoint = point.substring(0, 50);
+        if (!concepts.some(c => c.includes(shortPoint.substring(0, 20)))) {
+            concepts.push(shortPoint);
+        }
+    }
+    
+    return concepts.filter(c => c && c.length > 3).slice(0, 8);
+}
     
     // ============================================================
     // 🎙️ PLAY NOTEBOOKLM-STYLE PODCAST
