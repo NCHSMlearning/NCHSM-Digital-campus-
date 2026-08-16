@@ -1,9 +1,12 @@
 // ============================================================
 // RESOURCES MODULE - NOTEBOOKLM STYLE PODCAST
+// ✅ Truly extracts and explains content
 // ✅ Dual-voice discussion (Male + Female)
-// ✅ Natural conversation, not just reading
-// ✅ Explains content like a podcast
-// ✅ Proper speed and pacing
+// ✅ Natural conversation, not reading
+// ✅ Key concept extraction
+// ✅ Definition extraction
+// ✅ Key point extraction
+// ✅ Engaging podcast-style audio
 // ✅ Waveform visualization
 // ✅ Full PDF text extraction
 // ============================================================
@@ -421,77 +424,276 @@ class ResourcesModule {
         return voices.find(v => v.lang.startsWith('en')) || null;
     }
     
-    generatePodcastScript(text, title = '') {
-        const lines = [];
-        const cleanText = text.replace(/\s+/g, ' ').trim();
-        const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
-        const keyPoints = this.extractKeyConcepts(cleanText);
+    // ============================================================
+    // 🎙️ EXTRACT KEY CONCEPTS
+    // ============================================================
+    
+    extractKeyConcepts(text) {
+        const concepts = [];
         
-        // Intro
-        lines.push({ speaker: 'host1', text: `Welcome back to the podcast. Today we're diving into "${title || 'this topic'}".`, pauseAfter: 0.6 });
-        lines.push({ speaker: 'host2', text: `This is such an interesting subject. I've been looking forward to discussing this.`, pauseAfter: 0.5 });
-        lines.push({ speaker: 'host1', text: `Let's start with the fundamentals and build from there.`, pauseAfter: 0.4 });
-        
-        // Main content
-        let paragraphBuffer = [];
-        let speakerToggle = 'host2';
-        let conceptIndex = 0;
-        
-        for (let i = 0; i < sentences.length; i++) {
-            const sentence = sentences[i].trim();
-            if (!sentence || sentence.length < 10) continue;
-            
-            paragraphBuffer.push(sentence);
-            
-            if (paragraphBuffer.length >= 2 + Math.floor(Math.random() * 3)) {
-                let combined = paragraphBuffer.join(' ');
-                
-                if (i > 0 && i < sentences.length - 5 && Math.random() > 0.5) {
-                    const transitions = ['Now, ', 'So, ', 'What\'s interesting is ', 'Essentially, ', 'Building on that, '];
-                    combined = transitions[Math.floor(Math.random() * transitions.length)] + combined.charAt(0).toLowerCase() + combined.slice(1);
-                }
-                
-                if (conceptIndex < keyPoints.length && Math.random() > 0.6) {
-                    combined = `Let's talk about ${keyPoints[conceptIndex]}. ` + combined;
-                    conceptIndex++;
-                }
-                
-                lines.push({ speaker: speakerToggle, text: combined, pauseAfter: 0.3 + Math.random() * 0.3 });
-                speakerToggle = speakerToggle === 'host1' ? 'host2' : 'host1';
-                paragraphBuffer = [];
+        // Pattern: "X is Y", "X are Y" - Look for definitions
+        const pattern1 = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves|includes|comprises|encompasses)/gi;
+        let match;
+        while ((match = pattern1.exec(text)) !== null) {
+            const concept = match[1];
+            if (concept && concept.length > 3 && concept.length < 50) {
+                concepts.push(concept.trim());
             }
         }
         
-        if (paragraphBuffer.length > 0) {
-            lines.push({ speaker: speakerToggle, text: paragraphBuffer.join(' '), pauseAfter: 0.5 });
+        // Pattern: "called X", "known as X"
+        const pattern2 = /(?:called|known as|termed|referred to as)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi;
+        while ((match = pattern2.exec(text)) !== null) {
+            const concept = match[1];
+            if (concept && concept.length > 3 && concept.length < 50) {
+                concepts.push(concept.trim());
+            }
         }
         
-        // Conclusion
-        lines.push({ speaker: 'host2', text: `So, to wrap things up, we've covered the essential aspects of ${title || 'this topic'}.`, pauseAfter: 0.5 });
-        lines.push({ speaker: 'host1', text: `That's a great summary. I hope our listeners found this discussion helpful.`, pauseAfter: 0.4 });
-        lines.push({ speaker: 'host2', text: `Thanks for joining us today. If you have questions, feel free to reach out.`, pauseAfter: 0.3 });
-        lines.push({ speaker: 'host1', text: `Until next time, keep learning and stay curious!`, pauseAfter: 0.0 });
+        // Look for capitalized phrases (potential concepts)
+        const pattern3 = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\b/g;
+        while ((match = pattern3.exec(text)) !== null) {
+            const concept = match[1];
+            if (concept && concept.length > 3 && concept.length < 50 && !concepts.includes(concept)) {
+                concepts.push(concept.trim());
+            }
+        }
+        
+        // Remove duplicates and limit
+        const unique = [...new Set(concepts)];
+        return unique.slice(0, 6);
+    }
+    
+    // ============================================================
+    // 🎙️ EXTRACT DEFINITIONS
+    // ============================================================
+    
+    extractDefinitions(text) {
+        const definitions = {};
+        
+        // Pattern: "X is Y", "X are Y", "X means Y"
+        const definitionPatterns = [
+            /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|means|refers to|involves|includes|comprises|encompasses)\s+([^.!?]+)/gi,
+            /(?:called|known as|termed|referred to as)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi
+        ];
+        
+        for (const pattern of definitionPatterns) {
+            let match;
+            while ((match = pattern.exec(text)) !== null) {
+                const concept = match[1] || match[0];
+                const definition = match[2] || '';
+                if (concept && concept.length > 3 && definition && definition.length > 5) {
+                    definitions[concept.trim()] = definition.trim();
+                }
+            }
+        }
+        
+        return definitions;
+    }
+    
+    // ============================================================
+    // 🎙️ EXTRACT KEY POINTS
+    // ============================================================
+    
+    extractKeyPoints(text) {
+        const points = [];
+        
+        // Look for bullet points
+        const bulletMatches = text.match(/[•\-*]\s*([^.!?]+[.!?]?)/g) || [];
+        for (const bullet of bulletMatches) {
+            const clean = bullet.replace(/[•\-*]\s*/, '').trim();
+            if (clean && clean.length > 10 && clean.length < 150) {
+                points.push(clean);
+            }
+        }
+        
+        // Look for "key", "important", "essential" sentences
+        if (points.length === 0) {
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+            const importantSentences = sentences.filter(s => {
+                const lower = s.toLowerCase();
+                return (lower.includes('important') || 
+                        lower.includes('key') || 
+                        lower.includes('essential') || 
+                        lower.includes('critical') ||
+                        lower.includes('significant') ||
+                        lower.includes('fundamental') ||
+                        lower.includes('crucial'));
+            });
+            
+            for (const sentence of importantSentences.slice(0, 6)) {
+                const clean = sentence.trim();
+                if (clean && clean.length > 15) {
+                    points.push(clean);
+                }
+            }
+        }
+        
+        // If still no points, take first few sentences
+        if (points.length === 0) {
+            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
+            for (const sentence of sentences.slice(0, 4)) {
+                const clean = sentence.trim();
+                if (clean && clean.length > 15) {
+                    points.push(clean);
+                }
+            }
+        }
+        
+        return points;
+    }
+    
+    // ============================================================
+    // 🎙️ GENERATE NOTEBOOKLM-STYLE PODCAST SCRIPT
+    // ============================================================
+    
+    generatePodcastScript(text, title = '') {
+        const lines = [];
+        
+        // Clean the text
+        const cleanText = text.replace(/\s+/g, ' ').trim();
+        
+        // ===== STEP 1: EXTRACT KEY CONCEPTS =====
+        const keyConcepts = this.extractKeyConcepts(cleanText);
+        const definitions = this.extractDefinitions(cleanText);
+        const keyPoints = this.extractKeyPoints(cleanText);
+        
+        // ===== STEP 2: GENERATE PODCAST SCRIPT =====
+        
+        // INTRO
+        lines.push({
+            speaker: 'host1',
+            text: `Welcome back to the podcast. Today we're exploring "${title || 'this topic'}".`,
+            pauseAfter: 0.7
+        });
+        lines.push({
+            speaker: 'host2',
+            text: `This is a fascinating subject. Let's break it down and really understand it.`,
+            pauseAfter: 0.6
+        });
+        lines.push({
+            speaker: 'host1',
+            text: `Absolutely. Let's start by looking at the key concepts.`,
+            pauseAfter: 0.5
+        });
+        
+        // ===== EXPLAIN KEY CONCEPTS =====
+        if (keyConcepts.length > 0) {
+            // Host 1 introduces the concept
+            lines.push({
+                speaker: 'host1',
+                text: `So, the first key concept we need to understand is ${keyConcepts[0]}.`,
+                pauseAfter: 0.6
+            });
+            
+            // Host 2 explains it
+            if (definitions[keyConcepts[0]]) {
+                lines.push({
+                    speaker: 'host2',
+                    text: `That's right. ${definitions[keyConcepts[0]]}`,
+                    pauseAfter: 0.6
+                });
+            }
+            
+            // Host 1 adds context
+            if (keyPoints.length > 0) {
+                lines.push({
+                    speaker: 'host1',
+                    text: `And what's important to remember is that ${keyPoints[0].toLowerCase()}`,
+                    pauseAfter: 0.6
+                });
+            }
+            
+            // Continue with more concepts
+            for (let i = 1; i < Math.min(keyConcepts.length, 4); i++) {
+                // Toggle speakers for variety
+                const speaker = i % 2 === 0 ? 'host2' : 'host1';
+                const otherSpeaker = i % 2 === 0 ? 'host1' : 'host2';
+                
+                lines.push({
+                    speaker: speaker,
+                    text: `Now, let's also consider ${keyConcepts[i]}.`,
+                    pauseAfter: 0.5
+                });
+                
+                if (definitions[keyConcepts[i]]) {
+                    lines.push({
+                        speaker: otherSpeaker,
+                        text: `Essentially, ${definitions[keyConcepts[i]]}`,
+                        pauseAfter: 0.6
+                    });
+                }
+            }
+        }
+        
+        // ===== EXPLAIN KEY POINTS =====
+        if (keyPoints.length > 1) {
+            lines.push({
+                speaker: 'host1',
+                text: `Let's dive deeper into the main points.`,
+                pauseAfter: 0.5
+            });
+            
+            // Host 2 explains the first key point
+            if (keyPoints.length > 1) {
+                lines.push({
+                    speaker: 'host2',
+                    text: `The first thing to understand is that ${keyPoints[1].toLowerCase()}`,
+                    pauseAfter: 0.6
+                });
+            }
+            
+            // More key points
+            for (let i = 2; i < Math.min(keyPoints.length, 5); i++) {
+                const speaker = i % 2 === 0 ? 'host1' : 'host2';
+                const intro = i % 2 === 0 ? 'In addition, ' : 'Also, ';
+                lines.push({
+                    speaker: speaker,
+                    text: `${intro}${keyPoints[i].toLowerCase()}`,
+                    pauseAfter: 0.5
+                });
+            }
+        }
+        
+        // ===== CONCLUSION - Summarize what was explained =====
+        lines.push({
+            speaker: 'host2',
+            text: `So, to summarize what we've learned today, we explored ${keyConcepts.slice(0, 3).join(', ')}.`,
+            pauseAfter: 0.7
+        });
+        
+        if (keyPoints.length > 0) {
+            lines.push({
+                speaker: 'host1',
+                text: `The key takeaways are ${keyPoints.slice(0, 2).join(' and ').toLowerCase()}.`,
+                pauseAfter: 0.6
+            });
+        }
+        
+        lines.push({
+            speaker: 'host2',
+            text: `I hope this explanation helped you understand ${title || 'this topic'} better.`,
+            pauseAfter: 0.5
+        });
+        
+        lines.push({
+            speaker: 'host1',
+            text: `Thanks for listening! If you found this helpful, check out more resources.`,
+            pauseAfter: 0.4
+        });
+        
+        lines.push({
+            speaker: 'host2',
+            text: `Until next time, keep learning and stay curious!`,
+            pauseAfter: 0.0
+        });
         
         return lines;
     }
     
-    extractKeyConcepts(text) {
-        const concepts = [];
-        const patterns = [/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves)/g, /(?:called|known as|termed)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g];
-        for (const pattern of patterns) {
-            let match;
-            while ((match = pattern.exec(text)) !== null) {
-                const concept = match[1] || match[0];
-                if (concept && concept.length > 5 && concept.length < 100) concepts.push(concept.trim());
-            }
-        }
-        if (concepts.length === 0) {
-            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-            const important = sentences.filter(s => s.length > 30 && (s.toLowerCase().includes('important') || s.toLowerCase().includes('key')));
-            for (const s of important.slice(0, 5)) if (s.trim()) concepts.push(s.trim());
-        }
-        return [...new Set(concepts)].slice(0, 8);
-    }
+    // ============================================================
+    // 🎙️ PLAY NOTEBOOKLM-STYLE PODCAST
+    // ============================================================
     
     async playPodcastDialogue(lines) {
         if (!lines || lines.length === 0) {
@@ -504,6 +706,10 @@ class ResourcesModule {
         
         this.maleVoice = this.getMaleVoice();
         this.femaleVoice = this.getFemaleVoice();
+        
+        if (!this.maleVoice || !this.femaleVoice) {
+            this.showToast('Using best available voices', 'info');
+        }
         
         this.dialogueLines = lines;
         this.currentDialogueIndex = 0;
@@ -718,6 +924,10 @@ class ResourcesModule {
         }
     }
     
+    // ============================================================
+    // 🎙️ WAVEFORM VISUALIZATION
+    // ============================================================
+    
     initWaveformCanvas() {
         if (!this.audioWave) return;
         this.audioWave.innerHTML = '';
@@ -805,6 +1015,7 @@ class ResourcesModule {
             let fullText = '';
             const fileType = this.getFileType(resource.file_path);
             
+            // Build content with proper context
             fullText = `${resource.title}. `;
             
             if (resource.resource_type === 'pastpaper') {
@@ -818,6 +1029,7 @@ class ResourcesModule {
                 fullText += resource.description + ' ';
             }
             
+            // Extract from PDF if available
             if (resource.file_url && fileType === 'pdf') {
                 try {
                     const extractedText = await this.extractFullPDFText(resource.file_url);
@@ -836,13 +1048,20 @@ class ResourcesModule {
             
             fullText = fullText.replace(/\s+/g, ' ').trim();
             
+            // Generate NotebookLM-style podcast script
             const podcastScript = this.generatePodcastScript(fullText, resource.title);
+            
+            // Show audio player
             this.showAudioPlayer(fullText, `📚 ${resource.title}`);
+            
+            // Play the podcast
             await this.playPodcastDialogue(podcastScript);
             
         } catch (error) {
             console.error('Podcast error:', error);
             this.showToast('Failed to generate podcast: ' + error.message, 'error');
+            
+            // Fallback
             let fallbackText = `Document: ${resource.title}. `;
             if (resource.description) {
                 fallbackText += resource.description;
