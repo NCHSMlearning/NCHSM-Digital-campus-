@@ -3669,7 +3669,7 @@
 
 </section>
 
-<!-- ==================== ATTENDANCE TAB - ENHANCED ==================== -->
+<!-- ==================== ATTENDANCE TAB - ULTRA ACCURATE ==================== -->
 <section id="attendance" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
     <!-- ========== HEADER ========== -->
@@ -3681,18 +3681,18 @@
                 </h2>
                 <div style="background: rgba(253,185,19,0.15); padding: 4px 14px; border-radius: 20px; border: 1px solid rgba(253,185,19,0.2);">
                     <span style="color: #FDB913; font-size: 11px; font-weight: 600;">
-                        <i class="fas fa-robot"></i> Auto-verified
+                        <i class="fas fa-robot"></i> Ultra-Accurate GPS
                     </span>
                 </div>
             </div>
             <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 13px;">
-                <i class="fas fa-map-marker-alt"></i> Mark your attendance with GPS verification
+                <i class="fas fa-map-marker-alt"></i> Mark your attendance with 5-point GPS verification
                 <span style="background: rgba(255,255,255,0.12); padding: 2px 12px; border-radius: 12px; font-size: 10px; margin-left: 6px; display: inline-flex; align-items: center; gap: 4px;">
                     <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #10b981;"></span>
-                    100m
+                    50m
                     <span style="color: rgba(255,255,255,0.4);">•</span>
                     <span style="display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #f59e0b;"></span>
-                    200m
+                    100m
                 </span>
             </p>
         </div>
@@ -3763,7 +3763,7 @@
                 </div>
             </div>
             <span style="font-size: 11px; color: #94a3b8;">
-                <i class="fas fa-shield-alt"></i> GPS Required
+                <i class="fas fa-shield-alt"></i> 5-Point GPS Verification
             </span>
         </div>
 
@@ -3803,7 +3803,11 @@
                             <span><span style="color: #94a3b8;">Lat:</span> <strong id="latitude" style="color: #0A3D62;">--</strong></span>
                             <span><span style="color: #94a3b8;">Long:</span> <strong id="longitude" style="color: #0A3D62;">--</strong></span>
                             <span><span style="color: #94a3b8;">Accuracy:</span> <strong id="accuracy-value" style="color: #0A3D62;">--</strong>m</span>
+                            <!-- 🆕 GPS Confidence - Added for ultra-accurate system -->
+                            <span><span style="color: #94a3b8;">Confidence:</span> <strong id="gps-confidence" style="color: #0A3D62;">--</strong></span>
                         </div>
+                        <!-- 🆕 GPS Progress - Added for ultra-accurate system -->
+                        <div id="gps-progress" style="margin-top: 4px;"></div>
                         <div id="accuracy-warning" style="display:none; margin-top: 4px; font-size: 11px; color: #f59e0b;">
                             <i class="fas fa-exclamation-triangle"></i> Low accuracy - GPS signal weak
                         </div>
@@ -3839,7 +3843,7 @@
                             <span>Check In Now</span>
                         </button>
                         <div style="text-align: center; margin-top: 6px; font-size: 11px; color: #94a3b8;">
-                            <i class="fas fa-info-circle"></i> GPS verification required
+                            <i class="fas fa-info-circle"></i> 5-point GPS verification required
                         </div>
                     </div>
 
@@ -3862,14 +3866,14 @@
                     </div>
                 </div>
 
-                <!-- Info Message -->
+                <!-- Info Message - Updated -->
                 <div style="margin-top: 14px; background: #f0f7ff; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #3B82F6;">
                     <div style="display: flex; gap: 8px; font-size: 12px; color: #475569;">
                         <i class="fas fa-lightbulb" style="color: #3B82F6; margin-top: 1px; font-size: 14px;"></i>
                         <div>
-                            <strong>How it works:</strong>
+                            <strong>How it works (Ultra-Accurate):</strong>
                             <span style="display: block; font-size: 11px; color: #64748b; margin-top: 1px;">
-                                1. Select <strong>Session Type</strong> • 2. Select <strong>Target</strong> • 3. <strong>Auto-verified</strong> within 100m • <strong>Pending</strong> within 200m
+                                📡 5 GPS readings averaged • 🎯 50m = Verified • ⚠️ 100m = Pending • 📊 Confidence score shown
                             </span>
                         </div>
                     </div>
@@ -3941,7 +3945,7 @@
             </div>
         </div>
 
-        <!-- History Table - Enhanced Styling -->
+        <!-- History Table -->
         <div style="overflow-x: auto; padding: 0;">
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
@@ -3983,6 +3987,26 @@
     <style>
         @keyframes spin {
             to { transform: rotate(360deg); }
+        }
+        
+        @keyframes slideUpToast {
+            from { opacity: 0; transform: translateX(-50%) translateY(30px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        
+        @keyframes slideDownToast {
+            from { opacity: 1; transform: translateX(-50%) translateY(0); }
+            to { opacity: 0; transform: translateX(-50%) translateY(30px); }
+        }
+        
+        @keyframes fadeInBackdrop {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUpModal {
+            from { opacity: 0; transform: translateY(40px) scale(0.96); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
         }
         
         /* Status badges for table rows */
@@ -4028,6 +4052,20 @@
         }
         .distance-absent {
             color: #dc2626;
+        }
+        
+        /* Scrollbar styling */
+        ::-webkit-scrollbar {
+            width: 4px;
+            height: 4px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4C1D95;
+            border-radius: 4px;
         }
     </style>
 
