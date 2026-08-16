@@ -1807,37 +1807,46 @@ function showSMSubTab(tab) {
 }
 
 function updateSMStats() {
-    const changePending = SM_STATE.changeRequests.filter(r => r.status === 'pending').length;
-    const readmissionPending = SM_STATE.readmissionRequests.filter(r => r.status === 'pending').length;
-    const admissionPending = SM_STATE.admissionRequests.filter(r => r.status === 'submitted' || r.status === 'reviewing').length;
-    const totalRequests = SM_STATE.changeRequests.length + SM_STATE.readmissionRequests.length + SM_STATE.admissionRequests.length;
-    
+    // Safely get elements
+    const totalEl = document.getElementById('smTotalRequests');
+    const changeEl = document.getElementById('smChangeProgramCount');
+    const readmissionEl = document.getElementById('smReadmissionCount');
+    const admissionsEl = document.getElementById('smNewAdmissionsCount');
+    const approvedEl = document.getElementById('smApprovedToday');
+    const rejectedEl = document.getElementById('smRejectedCount');
+
+    // Calculate stats
+    const changePending = SM_STATE.changeRequests?.filter(r => r.status === 'pending').length || 0;
+    const readmissionPending = SM_STATE.readmissionRequests?.filter(r => r.status === 'pending').length || 0;
+    const admissionPending = SM_STATE.admissionRequests?.filter(r => r.status === 'submitted' || r.status === 'reviewing').length || 0;
+    const totalRequests = (SM_STATE.changeRequests?.length || 0) + (SM_STATE.readmissionRequests?.length || 0) + (SM_STATE.admissionRequests?.length || 0);
+
     const today = new Date().toISOString().split('T')[0];
-    const allRequests = [...SM_STATE.changeRequests, ...SM_STATE.readmissionRequests, ...SM_STATE.admissionRequests];
+    const allRequests = [...(SM_STATE.changeRequests || []), ...(SM_STATE.readmissionRequests || []), ...(SM_STATE.admissionRequests || [])];
     const approvedToday = allRequests.filter(r => 
         r.status === 'approved' && (r.approved_at || r.updated_at) && 
         (r.approved_at || r.updated_at).startsWith(today)
     ).length;
-    
     const rejectedCount = allRequests.filter(r => r.status === 'rejected').length;
-    
-    document.getElementById('smTotalRequests').textContent = totalRequests;
-    document.getElementById('smChangeProgramCount').textContent = changePending;
-    document.getElementById('smReadmissionCount').textContent = readmissionPending;
-    document.getElementById('smNewAdmissionsCount').textContent = admissionPending;
-    document.getElementById('smApprovedToday').textContent = approvedToday;
-    document.getElementById('smRejectedCount').textContent = rejectedCount;
+
+    // Update elements safely
+    if (totalEl) totalEl.textContent = totalRequests;
+    if (changeEl) changeEl.textContent = changePending;
+    if (readmissionEl) readmissionEl.textContent = readmissionPending;
+    if (admissionsEl) admissionsEl.textContent = admissionPending;
+    if (approvedEl) approvedEl.textContent = approvedToday;
+    if (rejectedEl) rejectedEl.textContent = rejectedCount;
 }
 
-function updateSMBadges() {
-    const changePending = SM_STATE.changeRequests.filter(r => r.status === 'pending').length;
-    const readmissionPending = SM_STATE.readmissionRequests.filter(r => r.status === 'pending').length;
-    const admissionPending = SM_STATE.admissionRequests.filter(r => r.status === 'submitted' || r.status === 'reviewing').length;
-    
+ffunction updateSMBadges() {
+    const changePending = SM_STATE.changeRequests?.filter(r => r.status === 'pending').length || 0;
+    const readmissionPending = SM_STATE.readmissionRequests?.filter(r => r.status === 'pending').length || 0;
+    const admissionPending = SM_STATE.admissionRequests?.filter(r => r.status === 'submitted' || r.status === 'reviewing').length || 0;
+
     const changeBadge = document.getElementById('smChangePendingBadge');
     const readmissionBadge = document.getElementById('smReadmissionBadge');
     const admissionBadge = document.getElementById('smAdmissionsBadge');
-    
+
     if (changeBadge) changeBadge.textContent = changePending;
     if (readmissionBadge) readmissionBadge.textContent = readmissionPending;
     if (admissionBadge) admissionBadge.textContent = admissionPending;
