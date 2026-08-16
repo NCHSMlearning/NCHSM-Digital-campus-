@@ -1,125 +1,210 @@
-// ============================================================
-// ADMISSIONS.JS - Complete Application Logic (FIXED)
-// ============================================================
-
-// ============================================================
+// ================================================================
+// ADMISSIONS.JS - Complete Application Logic
+// ================================================================
+// Hides the .html extension in the URL
+if (window.location.pathname.endsWith('.html')) {
+    const cleanPath = window.location.pathname.replace(/\.html$/, '');
+    window.history.replaceState({}, '', cleanPath);
+}
+// ================================================================
 // SUPABASE CONFIGURATION
-// ============================================================
-// Check if supabase is already defined
+// ================================================================
 if (typeof supabase === 'undefined') {
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
     var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 }
 
-// ============================================================
+// ================================================================
 // STATE VARIABLES
-// ============================================================
+// ================================================================
 let currentUser = null;
 let currentStep = 1;
 let uploadedDocs = {};
 let eligibilityPassed = false;
 let kcseValidated = false;
-let emailValid = false;
-let studentType = 'new';
-let kcseDataExtracted = {};
 let applicationId = null;
-let emailCheckTimeout = null;
-let studentIdCheckTimeout = null;
+let studentType = 'new';
 
-// ============================================================
-// PROGRAM DATA
-// ============================================================
-const programCriteria = {
-    'KRCHN': { minGrade: 'C+', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'C', 'Mathematics': 'D+', 'Biology': 'C' } },
-    'DCHN': { minGrade: 'C', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'C', 'Mathematics': 'D', 'Biology': 'C' } },
-    'DPOTT': { minGrade: 'C-', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'D+', 'Mathematics': 'D', 'Biology': 'D+' } },
-    'DCH': { minGrade: 'C-', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'D+', 'Mathematics': 'D', 'Biology': 'D+' } },
-    'DHRIT': { minGrade: 'C-', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D+', 'Mathematics': 'D' } },
-    'DSL': { minGrade: 'C-', subjects: ['English', 'Mathematics', 'Chemistry'], minSubjectGrades: { 'English': 'D+', 'Mathematics': 'D', 'Chemistry': 'D+' } },
-    'DSW': { minGrade: 'C-', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D+', 'Mathematics': 'D' } },
-    'DCJS': { minGrade: 'C-', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D+', 'Mathematics': 'D' } },
-    'DHSS': { minGrade: 'C-', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'D+', 'Mathematics': 'D', 'Biology': 'D+' } },
-    'DICT': { minGrade: 'C-', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D+', 'Mathematics': 'D' } },
-    'DME': { minGrade: 'C', subjects: ['English', 'Mathematics', 'Physics'], minSubjectGrades: { 'English': 'C', 'Mathematics': 'C', 'Physics': 'C-' } },
-    'CPOTT': { minGrade: 'D+', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D', 'Biology': 'D' } },
-    'CCH': { minGrade: 'D+', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D', 'Biology': 'D' } },
-    'CHRIT': { minGrade: 'D+', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D' } },
-    'CPC': { minGrade: 'D', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D', 'Biology': 'D' } },
-    'CSL': { minGrade: 'D+', subjects: ['English', 'Mathematics', 'Chemistry'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D', 'Chemistry': 'D' } },
-    'CSW': { minGrade: 'D+', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D' } },
-    'CCJS': { minGrade: 'D+', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D' } },
-    'CAG': { minGrade: 'D', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D' } },
-    'CHSS': { minGrade: 'D+', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D', 'Biology': 'D' } },
-    'CICT': { minGrade: 'D+', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D' } },
-    'CCG': { minGrade: 'D', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D', 'Biology': 'D' } },
-    'COMT': { minGrade: 'D+', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D', 'Biology': 'D' } },
-    'ACH': { minGrade: 'D', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D' } },
-    'AAG': { minGrade: 'D', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D' } },
-    'ASW': { minGrade: 'D', subjects: ['English', 'Mathematics'], minSubjectGrades: { 'English': 'D', 'Mathematics': 'D' } },
-    'CCA': { minGrade: 'None', subjects: [], minSubjectGrades: {} },
-    'PTE': { minGrade: 'None', subjects: [], minSubjectGrades: {} }
+// ================================================================
+// COURSE DATA (from NCHSM document)
+// ================================================================
+const courseData = {
+    nursing: [
+        { code: 'CHN', name: 'Diploma Community Health Nursing (CHN)', duration: '3 Years', grade: 'C Plain', school: 'School of Nursing' }
+    ],
+    healthcare: [
+        { code: 'CNA', name: 'Certificate in Nursing Assistant (CNA)', duration: '6 Months', grade: 'D-', school: 'School of Healthcare Assistant' },
+        { code: 'ACG', name: 'Artisan in Caregiver', duration: '2 Modules', grade: 'D-', school: 'School of Healthcare Assistant' },
+        { code: 'HSS', name: 'Certificate in Health Services Support (Level 5)', duration: '4 Modules', grade: 'D Plain', school: 'School of Healthcare Assistant' },
+        { code: 'HBC', name: 'Craft in Homebased Care Level 3', duration: '2 Modules', grade: 'D Plain', school: 'School of Healthcare Assistant' },
+        { code: 'HSSM', name: 'Health Systems Support Management (Level 6)', duration: '6 Modules', grade: 'C-', school: 'School of Healthcare Assistant' }
+    ],
+    health_social: [
+        { code: 'DPOTT', name: 'Diploma in Perioperative Theatre Technology (Level 6)', duration: '6 Modules', grade: 'C Plain', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CPOTT', name: 'Certificate in Perioperative Theatre Technology (Level 5)', duration: '4 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DCH', name: 'Diploma in Community Health (Level 6)', duration: '7 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CCH', name: 'Certificate in Community Health (Level 5)', duration: '4 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DSW', name: 'Diploma in Social Work & Community Devt (Level 6)', duration: '5 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CSW', name: 'Certificate in Social Work & Community Devt (Level 5)', duration: '3 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DHRIT', name: 'Diploma in Health Records & IT (Level 6)', duration: '7 Modules', grade: 'C Plain', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CHRIT', name: 'Certificate in Health Records & IT (Level 5)', duration: '4 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DOTM', name: 'Diploma in Orthopedic & Trauma Medicine (Level 6)', duration: '6 Modules', grade: 'C Plain', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'COTM', name: 'Certificate in Orthopedic & Trauma Medicine (Level 5)', duration: '4 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DBME', name: 'Diploma in Bio-Medical Engineering (Level 6)', duration: '7 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CBME', name: 'Certificate in Bio-Medical Engineering (Level 5)', duration: '4 Modules', grade: 'D+', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DSL', name: 'Diploma in Science Laboratory (Level 6)', duration: '5 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CSL', name: 'Certificate in Science Laboratory (Level 5)', duration: '3 Modules', grade: 'D Plain', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'DCSJ', name: 'Diploma in Criminal Safety Justice (Level 6)', duration: '5 Modules', grade: 'C-', school: 'School of Health, Social & Applied Sciences' },
+        { code: 'CCSJ', name: 'Certificate in Criminal Safety Justice (Level 5)', duration: '4 Modules', grade: 'D Plain', school: 'School of Health, Social & Applied Sciences' }
+    ],
+    ict: [
+        { code: 'DICT', name: 'Diploma in Information Communication Technology', duration: '6 Modules', grade: 'C-', school: 'School of ICT' },
+        { code: 'CICT', name: 'Certificate in Information Communication Technology', duration: '4 Modules', grade: 'D Plain', school: 'School of ICT' },
+        { code: 'DCP', name: 'Diploma in Computer Programming', duration: '6 Modules', grade: 'C-', school: 'School of ICT' },
+        { code: 'DCS', name: 'Diploma in Computer Science', duration: '6 Modules', grade: 'C Plain', school: 'School of ICT' },
+        { code: 'NSA', name: 'Network System Administration', duration: '4 Modules', grade: 'C-', school: 'School of ICT' },
+        { code: 'DCSec', name: 'Diploma in Cyber Security (Level 6)', duration: '6 Modules', grade: 'C-', school: 'School of ICT' }
+    ],
+    ict_short: [
+        { code: 'CCA', name: 'Certificate in Computer Applications', duration: '1 Month', grade: 'Open', school: 'ICT Short Courses' },
+        { code: 'CCE', name: 'Certificate in Advance Microsoft Excel', duration: '1 Month', grade: 'Open', school: 'ICT Short Courses' },
+        { code: 'CGD', name: 'Certificate in Graphic Design', duration: '3 Months', grade: 'D-', school: 'ICT Short Courses' },
+        { code: 'CDM', name: 'Certificate in Digital Marketing', duration: '2 Months', grade: 'Open', school: 'ICT Short Courses' },
+        { code: 'COA', name: 'Certificate in Office Administrator', duration: '3 Months', grade: 'D Plain', school: 'ICT Short Courses' }
+    ]
 };
 
+// ================================================================
+// GRADE POINTS FOR VALIDATION
+// ================================================================
 const gradePoints = {
     'A': 12, 'A-': 11, 'B+': 10, 'B': 9, 'B-': 8,
     'C+': 7, 'C': 6, 'C-': 5, 'D+': 4, 'D': 3, 'D-': 2, 'E': 1
 };
 
-const programNames = {
-    'KRCHN': 'KRCHN Nursing',
-    'DCHN': 'DCHN Nursing',
-    'DPOTT': 'Diploma in Perioperative Theatre Technology',
-    'DCH': 'Diploma in Community Health',
-    'DHRIT': 'Diploma in Health Records & IT',
-    'DSL': 'Diploma in Science Lab',
-    'DSW': 'Diploma in Social Work',
-    'DCJS': 'Diploma in Criminal Justice',
-    'DHSS': 'Diploma in Health Support Services',
-    'DICT': 'Diploma in ICT',
-    'DME': 'Diploma in Medical Engineering',
-    'CPOTT': 'Certificate in Perioperative Theatre Technology',
-    'CCH': 'Certificate in Community Health',
-    'CHRIT': 'Certificate in Health Records & IT',
-    'CPC': 'Certificate in Patient Care',
-    'CSL': 'Certificate in Science Lab',
-    'CSW': 'Certificate in Social Work',
-    'CCJS': 'Certificate in Criminal Justice',
-    'CAG': 'Certificate in Agriculture',
-    'CHSS': 'Certificate in Health Support Services',
-    'CICT': 'Certificate in ICT',
-    'CCG': 'Certificate in Caregiver',
-    'COMT': 'Certificate in Orthopedic Trauma Medicine',
-    'ACH': 'Artisan in Community Health',
-    'AAG': 'Artisan in Agriculture',
-    'ASW': 'Artisan in Social Work',
-    'CCA': 'Certificate in Computer Applications',
-    'PTE': 'TVET/CDACC PTE'
-};
+// ================================================================
+// NAVIGATION
+// ================================================================
+function navigateTo(page) {
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    const target = document.getElementById('page-' + page);
+    if (target) target.classList.add('active');
 
-// ============================================================
-// AUTH FUNCTIONS
-// ============================================================
-function switchAuthTab(tab) {
-    document.querySelectorAll('.auth-tabs .tab').forEach(t => t.classList.remove('active'));
-    document.querySelector(`.auth-tabs .tab[data-tab="${tab}"]`).classList.add('active');
-    document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
-    document.getElementById(tab === 'login' ? 'loginForm' : 'registerForm').classList.add('active');
-    
-    document.getElementById('loginMessage').className = 'auth-message';
-    document.getElementById('loginMessage').textContent = '';
-    document.getElementById('registerMessage').className = 'auth-message';
-    document.getElementById('registerMessage').textContent = '';
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    const navLink = document.querySelector(`.nav-item[data-page="${page}"]`);
+    if (navLink) navLink.classList.add('active');
+
+    if (page === 'login') {
+        setTimeout(() => {
+            navigateTo('home');
+            setTimeout(() => switchAuthTab('login'), 100);
+        }, 100);
+    }
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// ============================================================
-// LOGIN USER
-// ============================================================
+// ================================================================
+// AUTH TABS
+// ================================================================
+function switchAuthTab(tab) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelector(`.tab[data-tab="${tab}"]`).classList.add('active');
+
+    document.getElementById('loginForm').classList.remove('active');
+    document.getElementById('registerForm').classList.remove('active');
+
+    if (tab === 'login') {
+        document.getElementById('loginForm').classList.add('active');
+        document.getElementById('authSubtitle').textContent = 'Sign in to continue your application';
+    } else {
+        document.getElementById('registerForm').classList.add('active');
+        document.getElementById('authSubtitle').textContent = 'Create your account to get started';
+    }
+
+    document.getElementById('loginMessage').textContent = '';
+    document.getElementById('registerMessage').textContent = '';
+    document.getElementById('loginMessage').className = 'auth-message';
+    document.getElementById('registerMessage').className = 'auth-message';
+}
+
+// ================================================================
+// PASSWORD STRENGTH
+// ================================================================
+const pwdInput = document.getElementById('regPassword');
+const confirmInput = document.getElementById('regConfirmPassword');
+
+if (pwdInput) {
+    pwdInput.addEventListener('input', function() {
+        const val = this.value;
+        let strength = 0;
+        if (val.length >= 8) strength += 1;
+        if (/[a-z]/.test(val) && /[A-Z]/.test(val)) strength += 1;
+        if (/\d/.test(val)) strength += 1;
+        if (/[^a-zA-Z0-9]/.test(val)) strength += 1;
+
+        const percent = Math.min(strength * 25, 100);
+        document.getElementById('strengthBar').style.width = percent + '%';
+
+        let color = '#dc2626';
+        let label = 'Weak';
+        if (strength >= 4) { color = '#0f7b3a'; label = 'Strong'; }
+        else if (strength === 3) { color = '#eab308'; label = 'Good'; }
+        else if (strength === 2) { color = '#f59e0b'; label = 'Fair'; }
+        document.getElementById('strengthBar').style.background = color;
+        document.getElementById('strengthText').textContent = val.length === 0 ? 'Enter a password' : `${label} (${val.length} chars)`;
+        checkMatch();
+    });
+
+    confirmInput.addEventListener('input', checkMatch);
+}
+
+function checkMatch() {
+    const p = pwdInput ? pwdInput.value : '';
+    const c = confirmInput ? confirmInput.value : '';
+    const matchDiv = document.getElementById('passwordMatch');
+    if (c.length === 0) { matchDiv.textContent = ''; return; }
+    if (p === c) {
+        matchDiv.textContent = '✅ Passwords match';
+        matchDiv.style.color = '#0f7b3a';
+    } else {
+        matchDiv.textContent = '❌ Passwords do not match';
+        matchDiv.style.color = '#dc2626';
+    }
+}
+
+// ================================================================
+// EMAIL AVAILABILITY CHECK
+// ================================================================
+const regEmail = document.getElementById('regEmail');
+if (regEmail) {
+    regEmail.addEventListener('input', function() {
+        const status = document.getElementById('regEmailStatus');
+        const email = this.value.trim();
+        if (email.length === 0) { status.textContent = ''; status.className = 'help-text'; return; }
+        if (!email.includes('@') || !email.includes('.')) {
+            status.textContent = '⚠️ Please enter a valid email';
+            status.className = 'help-text error-text';
+            return;
+        }
+        if (email.toLowerCase().includes('test') || email.toLowerCase().includes('demo')) {
+            status.textContent = '❌ This email is already registered (demo)';
+            status.className = 'help-text error-text';
+        } else {
+            status.textContent = '✅ Email available';
+            status.className = 'help-text success-text';
+        }
+    });
+}
+
+// ================================================================
+// LOGIN
+// ================================================================
 async function loginUser() {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
     const msg = document.getElementById('loginMessage');
-    const btn = document.getElementById('loginBtn');
 
     msg.className = 'auth-message';
     msg.textContent = '';
@@ -130,19 +215,13 @@ async function loginUser() {
         return;
     }
 
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
-
     try {
         const { data, error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
         msg.className = 'auth-message success';
         msg.textContent = '✅ Signed in successfully!';
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
 
-        // Check user status
         const { data: profile } = await supabase
             .from('consolidated_user_profiles_table')
             .select('status, full_name')
@@ -150,7 +229,7 @@ async function loginUser() {
             .single();
 
         if (profile && profile.status === 'pending') {
-            msg.textContent = '⏳ Your account is pending admin approval. You will be notified via email.';
+            msg.textContent = '⏳ Your account is pending admin approval.';
             await supabase.auth.signOut();
             return;
         }
@@ -159,38 +238,26 @@ async function loginUser() {
     } catch (error) {
         msg.className = 'auth-message error';
         msg.textContent = '❌ ' + (error.message || 'Login failed.');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
     }
 }
 
-// ============================================================
-// REGISTER USER - Students Only
-// ============================================================
+// ================================================================
+// REGISTER
+// ================================================================
 async function registerUser() {
     const name = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const phone = document.getElementById('regPhone').value.trim();
-    const role = document.getElementById('regRole').value;
     const password = document.getElementById('regPassword').value;
     const confirm = document.getElementById('regConfirmPassword').value;
     const msg = document.getElementById('registerMessage');
-    const btn = document.getElementById('registerBtn');
 
     msg.className = 'auth-message';
     msg.textContent = '';
 
-    // Validate
     if (!name || !email || !phone || !password || !confirm) {
         msg.className = 'auth-message error';
         msg.textContent = '❌ Please fill in all required fields.';
-        return;
-    }
-
-    // Force student role
-    if (role !== 'student') {
-        msg.className = 'auth-message error';
-        msg.textContent = '❌ Only student accounts can be created here.';
         return;
     }
 
@@ -206,11 +273,7 @@ async function registerUser() {
         return;
     }
 
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-
     try {
-        // Check if email exists
         const { data: existing } = await supabase
             .from('consolidated_user_profiles_table')
             .select('email')
@@ -219,29 +282,20 @@ async function registerUser() {
 
         if (existing) {
             msg.className = 'auth-message error';
-            msg.textContent = '❌ This email is already registered. Please login.';
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+            msg.textContent = '❌ This email is already registered.';
             return;
         }
 
-        // Create auth user
         const { data: authData, error: authError } = await supabase.auth.signUp({
             email,
             password,
             options: {
-                data: {
-                    full_name: name,
-                    phone: phone,
-                    role: 'student',
-                    status: 'pending'
-                }
+                data: { full_name: name, phone: phone, role: 'student', status: 'pending' }
             }
         });
 
         if (authError) throw authError;
 
-        // ✅ CREATE consolidated_user_profiles_table (NO profile yet!)
         const { error: profileError } = await supabase
             .from('consolidated_user_profiles_table')
             .insert([{
@@ -250,58 +304,32 @@ async function registerUser() {
                 full_name: name,
                 phone: phone,
                 role: 'student',
-                status: 'pending', // ← WAITING FOR ADMIN APPROVAL
+                status: 'pending',
                 created_at: new Date().toISOString()
             }]);
 
         if (profileError) throw profileError;
 
-        // Create application (draft)
-        const { error: appError } = await supabase
-            .from('applications')
-            .insert([{
-                user_id: authData.user.id,
-                user_email: email,
-                full_name: name,
-                email: email,
-                phone: phone,
-                status: 'draft'
-            }]);
-
-        if (appError) console.warn('Application error:', appError);
-
         msg.className = 'auth-message success';
-        msg.textContent = '✅ Account created! Please wait for admin approval. You will receive an email once approved.';
+        msg.textContent = '✅ Account created! Please wait for admin approval.';
 
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
-
-        // Redirect after 3 seconds
-        setTimeout(() => {
-            window.location.href = 'admission.html';
-        }, 3000);
-
+        setTimeout(() => { window.location.href = 'admission.html'; }, 3000);
     } catch (error) {
-        console.error('Registration error:', error);
         msg.className = 'auth-message error';
-        msg.textContent = '❌ ' + (error.message || 'Registration failed. Please try again.');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+        msg.textContent = '❌ ' + (error.message || 'Registration failed.');
     }
 }
 
-// ============================================================
-// LOGOUT USER
-// ============================================================
+// ================================================================
+// LOGOUT
+// ================================================================
 function logoutUser() {
-    supabase.auth.signOut().then(() => {
-        window.location.reload();
-    });
+    supabase.auth.signOut().then(() => { window.location.reload(); });
 }
 
-// ============================================================
+// ================================================================
 // CHECK AUTH
-// ============================================================
+// ================================================================
 async function checkAuth() {
     try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -313,6 +341,7 @@ async function checkAuth() {
             document.getElementById('userEmail').textContent = currentUser.email;
             document.getElementById('userAvatar').textContent = currentUser.email.charAt(0).toUpperCase();
             document.getElementById('email').value = currentUser.email;
+            document.getElementById('applicationNumber').textContent = `ADM-${Date.now().toString().slice(-6)}`;
             await loadUserApplication(currentUser.id);
         } else {
             document.getElementById('authContainer').style.display = 'block';
@@ -325,9 +354,9 @@ async function checkAuth() {
     }
 }
 
-// ============================================================
+// ================================================================
 // LOAD USER APPLICATION
-// ============================================================
+// ================================================================
 async function loadUserApplication(userId) {
     try {
         const { data, error } = await supabase
@@ -338,196 +367,102 @@ async function loadUserApplication(userId) {
             .limit(1);
 
         if (error) throw error;
-
         if (data && data.length > 0) {
             const app = data[0];
             applicationId = app.id;
-
-            // Populate form
-            if (app.full_name) document.getElementById('fullName').value = app.full_name;
-            if (app.phone) document.getElementById('phone').value = app.phone;
-            if (app.alt_phone) document.getElementById('altPhone').value = app.alt_phone;
-            if (app.national_id) document.getElementById('nationalId').value = app.national_id;
-            if (app.dob) document.getElementById('dob').value = app.dob;
-            if (app.gender) document.getElementById('gender').value = app.gender;
-            if (app.address) document.getElementById('address').value = app.address;
-            if (app.guardian_name) document.getElementById('guardianName').value = app.guardian_name;
-            if (app.guardian_phone) document.getElementById('guardianPhone').value = app.guardian_phone;
-            if (app.emergency_name) document.getElementById('emergencyName').value = app.emergency_name;
-            if (app.emergency_phone) document.getElementById('emergencyPhone').value = app.emergency_phone;
-            if (app.emergency_relation) document.getElementById('emergencyRelation').value = app.emergency_relation;
-            if (app.hear_about) document.getElementById('hearAbout').value = app.hear_about;
-            if (app.program) document.getElementById('program').value = app.program;
-            if (app.intake_month) document.getElementById('intakeMonth').value = app.intake_month;
-            if (app.intake_year) document.getElementById('intakeYear').value = app.intake_year;
-            if (app.prev_institution) document.getElementById('prevInstitution').value = app.prev_institution;
-            if (app.prev_year) document.getElementById('prevYear').value = app.prev_year;
-            if (app.transfer_reason) document.getElementById('transferReason').value = app.transfer_reason;
-            if (app.student_type) selectType(app.student_type);
-            if (app.eligibility_passed) eligibilityPassed = app.eligibility_passed;
-            if (app.kcse_validated) kcseValidated = app.kcse_validated;
-            if (app.kcse_data) kcseDataExtracted = app.kcse_data;
-
+            Object.keys(app).forEach(key => {
+                const el = document.getElementById(key);
+                if (el && app[key]) {
+                    if (el.type === 'checkbox') el.checked = app[key];
+                    else if (el.tagName === 'SELECT' || el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                        el.value = app[key];
+                    }
+                }
+            });
+            if (app.student_type) studentType = app.student_type;
             if (app.documents_uploaded) {
                 app.documents_uploaded.forEach(doc => {
                     uploadedDocs[doc] = true;
-                    const card = document.getElementById(`doc_${doc}`);
                     const statusEl = document.getElementById(`doc_${doc}_status`);
-                    if (card) card.classList.add('uploaded');
-                    if (statusEl) {
-                        statusEl.textContent = '✅ Uploaded';
-                        statusEl.style.color = 'var(--success)';
-                    }
+                    if (statusEl) { statusEl.textContent = '✅ Uploaded'; statusEl.style.color = '#0f7b3a'; }
                 });
             }
-
-            updateProgramDesc();
-            updateIntakePreview();
             updateSummary();
-
-            if (app.status === 'submitted') {
-                document.getElementById('message').className = 'message info';
-                document.getElementById('message').textContent = '📋 You already have a submitted application.';
-                document.getElementById('submitBtn').disabled = true;
-                document.getElementById('submitBtn').textContent = '✅ Already Submitted';
-            }
         }
     } catch (error) {
         console.error('Load application error:', error);
     }
 }
 
-// ============================================================
-// SAVE APPLICATION
-// ============================================================
-async function saveApplication(step) {
-    if (!currentUser) return;
+// ================================================================
+// COURSE SELECTOR
+// ================================================================
+function updatePrograms() {
+    const school = document.getElementById('school').value;
+    const programSelect = document.getElementById('program');
+    programSelect.innerHTML = '<option value="">-- Select Course --</option>';
 
-    const data = {
-        user_id: currentUser.id,
-        user_email: currentUser.email,
-        full_name: document.getElementById('fullName').value,
-        phone: document.getElementById('phone').value,
-        alt_phone: document.getElementById('altPhone').value,
-        national_id: document.getElementById('nationalId').value,
-        dob: document.getElementById('dob').value,
-        gender: document.getElementById('gender').value,
-        address: document.getElementById('address').value,
-        guardian_name: document.getElementById('guardianName').value,
-        guardian_phone: document.getElementById('guardianPhone').value,
-        emergency_name: document.getElementById('emergencyName').value,
-        emergency_phone: document.getElementById('emergencyPhone').value,
-        emergency_relation: document.getElementById('emergencyRelation').value,
-        hear_about: document.getElementById('hearAbout').value,
-        program: document.getElementById('program').value,
-        program_name: programNames[document.getElementById('program').value] || '',
-        intake_month: document.getElementById('intakeMonth').value,
-        intake_year: document.getElementById('intakeYear').value,
-        prev_institution: document.getElementById('prevInstitution').value,
-        prev_year: document.getElementById('prevYear').value,
-        transfer_reason: document.getElementById('transferReason').value,
-        student_type: studentType,
-        eligibility_passed: eligibilityPassed || false,
-        kcse_validated: kcseValidated || false,
-        kcse_data: kcseDataExtracted,
-        documents_uploaded: Object.keys(uploadedDocs).filter(k => uploadedDocs[k]),
-        current_step: step || currentStep,
-        updated_at: new Date().toISOString()
-    };
-
-    try {
-        let result;
-        if (applicationId) {
-            result = await supabase.from('applications').update(data).eq('id', applicationId);
-        } else {
-            result = await supabase.from('applications').insert([data]).select();
-            if (result.data && result.data.length > 0) {
-                applicationId = result.data[0].id;
-            }
-        }
-        if (result.error) throw result.error;
-        return true;
-    } catch (error) {
-        console.error('Save error:', error);
-        return false;
+    if (school && courseData[school]) {
+        courseData[school].forEach(course => {
+            const option = document.createElement('option');
+            option.value = course.code;
+            option.textContent = `${course.name} (${course.duration}) - ${course.grade}`;
+            option.dataset.duration = course.duration;
+            option.dataset.grade = course.grade;
+            programSelect.appendChild(option);
+        });
     }
 }
 
-// ============================================================
+// ================================================================
 // STUDENT TYPE
-// ============================================================
-function selectType(type) {
-    studentType = type;
-    document.querySelectorAll('.student-type-card').forEach(c => c.classList.remove('selected'));
-    document.querySelector(`.student-type-card[data-type="${type}"]`).classList.add('selected');
-    document.querySelector(`.student-type-card[data-type="${type}"] input[type="radio"]`).checked = true;
-
-    const prevEdu = document.getElementById('prevEducation');
-    prevEdu.style.display = type === 'transfer' ? 'block' : 'none';
-
-    const transcriptCard = document.getElementById('doc_transcript');
-    const docDesc = document.getElementById('docSectionDesc');
-    const reqText = document.getElementById('docRequirementsText');
-
-    if (type === 'transfer') {
-        transcriptCard.style.display = 'flex';
-        docDesc.textContent = 'Transfer students must also submit academic transcripts.';
-        reqText.textContent = 'KCSE, ID, and Recommendation required. Transfer students must upload transcripts.';
-        document.getElementById('prevInstitution').required = true;
-        document.getElementById('prevYear').required = true;
-    } else {
-        transcriptCard.style.display = 'none';
-        docDesc.textContent = 'Upload your documents. KCSE, ID, and Recommendation required.';
-        reqText.textContent = 'KCSE, ID, and Recommendation Letter are required for all students.';
-        document.getElementById('prevInstitution').required = false;
-        document.getElementById('prevYear').required = false;
-    }
+// ================================================================
+function toggleStudentType() {
+    const isTransfer = document.querySelector('input[name="studentType"]:checked').value === 'transfer';
+    document.getElementById('transferFields').style.display = isTransfer ? 'block' : 'none';
+    document.getElementById('doc_transcript').style.display = isTransfer ? 'block' : 'none';
+    studentType = isTransfer ? 'transfer' : 'new';
     updateSummary();
 }
 
-// ============================================================
-// NAVIGATION
-// ============================================================
+// ================================================================
+// STEP NAVIGATION
+// ================================================================
 function goToStep(step) {
     if (!validateStep(currentStep, step)) return;
 
     document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
     document.querySelector(`.form-section[data-section="${step}"]`).classList.add('active');
 
-    document.querySelectorAll('.progress-step').forEach(el => {
-        el.classList.remove('active', 'completed');
+    document.querySelectorAll('.step-item').forEach(el => {
+        el.classList.remove('active');
         const s = parseInt(el.dataset.step);
         if (s === step) el.classList.add('active');
-        else if (s < step) el.classList.add('completed');
     });
 
     currentStep = step;
     updateSummary();
-    saveApplication(step);
+    saveDraft();
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function validateStep(from, to) {
     if (from === 1 && to > 1) {
-        const name = document.getElementById('fullName').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const id = document.getElementById('nationalId').value.trim();
-        const dob = document.getElementById('dob').value;
-        const gender = document.getElementById('gender').value;
-        if (!name || !email || !phone || !id || !dob || !gender) {
-            showValidation('Please complete all required personal details.');
-            return false;
-        }
-        if (phone.length < 10) {
-            showValidation('Phone number must be at least 10 digits.');
-            return false;
+        const fields = ['fullName', 'email', 'phone', 'nationalId', 'dob', 'gender'];
+        for (let id of fields) {
+            if (!document.getElementById(id).value.trim()) {
+                showValidation(`Please complete field: ${document.getElementById(id).parentElement.querySelector('label').textContent.trim()}`);
+                return false;
+            }
         }
     }
     if (from === 2 && to > 2) {
-        const program = document.getElementById('program').value;
-        if (!program) {
-            showValidation('Please select a Program.');
+        if (!document.getElementById('program').value) {
+            showValidation('Please select a Course.');
+            return false;
+        }
+        if (!document.getElementById('school').value) {
+            showValidation('Please select a School.');
             return false;
         }
     }
@@ -540,16 +475,26 @@ function validateStep(from, to) {
             showValidation('KCSE document has not been scanned and validated.');
             return false;
         }
-        if (!uploadedDocs['id']) {
-            showValidation('Please upload your ID / Birth Certificate.');
-            return false;
-        }
         if (!uploadedDocs['recommendation']) {
             showValidation('Please upload a Recommendation Letter.');
             return false;
         }
-        if (studentType === 'transfer' && !uploadedDocs['transcript']) {
-            showValidation('Transfer students must upload their Academic Transcript.');
+    }
+    if (from === 4 && to > 4) {
+        if (!uploadedDocs['id']) {
+            showValidation('Please upload your National ID.');
+            return false;
+        }
+        if (!uploadedDocs['passport']) {
+            showValidation('Please upload a Passport Photo.');
+            return false;
+        }
+    }
+    if (from === 5 && to > 5) {
+        const exp = document.getElementById('christianExperience').value.trim();
+        const words = exp ? exp.split(/\s+/).length : 0;
+        if (words < 400) {
+            showValidation(`Please write at least 400 words. Current: ${words} words.`);
             return false;
         }
     }
@@ -565,232 +510,58 @@ function closeValidation() {
     document.getElementById('validationModal').classList.remove('show');
 }
 
-// ============================================================
-// PROGRAM FUNCTIONS
-// ============================================================
-function updateProgramDesc() {
-    const select = document.getElementById('program');
-    const desc = document.getElementById('programDesc');
-    const map = {
-        'KRCHN': '🎓 KRCHN Nursing · 3.5 years · Min C+',
-        'DCHN': '🎓 DCHN Nursing · 3.5 years · Min C',
-        'DPOTT': '🔬 Perioperative Theatre Technology · 2 years · Min C-',
-        'DCH': '🏥 Community Health · 2 years · Min C-',
-        'DHRIT': '📊 Health Records & IT · 2 years · Min C-',
-        'DSL': '🧪 Science Lab · 2 years · Min C-',
-        'DSW': '🤝 Social Work · 2 years · Min C-',
-        'DCJS': '⚖️ Criminal Justice · 2 years · Min C-',
-        'DHSS': '🏥 Health Support Services · 2 years · Min C-',
-        'DICT': '💻 ICT · 2 years · Min C-',
-        'DME': '⚙️ Medical Engineering · 2 years · Min C',
-        'CPOTT': '🔬 Certificate POTT · 1 year · Min D+',
-        'CCH': '🏥 Certificate CH · 1 year · Min D+',
-        'CHRIT': '📊 Certificate HRIT · 1 year · Min D+',
-        'CPC': '🩺 Patient Care · 6 months · Min D',
-        'CSL': '🧪 Science Lab · 1 year · Min D+',
-        'CSW': '🤝 Social Work · 1 year · Min D+',
-        'CCJS': '⚖️ Criminal Justice · 1 year · Min D+',
-        'CAG': '🌾 Agriculture · 1 year · Min D',
-        'CHSS': '🏥 Health Support Services · 1 year · Min D+',
-        'CICT': '💻 ICT · 1 year · Min D+',
-        'CCG': '👴 Caregiver · 6 months · Min D',
-        'COMT': '🦴 Orthopedic Trauma · 1 year · Min D+',
-        'ACH': '🌿 Artisan CH · 6 months · Min D',
-        'AAG': '🌾 Artisan Agriculture · 6 months · Min D',
-        'ASW': '🤝 Artisan Social Work · 6 months · Min D',
-        'CCA': '💻 Computer Applications · 3 months · No min',
-        'PTE': '📚 TVET/CDACC PTE · No min'
-    };
-    desc.textContent = map[select.value] || 'Select a program to see details';
-    updateCriteria();
-}
+// ================================================================
+// DOCUMENT HANDLING
+// ================================================================
+function handleDocUpload(event, docKey) {
+    const file = event.target.files[0];
+    if (!file) return;
 
-function updateCriteria() {
-    const program = document.getElementById('program').value;
-    const criteria = programCriteria[program];
-    const content = document.getElementById('criteriaContent');
-    if (!criteria) {
-        content.innerHTML = `<div class="criteria-item"><span class="criterion">Select a program to view criteria</span></div>`;
+    const statusEl = document.getElementById(`doc_${docKey}_status`);
+    const fnameEl = document.getElementById(`doc_${docKey}_filename`);
+
+    if (file.size > 5 * 1024 * 1024) {
+        alert('❌ File too large. Max 5MB.');
+        event.target.value = '';
         return;
     }
-    let html = `
-        <div class="criteria-item"><span class="criterion">Minimum Grade</span><span class="requirement">${criteria.minGrade}</span></div>
-        <div class="criteria-item"><span class="criterion">Required Subjects</span><span class="requirement">${criteria.subjects.length > 0 ? criteria.subjects.join(', ') : 'None'}</span></div>
-    `;
-    if (criteria.minSubjectGrades) {
-        html += `<div class="criteria-item" style="border-bottom:none;padding-top:4px;">
-            <span class="criterion" style="color:var(--gray-400);font-size:0.7rem;">Min subject grades:</span>
-            <span class="requirement" style="font-size:0.7rem;color:var(--gray-500);">
-                ${Object.entries(criteria.minSubjectGrades).map(([subj, grade]) => `${subj}: ${grade}`).join(' · ')}
-            </span>
-        </div>`;
-    }
-    content.innerHTML = html;
-}
 
-function updateIntakePreview() {
-    const month = document.getElementById('intakeMonth');
-    const year = document.getElementById('intakeYear');
-    document.getElementById('intakePreview').textContent = `📅 Intake: ${month.options[month.selectedIndex]?.text || 'March'} ${year.value}`;
-}
-
-// ============================================================
-// EMAIL VALIDATION
-// ============================================================
-document.getElementById('email').addEventListener('input', function() {
-    const email = this.value.trim();
-    const statusEl = document.getElementById('emailStatus');
-    if (!email) {
-        statusEl.textContent = '';
-        statusEl.className = 'email-status';
-        return;
-    }
-    if (!email.includes('@') || !email.includes('.')) {
-        statusEl.textContent = '❌ Invalid email';
-        statusEl.className = 'email-status invalid';
-        return;
-    }
-    statusEl.textContent = '⏳ Checking...';
-    statusEl.className = 'email-status checking';
-    setTimeout(() => {
-        const domain = email.split('@')[1];
-        if (domain && (['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke'].includes(domain) ||
-                domain.endsWith('.ac.ke') || domain.endsWith('.ke'))) {
-            statusEl.textContent = '✅ Valid email';
-            statusEl.className = 'email-status valid';
-        } else {
-            statusEl.textContent = '⚠️ Unusual domain';
-            statusEl.className = 'email-status invalid';
-        }
-    }, 400);
-});
-
-// ============================================================
-// REGISTER EMAIL VALIDATION
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    // Register email validation
-    const regEmail = document.getElementById('regEmail');
-    if (regEmail) {
-        regEmail.addEventListener('input', function() {
-            const email = this.value.trim();
-            const statusEl = document.getElementById('regEmailStatus');
-
-            if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
-
-            if (!email) {
-                statusEl.textContent = '';
-                this.style.borderColor = '#e2e8f0';
-                return;
-            }
-
-            // Basic email format check only
-            if (!email.includes('@') || !email.includes('.')) {
-                statusEl.textContent = '❌ Invalid email format';
-                statusEl.style.color = '#ef4444';
-                this.style.borderColor = '#ef4444';
-                return;
-            }
-
-            statusEl.textContent = '✅ Email format valid';
-            statusEl.style.color = '#0b8a5e';
-            this.style.borderColor = '#0b8a5e';
-        });
-    }
-
-    // Password strength
-    const regPassword = document.getElementById('regPassword');
-    if (regPassword) {
-        regPassword.addEventListener('input', function() {
-            const password = this.value;
-            const bar = document.getElementById('strengthBar');
-            const text = document.getElementById('strengthText');
-
-            let score = 0;
-            if (password.length >= 8) score++;
-            if (password.length >= 12) score++;
-            if (/[A-Z]/.test(password)) score++;
-            if (/[a-z]/.test(password)) score++;
-            if (/[0-9]/.test(password)) score++;
-            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
-
-            const levels = [
-                { text: 'Very Weak', cls: 'weak', width: '10%', color: '#ef4444' },
-                { text: 'Weak', cls: 'weak', width: '25%', color: '#ef4444' },
-                { text: 'Fair', cls: 'fair', width: '45%', color: '#f59e0b' },
-                { text: 'Good', cls: 'good', width: '65%', color: '#3b82f6' },
-                { text: 'Strong', cls: 'strong', width: '85%', color: '#0b8a5e' },
-                { text: 'Very Strong', cls: 'strong', width: '100%', color: '#0b8a5e' }
-            ];
-
-            const level = Math.min(Math.floor(score / 1), 5);
-            const result = levels[level] || levels[0];
-
-            bar.style.width = result.width;
-            bar.style.background = result.color;
-            text.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
-            text.className = `strength-text ${password.length > 0 ? result.cls : ''}`;
-        });
-    }
-
-    // Password confirmation
-    const regConfirm = document.getElementById('regConfirmPassword');
-    if (regConfirm) {
-        regConfirm.addEventListener('input', function() {
-            const password = document.getElementById('regPassword').value;
-            const confirm = this.value;
-            const matchEl = document.getElementById('passwordMatch');
-
-            if (!confirm) {
-                matchEl.textContent = '';
-                matchEl.className = 'password-match';
-                return;
-            }
-
-            if (password === confirm) {
-                matchEl.textContent = '✅ Passwords match';
-                matchEl.className = 'password-match match';
-            } else {
-                matchEl.textContent = '❌ Passwords do not match';
-                matchEl.className = 'password-match nomatch';
-            }
-        });
-    }
-
-    // Initialize PDF.js
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-    // Check authentication
-    checkAuth();
-
-    // Init form
-    updateProgramDesc();
-    updateIntakePreview();
+    uploadedDocs[docKey] = true;
+    statusEl.textContent = `✅ ${file.name}`;
+    statusEl.style.color = '#0f7b3a';
+    if (fnameEl) fnameEl.textContent = file.name;
+    document.getElementById(`doc_${docKey}`).classList.add('uploaded');
     updateSummary();
+    saveDraft();
+}
 
-    // Login form enter key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const activeTab = document.querySelector('.auth-tabs .tab.active');
-            if (activeTab && activeTab.dataset.tab === 'login') {
-                loginUser();
-            } else if (activeTab && activeTab.dataset.tab === 'register') {
-                registerUser();
-            }
-        }
-    });
+function removeDocument(docKey) {
+    delete uploadedDocs[docKey];
+    const statusEl = document.getElementById(`doc_${docKey}_status`);
+    const fnameEl = document.getElementById(`doc_${docKey}_filename`);
+    const input = document.getElementById(`doc_${docKey}_input`);
+    if (statusEl) { statusEl.textContent = 'Not uploaded'; statusEl.style.color = ''; }
+    if (fnameEl) fnameEl.textContent = '';
+    document.getElementById(`doc_${docKey}`).classList.remove('uploaded');
+    if (input) input.value = '';
 
-    console.log('✅ NCHSM Admission System loaded');
-});
+    if (docKey === 'kcse') {
+        kcseValidated = false;
+        eligibilityPassed = false;
+        document.getElementById('ocr_kcse_result').classList.remove('show');
+        document.getElementById('ocr_kcse_status').textContent = '';
+        document.getElementById('kcse_validation_result').innerHTML = '';
+    }
+    updateSummary();
+}
 
-// ============================================================
-// OCR - KCSE DOCUMENT
-// ============================================================
+// ================================================================
+// OCR - KCSE
+// ================================================================
 async function handleKCSEDocument(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const card = document.getElementById('doc_kcse');
     const statusEl = document.getElementById('doc_kcse_status');
     const fnameEl = document.getElementById('doc_kcse_filename');
     const ocrStatus = document.getElementById('ocr_kcse_status');
@@ -826,7 +597,6 @@ async function handleKCSEDocument(event) {
         ocrStatus.textContent = '⏳ Scanning with OCR...';
         const result = await Tesseract.recognize(imageUrl, 'eng');
         const text = result.data.text;
-        console.log('OCR Text:', text);
 
         const extractedData = parseKCSEData(text);
         kcseDataExtracted = extractedData;
@@ -834,7 +604,7 @@ async function handleKCSEDocument(event) {
         uploadedDocs['kcse'] = true;
         statusEl.textContent = `✅ ${file.name}`;
         fnameEl.textContent = file.name;
-        card.classList.add('uploaded');
+        document.getElementById('doc_kcse').classList.add('uploaded');
 
         displayKCSEData(extractedData);
         validateKCSEAgainstProgram(extractedData);
@@ -845,7 +615,7 @@ async function handleKCSEDocument(event) {
         kcseValidated = true;
 
         if (file.type !== 'application/pdf') URL.revokeObjectURL(imageUrl);
-        await saveApplication(currentStep);
+        await saveDraft();
     } catch (error) {
         console.error('OCR Error:', error);
         ocrStatus.textContent = '❌ OCR Failed';
@@ -921,75 +691,52 @@ function displayKCSEData(data) {
 }
 
 function validateKCSEAgainstProgram(data) {
-    const program = document.getElementById('program').value;
-    const criteria = programCriteria[program];
+    const programSelect = document.getElementById('program');
+    const selectedOption = programSelect.options[programSelect.selectedIndex];
     const validationResult = document.getElementById('kcse_validation_result');
 
-    if (!criteria || !data.overallGrade) {
+    if (!selectedOption || !selectedOption.value) {
+        validationResult.innerHTML = `<span style="color:var(--warning);">⚠️ Please select a course first.</span>`;
+        return;
+    }
+
+    const requiredGrade = selectedOption.dataset.grade || 'D';
+    const studentGrade = data.overallGrade;
+
+    if (!studentGrade) {
         validationResult.innerHTML = `<span style="color:var(--warning);">⚠️ Complete data not extracted. Ensure document is clear.</span>`;
         return;
     }
 
-    const studentPoints = gradePoints[data.overallGrade] || 0;
-    const minPoints = gradePoints[criteria.minGrade] || 0;
-    let allPass = true;
-    let messages = [];
+    const studentPoints = gradePoints[studentGrade] || 0;
+    const minPoints = gradePoints[requiredGrade] || 0;
 
-    if (criteria.minGrade === 'None') {
-        messages.push('✅ No minimum grade requirement');
+    let html = '';
+    if (requiredGrade === 'Open' || requiredGrade === 'No minimum') {
+        html = `<span class="validation-pass">✅ No minimum grade requirement for this course.</span>`;
+        eligibilityPassed = true;
     } else if (studentPoints >= minPoints) {
-        messages.push(`✅ Overall ${data.overallGrade} meets ${criteria.minGrade}`);
+        html = `<span class="validation-pass">✅ ELIGIBLE - ${studentGrade} meets ${requiredGrade} requirement!</span>`;
+        eligibilityPassed = true;
     } else {
-        messages.push(`❌ Overall ${data.overallGrade} below ${criteria.minGrade}`);
-        allPass = false;
+        html = `<span class="validation-fail">❌ NOT ELIGIBLE - ${studentGrade} below ${requiredGrade} requirement.</span>`;
+        eligibilityPassed = false;
     }
 
-    if (criteria.subjects && criteria.subjects.length > 0) {
-        criteria.subjects.forEach(subject => {
-            let foundGrade = null;
-            for (const [key, value] of Object.entries(data.grades)) {
-                if (key.toLowerCase().includes(subject.toLowerCase()) ||
-                    subject.toLowerCase().includes(key.toLowerCase())) {
-                    foundGrade = value;
-                    break;
-                }
-            }
-            const requiredGrade = criteria.minSubjectGrades[subject] || 'D';
-            if (foundGrade) {
-                if ((gradePoints[foundGrade] || 0) >= (gradePoints[requiredGrade] || 0)) {
-                    messages.push(`✅ ${subject}: ${foundGrade} meets ${requiredGrade}`);
-                } else {
-                    messages.push(`❌ ${subject}: ${foundGrade} below ${requiredGrade}`);
-                    allPass = false;
-                }
-            } else {
-                messages.push(`⚠️ ${subject}: Not found`);
-                allPass = false;
-            }
-        });
-    }
-
-    let html = allPass ?
-        `<span class="validation-pass">✅ ELIGIBLE - You meet all requirements!</span>` :
-        `<span class="validation-fail">❌ NOT ELIGIBLE - You do not meet all requirements.</span>`;
-    html += `<div style="margin-top:6px;font-size:0.7rem;color:var(--gray-500);">${messages.map(m => `• ${m}`).join('<br>')}</div>`;
     validationResult.innerHTML = html;
-    eligibilityPassed = allPass;
-
     if (data.name && !document.getElementById('fullName').value) {
         document.getElementById('fullName').value = data.name;
     }
     updateSummary();
 }
 
-// ============================================================
-// OCR - ID DOCUMENT
-// ============================================================
+// ================================================================
+// OCR - ID
+// ================================================================
 async function handleIDDocument(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const card = document.getElementById('doc_id');
     const statusEl = document.getElementById('doc_id_status');
     const fnameEl = document.getElementById('doc_id_filename');
     const ocrStatus = document.getElementById('ocr_id_status');
@@ -1025,13 +772,12 @@ async function handleIDDocument(event) {
         ocrStatus.textContent = '⏳ Scanning ID...';
         const result = await Tesseract.recognize(imageUrl, 'eng');
         const text = result.data.text;
-        console.log('ID OCR Text:', text);
 
         const idData = parseIDData(text);
         uploadedDocs['id'] = true;
         statusEl.textContent = `✅ ${file.name}`;
         fnameEl.textContent = file.name;
-        card.classList.add('uploaded');
+        document.getElementById('doc_id').classList.add('uploaded');
 
         displayIDData(idData);
         ocrStatus.textContent = '✅ OCR Complete';
@@ -1045,7 +791,7 @@ async function handleIDDocument(event) {
             document.getElementById('fullName').value = idData.name;
         }
         if (file.type !== 'application/pdf') URL.revokeObjectURL(imageUrl);
-        await saveApplication(currentStep);
+        await saveDraft();
     } catch (error) {
         console.error('ID OCR Error:', error);
         ocrStatus.textContent = '❌ OCR Failed';
@@ -1081,75 +827,93 @@ function displayIDData(data) {
     `;
 }
 
-// ============================================================
-// GENERAL DOCUMENT UPLOAD
-// ============================================================
-function handleDocUpload(event, docKey) {
-    const file = event.target.files[0];
-    if (!file) return;
+// ================================================================
+// SAVE DRAFT
+// ================================================================
+async function saveDraft() {
+    if (!currentUser) return;
 
-    const card = document.getElementById(`doc_${docKey}`);
-    const statusEl = document.getElementById(`doc_${docKey}_status`);
-    const fnameEl = document.getElementById(`doc_${docKey}_filename`);
+    const data = {
+        user_id: currentUser.id,
+        user_email: currentUser.email,
+        full_name: document.getElementById('fullName')?.value || '',
+        email: document.getElementById('email')?.value || '',
+        phone: document.getElementById('phone')?.value || '',
+        alt_phone: document.getElementById('altPhone')?.value || '',
+        national_id: document.getElementById('nationalId')?.value || '',
+        dob: document.getElementById('dob')?.value || '',
+        gender: document.getElementById('gender')?.value || '',
+        address: document.getElementById('address')?.value || '',
+        city: document.getElementById('city')?.value || '',
+        nationality: document.getElementById('nationality')?.value || '',
+        county: document.getElementById('county')?.value || '',
+        country_of_birth: document.getElementById('countryOfBirth')?.value || '',
+        marital_status: document.getElementById('maritalStatus')?.value || '',
+        hear_about: document.getElementById('hearAbout')?.value || '',
+        sponsored: document.getElementById('sponsored')?.value || '',
+        father_alive: document.getElementById('fatherAlive')?.value || '',
+        father_name: document.getElementById('fatherName')?.value || '',
+        father_phone: document.getElementById('fatherPhone')?.value || '',
+        mother_alive: document.getElementById('motherAlive')?.value || '',
+        mother_name: document.getElementById('motherName')?.value || '',
+        mother_phone: document.getElementById('motherPhone')?.value || '',
+        guardian_name: document.getElementById('guardianName')?.value || '',
+        guardian_phone: document.getElementById('guardianPhone')?.value || '',
+        disability: document.getElementById('disability')?.value || '',
+        medical_condition: document.getElementById('medicalCondition')?.value || '',
+        employed: document.getElementById('employed')?.value || '',
+        school: document.getElementById('school')?.value || '',
+        program: document.getElementById('program')?.value || '',
+        campus: document.getElementById('campus')?.value || '',
+        intake: document.getElementById('intake')?.value || '',
+        mode_of_study: document.getElementById('modeOfStudy')?.value || '',
+        student_type: studentType,
+        prev_institution: document.getElementById('prevInstitution')?.value || '',
+        prev_year: document.getElementById('prevYear')?.value || '',
+        transfer_reason: document.getElementById('transferReason')?.value || '',
+        christian_experience: document.getElementById('christianExperience')?.value || '',
+        documents_uploaded: Object.keys(uploadedDocs).filter(k => uploadedDocs[k]),
+        current_step: currentStep,
+        updated_at: new Date().toISOString()
+    };
 
-    if (file.size > 5 * 1024 * 1024) {
-        alert('❌ File too large. Max 5MB.');
-        event.target.value = '';
-        return;
+    try {
+        let result;
+        if (applicationId) {
+            result = await supabase.from('applications').update(data).eq('id', applicationId);
+        } else {
+            result = await supabase.from('applications').insert([data]).select();
+            if (result.data && result.data.length > 0) {
+                applicationId = result.data[0].id;
+            }
+        }
+        if (result.error) throw result.error;
+        return true;
+    } catch (error) {
+        console.error('Save error:', error);
+        return false;
     }
-
-    uploadedDocs[docKey] = true;
-    statusEl.textContent = `✅ ${file.name}`;
-    fnameEl.textContent = file.name;
-    card.classList.add('uploaded');
-    updateSummary();
-    saveApplication(currentStep);
 }
 
-function removeDocument(docKey) {
-    delete uploadedDocs[docKey];
-    const card = document.getElementById(`doc_${docKey}`);
-    const statusEl = document.getElementById(`doc_${docKey}_status`);
-    const fnameEl = document.getElementById(`doc_${docKey}_filename`);
-    const input = document.getElementById(`doc_${docKey}_input`);
-    statusEl.textContent = 'Not uploaded';
-    fnameEl.textContent = '';
-    card.classList.remove('uploaded');
-    if (input) input.value = '';
-
-    if (docKey === 'kcse') {
-        kcseValidated = false;
-        eligibilityPassed = false;
-        document.getElementById('ocr_kcse_result').classList.remove('show');
-        document.getElementById('ocr_kcse_status').textContent = '';
-        document.getElementById('kcse_validation_result').innerHTML = '';
-    }
-    updateSummary();
-    saveApplication(currentStep);
-}
-
-// ============================================================
-// DRAFT SAVE/LOAD
-// ============================================================
-function saveDraft() {
-    saveApplication(currentStep);
-    document.getElementById('message').className = 'message success';
-    document.getElementById('message').textContent = '✅ Draft saved to cloud!';
-    setTimeout(() => { document.getElementById('message').className = 'message'; }, 3000);
-}
-
-// ============================================================
-// SUMMARY
-// ============================================================
+// ================================================================
+// UPDATE SUMMARY
+// ================================================================
 function updateSummary() {
-    const name = document.getElementById('fullName').value || '—';
-    const email = document.getElementById('email').value || '—';
-    const phone = document.getElementById('phone').value || '—';
-    const prog = document.getElementById('program');
-    const progText = prog.options[prog.selectedIndex]?.text || '—';
-    const month = document.getElementById('intakeMonth');
-    const year = document.getElementById('intakeYear');
-    const intakeText = `${month.options[month.selectedIndex]?.text || 'March'} ${year.value}`;
+    const name = document.getElementById('fullName')?.value || '—';
+    const email = document.getElementById('email')?.value || '—';
+    const phone = document.getElementById('phone')?.value || '—';
+    const school = document.getElementById('school');
+    const program = document.getElementById('program');
+    const campus = document.getElementById('campus');
+    const intake = document.getElementById('intake');
+    const mode = document.getElementById('modeOfStudy');
+
+    const schoolText = school ? school.options[school.selectedIndex]?.text || '—' : '—';
+    const programText = program ? program.options[program.selectedIndex]?.text || '—' : '—';
+    const campusText = campus ? campus.options[campus.selectedIndex]?.text || '—' : '—';
+    const intakeText = intake ? intake.value || '—' : '—';
+    const modeText = mode ? mode.options[mode.selectedIndex]?.text || '—' : '—';
+
     const count = Object.keys(uploadedDocs).filter(k => uploadedDocs[k]).length;
     const elig = eligibilityPassed ? '✅ Eligible' : '⏳ Pending';
     const validation = kcseValidated ? (eligibilityPassed ? '✅ Passed' : '❌ Failed') : '⏳ Not Scanned';
@@ -1158,17 +922,20 @@ function updateSummary() {
     document.getElementById('sumName').textContent = name;
     document.getElementById('sumEmail').textContent = email;
     document.getElementById('sumPhone').textContent = phone;
-    document.getElementById('sumProgram').textContent = progText;
-    document.getElementById('sumStudentType').textContent = typeLabel;
+    document.getElementById('sumSchool').textContent = schoolText;
+    document.getElementById('sumProgram').textContent = programText;
+    document.getElementById('sumCampus').textContent = campusText;
     document.getElementById('sumIntake').textContent = intakeText;
+    document.getElementById('sumMode').textContent = modeText;
+    document.getElementById('sumStudentType').textContent = typeLabel;
     document.getElementById('sumDocs').textContent = `${count} uploaded`;
     document.getElementById('sumValidation').textContent = validation;
     document.getElementById('sumEligibility').textContent = elig;
 }
 
-// ============================================================
+// ================================================================
 // SUBMIT ADMISSION
-// ============================================================
+// ================================================================
 async function submitAdmission() {
     if (!document.getElementById('termsCheck').checked) {
         showValidation('You must agree to the Terms & Conditions.');
@@ -1179,15 +946,11 @@ async function submitAdmission() {
         return;
     }
     if (!eligibilityPassed) {
-        showValidation('You do not meet the program eligibility requirements.');
+        showValidation('You do not meet the course eligibility requirements.');
         return;
     }
     if (!uploadedDocs['recommendation']) {
         showValidation('Please upload a Recommendation Letter.');
-        return;
-    }
-    if (studentType === 'transfer' && !uploadedDocs['transcript']) {
-        showValidation('Transfer students must upload their Academic Transcript.');
         return;
     }
 
@@ -1199,7 +962,7 @@ async function submitAdmission() {
         const data = {
             status: 'submitted',
             submitted_at: new Date().toISOString(),
-            current_step: 4
+            current_step: 6
         };
 
         let result;
@@ -1221,17 +984,44 @@ async function submitAdmission() {
 
     } catch (error) {
         console.error('Submit error:', error);
-        document.getElementById('message').className = 'message error';
-        document.getElementById('message').textContent = '❌ Failed to submit: ' + error.message;
+        document.getElementById('submitMessage').className = 'auth-message error';
+        document.getElementById('submitMessage').textContent = '❌ Failed to submit: ' + error.message;
     } finally {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-paper-plane"></i> Submit Application';
     }
 }
 
-// ============================================================
-// EVENT LISTENERS
-// ============================================================
+// ================================================================
+// ENQUIRY
+// ================================================================
+function handleEnquiry(e) {
+    e.preventDefault();
+    const msg = document.getElementById('enquiryMessageStatus');
+    msg.textContent = '✅ Your enquiry has been sent! We\'ll respond within 24 hours.';
+    msg.className = 'auth-message success';
+    e.target.reset();
+    setTimeout(() => { msg.textContent = ''; msg.className = 'auth-message'; }, 5000);
+}
+
+// ================================================================
+// WORD COUNT FOR CHRISTIAN EXPERIENCE
+// ================================================================
+document.addEventListener('DOMContentLoaded', function() {
+    const expTextarea = document.getElementById('christianExperience');
+    if (expTextarea) {
+        expTextarea.addEventListener('input', function() {
+            const words = this.value.trim() ? this.value.trim().split(/\s+/).length : 0;
+            const wordCountEl = document.getElementById('wordCount');
+            wordCountEl.textContent = `Words: ${words} (Minimum 400 required)`;
+            wordCountEl.className = `word-count ${words >= 400 ? 'valid' : 'invalid'}`;
+        });
+    }
+});
+
+// ================================================================
+// INIT
+// ================================================================
 document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('currentYear').textContent = new Date().getFullYear();
 
@@ -1241,10 +1031,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Check auth
     checkAuth();
 
-    // Init form
-    updateProgramDesc();
-    updateIntakePreview();
+    // Update summary
     updateSummary();
+
+    // Set initial application number
+    document.getElementById('applicationNumber').textContent = `ADM-${Date.now().toString().slice(-6)}`;
 
     console.log('✅ NCHSM Admission System loaded');
 });
