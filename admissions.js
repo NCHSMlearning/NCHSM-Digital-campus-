@@ -1,11 +1,11 @@
 // ============================================================
-// ADMISSIONS.JS - Complete Application Logic
+// ADMISSIONS.JS - Complete Application Logic (FIXED)
 // ============================================================
 
 // ============================================================
-// SUPABASE CONFIGURATION - Use existing or create new
+// SUPABASE CONFIGURATION
 // ============================================================
-// Check if supabase is already defined, if not create it
+// Check if supabase is already defined
 if (typeof supabase === 'undefined') {
     const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
     const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
@@ -25,6 +25,7 @@ let studentType = 'new';
 let kcseDataExtracted = {};
 let applicationId = null;
 let emailCheckTimeout = null;
+let studentIdCheckTimeout = null;
 
 // ============================================================
 // PROGRAM DATA
@@ -97,14 +98,14 @@ const programNames = {
 };
 
 // ============================================================
-// AUTH UI FUNCTIONS
+// AUTH FUNCTIONS
 // ============================================================
 function switchAuthTab(tab) {
     document.querySelectorAll('.auth-tabs .tab').forEach(t => t.classList.remove('active'));
     document.querySelector(`.auth-tabs .tab[data-tab="${tab}"]`).classList.add('active');
     document.querySelectorAll('.auth-form').forEach(f => f.classList.remove('active'));
     document.getElementById(tab === 'login' ? 'loginForm' : 'registerForm').classList.add('active');
-
+    
     document.getElementById('loginMessage').className = 'auth-message';
     document.getElementById('loginMessage').textContent = '';
     document.getElementById('registerMessage').className = 'auth-message';
@@ -141,16 +142,19 @@ async function loginUser() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
 
-        // Check if user has an application
-        const { data: app } = await supabase
-            .from('applications')
-            .select('status')
+        // Check user status
+        const { data: profile } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('status, full_name')
             .eq('user_id', data.user.id)
-            .order('created_at', { ascending: false })
-            .limit(1)
-            .maybeSingle();
+            .single();
 
-        // Reload page to show admission form
+        if (profile && profile.status === 'pending') {
+            msg.textContent = '⏳ Your account is pending admin approval. You will be notified via email.';
+            await supabase.auth.signOut();
+            return;
+        }
+
         setTimeout(() => window.location.reload(), 1000);
     } catch (error) {
         msg.className = 'auth-message error';
@@ -161,7 +165,7 @@ async function loginUser() {
 }
 
 // ============================================================
-// REGISTER USER - STUDENTS ONLY
+// REGISTER USER - Students Only
 // ============================================================
 async function registerUser() {
     const name = document.getElementById('regName').value.trim();
@@ -183,10 +187,10 @@ async function registerUser() {
         return;
     }
 
-    // Force student role only
+    // Force student role
     if (role !== 'student') {
         msg.className = 'auth-message error';
-        msg.textContent = '❌ Only student accounts can be created here. Please select "Student" as your role.';
+        msg.textContent = '❌ Only student accounts can be created here.';
         return;
     }
 
@@ -202,39 +206,27 @@ async function registerUser() {
         return;
     }
 
-    // Email validation
-    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
-    if (!emailRegex.test(email)) {
-        msg.className = 'auth-message error';
-        msg.textContent = '❌ Please enter a valid email address.';
-        return;
-    }
-
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
 
     try {
-        // Check if email already exists in profiles
-        const { data: existingProfile, error: checkError } = await supabase
+        // Check if email exists
+        const { data: existing } = await supabase
             .from('consolidated_user_profiles_table')
             .select('email')
             .eq('email', email)
             .maybeSingle();
 
-        if (checkError) {
-            console.warn('Profile check error:', checkError);
-        }
-
-        if (existingProfile) {
+        if (existing) {
             msg.className = 'auth-message error';
-            msg.textContent = '❌ This email is already registered. Please use a different email or login.';
+            msg.textContent = '❌ This email is already registered. Please login.';
             btn.disabled = false;
             btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
             return;
         }
 
-        // Sign up with Supabase
-        const { data, error } = await supabase.auth.signUp({
+        // Create auth user
+        const { data: authData, error: authError } = await supabase.auth.signUp({
             email,
             password,
             options: {
@@ -242,67 +234,52 @@ async function registerUser() {
                     full_name: name,
                     phone: phone,
                     role: 'student',
-                    status: 'pending',
-                    user_type: 'student'
-                },
-                emailRedirectTo: window.location.origin + '/admission.html'
+                    status: 'pending'
+                }
             }
         });
 
-        if (error) {
-            if (error.message.includes('User already registered')) {
-                msg.className = 'auth-message error';
-                msg.textContent = '❌ This email is already registered. Please login instead.';
-            } else {
-                throw error;
-            }
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
-            return;
-        }
+        if (authError) throw authError;
 
-        if (data.user) {
-            // Create profile in consolidated table
-            const { error: profileError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .insert([{
-                    user_id: data.user.id,
-                    email: email,
-                    full_name: name,
-                    phone: phone,
-                    role: 'student',
-                    status: 'pending',
-                    created_at: new Date().toISOString()
-                }]);
+        // ✅ CREATE consolidated_user_profiles_table (NO profile yet!)
+        const { error: profileError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .insert([{
+                user_id: authData.user.id,
+                email: email,
+                full_name: name,
+                phone: phone,
+                role: 'student',
+                status: 'pending', // ← WAITING FOR ADMIN APPROVAL
+                created_at: new Date().toISOString()
+            }]);
 
-            if (profileError) {
-                console.error('Profile creation error:', profileError);
-                // Continue anyway - user can retry
-            }
+        if (profileError) throw profileError;
 
-            msg.className = 'auth-message success';
-            msg.textContent = '✅ Account created successfully! Please check your email to verify your account.';
-            
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+        // Create application (draft)
+        const { error: appError } = await supabase
+            .from('applications')
+            .insert([{
+                user_id: authData.user.id,
+                user_email: email,
+                full_name: name,
+                email: email,
+                phone: phone,
+                status: 'draft'
+            }]);
 
-            // Auto-login after successful registration
-            try {
-                const { error: signInError } = await supabase.auth.signInWithPassword({
-                    email,
-                    password
-                });
-                if (!signInError) {
-                    setTimeout(() => window.location.reload(), 1500);
-                }
-            } catch (loginErr) {
-                console.warn('Auto-login failed, user can login manually:', loginErr);
-                // Redirect to login page after 3 seconds
-                setTimeout(() => {
-                    window.location.href = 'admission.html';
-                }, 3000);
-            }
-        }
+        if (appError) console.warn('Application error:', appError);
+
+        msg.className = 'auth-message success';
+        msg.textContent = '✅ Account created! Please wait for admin approval. You will receive an email once approved.';
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+
+        // Redirect after 3 seconds
+        setTimeout(() => {
+            window.location.href = 'admission.html';
+        }, 3000);
 
     } catch (error) {
         console.error('Registration error:', error);
@@ -312,6 +289,7 @@ async function registerUser() {
         btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
     }
 }
+
 // ============================================================
 // LOGOUT USER
 // ============================================================
@@ -320,138 +298,6 @@ function logoutUser() {
         window.location.reload();
     });
 }
-
-// ============================================================
-// REGISTER EMAIL VALIDATION
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    // Register email validation
-    const regEmail = document.getElementById('regEmail');
-    if (regEmail) {
-        regEmail.addEventListener('input', function() {
-            const email = this.value.trim();
-            const statusEl = document.getElementById('regEmailStatus');
-
-            if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
-
-            if (!email) {
-                statusEl.textContent = '';
-                this.style.borderColor = '#e2e8f0';
-                return;
-            }
-
-            statusEl.textContent = '⏳ Checking...';
-            this.style.borderColor = '#f59e0b';
-
-            emailCheckTimeout = setTimeout(async () => {
-                try {
-                    const { data } = await supabase
-                        .from('consolidated_user_profiles_table')
-                        .select('email')
-                        .eq('email', email)
-                        .maybeSingle();
-
-                    if (data) {
-                        statusEl.textContent = '❌ Email already registered';
-                        statusEl.style.color = '#ef4444';
-                        this.style.borderColor = '#ef4444';
-                    } else {
-                        statusEl.textContent = '✅ Email available';
-                        statusEl.style.color = '#0b8a5e';
-                        this.style.borderColor = '#0b8a5e';
-                    }
-                } catch (error) {
-                    statusEl.textContent = '⚠️ Could not verify';
-                    statusEl.style.color = '#f59e0b';
-                }
-            }, 500);
-        });
-    }
-
-    // Password strength
-    const regPassword = document.getElementById('regPassword');
-    if (regPassword) {
-        regPassword.addEventListener('input', function() {
-            const password = this.value;
-            const bar = document.getElementById('strengthBar');
-            const text = document.getElementById('strengthText');
-
-            let score = 0;
-            if (password.length >= 8) score++;
-            if (password.length >= 12) score++;
-            if (/[A-Z]/.test(password)) score++;
-            if (/[a-z]/.test(password)) score++;
-            if (/[0-9]/.test(password)) score++;
-            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
-
-            const levels = [
-                { text: 'Very Weak', cls: 'weak', width: '10%', color: '#ef4444' },
-                { text: 'Weak', cls: 'weak', width: '25%', color: '#ef4444' },
-                { text: 'Fair', cls: 'fair', width: '45%', color: '#f59e0b' },
-                { text: 'Good', cls: 'good', width: '65%', color: '#3b82f6' },
-                { text: 'Strong', cls: 'strong', width: '85%', color: '#0b8a5e' },
-                { text: 'Very Strong', cls: 'strong', width: '100%', color: '#0b8a5e' }
-            ];
-
-            const level = Math.min(Math.floor(score / 1), 5);
-            const result = levels[level] || levels[0];
-
-            bar.style.width = result.width;
-            bar.style.background = result.color;
-            text.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
-            text.className = `strength-text ${password.length > 0 ? result.cls : ''}`;
-        });
-    }
-
-    // Password confirmation
-    const regConfirm = document.getElementById('regConfirmPassword');
-    if (regConfirm) {
-        regConfirm.addEventListener('input', function() {
-            const password = document.getElementById('regPassword').value;
-            const confirm = this.value;
-            const matchEl = document.getElementById('passwordMatch');
-
-            if (!confirm) {
-                matchEl.textContent = '';
-                matchEl.className = 'password-match';
-                return;
-            }
-
-            if (password === confirm) {
-                matchEl.textContent = '✅ Passwords match';
-                matchEl.className = 'password-match match';
-            } else {
-                matchEl.textContent = '❌ Passwords do not match';
-                matchEl.className = 'password-match nomatch';
-            }
-        });
-    }
-
-    // Initialize PDF.js
-    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-
-    // Check authentication
-    checkAuth();
-
-    // Init form
-    updateProgramDesc();
-    updateIntakePreview();
-    updateSummary();
-
-    // Login form enter key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const activeTab = document.querySelector('.auth-tabs .tab.active');
-            if (activeTab && activeTab.dataset.tab === 'login') {
-                loginUser();
-            } else if (activeTab && activeTab.dataset.tab === 'register') {
-                registerUser();
-            }
-        }
-    });
-
-    console.log('✅ NCHSM Admission System loaded');
-});
 
 // ============================================================
 // CHECK AUTH
@@ -788,8 +634,11 @@ function updateIntakePreview() {
     document.getElementById('intakePreview').textContent = `📅 Intake: ${month.options[month.selectedIndex]?.text || 'March'} ${year.value}`;
 }
 
-function validateEmail() {
-    const email = document.getElementById('email').value.trim();
+// ============================================================
+// EMAIL VALIDATION
+// ============================================================
+document.getElementById('email').addEventListener('input', function() {
+    const email = this.value.trim();
     const statusEl = document.getElementById('emailStatus');
     if (!email) {
         statusEl.textContent = '';
@@ -814,7 +663,125 @@ function validateEmail() {
             statusEl.className = 'email-status invalid';
         }
     }, 400);
-}
+});
+
+// ============================================================
+// REGISTER EMAIL VALIDATION
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Register email validation
+    const regEmail = document.getElementById('regEmail');
+    if (regEmail) {
+        regEmail.addEventListener('input', function() {
+            const email = this.value.trim();
+            const statusEl = document.getElementById('regEmailStatus');
+
+            if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
+
+            if (!email) {
+                statusEl.textContent = '';
+                this.style.borderColor = '#e2e8f0';
+                return;
+            }
+
+            // Basic email format check only
+            if (!email.includes('@') || !email.includes('.')) {
+                statusEl.textContent = '❌ Invalid email format';
+                statusEl.style.color = '#ef4444';
+                this.style.borderColor = '#ef4444';
+                return;
+            }
+
+            statusEl.textContent = '✅ Email format valid';
+            statusEl.style.color = '#0b8a5e';
+            this.style.borderColor = '#0b8a5e';
+        });
+    }
+
+    // Password strength
+    const regPassword = document.getElementById('regPassword');
+    if (regPassword) {
+        regPassword.addEventListener('input', function() {
+            const password = this.value;
+            const bar = document.getElementById('strengthBar');
+            const text = document.getElementById('strengthText');
+
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (password.length >= 12) score++;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[a-z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+            const levels = [
+                { text: 'Very Weak', cls: 'weak', width: '10%', color: '#ef4444' },
+                { text: 'Weak', cls: 'weak', width: '25%', color: '#ef4444' },
+                { text: 'Fair', cls: 'fair', width: '45%', color: '#f59e0b' },
+                { text: 'Good', cls: 'good', width: '65%', color: '#3b82f6' },
+                { text: 'Strong', cls: 'strong', width: '85%', color: '#0b8a5e' },
+                { text: 'Very Strong', cls: 'strong', width: '100%', color: '#0b8a5e' }
+            ];
+
+            const level = Math.min(Math.floor(score / 1), 5);
+            const result = levels[level] || levels[0];
+
+            bar.style.width = result.width;
+            bar.style.background = result.color;
+            text.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
+            text.className = `strength-text ${password.length > 0 ? result.cls : ''}`;
+        });
+    }
+
+    // Password confirmation
+    const regConfirm = document.getElementById('regConfirmPassword');
+    if (regConfirm) {
+        regConfirm.addEventListener('input', function() {
+            const password = document.getElementById('regPassword').value;
+            const confirm = this.value;
+            const matchEl = document.getElementById('passwordMatch');
+
+            if (!confirm) {
+                matchEl.textContent = '';
+                matchEl.className = 'password-match';
+                return;
+            }
+
+            if (password === confirm) {
+                matchEl.textContent = '✅ Passwords match';
+                matchEl.className = 'password-match match';
+            } else {
+                matchEl.textContent = '❌ Passwords do not match';
+                matchEl.className = 'password-match nomatch';
+            }
+        });
+    }
+
+    // Initialize PDF.js
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    // Check authentication
+    checkAuth();
+
+    // Init form
+    updateProgramDesc();
+    updateIntakePreview();
+    updateSummary();
+
+    // Login form enter key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const activeTab = document.querySelector('.auth-tabs .tab.active');
+            if (activeTab && activeTab.dataset.tab === 'login') {
+                loginUser();
+            } else if (activeTab && activeTab.dataset.tab === 'register') {
+                registerUser();
+            }
+        }
+    });
+
+    console.log('✅ NCHSM Admission System loaded');
+});
 
 // ============================================================
 // OCR - KCSE DOCUMENT
@@ -1297,35 +1264,6 @@ document.getElementById('validationModal').addEventListener('click', function(e)
 });
 document.getElementById('successOverlay').addEventListener('click', function(e) {
     if (e.target === this) this.classList.remove('show');
-});
-
-// Email validation on input
-document.getElementById('email').addEventListener('input', function() {
-    const email = this.value.trim();
-    const statusEl = document.getElementById('emailStatus');
-    if (!email) {
-        statusEl.textContent = '';
-        statusEl.className = 'email-status';
-        return;
-    }
-    if (!email.includes('@') || !email.includes('.')) {
-        statusEl.textContent = '❌ Invalid email';
-        statusEl.className = 'email-status invalid';
-        return;
-    }
-    statusEl.textContent = '⏳ Checking...';
-    statusEl.className = 'email-status checking';
-    setTimeout(() => {
-        const domain = email.split('@')[1];
-        if (domain && (['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke'].includes(domain) ||
-                domain.endsWith('.ac.ke') || domain.endsWith('.ke'))) {
-            statusEl.textContent = '✅ Valid email';
-            statusEl.className = 'email-status valid';
-        } else {
-            statusEl.textContent = '⚠️ Unusual domain';
-            statusEl.className = 'email-status invalid';
-        }
-    }, 400);
 });
 
 console.log('✅ admissions.js loaded successfully');
