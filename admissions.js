@@ -161,7 +161,7 @@ async function loginUser() {
 }
 
 // ============================================================
-// REGISTER USER
+// REGISTER USER - STUDENTS ONLY
 // ============================================================
 async function registerUser() {
     const name = document.getElementById('regName').value.trim();
@@ -176,9 +176,17 @@ async function registerUser() {
     msg.className = 'auth-message';
     msg.textContent = '';
 
+    // Validate
     if (!name || !email || !phone || !password || !confirm) {
         msg.className = 'auth-message error';
         msg.textContent = '❌ Please fill in all required fields.';
+        return;
+    }
+
+    // Force student role only
+    if (role !== 'student') {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ Only student accounts can be created here. Please select "Student" as your role.';
         return;
     }
 
@@ -194,44 +202,116 @@ async function registerUser() {
         return;
     }
 
+    // Email validation
+    const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+    if (!emailRegex.test(email)) {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ Please enter a valid email address.';
+        return;
+    }
+
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
 
     try {
+        // Check if email already exists in profiles
+        const { data: existingProfile, error: checkError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('email')
+            .eq('email', email)
+            .maybeSingle();
+
+        if (checkError) {
+            console.warn('Profile check error:', checkError);
+        }
+
+        if (existingProfile) {
+            msg.className = 'auth-message error';
+            msg.textContent = '❌ This email is already registered. Please use a different email or login.';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+            return;
+        }
+
+        // Sign up with Supabase
         const { data, error } = await supabase.auth.signUp({
             email,
             password,
             options: {
-                data: { full_name: name, phone: phone, role: role, status: 'pending' },
-                emailRedirectTo: window.location.origin
+                data: {
+                    full_name: name,
+                    phone: phone,
+                    role: 'student',
+                    status: 'pending',
+                    user_type: 'student'
+                },
+                emailRedirectTo: window.location.origin + '/admission.html'
             }
         });
 
-        if (error) throw error;
+        if (error) {
+            if (error.message.includes('User already registered')) {
+                msg.className = 'auth-message error';
+                msg.textContent = '❌ This email is already registered. Please login instead.';
+            } else {
+                throw error;
+            }
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+            return;
+        }
 
-        await supabase.from('consolidated_user_profiles_table').insert([{
-            user_id: data.user.id,
-            email: email,
-            full_name: name,
-            phone: phone,
-            role: role,
-            status: 'pending'
-        }]);
+        if (data.user) {
+            // Create profile in consolidated table
+            const { error: profileError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .insert([{
+                    user_id: data.user.id,
+                    email: email,
+                    full_name: name,
+                    phone: phone,
+                    role: 'student',
+                    status: 'pending',
+                    created_at: new Date().toISOString()
+                }]);
 
-        msg.className = 'auth-message success';
-        msg.textContent = '✅ Account created! Please check your email to verify.';
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+            if (profileError) {
+                console.error('Profile creation error:', profileError);
+                // Continue anyway - user can retry
+            }
 
-        setTimeout(() => window.location.reload(), 2000);
+            msg.className = 'auth-message success';
+            msg.textContent = '✅ Account created successfully! Please check your email to verify your account.';
+            
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+
+            // Auto-login after successful registration
+            try {
+                const { error: signInError } = await supabase.auth.signInWithPassword({
+                    email,
+                    password
+                });
+                if (!signInError) {
+                    setTimeout(() => window.location.reload(), 1500);
+                }
+            } catch (loginErr) {
+                console.warn('Auto-login failed, user can login manually:', loginErr);
+                // Redirect to login page after 3 seconds
+                setTimeout(() => {
+                    window.location.href = 'admission.html';
+                }, 3000);
+            }
+        }
+
     } catch (error) {
+        console.error('Registration error:', error);
         msg.className = 'auth-message error';
-        msg.textContent = '❌ ' + (error.message || 'Registration failed.');
+        msg.textContent = '❌ ' + (error.message || 'Registration failed. Please try again.');
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
     }
 }
-
 // ============================================================
 // LOGOUT USER
 // ============================================================
