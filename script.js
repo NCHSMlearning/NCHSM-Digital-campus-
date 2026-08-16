@@ -3070,40 +3070,120 @@ if (typeof window.handleSaveWelcomeMessage === 'undefined') {
 }
 
 // ============================================
-// 🎂 BIRTHDAY FUNCTIONS
+// 🎂 BIRTHDAY FUNCTIONS - WITH EMAIL STORAGE
 // ============================================
 
 if (typeof window.loadStudentBirthdays === 'undefined') {
     window.loadStudentBirthdays = async function() {
         try {
             const client = window.sb || window.supabase;
-            if (!client) return;
+            if (!client) {
+                console.warn('Supabase client not available for birthdays');
+                return;
+            }
             
             const today = new Date();
             const month = today.getMonth() + 1;
             const day = today.getDate();
             
-            const { data: students, error } = await client
-                .from('consolidated_user_profiles_table')
-                .select('full_name, date_of_birth, student_id, program, email, profile_photo_url')
-                .eq('role', 'student')
-                .eq('status', 'approved')
-                .not('date_of_birth', 'is', null);
+            console.log(`🎂 Checking birthdays for ${month}/${day}...`);
             
-            if (error) throw error;
+            // Try consolidated_user_profiles_table first
+            let students = null;
+            let error = null;
             
+            try {
+                const result = await client
+                    .from('consolidated_user_profiles_table')
+                    .select('full_name, date_of_birth, student_id, program, email, profile_photo_url, user_id')
+                    .eq('role', 'student')
+                    .eq('status', 'approved')
+                    .not('date_of_birth', 'is', null);
+                
+                students = result.data;
+                error = result.error;
+            } catch (e) {
+                console.log('Trying alternative table for birthdays...');
+            }
+            
+            // If first attempt failed, try user_profiles
+            if (error || !students || students.length === 0) {
+                try {
+                    const result = await client
+                        .from('user_profiles')
+                        .select('full_name, date_of_birth, student_id, program, email, user_id')
+                        .eq('role', 'student')
+                        .eq('status', 'approved')
+                        .not('date_of_birth', 'is', null);
+                    
+                    students = result.data;
+                    error = result.error;
+                } catch (e) {
+                    console.log('Alternative table also failed');
+                }
+            }
+            
+            // If still no data, try users table
+            if (error || !students || students.length === 0) {
+                try {
+                    const result = await client
+                        .from('users')
+                        .select('id as user_id, full_name, date_of_birth, email, program')
+                        .eq('role', 'student')
+                        .eq('status', 'approved')
+                        .not('date_of_birth', 'is', null);
+                    
+                    students = result.data;
+                    error = result.error;
+                } catch (e) {
+                    console.log('Users table also failed');
+                }
+            }
+            
+            if (error || !students || students.length === 0) {
+                console.log('📋 No students with date_of_birth found');
+                window.safeSetText('birthdayCount', '0');
+                const listEl = document.getElementById('birthdayStudentsList');
+                if (listEl) {
+                    listEl.style.display = 'block';
+                    listEl.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">🎉 No birthdays today</p>';
+                }
+                const cardEl = document.getElementById('birthdayStudentCard');
+                if (cardEl) cardEl.style.display = 'none';
+                return;
+            }
+            
+            // Filter students with birthdays today
             const birthdayStudents = students.filter(s => {
                 if (!s.date_of_birth) return false;
-                const dob = new Date(s.date_of_birth);
-                return dob.getMonth() + 1 === month && dob.getDate() === day;
+                try {
+                    const dob = new Date(s.date_of_birth);
+                    return dob.getMonth() + 1 === month && dob.getDate() === day;
+                } catch (e) {
+                    return false;
+                }
             });
             
+            console.log(`🎂 Found ${birthdayStudents.length} birthday(s) today`);
+            
+            // Update count
             window.safeSetText('birthdayCount', birthdayStudents.length);
+            
+            // Show/hide Send All button
+            const sendAllBtn = document.getElementById('sendAllBtn');
+            const sendAllBirthdayBtn = document.getElementById('sendAllBirthdayBtn');
+            if (sendAllBtn) {
+                sendAllBtn.style.display = birthdayStudents.length > 1 ? 'inline-block' : 'none';
+            }
+            if (sendAllBirthdayBtn) {
+                sendAllBirthdayBtn.style.display = birthdayStudents.length > 0 ? 'inline-block' : 'none';
+            }
             
             const listEl = document.getElementById('birthdayStudentsList');
             const cardEl = document.getElementById('birthdayStudentCard');
             
             if (birthdayStudents.length > 0) {
+                // Show the birthday list
                 if (listEl) {
                     listEl.style.display = 'block';
                     let html = '';
@@ -3118,19 +3198,37 @@ if (typeof window.loadStudentBirthdays === 'undefined') {
                     }
                     listEl.innerHTML = html;
                 }
+                
+                // Show the birthday card with the first student
                 if (cardEl) {
                     cardEl.style.display = 'block';
                     const student = birthdayStudents[0];
+                    
+                    // Update display fields
                     window.safeSetText('birthdayName', student.full_name || 'Student');
                     window.safeSetText('birthdayDetails', `${student.program || 'N/A'} • ${student.student_id || 'No ID'}`);
                     
-                    const dob = new Date(student.date_of_birth);
-                    let age = today.getFullYear() - dob.getFullYear();
-                    const m = today.getMonth() - dob.getMonth();
-                    if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
-                    window.safeSetText('birthdayAge', `🎂 Turning ${age} years old today!`);
+                    // ✅ STORE EMAIL AND ID FOR THE SEND BUTTON
+                    const emailEl = document.getElementById('birthdayEmail');
+                    if (emailEl) {
+                        emailEl.textContent = student.email || '';
+                    }
+                    
+                    const idEl = document.getElementById('birthdayStudentId');
+                    if (idEl) {
+                        idEl.textContent = student.student_id || student.user_id || '';
+                    }
+                    
+                    if (student.date_of_birth) {
+                        const dob = new Date(student.date_of_birth);
+                        let age = today.getFullYear() - dob.getFullYear();
+                        const m = today.getMonth() - dob.getMonth();
+                        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+                        window.safeSetText('birthdayAge', `🎂 Turning ${age} years old today!`);
+                    }
                 }
             } else {
+                // No birthdays today
                 if (listEl) {
                     listEl.style.display = 'block';
                     listEl.innerHTML = '<p style="color: #6b7280; font-size: 0.9rem;">🎉 No birthdays today</p>';
@@ -3143,6 +3241,277 @@ if (typeof window.loadStudentBirthdays === 'undefined') {
             const listEl = document.getElementById('birthdayStudentsList');
             if (listEl) {
                 listEl.innerHTML = '<p style="color: #dc2626; font-size: 0.9rem;">Error loading birthdays</p>';
+            }
+            window.safeSetText('birthdayCount', '0');
+        }
+    };
+}
+// ============================================
+// 🎂 SEND BIRTHDAY EMAIL FUNCTIONS
+// ============================================
+
+// 1. Send birthday email to a single student
+if (typeof window.sendBirthdayEmail === 'undefined') {
+    window.sendBirthdayEmail = async function(studentId, studentName, studentEmail, program, customMessage = null) {
+        try {
+            console.log(`📧 Sending birthday email to ${studentName} (${studentEmail})...`);
+            
+            // Show sending status on button
+            const btn = document.querySelector('#birthdayStudentCard button:first-child');
+            const originalText = btn ? btn.textContent : 'Send';
+            if (btn) {
+                btn.textContent = 'Sending...';
+                btn.disabled = true;
+            }
+            
+            const message = customMessage || `🎂 Happy Birthday ${studentName}! 🎉 Wishing you a wonderful day from all of us at NCHSM!`;
+            
+            // Build HTML email
+            const html = `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 16px;">
+                    <div style="text-align: center;">
+                        <div style="font-size: 48px; margin-bottom: 16px;">🎂</div>
+                        <h1 style="color: #0A3D62; margin: 0;">Happy Birthday ${studentName}!</h1>
+                        <p style="color: #1e293b; font-size: 18px; margin: 12px 0;">🎉 ${message}</p>
+                        <p style="color: #64748b; font-size: 14px; margin: 20px 0 12px;">From your ${program || 'NCHSM'} family 🎊</p>
+                        <div style="background: #0A3D62; color: white; padding: 10px 20px; border-radius: 100px; display: inline-block; margin-top: 12px;">🌟 NCHSM Family 🌟</div>
+                    </div>
+                    <div style="text-align: center; font-size: 12px; color: #94a3b8; margin-top: 24px; border-top: 1px solid rgba(0,0,0,0.05); padding-top: 12px;">
+                        <p>NCHSM - Nursing & Health Sciences</p>
+                        <p>© ${new Date().getFullYear()} All rights reserved</p>
+                    </div>
+                </div>
+            `;
+            
+            // Send via Edge Function
+            const result = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    to: studentEmail,
+                    subject: `🎂 Happy Birthday ${studentName}! 🎉`,
+                    html: html,
+                    from: 'NCHSM <admin@nchsm.co.ke>'
+                })
+            });
+            
+            const data = await result.json();
+            
+            // Restore button
+            if (btn) {
+                btn.textContent = originalText;
+                btn.disabled = false;
+            }
+            
+            if (!result.ok || !data.success) {
+                console.error('❌ Email failed:', data.error || 'Unknown error');
+                return { success: false, error: data.error || 'Failed to send email' };
+            }
+            
+            console.log('✅ Birthday email sent successfully to', studentEmail);
+            
+            // Log to audit_logs
+            try {
+                const client = window.sb || window.supabase;
+                if (client) {
+                    await client
+                        .from('audit_logs')
+                        .insert({
+                            user_email: 'system@nchsm.ac.ke',
+                            action_type: 'BIRTHDAY_EMAIL',
+                            description: `Sent birthday email to ${studentName}`,
+                            details: JSON.stringify({ studentId, studentEmail, program }),
+                            status: 'Success',
+                            module: 'Birthday'
+                        });
+                }
+            } catch (logError) {
+                console.warn('Could not log to audit_logs:', logError);
+            }
+            
+            return { success: true, data: data };
+            
+        } catch (error) {
+            console.error('Error in sendBirthdayEmail:', error);
+            const btn = document.querySelector('#birthdayStudentCard button:first-child');
+            if (btn) {
+                btn.textContent = 'Send';
+                btn.disabled = false;
+            }
+            return { success: false, error: error.message };
+        }
+    };
+}
+
+// 2. Send birthday emails to ALL students with birthdays today
+if (typeof window.sendAllBirthdayEmails === 'undefined') {
+    window.sendAllBirthdayEmails = async function() {
+        try {
+            const client = window.sb || window.supabase;
+            if (!client) {
+                console.error('Supabase client not available');
+                if (typeof window.showFeedback === 'function') {
+                    window.showFeedback('Supabase client not available', 'error');
+                }
+                return;
+            }
+            
+            console.log('🎂 Sending birthday emails to all students...');
+            
+            const today = new Date();
+            const month = today.getMonth() + 1;
+            const day = today.getDate();
+            
+            const { data: students, error } = await client
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name, email, program, student_id, date_of_birth')
+                .eq('role', 'student')
+                .eq('status', 'approved')
+                .not('date_of_birth', 'is', null);
+            
+            if (error) {
+                console.error('Error fetching birthday students:', error);
+                if (typeof window.showFeedback === 'function') {
+                    window.showFeedback('Error fetching students: ' + error.message, 'error');
+                }
+                return;
+            }
+            
+            const birthdayStudents = students.filter(s => {
+                if (!s.date_of_birth) return false;
+                const dob = new Date(s.date_of_birth);
+                return dob.getMonth() + 1 === month && dob.getDate() === day;
+            });
+            
+            if (birthdayStudents.length === 0) {
+                if (typeof window.showFeedback === 'function') {
+                    window.showFeedback('🎉 No birthdays today!', 'info');
+                }
+                return;
+            }
+            
+            if (!confirm(`🎂 Send birthday emails to ${birthdayStudents.length} student(s) today?`)) {
+                return;
+            }
+            
+            let sent = 0;
+            let failed = 0;
+            let errors = [];
+            
+            for (const student of birthdayStudents) {
+                const result = await window.sendBirthdayEmail(
+                    student.user_id,
+                    student.full_name,
+                    student.email,
+                    student.program
+                );
+                
+                if (result.success) {
+                    sent++;
+                } else {
+                    failed++;
+                    errors.push(`${student.full_name}: ${result.error}`);
+                }
+                
+                // Small delay to avoid rate limiting
+                await new Promise(resolve => setTimeout(resolve, 300));
+            }
+            
+            const message = `📧 Sent ${sent} birthday emails${failed > 0 ? ` (${failed} failed)` : ''}`;
+            console.log('✅', message);
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback(message, failed > 0 ? 'warning' : 'success');
+            }
+            
+            if (errors.length > 0) {
+                console.log('❌ Errors:', errors.join('\n'));
+            }
+            
+            if (typeof window.loadStudentBirthdays === 'function') {
+                await window.loadStudentBirthdays();
+            }
+            
+        } catch (error) {
+            console.error('Error sending birthday emails:', error);
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback('Error sending birthday emails: ' + error.message, 'error');
+            }
+        }
+    };
+}
+
+// 3. Handle the Send button click
+if (typeof window.handleBirthdaySend === 'undefined') {
+    window.handleBirthdaySend = async function() {
+        const studentName = document.getElementById('birthdayName')?.textContent || 'Student';
+        const studentDetails = document.getElementById('birthdayDetails')?.textContent || '';
+        const studentEmail = document.getElementById('birthdayEmail')?.textContent || '';
+        const studentId = document.getElementById('birthdayStudentId')?.textContent || '';
+        const program = studentDetails.split('•')[0]?.trim() || 'NCHSM';
+        
+        // If no email stored, ask for it
+        if (!studentEmail) {
+            const emailInput = prompt(`Enter email address for ${studentName}:`, 'student@nchsm.ac.ke');
+            if (!emailInput || !emailInput.includes('@')) {
+                if (typeof window.showFeedback === 'function') {
+                    window.showFeedback('Please enter a valid email address.', 'error');
+                }
+                return;
+            }
+            
+            const customMessage = prompt(
+                `✏️ Enter custom birthday message for ${studentName}:`,
+                `🎂 Happy Birthday ${studentName}! 🎉 Wishing you a wonderful day from all of us at NCHSM!`
+            );
+            
+            if (customMessage === null) return;
+            
+            const result = await window.sendBirthdayEmail(
+                studentId || 'manual',
+                studentName,
+                emailInput,
+                program,
+                customMessage
+            );
+            
+            if (result.success) {
+                if (typeof window.showFeedback === 'function') {
+                    window.showFeedback(`🎂 Birthday wishes sent to ${studentName}!`, 'success');
+                }
+            } else {
+                if (typeof window.showFeedback === 'function') {
+                    window.showFeedback(`Failed to send: ${result.error}`, 'error');
+                }
+            }
+            return;
+        }
+        
+        // Ask for custom message
+        const customMessage = prompt(
+            `✏️ Enter custom birthday message for ${studentName}:`,
+            `🎂 Happy Birthday ${studentName}! 🎉 Wishing you a wonderful day from all of us at NCHSM!`
+        );
+        
+        if (customMessage === null) return;
+        
+        const result = await window.sendBirthdayEmail(
+            studentId || 'manual',
+            studentName,
+            studentEmail,
+            program,
+            customMessage
+        );
+        
+        if (result.success) {
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback(`🎂 Birthday wishes sent to ${studentName}!`, 'success');
+            }
+        } else {
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback(`Failed to send: ${result.error}`, 'error');
             }
         }
     };
@@ -3555,8 +3924,11 @@ if (typeof window.loadStudentWelcomeMessage === 'undefined') window.loadStudentW
 if (typeof window.loadWelcomeMessageForEdit === 'undefined') window.loadWelcomeMessageForEdit = window.loadWelcomeMessageForEdit;
 if (typeof window.handleSaveWelcomeMessage === 'undefined') window.handleSaveWelcomeMessage = window.handleSaveWelcomeMessage;
 
-// Birthday functions
+// ✅ Birthday functions - ADD THESE
 if (typeof window.loadStudentBirthdays === 'undefined') window.loadStudentBirthdays = window.loadStudentBirthdays;
+if (typeof window.sendBirthdayEmail === 'undefined') window.sendBirthdayEmail = window.sendBirthdayEmail;
+if (typeof window.sendAllBirthdayEmails === 'undefined') window.sendAllBirthdayEmails = window.sendAllBirthdayEmails;
+if (typeof window.handleBirthdaySend === 'undefined') window.handleBirthdaySend = window.handleBirthdaySend;
 
 // Auto-refresh functions
 if (typeof window.startDashboardAutoRefresh === 'undefined') window.startDashboardAutoRefresh = window.startDashboardAutoRefresh;
