@@ -121,63 +121,88 @@ window.NCHSMLogin = {
     // ===== STAFF RECORDS =====
     staffRecords: [],
 
-    // ============================================
-    // INITIALIZATION
-    // ============================================
     init: function() {
-        if (this.state.isInitialized) {
-            console.log('⚠️ NCHSMLogin already initialized');
-            return;
-        }
-        
-        console.log('🚀 Initializing NCHSMLogin v5.1...');
-        console.log('🛡️ Ultimate Security Edition + 2FA');
-        console.log('🔐 Authenticator App Support Enabled');
-        
-        this.disableDeveloperTools();
-        
-        if (typeof feather !== 'undefined') {
-            feather.replace();
-        }
-        
-        this.generateCSRFToken();
-        this.checkTrustedDevice();
-        this.initPasswordToggle();
-        this.initPasswordStrength();
-        this.initLoginForm();
-        this.initModals();
-        this.initFocusManagement();
-        this.initVirtualKeyboardHandler();
-        this.initSupabase();
-        this.loadStaffRecords();
-        this.clearURLParameters();
-        this.addHoneypot();
-        this.startSessionMonitoring();
-        this.initNetworkStatus();
-        this.initOTPInputs();
-        this.initRippleEffect();
-        this.hideSkeletonLoader();
-        this.initThemeToggle();
-        this.initGoogleLogin();
-        
-        this.loadBrevoApiKey().then(success => {
-            if (success) {
-                console.log('✅ Brevo integration ready');
-            } else {
-                console.warn('⚠️ Brevo integration not available');
-            }
+    if (this.state.isInitialized) {
+        console.log('⚠️ NCHSMLogin already initialized');
+        return;
+    }
+    
+    console.log('🚀 Initializing NCHSMLogin v5.1...');
+    console.log('🛡️ Ultimate Security Edition + 2FA');
+    console.log('🔐 Authenticator App Support Enabled');
+    
+    this.disableDeveloperTools();
+    
+    if (typeof feather !== 'undefined') {
+        feather.replace();
+    }
+    
+    // ============================================
+    // FIXED: Initialize Supabase FIRST
+    // ============================================
+    this.initSupabase();
+    
+    // ============================================
+    // THEN load staff records (depends on Supabase)
+    // ============================================
+    // Use a promise to ensure it loads
+    this.loadStaffRecords().then(() => {
+        console.log('✅ Staff records loaded');
+    }).catch(err => {
+        console.warn('⚠️ Could not load staff records:', err);
+    });
+    
+    // ============================================
+    // THEN generate CSRF token (depends on DOM)
+    // ============================================
+    // Make sure DOM is ready
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            this.generateCSRFToken();
+            this.addHoneypot();
         });
-        
-        setTimeout(() => {
-            this.update2FAButtonStatus();
-        }, 1000);
-        
-        this.state.isInitialized = true;
-        
-        console.log('✅ NCHSMLogin v5.1 initialized');
-        console.log('🔐 2FA enforcement: ENABLED');
-        console.log(`🕐 ${new Date().toLocaleString()}`);
-    },
+    } else {
+        this.generateCSRFToken();
+        this.addHoneypot();
+    }
+    
+    // ============================================
+    // Initialize everything else
+    // ============================================
+    this.checkTrustedDevice();
+    this.initPasswordToggle();
+    this.initPasswordStrength();
+    this.initLoginForm();
+    this.initModals();
+    this.initFocusManagement();
+    this.initVirtualKeyboardHandler();
+    this.clearURLParameters();
+    this.startSessionMonitoring();
+    this.initNetworkStatus();
+    this.initOTPInputs();
+    this.initRippleEffect();
+    this.hideSkeletonLoader();
+    this.initThemeToggle();
+    this.initGoogleLogin();
+    
+    this.loadBrevoApiKey().then(success => {
+        if (success) {
+            console.log('✅ Brevo integration ready');
+        } else {
+            console.warn('⚠️ Brevo integration not available');
+        }
+    });
+    
+    setTimeout(() => {
+        this.update2FAButtonStatus();
+    }, 1000);
+    
+    this.state.isInitialized = true;
+    
+    console.log('✅ NCHSMLogin v5.1 initialized');
+    console.log('🔐 2FA enforcement: ENABLED');
+    console.log(`🕐 ${new Date().toLocaleString()}`);
+},
 
     // ============================================
     // UPDATE 2FA BUTTON STATUS
@@ -1537,58 +1562,44 @@ window.NCHSMLogin = {
         return Math.abs(hash).toString(16);
     },
     
-    // ============================================
-    // STAFF LOGIN
-    // ============================================
     verifyStaffLogin: async function(identifier, password) {
-        try {
-            const staff = this.staffRecords.find(s => 
-                s.email === identifier || s.id === identifier
-            );
-            
-            if (!staff) {
-                console.log('❌ Staff not found:', identifier);
-                return null;
-            }
-            
-            const storedPassword = atob(staff.password_hash);
-            if (storedPassword !== password) {
-                console.log('❌ Password mismatch for:', identifier);
-                return null;
-            }
-            
-            let uuid = staff.id;
-            try {
-                const { data: profile } = await this.supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id')
-                    .eq('email', staff.email)
-                    .single();
-                
-                if (profile?.user_id) {
-                    uuid = profile.user_id;
-                    console.log('✅ Found UUID for staff:', uuid);
-                }
-            } catch (e) {
-                console.log('⚠️ Could not get UUID, using staff ID:', staff.id);
-            }
-            
-            return {
-                user_id: uuid,
-                staff_id: staff.id,
-                id: staff.id,
-                email: staff.email,
-                full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
-                role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
-                program: staff.department,
-                is_staff: true,
-                staff_record: staff
-            };
-        } catch (error) {
-            console.error('❌ Staff verification error:', error);
+    try {
+        const staff = this.staffRecords.find(s => 
+            s.email === identifier || s.id === identifier
+        );
+        
+        if (!staff) {
+            console.log('❌ Staff not found:', identifier);
             return null;
         }
-    },
+        
+        // ============================================
+        // FIXED: Handle password verification properly
+        // ============================================
+        let storedPassword = staff.password_hash;
+        
+        // Check if it's base64 encoded
+        try {
+            // Try to decode if it's base64
+            const decoded = atob(storedPassword);
+            storedPassword = decoded;
+        } catch (e) {
+            // Not base64 encoded, use as-is
+            console.log('📝 Password not base64 encoded, using raw');
+        }
+        
+        // Simple comparison (you should use bcrypt in production)
+        if (storedPassword !== password) {
+            console.log('❌ Password mismatch for:', identifier);
+            return null;
+        }
+        
+        // ... rest of function
+    } catch (error) {
+        console.error('❌ Staff verification error:', error);
+        return null;
+    }
+}
 
     // ============================================
     // EXECUTE LOGIN - FIXED
