@@ -1,8 +1,23 @@
 // ============================================
 // NCHSM SECURE LOGIN SYSTEM - ULTIMATE
-// Version: 5.0 - FULL 2FA WITH AUTHENTICATOR APPS
+// Version: 5.1 - FIXED FOR VARCHAR COLUMNS
 // Copyright © 2026 Nakuru College of Health Sciences and Management
 // ============================================
+
+// ============================================
+// FORCE CACHE CLEAR IF VERSION MISMATCH
+// ============================================
+(function() {
+    const VERSION = '5.1';
+    const storedVersion = localStorage.getItem('nchsm_js_version');
+    
+    if (storedVersion !== VERSION) {
+        console.log('🔄 Clearing cache for new version...');
+        localStorage.clear();
+        sessionStorage.clear();
+        localStorage.setItem('nchsm_js_version', VERSION);
+    }
+})();
 
 // ============================================
 // 🚀 HIDE .html EXTENSION IN URL
@@ -33,7 +48,7 @@ const LoginQueue = {
 };
 
 // ============================================
-// MAIN LOGIN SYSTEM - v5.0 WITH 2FA
+// MAIN LOGIN SYSTEM - v5.1 WITH 2FA
 // ============================================
 window.NCHSMLogin = {
     // ===== STATE =====
@@ -53,6 +68,8 @@ window.NCHSMLogin = {
         maxFailedAttempts: 5,
         lockoutDuration: 15 * 60 * 1000,
         minPasswordLength: 8,
+        maxEmailLength: 100,
+        maxNameLength: 100,
         sessionTimeout: 24 * 60 * 60 * 1000,
         rateLimit: {
             enabled: true,
@@ -113,7 +130,7 @@ window.NCHSMLogin = {
             return;
         }
         
-        console.log('🚀 Initializing NCHSMLogin v5.0...');
+        console.log('🚀 Initializing NCHSMLogin v5.1...');
         console.log('🛡️ Ultimate Security Edition + 2FA');
         console.log('🔐 Authenticator App Support Enabled');
         
@@ -151,30 +168,32 @@ window.NCHSMLogin = {
             }
         });
         
-        // ✅ Update 2FA button status after login
         setTimeout(() => {
             this.update2FAButtonStatus();
         }, 1000);
         
         this.state.isInitialized = true;
         
-        console.log('✅ NCHSMLogin v5.0 initialized');
+        console.log('✅ NCHSMLogin v5.1 initialized');
         console.log('🔐 2FA enforcement: ENABLED');
         console.log(`🕐 ${new Date().toLocaleString()}`);
     },
 
     // ============================================
-    // UPDATE 2FA BUTTON STATUS - ✅ NEW
+    // UPDATE 2FA BUTTON STATUS
     // ============================================
     update2FAButtonStatus: async function() {
         try {
-            const userProfile = JSON.parse(localStorage.getItem('userProfile'));
+            const userProfile = localStorage.getItem('userProfile');
             if (!userProfile) return;
+            
+            const profile = JSON.parse(userProfile);
+            if (!profile.user_id) return;
             
             const { data, error } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('two_factor_enabled')
-                .eq('user_id', userProfile.user_id)
+                .eq('user_id', profile.user_id)
                 .single();
             
             if (error) return;
@@ -282,7 +301,6 @@ window.NCHSMLogin = {
     // 2FA FUNCTIONS - AUTHENTICATOR APP SUPPORT
     // ============================================
     
-    // Check if user has 2FA enabled
     check2FARequirement: async function(userId) {
         try {
             const { data, error } = await this.supabase
@@ -302,7 +320,6 @@ window.NCHSMLogin = {
         }
     },
 
-    // Generate 2FA secret for user
     generate2FASecret: async function(userId) {
         try {
             if (typeof otplib === 'undefined') {
@@ -342,7 +359,6 @@ window.NCHSMLogin = {
         }
     },
 
-    // Get user's 2FA secret
     get2FASecret: async function(userId) {
         try {
             const { data, error } = await this.supabase
@@ -359,7 +375,6 @@ window.NCHSMLogin = {
         }
     },
 
-    // Verify TOTP code from authenticator app
     verifyTOTP: function(secret, token) {
         try {
             if (typeof otplib !== 'undefined') {
@@ -374,7 +389,6 @@ window.NCHSMLogin = {
         }
     },
 
-    // Show 2FA setup modal with QR code
     show2FASetup: async function(userId, email) {
         try {
             let result = await this.get2FASecret(userId);
@@ -412,7 +426,6 @@ window.NCHSMLogin = {
         }
     },
 
-    // Enable 2FA after verification
     enable2FA: async function(userId, token) {
         try {
             const result = await this.get2FASecret(userId);
@@ -437,7 +450,6 @@ window.NCHSMLogin = {
                 this.showSuccess('✅ Two-factor authentication enabled!');
                 this.closeModal('twoFactorSetupModal');
                 
-                // Update the button
                 setTimeout(() => {
                     this.update2FAButtonStatus();
                 }, 500);
@@ -454,7 +466,6 @@ window.NCHSMLogin = {
         }
     },
 
-    // Show 2FA login verification modal
     show2FAModal: function() {
         this.openModal('twoFactorModal');
         
@@ -470,7 +481,6 @@ window.NCHSMLogin = {
         }
     },
 
-    // Handle 2FA verification during login
     handle2FAVerification: async function() {
         const digits = document.querySelectorAll('#twoFactorModal .otp-digit');
         let code = '';
@@ -586,7 +596,7 @@ window.NCHSMLogin = {
     },
 
     // ============================================
-    // COMPLETE LOGIN - WITH 2FA SUPPORT
+    // COMPLETE LOGIN - FIXED
     // ============================================
     completeLogin: async function(profileData, sessionToken, isStaff = false) {
         console.log('🎉 Completing login for:', profileData.email);
@@ -620,15 +630,26 @@ window.NCHSMLogin = {
                 isStaff
             );
             
+            // FIXED: Clean profile object with no undefined values
             const safeProfile = {
-                user_id: userIdForSession,
-                staff_id: profileData.staff_id || profileData.id,
-                email: profileData.email,
-                full_name: profileData.full_name,
-                role: profileData.role,
-                program: profileData.program || profileData.department,
-                is_staff: isStaff || false
+                user_id: userIdForSession || profileData.user_id || null,
+                staff_id: profileData.staff_id || profileData.id || null,
+                email: profileData.email || '',
+                full_name: profileData.full_name || 'User',
+                role: profileData.role || 'student',
+                program: profileData.program || profileData.department || '',
+                is_staff: isStaff || false,
+                two_factor_enabled: profileData.two_factor_enabled || false,
+                two_factor_verified: profileData.two_factor_verified || false
             };
+            
+            // Remove any undefined values
+            Object.keys(safeProfile).forEach(key => {
+                if (safeProfile[key] === undefined) {
+                    safeProfile[key] = null;
+                }
+            });
+            
             localStorage.setItem('userProfile', JSON.stringify(safeProfile));
             
             if (!isStaff && this.supabase) {
@@ -646,7 +667,6 @@ window.NCHSMLogin = {
                 this.sendLoginNotification(profileData).catch(() => {});
             }
             
-            // ✅ Update 2FA button after login
             setTimeout(() => {
                 this.update2FAButtonStatus();
             }, 500);
@@ -655,7 +675,7 @@ window.NCHSMLogin = {
             
         } catch (error) {
             console.error('❌ Complete login error:', error);
-            this.redirectToDashboard(profileData);
+            this.showError('Error completing login: ' + error.message);
         }
     },
 
@@ -805,7 +825,7 @@ window.NCHSMLogin = {
     },
     
     // ============================================
-    // 2FA OTP INPUT - BEST PRACTICE VERSION
+    // 2FA OTP INPUT
     // ============================================
     initOTPInputs: function() {
         document.querySelectorAll('.otp-digit').forEach((input, index, inputs) => {
@@ -908,7 +928,7 @@ window.NCHSMLogin = {
             });
         });
         
-        console.log('✅ 2FA OTP Inputs initialized (Best Practice)');
+        console.log('✅ 2FA OTP Inputs initialized');
     },
 
     // ============================================
@@ -1568,7 +1588,7 @@ window.NCHSMLogin = {
     },
 
     // ============================================
-    // EXECUTE LOGIN
+    // EXECUTE LOGIN - FIXED
     // ============================================
     executeLogin: async function(identifier, password) {
         if (!this.supabase) {
@@ -1614,21 +1634,62 @@ window.NCHSMLogin = {
             
             console.log('✅ Supabase Auth successful for:', identifier);
             
+            // FIXED: Select specific columns only
             const { data: profile, error: profileError } = await this.supabase
                 .from('consolidated_user_profiles_table')
-                .select('*')
+                .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
                 .eq('email', identifier)
                 .maybeSingle();
             
             if (profileError) {
                 console.error('❌ Profile error:', profileError);
                 await this.supabase.auth.signOut();
-                throw new Error('Error loading profile');
+                throw new Error('Error loading profile: ' + profileError.message);
             }
             
+            // FIXED: Better handling for missing profile
             if (!profile) {
                 console.error('❌ No profile found for:', identifier);
-                await this.supabase.auth.signOut();
+                // Try to create a minimal profile
+                try {
+                    const { error: insertError } = await this.supabase
+                        .from('consolidated_user_profiles_table')
+                        .insert({
+                            user_id: authData.user.id,
+                            email: identifier,
+                            full_name: authData.user.user_metadata?.full_name || 'Student',
+                            role: 'student',
+                            status: 'active'
+                        });
+                    
+                    if (!insertError) {
+                        // Fetch the newly created profile
+                        const { data: newProfile } = await this.supabase
+                            .from('consolidated_user_profiles_table')
+                            .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
+                            .eq('email', identifier)
+                            .maybeSingle();
+                        
+                        if (newProfile) {
+                            return { 
+                                profileData: {
+                                    user_id: newProfile.user_id,
+                                    email: newProfile.email,
+                                    full_name: newProfile.full_name || 'Student',
+                                    role: newProfile.role || 'student',
+                                    program: newProfile.program || newProfile.department,
+                                    staff_id: newProfile.staff_id || null,
+                                    is_staff: false,
+                                    two_factor_enabled: newProfile.two_factor_enabled || false,
+                                    two_factor_verified: newProfile.two_factor_verified || false
+                                }, 
+                                isStaff: false 
+                            };
+                        }
+                    }
+                } catch (e) {
+                    console.warn('Could not create profile:', e);
+                }
                 throw new Error('Account not found. Please contact support.');
             }
             
@@ -1647,6 +1708,8 @@ window.NCHSMLogin = {
                     program: profile.program || profile.department,
                     staff_id: profile.staff_id || null,
                     is_staff: false,
+                    two_factor_enabled: profile.two_factor_enabled || false,
+                    two_factor_verified: profile.two_factor_verified || false,
                     ...profile
                 }, 
                 isStaff: false 
@@ -1915,23 +1978,23 @@ window.NCHSMLogin = {
     },
 
     // ============================================
-    // UPDATE LAST LOGIN INFO
+    // UPDATE LAST LOGIN INFO - FIXED
     // ============================================
     updateLastLoginInfo: function() {
         const info = document.getElementById('lastLoginInfo');
         if (!info) return;
         
-        const userProfile = localStorage.getItem('userProfile');
-        if (!userProfile) {
-            info.innerHTML = `
-                <i data-feather="clock"></i>
-                <span>Sign in to see your last login activity</span>
-            `;
-            feather.replace();
-            return;
-        }
-        
         try {
+            const userProfile = localStorage.getItem('userProfile');
+            if (!userProfile) {
+                info.innerHTML = `
+                    <i data-feather="clock"></i>
+                    <span>Sign in to see your last login activity</span>
+                `;
+                if (typeof feather !== 'undefined') feather.replace();
+                return;
+            }
+            
             const profile = JSON.parse(userProfile);
             const userId = profile.user_id;
             
@@ -1940,7 +2003,7 @@ window.NCHSMLogin = {
                     <i data-feather="clock"></i>
                     <span>Welcome! Please log in to see your activity.</span>
                 `;
-                feather.replace();
+                if (typeof feather !== 'undefined') feather.replace();
                 return;
             }
             
@@ -1978,17 +2041,25 @@ window.NCHSMLogin = {
                             <span>Last login: ${dateStr} at ${timeStr} from ${device}</span>
                         `;
                     }
-                    feather.replace();
+                    if (typeof feather !== 'undefined') feather.replace();
                 })
-                .catch(() => {
+                .catch((err) => {
+                    console.warn('Error fetching session:', err);
                     info.innerHTML = `
                         <i data-feather="clock"></i>
                         <span>Welcome ${profile.full_name || 'User'}!</span>
                     `;
-                    feather.replace();
+                    if (typeof feather !== 'undefined') feather.replace();
                 });
         } catch (error) {
             console.error('❌ Error parsing profile:', error);
+            // FIXED: Clear corrupted profile
+            localStorage.removeItem('userProfile');
+            info.innerHTML = `
+                <i data-feather="clock"></i>
+                <span>Sign in to see your last login activity</span>
+            `;
+            if (typeof feather !== 'undefined') feather.replace();
         }
     },
     
@@ -2179,9 +2250,10 @@ window.NCHSMLogin = {
         }
         
         try {
+            // FIXED: Select specific columns only
             const { data: profile, error: profileError } = await this.supabase
                 .from('consolidated_user_profiles_table')
-                .select('*')
+                .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
                 .eq('email', email)
                 .maybeSingle();
             
@@ -2242,7 +2314,9 @@ window.NCHSMLogin = {
                 program: profile.program || profile.department,
                 staff_id: profile.staff_id || null,
                 is_staff: isStaff,
-                auth_provider: 'google'
+                auth_provider: 'google',
+                two_factor_enabled: profile.two_factor_enabled || false,
+                two_factor_verified: profile.two_factor_verified || false
             };
             localStorage.setItem('userProfile', JSON.stringify(safeProfile));
             
@@ -2251,7 +2325,6 @@ window.NCHSMLogin = {
             this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
             this.updateLastLoginInfo();
             
-            // ✅ Update 2FA button after Google login
             setTimeout(() => {
                 this.update2FAButtonStatus();
             }, 500);
@@ -2312,7 +2385,7 @@ window.resendOTP = () => {
 };
 
 // ============================================
-// GLOBAL 2FA FUNCTIONS - ✅ ADDED
+// GLOBAL 2FA FUNCTIONS
 // ============================================
 
 window.showQRCode = async function() {
@@ -2549,6 +2622,20 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 });
 
-console.log('📦 NCHSM Login v5.0 loaded - Full 2FA Support');
+// ============================================
+// FORCE CACHE CLEAR HELPER
+// ============================================
+window.forceClearCache = function() {
+    if (confirm('This will clear all cached data and reload the page. Continue?')) {
+        localStorage.clear();
+        sessionStorage.clear();
+        document.cookie.split(";").forEach(function(c) {
+            document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+        });
+        window.location.reload(true);
+    }
+};
+
+console.log('📦 NCHSM Login v5.1 loaded - Full 2FA Support');
 console.log('🔐 Google Authenticator, Microsoft Authenticator, Authy ready');
 console.log(`🕐 ${new Date().toLocaleString()}`);
