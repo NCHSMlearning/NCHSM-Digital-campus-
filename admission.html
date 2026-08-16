@@ -25,6 +25,92 @@
 
     <!-- External CSS -->
     <link rel="stylesheet" href="admissions.css" />
+
+    <style>
+        /* Additional styles for full course display */
+        .programs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .program-card {
+            background: #ffffff;
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.04);
+            border: 1px solid var(--gray-200);
+            transition: all 0.3s ease;
+        }
+
+        .program-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.08);
+            border-color: var(--primary);
+        }
+
+        .program-card .icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .program-card h3 {
+            font-size: 0.95rem;
+            font-weight: 700;
+            color: var(--gray-900);
+            margin-bottom: 0.3rem;
+            line-height: 1.3;
+        }
+
+        .program-card .meta {
+            font-size: 0.8rem;
+            color: var(--gray-500);
+            margin-bottom: 0.5rem;
+        }
+
+        .program-card .badge-min {
+            display: inline-block;
+            background: var(--primary-light);
+            color: var(--primary);
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.2rem 0.8rem;
+            border-radius: 40px;
+        }
+
+        .program-card .duration {
+            display: inline-block;
+            background: var(--gray-100);
+            color: var(--gray-600);
+            font-size: 0.7rem;
+            padding: 0.2rem 0.8rem;
+            border-radius: 40px;
+            margin-left: 0.3rem;
+        }
+
+        .program-card p {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-top: 0.5rem;
+        }
+
+        .school-section {
+            margin-bottom: 2rem;
+        }
+
+        .school-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            color: var(--primary);
+            margin: 1.5rem 0 0.8rem 0;
+            border-bottom: 2px solid var(--primary-light);
+            padding-bottom: 0.5rem;
+        }
+
+        .school-title i {
+            margin-right: 0.5rem;
+        }
+    </style>
 </head>
 <body>
 
@@ -88,6 +174,14 @@
                                 a wide range of Diploma, Certificate, and Artisan programs in Nursing, Healthcare, 
                                 ICT, and Applied Sciences.
                             </p>
+                            <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:0.8rem;">
+                                <span style="background:var(--primary-light);padding:0.3rem 1rem;border-radius:40px;font-size:0.7rem;font-weight:600;color:var(--primary);">
+                                    <i class="fas fa-check-circle"></i> Nursing Council of Kenya
+                                </span>
+                                <span style="background:var(--primary-light);padding:0.3rem 1rem;border-radius:40px;font-size:0.7rem;font-weight:600;color:var(--primary);">
+                                    <i class="fas fa-check-circle"></i> TVETCDACC
+                                </span>
+                            </div>
                         </div>
 
                         <hr style="border:none;border-top:2px dashed var(--gray-200);margin:1.2rem 0;" />
@@ -107,12 +201,46 @@
                         <hr style="border:none;border-top:2px dashed var(--gray-200);margin:1.2rem 0;" />
 
                         <div class="info-block">
+                            <h4><i class="fas fa-star"></i> Why Choose Us!</h4>
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.5rem;font-size:0.85rem;color:var(--gray-700);">
+                                <span>✅ Range of Professional Courses</span>
+                                <span>✅ Well-Equipped Labs</span>
+                                <span>✅ Experienced Faculty</span>
+                                <span>✅ Part-Time Classes Available</span>
+                                <span>✅ Weekend & Evening Classes</span>
+                                <span>✅ Attachment & Clinical Rotations</span>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:2px dashed var(--gray-200);margin:1.2rem 0;" />
+
+                        <div class="info-block">
+                            <h4><i class="fas fa-map-marker-alt"></i> Our Campuses</h4>
+                            <div style="background:var(--gray-50);padding:1rem;border-radius:12px;margin-top:0.5rem;">
+                                <p style="font-weight:600;color:var(--gray-800);">🏛️ MAIN CAMPUS</p>
+                                <p style="font-size:0.85rem;color:var(--gray-600);">Kiamunyi Along Nakuru Kabarak Road</p>
+                                <p style="font-weight:600;color:var(--gray-800);margin-top:0.5rem;">🏛️ NAIROBI CAMPUS</p>
+                                <p style="font-size:0.85rem;color:var(--gray-600);">Canon Ndungu Street, Plaza Arcade Ground Floor (Evening & Weekends)</p>
+                            </div>
+                        </div>
+
+                        <hr style="border:none;border-top:2px dashed var(--gray-200);margin:1.2rem 0;" />
+
+                        <div class="info-block">
                             <h4><i class="fas fa-phone"></i> Contact Us</h4>
                             <div style="display:flex;flex-direction:column;gap:0.3rem;font-size:0.85rem;color:var(--gray-700);">
                                 <span><i class="fas fa-phone text-primary"></i> 0788 752 354</span>
                                 <span><i class="fas fa-phone text-primary"></i> 0703 345 771</span>
+                                <span><i class="fas fa-phone text-primary"></i> 0745 215 594</span>
                                 <span><i class="fas fa-envelope text-primary"></i> info@nakurucollegeofhealth.ac.ke</span>
+                                <span><i class="fas fa-globe text-primary"></i> www.nakurucollegeofhealth.ac.ke</span>
                             </div>
+                        </div>
+
+                        <div class="text-center mt-1">
+                            <span style="display:inline-block;background:var(--primary-light);color:var(--primary);font-size:0.65rem;font-weight:600;padding:0.2rem 0.8rem;border-radius:40px;">
+                                <i class="fas fa-check-circle"></i> TVETA Accredited · ISO 9001:2024
+                            </span>
                         </div>
                     </div>
                 </div>
@@ -194,7 +322,7 @@
         </div>
 
         <!-- ============================================================ -->
-        <!-- PAGE: OUR COURSES -->
+        <!-- PAGE: OUR COURSES (ALL 32+ COURSES FROM NCHSM DOCUMENT) -->
         <!-- ============================================================ -->
         <div class="page-content" id="page-programs">
             <div style="background:#fff;border-radius:var(--radius);padding:2rem;box-shadow:var(--shadow);">
@@ -203,44 +331,358 @@
                 </h2>
                 <p style="color:var(--gray-500);margin-bottom:1.5rem;">
                     We offer Diploma &amp; Certificate Courses in Nursing, Healthcare, ICT &amp; Applied Sciences.
+                    <span style="display:inline-block;background:#fef3c7;padding:0.2rem 1rem;border-radius:40px;font-size:0.75rem;font-weight:600;color:#d97706;margin-left:0.5rem;">
+                        SEPTEMBER INTAKE · APPLY NOW!
+                    </span>
                 </p>
 
-                <div class="programs-grid">
-                    <div class="program-card">
-                        <div class="icon">🎓</div>
-                        <h3>Diploma Community Health Nursing (CHN)</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min C Plain</span>
-                            <span class="duration">3 Years</span>
+                <!-- ============================================================ -->
+                <!-- SCHOOL OF NURSING -->
+                <!-- ============================================================ -->
+                <div class="school-section">
+                    <h3 class="school-title"><i class="fas fa-user-md"></i> SCHOOL OF NURSING</h3>
+                    <div class="programs-grid">
+                        <div class="program-card">
+                            <div class="icon">🎓</div>
+                            <h3>Diploma Community Health Nursing (CHN)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C Plain</span>
+                                <span class="duration">3 Years</span>
+                            </div>
+                            <p>Biology: C Plain · Comprehensive nursing training with clinical placement.</p>
                         </div>
-                        <p>Biology: C Plain · Comprehensive nursing training.</p>
                     </div>
-                    <div class="program-card">
-                        <div class="icon">📋</div>
-                        <h3>Certificate in Nursing Assistant (CNA)</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min D-</span>
-                            <span class="duration">6 Months</span>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- SCHOOL OF HEALTHCARE ASSISTANT -->
+                <!-- ============================================================ -->
+                <div class="school-section">
+                    <h3 class="school-title"><i class="fas fa-hand-holding-heart"></i> SCHOOL OF HEALTHCARE ASSISTANT</h3>
+                    <div class="programs-grid">
+                        <div class="program-card">
+                            <div class="icon">📋</div>
+                            <h3>Certificate in Nursing Assistant (CNA)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D-</span>
+                                <span class="duration">6 Months</span>
+                            </div>
+                            <p>Basic nursing assistance and patient care skills.</p>
                         </div>
-                        <p>Basic nursing assistance and patient care skills.</p>
+                        <div class="program-card">
+                            <div class="icon">📋</div>
+                            <h3>Artisan in Caregiver</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D-</span>
+                                <span class="duration">2 Modules</span>
+                            </div>
+                            <p>Basic caregiver training for elderly and special needs care.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">📋</div>
+                            <h3>Certificate in Health Services Support (Level 5)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D Plain</span>
+                                <span class="duration">4 Modules</span>
+                            </div>
+                            <p>Health systems support and administrative skills.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">📋</div>
+                            <h3>Craft in Homebased Care Level 3</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D Plain</span>
+                                <span class="duration">2 Modules</span>
+                            </div>
+                            <p>Home-based care and patient support services.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">📋</div>
+                            <h3>Health Systems Support Management (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">6 Modules</span>
+                            </div>
+                            <p>Advanced health systems management and leadership.</p>
+                        </div>
                     </div>
-                    <div class="program-card">
-                        <div class="icon">🏥</div>
-                        <h3>Diploma in Perioperative Theatre Technology</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min C Plain</span>
-                            <span class="duration">6 Modules</span>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- SCHOOL OF HEALTH, SOCIAL & APPLIED SCIENCES -->
+                <!-- ============================================================ -->
+                <div class="school-section">
+                    <h3 class="school-title"><i class="fas fa-heart"></i> SCHOOL OF HEALTH, SOCIAL &amp; APPLIED SCIENCES</h3>
+                    <div class="programs-grid">
+                        <div class="program-card">
+                            <div class="icon">🏥</div>
+                            <h3>Diploma in Perioperative Theatre Technology (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C Plain</span>
+                                <span class="duration">6 Modules</span>
+                            </div>
+                            <p>Operating room technology and surgical assistance.</p>
                         </div>
-                        <p>Operating room technology and surgical assistance.</p>
+                        <div class="program-card">
+                            <div class="icon">🏥</div>
+                            <h3>Certificate in Perioperative Theatre Technology (Level 5)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">4 Modules</span>
+                            </div>
+                            <p>Basic surgical theatre technology skills.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">🌿</div>
+                            <h3>Diploma in Community Health (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">7 Modules</span>
+                            </div>
+                            <p>Community health promotion and disease prevention.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">🌿</div>
+                            <h3>Certificate in Community Health (Level 5)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D+</span>
+                                <span class="duration">4 Modules</span>
+                            </div>
+                            <p>Community health worker training.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">🤝</div>
+                            <h3>Diploma in Social Work &amp; Community Devt (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">5 Modules</span>
+                            </div>
+                            <p>Social welfare and community development services.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">🤝</div>
+                            <h3>Certificate in Social Work &amp; Community Devt (Level 5)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D+</span>
+                                <span class="duration">3 Modules</span>
+                            </div>
+                            <p>Entry-level social work training.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">📊</div>
+                            <h3>Diploma in Health Records &amp; IT (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C Plain</span>
+                                <span class="duration">7 Modules</span>
+                            </div>
+                            <p>Health information management and IT systems.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">📊</div>
+                            <h3>Certificate in Health Records &amp; IT (Level 5)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">4 Modules</span>
+                            </div>
+                            <p>Basic health records and information management.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">🦴</div>
+                            <h3>Diploma in Orthopedic &amp; Trauma Medicine (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C Plain</span>
+                                <span class="duration">6 Modules</span>
+                            </div>
+                            <p>Orthopedic and trauma care management.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">🦴</div>
+                            <h3>Certificate in Orthopedic &amp; Trauma Medicine (Level 5)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">4 Modules</span>
+                            </div>
+                            <p>Basic orthopedic and trauma care skills.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">⚙️</div>
+                            <h3>Diploma in Bio-Medical Engineering (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">7 Modules</span>
+                            </div>
+                            <p>Biomedical equipment and healthcare technology.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">⚙️</div>
+                            <h3>Certificate in Bio-Medical Engineering (Level 5)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D+</span>
+                                <span class="duration">4 Modules</span>
+                            </div>
+                            <p>Basic biomedical engineering skills.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">🔬</div>
+                            <h3>Diploma in Science Laboratory (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">5 Modules</span>
+                            </div>
+                            <p>Medical laboratory science and diagnostics.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">🔬</div>
+                            <h3>Certificate in Science Laboratory (Level 5)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D Plain</span>
+                                <span class="duration">3 Modules</span>
+                            </div>
+                            <p>Basic laboratory techniques and procedures.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">⚖️</div>
+                            <h3>Diploma in Criminal Safety Justice (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">5 Modules</span>
+                            </div>
+                            <p>Criminal justice and safety management.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">⚖️</div>
+                            <h3>Certificate in Criminal Safety Justice (Level 5)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D Plain</span>
+                                <span class="duration">4 Modules</span>
+                            </div>
+                            <p>Basic criminal justice and safety skills.</p>
+                        </div>
                     </div>
-                    <div class="program-card">
-                        <div class="icon">💻</div>
-                        <h3>Diploma in Information Communication Technology</h3>
-                        <div class="meta">
-                            <span class="badge-min">Min C-</span>
-                            <span class="duration">6 Modules</span>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- SCHOOL OF INFORMATION COMMUNICATION TECHNOLOGY -->
+                <!-- ============================================================ -->
+                <div class="school-section">
+                    <h3 class="school-title"><i class="fas fa-laptop"></i> SCHOOL OF INFORMATION COMMUNICATION TECHNOLOGY</h3>
+                    <div class="programs-grid">
+                        <div class="program-card">
+                            <div class="icon">💻</div>
+                            <h3>Diploma in Information Communication Technology</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">6 Modules</span>
+                            </div>
+                            <p>Comprehensive ICT training and computer applications.</p>
                         </div>
-                        <p>Comprehensive ICT training and computer applications.</p>
+                        <div class="program-card">
+                            <div class="icon">💻</div>
+                            <h3>Certificate in Information Communication Technology</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D Plain</span>
+                                <span class="duration">4 Modules</span>
+                            </div>
+                            <p>Basic ICT skills and computer literacy.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">💻</div>
+                            <h3>Diploma in Computer Programming</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">6 Modules</span>
+                            </div>
+                            <p>Software development and programming skills.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">💻</div>
+                            <h3>Diploma in Computer Science</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C Plain</span>
+                                <span class="duration">6 Modules</span>
+                            </div>
+                            <p>Computer science fundamentals and advanced topics.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">💻</div>
+                            <h3>Network System Administration</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">4 Modules</span>
+                            </div>
+                            <p>Network infrastructure and system administration.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">💻</div>
+                            <h3>Diploma in Cyber Security (Level 6)</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min C-</span>
+                                <span class="duration">6 Modules</span>
+                            </div>
+                            <p>Cybersecurity fundamentals and threat mitigation.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ============================================================ -->
+                <!-- ICT SHORT COURSES -->
+                <!-- ============================================================ -->
+                <div class="school-section">
+                    <h3 class="school-title"><i class="fas fa-clock"></i> ICT - SHORT COURSES</h3>
+                    <div class="programs-grid">
+                        <div class="program-card">
+                            <div class="icon">📘</div>
+                            <h3>Certificate in Computer Applications</h3>
+                            <div class="meta">
+                                <span class="badge-min">Open</span>
+                                <span class="duration">1 Month</span>
+                            </div>
+                            <p>Basic computer applications and office productivity.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">📘</div>
+                            <h3>Certificate in Advance Microsoft Excel</h3>
+                            <div class="meta">
+                                <span class="badge-min">Open</span>
+                                <span class="duration">1 Month</span>
+                            </div>
+                            <p>Advanced Excel functions and data analysis.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">📘</div>
+                            <h3>Certificate in Graphic Design</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D-</span>
+                                <span class="duration">3 Months</span>
+                            </div>
+                            <p>Graphic design principles and software tools.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">📘</div>
+                            <h3>Certificate in Digital Marketing</h3>
+                            <div class="meta">
+                                <span class="badge-min">Open</span>
+                                <span class="duration">2 Months</span>
+                            </div>
+                            <p>Digital marketing strategies and social media management.</p>
+                        </div>
+                        <div class="program-card">
+                            <div class="icon">📘</div>
+                            <h3>Certificate in Office Administrator</h3>
+                            <div class="meta">
+                                <span class="badge-min">Min D Plain</span>
+                                <span class="duration">3 Months</span>
+                            </div>
+                            <p>Office administration and management skills.</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Features Banner -->
+                <div style="background:var(--primary-light);border-radius:16px;padding:1.5rem;margin-top:2rem;text-align:center;">
+                    <div style="display:flex;justify-content:center;gap:2rem;flex-wrap:wrap;">
+                        <span style="font-weight:700;color:var(--primary);"><i class="fas fa-hospital"></i> ATTACHMENT &amp; CLINICAL ROTATIONS</span>
+                        <span style="font-weight:700;color:var(--primary);"><i class="fas fa-clock"></i> ONLINE CLASSES · WEEKEND &amp; EVENINGS</span>
                     </div>
                 </div>
             </div>
@@ -255,7 +697,7 @@
                     <h2 style="font-size:1.5rem;font-weight:800;margin-bottom:0.5rem;">
                         <i class="fas fa-question-circle text-primary"></i> Enquiry Form
                     </h2>
-                    <p style="color:var(--gray-500);margin-bottom:1.5rem;">Have questions? Send us a message.</p>
+                    <p style="color:var(--gray-500);margin-bottom:1.5rem;">Have questions? Send us a message and we'll get back to you within 24 hours.</p>
 
                     <form onsubmit="handleEnquiry(event)">
                         <div class="form-group">
@@ -400,22 +842,87 @@
                                 <select id="nationality" required>
                                     <option value="">-- Select --</option>
                                     <option value="Kenyan">Kenyan</option>
+                                    <option value="Ugandan">Ugandan</option>
+                                    <option value="Tanzanian">Tanzanian</option>
+                                    <option value="Rwandese">Rwandese</option>
+                                    <option value="Burundian">Burundian</option>
+                                    <option value="South Sudanese">South Sudanese</option>
+                                    <option value="Ethiopian">Ethiopian</option>
+                                    <option value="Somali">Somali</option>
                                     <option value="Other">Other</option>
                                 </select>
                             </div>
                         </div>
                         <div class="two-columns">
                             <div class="form-group">
-                                <label>National ID / Passport <span class="required">*</span></label>
+                                <label>County</label>
+                                <select id="county">
+                                    <option value="">-- Select County --</option>
+                                    <option value="Nairobi">Nairobi</option>
+                                    <option value="Mombasa">Mombasa</option>
+                                    <option value="Kisumu">Kisumu</option>
+                                    <option value="Nakuru">Nakuru</option>
+                                    <option value="Kiambu">Kiambu</option>
+                                    <option value="Uasin Gishu">Uasin Gishu</option>
+                                    <option value="Kajiado">Kajiado</option>
+                                    <option value="Machakos">Machakos</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>National ID / Passport Number <span class="required">*</span></label>
                                 <input type="text" id="nationalId" placeholder="e.g., 12345678" required />
                             </div>
+                        </div>
+                        <div class="two-columns">
+                            <div class="form-group">
+                                <label>Index Number</label>
+                                <input type="text" id="indexNumber" placeholder="e.g., 1234567890" />
+                            </div>
+                            <div class="form-group">
+                                <label>Country of Birth</label>
+                                <select id="countryOfBirth">
+                                    <option value="">-- Select Country --</option>
+                                    <option value="Kenya">Kenya</option>
+                                    <option value="Uganda">Uganda</option>
+                                    <option value="Tanzania">Tanzania</option>
+                                    <option value="Rwanda">Rwanda</option>
+                                    <option value="Burundi">Burundi</option>
+                                    <option value="South Sudan">South Sudan</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="two-columns">
                             <div class="form-group">
                                 <label>Gender <span class="required">*</span></label>
                                 <select id="gender" required>
                                     <option value="">-- Select --</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
+                                    <option value="Other">Other</option>
                                 </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Marital Status</label>
+                                <select id="maritalStatus">
+                                    <option value="">-- Select --</option>
+                                    <option value="Single">Single</option>
+                                    <option value="Married">Married</option>
+                                    <option value="Divorced">Divorced</option>
+                                    <option value="Widowed">Widowed</option>
+                                    <option value="Separated">Separated</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="two-columns">
+                            <div class="form-group">
+                                <label>Address</label>
+                                <input type="text" id="address" placeholder="Residential address" />
+                            </div>
+                            <div class="form-group">
+                                <label>City</label>
+                                <input type="text" id="city" placeholder="City/Town" />
                             </div>
                         </div>
                         <div class="two-columns">
@@ -424,26 +931,70 @@
                                 <input type="tel" id="phone" placeholder="07XXXXXXXX" required />
                             </div>
                             <div class="form-group">
-                                <label>Alternative Phone</label>
+                                <label>Alternative Phone Number</label>
                                 <input type="tel" id="altPhone" placeholder="Alternative contact" />
+                            </div>
+                        </div>
+                        <div class="two-columns">
+                            <div class="form-group">
+                                <label>How did you Know about Us?</label>
+                                <select id="hearAbout">
+                                    <option value="">-- Select --</option>
+                                    <option value="FLYERS">FLYERS</option>
+                                    <option value="Social Media">Social Media</option>
+                                    <option value="Friend/Family">Friend/Family</option>
+                                    <option value="School Visit">School Visit</option>
+                                    <option value="Radio">Radio</option>
+                                    <option value="Newspaper">Newspaper</option>
+                                    <option value="Online Ad">Online Advertisement</option>
+                                    <option value="Other">Other</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Are you Sponsored?</label>
+                                <select id="sponsored">
+                                    <option value="">----</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                </select>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label>Passport Photo (jpg,png,jpeg) Max 4MB</label>
+                            <label>Passport Size Photo (accepted file types: jpg,png,jpeg) Max size=4MB</label>
                             <input type="file" id="passportPhoto" accept=".jpg,.png,.jpeg" />
                             <div class="file-status" id="passportPhotoStatus">No file chosen</div>
                         </div>
 
-                        <h3 class="subsection-title"><i class="fas fa-ambulance"></i> Emergency Contact</h3>
+                        <!-- Emergency Contact -->
+                        <h3 class="subsection-title"><i class="fas fa-ambulance"></i> Incase of Emergency whom should we contact?</h3>
+
                         <div class="two-columns">
+                            <div class="form-group">
+                                <label>Father Alive</label>
+                                <select id="fatherAlive">
+                                    <option value="">----</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                </select>
+                            </div>
                             <div class="form-group">
                                 <label>Father Name</label>
                                 <input type="text" id="fatherName" placeholder="Father's full name" />
                             </div>
+                        </div>
+                        <div class="two-columns">
                             <div class="form-group">
-                                <label>Father Phone</label>
+                                <label>Father Phone No.</label>
                                 <input type="tel" id="fatherPhone" placeholder="07XXXXXXXX" />
+                            </div>
+                            <div class="form-group">
+                                <label>Mother Alive</label>
+                                <select id="motherAlive">
+                                    <option value="">----</option>
+                                    <option value="Yes">Yes</option>
+                                    <option value="No">No</option>
+                                </select>
                             </div>
                         </div>
                         <div class="two-columns">
@@ -452,9 +1003,50 @@
                                 <input type="text" id="motherName" placeholder="Mother's full name" />
                             </div>
                             <div class="form-group">
-                                <label>Mother Phone</label>
+                                <label>Mother Phone No.</label>
                                 <input type="tel" id="motherPhone" placeholder="07XXXXXXXX" />
                             </div>
+                        </div>
+                        <div class="two-columns">
+                            <div class="form-group">
+                                <label>Guardian Name</label>
+                                <input type="text" id="guardianName" placeholder="Guardian's full name" />
+                            </div>
+                            <div class="form-group">
+                                <label>Guardian Phone No.</label>
+                                <input type="tel" id="guardianPhone" placeholder="07XXXXXXXX" />
+                            </div>
+                        </div>
+
+                        <!-- Medical History -->
+                        <h3 class="subsection-title"><i class="fas fa-heartbeat"></i> Medical History</h3>
+
+                        <div class="two-columns">
+                            <div class="form-group">
+                                <label>Person With Disability?</label>
+                                <select id="disability">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>Do you have any medical Condition?</label>
+                                <select id="medicalCondition">
+                                    <option value="No">No</option>
+                                    <option value="Yes">Yes</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Employment -->
+                        <h3 class="subsection-title"><i class="fas fa-briefcase"></i> Employment</h3>
+
+                        <div class="form-group">
+                            <label>Are you employed?</label>
+                            <select id="employed">
+                                <option value="No">No</option>
+                                <option value="Yes">Yes</option>
+                            </select>
                         </div>
 
                         <div class="flex-row">
@@ -475,6 +1067,7 @@
                                     <option value="healthcare">School of Healthcare Assistant</option>
                                     <option value="health_social">School of Health, Social &amp; Applied Sciences</option>
                                     <option value="ict">School of ICT</option>
+                                    <option value="ict_short">ICT - Short Courses</option>
                                 </select>
                             </div>
                             <div class="form-group">
@@ -489,18 +1082,21 @@
                                 <label>Campus <span class="required">*</span></label>
                                 <select id="campus" required>
                                     <option value="">-- Select --</option>
-                                    <option value="Main Campus">Main Campus - Kiamunyi</option>
-                                    <option value="Nairobi Campus">Nairobi Campus</option>
-                                    <option value="Online">Online</option>
+                                    <option value="Main Campus">Main Campus - Kiamunyi Along Nakuru Kabarak Road</option>
+                                    <option value="Nairobi Campus">Nairobi Campus - Canon Ndungu Street</option>
+                                    <option value="Online">Online / Distance Learning</option>
                                 </select>
                             </div>
                             <div class="form-group">
                                 <label>Intake <span class="required">*</span></label>
                                 <select id="intake" required>
                                     <option value="">-- Select --</option>
+                                    <option value="January 2026">January 2026</option>
                                     <option value="March 2026" selected>March 2026</option>
                                     <option value="May 2026">May 2026</option>
+                                    <option value="July 2026">July 2026</option>
                                     <option value="September 2026">September 2026</option>
+                                    <option value="November 2026">November 2026</option>
                                 </select>
                             </div>
                         </div>
@@ -512,6 +1108,7 @@
                                 <option value="Part Time">Part Time</option>
                                 <option value="Evening">Evening</option>
                                 <option value="Weekend">Weekend</option>
+                                <option value="Blended">Blended</option>
                                 <option value="Online">Online</option>
                             </select>
                         </div>
@@ -523,11 +1120,13 @@
                                     <input type="radio" name="studentType" value="new" checked onchange="toggleStudentType()" />
                                     <span class="type-icon">✨</span>
                                     <div class="type-name">New Student</div>
+                                    <div class="type-desc">First time applicant</div>
                                 </label>
                                 <label class="student-type-card" data-type="transfer">
                                     <input type="radio" name="studentType" value="transfer" onchange="toggleStudentType()" />
                                     <span class="type-icon">🔄</span>
                                     <div class="type-name">Transfer Student</div>
+                                    <div class="type-desc">From another institution</div>
                                 </label>
                             </div>
                         </div>
@@ -535,13 +1134,17 @@
                         <div id="transferFields" style="display:none;background:var(--gray-50);padding:1.2rem;border-radius:12px;">
                             <div class="two-columns">
                                 <div class="form-group">
-                                    <label>Previous Institution</label>
+                                    <label>Previous Institution <span class="required">*</span></label>
                                     <input type="text" id="prevInstitution" placeholder="Name of previous institution" />
                                 </div>
                                 <div class="form-group">
-                                    <label>Previous Year</label>
+                                    <label>Previous Year of Study <span class="required">*</span></label>
                                     <input type="text" id="prevYear" placeholder="e.g., Year 2" />
                                 </div>
+                            </div>
+                            <div class="form-group">
+                                <label>Reason for Transfer</label>
+                                <input type="text" id="transferReason" placeholder="Briefly explain why you are transferring..." />
                             </div>
                         </div>
 
@@ -560,10 +1163,10 @@
                             <div class="doc-card" id="doc_kcse">
                                 <div class="scanning-overlay" id="scanning_kcse">
                                     <div class="spinner"></div>
-                                    <div class="scan-text">🔍 Scanning...</div>
+                                    <div class="scan-text">🔍 Scanning document...</div>
                                 </div>
                                 <div class="doc-icon">📄</div>
-                                <div class="doc-name">KCSE Certificate <span class="required">*</span></div>
+                                <div class="doc-name">KCSE Certificate / Results Slip <span class="required">*</span></div>
                                 <span class="doc-required-badge required">REQUIRED</span>
                                 <div class="doc-status" id="doc_kcse_status">Not uploaded</div>
                                 <input type="file" id="doc_kcse_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleKCSEDocument(event)" />
@@ -587,10 +1190,20 @@
 
                             <div class="doc-card" id="doc_transcript" style="display:none;">
                                 <div class="doc-icon">📊</div>
-                                <div class="doc-name">Academic Transcript</div>
+                                <div class="doc-name">Academic Transcript <span class="required">*</span></div>
                                 <span class="doc-required-badge transfer">TRANSFER ONLY</span>
                                 <div class="doc-status" id="doc_transcript_status">Not uploaded</div>
                                 <input type="file" id="doc_transcript_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'transcript')" />
+                                <div class="doc-file-name" id="doc_transcript_filename"></div>
+                            </div>
+
+                            <div class="doc-card" id="doc_other">
+                                <div class="doc-icon">📎</div>
+                                <div class="doc-name">Other Supporting Documents</div>
+                                <span class="doc-required-badge optional">OPTIONAL</span>
+                                <div class="doc-status" id="doc_other_status">Not uploaded</div>
+                                <input type="file" id="doc_other_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'other')" />
+                                <div class="doc-file-name" id="doc_other_filename"></div>
                             </div>
                         </div>
 
@@ -603,6 +1216,8 @@
                     <!-- STEP 4: ATTACHMENT -->
                     <div class="form-section" data-section="4">
                         <h2 class="section-title"><i class="fas fa-id-card"></i> Attachment</h2>
+                        <p class="section-desc">Upload your National ID and Passport Photo.</p>
+
                         <div class="documents-grid">
                             <div class="doc-card" id="doc_id">
                                 <div class="scanning-overlay" id="scanning_id">
@@ -610,7 +1225,7 @@
                                     <div class="scan-text">🔍 Scanning ID...</div>
                                 </div>
                                 <div class="doc-icon">🪪</div>
-                                <div class="doc-name">National ID <span class="required">*</span></div>
+                                <div class="doc-name">National ID / Birth Certificate <span class="required">*</span></div>
                                 <span class="doc-required-badge required">REQUIRED</span>
                                 <div class="doc-status" id="doc_id_status">Not uploaded</div>
                                 <input type="file" id="doc_id_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleIDDocument(event)" />
@@ -628,6 +1243,7 @@
                                 <span class="doc-required-badge required">REQUIRED</span>
                                 <div class="doc-status" id="doc_passport_status">Not uploaded</div>
                                 <input type="file" id="doc_passport_input" accept=".jpg,.png,.jpeg" onchange="handleDocUpload(event, 'passport')" />
+                                <div class="doc-file-name" id="doc_passport_filename"></div>
                             </div>
                         </div>
 
@@ -641,9 +1257,10 @@
                     <div class="form-section" data-section="5">
                         <h2 class="section-title"><i class="fas fa-church"></i> Christian Experience</h2>
                         <p class="section-desc">Please write a personal Christian experience statement (minimum 400 words).</p>
+
                         <div class="form-group">
-                            <label>Christian Experience <span class="required">*</span></label>
-                            <textarea id="christianExperience" rows="12" placeholder="Write your personal Christian experience..." required></textarea>
+                            <label>Christian Experience Statement <span class="required">*</span></label>
+                            <textarea id="christianExperience" rows="12" placeholder="Write your personal Christian experience, strengths, weaknesses, and how your course choice at NCHSM will assist with your development..." required></textarea>
                             <div class="word-count" id="wordCount">Words: 0 (Minimum 400 required)</div>
                         </div>
 
@@ -656,17 +1273,24 @@
                     <!-- STEP 6: SUBMISSION -->
                     <div class="form-section" data-section="6">
                         <h2 class="section-title"><i class="fas fa-clipboard-check"></i> Submission</h2>
+                        <p class="section-desc">Review all your details before submitting.</p>
+
                         <div class="summary-box">
                             <h4><i class="fas fa-file-alt"></i> Application Summary</h4>
                             <div class="summary-grid">
-                                <p><strong>Name:</strong> <span id="sumName">—</span></p>
+                                <p><strong>Application No:</strong> <span id="sumAppNo">ADM-2026-001</span></p>
+                                <p><strong>Full Name:</strong> <span id="sumName">—</span></p>
                                 <p><strong>Email:</strong> <span id="sumEmail">—</span></p>
                                 <p><strong>Phone:</strong> <span id="sumPhone">—</span></p>
                                 <p><strong>Course:</strong> <span id="sumProgram">—</span></p>
+                                <p><strong>School:</strong> <span id="sumSchool">—</span></p>
                                 <p><strong>Campus:</strong> <span id="sumCampus">—</span></p>
                                 <p><strong>Intake:</strong> <span id="sumIntake">—</span></p>
+                                <p><strong>Mode of Study:</strong> <span id="sumMode">—</span></p>
+                                <p><strong>Student Type:</strong> <span id="sumStudentType">—</span></p>
                                 <p><strong>KCSE Validation:</strong> <span id="sumValidation">Pending</span></p>
                                 <p><strong>Eligibility:</strong> <span id="sumEligibility">Pending</span></p>
+                                <p><strong>Documents:</strong> <span id="sumDocs">0 uploaded</span></p>
                             </div>
                         </div>
 
@@ -674,7 +1298,8 @@
                             <input type="checkbox" id="termsCheck" required />
                             <label for="termsCheck">
                                 I confirm that all information provided is accurate and I have read the
-                                <a href="#" onclick="alert('📋 Terms & Conditions');return false;">Terms &amp; Conditions</a>.
+                                <a href="#" onclick="alert('📋 Terms & Conditions (Full version available)');return false;">Terms &amp; Conditions</a>.
+                                I consent to the processing of my data for admission purposes.
                             </label>
                         </div>
 
@@ -694,7 +1319,8 @@
 
                 <div class="app-footer">
                     <p><i class="fas fa-shield-alt"></i> Secured by NCHSM ICT · v5.0</p>
-                    <p>© Copyright 2026. Nakuru College of Health Sciences and Management</p>
+                    <p>© Copyright 2026. All rights reserved by Nakuru College of Health Sciences and Management</p>
+                    <p>Developed by <strong>NCHSM ICT Team</strong></p>
                 </div>
             </div>
         </div>
@@ -718,9 +1344,16 @@
         <div class="success-card">
             <div class="check-circle">🎉</div>
             <h2>Application Submitted!</h2>
-            <p>Your application has been received and is being processed.</p>
-            <div class="ref-box">Application ID: <span id="refNumber">ADM-2026-001</span></div>
+            <p>Your admission application has been received and is being processed.</p>
+            <div class="ref-box"><i class="fas fa-id-badge"></i> Application ID: <span id="refNumber">ADM-2026-001</span></div>
+            <div class="workflow-steps">
+                <span>📋 Eligibility Check</span>
+                <span>💰 Fee Verification</span>
+                <span>👨‍⚖️ Admissions Review</span>
+                <span>📜 Decision</span>
+            </div>
             <button class="btn btn-primary" onclick="document.getElementById('successOverlay').classList.remove('show')">Done</button>
+            <p style="font-size:0.7rem;color:var(--gray-400);margin-top:10px;">You will receive email updates at each stage.</p>
         </div>
     </div>
 
