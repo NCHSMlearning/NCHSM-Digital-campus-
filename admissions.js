@@ -1,32 +1,20 @@
 // ================================================================
 // ADMISSIONS.JS - Complete Application Logic
-// FIXED: Supabase initialization, all courses, full workflow
+// FIXED: No duplicate supabase declaration, all courses, full workflow
 // ================================================================
 
 // ================================================================
-// SUPABASE CONFIGURATION - FIXED
+// SUPABASE CONFIGURATION - FIXED (no duplicate)
 // ================================================================
 const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
-// ✅ Initialize Supabase client with error handling
-let supabase;
-try {
-    if (typeof window.supabase !== 'undefined') {
-        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        console.log('✅ Supabase client initialized');
-    } else {
-        console.error('❌ Supabase library not loaded');
-        // Fallback - create client if window.supabase exists later
-        document.addEventListener('DOMContentLoaded', function() {
-            if (typeof window.supabase !== 'undefined') {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                console.log('✅ Supabase client initialized (delayed)');
-            }
-        });
-    }
-} catch (e) {
-    console.error('❌ Supabase initialization error:', e);
+// ✅ Check if supabase is already defined, if not create it
+if (typeof supabase === 'undefined') {
+    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+    console.log('✅ Supabase client initialized');
+} else {
+    console.log('✅ Supabase client already exists');
 }
 
 // ================================================================
@@ -111,7 +99,7 @@ const gradePoints = {
 // CHECK SUPABASE AVAILABILITY
 // ================================================================
 function checkSupabase() {
-    if (!supabase) {
+    if (typeof supabase === 'undefined') {
         alert('❌ Supabase is not initialized. Please refresh the page and try again.');
         console.error('❌ Supabase client is undefined');
         return false;
@@ -200,7 +188,7 @@ function switchAuthTab2(tab) {
 }
 
 // ================================================================
-// LOGIN (Home Page) - FIXED with supabase check
+// LOGIN (Home Page)
 // ================================================================
 async function loginUser() {
     if (!checkSupabase()) return;
@@ -324,7 +312,7 @@ async function loginUser() {
 }
 
 // ================================================================
-// LOGIN (Application Page) - FIXED
+// LOGIN (Application Page)
 // ================================================================
 async function loginUser2() {
     if (!checkSupabase()) return;
@@ -434,7 +422,7 @@ async function loginUser2() {
 }
 
 // ================================================================
-// REGISTER - FIXED with supabase check
+// REGISTER
 // ================================================================
 async function registerUser() {
     if (!checkSupabase()) return;
@@ -852,7 +840,7 @@ async function loadUserApplication(userId) {
 }
 
 // ================================================================
-// COURSE SELECTOR - Shows ALL courses
+// COURSE SELECTOR
 // ================================================================
 function updatePrograms() {
     const school = document.getElementById('school');
