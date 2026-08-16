@@ -101,7 +101,7 @@ class ResourcesModule {
         this.femaleVoice = null;
         this.currentDialogueIndex = 0;
         this.dialogueLines = [];
-        this.audioDialogueSpeed = 0.95; // Natural speed
+        this.audioDialogueSpeed = 0.95;
         this.waveAnimationId = null;
         this.audioWaveCanvas = null;
         this.audioWaveCtx = null;
@@ -358,7 +358,6 @@ class ResourcesModule {
                     this.audioSynth.rate = this.audioDialogueSpeed;
                 }
             });
-            // Default to natural speed
             this.audioSpeed.value = '0.95';
         }
         if (this.audioProgressBar) {
@@ -367,10 +366,6 @@ class ResourcesModule {
             });
         }
     }
-    
-    // ============================================================
-    // 🎙️ VOICE LOADING
-    // ============================================================
     
     async initAudioWithVoices() {
         return new Promise((resolve) => {
@@ -406,96 +401,38 @@ class ResourcesModule {
         });
     }
     
-    // ============================================================
-    // 🎙️ GET BEST MALE AND FEMALE VOICES
-    // ============================================================
-    
     getMaleVoice() {
         const voices = window.speechSynthesis.getVoices();
-        
-        // Priority order for natural male voices
-        const malePatterns = [
-            'Google UK English Male',
-            'Google US English Male',
-            'Microsoft David',
-            'Daniel',
-            'en-US Male',
-            'en-GB Male',
-            'Google UK',
-            'Google US',
-            'Samantha' // Fallback if no male voice
-        ];
-        
+        const malePatterns = ['Google UK English Male', 'Google US English Male', 'Microsoft David', 'Daniel'];
         for (const pattern of malePatterns) {
-            const found = voices.find(v => 
-                v.name.includes(pattern) && v.lang.startsWith('en')
-            );
+            const found = voices.find(v => v.name.includes(pattern) && v.lang.startsWith('en'));
             if (found) return found;
         }
-        
         return voices.find(v => v.lang.startsWith('en')) || null;
     }
     
     getFemaleVoice() {
         const voices = window.speechSynthesis.getVoices();
-        
-        // Priority order for natural female voices
-        const femalePatterns = [
-            'Google UK English Female',
-            'Google US English Female',
-            'Microsoft Zira',
-            'Samantha',
-            'Karen',
-            'en-US Female',
-            'en-GB Female'
-        ];
-        
+        const femalePatterns = ['Google UK English Female', 'Google US English Female', 'Microsoft Zira', 'Samantha', 'Karen'];
         for (const pattern of femalePatterns) {
-            const found = voices.find(v => 
-                v.name.includes(pattern) && v.lang.startsWith('en')
-            );
+            const found = voices.find(v => v.name.includes(pattern) && v.lang.startsWith('en'));
             if (found) return found;
         }
-        
         return voices.find(v => v.lang.startsWith('en')) || null;
     }
     
-    // ============================================================
-    // 🎙️ GENERATE NOTEBOOKLM-STYLE PODCAST SCRIPT
-    // ============================================================
-    
     generatePodcastScript(text, title = '') {
         const lines = [];
-        this.podcastTopic = title || 'this topic';
-        this.extractedContent = text;
-        
-        // Clean and split text into meaningful chunks
         const cleanText = text.replace(/\s+/g, ' ').trim();
-        
-        // Split by sentences
         const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
-        
-        // Extract key concepts and definitions
         const keyPoints = this.extractKeyConcepts(cleanText);
         
-        // ===== INTRO - Like a real podcast =====
-        lines.push({
-            speaker: 'host1',
-            text: `Welcome back to the podcast. Today we're diving into "${title || 'this topic'}".`,
-            pauseAfter: 0.6
-        });
-        lines.push({
-            speaker: 'host2',
-            text: `This is such an interesting subject. I've been looking forward to discussing this.`,
-            pauseAfter: 0.5
-        });
-        lines.push({
-            speaker: 'host1',
-            text: `Let's start with the fundamentals and build from there.`,
-            pauseAfter: 0.4
-        });
+        // Intro
+        lines.push({ speaker: 'host1', text: `Welcome back to the podcast. Today we're diving into "${title || 'this topic'}".`, pauseAfter: 0.6 });
+        lines.push({ speaker: 'host2', text: `This is such an interesting subject. I've been looking forward to discussing this.`, pauseAfter: 0.5 });
+        lines.push({ speaker: 'host1', text: `Let's start with the fundamentals and build from there.`, pauseAfter: 0.4 });
         
-        // ===== MAIN CONTENT - Discussion style =====
+        // Main content
         let paragraphBuffer = [];
         let speakerToggle = 'host2';
         let conceptIndex = 0;
@@ -506,141 +443,55 @@ class ResourcesModule {
             
             paragraphBuffer.push(sentence);
             
-            // Group 2-4 sentences per speaker turn
             if (paragraphBuffer.length >= 2 + Math.floor(Math.random() * 3)) {
-                const combined = paragraphBuffer.join(' ');
-                const isKeyPoint = conceptIndex < keyPoints.length && combined.toLowerCase().includes(keyPoints[conceptIndex].toLowerCase().slice(0, 20));
+                let combined = paragraphBuffer.join(' ');
                 
-                let textToSpeak = combined;
-                
-                // Add conversational transitions
-                if (i > 0 && i < sentences.length - 5) {
-                    const transitions = [
-                        'Now, ', 'So, ', 'What's interesting here is that ',
-                        'The key thing to understand is ', 'Essentially, ',
-                        'This means that ', 'In other words, ',
-                        'Building on that, ', 'To put it differently, '
-                    ];
-                    
-                    // Add transition randomly for natural flow
-                    if (Math.random() > 0.5) {
-                        const transition = transitions[Math.floor(Math.random() * transitions.length)];
-                        textToSpeak = transition + combined.charAt(0).toLowerCase() + combined.slice(1);
-                    }
+                if (i > 0 && i < sentences.length - 5 && Math.random() > 0.5) {
+                    const transitions = ['Now, ', 'So, ', 'What\'s interesting is ', 'Essentially, ', 'Building on that, '];
+                    combined = transitions[Math.floor(Math.random() * transitions.length)] + combined.charAt(0).toLowerCase() + combined.slice(1);
                 }
                 
-                // If it's a key concept, emphasize it
-                if (isKeyPoint && conceptIndex < keyPoints.length) {
-                    const concept = keyPoints[conceptIndex];
-                    textToSpeak = `Now, let's talk about ${concept}. ` + textToSpeak;
+                if (conceptIndex < keyPoints.length && Math.random() > 0.6) {
+                    combined = `Let's talk about ${keyPoints[conceptIndex]}. ` + combined;
                     conceptIndex++;
                 }
                 
-                lines.push({
-                    speaker: speakerToggle,
-                    text: textToSpeak,
-                    pauseAfter: 0.3 + Math.random() * 0.3
-                });
-                
-                // Toggle speaker
+                lines.push({ speaker: speakerToggle, text: combined, pauseAfter: 0.3 + Math.random() * 0.3 });
                 speakerToggle = speakerToggle === 'host1' ? 'host2' : 'host1';
                 paragraphBuffer = [];
             }
         }
         
-        // Handle remaining text
         if (paragraphBuffer.length > 0) {
-            const combined = paragraphBuffer.join(' ');
-            lines.push({
-                speaker: speakerToggle,
-                text: combined,
-                pauseAfter: 0.5
-            });
+            lines.push({ speaker: speakerToggle, text: paragraphBuffer.join(' '), pauseAfter: 0.5 });
         }
         
-        // ===== CONCLUSION - Wrap up naturally =====
-        lines.push({
-            speaker: 'host2',
-            text: `So, to wrap things up, we've covered the essential aspects of ${title || 'this topic'}.`,
-            pauseAfter: 0.5
-        });
-        lines.push({
-            speaker: 'host1',
-            text: `That's a great summary. I hope our listeners found this discussion helpful.`,
-            pauseAfter: 0.4
-        });
-        lines.push({
-            speaker: 'host2',
-            text: `Thanks for joining us today. If you have questions, feel free to reach out.`,
-            pauseAfter: 0.3
-        });
-        lines.push({
-            speaker: 'host1',
-            text: `Until next time, keep learning and stay curious!`,
-            pauseAfter: 0.0
-        });
+        // Conclusion
+        lines.push({ speaker: 'host2', text: `So, to wrap things up, we've covered the essential aspects of ${title || 'this topic'}.`, pauseAfter: 0.5 });
+        lines.push({ speaker: 'host1', text: `That's a great summary. I hope our listeners found this discussion helpful.`, pauseAfter: 0.4 });
+        lines.push({ speaker: 'host2', text: `Thanks for joining us today. If you have questions, feel free to reach out.`, pauseAfter: 0.3 });
+        lines.push({ speaker: 'host1', text: `Until next time, keep learning and stay curious!`, pauseAfter: 0.0 });
         
         return lines;
     }
     
-    // ============================================================
-    // 🎙️ EXTRACT KEY CONCEPTS FOR BETTER DISCUSSION
-    // ============================================================
-    
     extractKeyConcepts(text) {
         const concepts = [];
-        
-        // Look for definitions and key terms
-        const definitionPatterns = [
-            /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves|includes|comprises)/g,
-            /(?:called|known as|termed)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g,
-            /(?:key|main|important|essential)\s+(?:concept|principle|aspect|component|element)\s+(?:is|are)\s+([^.!?]+)/gi
-        ];
-        
-        for (const pattern of definitionPatterns) {
+        const patterns = [/([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves)/g, /(?:called|known as|termed)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/g];
+        for (const pattern of patterns) {
             let match;
             while ((match = pattern.exec(text)) !== null) {
                 const concept = match[1] || match[0];
-                if (concept && concept.length > 5 && concept.length < 100) {
-                    concepts.push(concept.trim());
-                }
+                if (concept && concept.length > 5 && concept.length < 100) concepts.push(concept.trim());
             }
         }
-        
-        // Look for bullet points or numbered lists
-        const bulletMatches = text.match(/[•\-*]\s*([^.!?]+[.!?]?)/g) || [];
-        for (const bullet of bulletMatches) {
-            const clean = bullet.replace(/[•\-*]\s*/, '').trim();
-            if (clean && clean.length > 10 && clean.length < 150) {
-                concepts.push(clean);
-            }
-        }
-        
-        // If no concepts found, extract key sentences
         if (concepts.length === 0) {
             const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-            const importantSentences = sentences.filter(s => 
-                s.length > 30 && 
-                (s.toLowerCase().includes('important') || 
-                 s.toLowerCase().includes('key') ||
-                 s.toLowerCase().includes('essential') ||
-                 s.toLowerCase().includes('critical') ||
-                 s.toLowerCase().includes('significant'))
-            );
-            
-            for (const sentence of importantSentences.slice(0, 5)) {
-                const clean = sentence.trim();
-                if (clean) concepts.push(clean);
-            }
+            const important = sentences.filter(s => s.length > 30 && (s.toLowerCase().includes('important') || s.toLowerCase().includes('key')));
+            for (const s of important.slice(0, 5)) if (s.trim()) concepts.push(s.trim());
         }
-        
-        // Deduplicate and limit
         return [...new Set(concepts)].slice(0, 8);
     }
-    
-    // ============================================================
-    // 🎙️ PLAY NOTEBOOKLM-STYLE PODCAST
-    // ============================================================
     
     async playPodcastDialogue(lines) {
         if (!lines || lines.length === 0) {
@@ -653,10 +504,6 @@ class ResourcesModule {
         
         this.maleVoice = this.getMaleVoice();
         this.femaleVoice = this.getFemaleVoice();
-        
-        if (!this.maleVoice || !this.femaleVoice) {
-            this.showToast('Using best available voices', 'info');
-        }
         
         this.dialogueLines = lines;
         this.currentDialogueIndex = 0;
@@ -746,10 +593,6 @@ class ResourcesModule {
             this.audioProgressFill.style.width = Math.min(progress, 100) + '%';
         }
     }
-    
-    // ============================================================
-    // 🎙️ AUDIO CONTROLS
-    // ============================================================
     
     resumeAudio() {
         if (this.isAudioPaused) {
@@ -875,28 +718,20 @@ class ResourcesModule {
         }
     }
     
-    // ============================================================
-    // 🎙️ WAVEFORM VISUALIZATION
-    // ============================================================
-    
     initWaveformCanvas() {
         if (!this.audioWave) return;
-        
         this.audioWave.innerHTML = '';
-        
         this.audioWaveCanvas = document.createElement('canvas');
         this.audioWaveCanvas.style.width = '100%';
         this.audioWaveCanvas.style.height = '100%';
         this.audioWaveCanvas.style.display = 'block';
         this.audioWaveCanvas.style.borderRadius = '4px';
         this.audioWave.appendChild(this.audioWaveCanvas);
-        
         this.resizeWaveCanvas();
     }
     
     resizeWaveCanvas() {
         if (!this.audioWaveCanvas) return;
-        
         const rect = this.audioWave.getBoundingClientRect();
         const dpr = window.devicePixelRatio || 1;
         this.audioWaveCanvas.width = (rect.width || 300) * dpr;
@@ -920,7 +755,6 @@ class ResourcesModule {
         
         const width = canvas.width / (window.devicePixelRatio || 1);
         const height = canvas.height / (window.devicePixelRatio || 1);
-        
         ctx.clearRect(0, 0, width, height);
         
         const barCount = Math.floor(width / 5);
@@ -931,10 +765,8 @@ class ResourcesModule {
             const seed = (i / barCount) * Math.PI * 6;
             const heightFactor = 0.2 + 0.8 * Math.abs(Math.sin(seed + time + Math.sin(i * 0.3 + time * 0.7)));
             const barHeight = height * 0.1 + height * 0.7 * heightFactor;
-            
             const x = i * (barWidth + 1);
             const y = (height - barHeight) / 2;
-            
             const hue = 220 + 30 * heightFactor;
             const lightness = 50 + 30 * heightFactor;
             ctx.fillStyle = `hsl(${hue}, 80%, ${lightness}%)`;
@@ -949,7 +781,6 @@ class ResourcesModule {
             cancelAnimationFrame(this.waveAnimationId);
             this.waveAnimationId = null;
         }
-        
         if (this.audioWaveCanvas && this.audioWaveCtx) {
             const width = this.audioWaveCanvas.width / (window.devicePixelRatio || 1);
             const height = this.audioWaveCanvas.height / (window.devicePixelRatio || 1);
@@ -958,7 +789,7 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 🎙️ READ ALOUD - NOTEBOOKLM STYLE PODCAST
+    // 📄 READ ALOUD - NOTEBOOKLM STYLE PODCAST
     // ============================================================
     
     async readAloud(resourceId) {
@@ -974,7 +805,6 @@ class ResourcesModule {
             let fullText = '';
             const fileType = this.getFileType(resource.file_path);
             
-            // Build content with proper context
             fullText = `${resource.title}. `;
             
             if (resource.resource_type === 'pastpaper') {
@@ -988,7 +818,6 @@ class ResourcesModule {
                 fullText += resource.description + ' ';
             }
             
-            // Extract from PDF if available
             if (resource.file_url && fileType === 'pdf') {
                 try {
                     const extractedText = await this.extractFullPDFText(resource.file_url);
@@ -1007,20 +836,13 @@ class ResourcesModule {
             
             fullText = fullText.replace(/\s+/g, ' ').trim();
             
-            // Generate NotebookLM-style podcast script
             const podcastScript = this.generatePodcastScript(fullText, resource.title);
-            
-            // Show audio player
             this.showAudioPlayer(fullText, `📚 ${resource.title}`);
-            
-            // Play the podcast
             await this.playPodcastDialogue(podcastScript);
             
         } catch (error) {
             console.error('Podcast error:', error);
             this.showToast('Failed to generate podcast: ' + error.message, 'error');
-            
-            // Fallback
             let fallbackText = `Document: ${resource.title}. `;
             if (resource.description) {
                 fallbackText += resource.description;
@@ -1037,7 +859,6 @@ class ResourcesModule {
         }
         
         window.speechSynthesis.cancel();
-        
         const utterance = new SpeechSynthesisUtterance(this.currentAudioText);
         utterance.rate = parseFloat(this.audioSpeed?.value || 0.95);
         utterance.pitch = 1;
@@ -1132,42 +953,23 @@ class ResourcesModule {
     
     generateResourceDescription(resource) {
         let text = `Resource: ${resource.title}. `;
-        
-        if (resource.course_name) {
-            text += `Course: ${resource.course_name}. `;
-        }
-        
+        if (resource.course_name) text += `Course: ${resource.course_name}. `;
         if (resource.resource_type === 'pastpaper') {
             text += `This is a past paper. `;
-            if (resource.exam_type) {
-                text += `Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
-            }
-            if (resource.year) {
-                text += `Year: ${resource.year}. `;
-            }
+            if (resource.exam_type) text += `Exam type: ${this.getExamTypeLabel(resource.exam_type)}. `;
+            if (resource.year) text += `Year: ${resource.year}. `;
         } else {
             text += `This is a learning resource. `;
         }
-        
         if (resource.block || resource.term) {
             const blockOrTerm = resource.block || resource.term;
             const isTVET = this.TVET_PROGRAMS.includes(resource.program_type || '');
             const label = isTVET ? 'Term' : 'Block';
             text += `${label}: ${blockOrTerm}. `;
         }
-        
-        if (resource.description) {
-            text += resource.description;
-        } else {
-            text += `This resource is available for students to study and review.`;
-        }
-        
+        text += resource.description || `This resource is available for students to study and review.`;
         return text;
     }
-    
-    // ============================================================
-    // 🔗 GET RESOURCE URL
-    // ============================================================
     
     getResourceUrl(filePath) {
         if (!filePath) return '';
@@ -1222,7 +1024,6 @@ class ResourcesModule {
                 this.closeSummaryModal();
             });
         }
-        
         if (this.summaryModal) {
             this.summaryModal.addEventListener('click', (e) => {
                 if (e.target === this.summaryModal) {
@@ -1254,10 +1055,7 @@ class ResourcesModule {
         
         try {
             let content = '';
-            
-            if (resource.description) {
-                content = resource.description;
-            }
+            if (resource.description) content = resource.description;
             
             if (resource.file_path && resource.file_url) {
                 const fileType = this.getFileType(resource.file_path);
@@ -1275,9 +1073,7 @@ class ResourcesModule {
                 content += `Course: ${resource.course_name || 'General'}\n`;
                 content += `Type: ${resource.resource_type || 'Material'}\n`;
                 content += `Block/Term: ${resource.block || resource.term || 'General'}\n`;
-                if (resource.description) {
-                    content += `\nDescription: ${resource.description}`;
-                }
+                if (resource.description) content += `\nDescription: ${resource.description}`;
             }
             
             const summary = this.generateSimpleSummary(content);
@@ -1305,26 +1101,13 @@ class ResourcesModule {
     }
     
     generateSimpleSummary(text) {
-        if (!text || text.length < 10) {
-            return '<p>No content available to summarize.</p>';
-        }
-        
+        if (!text || text.length < 10) return '<p>No content available to summarize.</p>';
         let cleanText = text.replace(/\s+/g, ' ').trim();
-        
-        if (cleanText.length < 200) {
-            return `<p>${this.escapeHtml(cleanText)}</p>`;
-        }
-        
+        if (cleanText.length < 200) return `<p>${this.escapeHtml(cleanText)}</p>`;
         const sentences = cleanText.match(/[^.!?]+[.!?]+/g) || [cleanText];
-        const summarySentences = sentences.slice(0, 5);
-        let summary = summarySentences.join(' ');
-        
-        if (summary.length > 500) {
-            summary = summary.substring(0, 500) + '...';
-        }
-        
+        let summary = sentences.slice(0, 5).join(' ');
+        if (summary.length > 500) summary = summary.substring(0, 500) + '...';
         let html = `<p>${this.escapeHtml(summary)}</p>`;
-        
         if (text.includes('•') || text.includes('-') || text.includes('*')) {
             const bulletItems = text.split(/[•\-*]\s*/).slice(1, 6);
             if (bulletItems.length > 0) {
@@ -1337,10 +1120,8 @@ class ResourcesModule {
                 html += '</ul>';
             }
         }
-        
         const wordCount = cleanText.split(/\s+/).length;
         html += `<p style="color:#64748b;font-size:12px;margin-top:12px;">📄 ${wordCount} words in original document</p>`;
-        
         return html;
     }
     
@@ -1419,7 +1200,6 @@ class ResourcesModule {
     // ============================================================
     detectUserProgram() {
         console.log('🔍 Detecting user program...');
-        
         let profile = null;
         if (window.currentUserProfile) profile = window.currentUserProfile;
         else if (window.db?.currentUserProfile) profile = window.db.currentUserProfile;
@@ -1583,12 +1363,7 @@ class ResourcesModule {
     updateBlockDisplay() {
         if (!this.studentCurrentBlock) return;
         const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
-        
-        if (isTVET) {
-            this.studentCurrentBlock.textContent = `Term ${this.userTerm || 1}`;
-        } else {
-            this.studentCurrentBlock.textContent = this.userBlock || 'Introductory';
-        }
+        this.studentCurrentBlock.textContent = isTVET ? `Term ${this.userTerm || 1}` : this.userBlock || 'Introductory';
     }
     
     updateBlockFilterOptions() {
@@ -1602,22 +1377,14 @@ class ResourcesModule {
         this.blockFilter.appendChild(allOption);
         
         if (isTVET) {
-            const terms = [
-                { value: 'term1', label: '📘 Term 1' },
-                { value: 'term2', label: '📗 Term 2' },
-                { value: 'term3', label: '📕 Term 3' },
-                { value: 'term4', label: '📙 Term 4' },
-                { value: 'term5', label: '📒 Term 5' },
-                { value: 'term6', label: '📓 Term 6' },
-                { value: 'final', label: '🏆 Final Term' }
-            ];
-            terms.forEach(term => {
+            const terms = ['term1', 'term2', 'term3', 'term4', 'term5', 'term6', 'final'];
+            const labels = ['📘 Term 1', '📗 Term 2', '📕 Term 3', '📙 Term 4', '📒 Term 5', '📓 Term 6', '🏆 Final Term'];
+            terms.forEach((term, index) => {
                 const option = document.createElement('option');
-                option.value = term.value;
-                option.textContent = term.label;
+                option.value = term;
+                option.textContent = labels[index];
                 this.blockFilter.appendChild(option);
             });
-            
             if (this.userTerm) {
                 const termKey = this.getTermKeyFromNumber(this.userTerm);
                 if (termKey) {
@@ -1626,22 +1393,14 @@ class ResourcesModule {
                 }
             }
         } else {
-            const blocks = [
-                { value: 'introductory', label: '🚀 Introductory' },
-                { value: 'block1', label: '📖 Block 1' },
-                { value: 'block2', label: '📗 Block 2' },
-                { value: 'block3', label: '📘 Block 3' },
-                { value: 'block4', label: '📙 Block 4' },
-                { value: 'block5', label: '📕 Block 5' },
-                { value: 'final', label: '🏆 Final Block' }
-            ];
-            blocks.forEach(block => {
+            const blocks = ['introductory', 'block1', 'block2', 'block3', 'block4', 'block5', 'final'];
+            const labels = ['🚀 Introductory', '📖 Block 1', '📗 Block 2', '📘 Block 3', '📙 Block 4', '📕 Block 5', '🏆 Final Block'];
+            blocks.forEach((block, index) => {
                 const option = document.createElement('option');
-                option.value = block.value;
-                option.textContent = block.label;
+                option.value = block;
+                option.textContent = labels[index];
                 this.blockFilter.appendChild(option);
             });
-            
             if (this.userBlock) {
                 const userBlockLower = this.userBlock.toLowerCase();
                 for (const [key, keywords] of Object.entries(this.BLOCK_MAPPING)) {
@@ -1800,7 +1559,7 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 📄 RENDER RESOURCES - FIXED VERSION
+    // 📄 RENDER RESOURCES - FULLY FIXED
     // ============================================================
     
     renderResources() {
@@ -1818,44 +1577,15 @@ class ResourcesModule {
             const bgColor = isPastPaper ? '#fef3c7' : '#dbeafe';
             
             html += `
-                <div class="resource-card" style="
-                    display: flex !important;
-                    flex-direction: column !important;
-                    min-height: 280px !important;
-                    background: white !important;
-                    border-radius: 12px !important;
-                    border: 1px solid #e5e7eb !important;
-                    overflow: hidden !important;
-                    box-shadow: 0 1px 3px rgba(0,0,0,0.04) !important;
-                    transition: all 0.3s ease !important;
-                ">
-                    <!-- Header -->
-                    <div style="
-                        padding: 16px 20px;
-                        background: #f8fafc;
-                        border-bottom: 1px solid #e5e7eb;
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        flex-wrap: wrap;
-                        gap: 8px;
-                    ">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <div style="
-                                width: 40px;
-                                height: 40px;
-                                border-radius: 8px;
-                                background: ${bgColor};
-                                display: flex;
-                                align-items: center;
-                                justify-content: center;
-                                flex-shrink: 0;
-                            ">
-                                <i class="${fileIcon}" style="font-size: 20px; color: ${iconColor};"></i>
+                <div class="resource-card" style="display:flex;flex-direction:column;min-height:280px;background:white;border-radius:12px;border:1px solid #e5e7eb;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);transition:all 0.3s ease;">
+                    <div style="padding:16px 20px;background:#f8fafc;border-bottom:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;">
+                        <div style="display:flex;align-items:center;gap:12px;">
+                            <div style="width:40px;height:40px;border-radius:8px;background:${bgColor};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                                <i class="${fileIcon}" style="font-size:20px;color:${iconColor};"></i>
                             </div>
                             <div>
-                                <div style="font-weight: 600; color: #0A3D62; font-size: 14px;">${this.escapeHtml(resource.title)}</div>
-                                <div style="font-size: 11px; color: #94a3b8; display: flex; gap: 8px; flex-wrap: wrap;">
+                                <div style="font-weight:600;color:#0A3D62;font-size:14px;">${this.escapeHtml(resource.title)}</div>
+                                <div style="font-size:11px;color:#94a3b8;display:flex;gap:8px;flex-wrap:wrap;">
                                     <span>${this.escapeHtml(resource.intake || 'N/A')}</span>
                                     <span>•</span>
                                     <span>${isPastPaper ? '📄 Past Paper' : '📚 Material'}</span>
@@ -1863,91 +1593,21 @@ class ResourcesModule {
                                 </div>
                             </div>
                         </div>
-                        <span style="font-size: 11px; color: #94a3b8; background: #f1f5f9; padding: 2px 12px; border-radius: 12px;">
-                            <i class="fas fa-lock"></i> Read Only
-                        </span>
+                        <span style="font-size:11px;color:#94a3b8;background:#f1f5f9;padding:2px 12px;border-radius:12px;"><i class="fas fa-lock"></i> Read Only</span>
                     </div>
-                    
-                    <!-- Description -->
-                    <div style="padding: 12px 20px; flex: 1;">
-                        <p style="color: #64748b; font-size: 13px; margin: 0; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">
+                    <div style="padding:12px 20px;flex:1;">
+                        <p style="color:#64748b;font-size:13px;margin:0;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;">
                             ${this.escapeHtml(resource.description || 'No description available')}
                         </p>
                     </div>
-                    
-                    <!-- Actions -->
-                    <div style="
-                        display: flex !important;
-                        gap: 8px !important;
-                        flex-wrap: wrap !important;
-                        padding: 12px 16px 16px !important;
-                        border-top: 1px solid #f1f5f9 !important;
-                        min-height: 50px !important;
-                        margin-top: auto !important;
-                        background: white !important;
-                    ">
-                        <!-- Read Now -->
-                        <button onclick="window.resourcesModule?.openResource(${resource.id})" style="
-                            flex: 1 !important;
-                            min-width: 80px !important;
-                            padding: 10px 16px !important;
-                            border-radius: 8px !important;
-                            font-weight: 600 !important;
-                            font-size: 13px !important;
-                            cursor: pointer !important;
-                            display: inline-flex !important;
-                            align-items: center !important;
-                            justify-content: center !important;
-                            gap: 6px !important;
-                            border: none !important;
-                            transition: all 0.2s ease !important;
-                            color: white !important;
-                            background: #4C1D95 !important;
-                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <div style="display:flex;gap:8px;flex-wrap:wrap;padding:12px 16px 16px;border-top:1px solid #f1f5f9;min-height:50px;margin-top:auto;background:white;">
+                        <button onclick="window.resourcesModule?.openResource(${resource.id})" style="flex:1;min-width:80px;padding:10px 16px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;transition:all 0.2s ease;color:white;background:#4C1D95;">
                             <i class="fas fa-eye"></i> Read Now
                         </button>
-                        
-                        <!-- Podcast - NotebookLM Style -->
-                        <button onclick="window.resourcesModule?.readAloud(${resource.id})" style="
-                            flex: 1 !important;
-                            min-width: 80px !important;
-                            padding: 10px 16px !important;
-                            border-radius: 8px !important;
-                            font-weight: 600 !important;
-                            font-size: 13px !important;
-                            cursor: pointer !important;
-                            display: inline-flex !important;
-                            align-items: center !important;
-                            justify-content: center !important;
-                            gap: 6px !important;
-                            border: none !important;
-                            transition: all 0.2s ease !important;
-                            color: white !important;
-                            background: linear-gradient(135deg, #4a90d9, #e84393) !important;
-                            background-size: 200% 200% !important;
-                            animation: gradientShift 3s ease infinite !important;
-                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 20px rgba(232,67,147,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <button onclick="window.resourcesModule?.readAloud(${resource.id})" style="flex:1;min-width:80px;padding:10px 16px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;transition:all 0.2s ease;color:white;background:linear-gradient(135deg,#4a90d9,#e84393);background-size:200% 200%;">
                             <i class="fas fa-podcast"></i> Podcast
                         </button>
-                        
-                        <!-- AI Summary - FIXED -->
-                        <button onclick="window.resourcesModule?.generateSummary(${resource.id})" style="
-                            flex: 1 !important;
-                            min-width: 80px !important;
-                            padding: 10px 16px !important;
-                            border-radius: 8px !important;
-                            font-weight: 600 !important;
-                            font-size: 13px !important;
-                            cursor: pointer !important;
-                            display: inline-flex !important;
-                            align-items: center !important;
-                            justify-content: center !important;
-                            gap: 6px !important;
-                            border: none !important;
-                            transition: all 0.2s ease !important;
-                            color: white !important;
-                            background: #7c3aed !important;
-                        " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(124,58,237,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <button onclick="window.resourcesModule?.generateSummary(${resource.id})" style="flex:1;min-width:80px;padding:10px 16px;border-radius:8px;font-weight:600;font-size:13px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px;border:none;transition:all 0.2s ease;color:white;background:#7c3aed;">
                             <i class="fas fa-robot"></i> AI Summary
                         </button>
                     </div>
@@ -1976,7 +1636,6 @@ class ResourcesModule {
     
     async initializePDFJS() {
         if (this.pdfjsLoaded) return true;
-        
         return new Promise((resolve, reject) => {
             if (typeof window.pdfjsLib !== 'undefined' && window.pdfjsLib) {
                 this.pdfjsLib = window.pdfjsLib;
@@ -1987,7 +1646,6 @@ class ResourcesModule {
                 resolve(true);
                 return;
             }
-            
             const script = document.createElement('script');
             script.src = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
             script.onload = () => {
@@ -2006,77 +1664,38 @@ class ResourcesModule {
     createPDFViewerModal(resource) {
         const existingModal = document.getElementById('pdf-viewer-modal');
         if (existingModal) existingModal.remove();
-        
         const modal = document.createElement('div');
         modal.id = 'pdf-viewer-modal';
         modal.className = 'pdf-viewer-modal';
         modal.innerHTML = `
             <div class="pdf-modal-container" id="pdf-modal-container">
                 <div class="pdf-modal-header">
-                    <div class="pdf-modal-title">
-                        <i class="fas fa-file-pdf" style="color: #ef4444;"></i>
-                        <span>${this.escapeHtml(resource.title)}</span>
-                    </div>
+                    <div class="pdf-modal-title"><i class="fas fa-file-pdf" style="color:#ef4444;"></i><span>${this.escapeHtml(resource.title)}</span></div>
                     <div class="pdf-modal-actions">
-                        <button class="pdf-modal-btn" id="pdf-fullscreen-btn" title="Fullscreen">
-                            <i class="fas fa-expand"></i>
-                        </button>
-                        <button class="pdf-modal-btn" id="pdf-zoom-in-btn" title="Zoom In">
-                            <i class="fas fa-search-plus"></i>
-                        </button>
-                        <button class="pdf-modal-btn" id="pdf-zoom-out-btn" title="Zoom Out">
-                            <i class="fas fa-search-minus"></i>
-                        </button>
-                        <button class="pdf-modal-btn close-pdf-modal" title="Close">
-                            <i class="fas fa-times"></i>
-                        </button>
+                        <button class="pdf-modal-btn" id="pdf-fullscreen-btn"><i class="fas fa-expand"></i></button>
+                        <button class="pdf-modal-btn" id="pdf-zoom-in-btn"><i class="fas fa-search-plus"></i></button>
+                        <button class="pdf-modal-btn" id="pdf-zoom-out-btn"><i class="fas fa-search-minus"></i></button>
+                        <button class="pdf-modal-btn close-pdf-modal"><i class="fas fa-times"></i></button>
                     </div>
                 </div>
                 <div class="pdf-modal-body" id="pdf-modal-body">
-                    <div id="pdf-loading-modal" class="pdf-loading-modal">
-                        <div class="loading-spinner"></div>
-                        <p>Loading high-quality document...</p>
-                    </div>
-                    <div id="pdf-error-modal" class="pdf-error-modal" style="display: none;">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <h3>Failed to Load Document</h3>
-                        <p id="pdf-error-message-modal"></p>
-                        <button id="retry-pdf-modal" class="btn-primary">Retry</button>
-                    </div>
-                    <div id="pdf-viewer-modal-area" class="pdf-viewer-modal-area" style="display: none;">
-                        <canvas id="pdf-canvas-modal" class="pdf-canvas-modal"></canvas>
-                    </div>
+                    <div id="pdf-loading-modal" class="pdf-loading-modal"><div class="loading-spinner"></div><p>Loading document...</p></div>
+                    <div id="pdf-error-modal" class="pdf-error-modal" style="display:none;"><i class="fas fa-exclamation-triangle"></i><h3>Failed to Load</h3><p id="pdf-error-message-modal"></p><button id="retry-pdf-modal" class="btn-primary">Retry</button></div>
+                    <div id="pdf-viewer-modal-area" class="pdf-viewer-modal-area" style="display:none;"><canvas id="pdf-canvas-modal" class="pdf-canvas-modal"></canvas></div>
                 </div>
                 <div class="pdf-modal-footer">
                     <div class="pdf-nav-controls">
-                        <button class="pdf-nav-btn" id="pdf-first-modal" title="First Page">
-                            <i class="fas fa-fast-backward"></i>
-                        </button>
-                        <button class="pdf-nav-btn" id="pdf-prev-modal" title="Previous Page">
-                            <i class="fas fa-chevron-left"></i>
-                        </button>
-                        <span class="pdf-page-info">
-                            <input type="number" id="pdf-page-modal" value="1" min="1">
-                            <span>/</span>
-                            <span id="pdf-total-modal">1</span>
-                        </span>
-                        <button class="pdf-nav-btn" id="pdf-next-modal" title="Next Page">
-                            <i class="fas fa-chevron-right"></i>
-                        </button>
-                        <button class="pdf-nav-btn" id="pdf-last-modal" title="Last Page">
-                            <i class="fas fa-fast-forward"></i>
-                        </button>
+                        <button class="pdf-nav-btn" id="pdf-first-modal"><i class="fas fa-fast-backward"></i></button>
+                        <button class="pdf-nav-btn" id="pdf-prev-modal"><i class="fas fa-chevron-left"></i></button>
+                        <span class="pdf-page-info"><input type="number" id="pdf-page-modal" value="1" min="1"><span>/</span><span id="pdf-total-modal">1</span></span>
+                        <button class="pdf-nav-btn" id="pdf-next-modal"><i class="fas fa-chevron-right"></i></button>
+                        <button class="pdf-nav-btn" id="pdf-last-modal"><i class="fas fa-fast-forward"></i></button>
                     </div>
-                    <div class="pdf-zoom-info">
-                        <span id="pdf-zoom-percent-modal">100%</span>
-                    </div>
-                    <div class="pdf-protected-badge">
-                        <i class="fas fa-lock"></i> Read Only
-                    </div>
+                    <div class="pdf-zoom-info"><span id="pdf-zoom-percent-modal">100%</span></div>
+                    <div class="pdf-protected-badge"><i class="fas fa-lock"></i> Read Only</div>
                 </div>
             </div>
         `;
-        
         document.body.appendChild(modal);
         this.addPDFModalStyles();
         this.setupPDFModalEvents();
@@ -2085,316 +1704,70 @@ class ResourcesModule {
     
     addPDFModalStyles() {
         if (document.getElementById('pdf-modal-styles')) return;
-        
         const styles = document.createElement('style');
         styles.id = 'pdf-modal-styles';
         styles.textContent = `
-            .pdf-viewer-modal {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0,0,0,0.92);
-                display: none;
-                justify-content: center;
-                align-items: center;
-                z-index: 100000;
-                padding: 10px;
-            }
-            .pdf-modal-container {
-                width: 100%;
-                height: 100%;
-                max-width: 1200px;
-                max-height: 98vh;
-                background: #1a1a2e;
-                border-radius: 16px;
-                display: flex;
-                flex-direction: column;
-                overflow: hidden;
-                box-shadow: 0 20px 60px rgba(0,0,0,0.8);
-            }
-            .pdf-modal-header {
-                padding: 12px 20px;
-                background: linear-gradient(135deg, #16213e, #1a1a2e);
-                border-bottom: 1px solid rgba(255,255,255,0.1);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                flex-shrink: 0;
-                min-height: 56px;
-            }
-            .pdf-modal-title {
-                display: flex;
-                align-items: center;
-                gap: 12px;
-                color: white;
-                font-weight: 500;
-                font-size: 14px;
-                min-width: 0;
-                flex: 1;
-            }
-            .pdf-modal-title span {
-                white-space: nowrap;
-                overflow: hidden;
-                text-overflow: ellipsis;
-            }
-            .pdf-modal-title i { font-size: 22px; flex-shrink: 0; }
-            .pdf-modal-actions {
-                display: flex;
-                gap: 6px;
-                flex-shrink: 0;
-            }
-            .pdf-modal-btn {
-                background: rgba(255,255,255,0.08);
-                border: none;
-                color: #94a3b8;
-                width: 38px;
-                height: 38px;
-                border-radius: 8px;
-                cursor: pointer;
-                font-size: 16px;
-                transition: all 0.2s;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .pdf-modal-btn:hover {
-                background: #4C1D95;
-                color: white;
-                transform: scale(1.05);
-            }
-            .pdf-modal-btn:active { transform: scale(0.95); }
-            .pdf-modal-body {
-                flex: 1;
-                overflow: auto;
-                background: #1a1a2e;
-                position: relative;
-            }
-            .pdf-viewer-modal-area {
-                display: flex;
-                justify-content: center;
-                padding: 20px;
-                min-height: 100%;
-                align-items: flex-start;
-                background: #2d2d3a;
-            }
-            .pdf-canvas-modal {
-                box-shadow: 0 4px 30px rgba(0,0,0,0.5);
-                background: white;
-                border-radius: 4px;
-                max-width: 100%;
-                height: auto;
-                image-rendering: auto;
-                -webkit-font-smoothing: antialiased;
-            }
-            .pdf-modal-footer {
-                padding: 10px 20px;
-                background: linear-gradient(135deg, #16213e, #1a1a2e);
-                border-top: 1px solid rgba(255,255,255,0.1);
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                flex-shrink: 0;
-                flex-wrap: wrap;
-                gap: 8px;
-                min-height: 48px;
-            }
-            .pdf-nav-controls {
-                display: flex;
-                align-items: center;
-                gap: 6px;
-            }
-            .pdf-nav-btn {
-                background: rgba(255,255,255,0.08);
-                border: none;
-                color: #94a3b8;
-                width: 34px;
-                height: 34px;
-                border-radius: 6px;
-                cursor: pointer;
-                transition: all 0.2s;
-                display: flex;
-                align-items: center;
-                justify-content: center;
-            }
-            .pdf-nav-btn:hover:not(:disabled) {
-                background: #4C1D95;
-                color: white;
-            }
-            .pdf-nav-btn:disabled {
-                opacity: 0.3;
-                cursor: not-allowed;
-            }
-            .pdf-page-info {
-                display: flex;
-                align-items: center;
-                gap: 4px;
-                color: #94a3b8;
-                font-size: 14px;
-                margin: 0 8px;
-            }
-            #pdf-page-modal {
-                width: 44px;
-                padding: 4px 6px;
-                border-radius: 4px;
-                border: 1px solid rgba(255,255,255,0.15);
-                text-align: center;
-                background: rgba(255,255,255,0.05);
-                color: white;
-                font-size: 14px;
-                font-weight: 500;
-            }
-            #pdf-page-modal:focus {
-                outline: 2px solid #4C1D95;
-                border-color: #4C1D95;
-            }
-            .pdf-zoom-info {
-                color: #94a3b8;
-                font-size: 13px;
-                font-weight: 500;
-                min-width: 50px;
-                text-align: center;
-            }
-            .pdf-protected-badge {
-                background: rgba(76,29,149,0.25);
-                padding: 4px 12px;
-                border-radius: 20px;
-                color: #a78bfa;
-                font-size: 11px;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                white-space: nowrap;
-            }
-            .loading-spinner {
-                width: 48px;
-                height: 48px;
-                border: 4px solid rgba(255,255,255,0.1);
-                border-top-color: #4C1D95;
-                border-radius: 50%;
-                animation: spin 0.8s linear infinite;
-                margin: 0 auto 16px;
-            }
-            .pdf-loading-modal, .pdf-error-modal {
-                display: flex;
-                flex-direction: column;
-                align-items: center;
-                justify-content: center;
-                height: 100%;
-                color: white;
-                padding: 30px;
-            }
-            .pdf-error-modal i { font-size: 48px; color: #ef4444; margin-bottom: 16px; }
-            .pdf-error-modal h3 { margin: 8px 0; font-size: 20px; }
-            .pdf-error-modal p { color: #9ca3af; margin-bottom: 16px; text-align: center; }
-            .pdf-error-modal .btn-primary {
-                padding: 10px 30px;
-                background: #4C1D95;
-                color: white;
-                border: none;
-                border-radius: 8px;
-                font-size: 14px;
-                cursor: pointer;
-                font-weight: 500;
-            }
-            .pdf-error-modal .btn-primary:hover { background: #5b21b6; }
-            @keyframes spin { to { transform: rotate(360deg); } }
-            .pdf-viewer-modal:fullscreen .pdf-modal-container {
-                max-width: 100%;
-                max-height: 100vh;
-                border-radius: 0;
-            }
-            .pdf-viewer-modal:fullscreen .pdf-modal-body { background: #0a0a1a; }
-            .pdf-viewer-modal:fullscreen .pdf-viewer-modal-area {
-                background: #0a0a1a;
-                padding: 10px;
-            }
-            @media (max-width: 768px) {
-                .pdf-viewer-modal { padding: 5px; }
-                .pdf-modal-container { max-height: 100vh; border-radius: 8px; }
-                .pdf-modal-header { padding: 8px 12px; min-height: 44px; }
-                .pdf-modal-title { font-size: 12px; }
-                .pdf-modal-title i { font-size: 18px; }
-                .pdf-modal-btn { width: 32px; height: 32px; font-size: 14px; }
-                .pdf-viewer-modal-area { padding: 10px; }
-                .pdf-modal-footer { padding: 6px 10px; gap: 4px; }
-                .pdf-nav-btn { width: 28px; height: 28px; font-size: 12px; }
-                #pdf-page-modal { width: 34px; font-size: 12px; }
-                .pdf-page-info { font-size: 12px; gap: 2px; margin: 0 4px; }
-                .pdf-protected-badge { font-size: 10px; padding: 2px 8px; }
-                .pdf-zoom-info { font-size: 11px; min-width: 40px; }
-            }
+            .pdf-viewer-modal{position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);display:none;justify-content:center;align-items:center;z-index:100000;padding:10px}
+            .pdf-modal-container{width:100%;height:100%;max-width:1200px;max-height:98vh;background:#1a1a2e;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,0.8)}
+            .pdf-modal-header{padding:12px 20px;background:linear-gradient(135deg,#16213e,#1a1a2e);border-bottom:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;min-height:56px}
+            .pdf-modal-title{display:flex;align-items:center;gap:12px;color:white;font-weight:500;font-size:14px;min-width:0;flex:1}
+            .pdf-modal-title span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+            .pdf-modal-title i{font-size:22px;flex-shrink:0}
+            .pdf-modal-actions{display:flex;gap:6px;flex-shrink:0}
+            .pdf-modal-btn{background:rgba(255,255,255,0.08);border:none;color:#94a3b8;width:38px;height:38px;border-radius:8px;cursor:pointer;font-size:16px;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
+            .pdf-modal-btn:hover{background:#4C1D95;color:white;transform:scale(1.05)}
+            .pdf-modal-body{flex:1;overflow:auto;background:#1a1a2e;position:relative}
+            .pdf-viewer-modal-area{display:flex;justify-content:center;padding:20px;min-height:100%;align-items:flex-start;background:#2d2d3a}
+            .pdf-canvas-modal{box-shadow:0 4px 30px rgba(0,0,0,0.5);background:white;border-radius:4px;max-width:100%;height:auto}
+            .pdf-modal-footer{padding:10px 20px;background:linear-gradient(135deg,#16213e,#1a1a2e);border-top:1px solid rgba(255,255,255,0.1);display:flex;justify-content:space-between;align-items:center;flex-shrink:0;flex-wrap:wrap;gap:8px;min-height:48px}
+            .pdf-nav-controls{display:flex;align-items:center;gap:6px}
+            .pdf-nav-btn{background:rgba(255,255,255,0.08);border:none;color:#94a3b8;width:34px;height:34px;border-radius:6px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center}
+            .pdf-nav-btn:hover:not(:disabled){background:#4C1D95;color:white}
+            .pdf-nav-btn:disabled{opacity:0.3;cursor:not-allowed}
+            .pdf-page-info{display:flex;align-items:center;gap:4px;color:#94a3b8;font-size:14px;margin:0 8px}
+            #pdf-page-modal{width:44px;padding:4px 6px;border-radius:4px;border:1px solid rgba(255,255,255,0.15);text-align:center;background:rgba(255,255,255,0.05);color:white;font-size:14px;font-weight:500}
+            .pdf-zoom-info{color:#94a3b8;font-size:13px;font-weight:500;min-width:50px;text-align:center}
+            .pdf-protected-badge{background:rgba(76,29,149,0.25);padding:4px 12px;border-radius:20px;color:#a78bfa;font-size:11px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+            .loading-spinner{width:48px;height:48px;border:4px solid rgba(255,255,255,0.1);border-top-color:#4C1D95;border-radius:50%;animation:spin 0.8s linear infinite;margin:0 auto 16px}
+            .pdf-loading-modal,.pdf-error-modal{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:white;padding:30px}
+            .pdf-error-modal i{font-size:48px;color:#ef4444;margin-bottom:16px}
+            .pdf-error-modal .btn-primary{padding:10px 30px;background:#4C1D95;color:white;border:none;border-radius:8px;font-size:14px;cursor:pointer;font-weight:500}
+            @keyframes spin{to{transform:rotate(360deg)}}
+            @media(max-width:768px){.pdf-viewer-modal{padding:5px}.pdf-modal-container{max-height:100vh;border-radius:8px}.pdf-modal-header{padding:8px 12px;min-height:44px}.pdf-modal-title{font-size:12px}.pdf-modal-title i{font-size:18px}.pdf-modal-btn{width:32px;height:32px;font-size:14px}.pdf-viewer-modal-area{padding:10px}.pdf-modal-footer{padding:6px 10px;gap:4px}.pdf-nav-btn{width:28px;height:28px;font-size:12px}#pdf-page-modal{width:34px;font-size:12px}.pdf-page-info{font-size:12px;gap:2px;margin:0 4px}}
         `;
         document.head.appendChild(styles);
     }
     
     setupPDFModalEvents() {
         const modal = document.getElementById('pdf-viewer-modal');
-        const closeBtn = document.querySelector('.close-pdf-modal');
-        const fullscreenBtn = document.getElementById('pdf-fullscreen-btn');
-        const zoomInBtn = document.getElementById('pdf-zoom-in-btn');
-        const zoomOutBtn = document.getElementById('pdf-zoom-out-btn');
-        const firstBtn = document.getElementById('pdf-first-modal');
-        const prevBtn = document.getElementById('pdf-prev-modal');
-        const nextBtn = document.getElementById('pdf-next-modal');
-        const lastBtn = document.getElementById('pdf-last-modal');
-        const pageInput = document.getElementById('pdf-page-modal');
-        
-        if (closeBtn) closeBtn.onclick = () => { this.closePDFModal(); };
-        if (modal) modal.onclick = (e) => { if (e.target === modal) this.closePDFModal(); };
-        if (fullscreenBtn) fullscreenBtn.onclick = () => this.togglePDFFullscreen();
-        if (zoomInBtn) zoomInBtn.onclick = () => this.zoomPDF(1.2);
-        if (zoomOutBtn) zoomOutBtn.onclick = () => this.zoomPDF(0.8);
-        if (firstBtn) firstBtn.onclick = () => this.goToPDFPage(1);
-        if (prevBtn) prevBtn.onclick = () => this.goToPDFPage(this.currentPDFPage - 1);
-        if (nextBtn) nextBtn.onclick = () => this.goToPDFPage(this.currentPDFPage + 1);
-        if (lastBtn) lastBtn.onclick = () => this.goToPDFPage(this.totalPDFPages);
-        
-        if (pageInput) {
-            pageInput.addEventListener('change', () => {
-                const page = parseInt(pageInput.value);
-                if (page >= 1 && page <= this.totalPDFPages) this.goToPDFPage(page);
-            });
-        }
-        
+        document.querySelector('.close-pdf-modal')?.addEventListener('click', () => this.closePDFModal());
+        modal?.addEventListener('click', (e) => { if (e.target === modal) this.closePDFModal(); });
+        document.getElementById('pdf-fullscreen-btn')?.addEventListener('click', () => this.togglePDFFullscreen());
+        document.getElementById('pdf-zoom-in-btn')?.addEventListener('click', () => this.zoomPDF(1.2));
+        document.getElementById('pdf-zoom-out-btn')?.addEventListener('click', () => this.zoomPDF(0.8));
+        document.getElementById('pdf-first-modal')?.addEventListener('click', () => this.goToPDFPage(1));
+        document.getElementById('pdf-prev-modal')?.addEventListener('click', () => this.goToPDFPage(this.currentPDFPage - 1));
+        document.getElementById('pdf-next-modal')?.addEventListener('click', () => this.goToPDFPage(this.currentPDFPage + 1));
+        document.getElementById('pdf-last-modal')?.addEventListener('click', () => this.goToPDFPage(this.totalPDFPages));
         document.addEventListener('keydown', (e) => {
             if (!modal || modal.style.display !== 'flex') return;
             if (e.key === 'Escape' && !this.isFullscreen) this.closePDFModal();
             else if (e.key === 'f' || e.key === 'F') this.togglePDFFullscreen();
-            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
-                e.preventDefault();
-                this.goToPDFPage(this.currentPDFPage - 1);
-            } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
-                e.preventDefault();
-                this.goToPDFPage(this.currentPDFPage + 1);
-            } else if (e.key === 'Home') {
-                e.preventDefault();
-                this.goToPDFPage(1);
-            } else if (e.key === 'End') {
-                e.preventDefault();
-                this.goToPDFPage(this.totalPDFPages);
-            } else if (e.key === '+' || e.key === '=') {
-                e.preventDefault();
-                this.zoomPDF(1.2);
-            } else if (e.key === '-') {
-                e.preventDefault();
-                this.zoomPDF(0.8);
-            }
+            else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); this.goToPDFPage(this.currentPDFPage - 1); }
+            else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { e.preventDefault(); this.goToPDFPage(this.currentPDFPage + 1); }
+            else if (e.key === 'Home') { e.preventDefault(); this.goToPDFPage(1); }
+            else if (e.key === 'End') { e.preventDefault(); this.goToPDFPage(this.totalPDFPages); }
         });
     }
     
     togglePDFFullscreen() {
         const modal = document.getElementById('pdf-viewer-modal');
         if (!modal) return;
-        
         if (document.fullscreenElement) {
             document.exitFullscreen();
             this.isFullscreen = false;
         } else {
-            modal.requestFullscreen().catch(err => {
-                this.showToast('Fullscreen mode not supported', 'warning');
-            });
+            modal.requestFullscreen().catch(() => this.showToast('Fullscreen mode not supported', 'warning'));
             this.isFullscreen = true;
         }
     }
@@ -2411,52 +1784,25 @@ class ResourcesModule {
     
     async loadPDFInModal(pdfUrl) {
         try {
-            const loadingDiv = document.getElementById('pdf-loading-modal');
-            const errorDiv = document.getElementById('pdf-error-modal');
-            const viewerDiv = document.getElementById('pdf-viewer-modal-area');
+            document.getElementById('pdf-loading-modal').style.display = 'flex';
+            document.getElementById('pdf-error-modal').style.display = 'none';
+            document.getElementById('pdf-viewer-modal-area').style.display = 'none';
             
-            if (loadingDiv) loadingDiv.style.display = 'flex';
-            if (errorDiv) errorDiv.style.display = 'none';
-            if (viewerDiv) viewerDiv.style.display = 'none';
-            
-            const loadingTask = this.pdfjsLib.getDocument({
-                url: pdfUrl,
-                cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/',
-                cMapPacked: true,
-                verbosity: 0,
-                useSystemFonts: true,
-                disableFontFace: false,
-                fontExtraProperties: false
-            });
-            
+            const loadingTask = this.pdfjsLib.getDocument({ url: pdfUrl, cMapUrl: 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/cmaps/', cMapPacked: true });
             this.currentPDFDoc = await loadingTask.promise;
             this.totalPDFPages = this.currentPDFDoc.numPages;
-            
-            const totalSpan = document.getElementById('pdf-total-modal');
-            const pageInput = document.getElementById('pdf-page-modal');
-            if (totalSpan) totalSpan.textContent = this.totalPDFPages;
-            if (pageInput) pageInput.max = this.totalPDFPages;
-            
-            if (loadingDiv) loadingDiv.style.display = 'none';
-            if (viewerDiv) viewerDiv.style.display = 'flex';
-            
-            const isMobile = window.innerWidth < 768;
-            this.pdfScale = isMobile ? 1.0 : 1.3;
+            document.getElementById('pdf-total-modal').textContent = this.totalPDFPages;
+            document.getElementById('pdf-page-modal').max = this.totalPDFPages;
+            document.getElementById('pdf-loading-modal').style.display = 'none';
+            document.getElementById('pdf-viewer-modal-area').style.display = 'flex';
+            this.pdfScale = window.innerWidth < 768 ? 1.0 : 1.3;
             this.updateZoomDisplay();
-            
             await this.renderPDFPage(1);
-            
         } catch (error) {
-            console.error('PDF loading error:', error);
-            const loadingDiv = document.getElementById('pdf-loading-modal');
-            const errorDiv = document.getElementById('pdf-error-modal');
-            const errorMsg = document.getElementById('pdf-error-message-modal');
-            const retryBtn = document.getElementById('retry-pdf-modal');
-            
-            if (loadingDiv) loadingDiv.style.display = 'none';
-            if (errorDiv) errorDiv.style.display = 'flex';
-            if (errorMsg) errorMsg.textContent = error.message;
-            if (retryBtn) retryBtn.onclick = () => this.loadPDFInModal(pdfUrl);
+            document.getElementById('pdf-loading-modal').style.display = 'none';
+            document.getElementById('pdf-error-modal').style.display = 'flex';
+            document.getElementById('pdf-error-message-modal').textContent = error.message;
+            document.getElementById('retry-pdf-modal').onclick = () => this.loadPDFInModal(pdfUrl);
         }
     }
     
@@ -2464,63 +1810,35 @@ class ResourcesModule {
         if (!this.currentPDFDoc || pageNum < 1 || pageNum > this.totalPDFPages) return;
         if (this.pageRendering) { this.pageNumPending = pageNum; return; }
         this.pageRendering = true;
-        
         try {
             const page = await this.currentPDFDoc.getPage(pageNum);
             const canvas = document.getElementById('pdf-canvas-modal');
             if (!canvas) { this.pageRendering = false; return; }
             const ctx = canvas.getContext('2d', { alpha: false });
-            
-            const viewerArea = document.getElementById('pdf-viewer-modal-area');
-            const containerWidth = viewerArea ? viewerArea.clientWidth - 40 : window.innerWidth - 60;
+            const containerWidth = document.getElementById('pdf-viewer-modal-area').clientWidth - 40;
             const maxWidth = Math.min(containerWidth, 1400);
-            
             const viewport = page.getViewport({ scale: 1 });
             let scale = this.pdfScale;
-            
             if (this.pdfScale === 1.0) {
                 const fitScale = (maxWidth - 20) / viewport.width;
                 scale = Math.max(fitScale, 0.8);
             }
-            
             const scaledViewport = page.getViewport({ scale: scale });
             const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
-            
             canvas.width = scaledViewport.width * dpr;
             canvas.height = scaledViewport.height * dpr;
             canvas.style.width = scaledViewport.width + 'px';
             canvas.style.height = scaledViewport.height + 'px';
-            
             ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
             ctx.imageSmoothingEnabled = true;
             ctx.imageSmoothingQuality = 'high';
-            
-            const renderContext = {
-                canvasContext: ctx,
-                viewport: scaledViewport,
-                background: 'white',
-                enableWebGL: false,
-                renderInteractiveForms: false,
-                useSystemFonts: true,
-            };
-            
-            await page.render(renderContext).promise;
-            
+            await page.render({ canvasContext: ctx, viewport: scaledViewport, background: 'white' }).promise;
             this.currentPDFPage = pageNum;
-            const pageInput = document.getElementById('pdf-page-modal');
-            if (pageInput) pageInput.value = pageNum;
-            
+            document.getElementById('pdf-page-modal').value = pageNum;
             this.updatePDFNavButtons();
-            
-        } catch (error) {
-            console.error('Render error:', error);
-        }
-        
+        } catch (error) { console.error('Render error:', error); }
         this.pageRendering = false;
-        if (this.pageNumPending !== null) {
-            this.renderPDFPage(this.pageNumPending);
-            this.pageNumPending = null;
-        }
+        if (this.pageNumPending !== null) { this.renderPDFPage(this.pageNumPending); this.pageNumPending = null; }
     }
     
     goToPDFPage(pageNum) {
@@ -2530,35 +1848,24 @@ class ResourcesModule {
     }
     
     zoomPDF(factor) {
-        this.pdfScale = this.pdfScale * factor;
-        if (this.pdfScale < 0.5) this.pdfScale = 0.5;
-        if (this.pdfScale > 4.0) this.pdfScale = 4.0;
+        this.pdfScale = Math.max(0.5, Math.min(4.0, this.pdfScale * factor));
         this.updateZoomDisplay();
         this.renderPDFPage(this.currentPDFPage);
     }
     
     updateZoomDisplay() {
-        const percent = Math.round(this.pdfScale * 100);
-        const zoomDisplay = document.getElementById('pdf-zoom-percent-modal');
-        if (zoomDisplay) zoomDisplay.textContent = percent + '%';
+        document.getElementById('pdf-zoom-percent-modal').textContent = Math.round(this.pdfScale * 100) + '%';
     }
     
     updatePDFNavButtons() {
-        const firstBtn = document.getElementById('pdf-first-modal');
-        const prevBtn = document.getElementById('pdf-prev-modal');
-        const nextBtn = document.getElementById('pdf-next-modal');
-        const lastBtn = document.getElementById('pdf-last-modal');
-        if (firstBtn) firstBtn.disabled = this.currentPDFPage <= 1;
-        if (prevBtn) prevBtn.disabled = this.currentPDFPage <= 1;
-        if (nextBtn) nextBtn.disabled = this.currentPDFPage >= this.totalPDFPages;
-        if (lastBtn) lastBtn.disabled = this.currentPDFPage >= this.totalPDFPages;
+        document.getElementById('pdf-first-modal').disabled = this.currentPDFPage <= 1;
+        document.getElementById('pdf-prev-modal').disabled = this.currentPDFPage <= 1;
+        document.getElementById('pdf-next-modal').disabled = this.currentPDFPage >= this.totalPDFPages;
+        document.getElementById('pdf-last-modal').disabled = this.currentPDFPage >= this.totalPDFPages;
     }
     
     cleanupPDFModal() {
-        if (this.currentPDFDoc) {
-            this.currentPDFDoc.destroy();
-            this.currentPDFDoc = null;
-        }
+        if (this.currentPDFDoc) { this.currentPDFDoc.destroy(); this.currentPDFDoc = null; }
         this.currentPDFPage = 1;
         this.totalPDFPages = 0;
         this.pdfScale = 1.0;
@@ -2574,18 +1881,15 @@ class ResourcesModule {
         const modal = document.createElement('div');
         modal.className = 'image-viewer-modal';
         modal.innerHTML = `
-            <div class="image-modal-container" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:100000;display:flex;align-items:center;justify-content:center;">
-                <div style="background:white;border-radius:12px;max-width:90%;max-height:90%;overflow:hidden;position:relative;">
-                    <button class="close-image-modal" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);color:white;border:none;width:40px;height:40px;border-radius:50%;font-size:24px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;">×</button>
-                    <div style="padding:20px;max-height:85vh;overflow:auto;">
-                        <img src="${resource.file_url}" alt="${this.escapeHtml(resource.title)}" style="max-width:100%;max-height:80vh;display:block;margin:0 auto;">
-                        <p style="text-align:center;color:#64748b;font-size:13px;margin-top:12px;"><i class="fas fa-lock"></i> Protected Image - No Download</p>
-                    </div>
+            <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:100000;display:flex;align-items:center;justify-content:center;">
+                <div style="background:white;border-radius:12px;max-width:90%;max-height:90%;overflow:hidden;position:relative;padding:20px;">
+                    <button onclick="this.closest('.image-viewer-modal').remove()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);color:white;border:none;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer;">×</button>
+                    <img src="${resource.file_url}" alt="${this.escapeHtml(resource.title)}" style="max-width:100%;max-height:80vh;display:block;margin:0 auto;">
+                    <p style="text-align:center;color:#64748b;font-size:13px;margin-top:12px;"><i class="fas fa-lock"></i> Protected</p>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
-        modal.querySelector('.close-image-modal').onclick = () => modal.remove();
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
     
@@ -2594,20 +1898,16 @@ class ResourcesModule {
         modal.className = 'video-viewer-modal';
         modal.innerHTML = `
             <div style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.92);z-index:100000;display:flex;align-items:center;justify-content:center;">
-                <div style="background:white;border-radius:12px;max-width:90%;max-height:90%;overflow:hidden;position:relative;width:800px;">
-                    <button class="close-video-modal" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);color:white;border:none;width:40px;height:40px;border-radius:50%;font-size:24px;cursor:pointer;z-index:10;display:flex;align-items:center;justify-content:center;">×</button>
-                    <div style="padding:20px;">
-                        <video controls controlslist="nodownload" disablepictureinpicture style="width:100%;max-height:70vh;border-radius:8px;">
-                            <source src="${resource.file_url}" type="video/mp4">
-                            Your browser does not support video playback.
-                        </video>
-                        <p style="text-align:center;color:#64748b;font-size:13px;margin-top:12px;"><i class="fas fa-lock"></i> Protected Video - No Download</p>
-                    </div>
+                <div style="background:white;border-radius:12px;max-width:90%;max-height:90%;overflow:hidden;position:relative;width:800px;padding:20px;">
+                    <button onclick="this.closest('.video-viewer-modal').remove()" style="position:absolute;top:10px;right:10px;background:rgba(0,0,0,0.5);color:white;border:none;width:36px;height:36px;border-radius:50%;font-size:20px;cursor:pointer;z-index:10;">×</button>
+                    <video controls controlslist="nodownload" style="width:100%;max-height:70vh;border-radius:8px;">
+                        <source src="${resource.file_url}" type="video/mp4">
+                    </video>
+                    <p style="text-align:center;color:#64748b;font-size:13px;margin-top:12px;"><i class="fas fa-lock"></i> Protected</p>
                 </div>
             </div>
         `;
         document.body.appendChild(modal);
-        modal.querySelector('.close-video-modal').onclick = () => modal.remove();
         modal.onclick = (e) => { if (e.target === modal) modal.remove(); };
     }
     
@@ -2630,62 +1930,8 @@ class ResourcesModule {
     }
     
     getExamTypeLabel(examType) {
-        const labels = {
-            'CAT_1': 'CAT 1',
-            'CAT_2': 'CAT 2',
-            'CAT': 'CAT',
-            'END_TERM': 'End of Term',
-            'FINAL': 'Final Exam',
-            'SUPPLEMENTARY': 'Supplementary',
-            'SPECIAL': 'Special Exam'
-        };
+        const labels = { 'CAT_1': 'CAT 1', 'CAT_2': 'CAT 2', 'CAT': 'CAT', 'END_TERM': 'End of Term', 'FINAL': 'Final Exam', 'SUPPLEMENTARY': 'Supplementary', 'SPECIAL': 'Special Exam' };
         return labels[examType] || examType;
-    }
-    
-    getBlockTagClass(blockOrTerm, isTVET = false) {
-        if (!blockOrTerm) return 'tag-general';
-        const b = String(blockOrTerm).toLowerCase();
-        if (isTVET) {
-            if (b.includes('term 1') || b.includes('trimester 1') || b === '1') return 'tag-block1';
-            if (b.includes('term 2') || b.includes('trimester 2') || b === '2') return 'tag-block2';
-            if (b.includes('term 3') || b.includes('trimester 3') || b === '3') return 'tag-block3';
-            if (b.includes('term 4') || b.includes('trimester 4') || b === '4') return 'tag-block4';
-            if (b.includes('term 5') || b.includes('trimester 5') || b === '5') return 'tag-block5';
-            if (b.includes('term 6') || b.includes('trimester 6') || b === '6') return 'tag-block5';
-            if (b.includes('final') || b.includes('graduating') || b === '7') return 'tag-final';
-            return 'tag-general';
-        }
-        if (b.includes('intro')) return 'tag-intro';
-        if (b.includes('block 1') || b.includes('block1') || b === '1') return 'tag-block1';
-        if (b.includes('block 2') || b.includes('block2') || b === '2') return 'tag-block2';
-        if (b.includes('block 3') || b.includes('block3') || b === '3') return 'tag-block3';
-        if (b.includes('block 4') || b.includes('block4') || b === '4') return 'tag-block4';
-        if (b.includes('block 5') || b.includes('block5') || b === '5') return 'tag-block5';
-        if (b.includes('final')) return 'tag-final';
-        return 'tag-general';
-    }
-    
-    getBlockIcon(blockOrTerm, isTVET = false) {
-        if (!blockOrTerm) return 'fa-layer-group';
-        const b = String(blockOrTerm).toLowerCase();
-        if (isTVET) {
-            if (b.includes('term 1') || b === '1') return 'fa-flag-checkered';
-            if (b.includes('term 2') || b === '2') return 'fa-book';
-            if (b.includes('term 3') || b === '3') return 'fa-book-open';
-            if (b.includes('term 4') || b === '4') return 'fa-chalkboard-user';
-            if (b.includes('term 5') || b === '5') return 'fa-stethoscope';
-            if (b.includes('term 6') || b === '6') return 'fa-user-nurse';
-            if (b.includes('final') || b === '7') return 'fa-graduation-cap';
-            return 'fa-layer-group';
-        }
-        if (b.includes('intro')) return 'fa-flag-checkered';
-        if (b.includes('block 1') || b === '1') return 'fa-book';
-        if (b.includes('block 2') || b === '2') return 'fa-book-open';
-        if (b.includes('block 3') || b === '3') return 'fa-chalkboard-user';
-        if (b.includes('block 4') || b === '4') return 'fa-stethoscope';
-        if (b.includes('block 5') || b === '5') return 'fa-user-nurse';
-        if (b.includes('final') || b === '6') return 'fa-graduation-cap';
-        return 'fa-layer-group';
     }
     
     escapeHtml(str) {
@@ -2703,77 +1949,42 @@ class ResourcesModule {
         let skeletonHtml = '';
         for (let i = 0; i < count; i++) {
             skeletonHtml += `
-                <div class="resource-card skeleton">
-                    <div class="resource-preview">
-                        <div class="preview-icon skeleton-shimmer"></div>
-                        <div class="skeleton-badge"></div>
-                    </div>
-                    <div class="resource-details">
-                        <div class="skeleton-title"></div>
-                        <div class="skeleton-text"></div>
-                        <div class="skeleton-text short"></div>
-                        <div class="skeleton-meta">
-                            <div class="skeleton-tag"></div>
-                            <div class="skeleton-tag"></div>
+                <div class="resource-card skeleton" style="padding:20px;background:white;border-radius:12px;border:1px solid #e5e7eb;">
+                    <div style="display:flex;gap:12px;margin-bottom:12px;">
+                        <div class="skeleton-shimmer" style="width:40px;height:40px;border-radius:8px;background:#e5e7eb;"></div>
+                        <div style="flex:1;">
+                            <div class="skeleton-shimmer" style="height:16px;width:70%;background:#e5e7eb;border-radius:4px;margin-bottom:8px;"></div>
+                            <div class="skeleton-shimmer" style="height:12px;width:40%;background:#e5e7eb;border-radius:4px;"></div>
                         </div>
                     </div>
-                    <div class="resource-actions">
-                        <div class="skeleton-button"></div>
-                    </div>
+                    <div class="skeleton-shimmer" style="height:12px;width:100%;background:#e5e7eb;border-radius:4px;margin-bottom:4px;"></div>
+                    <div class="skeleton-shimmer" style="height:12px;width:80%;background:#e5e7eb;border-radius:4px;"></div>
                 </div>
             `;
         }
         this.resourcesGrid.innerHTML = skeletonHtml;
-        this.addSkeletonStyles();
-    }
-    
-    addSkeletonStyles() {
-        if (document.getElementById('skeleton-styles')) return;
-        const styles = document.createElement('style');
-        styles.id = 'skeleton-styles';
-        styles.textContent = `
-            .skeleton-shimmer {
-                background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
-                background-size: 200% 100%;
-                animation: shimmer 1.5s infinite;
-            }
-            @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
-            .skeleton-title { height: 20px; width: 70%; background: #e5e7eb; border-radius: 8px; margin-bottom: 12px; }
-            .skeleton-text { height: 14px; width: 100%; background: #e5e7eb; border-radius: 6px; margin-bottom: 8px; }
-            .skeleton-text.short { width: 60%; }
-            .skeleton-meta { display: flex; gap: 8px; margin-top: 12px; }
-            .skeleton-tag { height: 24px; width: 70px; background: #e5e7eb; border-radius: 20px; }
-            .skeleton-button { height: 40px; width: 100%; background: #e5e7eb; border-radius: 40px; }
-            .skeleton-badge { position: absolute; top: 12px; right: 12px; width: 80px; height: 24px; background: #e5e7eb; border-radius: 20px; }
-            .resource-card.skeleton { pointer-events: none; opacity: 0.7; }
-        `;
-        document.head.appendChild(styles);
     }
     
     showError(message, showRetry = true) {
         if (!this.resourcesGrid) return;
         this.resourcesGrid.innerHTML = `
-            <div class="error-state-premium">
-                <i class="fas fa-exclamation-triangle"></i>
-                <h3>Unable to Load Resources</h3>
-                <p>${message}</p>
-                ${showRetry ? '<button onclick="window.resourcesModule?.retryLoad()" class="premium-btn"><i class="fas fa-sync-alt"></i> Retry</button>' : ''}
+            <div style="grid-column:1/-1;text-align:center;padding:60px 20px;background:white;border-radius:12px;border:1px solid #e5e7eb;">
+                <i class="fas fa-exclamation-triangle" style="font-size:48px;color:#ef4444;display:block;margin-bottom:16px;"></i>
+                <h3 style="color:#1e293b;">Unable to Load Resources</h3>
+                <p style="color:#64748b;">${message}</p>
+                ${showRetry ? '<button onclick="window.resourcesModule?.retryLoad()" style="margin-top:16px;padding:10px 32px;background:#4C1D95;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;"><i class="fas fa-sync-alt"></i> Retry</button>' : ''}
             </div>
         `;
     }
     
     showEmptyState() {
         if (!this.resourcesGrid) return;
-        const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
-        const filterType = isTVET ? 'term' : 'block';
         this.resourcesGrid.innerHTML = `
-            <div class="empty-state-premium">
-                <i class="fas fa-folder-open"></i>
-                <h3>No Resources Found</h3>
-                <p>No resources match your selected ${filterType} or filters.</p>
-                <button onclick="window.resourcesModule?.resetFilters()" class="premium-btn">
-                    <i class="fas fa-eye"></i> Reset Filters
-                </button>
+            <div style="grid-column:1/-1;text-align:center;padding:60px 20px;background:white;border-radius:12px;border:1px solid #e5e7eb;">
+                <i class="fas fa-folder-open" style="font-size:48px;color:#94a3b8;display:block;margin-bottom:16px;"></i>
+                <h3 style="color:#1e293b;">No Resources Found</h3>
+                <p style="color:#64748b;">No resources match your selected filters.</p>
+                <button onclick="window.resourcesModule?.resetFilters()" style="margin-top:16px;padding:10px 32px;background:#4C1D95;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;"><i class="fas fa-eye"></i> Reset Filters</button>
             </div>
         `;
     }
@@ -2822,11 +2033,8 @@ class ResourcesModule {
     
     filterResourcesByType(type) {
         this.currentResourceType = type;
-        const buttons = document.querySelectorAll('.type-tab');
-        buttons.forEach(btn => {
-            const btnType = btn.getAttribute('data-type');
-            if (btnType === type) btn.classList.add('active');
-            else btn.classList.remove('active');
+        document.querySelectorAll('.type-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-type') === type);
         });
         if (this.searchInput) this.searchInput.value = '';
         this.currentSearchTerm = '';
@@ -2847,10 +2055,8 @@ class ResourcesModule {
         this.currentFileType = 'all';
         this.currentCourse = 'all';
         this.currentYear = 'all';
-        const buttons = document.querySelectorAll('.type-tab');
-        buttons.forEach(btn => {
-            if (btn.getAttribute('data-type') === 'all') btn.classList.add('active');
-            else btn.classList.remove('active');
+        document.querySelectorAll('.type-tab').forEach(btn => {
+            btn.classList.toggle('active', btn.getAttribute('data-type') === 'all');
         });
         this.applyFilters();
     }
@@ -2902,13 +2108,11 @@ class ResourcesModule {
                 console.error('❌ Timeout waiting for user profile');
                 if (this.resourcesGrid) {
                     this.resourcesGrid.innerHTML = `
-                        <div class="error-state-premium">
-                            <i class="fas fa-user-slash"></i>
-                            <h3>Unable to Load Profile</h3>
-                            <p>Please refresh the page or contact support.</p>
-                            <button onclick="location.reload()" class="premium-btn">
-                                <i class="fas fa-sync-alt"></i> Refresh Page
-                            </button>
+                        <div style="grid-column:1/-1;text-align:center;padding:60px 20px;background:white;border-radius:12px;border:1px solid #e5e7eb;">
+                            <i class="fas fa-user-slash" style="font-size:48px;color:#94a3b8;display:block;margin-bottom:16px;"></i>
+                            <h3 style="color:#1e293b;">Unable to Load Profile</h3>
+                            <p style="color:#64748b;">Please refresh the page or contact support.</p>
+                            <button onclick="location.reload()" style="margin-top:16px;padding:10px 32px;background:#4C1D95;color:white;border:none;border-radius:8px;cursor:pointer;font-weight:600;"><i class="fas fa-sync-alt"></i> Refresh Page</button>
                         </div>
                     `;
                 }
@@ -2949,44 +2153,6 @@ function initResourcesModule() {
         return null;
     }
 }
-
-// ============================================================
-// GLOBAL FUNCTIONS
-// ============================================================
-
-window.filterStudentResourceType = function(type) {
-    if (resourcesModule) resourcesModule.filterResourcesByType(type);
-};
-
-window.openResourceInline = function(id) {
-    if (resourcesModule) resourcesModule.openResource(id);
-};
-
-window.resetResourceFilters = function() {
-    if (resourcesModule) resourcesModule.resetFilters();
-};
-
-window.loadStudentResources = function() {
-    if (resourcesModule) resourcesModule.loadResources();
-};
-
-// ============================================================
-// GRADIENT SHIFT ANIMATION
-// ============================================================
-
-const styleElement = document.createElement('style');
-styleElement.textContent = `
-    @keyframes gradientShift {
-        0% { background-position: 0% 50%; }
-        50% { background-position: 100% 50%; }
-        100% { background-position: 0% 50%; }
-    }
-    
-    .podcast-btn-glow {
-        animation: gradientShift 3s ease infinite !important;
-    }
-`;
-document.head.appendChild(styleElement);
 
 // ============================================================
 // AUTO-INITIALIZE
