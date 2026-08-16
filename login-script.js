@@ -994,8 +994,8 @@ window.NCHSMLogin = {
         };
     },
     
-    // ============================================
-    // CSRF TOKEN MANAGEMENT
+// ============================================
+    // CSRF TOKEN MANAGEMENT - FIXED
     // ============================================
     generateCSRFToken: function() {
         this.csrfToken = this.generateSecureToken();
@@ -1009,9 +1009,11 @@ window.NCHSMLogin = {
                 csrfInput.type = 'hidden';
                 csrfInput.id = 'csrf_token';
                 csrfInput.name = 'csrf_token';
+                csrfInput.value = this.csrfToken;
                 form.appendChild(csrfInput);
+            } else {
+                csrfInput.value = this.csrfToken;
             }
-            csrfInput.value = this.csrfToken;
         }
     },
     
@@ -1025,6 +1027,7 @@ window.NCHSMLogin = {
         }
         return true;
     },
+    
     
     // ============================================
     // CLEAR URL PARAMETERS
