@@ -425,437 +425,378 @@ class ResourcesModule {
     }
     
     // ============================================================
-    // 🎙️ EXTRACT KEY CONCEPTS
+    // 🎙️ SMART EXTRACTION FOR NURSING DOCUMENTS
     // ============================================================
     
-    extractKeyConcepts(text) {
-        const concepts = [];
+    intelligentlyExtractContent(text) {
+        const result = {
+            mainConcept: '',
+            mainDefinition: '',
+            keyPoints: [],
+            explanations: [],
+            importantTerms: [],
+            termDefinitions: {},
+            examTopics: [],
+            nursingConcepts: []
+        };
         
-        // Pattern: "X is Y", "X are Y" - Look for definitions
-        const pattern1 = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves|includes|comprises|encompasses)/gi;
-        let match;
-        while ((match = pattern1.exec(text)) !== null) {
-            const concept = match[1];
-            if (concept && concept.length > 3 && concept.length < 50) {
-                concepts.push(concept.trim());
-            }
-        }
+        // Split into sentences
+        const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
         
-        // Pattern: "called X", "known as X"
-        const pattern2 = /(?:called|known as|termed|referred to as)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi;
-        while ((match = pattern2.exec(text)) !== null) {
-            const concept = match[1];
-            if (concept && concept.length > 3 && concept.length < 50) {
-                concepts.push(concept.trim());
-            }
-        }
-        
-        // Look for capitalized phrases (potential concepts)
-        const pattern3 = /\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,3})\b/g;
-        while ((match = pattern3.exec(text)) !== null) {
-            const concept = match[1];
-            if (concept && concept.length > 3 && concept.length < 50 && !concepts.includes(concept)) {
-                concepts.push(concept.trim());
-            }
-        }
-        
-        // Remove duplicates and limit
-        const unique = [...new Set(concepts)];
-        return unique.slice(0, 6);
-    }
-    
-    // ============================================================
-    // 🎙️ EXTRACT DEFINITIONS
-    // ============================================================
-    
-    extractDefinitions(text) {
-        const definitions = {};
-        
-        // Pattern: "X is Y", "X are Y", "X means Y"
-        const definitionPatterns = [
-            /([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|means|refers to|involves|includes|comprises|encompasses)\s+([^.!?]+)/gi,
-            /(?:called|known as|termed|referred to as)\s+([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)/gi
-        ];
-        
-        for (const pattern of definitionPatterns) {
-            let match;
-            while ((match = pattern.exec(text)) !== null) {
-                const concept = match[1] || match[0];
-                const definition = match[2] || '';
-                if (concept && concept.length > 3 && definition && definition.length > 5) {
-                    definitions[concept.trim()] = definition.trim();
-                }
-            }
-        }
-        
-        return definitions;
-    }
-    
-    // ============================================================
-    // 🎙️ EXTRACT KEY POINTS
-    // ============================================================
-    
-    extractKeyPoints(text) {
-        const points = [];
-        
-        // Look for bullet points
-        const bulletMatches = text.match(/[•\-*]\s*([^.!?]+[.!?]?)/g) || [];
-        for (const bullet of bulletMatches) {
-            const clean = bullet.replace(/[•\-*]\s*/, '').trim();
-            if (clean && clean.length > 10 && clean.length < 150) {
-                points.push(clean);
-            }
-        }
-        
-        // Look for "key", "important", "essential" sentences
-        if (points.length === 0) {
-            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-            const importantSentences = sentences.filter(s => {
-                const lower = s.toLowerCase();
-                return (lower.includes('important') || 
-                        lower.includes('key') || 
-                        lower.includes('essential') || 
-                        lower.includes('critical') ||
-                        lower.includes('significant') ||
-                        lower.includes('fundamental') ||
-                        lower.includes('crucial'));
-            });
+        // ===== FIND MAIN CONCEPT =====
+        // Look for patterns like "X is Y" or "X are Y"
+        for (const sentence of sentences) {
+            const clean = sentence.trim();
+            // Definition patterns
+            const defPatterns = [
+                /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves|includes|comprises)\s+(.+)/i,
+                /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are)\s+(?:defined as|described as)\s+(.+)/i,
+                /^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:means|refers to)\s+(.+)/i
+            ];
             
-            for (const sentence of importantSentences.slice(0, 6)) {
+            for (const pattern of defPatterns) {
+                const match = clean.match(pattern);
+                if (match) {
+                    result.mainConcept = match[1].trim();
+                    result.mainDefinition = match[2].trim();
+                    break;
+                }
+            }
+            if (result.mainConcept) break;
+        }
+        
+        // If no definition found, look for nursing-specific terms
+        if (!result.mainConcept) {
+            const nursingKeywords = ['nursing', 'patient', 'care', 'assessment', 'diagnosis', 'treatment', 'surgery', 'medical', 'surgical'];
+            for (const sentence of sentences) {
                 const clean = sentence.trim();
-                if (clean && clean.length > 15) {
-                    points.push(clean);
+                const lower = clean.toLowerCase();
+                for (const keyword of nursingKeywords) {
+                    if (lower.includes(keyword) && clean.length > 30) {
+                        // Extract the first 50 chars as concept
+                        result.mainConcept = clean.substring(0, Math.min(50, clean.length));
+                        // Find a definition nearby
+                        for (const s2 of sentences) {
+                            if (s2.toLowerCase().includes(keyword) && s2.length > 20 && s2 !== clean) {
+                                result.mainDefinition = s2.trim();
+                                break;
+                            }
+                        }
+                        if (!result.mainDefinition) {
+                            result.mainDefinition = clean;
+                        }
+                        break;
+                    }
+                }
+                if (result.mainConcept) break;
+            }
+        }
+        
+        // ===== EXTRACT KEY POINTS (with nursing focus) =====
+        // Look for bullet points, numbered lists, or key phrases
+        const bulletPattern = /[•\-*]\s*([^.!?]+[.!?]?)/g;
+        let match;
+        while ((match = bulletPattern.exec(text)) !== null) {
+            const clean = match[1].trim();
+            if (clean && clean.length > 10 && clean.length < 150) {
+                result.keyPoints.push(clean);
+            }
+        }
+        
+        // Look for numbered lists
+        const numberedPattern = /\d+\.\s*([^.!?]+[.!?]?)/g;
+        while ((match = numberedPattern.exec(text)) !== null) {
+            const clean = match[1].trim();
+            if (clean && clean.length > 10 && clean.length < 150 && !result.keyPoints.includes(clean)) {
+                result.keyPoints.push(clean);
+            }
+        }
+        
+        // Look for important nursing concepts
+        if (result.keyPoints.length === 0) {
+            const nursingKeywords = ['important', 'key', 'essential', 'critical', 'significant', 'fundamental', 'crucial', 
+                                   'remember', 'note that', 'consider', 'understand'];
+            for (const sentence of sentences) {
+                const clean = sentence.trim();
+                if (clean.length > 20) {
+                    const lower = clean.toLowerCase();
+                    if (nursingKeywords.some(kw => lower.includes(kw))) {
+                        result.keyPoints.push(clean);
+                    }
                 }
             }
         }
         
-        // If still no points, take first few sentences
-        if (points.length === 0) {
-            const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-            for (const sentence of sentences.slice(0, 4)) {
+        // ===== EXTRACT IMPORTANT TERMS =====
+        // Look for capitalized terms (potential nursing concepts)
+        const termMatches = text.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g) || [];
+        const uniqueTerms = [...new Set(termMatches)];
+        const filteredTerms = uniqueTerms.filter(term => 
+            term.length > 3 && 
+            term.length < 40 &&
+            !['This', 'That', 'These', 'Those', 'There', 'Their', 'They', 'When', 'What', 'Which', 'Who', 'Whom', 'With'].includes(term) &&
+            !result.keyPoints.some(point => point.includes(term))
+        );
+        result.importantTerms = filteredTerms.slice(0, 6);
+        
+        // ===== FIND DEFINITIONS FOR TERMS =====
+        for (const term of result.importantTerms) {
+            for (const sentence of sentences) {
                 const clean = sentence.trim();
-                if (clean && clean.length > 15) {
-                    points.push(clean);
+                if (clean.toLowerCase().includes(term.toLowerCase()) && 
+                    (clean.includes('is ') || clean.includes('are ') || clean.includes('means ') || 
+                     clean.includes('refers to') || clean.includes('involves') || clean.includes('includes'))) {
+                    const defMatch = clean.match(new RegExp(`${term}\\s+(?:is|are|means|refers to|involves|includes|comprises)\\s+(.+?)(?:\\.|\\!|\\?)`, 'i'));
+                    if (defMatch) {
+                        result.termDefinitions[term] = defMatch[1].trim();
+                        break;
+                    }
+                }
+            }
+            if (!result.termDefinitions[term]) {
+                // Try to find a simpler definition
+                for (const sentence of sentences) {
+                    if (sentence.toLowerCase().includes(term.toLowerCase()) && sentence.length > 30) {
+                        result.termDefinitions[term] = sentence.trim();
+                        break;
+                    }
+                }
+            }
+            if (!result.termDefinitions[term]) {
+                result.termDefinitions[term] = `a key concept in ${result.mainConcept || 'nursing practice'}`;
+            }
+        }
+        
+        // ===== GENERATE EXPLANATIONS =====
+        for (let i = 0; i < result.keyPoints.length; i++) {
+            let explanation = result.keyPoints[i];
+            // Simplify
+            explanation = explanation.replace(/^[Ii]t\s+is\s+/, '');
+            explanation = explanation.replace(/^[Tt]he\s+(?:key|main|important)\s+/, '');
+            explanation = explanation.replace(/\s+that\s+/, ' ');
+            if (explanation.length > 120) {
+                explanation = explanation.substring(0, 120) + '...';
+            }
+            result.explanations.push(explanation);
+        }
+        
+        // ===== EXTRACT NURSING-SPECIFIC TOPICS =====
+        const nursingTerms = ['assessment', 'diagnosis', 'planning', 'implementation', 'evaluation', 
+                            'patient', 'care', 'treatment', 'medication', 'surgery', 'recovery',
+                            'monitoring', 'vital signs', 'pain', 'infection', 'wound', 'nutrition',
+                            'mobility', 'communication', 'safety', 'ethics', 'advocacy'];
+        for (const term of nursingTerms) {
+            if (text.toLowerCase().includes(term) && !result.importantTerms.includes(term)) {
+                result.nursingConcepts.push(term.charAt(0).toUpperCase() + term.slice(1));
+            }
+        }
+        result.nursingConcepts = result.nursingConcepts.slice(0, 5);
+        
+        // Merge into important terms if needed
+        if (result.importantTerms.length < 3) {
+            for (const concept of result.nursingConcepts) {
+                if (!result.importantTerms.includes(concept) && !result.keyPoints.some(p => p.includes(concept))) {
+                    result.importantTerms.push(concept);
+                    result.termDefinitions[concept] = `an important concept in ${result.mainConcept || 'nursing practice'}`;
                 }
             }
         }
         
-        return points;
+        // Ensure we have at least some content
+        if (!result.mainConcept && sentences.length > 0) {
+            const firstSentence = sentences[0].trim();
+            result.mainConcept = firstSentence.substring(0, Math.min(60, firstSentence.length));
+            result.mainDefinition = firstSentence;
+        }
+        
+        if (result.keyPoints.length === 0 && sentences.length > 1) {
+            for (let i = 0; i < Math.min(4, sentences.length); i++) {
+                const clean = sentences[i].trim();
+                if (clean.length > 20) {
+                    result.keyPoints.push(clean);
+                }
+            }
+        }
+        
+        return result;
     }
     
     // ============================================================
     // 🎙️ GENERATE NOTEBOOKLM-STYLE PODCAST SCRIPT
     // ============================================================
-    // ============================================================
-// 🎙️ INTELLIGENT PODCAST GENERATOR - EXTRACTS & EXPLAINS
-// ============================================================
-
-generatePodcastScript(text, title = '') {
-    const lines = [];
     
-    // Clean the text
-    const cleanText = text.replace(/\s+/g, ' ').trim();
-    
-    // ===== STEP 1: INTELLIGENTLY EXTRACT CONTENT =====
-    const extracted = this.intelligentlyExtractContent(cleanText);
-    
-    // ===== STEP 2: GENERATE PODCAST SCRIPT =====
-    
-    // INTRO
-    lines.push({
-        speaker: 'host1',
-        text: `Welcome back to the podcast. Today we're exploring "${title || 'this topic'}".`,
-        pauseAfter: 0.7
-    });
-    lines.push({
-        speaker: 'host2',
-        text: `This is a fascinating topic. Let's dive in and really understand it.`,
-        pauseAfter: 0.6
-    });
-    lines.push({
-        speaker: 'host1',
-        text: `Absolutely. Let's start with the big picture.`,
-        pauseAfter: 0.5
-    });
-    
-    // ===== EXPLAIN MAIN CONCEPT =====
-    if (extracted.mainConcept) {
+    generatePodcastScript(text, title = '') {
+        const lines = [];
+        
+        // Clean the text
+        const cleanText = text.replace(/\s+/g, ' ').trim();
+        
+        // ===== STEP 1: INTELLIGENTLY EXTRACT CONTENT =====
+        const extracted = this.intelligentlyExtractContent(cleanText);
+        
+        console.log('📊 Extracted content:', {
+            mainConcept: extracted.mainConcept,
+            mainDefinition: extracted.mainDefinition,
+            keyPoints: extracted.keyPoints,
+            importantTerms: extracted.importantTerms
+        });
+        
+        // ===== STEP 2: GENERATE PODCAST SCRIPT =====
+        
+        // INTRO
         lines.push({
             speaker: 'host1',
-            text: `So, the core idea here is ${extracted.mainConcept}.`,
-            pauseAfter: 0.6
+            text: `Welcome back to the podcast. Today we're exploring "${title || 'this topic'}".`,
+            pauseAfter: 0.7
         });
         lines.push({
             speaker: 'host2',
-            text: `That's right. ${extracted.mainDefinition || 'Let me explain what that means.'}`,
+            text: `This is a fascinating topic. Let's dive in and really understand it.`,
             pauseAfter: 0.6
         });
-    }
-    
-    // ===== EXPLAIN KEY POINTS (NOT READ) =====
-    if (extracted.keyPoints && extracted.keyPoints.length > 0) {
-        // Host 1 introduces
         lines.push({
             speaker: 'host1',
-            text: `Let's break this down into the key things you need to know.`,
+            text: `Absolutely. Let's start with the big picture.`,
             pauseAfter: 0.5
         });
         
-        // Explain each key point (max 4)
-        const pointsToExplain = extracted.keyPoints.slice(0, 4);
-        for (let i = 0; i < pointsToExplain.length; i++) {
-            const point = pointsToExplain[i];
-            const speaker = i % 2 === 0 ? 'host2' : 'host1';
-            const otherSpeaker = i % 2 === 0 ? 'host1' : 'host2';
-            
-            // Each point becomes a mini-discussion
+        // ===== EXPLAIN MAIN CONCEPT =====
+        if (extracted.mainConcept && extracted.mainConcept.length > 5) {
             lines.push({
-                speaker: speaker,
-                text: `First, ${point}`,
-                pauseAfter: 0.5
+                speaker: 'host1',
+                text: `So, the core idea here is ${extracted.mainConcept}.`,
+                pauseAfter: 0.6
             });
-            
-            // Add context/explanation
-            if (extracted.explanations && extracted.explanations[i]) {
+            if (extracted.mainDefinition && extracted.mainDefinition.length > 10) {
+                // Shorten definition if too long
+                let def = extracted.mainDefinition;
+                if (def.length > 120) {
+                    def = def.substring(0, 120) + '...';
+                }
                 lines.push({
-                    speaker: otherSpeaker,
-                    text: `In other words, ${extracted.explanations[i]}`,
+                    speaker: 'host2',
+                    text: `That's right. ${def}`,
+                    pauseAfter: 0.6
+                });
+            } else {
+                lines.push({
+                    speaker: 'host2',
+                    text: `Let me explain what that means in simple terms.`,
                     pauseAfter: 0.5
                 });
             }
         }
-    }
-    
-    // ===== EXPLAIN IMPORTANT TERMS =====
-    if (extracted.importantTerms && extracted.importantTerms.length > 0) {
-        lines.push({
-            speaker: 'host1',
-            text: `Now, let's clarify some important terms.`,
-            pauseAfter: 0.5
-        });
         
-        for (let i = 0; i < Math.min(extracted.importantTerms.length, 3); i++) {
-            const term = extracted.importantTerms[i];
-            const definition = extracted.termDefinitions[term] || '';
-            const speaker = i % 2 === 0 ? 'host2' : 'host1';
-            
+        // ===== EXPLAIN KEY POINTS =====
+        if (extracted.keyPoints && extracted.keyPoints.length > 0) {
             lines.push({
-                speaker: speaker,
-                text: `${term} - ${definition}`,
-                pauseAfter: 0.4
+                speaker: 'host1',
+                text: `Let's break this down into the key things you need to know.`,
+                pauseAfter: 0.5
             });
+            
+            const pointsToExplain = extracted.keyPoints.slice(0, 4);
+            for (let i = 0; i < pointsToExplain.length; i++) {
+                const point = pointsToExplain[i];
+                const speaker = i % 2 === 0 ? 'host2' : 'host1';
+                const otherSpeaker = i % 2 === 0 ? 'host1' : 'host2';
+                
+                // Clean up the point for speaking
+                let cleanPoint = point.replace(/^[Ii]t\s+is\s+/, '');
+                cleanPoint = cleanPoint.replace(/^[Tt]he\s+(?:key|main|important)\s+/, '');
+                if (cleanPoint.length > 120) {
+                    cleanPoint = cleanPoint.substring(0, 120) + '...';
+                }
+                
+                lines.push({
+                    speaker: speaker,
+                    text: `First, ${cleanPoint}`,
+                    pauseAfter: 0.5
+                });
+                
+                // Add explanation
+                if (extracted.explanations && extracted.explanations[i] && extracted.explanations[i] !== point) {
+                    let exp = extracted.explanations[i];
+                    if (exp.length > 100) {
+                        exp = exp.substring(0, 100) + '...';
+                    }
+                    lines.push({
+                        speaker: otherSpeaker,
+                        text: `In other words, ${exp}`,
+                        pauseAfter: 0.5
+                    });
+                }
+            }
         }
-    }
-    
-    // ===== SUMMARIZE WHAT WAS LEARNED =====
-    lines.push({
-        speaker: 'host2',
-        text: `So, to summarize, we've learned about ${extracted.mainConcept || 'this topic'}.`,
-        pauseAfter: 0.6
-    });
-    
-    if (extracted.keyPoints && extracted.keyPoints.length > 0) {
-        const summaryPoints = extracted.keyPoints.slice(0, 2).join(' and ');
+        
+        // ===== EXPLAIN IMPORTANT TERMS =====
+        if (extracted.importantTerms && extracted.importantTerms.length > 0) {
+            const termsToExplain = extracted.importantTerms.filter(t => t && t.length > 2).slice(0, 3);
+            if (termsToExplain.length > 0) {
+                lines.push({
+                    speaker: 'host1',
+                    text: `Now, let's clarify some important terms.`,
+                    pauseAfter: 0.5
+                });
+                
+                for (let i = 0; i < termsToExplain.length; i++) {
+                    const term = termsToExplain[i];
+                    const definition = extracted.termDefinitions[term] || `an important concept in ${title || 'this topic'}`;
+                    const speaker = i % 2 === 0 ? 'host2' : 'host1';
+                    
+                    let cleanDef = definition;
+                    if (cleanDef.length > 100) {
+                        cleanDef = cleanDef.substring(0, 100) + '...';
+                    }
+                    
+                    lines.push({
+                        speaker: speaker,
+                        text: `${term} - ${cleanDef}`,
+                        pauseAfter: 0.4
+                    });
+                }
+            }
+        }
+        
+        // ===== SUMMARIZE =====
         lines.push({
-            speaker: 'host1',
-            text: `The main takeaways are ${summaryPoints.toLowerCase()}.`,
+            speaker: 'host2',
+            text: `So, to summarize, we've learned about ${extracted.mainConcept || 'this topic'}.`,
             pauseAfter: 0.6
         });
-    }
-    
-    // OUTRO
-    lines.push({
-        speaker: 'host2',
-        text: `I hope this explanation helped you understand ${title || 'this topic'} better.`,
-        pauseAfter: 0.5
-    });
-    lines.push({
-        speaker: 'host1',
-        text: `Thanks for listening! If you found this helpful, check out more resources.`,
-        pauseAfter: 0.4
-    });
-    lines.push({
-        speaker: 'host2',
-        text: `Until next time, keep learning and stay curious!`,
-        pauseAfter: 0.0
-    });
-    
-    return lines;
-}
-
-// ============================================================
-// 🎯 INTELLIGENT CONTENT EXTRACTION
-// ============================================================
-
-intelligentlyExtractContent(text) {
-    const result = {
-        mainConcept: '',
-        mainDefinition: '',
-        keyPoints: [],
-        explanations: [],
-        importantTerms: [],
-        termDefinitions: {}
-    };
-    
-    // Split into sentences
-    const sentences = text.match(/[^.!?]+[.!?]+/g) || [text];
-    
-    // ===== FIND MAIN CONCEPT =====
-    // Look for first sentence that defines something
-    for (const sentence of sentences) {
-        const clean = sentence.trim();
-        // Check for definition patterns
-        const defMatch = clean.match(/^([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\s+(?:is|are|refers to|means|involves|includes|comprises)\s+(.+)/i);
-        if (defMatch) {
-            result.mainConcept = defMatch[1].trim();
-            result.mainDefinition = defMatch[2].trim();
-            break;
-        }
-    }
-    
-    // If no definition found, use first meaningful sentence
-    if (!result.mainConcept) {
-        for (const sentence of sentences) {
-            const clean = sentence.trim();
-            if (clean.length > 20 && clean.length < 200) {
-                const words = clean.split(' ');
-                // Get the first capitalized phrase as concept
-                const conceptMatch = clean.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/);
-                if (conceptMatch && conceptMatch[1].length > 3) {
-                    result.mainConcept = conceptMatch[1];
-                    result.mainDefinition = clean;
-                    break;
-                }
+        
+        if (extracted.keyPoints && extracted.keyPoints.length > 0) {
+            const summaryPoints = extracted.keyPoints.slice(0, 2).join(' and ');
+            let cleanSummary = summaryPoints;
+            if (cleanSummary.length > 100) {
+                cleanSummary = cleanSummary.substring(0, 100) + '...';
             }
+            lines.push({
+                speaker: 'host1',
+                text: `The main takeaways are ${cleanSummary.toLowerCase()}.`,
+                pauseAfter: 0.6
+            });
         }
+        
+        // OUTRO
+        lines.push({
+            speaker: 'host2',
+            text: `I hope this explanation helped you understand ${title || 'this topic'} better.`,
+            pauseAfter: 0.5
+        });
+        lines.push({
+            speaker: 'host1',
+            text: `Thanks for listening! If you found this helpful, check out more resources.`,
+            pauseAfter: 0.4
+        });
+        lines.push({
+            speaker: 'host2',
+            text: `Until next time, keep learning and stay curious!`,
+            pauseAfter: 0.0
+        });
+        
+        return lines;
     }
-    
-    // ===== EXTRACT KEY POINTS =====
-    // Look for bullet points
-    const bulletMatches = text.match(/[•\-*]\s*([^.!?]+[.!?]?)/g) || [];
-    for (const bullet of bulletMatches) {
-        const clean = bullet.replace(/[•\-*]\s*/, '').trim();
-        if (clean && clean.length > 10 && clean.length < 150) {
-            result.keyPoints.push(clean);
-        }
-    }
-    
-    // If no bullet points, find important sentences
-    if (result.keyPoints.length === 0) {
-        const importantKeywords = ['important', 'key', 'essential', 'critical', 'significant', 'fundamental', 'crucial'];
-        for (const sentence of sentences) {
-            const clean = sentence.trim();
-            if (clean.length > 20) {
-                const lower = clean.toLowerCase();
-                if (importantKeywords.some(kw => lower.includes(kw))) {
-                    // Extract the key part
-                    let point = clean;
-                    for (const kw of importantKeywords) {
-                        if (lower.includes(kw)) {
-                            const idx = lower.indexOf(kw);
-                            const start = Math.max(0, idx - 5);
-                            point = clean.substring(start).trim();
-                            break;
-                        }
-                    }
-                    if (point.length > 15 && point.length < 200) {
-                        result.keyPoints.push(point);
-                    }
-                }
-            }
-        }
-    }
-    
-    // ===== EXTRACT IMPORTANT TERMS =====
-    // Look for capitalized terms
-    const termMatches = text.match(/\b([A-Z][a-z]+(?:\s+[A-Z][a-z]+)*)\b/g) || [];
-    const uniqueTerms = [...new Set(termMatches)];
-    const filteredTerms = uniqueTerms.filter(term => 
-        term.length > 3 && 
-        term.length < 40 &&
-        !['This', 'That', 'These', 'Those', 'There', 'Their', 'They'].includes(term) &&
-        !result.keyPoints.some(point => point.includes(term))
-    );
-    result.importantTerms = filteredTerms.slice(0, 5);
-    
-    // ===== FIND DEFINITIONS FOR TERMS =====
-    for (const term of result.importantTerms) {
-        for (const sentence of sentences) {
-            const clean = sentence.trim();
-            if (clean.toLowerCase().includes(term.toLowerCase()) && 
-                (clean.includes('is ') || clean.includes('are ') || clean.includes('means '))) {
-                const defMatch = clean.match(new RegExp(`${term}\\s+(?:is|are|means|refers to|involves)\\s+(.+?)(?:\\.|\\!|\\?)`, 'i'));
-                if (defMatch) {
-                    result.termDefinitions[term] = defMatch[1].trim();
-                    break;
-                }
-            }
-        }
-        // If no definition found, use a simple one
-        if (!result.termDefinitions[term]) {
-            result.termDefinitions[term] = `a key concept in ${result.mainConcept || 'this topic'}`;
-        }
-    }
-    
-    // ===== GENERATE EXPLANATIONS FOR KEY POINTS =====
-    for (let i = 0; i < result.keyPoints.length; i++) {
-        const point = result.keyPoints[i];
-        // Simplify/explain the point
-        let explanation = point;
-        // Remove redundant phrases
-        explanation = explanation.replace(/^[Ii]t\s+is\s+/, '');
-        explanation = explanation.replace(/^[Tt]he\s+(?:key|main|important)\s+/, '');
-        explanation = explanation.replace(/\s+that\s+/, ' ');
-        if (explanation.length > 100) {
-            explanation = explanation.substring(0, 100) + '...';
-        }
-        result.explanations.push(explanation);
-    }
-    
-    // Ensure we have at least some content
-    if (!result.mainConcept && sentences.length > 0) {
-        const firstSentence = sentences[0].trim();
-        result.mainConcept = firstSentence.substring(0, 50);
-        result.mainDefinition = firstSentence;
-    }
-    
-    if (result.keyPoints.length === 0 && sentences.length > 1) {
-        for (let i = 0; i < Math.min(3, sentences.length); i++) {
-            const clean = sentences[i].trim();
-            if (clean.length > 20) {
-                result.keyPoints.push(clean);
-            }
-        }
-    }
-    
-    return result;
-}
-
-// ============================================================
-// 🎙️ OVERRIDE extractKeyConcepts to use new extraction
-// ============================================================
-
-extractKeyConcepts(text) {
-    const extracted = this.intelligentlyExtractContent(text);
-    const concepts = [extracted.mainConcept];
-    
-    // Add important terms
-    for (const term of extracted.importantTerms) {
-        if (!concepts.includes(term)) {
-            concepts.push(term);
-        }
-    }
-    
-    // Add key points as concepts
-    for (const point of extracted.keyPoints.slice(0, 3)) {
-        const shortPoint = point.substring(0, 50);
-        if (!concepts.some(c => c.includes(shortPoint.substring(0, 20)))) {
-            concepts.push(shortPoint);
-        }
-    }
-    
-    return concepts.filter(c => c && c.length > 3).slice(0, 8);
-}
     
     // ============================================================
     // 🎙️ PLAY NOTEBOOKLM-STYLE PODCAST
