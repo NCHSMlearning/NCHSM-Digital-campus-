@@ -121,88 +121,89 @@ window.NCHSMLogin = {
     // ===== STAFF RECORDS =====
     staffRecords: [],
 
+    // ============================================
+    // INITIALIZATION - FIXED
+    // ============================================
     init: function() {
-    if (this.state.isInitialized) {
-        console.log('⚠️ NCHSMLogin already initialized');
-        return;
-    }
-    
-    console.log('🚀 Initializing NCHSMLogin v5.1...');
-    console.log('🛡️ Ultimate Security Edition + 2FA');
-    console.log('🔐 Authenticator App Support Enabled');
-    
-    this.disableDeveloperTools();
-    
-    if (typeof feather !== 'undefined') {
-        feather.replace();
-    }
-    
-    // ============================================
-    // FIXED: Initialize Supabase FIRST
-    // ============================================
-    this.initSupabase();
-    
-    // ============================================
-    // THEN load staff records (depends on Supabase)
-    // ============================================
-    // Use a promise to ensure it loads
-    this.loadStaffRecords().then(() => {
-        console.log('✅ Staff records loaded');
-    }).catch(err => {
-        console.warn('⚠️ Could not load staff records:', err);
-    });
-    
-    // ============================================
-    // THEN generate CSRF token (depends on DOM)
-    // ============================================
-    // Make sure DOM is ready
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
+        if (this.state.isInitialized) {
+            console.log('⚠️ NCHSMLogin already initialized');
+            return;
+        }
+        
+        console.log('🚀 Initializing NCHSMLogin v5.1...');
+        console.log('🛡️ Ultimate Security Edition + 2FA');
+        console.log('🔐 Authenticator App Support Enabled');
+        
+        this.disableDeveloperTools();
+        
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
+        
+        // ============================================
+        // FIXED: Initialize Supabase FIRST
+        // ============================================
+        this.initSupabase();
+        
+        // ============================================
+        // THEN load staff records (depends on Supabase)
+        // ============================================
+        this.loadStaffRecords().then(() => {
+            console.log('✅ Staff records loaded');
+        }).catch(err => {
+            console.warn('⚠️ Could not load staff records:', err);
+        });
+        
+        // ============================================
+        // THEN generate CSRF token (depends on DOM)
+        // ============================================
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', () => {
+                this.generateCSRFToken();
+                this.addHoneypot();
+            });
+        } else {
             this.generateCSRFToken();
             this.addHoneypot();
-        });
-    } else {
-        this.generateCSRFToken();
-        this.addHoneypot();
-    }
-    
-    // ============================================
-    // Initialize everything else
-    // ============================================
-    this.checkTrustedDevice();
-    this.initPasswordToggle();
-    this.initPasswordStrength();
-    this.initLoginForm();
-    this.initModals();
-    this.initFocusManagement();
-    this.initVirtualKeyboardHandler();
-    this.clearURLParameters();
-    this.startSessionMonitoring();
-    this.initNetworkStatus();
-    this.initOTPInputs();
-    this.initRippleEffect();
-    this.hideSkeletonLoader();
-    this.initThemeToggle();
-    this.initGoogleLogin();
-    
-    this.loadBrevoApiKey().then(success => {
-        if (success) {
-            console.log('✅ Brevo integration ready');
-        } else {
-            console.warn('⚠️ Brevo integration not available');
         }
-    });
-    
-    setTimeout(() => {
-        this.update2FAButtonStatus();
-    }, 1000);
-    
-    this.state.isInitialized = true;
-    
-    console.log('✅ NCHSMLogin v5.1 initialized');
-    console.log('🔐 2FA enforcement: ENABLED');
-    console.log(`🕐 ${new Date().toLocaleString()}`);
-},
+        
+        // ============================================
+        // Initialize everything else
+        // ============================================
+        this.checkTrustedDevice();
+        this.initPasswordToggle();
+        this.initPasswordStrength();
+        this.initLoginForm();
+        this.initModals();
+        this.initFocusManagement();
+        this.initVirtualKeyboardHandler();
+        this.clearURLParameters();
+        this.startSessionMonitoring();
+        this.initNetworkStatus();
+        this.initOTPInputs();
+        this.initRippleEffect();
+        this.hideSkeletonLoader();
+        this.initThemeToggle();
+        this.initGoogleLogin();
+        
+        this.loadBrevoApiKey().then(success => {
+            if (success) {
+                console.log('✅ Brevo integration ready');
+            } else {
+                console.warn('⚠️ Brevo integration not available');
+            }
+        });
+        
+        setTimeout(() => {
+            this.update2FAButtonStatus();
+        }, 1000);
+        
+        this.state.isInitialized = true;
+        
+        console.log('✅ NCHSMLogin v5.1 initialized');
+        console.log('🔐 2FA enforcement: ENABLED');
+        console.log(`🕐 ${new Date().toLocaleString()}`);
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // UPDATE 2FA BUTTON STATUS
@@ -214,6 +215,8 @@ window.NCHSMLogin = {
             
             const profile = JSON.parse(userProfile);
             if (!profile.user_id) return;
+            
+            if (!this.supabase) return;
             
             const { data, error } = await this.supabase
                 .from('consolidated_user_profiles_table')
@@ -242,7 +245,7 @@ window.NCHSMLogin = {
         } catch (e) {
             console.log('⚠️ Could not update 2FA button status');
         }
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // THEME TOGGLE
@@ -266,7 +269,7 @@ window.NCHSMLogin = {
             this.applyTheme(newTheme);
             localStorage.setItem('nchsm_theme', newTheme);
         });
-    },
+    }, // ✅ COMMA ADDED
     
     applyTheme: function(theme) {
         const themeIcon = document.getElementById('themeIcon');
@@ -285,13 +288,15 @@ window.NCHSMLogin = {
         }
         
         if (typeof feather !== 'undefined') feather.replace();
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // LOAD BREVO API KEY
     // ============================================
     loadBrevoApiKey: async function() {
         try {
+            if (!this.supabase) return false;
+            
             const cached = sessionStorage.getItem('brevo_api_key');
             if (cached) {
                 this.brevo.apiKey = cached;
@@ -320,7 +325,7 @@ window.NCHSMLogin = {
             console.error('❌ Failed to load Brevo API key:', error);
             return false;
         }
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // 2FA FUNCTIONS - AUTHENTICATOR APP SUPPORT
@@ -328,6 +333,8 @@ window.NCHSMLogin = {
     
     check2FARequirement: async function(userId) {
         try {
+            if (!this.supabase) return false;
+            
             const { data, error } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('two_factor_enabled, two_factor_secret')
@@ -343,10 +350,12 @@ window.NCHSMLogin = {
         } catch (e) {
             return false;
         }
-    },
+    }, // ✅ COMMA ADDED
 
     generate2FASecret: async function(userId) {
         try {
+            if (!this.supabase) return null;
+            
             if (typeof otplib === 'undefined') {
                 const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
                 let secret = '';
@@ -382,10 +391,12 @@ window.NCHSMLogin = {
             console.error('Error generating 2FA secret:', error);
             return null;
         }
-    },
+    }, // ✅ COMMA ADDED
 
     get2FASecret: async function(userId) {
         try {
+            if (!this.supabase) return null;
+            
             const { data, error } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .select('two_factor_secret, two_factor_enabled')
@@ -398,7 +409,7 @@ window.NCHSMLogin = {
             console.error('Error getting 2FA secret:', error);
             return null;
         }
-    },
+    }, // ✅ COMMA ADDED
 
     verifyTOTP: function(secret, token) {
         try {
@@ -412,7 +423,7 @@ window.NCHSMLogin = {
             console.error('Error verifying TOTP:', error);
             return false;
         }
-    },
+    }, // ✅ COMMA ADDED
 
     show2FASetup: async function(userId, email) {
         try {
@@ -449,10 +460,12 @@ window.NCHSMLogin = {
             console.error('Error showing 2FA setup:', error);
             this.showError('Error setting up 2FA');
         }
-    },
+    }, // ✅ COMMA ADDED
 
     enable2FA: async function(userId, token) {
         try {
+            if (!this.supabase) return false;
+            
             const result = await this.get2FASecret(userId);
             if (!result || !result.two_factor_secret) {
                 this.showError('No 2FA secret found');
@@ -489,7 +502,7 @@ window.NCHSMLogin = {
             this.showError('Error enabling 2FA');
             return false;
         }
-    },
+    }, // ✅ COMMA ADDED
 
     show2FAModal: function() {
         this.openModal('twoFactorModal');
@@ -504,7 +517,7 @@ window.NCHSMLogin = {
         if (verifyBtn) {
             verifyBtn.onclick = () => this.handle2FAVerification();
         }
-    },
+    }, // ✅ COMMA ADDED
 
     handle2FAVerification: async function() {
         const digits = document.querySelectorAll('#twoFactorModal .otp-digit');
@@ -555,7 +568,7 @@ window.NCHSMLogin = {
             console.error('2FA verification error:', error);
             this.showError('Error verifying 2FA code');
         }
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // SESSION TRACKING
@@ -618,7 +631,7 @@ window.NCHSMLogin = {
             console.error('❌ Session tracking error:', error);
             return null;
         }
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // COMPLETE LOGIN - FIXED
@@ -631,6 +644,8 @@ window.NCHSMLogin = {
             
             if (isStaff && typeof profileData.user_id === 'string' && profileData.user_id.startsWith('STAFF')) {
                 try {
+                    if (!this.supabase) return;
+                    
                     const { data: profile, error } = await this.supabase
                         .from('consolidated_user_profiles_table')
                         .select('user_id')
@@ -655,7 +670,6 @@ window.NCHSMLogin = {
                 isStaff
             );
             
-            // FIXED: Clean profile object with no undefined values
             const safeProfile = {
                 user_id: userIdForSession || profileData.user_id || null,
                 staff_id: profileData.staff_id || profileData.id || null,
@@ -668,7 +682,6 @@ window.NCHSMLogin = {
                 two_factor_verified: profileData.two_factor_verified || false
             };
             
-            // Remove any undefined values
             Object.keys(safeProfile).forEach(key => {
                 if (safeProfile[key] === undefined) {
                     safeProfile[key] = null;
@@ -702,13 +715,15 @@ window.NCHSMLogin = {
             console.error('❌ Complete login error:', error);
             this.showError('Error completing login: ' + error.message);
         }
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // FORCE UPDATE LOGIN COUNT
     // ============================================
     forceUpdateLoginCount: async function(userId) {
         try {
+            if (!this.supabase) return false;
+            
             const { data: sessions, error: sessionsError } = await this.supabase
                 .from('user_sessions')
                 .select('id')
@@ -741,7 +756,7 @@ window.NCHSMLogin = {
             console.error('❌ Force update error:', error);
             return false;
         }
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // SEND LOGIN NOTIFICATION
@@ -812,7 +827,7 @@ window.NCHSMLogin = {
         } catch(e) {
             console.warn('⚠️ Login notification error:', e);
         }
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // HIDE SKELETON LOADER
@@ -824,7 +839,7 @@ window.NCHSMLogin = {
                 skeleton.classList.remove('active');
             }, 1000);
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // RIPPLE EFFECT
@@ -847,7 +862,7 @@ window.NCHSMLogin = {
                 }, 600);
             });
         });
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // 2FA OTP INPUT
@@ -954,7 +969,7 @@ window.NCHSMLogin = {
         });
         
         console.log('✅ 2FA OTP Inputs initialized');
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // LOAD STAFF RECORDS
@@ -976,7 +991,7 @@ window.NCHSMLogin = {
         } catch (error) {
             console.error('Error loading staff records:', error);
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // DISABLE DEVELOPER TOOLS
@@ -1017,9 +1032,9 @@ window.NCHSMLogin = {
             }
             originalConsoleTable.apply(console, args);
         };
-    },
+    }, // ✅ COMMA ADDED
     
-// ============================================
+    // ============================================
     // CSRF TOKEN MANAGEMENT - FIXED
     // ============================================
     generateCSRFToken: function() {
@@ -1040,7 +1055,7 @@ window.NCHSMLogin = {
                 csrfInput.value = this.csrfToken;
             }
         }
-    },
+    }, // ✅ COMMA ADDED
     
     validateCSRFToken: function(token) {
         if (!this.security.csrfProtection) return true;
@@ -1051,8 +1066,7 @@ window.NCHSMLogin = {
             return false;
         }
         return true;
-    },
-    
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // CLEAR URL PARAMETERS
@@ -1063,7 +1077,7 @@ window.NCHSMLogin = {
                 window.location.host + window.location.pathname;
             window.history.replaceState({}, document.title, cleanUrl);
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // HONEYPOT
@@ -1080,7 +1094,7 @@ window.NCHSMLogin = {
             `;
             form.appendChild(honeypot.firstElementChild);
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // RATE LIMITING
@@ -1108,11 +1122,11 @@ window.NCHSMLogin = {
         }
         
         return false;
-    },
+    }, // ✅ COMMA ADDED
     
     addRateLimitRequest: function() {
         this.rateLimit.requests.push(Date.now());
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // FAILED ATTEMPTS
@@ -1135,7 +1149,7 @@ window.NCHSMLogin = {
             }
         }
         return false;
-    },
+    }, // ✅ COMMA ADDED
     
     recordFailedAttempt: function() {
         this.state.failedAttempts++;
@@ -1144,7 +1158,7 @@ window.NCHSMLogin = {
         
         sessionStorage.setItem('failedAttempts', this.state.failedAttempts);
         sessionStorage.setItem('lastFailedTime', this.state.lastFailedTime);
-    },
+    }, // ✅ COMMA ADDED
     
     resetFailedAttempts: function() {
         this.state.failedAttempts = 0;
@@ -1152,7 +1166,7 @@ window.NCHSMLogin = {
         this.updateAttemptsDisplay(this.state.maxAttempts);
         sessionStorage.removeItem('failedAttempts');
         sessionStorage.removeItem('lastFailedTime');
-    },
+    }, // ✅ COMMA ADDED
     
     updateAttemptsDisplay: function(remaining) {
         const attemptsInfo = document.getElementById('attemptsInfo');
@@ -1177,7 +1191,7 @@ window.NCHSMLogin = {
                 }
             }
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // SECURE TOKEN
@@ -1186,7 +1200,7 @@ window.NCHSMLogin = {
         const array = new Uint8Array(32);
         crypto.getRandomValues(array);
         return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // SUPABASE INIT
@@ -1216,7 +1230,7 @@ window.NCHSMLogin = {
         } catch (error) {
             console.error('❌ Supabase error:', error);
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // PASSWORD TOGGLE
@@ -1247,7 +1261,7 @@ window.NCHSMLogin = {
                 toggleButton.click();
             }
         });
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // PASSWORD STRENGTH METER
@@ -1302,7 +1316,7 @@ window.NCHSMLogin = {
                 strengthText.style.color = result.color;
             }
         });
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // LOGIN FORM
@@ -1353,7 +1367,7 @@ window.NCHSMLogin = {
                 }
             });
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // RESET FORM
@@ -1379,7 +1393,7 @@ window.NCHSMLogin = {
             this.showSuccess('Form reset successfully');
             setTimeout(() => this.clearSuccess(), 3000);
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // VALIDATION
@@ -1387,7 +1401,7 @@ window.NCHSMLogin = {
     validateEmail: function(email) {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(email);
-    },
+    }, // ✅ COMMA ADDED
     
     validateField: function(e) {
         const input = e.target;
@@ -1405,12 +1419,12 @@ window.NCHSMLogin = {
         
         input.classList.remove('error');
         return true;
-    },
+    }, // ✅ COMMA ADDED
     
     clearFieldError: function(e) {
         e.target.classList.remove('error');
         this.clearError();
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // MODALS
@@ -1431,7 +1445,7 @@ window.NCHSMLogin = {
                 }
             });
         });
-    },
+    }, // ✅ COMMA ADDED
     
     openModal: function(modalId) {
         const modal = document.getElementById(modalId);
@@ -1444,7 +1458,7 @@ window.NCHSMLogin = {
                 setTimeout(() => firstInput.focus(), 100);
             }
         }
-    },
+    }, // ✅ COMMA ADDED
     
     closeModal: function(modalId) {
         const modal = document.getElementById(modalId);
@@ -1453,7 +1467,7 @@ window.NCHSMLogin = {
             modal.classList.remove('active');
             document.body.style.overflow = '';
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // FOCUS MANAGEMENT
@@ -1464,7 +1478,7 @@ window.NCHSMLogin = {
                 this.trapFocus(e);
             }
         });
-    },
+    }, // ✅ COMMA ADDED
     
     trapFocus: function(e) {
         const modal = document.querySelector('.modal-overlay.active');
@@ -1487,7 +1501,7 @@ window.NCHSMLogin = {
                 firstFocusable.focus();
             }
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // VIRTUAL KEYBOARD
@@ -1509,7 +1523,7 @@ window.NCHSMLogin = {
                 document.body.style.paddingBottom = '0';
             }
         });
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // NETWORK STATUS
@@ -1518,7 +1532,7 @@ window.NCHSMLogin = {
         this.updateOnlineStatus();
         window.addEventListener('online', () => this.updateOnlineStatus());
         window.addEventListener('offline', () => this.updateOnlineStatus());
-    },
+    }, // ✅ COMMA ADDED
     
     updateOnlineStatus: function() {
         const isOnline = navigator.onLine;
@@ -1527,7 +1541,7 @@ window.NCHSMLogin = {
         if (!isOnline) {
             this.showError('You are offline. Please check your connection.');
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // TRUSTED DEVICE
@@ -1543,7 +1557,7 @@ window.NCHSMLogin = {
                 this.redirectToDashboard(profile);
             }
         }
-    },
+    }, // ✅ COMMA ADDED
     
     generateDeviceId: function() {
         const data = [
@@ -1560,142 +1574,161 @@ window.NCHSMLogin = {
             hash |= 0;
         }
         return Math.abs(hash).toString(16);
-    },
+    }, // ✅ COMMA ADDED
     
+    // ============================================
+    // STAFF LOGIN - FIXED
+    // ============================================
     verifyStaffLogin: async function(identifier, password) {
-    try {
-        const staff = this.staffRecords.find(s => 
-            s.email === identifier || s.id === identifier
-        );
-        
-        if (!staff) {
-            console.log('❌ Staff not found:', identifier);
-            return null;
-        }
-        
-        // ============================================
-        // FIXED: Handle password verification properly
-        // ============================================
-        let storedPassword = staff.password_hash;
-        
-        // Check if it's base64 encoded
         try {
-            // Try to decode if it's base64
-            const decoded = atob(storedPassword);
-            storedPassword = decoded;
-        } catch (e) {
-            // Not base64 encoded, use as-is
-            console.log('📝 Password not base64 encoded, using raw');
-        }
-        
-        // Simple comparison (you should use bcrypt in production)
-        if (storedPassword !== password) {
-            console.log('❌ Password mismatch for:', identifier);
+            const staff = this.staffRecords.find(s => 
+                s.email === identifier || s.id === identifier
+            );
+            
+            if (!staff) {
+                console.log('❌ Staff not found:', identifier);
+                return null;
+            }
+            
+            let storedPassword = staff.password_hash;
+            
+            try {
+                const decoded = atob(storedPassword);
+                storedPassword = decoded;
+            } catch (e) {
+                console.log('📝 Password not base64 encoded, using raw');
+            }
+            
+            if (storedPassword !== password) {
+                console.log('❌ Password mismatch for:', identifier);
+                return null;
+            }
+            
+            let uuid = staff.id;
+            try {
+                if (this.supabase) {
+                    const { data: profile } = await this.supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id')
+                        .eq('email', staff.email)
+                        .single();
+                    
+                    if (profile?.user_id) {
+                        uuid = profile.user_id;
+                        console.log('✅ Found UUID for staff:', uuid);
+                    }
+                }
+            } catch (e) {
+                console.log('⚠️ Could not get UUID, using staff ID:', staff.id);
+            }
+            
+            return {
+                user_id: uuid,
+                staff_id: staff.id,
+                id: staff.id,
+                email: staff.email,
+                full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
+                role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
+                program: staff.department,
+                is_staff: true,
+                staff_record: staff
+            };
+        } catch (error) {
+            console.error('❌ Staff verification error:', error);
             return null;
         }
-        
-        // ... rest of function
-    } catch (error) {
-        console.error('❌ Staff verification error:', error);
-        return null;
-    }
-}
+    }, // ✅ COMMA ADDED
 
     // ============================================
-    // EXECUTE LOGIN - FIXED
+    // EXECUTE LOGIN - FIXED (NO AUTO-CREATE)
     // ============================================
-  // ============================================
-// EXECUTE LOGIN - FIXED (NO AUTO-CREATE)
-// ============================================
-executeLogin: async function(identifier, password) {
-    if (!this.supabase) {
-        throw new Error('Authentication service not available');
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
-    
-    let profileData = null;
-    let isStaff = false;
-    
-    const staffProfile = await this.verifyStaffLogin(identifier, password);
-    if (staffProfile) {
-        console.log('✅ Staff login successful:', staffProfile.email);
-        profileData = staffProfile;
-        isStaff = true;
-        return { profileData, isStaff };
-    }
-    
-    console.log('🔐 Checking student login for:', identifier);
-    
-    try {
-        const { data: authData, error: authError } = await this.supabase.auth
-            .signInWithPassword({ 
-                email: identifier, 
-                password 
-            });
+    executeLogin: async function(identifier, password) {
+        if (!this.supabase) {
+            throw new Error('Authentication service not available');
+        }
         
-        if (authError) {
-            this.recordFailedAttempt();
-            if (authError.message.includes('Invalid login credentials')) {
-                throw new Error('Invalid email or password');
-            } else if (authError.message.includes('Email not confirmed')) {
-                throw new Error('Please verify your email');
-            } else {
-                throw new Error('Login failed. Please try again.');
+        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
+        
+        let profileData = null;
+        let isStaff = false;
+        
+        const staffProfile = await this.verifyStaffLogin(identifier, password);
+        if (staffProfile) {
+            console.log('✅ Staff login successful:', staffProfile.email);
+            profileData = staffProfile;
+            isStaff = true;
+            return { profileData, isStaff };
+        }
+        
+        console.log('🔐 Checking student login for:', identifier);
+        
+        try {
+            const { data: authData, error: authError } = await this.supabase.auth
+                .signInWithPassword({ 
+                    email: identifier, 
+                    password 
+                });
+            
+            if (authError) {
+                this.recordFailedAttempt();
+                if (authError.message.includes('Invalid login credentials')) {
+                    throw new Error('Invalid email or password');
+                } else if (authError.message.includes('Email not confirmed')) {
+                    throw new Error('Please verify your email');
+                } else {
+                    throw new Error('Login failed. Please try again.');
+                }
             }
+            
+            if (!authData.user) {
+                throw new Error('No user found');
+            }
+            
+            console.log('✅ Supabase Auth successful for:', identifier);
+            
+            const { data: profile, error: profileError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
+                .eq('email', identifier)
+                .maybeSingle();
+            
+            if (profileError) {
+                console.error('❌ Profile error:', profileError);
+                await this.supabase.auth.signOut();
+                throw new Error('Error loading profile: ' + profileError.message);
+            }
+            
+            if (!profile) {
+                console.error('❌ No profile found for:', identifier);
+                await this.supabase.auth.signOut();
+                throw new Error('Account not found. Please contact support or register first.');
+            }
+            
+            const validStatuses = ['approved', 'active'];
+            if (!validStatuses.includes(profile.status?.toLowerCase())) {
+                await this.supabase.auth.signOut();
+                throw new Error('Account pending approval. Please wait.');
+            }
+            
+            return { 
+                profileData: {
+                    user_id: profile.user_id,
+                    email: profile.email,
+                    full_name: profile.full_name || 'Student',
+                    role: profile.role || 'student',
+                    program: profile.program || profile.department,
+                    staff_id: profile.staff_id || null,
+                    is_staff: false,
+                    two_factor_enabled: profile.two_factor_enabled || false,
+                    two_factor_verified: profile.two_factor_verified || false
+                }, 
+                isStaff: false 
+            };
+        } catch (error) {
+            console.error('❌ Student login error:', error);
+            throw error;
         }
-        
-        if (!authData.user) {
-            throw new Error('No user found');
-        }
-        
-        console.log('✅ Supabase Auth successful for:', identifier);
-        
-        // FIXED: Select specific columns only - NO AUTO-CREATE
-        const { data: profile, error: profileError } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
-            .eq('email', identifier)
-            .maybeSingle();
-        
-        if (profileError) {
-            console.error('❌ Profile error:', profileError);
-            await this.supabase.auth.signOut();
-            throw new Error('Error loading profile: ' + profileError.message);
-        }
-        
-        // FIXED: No auto-create - just throw error if profile missing
-        if (!profile) {
-            console.error('❌ No profile found for:', identifier);
-            await this.supabase.auth.signOut();
-            throw new Error('Account not found. Please contact support or register first.');
-        }
-        
-        const validStatuses = ['approved', 'active'];
-        if (!validStatuses.includes(profile.status?.toLowerCase())) {
-            await this.supabase.auth.signOut();
-            throw new Error('Account pending approval. Please wait.');
-        }
-        
-        return { 
-            profileData: {
-                user_id: profile.user_id,
-                email: profile.email,
-                full_name: profile.full_name || 'Student',
-                role: profile.role || 'student',
-                program: profile.program || profile.department,
-                staff_id: profile.staff_id || null,
-                is_staff: false,
-                two_factor_enabled: profile.two_factor_enabled || false,
-                two_factor_verified: profile.two_factor_verified || false
-            }, 
-            isStaff: false 
-        };
-    } catch (error) {
-        console.error('❌ Student login error:', error);
-        throw error;
-    }
-}
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // LOGIN HANDLER - WITH 2FA SUPPORT
@@ -1794,7 +1827,7 @@ executeLogin: async function(identifier, password) {
             loginButton.disabled = false;
             buttonText.textContent = 'Sign In';
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // SESSION MANAGEMENT
@@ -1803,7 +1836,7 @@ executeLogin: async function(identifier, password) {
         this.sessionCheckInterval = setInterval(() => {
             this.checkSessionHealth();
         }, 30000);
-    },
+    }, // ✅ COMMA ADDED
     
     checkSessionHealth: function() {
         const sessionExpires = localStorage.getItem('session_expires');
@@ -1819,7 +1852,7 @@ executeLogin: async function(identifier, password) {
                 this.forceLogout('Your session has expired');
             }
         }
-    },
+    }, // ✅ COMMA ADDED
     
     showSessionWarning: function() {
         const warning = document.getElementById('sessionWarning');
@@ -1834,7 +1867,7 @@ executeLogin: async function(identifier, password) {
             timer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             warning.style.display = 'block';
         }
-    },
+    }, // ✅ COMMA ADDED
     
     extendSession: function() {
         const expires = new Date();
@@ -1858,7 +1891,7 @@ executeLogin: async function(identifier, password) {
                 })
                 .catch(() => {});
         }
-    },
+    }, // ✅ COMMA ADDED
     
     forceLogout: function(message) {
         localStorage.removeItem('userProfile');
@@ -1873,7 +1906,7 @@ executeLogin: async function(identifier, password) {
         setTimeout(() => {
             window.location.href = 'login.html';
         }, 2000);
-    },
+    }, // ✅ COMMA ADDED
     
     hashToken: async function(token) {
         const encoder = new TextEncoder();
@@ -1881,7 +1914,7 @@ executeLogin: async function(identifier, password) {
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    },
+    }, // ✅ COMMA ADDED
     
     parseUserAgent: function(userAgent) {
         if (!userAgent) return 'Unknown';
@@ -1906,7 +1939,7 @@ executeLogin: async function(identifier, password) {
         else if (ua.includes('tablet')) device = 'Tablet';
         
         return `${browser} on ${os} (${device})`;
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // UPDATE LAST LOGIN
@@ -1952,7 +1985,7 @@ executeLogin: async function(identifier, password) {
             console.error('❌ updateLastLogin exception:', error);
             return false;
         }
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // UPDATE LAST LOGIN INFO - FIXED
@@ -1984,53 +2017,54 @@ executeLogin: async function(identifier, password) {
                 return;
             }
             
-            this.supabase
-                .from('user_sessions')
-                .select('login_time, device_info, ip_address')
-                .eq('user_id', userId)
-                .order('login_time', { ascending: false })
-                .limit(2)
-                .then(({ data, error }) => {
-                    if (error || !data || data.length < 2) {
+            if (this.supabase) {
+                this.supabase
+                    .from('user_sessions')
+                    .select('login_time, device_info, ip_address')
+                    .eq('user_id', userId)
+                    .order('login_time', { ascending: false })
+                    .limit(2)
+                    .then(({ data, error }) => {
+                        if (error || !data || data.length < 2) {
+                            info.innerHTML = `
+                                <i data-feather="clock"></i>
+                                <span>Welcome ${profile.full_name || 'User'}!</span>
+                            `;
+                        } else {
+                            const previousLogin = data[1];
+                            const loginDate = new Date(previousLogin.login_time);
+                            const timeStr = loginDate.toLocaleTimeString('en-US', { 
+                                hour: '2-digit', 
+                                minute: '2-digit',
+                                hour12: true,
+                                timeZone: 'Africa/Nairobi'
+                            });
+                            const dateStr = loginDate.toLocaleDateString('en-US', { 
+                                weekday: 'long', 
+                                month: 'long', 
+                                day: 'numeric',
+                                timeZone: 'Africa/Nairobi'
+                            });
+                            const device = previousLogin.device_info || 'Unknown Device';
+                            
+                            info.innerHTML = `
+                                <i data-feather="clock"></i>
+                                <span>Last login: ${dateStr} at ${timeStr} from ${device}</span>
+                            `;
+                        }
+                        if (typeof feather !== 'undefined') feather.replace();
+                    })
+                    .catch((err) => {
+                        console.warn('Error fetching session:', err);
                         info.innerHTML = `
                             <i data-feather="clock"></i>
                             <span>Welcome ${profile.full_name || 'User'}!</span>
                         `;
-                    } else {
-                        const previousLogin = data[1];
-                        const loginDate = new Date(previousLogin.login_time);
-                        const timeStr = loginDate.toLocaleTimeString('en-US', { 
-                            hour: '2-digit', 
-                            minute: '2-digit',
-                            hour12: true,
-                            timeZone: 'Africa/Nairobi'
-                        });
-                        const dateStr = loginDate.toLocaleDateString('en-US', { 
-                            weekday: 'long', 
-                            month: 'long', 
-                            day: 'numeric',
-                            timeZone: 'Africa/Nairobi'
-                        });
-                        const device = previousLogin.device_info || 'Unknown Device';
-                        
-                        info.innerHTML = `
-                            <i data-feather="clock"></i>
-                            <span>Last login: ${dateStr} at ${timeStr} from ${device}</span>
-                        `;
-                    }
-                    if (typeof feather !== 'undefined') feather.replace();
-                })
-                .catch((err) => {
-                    console.warn('Error fetching session:', err);
-                    info.innerHTML = `
-                        <i data-feather="clock"></i>
-                        <span>Welcome ${profile.full_name || 'User'}!</span>
-                    `;
-                    if (typeof feather !== 'undefined') feather.replace();
-                });
+                        if (typeof feather !== 'undefined') feather.replace();
+                    });
+            }
         } catch (error) {
             console.error('❌ Error parsing profile:', error);
-            // FIXED: Clear corrupted profile
             localStorage.removeItem('userProfile');
             info.innerHTML = `
                 <i data-feather="clock"></i>
@@ -2038,7 +2072,7 @@ executeLogin: async function(identifier, password) {
             `;
             if (typeof feather !== 'undefined') feather.replace();
         }
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // REDIRECT TO DASHBOARD
@@ -2069,7 +2103,7 @@ executeLogin: async function(identifier, password) {
         setTimeout(() => {
             window.location.replace(redirectFile);
         }, 300);
-    },
+    }, // ✅ COMMA ADDED
     
     // ============================================
     // MESSAGE HELPERS
@@ -2084,14 +2118,14 @@ executeLogin: async function(identifier, password) {
             element.style.display = 'flex';
             this.clearSuccess();
         }
-    },
+    }, // ✅ COMMA ADDED
     
     clearError: function() {
         const element = document.getElementById('errorMsg');
         if (element) {
             element.style.display = 'none';
         }
-    },
+    }, // ✅ COMMA ADDED
     
     showSuccess: function(message) {
         const element = document.getElementById('successMsg');
@@ -2103,14 +2137,14 @@ executeLogin: async function(identifier, password) {
             element.style.display = 'flex';
             this.clearError();
         }
-    },
+    }, // ✅ COMMA ADDED
     
     clearSuccess: function() {
         const element = document.getElementById('successMsg');
         if (element) {
             element.style.display = 'none';
         }
-    },
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // GOOGLE LOGIN
@@ -2161,7 +2195,7 @@ executeLogin: async function(identifier, password) {
         } catch (error) {
             console.error('❌ Google init error:', error);
         }
-    },
+    }, // ✅ COMMA ADDED
 
     listenForGoogleRedirect: function() {
         var self = this;
@@ -2179,7 +2213,7 @@ executeLogin: async function(identifier, password) {
                 self.handleGoogleCredential({ credential: event.detail.credential });
             }
         });
-    },
+    }, // ✅ COMMA ADDED
 
     handleGoogleCredential: function(response) {
         console.log('🎯 Google credential received');
@@ -2197,7 +2231,7 @@ executeLogin: async function(identifier, password) {
             console.error('❌ Error decoding JWT:', error);
             this.showError('Invalid Google response');
         }
-    },
+    }, // ✅ COMMA ADDED
 
     decodeJWT: function(token) {
         const base64Url = token.split('.')[1];
@@ -2208,128 +2242,126 @@ executeLogin: async function(identifier, password) {
             ).join('')
         );
         return JSON.parse(jsonPayload);
-    },
+    }, // ✅ COMMA ADDED
 
-   // ============================================
-// PROCESS GOOGLE LOGIN - FIXED (NO AUTO-CREATE)
-// ============================================
-processGoogleLogin: async function(payload) {
-    if (!this.supabase) {
-        this.showError('Authentication service unavailable');
-        return;
-    }
-    
-    const email = payload.email;
-    const name = payload.name || payload.given_name || 'Student';
-    
-    const loginButton = document.getElementById('loginButton');
-    const buttonText = document.querySelector('.button-text');
-    if (loginButton) {
-        loginButton.disabled = true;
-        buttonText.innerHTML = '<span class="spinner"></span> Signing in...';
-    }
-    
-    try {
-        // FIXED: Select specific columns only - NO AUTO-CREATE
-        const { data: profile, error: profileError } = await this.supabase
-            .from('consolidated_user_profiles_table')
-            .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
-            .eq('email', email)
-            .maybeSingle();
-        
-        if (profileError || !profile) {
-            this.showError('No account found with this email. Please register first.');
-            if (loginButton) {
-                loginButton.disabled = false;
-                buttonText.textContent = 'Sign In';
-            }
-            // Redirect to registration page
-            setTimeout(() => window.location.href = 'register.html', 3000);
+    // ============================================
+    // PROCESS GOOGLE LOGIN - FIXED (NO AUTO-CREATE)
+    // ============================================
+    processGoogleLogin: async function(payload) {
+        if (!this.supabase) {
+            this.showError('Authentication service unavailable');
             return;
         }
         
-        const validStatuses = ['approved', 'active'];
-        if (!validStatuses.includes(profile.status?.toLowerCase())) {
-            this.showError('Account pending approval. Please wait.');
-            if (loginButton) {
-                loginButton.disabled = false;
-                buttonText.textContent = 'Sign In';
-            }
-            return;
-        }
+        const email = payload.email;
+        const name = payload.name || payload.given_name || 'Student';
         
-        const isStaff = profile.staff_id ? true : false;
-        const userId = profile.user_id;
-        
-        const has2FA = await this.check2FARequirement(userId);
-        
-        if (has2FA) {
-            sessionStorage.setItem('pending_login_data', JSON.stringify({
-                profile: {
-                    user_id: userId,
-                    email: email,
-                    full_name: profile.full_name || name,
-                    role: profile.role || 'student',
-                    program: profile.program || profile.department,
-                    staff_id: profile.staff_id || null,
-                    is_staff: isStaff,
-                    auth_provider: 'google'
-                },
-                isStaff: isStaff
-            }));
-            
-            this.show2FAModal();
-            if (loginButton) {
-                loginButton.disabled = false;
-                buttonText.textContent = 'Sign In';
-            }
-            return;
-        }
-        
-        const sessionToken = this.generateSecureToken();
-        await this.trackUserSession(
-            userId,
-            email,
-            sessionToken,
-            navigator.userAgent,
-            isStaff
-        );
-        
-        const safeProfile = {
-            user_id: userId,
-            email: email,
-            full_name: profile.full_name || name,
-            role: profile.role || 'student',
-            program: profile.program || profile.department,
-            staff_id: profile.staff_id || null,
-            is_staff: isStaff,
-            auth_provider: 'google',
-            two_factor_enabled: profile.two_factor_enabled || false,
-            two_factor_verified: profile.two_factor_verified || false
-        };
-        localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-        
-        await this.updateLastLogin(userId, email);
-        
-        this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
-        this.updateLastLoginInfo();
-        
-        setTimeout(() => {
-            this.update2FAButtonStatus();
-        }, 500);
-        
-        setTimeout(() => this.redirectToDashboard(safeProfile), 1000);
-        
-    } catch (error) {
-        console.error('❌ Google login error:', error);
-        this.showError('Login failed. Please try again.');
-    } finally {
+        const loginButton = document.getElementById('loginButton');
+        const buttonText = document.querySelector('.button-text');
         if (loginButton) {
-            loginButton.disabled = false;
-            buttonText.textContent = 'Sign In';
+            loginButton.disabled = true;
+            buttonText.innerHTML = '<span class="spinner"></span> Signing in...';
         }
-    }
-}
+        
+        try {
+            const { data: profile, error: profileError } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
+                .eq('email', email)
+                .maybeSingle();
+            
+            if (profileError || !profile) {
+                this.showError('No account found with this email. Please register first.');
+                if (loginButton) {
+                    loginButton.disabled = false;
+                    buttonText.textContent = 'Sign In';
+                }
+                setTimeout(() => window.location.href = 'register.html', 3000);
+                return;
+            }
+            
+            const validStatuses = ['approved', 'active'];
+            if (!validStatuses.includes(profile.status?.toLowerCase())) {
+                this.showError('Account pending approval. Please wait.');
+                if (loginButton) {
+                    loginButton.disabled = false;
+                    buttonText.textContent = 'Sign In';
+                }
+                return;
+            }
+            
+            const isStaff = profile.staff_id ? true : false;
+            const userId = profile.user_id;
+            
+            const has2FA = await this.check2FARequirement(userId);
+            
+            if (has2FA) {
+                sessionStorage.setItem('pending_login_data', JSON.stringify({
+                    profile: {
+                        user_id: userId,
+                        email: email,
+                        full_name: profile.full_name || name,
+                        role: profile.role || 'student',
+                        program: profile.program || profile.department,
+                        staff_id: profile.staff_id || null,
+                        is_staff: isStaff,
+                        auth_provider: 'google'
+                    },
+                    isStaff: isStaff
+                }));
+                
+                this.show2FAModal();
+                if (loginButton) {
+                    loginButton.disabled = false;
+                    buttonText.textContent = 'Sign In';
+                }
+                return;
+            }
+            
+            const sessionToken = this.generateSecureToken();
+            await this.trackUserSession(
+                userId,
+                email,
+                sessionToken,
+                navigator.userAgent,
+                isStaff
+            );
+            
+            const safeProfile = {
+                user_id: userId,
+                email: email,
+                full_name: profile.full_name || name,
+                role: profile.role || 'student',
+                program: profile.program || profile.department,
+                staff_id: profile.staff_id || null,
+                is_staff: isStaff,
+                auth_provider: 'google',
+                two_factor_enabled: profile.two_factor_enabled || false,
+                two_factor_verified: profile.two_factor_verified || false
+            };
+            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+            
+            await this.updateLastLogin(userId, email);
+            
+            this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
+            this.updateLastLoginInfo();
+            
+            setTimeout(() => {
+                this.update2FAButtonStatus();
+            }, 500);
+            
+            setTimeout(() => this.redirectToDashboard(safeProfile), 1000);
+            
+        } catch (error) {
+            console.error('❌ Google login error:', error);
+            this.showError('Login failed. Please try again.');
+        } finally {
+            if (loginButton) {
+                loginButton.disabled = false;
+                buttonText.textContent = 'Sign In';
+            }
+        }
+    }, // ✅ COMMA ADDED
 
     // ============================================
     // CLEANUP
@@ -2344,8 +2376,8 @@ processGoogleLogin: async function(payload) {
         sessionStorage.removeItem('redirect_token');
         
         console.log('🧹 Cleaned up NCHSMLogin');
-    }
-};
+    } // ✅ NO COMMA NEEDED HERE (end of object)
+}; // ✅ END OF NCHSMLogin OBJECT
 
 // ============================================
 // GLOBAL FUNCTIONS
@@ -2389,6 +2421,11 @@ window.showQRCode = async function() {
                 statusEl.textContent = '⚠️ Please login first to enable 2FA';
                 setTimeout(() => { statusEl.style.display = 'none'; }, 4000);
             }
+            return;
+        }
+        
+        if (!window.NCHSMLogin.supabase) {
+            alert('Authentication service unavailable');
             return;
         }
         
@@ -2494,6 +2531,11 @@ window.verifyAndEnable2FA = async function() {
     
     let secret = sessionStorage.getItem('2fa_setup_secret');
     if (!secret) {
+        if (!window.NCHSMLogin.supabase) {
+            alert('Authentication service unavailable');
+            return;
+        }
+        
         const { data, error } = await window.NCHSMLogin.supabase
             .from('consolidated_user_profiles_table')
             .select('two_factor_secret')
