@@ -1,15 +1,32 @@
 // ================================================================
 // ADMISSIONS.JS - Complete Application Logic
-// FIXED FLOW: Apply Now → Register → Login → Application → Admin Approval → Profile Insert
+// FIXED: Supabase initialization, all courses, full workflow
 // ================================================================
 
 // ================================================================
-// SUPABASE CONFIGURATION
+// SUPABASE CONFIGURATION - FIXED
 // ================================================================
-if (typeof supabase === 'undefined') {
-    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-    var supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+
+// ✅ Initialize Supabase client with error handling
+let supabase;
+try {
+    if (typeof window.supabase !== 'undefined') {
+        supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        console.log('✅ Supabase client initialized');
+    } else {
+        console.error('❌ Supabase library not loaded');
+        // Fallback - create client if window.supabase exists later
+        document.addEventListener('DOMContentLoaded', function() {
+            if (typeof window.supabase !== 'undefined') {
+                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                console.log('✅ Supabase client initialized (delayed)');
+            }
+        });
+    }
+} catch (e) {
+    console.error('❌ Supabase initialization error:', e);
 }
 
 // ================================================================
@@ -91,6 +108,18 @@ const gradePoints = {
 };
 
 // ================================================================
+// CHECK SUPABASE AVAILABILITY
+// ================================================================
+function checkSupabase() {
+    if (!supabase) {
+        alert('❌ Supabase is not initialized. Please refresh the page and try again.');
+        console.error('❌ Supabase client is undefined');
+        return false;
+    }
+    return true;
+}
+
+// ================================================================
 // NAVIGATION
 // ================================================================
 function navigateTo(page) {
@@ -105,7 +134,6 @@ function navigateTo(page) {
     const navLink = document.querySelector(`.nav-item[data-page="${page}"]`);
     if (navLink) navLink.classList.add('active');
 
-    // When clicking Apply Now, show register tab
     if (page === 'register') {
         const registerForm = document.getElementById('registerForm');
         if (registerForm) {
@@ -172,9 +200,11 @@ function switchAuthTab2(tab) {
 }
 
 // ================================================================
-// LOGIN (Home Page)
+// LOGIN (Home Page) - FIXED with supabase check
 // ================================================================
 async function loginUser() {
+    if (!checkSupabase()) return;
+    
     const email = document.getElementById('loginEmail');
     const password = document.getElementById('loginPassword');
     const msg = document.getElementById('loginMessage');
@@ -294,9 +324,11 @@ async function loginUser() {
 }
 
 // ================================================================
-// LOGIN (Application Page)
+// LOGIN (Application Page) - FIXED
 // ================================================================
 async function loginUser2() {
+    if (!checkSupabase()) return;
+    
     const email = document.getElementById('loginEmail2');
     const password = document.getElementById('loginPassword2');
     const msg = document.getElementById('loginMessage2');
@@ -402,9 +434,11 @@ async function loginUser2() {
 }
 
 // ================================================================
-// REGISTER
+// REGISTER - FIXED with supabase check
 // ================================================================
 async function registerUser() {
+    if (!checkSupabase()) return;
+    
     const name = document.getElementById('regName');
     const email = document.getElementById('regEmail');
     const phone = document.getElementById('regPhone');
@@ -552,6 +586,8 @@ function logoutUser() {
 // CHECK AUTH
 // ================================================================
 async function checkAuth() {
+    if (!checkSupabase()) return;
+    
     try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
@@ -816,7 +852,7 @@ async function loadUserApplication(userId) {
 }
 
 // ================================================================
-// COURSE SELECTOR - Now shows ALL courses
+// COURSE SELECTOR - Shows ALL courses
 // ================================================================
 function updatePrograms() {
     const school = document.getElementById('school');
