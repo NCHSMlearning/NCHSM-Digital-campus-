@@ -1590,135 +1590,98 @@ window.NCHSMLogin = {
     // ============================================
     // EXECUTE LOGIN - FIXED
     // ============================================
-    executeLogin: async function(identifier, password) {
-        if (!this.supabase) {
-            throw new Error('Authentication service not available');
+  // ============================================
+// EXECUTE LOGIN - FIXED (NO AUTO-CREATE)
+// ============================================
+executeLogin: async function(identifier, password) {
+    if (!this.supabase) {
+        throw new Error('Authentication service not available');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
+    
+    let profileData = null;
+    let isStaff = false;
+    
+    const staffProfile = await this.verifyStaffLogin(identifier, password);
+    if (staffProfile) {
+        console.log('✅ Staff login successful:', staffProfile.email);
+        profileData = staffProfile;
+        isStaff = true;
+        return { profileData, isStaff };
+    }
+    
+    console.log('🔐 Checking student login for:', identifier);
+    
+    try {
+        const { data: authData, error: authError } = await this.supabase.auth
+            .signInWithPassword({ 
+                email: identifier, 
+                password 
+            });
+        
+        if (authError) {
+            this.recordFailedAttempt();
+            if (authError.message.includes('Invalid login credentials')) {
+                throw new Error('Invalid email or password');
+            } else if (authError.message.includes('Email not confirmed')) {
+                throw new Error('Please verify your email');
+            } else {
+                throw new Error('Login failed. Please try again.');
+            }
         }
         
-        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
-        
-        let profileData = null;
-        let isStaff = false;
-        
-        const staffProfile = await this.verifyStaffLogin(identifier, password);
-        if (staffProfile) {
-            console.log('✅ Staff login successful:', staffProfile.email);
-            profileData = staffProfile;
-            isStaff = true;
-            return { profileData, isStaff };
+        if (!authData.user) {
+            throw new Error('No user found');
         }
         
-        console.log('🔐 Checking student login for:', identifier);
+        console.log('✅ Supabase Auth successful for:', identifier);
         
-        try {
-            const { data: authData, error: authError } = await this.supabase.auth
-                .signInWithPassword({ 
-                    email: identifier, 
-                    password 
-                });
-            
-            if (authError) {
-                this.recordFailedAttempt();
-                if (authError.message.includes('Invalid login credentials')) {
-                    throw new Error('Invalid email or password');
-                } else if (authError.message.includes('Email not confirmed')) {
-                    throw new Error('Please verify your email');
-                } else {
-                    throw new Error('Login failed. Please try again.');
-                }
-            }
-            
-            if (!authData.user) {
-                throw new Error('No user found');
-            }
-            
-            console.log('✅ Supabase Auth successful for:', identifier);
-            
-            // FIXED: Select specific columns only
-            const { data: profile, error: profileError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
-                .eq('email', identifier)
-                .maybeSingle();
-            
-            if (profileError) {
-                console.error('❌ Profile error:', profileError);
-                await this.supabase.auth.signOut();
-                throw new Error('Error loading profile: ' + profileError.message);
-            }
-            
-            // FIXED: Better handling for missing profile
-            if (!profile) {
-                console.error('❌ No profile found for:', identifier);
-                // Try to create a minimal profile
-                try {
-                    const { error: insertError } = await this.supabase
-                        .from('consolidated_user_profiles_table')
-                        .insert({
-                            user_id: authData.user.id,
-                            email: identifier,
-                            full_name: authData.user.user_metadata?.full_name || 'Student',
-                            role: 'student',
-                            status: 'active'
-                        });
-                    
-                    if (!insertError) {
-                        // Fetch the newly created profile
-                        const { data: newProfile } = await this.supabase
-                            .from('consolidated_user_profiles_table')
-                            .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
-                            .eq('email', identifier)
-                            .maybeSingle();
-                        
-                        if (newProfile) {
-                            return { 
-                                profileData: {
-                                    user_id: newProfile.user_id,
-                                    email: newProfile.email,
-                                    full_name: newProfile.full_name || 'Student',
-                                    role: newProfile.role || 'student',
-                                    program: newProfile.program || newProfile.department,
-                                    staff_id: newProfile.staff_id || null,
-                                    is_staff: false,
-                                    two_factor_enabled: newProfile.two_factor_enabled || false,
-                                    two_factor_verified: newProfile.two_factor_verified || false
-                                }, 
-                                isStaff: false 
-                            };
-                        }
-                    }
-                } catch (e) {
-                    console.warn('Could not create profile:', e);
-                }
-                throw new Error('Account not found. Please contact support.');
-            }
-            
-            const validStatuses = ['approved', 'active'];
-            if (!validStatuses.includes(profile.status?.toLowerCase())) {
-                await this.supabase.auth.signOut();
-                throw new Error('Account pending approval. Please wait.');
-            }
-            
-            return { 
-                profileData: {
-                    user_id: profile.user_id,
-                    email: profile.email,
-                    full_name: profile.full_name || 'Student',
-                    role: profile.role || 'student',
-                    program: profile.program || profile.department,
-                    staff_id: profile.staff_id || null,
-                    is_staff: false,
-                    two_factor_enabled: profile.two_factor_enabled || false,
-                    two_factor_verified: profile.two_factor_verified || false,
-                    ...profile
-                }, 
-                isStaff: false 
-            };
-        } catch (error) {
-            console.error('❌ Student login error:', error);
-            throw error;
+        // FIXED: Select specific columns only - NO AUTO-CREATE
+        const { data: profile, error: profileError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
+            .eq('email', identifier)
+            .maybeSingle();
+        
+        if (profileError) {
+            console.error('❌ Profile error:', profileError);
+            await this.supabase.auth.signOut();
+            throw new Error('Error loading profile: ' + profileError.message);
         }
-    },
+        
+        // FIXED: No auto-create - just throw error if profile missing
+        if (!profile) {
+            console.error('❌ No profile found for:', identifier);
+            await this.supabase.auth.signOut();
+            throw new Error('Account not found. Please contact support or register first.');
+        }
+        
+        const validStatuses = ['approved', 'active'];
+        if (!validStatuses.includes(profile.status?.toLowerCase())) {
+            await this.supabase.auth.signOut();
+            throw new Error('Account pending approval. Please wait.');
+        }
+        
+        return { 
+            profileData: {
+                user_id: profile.user_id,
+                email: profile.email,
+                full_name: profile.full_name || 'Student',
+                role: profile.role || 'student',
+                program: profile.program || profile.department,
+                staff_id: profile.staff_id || null,
+                is_staff: false,
+                two_factor_enabled: profile.two_factor_enabled || false,
+                two_factor_verified: profile.two_factor_verified || false
+            }, 
+            isStaff: false 
+        };
+    } catch (error) {
+        console.error('❌ Student login error:', error);
+        throw error;
+    }
+}
 
     // ============================================
     // LOGIN HANDLER - WITH 2FA SUPPORT
@@ -2233,114 +2196,126 @@ window.NCHSMLogin = {
         return JSON.parse(jsonPayload);
     },
 
-    processGoogleLogin: async function(payload) {
-        if (!this.supabase) {
-            this.showError('Authentication service unavailable');
-            return;
-        }
+   // ============================================
+// PROCESS GOOGLE LOGIN - FIXED (NO AUTO-CREATE)
+// ============================================
+processGoogleLogin: async function(payload) {
+    if (!this.supabase) {
+        this.showError('Authentication service unavailable');
+        return;
+    }
+    
+    const email = payload.email;
+    const name = payload.name || payload.given_name || 'Student';
+    
+    const loginButton = document.getElementById('loginButton');
+    const buttonText = document.querySelector('.button-text');
+    if (loginButton) {
+        loginButton.disabled = true;
+        buttonText.innerHTML = '<span class="spinner"></span> Signing in...';
+    }
+    
+    try {
+        // FIXED: Select specific columns only - NO AUTO-CREATE
+        const { data: profile, error: profileError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
+            .eq('email', email)
+            .maybeSingle();
         
-        const email = payload.email;
-        const name = payload.name || payload.given_name || 'Student';
-        
-        const loginButton = document.getElementById('loginButton');
-        const buttonText = document.querySelector('.button-text');
-        if (loginButton) {
-            loginButton.disabled = true;
-            buttonText.innerHTML = '<span class="spinner"></span> Signing in...';
-        }
-        
-        try {
-            // FIXED: Select specific columns only
-            const { data: profile, error: profileError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
-                .eq('email', email)
-                .maybeSingle();
-            
-            if (profileError || !profile) {
-                this.showError('No account found with this email. Please register first.');
-                setTimeout(() => window.location.href = 'register.html', 2000);
-                return;
-            }
-            
-            const validStatuses = ['approved', 'active'];
-            if (!validStatuses.includes(profile.status?.toLowerCase())) {
-                this.showError('Account pending approval. Please wait.');
-                return;
-            }
-            
-            const isStaff = profile.staff_id ? true : false;
-            const userId = profile.user_id;
-            
-            const has2FA = await this.check2FARequirement(userId);
-            
-            if (has2FA) {
-                sessionStorage.setItem('pending_login_data', JSON.stringify({
-                    profile: {
-                        user_id: userId,
-                        email: email,
-                        full_name: profile.full_name || name,
-                        role: profile.role || 'student',
-                        program: profile.program || profile.department,
-                        staff_id: profile.staff_id || null,
-                        is_staff: isStaff,
-                        auth_provider: 'google'
-                    },
-                    isStaff: isStaff
-                }));
-                
-                this.show2FAModal();
-                if (loginButton) {
-                    loginButton.disabled = false;
-                    buttonText.textContent = 'Sign In';
-                }
-                return;
-            }
-            
-            const sessionToken = this.generateSecureToken();
-            await this.trackUserSession(
-                userId,
-                email,
-                sessionToken,
-                navigator.userAgent,
-                isStaff
-            );
-            
-            const safeProfile = {
-                user_id: userId,
-                email: email,
-                full_name: profile.full_name || name,
-                role: profile.role || 'student',
-                program: profile.program || profile.department,
-                staff_id: profile.staff_id || null,
-                is_staff: isStaff,
-                auth_provider: 'google',
-                two_factor_enabled: profile.two_factor_enabled || false,
-                two_factor_verified: profile.two_factor_verified || false
-            };
-            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-            
-            await this.updateLastLogin(userId, email);
-            
-            this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
-            this.updateLastLoginInfo();
-            
-            setTimeout(() => {
-                this.update2FAButtonStatus();
-            }, 500);
-            
-            setTimeout(() => this.redirectToDashboard(safeProfile), 1000);
-            
-        } catch (error) {
-            console.error('❌ Google login error:', error);
-            this.showError('Login failed. Please try again.');
-        } finally {
+        if (profileError || !profile) {
+            this.showError('No account found with this email. Please register first.');
             if (loginButton) {
                 loginButton.disabled = false;
                 buttonText.textContent = 'Sign In';
             }
+            // Redirect to registration page
+            setTimeout(() => window.location.href = 'register.html', 3000);
+            return;
         }
-    },
+        
+        const validStatuses = ['approved', 'active'];
+        if (!validStatuses.includes(profile.status?.toLowerCase())) {
+            this.showError('Account pending approval. Please wait.');
+            if (loginButton) {
+                loginButton.disabled = false;
+                buttonText.textContent = 'Sign In';
+            }
+            return;
+        }
+        
+        const isStaff = profile.staff_id ? true : false;
+        const userId = profile.user_id;
+        
+        const has2FA = await this.check2FARequirement(userId);
+        
+        if (has2FA) {
+            sessionStorage.setItem('pending_login_data', JSON.stringify({
+                profile: {
+                    user_id: userId,
+                    email: email,
+                    full_name: profile.full_name || name,
+                    role: profile.role || 'student',
+                    program: profile.program || profile.department,
+                    staff_id: profile.staff_id || null,
+                    is_staff: isStaff,
+                    auth_provider: 'google'
+                },
+                isStaff: isStaff
+            }));
+            
+            this.show2FAModal();
+            if (loginButton) {
+                loginButton.disabled = false;
+                buttonText.textContent = 'Sign In';
+            }
+            return;
+        }
+        
+        const sessionToken = this.generateSecureToken();
+        await this.trackUserSession(
+            userId,
+            email,
+            sessionToken,
+            navigator.userAgent,
+            isStaff
+        );
+        
+        const safeProfile = {
+            user_id: userId,
+            email: email,
+            full_name: profile.full_name || name,
+            role: profile.role || 'student',
+            program: profile.program || profile.department,
+            staff_id: profile.staff_id || null,
+            is_staff: isStaff,
+            auth_provider: 'google',
+            two_factor_enabled: profile.two_factor_enabled || false,
+            two_factor_verified: profile.two_factor_verified || false
+        };
+        localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+        
+        await this.updateLastLogin(userId, email);
+        
+        this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
+        this.updateLastLoginInfo();
+        
+        setTimeout(() => {
+            this.update2FAButtonStatus();
+        }, 500);
+        
+        setTimeout(() => this.redirectToDashboard(safeProfile), 1000);
+        
+    } catch (error) {
+        console.error('❌ Google login error:', error);
+        this.showError('Login failed. Please try again.');
+    } finally {
+        if (loginButton) {
+            loginButton.disabled = false;
+            buttonText.textContent = 'Sign In';
+        }
+    }
+}
 
     // ============================================
     // CLEANUP
