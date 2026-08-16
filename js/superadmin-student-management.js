@@ -1,6 +1,6 @@
 // ============================================================
 // SUPER ADMIN STUDENT MANAGEMENT MODULE
-// CHANGE OF PROGRAM & READMISSION - FIXED (No nested selects)
+// CHANGE OF PROGRAM, READMISSION & ADMISSIONS
 // ============================================================
 
 // ============================================================
@@ -9,15 +9,18 @@
 const SM_STATE = {
     changeRequests: [],
     readmissionRequests: [],
+    admissionRequests: [],
     history: [],
     currentRequestId: null,
     currentType: null,
     selectedChange: new Set(),
     selectedReadmission: new Set(),
+    selectedAdmissions: new Set(),
     stats: {
         total: 0,
         change: 0,
         readmission: 0,
+        admissions: 0,
         approved: 0,
         rejected: 0
     }
@@ -49,12 +52,13 @@ function initStudentManagement() {
     }
     
     loadStudentsForDropdown();
+    loadAdmissions();
     loadChangeProgramRequests();
     loadReadmissionRequests();
     loadSMHistory();
     updateSMStats();
-    toggleSMRequestFields();
     updateSMBadges();
+    toggleSMRequestFields();
 }
 
 // ============================================================
@@ -69,7 +73,7 @@ async function loadStudentsForDropdown() {
         
         const { data, error } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, program, block, intake_year, intake_month')
+            .select('student_id, full_name, program, block, intake_year, intake_month, email')
             .eq('role', 'student')
             .eq('status', 'approved')
             .order('full_name', { ascending: true });
@@ -91,6 +95,7 @@ async function loadStudentsForDropdown() {
                 opt.textContent = `${student.full_name} (${student.student_id || 'N/A'}) - ${student.program || 'No Program'}`;
                 opt.dataset.program = student.program || '';
                 opt.dataset.block = student.block || '';
+                opt.dataset.email = student.email || '';
                 select.appendChild(opt);
             });
         }
@@ -99,6 +104,7 @@ async function loadStudentsForDropdown() {
         select.onchange = function() {
             const selected = this.options[this.selectedIndex];
             const program = selected?.dataset?.program || '';
+            const email = selected?.dataset?.email || '';
             
             const currentProgramSelect = document.getElementById('smCurrentProgram');
             if (currentProgramSelect && program) {
@@ -108,6 +114,11 @@ async function loadStudentsForDropdown() {
                         break;
                     }
                 }
+            }
+            
+            const emailInput = document.getElementById('smStudentEmail');
+            if (emailInput) {
+                emailInput.value = email;
             }
         };
 
@@ -123,7 +134,139 @@ async function loadStudentsForDropdown() {
 }
 
 // ============================================================
-// LOAD CHANGE OF PROGRAM REQUESTS - FIXED (No nested select)
+// LOAD ADMISSIONS
+// ============================================================
+async function loadAdmissions() {
+    const sb = getSupabaseClient();
+    if (!sb) return;
+    
+    try {
+        const search = document.getElementById('smAdmissionsSearch')?.value?.toLowerCase() || '';
+        const status = document.getElementById('smAdmissionsStatusFilter')?.value || 'all';
+        const program = document.getElementById('smAdmissionsProgramFilter')?.value || 'all';
+        
+        let query = sb
+            .from('applications')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (status !== 'all') {
+            query = query.eq('status', status);
+        }
+        
+        if (program !== 'all') {
+            query = query.eq('program', program);
+        }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        // Apply search filter
+        let filtered = data || [];
+        if (search) {
+            filtered = filtered.filter(r => 
+                (r.full_name || '').toLowerCase().includes(search) ||
+                (r.application_number || '').toLowerCase().includes(search) ||
+                (r.email || '').toLowerCase().includes(search)
+            );
+        }
+
+        SM_STATE.admissionRequests = filtered;
+        renderAdmissionsTable();
+        updateSMStats();
+        updateSMBadges();
+
+    } catch (error) {
+        console.error('Error loading admissions:', error);
+        const tbody = document.getElementById('smAdmissionsBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr><td colspan="8" style="padding: 40px; text-align: center; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                    Error loading admissions: ${error.message || 'Unknown error'}
+                </td></tr>
+            `;
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading admissions', 'error');
+        }
+    }
+}
+
+// ============================================================
+// RENDER ADMISSIONS TABLE
+// ============================================================
+function renderAdmissionsTable() {
+    const tbody = document.getElementById('smAdmissionsBody');
+    if (!tbody) return;
+    
+    const requests = SM_STATE.admissionRequests;
+    
+    if (!requests || requests.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="8" style="padding: 40px; text-align: center; color: #94a3b8;">
+            <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+            No admission applications found.
+        </td></tr>`;
+        return;
+    }
+    
+    let html = '';
+    requests.forEach((r, index) => {
+        const statusClass = r.status || 'draft';
+        const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
+        const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
+        const studentName = r.full_name || 'Unknown';
+        const studentId = r.application_number || r.user_id || 'N/A';
+        const program = r.program_name || r.program || 'N/A';
+        const studentType = r.student_type || 'new';
+        const eligibility = r.eligibility_passed ? '✅ Passed' : '❌ Failed';
+        const eligibilityClass = r.eligibility_passed ? 'eligibility-pass' : 'eligibility-fail';
+        
+        html += `
+        <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
+            <td style="text-align: center; padding: 12px 8px;">
+                <input type="checkbox" class="sm-checkbox admissions-checkbox" data-id="${r.id}" onchange="updateSMCounter('admissions')" style="width: 16px; height: 16px; cursor: pointer;">
+            </td>
+            <td style="padding: 12px 16px;">
+                <strong>${escapeHtml(studentName)}</strong>
+                <div style="font-size: 11px; color: #94a3b8;">${escapeHtml(studentId)}</div>
+                <div style="font-size: 10px; color: #64748b;">${escapeHtml(r.email || '')}</div>
+            </td>
+            <td style="padding: 12px 16px;">
+                <span style="background: #dbeafe; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">${escapeHtml(program)}</span>
+            </td>
+            <td style="padding: 12px 16px; text-align: center; font-size: 12px;">
+                <span style="background: ${studentType === 'new' ? '#d1fae5' : '#fef3c7'}; padding: 2px 12px; border-radius: 12px; font-size: 11px; color: ${studentType === 'new' ? '#065f46' : '#92400e'};">
+                    ${studentType === 'new' ? 'New' : 'Transfer'}
+                </span>
+            </td>
+            <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">${date}</td>
+            <td style="padding: 12px 16px; text-align: center;">
+                <span class="${eligibilityClass}">${eligibility}</span>
+            </td>
+            <td style="padding: 12px 16px; text-align: center;">
+                <span class="sm-status-badge ${statusClass}">${statusLabel}</span>
+            </td>
+            <td style="padding: 12px 16px; text-align: center;">
+                <button onclick="viewSMRequest('${r.id}', 'admission')" style="padding: 4px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; transition: 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                    <i class="fas fa-eye"></i> View
+                </button>
+                ${r.status === 'submitted' || r.status === 'reviewing' ? `
+                <button onclick="quickApproveSM('${r.id}', 'admission')" style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-top: 4px; transition: 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                    <i class="fas fa-check"></i> Approve
+                </button>
+                ` : ''}
+            </td>
+        </tr>
+    `});
+    
+    tbody.innerHTML = html;
+    updateSMCounter('admissions');
+}
+
+// ============================================================
+// LOAD CHANGE OF PROGRAM REQUESTS
 // ============================================================
 async function loadChangeProgramRequests() {
     const sb = getSupabaseClient();
@@ -133,7 +276,6 @@ async function loadChangeProgramRequests() {
         const search = document.getElementById('smChangeSearch')?.value?.toLowerCase() || '';
         const status = document.getElementById('smChangeStatusFilter')?.value || 'all';
         
-        // SIMPLE SELECT - NO NESTED RELATIONSHIP
         let query = sb
             .from('student_requests')
             .select('*')
@@ -148,7 +290,6 @@ async function loadChangeProgramRequests() {
 
         if (error) throw error;
 
-        // Apply search filter
         let filtered = data || [];
         if (search) {
             filtered = filtered.filter(r => 
@@ -172,9 +313,6 @@ async function loadChangeProgramRequests() {
                     Error loading requests: ${error.message || 'Unknown error'}
                 </td></tr>
             `;
-        }
-        if (typeof showNotification === 'function') {
-            showNotification('Error loading change program requests', 'error');
         }
     }
 }
@@ -243,7 +381,7 @@ function renderChangeProgramTable() {
 }
 
 // ============================================================
-// LOAD READMISSION REQUESTS - FIXED (No nested select)
+// LOAD READMISSION REQUESTS
 // ============================================================
 async function loadReadmissionRequests() {
     const sb = getSupabaseClient();
@@ -253,7 +391,6 @@ async function loadReadmissionRequests() {
         const search = document.getElementById('smReadmissionSearch')?.value?.toLowerCase() || '';
         const status = document.getElementById('smReadmissionStatusFilter')?.value || 'all';
         
-        // SIMPLE SELECT - NO NESTED RELATIONSHIP
         let query = sb
             .from('student_requests')
             .select('*')
@@ -268,7 +405,6 @@ async function loadReadmissionRequests() {
 
         if (error) throw error;
 
-        // Apply search filter
         let filtered = data || [];
         if (search) {
             filtered = filtered.filter(r => 
@@ -292,9 +428,6 @@ async function loadReadmissionRequests() {
                     Error loading requests: ${error.message || 'Unknown error'}
                 </td></tr>
             `;
-        }
-        if (typeof showNotification === 'function') {
-            showNotification('Error loading readmission requests', 'error');
         }
     }
 }
@@ -363,7 +496,7 @@ function renderReadmissionTable() {
 }
 
 // ============================================================
-// LOAD HISTORY - FIXED (No nested select)
+// LOAD HISTORY
 // ============================================================
 async function loadSMHistory() {
     const sb = getSupabaseClient();
@@ -375,14 +508,17 @@ async function loadSMHistory() {
         const dateFrom = document.getElementById('smHistoryDateFrom')?.value || '';
         const dateTo = document.getElementById('smHistoryDateTo')?.value || '';
         
-        // SIMPLE SELECT - NO NESTED RELATIONSHIP
+        // Get from both tables
+        let allHistory = [];
+        
+        // Get from student_requests
         let query = sb
             .from('student_requests')
             .select('*')
             .in('status', ['approved', 'rejected'])
             .order('updated_at', { ascending: false });
 
-        if (type !== 'all') {
+        if (type !== 'all' && type !== 'admissions') {
             query = query.eq('request_type', type);
         }
         
@@ -390,19 +526,48 @@ async function loadSMHistory() {
             query = query.eq('status', status);
         }
         
-        if (dateFrom) {
-            query = query.gte('updated_at', dateFrom);
+        const { data: requestData, error: requestError } = await query;
+        if (!requestError && requestData) {
+            allHistory = [...allHistory, ...requestData];
         }
         
-        if (dateTo) {
-            query = query.lte('updated_at', dateTo + 'T23:59:59');
+        // Get from applications (admissions)
+        if (type === 'all' || type === 'admissions') {
+            let appQuery = sb
+                .from('applications')
+                .select('*')
+                .in('status', ['approved', 'rejected'])
+                .order('updated_at', { ascending: false });
+            
+            if (status !== 'all') {
+                appQuery = appQuery.eq('status', status);
+            }
+            
+            if (dateFrom) {
+                appQuery = appQuery.gte('updated_at', dateFrom);
+            }
+            if (dateTo) {
+                appQuery = appQuery.lte('updated_at', dateTo + 'T23:59:59');
+            }
+            
+            const { data: appData, error: appError } = await appQuery;
+            if (!appError && appData) {
+                allHistory = [...allHistory, ...appData.map(a => ({
+                    ...a,
+                    request_type: 'admission',
+                    student_name: a.full_name,
+                    student_id: a.application_number,
+                    current_program: a.program_name,
+                    requested_program: a.program_name,
+                    approved_by: a.updated_by || 'System'
+                }))];
+            }
         }
-
-        const { data, error } = await query;
-
-        if (error) throw error;
-
-        SM_STATE.history = data || [];
+        
+        // Sort by updated_at
+        allHistory.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
+        
+        SM_STATE.history = allHistory;
         renderHistoryTable();
 
     } catch (error) {
@@ -415,9 +580,6 @@ async function loadSMHistory() {
                     Error loading history: ${error.message || 'Unknown error'}
                 </td></tr>
             `;
-        }
-        if (typeof showNotification === 'function') {
-            showNotification('Error loading history', 'error');
         }
     }
 }
@@ -441,19 +603,20 @@ function renderHistoryTable() {
     
     const typeLabels = {
         'change_program': 'Change of Program',
-        'readmission': 'Readmission'
+        'readmission': 'Readmission',
+        'admission': 'Admission'
     };
     
     let html = '';
     history.forEach((r, index) => {
-        const typeLabel = typeLabels[r.request_type] || r.request_type;
+        const typeLabel = typeLabels[r.request_type] || r.request_type || 'Unknown';
         const statusClass = r.status || 'approved';
         const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
         const date = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : 'N/A';
-        const studentName = r.student_name || 'Unknown';
-        const studentId = r.student_id || 'N/A';
+        const studentName = r.student_name || r.full_name || 'Unknown';
+        const studentId = r.student_id || r.application_number || 'N/A';
         const fromProgram = r.current_program || r.previous_program || 'N/A';
-        const toProgram = r.requested_program || 'N/A';
+        const toProgram = r.requested_program || r.program_name || 'N/A';
         const approvedBy = r.approved_by || r.updated_by || 'System';
         
         html += `
@@ -480,176 +643,102 @@ function renderHistoryTable() {
 }
 
 // ============================================================
-// VIEW REQUEST DETAILS - FIXED (No nested select)
+// SEND ADMISSION LETTER EMAIL
 // ============================================================
-async function viewSMRequest(requestId, type) {
+async function sendAdmissionLetter(studentEmail, studentName, program, applicationNumber) {
     const sb = getSupabaseClient();
-    if (!sb) return;
-    
-    if (!requestId) {
-        if (typeof showNotification === 'function') {
-            showNotification('Invalid request ID', 'error');
-        }
-        return;
-    }
-    
-    const modal = document.getElementById('smRequestModal');
-    if (!modal) {
-        if (typeof showNotification === 'function') {
-            showNotification('Modal not found', 'error');
-        }
-        return;
-    }
-    
-    SM_STATE.currentRequestId = requestId;
-    SM_STATE.currentType = type;
-    
-    document.getElementById('smModalTitle').textContent = 
-        type === 'change' ? 'Change of Program Request' : 'Readmission Request';
-    
-    modal.style.display = 'flex';
-    
-    const body = document.getElementById('smModalBody');
-    if (body) {
-        body.innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <div class="loading-spinner" style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-                <p style="color: #6b7280; margin-top: 10px;">Loading request details...</p>
-            </div>
-            <style>
-                @keyframes spin { to { transform: rotate(360deg); } }
-            </style>
-        `;
-    }
-    
-    document.getElementById('smModalActions').style.display = 'none';
+    if (!sb) return false;
     
     try {
-        // SIMPLE SELECT - NO NESTED RELATIONSHIP
-        const { data, error } = await sb
-            .from('student_requests')
-            .select('*')
-            .eq('id', requestId)
-            .single();
-        
-        if (error) throw error;
-        
-        if (!data) {
-            body.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #dc2626;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
-                    Request not found
+        const emailData = {
+            to: studentEmail,
+            subject: '🎓 Admission Offer - NCHSM',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
+                    <div style="text-align: center; border-bottom: 2px solid #0A3D62; padding-bottom: 20px; margin-bottom: 20px;">
+                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="height: 60px;">
+                        <h2 style="color: #0A3D62; margin: 10px 0 0 0;">NAKURU COLLEGE OF HEALTH SCIENCES</h2>
+                        <p style="color: #64748b; margin: 0;">Centre of Nursing & Health Sciences Excellence</p>
+                    </div>
+                    
+                    <div style="padding: 10px 0;">
+                        <p style="font-size: 16px; line-height: 1.6;">Dear <strong>${escapeHtml(studentName)}</strong>,</p>
+                        
+                        <p style="font-size: 16px; line-height: 1.6;">Congratulations! We are pleased to offer you admission to the <strong>${escapeHtml(program)}</strong> program at Nakuru College of Health Sciences and Management.</p>
+                        
+                        <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0A3D62;">
+                            <p style="margin: 5px 0;"><strong>📋 Application Details:</strong></p>
+                            <p style="margin: 5px 0;">Application Number: <strong>${escapeHtml(applicationNumber)}</strong></p>
+                            <p style="margin: 5px 0;">Program: <strong>${escapeHtml(program)}</strong></p>
+                            <p style="margin: 5px 0;">Intake: <strong>March 2026</strong></p>
+                            <p style="margin: 5px 0;">Status: <strong style="color: #10b981;">✅ Approved</strong></p>
+                        </div>
+                        
+                        <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
+                            <p style="margin: 5px 0;"><strong>📌 Next Steps:</strong></p>
+                            <ol style="margin: 10px 0 0 20px; line-height: 1.8;">
+                                <li>Accept your offer by logging into the NCHSM Student Portal</li>
+                                <li>Pay the admission fee as indicated in the fee structure</li>
+                                <li>Submit your acceptance form before the deadline</li>
+                                <li>Upload your passport photo for ID processing</li>
+                                <li>Attend the orientation program on the scheduled date</li>
+                            </ol>
+                        </div>
+                        
+                        <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
+                            <p style="margin: 5px 0;"><strong>📞 Contact Us:</strong></p>
+                            <p style="margin: 5px 0;">Email: <a href="mailto:admissions@nchsm.ac.ke" style="color: #0A3D62;">admissions@nchsm.ac.ke</a></p>
+                            <p style="margin: 5px 0;">Phone: +254 790 969 743</p>
+                            <p style="margin: 5px 0;">Website: <a href="https://nchsm.ac.ke" style="color: #0A3D62;">https://nchsm.ac.ke</a></p>
+                        </div>
+                        
+                        <p style="font-size: 16px; line-height: 1.6; margin-top: 20px;">We look forward to welcoming you to NCHSM!</p>
+                        
+                        <p style="font-size: 16px; line-height: 1.6; margin-top: 20px;">
+                            Yours sincerely,<br>
+                            <strong>The Admissions Committee</strong><br>
+                            Nakuru College of Health Sciences and Management
+                        </p>
+                    </div>
+                    
+                    <div style="border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 20px; text-align: center; color: #94a3b8; font-size: 12px;">
+                        <p>© ${new Date().getFullYear()} NCHSM. All rights reserved.</p>
+                        <p>This is an automated email. Please do not reply to this message.</p>
+                    </div>
                 </div>
-            `;
-            return;
+            `
+        };
+        
+        // Call your email API endpoint
+        const response = await fetch('/api/send-email', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(emailData)
+        });
+        
+        if (!response.ok) {
+            throw new Error('Failed to send email');
         }
         
-        const r = data;
-        const studentName = r.student_name || 'Unknown';
-        const studentId = r.student_id || 'N/A';
-        const currentProgram = r.current_program || 'N/A';
-        const previousProgram = r.previous_program || 'N/A';
-        const requestedProgram = r.requested_program || 'N/A';
-        const reason = r.reason || 'No reason provided';
-        const status = r.status || 'pending';
-        const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
-        const createdAt = r.created_at ? new Date(r.created_at).toLocaleString() : 'N/A';
-        const updatedAt = r.updated_at ? new Date(r.updated_at).toLocaleString() : 'N/A';
-        const requestType = r.request_type || 'change_program';
-        const typeLabel = requestType === 'change_program' ? 'Change of Program' : 'Readmission';
+        // Or use Supabase Edge Function
+        // const { data, error } = await sb.functions.invoke('send-admission-email', {
+        //     body: emailData
+        // });
+        // if (error) throw error;
         
-        let statusColor = '#f59e0b';
-        if (status === 'approved') statusColor = '#10b981';
-        if (status === 'rejected') statusColor = '#dc2626';
-        if (status === 'processing') statusColor = '#3b82f6';
-        
-        const isPending = status === 'pending';
-        
-        const html = `
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
-                <div style="grid-column: 1 / -1; background: #f8fafc; padding: 12px 16px; border-radius: 8px; margin-bottom: 8px;">
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                        <span style="font-weight: 700; font-size: 16px; color: #1e293b;">${escapeHtml(studentName)}</span>
-                        <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; border: 1px solid ${statusColor}40;">
-                            ${statusLabel}
-                        </span>
-                    </div>
-                    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: #64748b;">
-                        <span><i class="fas fa-id-card"></i> ${escapeHtml(studentId)}</span>
-                    </div>
-                </div>
-                
-                <div style="grid-column: 1 / -1; background: #f0f9ff; padding: 12px 16px; border-radius: 8px;">
-                    <span style="font-weight: 600; color: #1e40af;">📋 Request Type:</span>
-                    <span style="margin-left: 12px;">${escapeHtml(typeLabel)}</span>
-                </div>
-                
-                ${requestType === 'change_program' ? `
-                <div style="background: #dbeafe; padding: 10px 16px; border-radius: 8px;">
-                    <span style="font-weight: 600; color: #1e40af;">Current Program:</span>
-                    <div style="font-size: 15px; margin-top: 4px;">${escapeHtml(currentProgram)}</div>
-                </div>
-                ` : `
-                <div style="background: #fee2e2; padding: 10px 16px; border-radius: 8px;">
-                    <span style="font-weight: 600; color: #991b1b;">Previous Program:</span>
-                    <div style="font-size: 15px; margin-top: 4px;">${escapeHtml(previousProgram)}</div>
-                </div>
-                `}
-                
-                <div style="background: #d1fae5; padding: 10px 16px; border-radius: 8px;">
-                    <span style="font-weight: 600; color: #065f46;">Requested Program:</span>
-                    <div style="font-size: 15px; margin-top: 4px;">${escapeHtml(requestedProgram)}</div>
-                </div>
-                
-                <div style="grid-column: 1 / -1; background: #fef3c7; padding: 12px 16px; border-radius: 8px;">
-                    <span style="font-weight: 600; color: #92400e;">💬 Reason / Justification:</span>
-                    <div style="margin-top: 6px; font-size: 14px; line-height: 1.6; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #fde68a;">
-                        ${escapeHtml(reason)}
-                    </div>
-                </div>
-                
-                <div style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #64748b;">
-                    <div><i class="fas fa-clock"></i> Requested: ${createdAt}</div>
-                    <div><i class="fas fa-edit"></i> Last Updated: ${updatedAt}</div>
-                </div>
-            </div>
-        `;
-        
-        body.innerHTML = html;
-        
-        // Show actions only for pending requests
-        if (isPending) {
-            document.getElementById('smModalActions').style.display = 'flex';
-            document.getElementById('smApproveBtn').onclick = function() { approveSMRequest(requestId); };
-            document.getElementById('smRejectBtn').onclick = function() { rejectSMRequest(requestId); };
-        } else {
-            document.getElementById('smModalActions').style.display = 'flex';
-            document.getElementById('smApproveBtn').style.display = 'none';
-            document.getElementById('smRejectBtn').style.display = 'none';
-            const actions = document.getElementById('smModalActions');
-            actions.innerHTML = `
-                <button onclick="closeModal('smRequestModal')" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
-                    Close
-                </button>
-            `;
-        }
+        console.log('✅ Admission letter sent to:', studentEmail);
+        return true;
         
     } catch (error) {
-        console.error('Error loading request details:', error);
-        body.innerHTML = `
-            <div style="text-align: center; padding: 40px; color: #dc2626;">
-                <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
-                Error loading request: ${error.message || 'Unknown error'}
-            </div>
-        `;
-        if (typeof showNotification === 'function') {
-            showNotification('Error loading request details', 'error');
-        }
+        console.error('Error sending admission letter:', error);
+        return false;
     }
 }
 
 // ============================================================
-// APPROVE REQUEST
+// APPROVE REQUEST (with admission letter for admissions)
 // ============================================================
 async function approveSMRequest(requestId) {
     const sb = getSupabaseClient();
@@ -662,12 +751,56 @@ async function approveSMRequest(requestId) {
         return;
     }
     
-    if (!confirm('✅ Approve this request?\n\nThis will update the student\'s program in the system.')) return;
+    if (!confirm('✅ Approve this request?')) return;
     
     if (typeof showLoading === 'function') showLoading('Approving request...');
     
     try {
-        // Get the request details first
+        // Check if it's an admission request
+        const { data: appData, error: appError } = await sb
+            .from('applications')
+            .select('*')
+            .eq('id', requestId)
+            .single();
+        
+        if (appData) {
+            // It's an admission application
+            const { error: updateError } = await sb
+                .from('applications')
+                .update({
+                    status: 'approved',
+                    updated_at: new Date().toISOString(),
+                    updated_by: window.currentUser?.id || 'system'
+                })
+                .eq('id', requestId);
+            
+            if (updateError) throw updateError;
+            
+            // Send admission letter email
+            const emailSent = await sendAdmissionLetter(
+                appData.email || appData.user_email,
+                appData.full_name,
+                appData.program_name || appData.program,
+                appData.application_number || `ADM-${Date.now()}`
+            );
+            
+            if (emailSent) {
+                if (typeof showNotification === 'function') {
+                    showNotification('✅ Admission approved and letter sent to student!', 'success');
+                }
+            }
+            
+            if (typeof hideLoading === 'function') hideLoading();
+            closeModal('smRequestModal');
+            
+            loadAdmissions();
+            loadSMHistory();
+            updateSMStats();
+            updateSMBadges();
+            return;
+        }
+        
+        // Check if it's a student request (change program or readmission)
         const { data: request, error: fetchError } = await sb
             .from('student_requests')
             .select('*')
@@ -680,7 +813,6 @@ async function approveSMRequest(requestId) {
             throw new Error('Request not found');
         }
         
-        // Update the request status
         const { error: updateError } = await sb
             .from('student_requests')
             .update({
@@ -693,19 +825,15 @@ async function approveSMRequest(requestId) {
         
         if (updateError) throw updateError;
         
-        // Update the student's program in consolidated_user_profiles_table
+        // Update student program
         if (request.student_id && request.requested_program) {
-            const { error: studentError } = await sb
+            await sb
                 .from('consolidated_user_profiles_table')
                 .update({
                     program: request.requested_program,
                     updated_at: new Date().toISOString()
                 })
                 .eq('student_id', request.student_id);
-            
-            if (studentError) {
-                console.warn('⚠️ Could not update student program:', studentError);
-            }
         }
         
         if (typeof hideLoading === 'function') hideLoading();
@@ -715,7 +843,6 @@ async function approveSMRequest(requestId) {
             showNotification('✅ Request approved successfully!', 'success');
         }
         
-        // Refresh all data
         loadChangeProgramRequests();
         loadReadmissionRequests();
         loadSMHistory();
@@ -750,6 +877,40 @@ async function rejectSMRequest(requestId) {
     if (typeof showLoading === 'function') showLoading('Rejecting request...');
     
     try {
+        // Check if it's an admission request
+        const { data: appData, error: appError } = await sb
+            .from('applications')
+            .select('*')
+            .eq('id', requestId)
+            .single();
+        
+        if (appData) {
+            const { error: updateError } = await sb
+                .from('applications')
+                .update({
+                    status: 'rejected',
+                    updated_at: new Date().toISOString(),
+                    updated_by: window.currentUser?.id || 'system'
+                })
+                .eq('id', requestId);
+            
+            if (updateError) throw updateError;
+            
+            if (typeof hideLoading === 'function') hideLoading();
+            closeModal('smRequestModal');
+            
+            if (typeof showNotification === 'function') {
+                showNotification('❌ Admission rejected.', 'error');
+            }
+            
+            loadAdmissions();
+            loadSMHistory();
+            updateSMStats();
+            updateSMBadges();
+            return;
+        }
+        
+        // Student request
         const { error } = await sb
             .from('student_requests')
             .update({
@@ -769,7 +930,6 @@ async function rejectSMRequest(requestId) {
             showNotification('❌ Request rejected.', 'error');
         }
         
-        // Refresh all data
         loadChangeProgramRequests();
         loadReadmissionRequests();
         loadSMHistory();
@@ -804,6 +964,52 @@ async function quickApproveSM(requestId, type) {
     if (typeof showLoading === 'function') showLoading('Approving...');
     
     try {
+        if (type === 'admission') {
+            const { data: appData, error: fetchError } = await sb
+                .from('applications')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+            
+            if (fetchError) throw fetchError;
+            
+            if (!appData) {
+                throw new Error('Application not found');
+            }
+            
+            await sb
+                .from('applications')
+                .update({
+                    status: 'approved',
+                    updated_at: new Date().toISOString(),
+                    updated_by: window.currentUser?.id || 'system'
+                })
+                .eq('id', requestId);
+            
+            // Send admission letter
+            const emailSent = await sendAdmissionLetter(
+                appData.email || appData.user_email,
+                appData.full_name,
+                appData.program_name || appData.program,
+                appData.application_number || `ADM-${Date.now()}`
+            );
+            
+            if (emailSent) {
+                if (typeof showNotification === 'function') {
+                    showNotification('✅ Admission approved and letter sent!', 'success');
+                }
+            }
+            
+            if (typeof hideLoading === 'function') hideLoading();
+            
+            loadAdmissions();
+            loadSMHistory();
+            updateSMStats();
+            updateSMBadges();
+            return;
+        }
+        
+        // Student request (change program or readmission)
         const { data: request, error: fetchError } = await sb
             .from('student_requests')
             .select('*')
@@ -816,7 +1022,7 @@ async function quickApproveSM(requestId, type) {
             throw new Error('Request not found');
         }
         
-        const { error: updateError } = await sb
+        await sb
             .from('student_requests')
             .update({
                 status: 'approved',
@@ -825,8 +1031,6 @@ async function quickApproveSM(requestId, type) {
                 updated_at: new Date().toISOString()
             })
             .eq('id', requestId);
-        
-        if (updateError) throw updateError;
         
         if (request.student_id && request.requested_program) {
             await sb
@@ -866,7 +1070,8 @@ async function bulkApproveSM(type) {
     const sb = getSupabaseClient();
     if (!sb) return;
     
-    const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
+    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : `${type}-checkbox`;
+    const checkboxes = document.querySelectorAll(`.${checkboxClass}:checked`);
     
     if (checkboxes.length === 0) {
         if (typeof showNotification === 'function') {
@@ -877,42 +1082,76 @@ async function bulkApproveSM(type) {
     
     const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
     
-    if (!confirm(`✅ Approve ${ids.length} selected ${type === 'change' ? 'change of program' : 'readmission'} requests?`)) return;
+    const typeLabel = type === 'admissions' ? 'admission' : (type === 'change' ? 'change of program' : 'readmission');
+    
+    if (!confirm(`✅ Approve ${ids.length} selected ${typeLabel} requests?`)) return;
     
     if (typeof showLoading === 'function') showLoading(`Approving ${ids.length} requests...`);
     
     try {
         let successCount = 0;
         let errorCount = 0;
+        let emailSentCount = 0;
         
         for (const id of ids) {
             try {
-                const { data: request, error: fetchError } = await sb
-                    .from('student_requests')
-                    .select('*')
-                    .eq('id', id)
-                    .single();
-                
-                if (fetchError) throw fetchError;
-                
-                await sb
-                    .from('student_requests')
-                    .update({
-                        status: 'approved',
-                        approved_at: new Date().toISOString(),
-                        approved_by: window.currentUser?.id || 'system',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', id);
-                
-                if (request.student_id && request.requested_program) {
+                if (type === 'admissions') {
+                    const { data: appData, error: fetchError } = await sb
+                        .from('applications')
+                        .select('*')
+                        .eq('id', id)
+                        .single();
+                    
+                    if (fetchError) throw fetchError;
+                    
                     await sb
-                        .from('consolidated_user_profiles_table')
+                        .from('applications')
                         .update({
-                            program: request.requested_program,
+                            status: 'approved',
+                            updated_at: new Date().toISOString(),
+                            updated_by: window.currentUser?.id || 'system'
+                        })
+                        .eq('id', id);
+                    
+                    // Send admission letter
+                    if (appData) {
+                        const sent = await sendAdmissionLetter(
+                            appData.email || appData.user_email,
+                            appData.full_name,
+                            appData.program_name || appData.program,
+                            appData.application_number || `ADM-${Date.now()}`
+                        );
+                        if (sent) emailSentCount++;
+                    }
+                    
+                } else {
+                    const { data: request, error: fetchError } = await sb
+                        .from('student_requests')
+                        .select('*')
+                        .eq('id', id)
+                        .single();
+                    
+                    if (fetchError) throw fetchError;
+                    
+                    await sb
+                        .from('student_requests')
+                        .update({
+                            status: 'approved',
+                            approved_at: new Date().toISOString(),
+                            approved_by: window.currentUser?.id || 'system',
                             updated_at: new Date().toISOString()
                         })
-                        .eq('student_id', request.student_id);
+                        .eq('id', id);
+                    
+                    if (request.student_id && request.requested_program) {
+                        await sb
+                            .from('consolidated_user_profiles_table')
+                            .update({
+                                program: request.requested_program,
+                                updated_at: new Date().toISOString()
+                            })
+                            .eq('student_id', request.student_id);
+                    }
                 }
                 
                 successCount++;
@@ -925,13 +1164,13 @@ async function bulkApproveSM(type) {
         if (typeof hideLoading === 'function') hideLoading();
         
         if (typeof showNotification === 'function') {
-            if (errorCount === 0) {
-                showNotification(`✅ ${successCount} requests approved!`, 'success');
-            } else {
-                showNotification(`⚠️ ${successCount} approved, ${errorCount} errors`, 'warning');
-            }
+            let msg = `✅ ${successCount} requests approved`;
+            if (emailSentCount > 0) msg += `, ${emailSentCount} admission letters sent`;
+            if (errorCount > 0) msg += `, ${errorCount} errors`;
+            showNotification(msg, errorCount > 0 ? 'warning' : 'success');
         }
         
+        loadAdmissions();
         loadChangeProgramRequests();
         loadReadmissionRequests();
         loadSMHistory();
@@ -954,7 +1193,8 @@ async function bulkRejectSM(type) {
     const sb = getSupabaseClient();
     if (!sb) return;
     
-    const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
+    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : `${type}-checkbox`;
+    const checkboxes = document.querySelectorAll(`.${checkboxClass}:checked`);
     
     if (checkboxes.length === 0) {
         if (typeof showNotification === 'function') {
@@ -965,7 +1205,9 @@ async function bulkRejectSM(type) {
     
     const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
     
-    if (!confirm(`❌ Reject ${ids.length} selected ${type === 'change' ? 'change of program' : 'readmission'} requests?`)) return;
+    const typeLabel = type === 'admissions' ? 'admission' : (type === 'change' ? 'change of program' : 'readmission');
+    
+    if (!confirm(`❌ Reject ${ids.length} selected ${typeLabel} requests?`)) return;
     
     if (typeof showLoading === 'function') showLoading(`Rejecting ${ids.length} requests...`);
     
@@ -975,15 +1217,26 @@ async function bulkRejectSM(type) {
         
         for (const id of ids) {
             try {
-                await sb
-                    .from('student_requests')
-                    .update({
-                        status: 'rejected',
-                        rejected_at: new Date().toISOString(),
-                        rejected_by: window.currentUser?.id || 'system',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', id);
+                if (type === 'admissions') {
+                    await sb
+                        .from('applications')
+                        .update({
+                            status: 'rejected',
+                            updated_at: new Date().toISOString(),
+                            updated_by: window.currentUser?.id || 'system'
+                        })
+                        .eq('id', id);
+                } else {
+                    await sb
+                        .from('student_requests')
+                        .update({
+                            status: 'rejected',
+                            rejected_at: new Date().toISOString(),
+                            rejected_by: window.currentUser?.id || 'system',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('id', id);
+                }
                 successCount++;
             } catch (err) {
                 console.error(`Error rejecting ${id}:`, err);
@@ -994,13 +1247,11 @@ async function bulkRejectSM(type) {
         if (typeof hideLoading === 'function') hideLoading();
         
         if (typeof showNotification === 'function') {
-            if (errorCount === 0) {
-                showNotification(`❌ ${successCount} requests rejected.`, 'error');
-            } else {
-                showNotification(`⚠️ ${successCount} rejected, ${errorCount} errors`, 'warning');
-            }
+            const msg = errorCount === 0 ? `❌ ${successCount} requests rejected.` : `⚠️ ${successCount} rejected, ${errorCount} errors`;
+            showNotification(msg, errorCount > 0 ? 'warning' : 'error');
         }
         
+        loadAdmissions();
         loadChangeProgramRequests();
         loadReadmissionRequests();
         loadSMHistory();
@@ -1012,6 +1263,289 @@ async function bulkRejectSM(type) {
         console.error('Error bulk rejecting:', error);
         if (typeof showNotification === 'function') {
             showNotification('❌ Error: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// BULK REVIEW (for admissions)
+// ============================================================
+async function bulkReviewSM(type) {
+    if (type !== 'admissions') return;
+    
+    const sb = getSupabaseClient();
+    if (!sb) return;
+    
+    const checkboxes = document.querySelectorAll('.admissions-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select at least one application', 'warning');
+        }
+        return;
+    }
+    
+    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+    
+    if (!confirm(`🔄 Mark ${ids.length} applications as reviewing?`)) return;
+    
+    if (typeof showLoading === 'function') showLoading(`Updating ${ids.length} applications...`);
+    
+    try {
+        let successCount = 0;
+        let errorCount = 0;
+        
+        for (const id of ids) {
+            try {
+                await sb
+                    .from('applications')
+                    .update({
+                        status: 'reviewing',
+                        updated_at: new Date().toISOString(),
+                        updated_by: window.currentUser?.id || 'system'
+                    })
+                    .eq('id', id);
+                successCount++;
+            } catch (err) {
+                console.error(`Error updating ${id}:`, err);
+                errorCount++;
+            }
+        }
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        
+        if (typeof showNotification === 'function') {
+            const msg = errorCount === 0 ? `✅ ${successCount} applications marked as reviewing.` : `⚠️ ${successCount} updated, ${errorCount} errors`;
+            showNotification(msg, errorCount > 0 ? 'warning' : 'success');
+        }
+        
+        loadAdmissions();
+        updateSMStats();
+        updateSMBadges();
+        
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error bulk reviewing:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// VIEW REQUEST DETAILS
+// ============================================================
+async function viewSMRequest(requestId, type) {
+    const sb = getSupabaseClient();
+    if (!sb) return;
+    
+    if (!requestId) {
+        if (typeof showNotification === 'function') {
+            showNotification('Invalid request ID', 'error');
+        }
+        return;
+    }
+    
+    const modal = document.getElementById('smRequestModal');
+    if (!modal) {
+        if (typeof showNotification === 'function') {
+            showNotification('Modal not found', 'error');
+        }
+        return;
+    }
+    
+    SM_STATE.currentRequestId = requestId;
+    SM_STATE.currentType = type;
+    
+    const typeLabels = {
+        'admission': 'Admission Application',
+        'change': 'Change of Program Request',
+        'readmission': 'Readmission Request'
+    };
+    
+    document.getElementById('smModalTitle').textContent = typeLabels[type] || 'Request Details';
+    
+    modal.style.display = 'flex';
+    
+    const body = document.getElementById('smModalBody');
+    if (body) {
+        body.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <div class="loading-spinner" style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                <p style="color: #6b7280; margin-top: 10px;">Loading request details...</p>
+            </div>
+            <style>
+                @keyframes spin { to { transform: rotate(360deg); } }
+            </style>
+        `;
+    }
+    
+    document.getElementById('smModalActions').style.display = 'none';
+    
+    try {
+        let data = null;
+        
+        if (type === 'admission') {
+            const { data: appData, error } = await sb
+                .from('applications')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+            
+            if (error) throw error;
+            data = appData;
+            data.request_type = 'admission';
+            data.student_name = data.full_name;
+            data.student_id = data.application_number || data.user_id;
+            data.requested_program = data.program_name || data.program;
+            data.reason = data.additional_info || 'No additional information';
+            data.current_program = data.program_name || data.program;
+        } else {
+            const { data: reqData, error } = await sb
+                .from('student_requests')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+            
+            if (error) throw error;
+            data = reqData;
+        }
+        
+        if (!data) {
+            body.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
+                    Request not found
+                </div>
+            `;
+            return;
+        }
+        
+        const r = data;
+        const studentName = r.student_name || r.full_name || 'Unknown';
+        const studentId = r.student_id || r.application_number || 'N/A';
+        const currentProgram = r.current_program || 'N/A';
+        const previousProgram = r.previous_program || 'N/A';
+        const requestedProgram = r.requested_program || r.program_name || r.program || 'N/A';
+        const reason = r.reason || r.additional_info || 'No reason provided';
+        const status = r.status || 'pending';
+        const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
+        const createdAt = r.created_at ? new Date(r.created_at).toLocaleString() : 'N/A';
+        const updatedAt = r.updated_at ? new Date(r.updated_at).toLocaleString() : 'N/A';
+        const requestType = r.request_type || 'admission';
+        const typeLabel = requestType === 'admission' ? 'Admission' : 
+                         requestType === 'change_program' ? 'Change of Program' : 
+                         requestType === 'readmission' ? 'Readmission' : 'Unknown';
+        const email = r.email || r.user_email || 'N/A';
+        
+        let statusColor = '#f59e0b';
+        if (status === 'approved') statusColor = '#10b981';
+        if (status === 'rejected') statusColor = '#dc2626';
+        if (status === 'processing' || status === 'reviewing') statusColor = '#3b82f6';
+        if (status === 'draft') statusColor = '#6b7280';
+        
+        const isPending = status === 'pending' || status === 'submitted' || status === 'reviewing';
+        
+        let html = `
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
+                <div style="grid-column: 1 / -1; background: #f8fafc; padding: 12px 16px; border-radius: 8px; margin-bottom: 8px;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                        <span style="font-weight: 700; font-size: 16px; color: #1e293b;">${escapeHtml(studentName)}</span>
+                        <span style="background: ${statusColor}20; color: ${statusColor}; padding: 4px 16px; border-radius: 20px; font-weight: 600; font-size: 14px; border: 1px solid ${statusColor}40;">
+                            ${statusLabel}
+                        </span>
+                    </div>
+                    <div style="display: flex; gap: 20px; flex-wrap: wrap; margin-top: 8px; font-size: 13px; color: #64748b;">
+                        <span><i class="fas fa-id-card"></i> ${escapeHtml(studentId)}</span>
+                        ${email !== 'N/A' ? `<span><i class="fas fa-envelope"></i> ${escapeHtml(email)}</span>` : ''}
+                    </div>
+                </div>
+                
+                <div style="grid-column: 1 / -1; background: #f0f9ff; padding: 12px 16px; border-radius: 8px;">
+                    <span style="font-weight: 600; color: #1e40af;">📋 Request Type:</span>
+                    <span style="margin-left: 12px;">${escapeHtml(typeLabel)}</span>
+                </div>
+                
+                ${requestType === 'admission' ? `
+                <div style="background: #dbeafe; padding: 10px 16px; border-radius: 8px; grid-column: 1 / -1;">
+                    <span style="font-weight: 600; color: #1e40af;">Student Type:</span>
+                    <div style="font-size: 15px; margin-top: 4px;">${escapeHtml(r.student_type || 'New')}</div>
+                </div>
+                ` : ''}
+                
+                ${requestType === 'change_program' ? `
+                <div style="background: #dbeafe; padding: 10px 16px; border-radius: 8px;">
+                    <span style="font-weight: 600; color: #1e40af;">Current Program:</span>
+                    <div style="font-size: 15px; margin-top: 4px;">${escapeHtml(currentProgram)}</div>
+                </div>
+                ` : ''}
+                
+                ${requestType === 'readmission' ? `
+                <div style="background: #fee2e2; padding: 10px 16px; border-radius: 8px;">
+                    <span style="font-weight: 600; color: #991b1b;">Previous Program:</span>
+                    <div style="font-size: 15px; margin-top: 4px;">${escapeHtml(previousProgram)}</div>
+                </div>
+                ` : ''}
+                
+                <div style="${requestType === 'admission' ? 'grid-column: 1 / -1;' : ''} background: #d1fae5; padding: 10px 16px; border-radius: 8px;">
+                    <span style="font-weight: 600; color: #065f46;">${requestType === 'admission' ? 'Applied Program:' : 'Requested Program:'}</span>
+                    <div style="font-size: 15px; margin-top: 4px;">${escapeHtml(requestedProgram)}</div>
+                </div>
+                
+                ${requestType === 'admission' ? `
+                <div style="grid-column: 1 / -1; background: #fef3c7; padding: 10px 16px; border-radius: 8px;">
+                    <span style="font-weight: 600; color: #92400e;">🎯 Eligibility Status:</span>
+                    <div style="font-size: 15px; margin-top: 4px;">
+                        ${r.eligibility_passed ? '✅ Eligible' : '❌ Not Eligible'}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div style="grid-column: 1 / -1; background: #fef3c7; padding: 12px 16px; border-radius: 8px;">
+                    <span style="font-weight: 600; color: #92400e;">💬 Reason / Justification:</span>
+                    <div style="margin-top: 6px; font-size: 14px; line-height: 1.6; padding: 8px 12px; background: white; border-radius: 6px; border: 1px solid #fde68a;">
+                        ${escapeHtml(reason)}
+                    </div>
+                </div>
+                
+                <div style="grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 13px; color: #64748b;">
+                    <div><i class="fas fa-clock"></i> Requested: ${createdAt}</div>
+                    <div><i class="fas fa-edit"></i> Last Updated: ${updatedAt}</div>
+                </div>
+            </div>
+        `;
+        
+        body.innerHTML = html;
+        
+        // Show actions for pending requests
+        if (isPending) {
+            document.getElementById('smModalActions').style.display = 'flex';
+            document.getElementById('smApproveBtn').style.display = 'inline-flex';
+            document.getElementById('smRejectBtn').style.display = 'inline-flex';
+            document.getElementById('smApproveBtn').onclick = function() { approveSMRequest(requestId); };
+            document.getElementById('smRejectBtn').onclick = function() { rejectSMRequest(requestId); };
+        } else {
+            document.getElementById('smModalActions').style.display = 'flex';
+            document.getElementById('smApproveBtn').style.display = 'none';
+            document.getElementById('smRejectBtn').style.display = 'none';
+            const actions = document.getElementById('smModalActions');
+            actions.innerHTML = `
+                <button onclick="closeModal('smRequestModal')" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    Close
+                </button>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Error loading request details:', error);
+        body.innerHTML = `
+            <div style="text-align: center; padding: 40px; color: #dc2626;">
+                <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 10px;"></i>
+                Error loading request: ${error.message || 'Unknown error'}
+            </div>
+        `;
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading request details', 'error');
         }
     }
 }
@@ -1070,7 +1604,7 @@ async function submitSMRequest() {
             return;
         }
         programFrom = currentProgram.value;
-    } else {
+    } else if (requestType === 'readmission') {
         if (!previousProgram || !previousProgram.value) {
             if (typeof showNotification === 'function') {
                 showNotification('Please select the previous program', 'warning');
@@ -1083,10 +1617,9 @@ async function submitSMRequest() {
     if (typeof showLoading === 'function') showLoading('Submitting request...');
     
     try {
-        // Get student details
         const { data: student, error: studentError } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, program, block')
+            .select('student_id, full_name, program, block, email')
             .eq('student_id', studentSelect.value)
             .single();
         
@@ -1169,7 +1702,7 @@ function toggleSMRequestFields() {
             previousSection.style.display = 'none';
             document.getElementById('smPreviousProgram').required = false;
         }
-    } else {
+    } else if (type.value === 'readmission') {
         if (currentSection) {
             currentSection.style.display = 'none';
             document.getElementById('smCurrentProgram').required = false;
@@ -1178,28 +1711,49 @@ function toggleSMRequestFields() {
             previousSection.style.display = 'block';
             document.getElementById('smPreviousProgram').required = true;
         }
+    } else {
+        // Admission - hide both
+        if (currentSection) {
+            currentSection.style.display = 'none';
+            document.getElementById('smCurrentProgram').required = false;
+        }
+        if (previousSection) {
+            previousSection.style.display = 'none';
+            document.getElementById('smPreviousProgram').required = false;
+        }
     }
 }
 
 function toggleAllSMCheckboxes(type) {
-    const selectAll = document.getElementById(`smSelectAll${type.charAt(0).toUpperCase() + type.slice(1)}`);
+    const selectAllMap = {
+        'admissions': 'smSelectAllAdmissions',
+        'change': 'smSelectAllChange',
+        'readmission': 'smSelectAllReadmission'
+    };
+    
+    const selectAll = document.getElementById(selectAllMap[type]);
     if (!selectAll) return;
     
-    const checkboxes = document.querySelectorAll(`.${type}-checkbox`);
+    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : `${type}-checkbox`;
+    const checkboxes = document.querySelectorAll(`.${checkboxClass}`);
     checkboxes.forEach(cb => cb.checked = selectAll.checked);
     updateSMCounter(type);
 }
 
 function updateSMCounter(type) {
-    const checkboxes = document.querySelectorAll(`.${type}-checkbox:checked`);
-    const countEl = document.getElementById(`sm${type.charAt(0).toUpperCase() + type.slice(1)}SelectedCount`);
+    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : `${type}-checkbox`;
+    const checkboxes = document.querySelectorAll(`.${checkboxClass}:checked`);
+    const countElId = type === 'admissions' ? 'smAdmissionsSelectedCount' : `sm${type.charAt(0).toUpperCase() + type.slice(1)}SelectedCount`;
+    const countEl = document.getElementById(countElId);
     if (countEl) countEl.textContent = checkboxes.length;
 }
 
 function filterSMRequests(type) {
-    if (type === 'change') {
+    if (type === 'admissions') {
+        loadAdmissions();
+    } else if (type === 'change') {
         loadChangeProgramRequests();
-    } else {
+    } else if (type === 'readmission') {
         loadReadmissionRequests();
     }
 }
@@ -1208,6 +1762,7 @@ function showSMSubTab(tab) {
     document.querySelectorAll('.sm-tab-content').forEach(el => el.style.display = 'none');
     
     const tabs = {
+        'admissions': 'smAdmissionsTab',
         'change-program': 'smChangeProgramTab',
         'readmission': 'smReadmissionTab',
         'history': 'smHistoryTab',
@@ -1227,6 +1782,7 @@ function showSMSubTab(tab) {
     });
     
     const btnMap = {
+        'admissions': 'smTabAdmissions',
         'change-program': 'smTabChangeProgram',
         'readmission': 'smTabReadmission',
         'history': 'smTabHistory',
@@ -1243,7 +1799,8 @@ function showSMSubTab(tab) {
         }
     }
     
-    if (tab === 'change-program') loadChangeProgramRequests();
+    if (tab === 'admissions') loadAdmissions();
+    else if (tab === 'change-program') loadChangeProgramRequests();
     else if (tab === 'readmission') loadReadmissionRequests();
     else if (tab === 'history') loadSMHistory();
     else if (tab === 'new-request') loadStudentsForDropdown();
@@ -1252,12 +1809,14 @@ function showSMSubTab(tab) {
 function updateSMStats() {
     const changePending = SM_STATE.changeRequests.filter(r => r.status === 'pending').length;
     const readmissionPending = SM_STATE.readmissionRequests.filter(r => r.status === 'pending').length;
-    const totalRequests = SM_STATE.changeRequests.length + SM_STATE.readmissionRequests.length;
+    const admissionPending = SM_STATE.admissionRequests.filter(r => r.status === 'submitted' || r.status === 'reviewing').length;
+    const totalRequests = SM_STATE.changeRequests.length + SM_STATE.readmissionRequests.length + SM_STATE.admissionRequests.length;
     
     const today = new Date().toISOString().split('T')[0];
-    const allRequests = [...SM_STATE.changeRequests, ...SM_STATE.readmissionRequests];
+    const allRequests = [...SM_STATE.changeRequests, ...SM_STATE.readmissionRequests, ...SM_STATE.admissionRequests];
     const approvedToday = allRequests.filter(r => 
-        r.status === 'approved' && r.approved_at && r.approved_at.startsWith(today)
+        r.status === 'approved' && (r.approved_at || r.updated_at) && 
+        (r.approved_at || r.updated_at).startsWith(today)
     ).length;
     
     const rejectedCount = allRequests.filter(r => r.status === 'rejected').length;
@@ -1265,6 +1824,7 @@ function updateSMStats() {
     document.getElementById('smTotalRequests').textContent = totalRequests;
     document.getElementById('smChangeProgramCount').textContent = changePending;
     document.getElementById('smReadmissionCount').textContent = readmissionPending;
+    document.getElementById('smNewAdmissionsCount').textContent = admissionPending;
     document.getElementById('smApprovedToday').textContent = approvedToday;
     document.getElementById('smRejectedCount').textContent = rejectedCount;
 }
@@ -1272,15 +1832,19 @@ function updateSMStats() {
 function updateSMBadges() {
     const changePending = SM_STATE.changeRequests.filter(r => r.status === 'pending').length;
     const readmissionPending = SM_STATE.readmissionRequests.filter(r => r.status === 'pending').length;
+    const admissionPending = SM_STATE.admissionRequests.filter(r => r.status === 'submitted' || r.status === 'reviewing').length;
     
     const changeBadge = document.getElementById('smChangePendingBadge');
     const readmissionBadge = document.getElementById('smReadmissionBadge');
+    const admissionBadge = document.getElementById('smAdmissionsBadge');
     
     if (changeBadge) changeBadge.textContent = changePending;
     if (readmissionBadge) readmissionBadge.textContent = readmissionPending;
+    if (admissionBadge) admissionBadge.textContent = admissionPending;
 }
 
 function refreshStudentManagement() {
+    loadAdmissions();
     loadChangeProgramRequests();
     loadReadmissionRequests();
     loadSMHistory();
@@ -1292,7 +1856,7 @@ function refreshStudentManagement() {
 }
 
 function exportStudentRequests() {
-    const allRequests = [...SM_STATE.changeRequests, ...SM_STATE.readmissionRequests];
+    const allRequests = [...SM_STATE.changeRequests, ...SM_STATE.readmissionRequests, ...SM_STATE.admissionRequests];
     
     if (!allRequests || allRequests.length === 0) {
         if (typeof showNotification === 'function') {
@@ -1301,15 +1865,18 @@ function exportStudentRequests() {
         return;
     }
     
-    const headers = ['ID', 'Student Name', 'Student ID', 'Type', 'From Program', 'To Program', 'Status', 'Date', 'Approved By'];
+    const headers = ['ID', 'Student Name', 'Student ID', 'Email', 'Type', 'From Program', 'To Program', 'Status', 'Date', 'Approved By'];
     const rows = allRequests.map(r => {
-        const type = r.request_type === 'change_program' ? 'Change of Program' : 'Readmission';
+        const type = r.request_type === 'admission' ? 'Admission' : 
+                     r.request_type === 'change_program' ? 'Change of Program' : 
+                     r.request_type === 'readmission' ? 'Readmission' : 'Unknown';
         const fromProgram = r.current_program || r.previous_program || 'N/A';
-        const toProgram = r.requested_program || 'N/A';
+        const toProgram = r.requested_program || r.program_name || r.program || 'N/A';
         const status = r.status || 'pending';
         const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
         const approvedBy = r.approved_by || r.updated_by || 'System';
-        return [r.id, r.student_name || 'Unknown', r.student_id || 'N/A', type, fromProgram, toProgram, status, date, approvedBy];
+        const email = r.email || r.user_email || 'N/A';
+        return [r.id, r.student_name || r.full_name || 'Unknown', r.student_id || r.application_number || 'N/A', email, type, fromProgram, toProgram, status, date, approvedBy];
     });
     
     let csv = headers.join(',') + '\n';
@@ -1352,6 +1919,7 @@ function closeModal(modalId) {
 // ============================================================
 window.initStudentManagement = initStudentManagement;
 window.loadStudentsForDropdown = loadStudentsForDropdown;
+window.loadAdmissions = loadAdmissions;
 window.loadChangeProgramRequests = loadChangeProgramRequests;
 window.loadReadmissionRequests = loadReadmissionRequests;
 window.loadSMHistory = loadSMHistory;
@@ -1361,6 +1929,7 @@ window.rejectSMRequest = rejectSMRequest;
 window.quickApproveSM = quickApproveSM;
 window.bulkApproveSM = bulkApproveSM;
 window.bulkRejectSM = bulkRejectSM;
+window.bulkReviewSM = bulkReviewSM;
 window.submitSMRequest = submitSMRequest;
 window.toggleSMRequestFields = toggleSMRequestFields;
 window.toggleAllSMCheckboxes = toggleAllSMCheckboxes;
@@ -1369,14 +1938,17 @@ window.filterSMRequests = filterSMRequests;
 window.showSMSubTab = showSMSubTab;
 window.refreshStudentManagement = refreshStudentManagement;
 window.exportStudentRequests = exportStudentRequests;
+window.sendAdmissionLetter = sendAdmissionLetter;
 window.escapeHtml = escapeHtml;
 window.closeModal = closeModal;
 window.downloadCSV = downloadCSV;
 
 console.log('✅ Student Management Module Loaded!');
 console.log('📋 Features:');
+console.log('   - ✅ Admissions management with approval');
 console.log('   - ✅ Change of Program requests');
 console.log('   - ✅ Readmission requests');
+console.log('   - ✅ Automated admission letter emails');
 console.log('   - ✅ Request history with filters');
 console.log('   - ✅ Bulk approve/reject');
 console.log('   - ✅ Student data from consolidated_user_profiles_table');
