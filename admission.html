@@ -64,48 +64,52 @@
                 </button>
                 <div id="loginMessage" class="auth-message"></div>
             </div>
-
-            <!-- REGISTER FORM -->
-            <div class="auth-form" id="registerForm">
-                <div class="form-group">
-                    <label>Full Name <span class="required">*</span></label>
-                    <input type="text" id="regName" placeholder="John Mwangi" />
-                </div>
-                <div class="form-group">
-                    <label>Email Address <span class="required">*</span></label>
-                    <input type="email" id="regEmail" placeholder="your@email.com" />
-                    <div id="regEmailStatus" class="help-text error-text"></div>
-                </div>
-                <div class="form-group">
-                    <label>Phone Number <span class="required">*</span></label>
-                    <input type="tel" id="regPhone" placeholder="07XXXXXXXX" />
-                </div>
-                <div class="form-group">
-                    <label>Role <span class="required">*</span></label>
-                    <select id="regRole">
-                        <option value="student">Student</option>
-                        <option value="lecturer">Lecturer</option>
-                        <option value="admin">Administrator</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Password <span class="required">*</span></label>
-                    <input type="password" id="regPassword" placeholder="Min 8 characters" />
-                    <div class="password-strength">
-                        <div class="strength-bar"><div class="bar" id="strengthBar"></div></div>
-                        <div class="strength-text" id="strengthText">Enter a password</div>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label>Confirm Password <span class="required">*</span></label>
-                    <input type="password" id="regConfirmPassword" placeholder="Confirm your password" />
-                    <div class="password-match" id="passwordMatch"></div>
-                </div>
-                <button class="btn btn-primary" onclick="registerUser()" id="registerBtn">
-                    <i class="fas fa-user-plus"></i> Create Account
-                </button>
-                <div id="registerMessage" class="auth-message"></div>
-            </div>
+<!-- REGISTER FORM -->
+<div class="auth-form" id="registerForm">
+    <div class="form-group">
+        <label>Full Name <span class="required">*</span></label>
+        <input type="text" id="regName" placeholder="John Mwangi" />
+    </div>
+    <div class="form-group">
+        <label>Email Address <span class="required">*</span></label>
+        <input type="email" id="regEmail" placeholder="your@email.com" />
+        <div id="regEmailStatus" class="help-text error-text"></div>
+    </div>
+    <div class="form-group">
+        <label>Phone Number <span class="required">*</span></label>
+        <input type="tel" id="regPhone" placeholder="07XXXXXXXX" />
+    </div>
+    <!-- ROLE - Hidden/Disabled (Student only) -->
+    <div class="form-group" style="display:none;">
+        <label>Role <span class="required">*</span></label>
+        <select id="regRole">
+            <option value="student" selected>Student</option>
+        </select>
+    </div>
+    <!-- OR show as readonly -->
+    <div class="form-group">
+        <label>Role <span class="required">*</span></label>
+        <input type="text" value="Student (only)" disabled style="width:100%; padding:10px 14px; border-radius:8px; border:1px solid #e2e8f0; background:#f3f4f6; font-size:14px; color:#6b7280;" />
+        <input type="hidden" id="regRole" value="student" />
+    </div>
+    <div class="form-group">
+        <label>Password <span class="required">*</span></label>
+        <input type="password" id="regPassword" placeholder="Min 8 characters" />
+        <div class="password-strength">
+            <div class="strength-bar"><div class="bar" id="strengthBar"></div></div>
+            <div class="strength-text" id="strengthText">Enter a password</div>
+        </div>
+    </div>
+    <div class="form-group">
+        <label>Confirm Password <span class="required">*</span></label>
+        <input type="password" id="regConfirmPassword" placeholder="Confirm your password" />
+        <div class="password-match" id="passwordMatch"></div>
+    </div>
+    <button class="btn btn-primary" onclick="registerUser()" id="registerBtn">
+        <i class="fas fa-user-plus"></i> Create Account
+    </button>
+    <div id="registerMessage" class="auth-message"></div>
+</div>
         </div>
 
         <!-- ============================================================ -->
