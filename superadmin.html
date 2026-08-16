@@ -2716,22 +2716,25 @@
         </button>
     </div>
 
-    <!-- ====== BIRTHDAY CARD ====== -->
-    <div style="
-        background: white;
-        border-radius: 18px;
-        padding: 18px 22px;
-        box-shadow: 0 2px 12px rgba(0,0,0,0.04);
-        border: 1px solid #e5e7eb;
-        margin-bottom: 20px;
-        background: linear-gradient(135deg, #ffffff, #fffbeb);
-        border-left: 4px solid #FDB913;
-        transition: all 0.3s ease;
-    " onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.04)'">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
-            <h4 style="margin: 0; color: #0A3D62; font-size: 0.9rem; font-weight: 600;">
-                <i class="fas fa-birthday-cake" style="color: #FDB913;"></i> Student Birthdays Today
-            </h4>
+   <!-- ====== BIRTHDAY CARD WITH EMAIL INTEGRATION ====== -->
+<div style="
+    background: white;
+    border-radius: 18px;
+    padding: 18px 22px;
+    box-shadow: 0 2px 12px rgba(0,0,0,0.04);
+    border: 1px solid #e5e7eb;
+    margin-bottom: 20px;
+    background: linear-gradient(135deg, #ffffff, #fffbeb);
+    border-left: 4px solid #FDB913;
+    transition: all 0.3s ease;
+" onmouseover="this.style.boxShadow='0 8px 30px rgba(0,0,0,0.08)'" onmouseout="this.style.boxShadow='0 2px 12px rgba(0,0,0,0.04)'">
+    
+    <!-- Header -->
+    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+        <h4 style="margin: 0; color: #0A3D62; font-size: 0.9rem; font-weight: 600;">
+            <i class="fas fa-birthday-cake" style="color: #FDB913;"></i> Student Birthdays Today
+        </h4>
+        <div style="display: flex; align-items: center; gap: 8px;">
             <span id="birthdayCount" style="
                 background: linear-gradient(135deg, #FDB913, #f59e0b);
                 color: #0A3D62;
@@ -2741,25 +2744,55 @@
                 font-weight: 700;
                 box-shadow: 0 2px 8px rgba(253,185,19,0.2);
             ">0</span>
+            <button onclick="sendAllBirthdayEmails()" id="sendAllBirthdayBtn" style="
+                display: none;
+                background: linear-gradient(135deg, #10b981, #059669);
+                color: white;
+                border: none;
+                padding: 4px 14px;
+                border-radius: 100px;
+                cursor: pointer;
+                font-weight: 500;
+                font-size: 0.6rem;
+                transition: all 0.3s ease;
+                box-shadow: 0 2px 8px rgba(16,185,129,0.15);
+                white-space: nowrap;
+            " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(16,185,129,0.25)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.15)'">
+                <i class="fas fa-users"></i> Send All
+            </button>
         </div>
-        <div id="birthdayStudentsList">
-            <p style="color: #6b7280; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
-                <i class="fas fa-spinner fa-spin" style="color: #FDB913;"></i>
-                Loading birthdays...
-            </p>
-        </div>
-        <div id="birthdayStudentCard" style="display: none; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; padding: 14px 18px; border-left: 4px solid #f59e0b; margin-top: 10px;">
-            <div style="display: flex; align-items: center; gap: 14px;">
-                <div style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">
-                    <i class="fas fa-user"></i>
-                </div>
-                <div>
-                    <h4 id="birthdayName" style="margin: 0; font-size: 0.9rem; color: #0A3D62; font-weight: 600;">Loading...</h4>
-                    <p id="birthdayDetails" style="margin: 2px 0 0; font-size: 0.75rem; color: #6b7280;">-</p>
-                    <p id="birthdayAge" style="margin: 2px 0 0; font-size: 0.65rem; color: #92400e; font-weight: 500;">-</p>
-                </div>
-                <button style="
-                    margin-left: auto;
+    </div>
+    
+    <!-- Students List -->
+    <div id="birthdayStudentsList">
+        <p style="color: #6b7280; font-size: 0.85rem; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-spinner fa-spin" style="color: #FDB913;"></i>
+            Loading birthdays...
+        </p>
+    </div>
+    
+    <!-- Birthday Student Card -->
+    <div id="birthdayStudentCard" style="display: none; background: linear-gradient(135deg, #fef3c7, #fde68a); border-radius: 12px; padding: 14px 18px; border-left: 4px solid #f59e0b; margin-top: 10px;">
+        <div style="display: flex; align-items: center; gap: 14px;">
+            
+            <!-- Avatar -->
+            <div style="background: linear-gradient(135deg, #f59e0b, #d97706); border-radius: 50%; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; color: white; font-size: 18px; flex-shrink: 0; box-shadow: 0 4px 12px rgba(245,158,11,0.3);">
+                <i class="fas fa-user"></i>
+            </div>
+            
+            <!-- Student Info -->
+            <div>
+                <h4 id="birthdayName" style="margin: 0; font-size: 0.9rem; color: #0A3D62; font-weight: 600;">Loading...</h4>
+                <p id="birthdayDetails" style="margin: 2px 0 0; font-size: 0.75rem; color: #6b7280;">-</p>
+                <p id="birthdayAge" style="margin: 2px 0 0; font-size: 0.65rem; color: #92400e; font-weight: 500;">-</p>
+                <p id="birthdayEmail" style="display: none;"></p>
+                <p id="birthdayStudentId" style="display: none;"></p>
+            </div>
+            
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 6px; margin-left: auto;">
+                <!-- Send to Individual Student -->
+                <button onclick="handleBirthdaySend()" style="
                     background: linear-gradient(135deg, #0A3D62, #1a5a7a);
                     color: white;
                     border: none;
@@ -2770,13 +2803,32 @@
                     font-size: 0.7rem;
                     transition: all 0.3s ease;
                     box-shadow: 0 2px 8px rgba(10,61,98,0.15);
-                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(10,61,98,0.25)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(10,61,98,0.15)'">
+                    white-space: nowrap;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(10,61,98,0.25)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(10,61,98,0.15)'" title="Send birthday email to this student">
                     <i class="fas fa-paper-plane"></i> Send
+                </button>
+                
+                <!-- Send All Button (shown when multiple birthdays) -->
+                <button onclick="sendAllBirthdayEmails()" id="sendAllBtn" style="
+                    display: none;
+                    background: linear-gradient(135deg, #10b981, #059669);
+                    color: white;
+                    border: none;
+                    padding: 6px 14px;
+                    border-radius: 100px;
+                    cursor: pointer;
+                    font-weight: 500;
+                    font-size: 0.65rem;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 2px 8px rgba(16,185,129,0.15);
+                    white-space: nowrap;
+                " onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 16px rgba(16,185,129,0.25)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.15)'" title="Send birthday emails to all students with birthdays today">
+                    <i class="fas fa-users"></i> Send All
                 </button>
             </div>
         </div>
     </div>
-
+</div>
     <!-- ====== CHARTS SECTION - ULTRA MODERN ====== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 18px; margin-bottom: 20px;">
         
