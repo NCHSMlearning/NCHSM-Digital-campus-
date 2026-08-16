@@ -1,6 +1,6 @@
 // ============================================================
 // SUPER ADMIN STUDENT MANAGEMENT MODULE
-// CHANGE OF PROGRAM, READMISSION & ADMISSIONS
+// CHANGE OF PROGRAM, READMISSION & ADMISSIONS - FULLY FIXED
 // ============================================================
 
 // ============================================================
@@ -37,6 +37,25 @@ function getSupabaseClient() {
 }
 
 // ============================================================
+// SAFE DOM HELPERS
+// ============================================================
+function safeGetElement(id) {
+    return document.getElementById(id);
+}
+
+function safeSetText(id, text) {
+    const el = safeGetElement(id);
+    if (el) el.textContent = text;
+    return el;
+}
+
+function safeSetHTML(id, html) {
+    const el = safeGetElement(id);
+    if (el) el.innerHTML = html;
+    return el;
+}
+
+// ============================================================
 // INITIALIZATION
 // ============================================================
 function initStudentManagement() {
@@ -51,14 +70,21 @@ function initStudentManagement() {
         return;
     }
     
-    loadStudentsForDropdown();
-    loadAdmissions();
-    loadChangeProgramRequests();
-    loadReadmissionRequests();
-    loadSMHistory();
-    updateSMStats();
-    updateSMBadges();
-    toggleSMRequestFields();
+    // Load all data
+    Promise.all([
+        loadStudentsForDropdown(),
+        loadAdmissions(),
+        loadChangeProgramRequests(),
+        loadReadmissionRequests(),
+        loadSMHistory()
+    ]).then(() => {
+        updateSMStats();
+        updateSMBadges();
+        toggleSMRequestFields();
+        console.log('✅ Student Management fully loaded');
+    }).catch(err => {
+        console.error('❌ Error loading student management:', err);
+    });
 }
 
 // ============================================================
@@ -91,7 +117,7 @@ async function loadStudentsForDropdown() {
         if (data && data.length > 0) {
             data.forEach(student => {
                 const opt = document.createElement('option');
-                opt.value = student.student_id;
+                opt.value = student.student_id || '';
                 opt.textContent = `${student.full_name} (${student.student_id || 'N/A'}) - ${student.program || 'No Program'}`;
                 opt.dataset.program = student.program || '';
                 opt.dataset.block = student.block || '';
@@ -104,7 +130,6 @@ async function loadStudentsForDropdown() {
         select.onchange = function() {
             const selected = this.options[this.selectedIndex];
             const program = selected?.dataset?.program || '';
-            const email = selected?.dataset?.email || '';
             
             const currentProgramSelect = document.getElementById('smCurrentProgram');
             if (currentProgramSelect && program) {
@@ -114,11 +139,6 @@ async function loadStudentsForDropdown() {
                         break;
                     }
                 }
-            }
-            
-            const emailInput = document.getElementById('smStudentEmail');
-            if (emailInput) {
-                emailInput.value = email;
             }
         };
 
@@ -722,12 +742,6 @@ async function sendAdmissionLetter(studentEmail, studentName, program, applicati
             throw new Error('Failed to send email');
         }
         
-        // Or use Supabase Edge Function
-        // const { data, error } = await sb.functions.invoke('send-admission-email', {
-        //     body: emailData
-        // });
-        // if (error) throw error;
-        
         console.log('✅ Admission letter sent to:', studentEmail);
         return true;
         
@@ -738,7 +752,7 @@ async function sendAdmissionLetter(studentEmail, studentName, program, applicati
 }
 
 // ============================================================
-// APPROVE REQUEST (with admission letter for admissions)
+// APPROVE REQUEST
 // ============================================================
 async function approveSMRequest(requestId) {
     const sb = getSupabaseClient();
@@ -1806,6 +1820,9 @@ function showSMSubTab(tab) {
     else if (tab === 'new-request') loadStudentsForDropdown();
 }
 
+// ============================================================
+// FIXED: UPDATE SM STATS - WITH NULL CHECKS
+// ============================================================
 function updateSMStats() {
     // Safely get elements
     const totalEl = document.getElementById('smTotalRequests');
@@ -1838,7 +1855,10 @@ function updateSMStats() {
     if (rejectedEl) rejectedEl.textContent = rejectedCount;
 }
 
-ffunction updateSMBadges() {
+// ============================================================
+// FIXED: UPDATE SM BADGES - WITH NULL CHECKS
+// ============================================================
+function updateSMBadges() {
     const changePending = SM_STATE.changeRequests?.filter(r => r.status === 'pending').length || 0;
     const readmissionPending = SM_STATE.readmissionRequests?.filter(r => r.status === 'pending').length || 0;
     const admissionPending = SM_STATE.admissionRequests?.filter(r => r.status === 'submitted' || r.status === 'reviewing').length || 0;
