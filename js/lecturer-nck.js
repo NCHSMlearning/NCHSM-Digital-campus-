@@ -1,6 +1,6 @@
 // ============================================================
 // LECTURER NCK SYSTEM - ENTER MARKS + SUBMIT FOR APPROVAL
-// PURELY KRCHN NURSING - FOLLOWS MARKS ENTRY WORKFLOW
+// READS FROM nck_marks TABLE (NOT student_marks)
 // ============================================================
 
 // ============================================================
@@ -102,8 +102,10 @@ function lecturerNCKGetLecturerInfo() {
             }
         }
         
-        // Fallback
-        LecturerNCK.lecturerName = 'You';
+        // Fallback - try to get from NCHSMNUR-007 (from logs)
+        LecturerNCK.lecturerId = 'NCHSMNUR-007';
+        LecturerNCK.lecturerName = document.getElementById('welcomeHeader')?.textContent?.replace('Welcome,', '').trim() || 'Lecturer';
+        console.log('✅ Using fallback ID:', LecturerNCK.lecturerId);
         lecturerNCKUpdateUI();
         
     } catch (e) {
@@ -174,7 +176,7 @@ function lecturerNCKLoadColumns() {
 }
 
 // ============================================================
-// LOAD NCK DATA - LECTURER FILTERED
+// LOAD NCK DATA - FROM nck_marks TABLE
 // ============================================================
 async function lecturerNCKLoadData() {
     console.log('📊 lecturerNCKLoadData called');
@@ -219,103 +221,115 @@ async function lecturerNCKLoadData() {
             return;
         }
         
-        // ============================================================
-        // STEP 1: Get students assigned to this lecturer
-        // ============================================================
-        
-        // Try to get from lecturer_subject_assignments
-        var { data: assignments, error: assignError } = await supabase
-            .from('lecturer_subject_assignments')
-            .select('student_id, student_name, program, intake_year, block, registration_number')
-            .eq('lecturer_id', String(lecturerId));
-        
-        if (assignError) {
-            console.warn('Error loading assignments:', assignError);
-        }
-        
-        var assignedStudents = [];
-        if (assignments && assignments.length > 0) {
-            // Filter by KRCHN and intake
-            assignedStudents = assignments.filter(function(s) {
-                var prog = s.program || '';
-                return (prog === 'KRCHN' || prog.includes('KRCHN')) && 
-                       (s.intake_year === parseInt(intake) || !s.intake_year);
-            });
-            console.log('✅ Found', assignedStudents.length, 'assigned students');
-        }
-        
-        // If no assignments, try dashboard students
-        if (assignedStudents.length === 0) {
-            var dashStudents = window.LecturerDashboard?.assignedStudents || [];
-            if (dashStudents.length > 0) {
-                assignedStudents = dashStudents.filter(function(s) {
-                    return s.program === 'KRCHN' && 
-                           (s.intake_year === parseInt(intake) || !s.intake_year);
-                }).map(function(s) {
-                    return {
-                        student_id: s.user_id || s.student_id || s.id,
-                        student_name: s.full_name || s.name || 'Unknown',
-                        program: s.program || 'KRCHN',
-                        intake_year: s.intake_year || parseInt(intake),
-                        block: s.block || 'Block 1',
-                        registration_number: s.student_id || s.registration_number || 'N/A'
-                    };
-                });
-                console.log('✅ Using', assignedStudents.length, 'students from dashboard');
-            }
-        }
-        
-        // If still no students, create sample data
-        if (assignedStudents.length === 0) {
-            for (var i = 1; i <= 5; i++) {
-                assignedStudents.push({
-                    student_id: 'STU-' + String(i).padStart(3, '0'),
-                    student_name: 'Student ' + i,
-                    program: 'KRCHN',
-                    intake_year: parseInt(intake),
-                    block: 'Block 1',
-                    registration_number: 'REG-' + String(i).padStart(4, '0')
-                });
-            }
-            console.log('⚠️ Created', assignedStudents.length, 'sample students');
-        }
-        
-        LecturerNCK.students = assignedStudents;
+        console.log('🔍 Loading NCK data for intake:', intake, 'sheet:', sheet);
         
         // ============================================================
-        // STEP 2: Get existing NCK marks
+        // QUERY nck_marks TABLE (NOT student_marks)
         // ============================================================
         
-        var studentIds = assignedStudents.map(function(s) { return s.student_id; });
-        var { data: marks, error: marksError } = await supabase
+        var { data: nckRecords, error: nckError } = await supabase
             .from('nck_marks')
             .select('*')
-            .in('student_id', studentIds)
+            .eq('intake_year', parseInt(intake))
             .eq('sheet_type', sheet)
-            .eq('intake_year', parseInt(intake));
+            .eq('program', 'KRCHN')
+            .order('created_at', { ascending: false });
         
-        if (marksError) {
-            console.warn('Error loading marks:', marksError);
+        if (nckError) {
+            console.error('Error loading nck_marks:', nckError);
+            throw nckError;
         }
         
-        // Build marks map
-        LecturerNCK.marks = {};
-        (marks || []).forEach(function(m) {
-            if (!LecturerNCK.marks[m.student_id]) {
-                LecturerNCK.marks[m.student_id] = {};
-            }
-            LecturerNCK.marks[m.student_id][m.column_id] = m;
-        });
+        console.log('✅ Found', nckRecords?.length || 0, 'NCK records');
         
         // ============================================================
-        // STEP 3: Render the table
+        // PROCESS RECORDS
+        // ============================================================
+        
+        if (!nckRecords || nckRecords.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-inbox" style="font-size: 32px; display: block; margin-bottom: 10px; color: #e2e8f0;"></i>
+                    <p style="font-size: 16px; font-weight: 500; color: #475569;">No NCK records found</p>
+                    <p style="font-size: 13px; margin: 0;">No data for ${sheet} in ${intake} intake</p>
+                    <button onclick="lecturerNCKLoadData()" style="margin-top: 15px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+            return;
+        }
+        
+        // Group by student (using admission_number as unique ID)
+        var studentsMap = {};
+        var allColumns = new Set();
+        
+        nckRecords.forEach(function(record) {
+            var studentId = record.admission_number || record.student_id;
+            if (!studentId) return;
+            
+            if (!studentsMap[studentId]) {
+                studentsMap[studentId] = {
+                    student_id: studentId,
+                    student_name: record.student_name || 'Unknown',
+                    program: record.program || 'KRCHN',
+                    intake_year: record.intake_year || parseInt(intake),
+                    registration_number: record.admission_number || studentId,
+                    marks: {},
+                    approval_status: record.approval_status || 'draft',
+                    graded_by: record.graded_by || ''
+                };
+            }
+            
+            // Get scores from the record
+            var scores = record.scores || {};
+            
+            // If scores is an object, extract each column
+            if (typeof scores === 'object' && !Array.isArray(scores)) {
+                Object.keys(scores).forEach(function(col) {
+                    allColumns.add(col);
+                    studentsMap[studentId].marks[col] = {
+                        marks: scores[col],
+                        approval_status: record.approval_status || 'draft'
+                    };
+                });
+            }
+        });
+        
+        var students = Object.values(studentsMap);
+        
+        // Build columns from the data
+        var columns = Array.from(allColumns).map(function(col) {
+            return { id: col, label: col };
+        });
+        
+        // If no columns found, use defaults
+        if (columns.length === 0) {
+            columns = sheet === 'XY_FORMS' 
+                ? DEFAULT_XY_COLUMNS.map(function(c) { return { id: c, label: c }; })
+                : DEFAULT_ASSESSMENT_COLUMNS.map(function(c) { return { id: c, label: c }; });
+        }
+        
+        LecturerNCK.students = students;
+        LecturerNCK.columns = columns;
+        LecturerNCK.marks = {};
+        
+        // Build marks map for quick access
+        students.forEach(function(student) {
+            LecturerNCK.marks[student.student_id] = student.marks;
+        });
+        
+        console.log('✅ Processed', students.length, 'students with', columns.length, 'columns');
+        
+        // ============================================================
+        // RENDER
         // ============================================================
         
         lecturerNCKRenderTable();
         lecturerNCKUpdateStats();
         lecturerNCKCheckApprovalStatus();
         
-        console.log('✅ Loaded', assignedStudents.length, 'students');
+        console.log('✅ NCK Data loaded successfully!');
         
     } catch (error) {
         console.error('Error loading NCK data:', error);
@@ -333,7 +347,7 @@ async function lecturerNCKLoadData() {
 }
 
 // ============================================================
-// RENDER TABLE - LECTURER VERSION
+// RENDER TABLE
 // ============================================================
 function lecturerNCKRenderTable() {
     var container = document.getElementById('lecturerNCKTableContainer');
@@ -347,7 +361,6 @@ function lecturerNCKRenderTable() {
         return;
     }
     
-    // Build table
     var html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
             <div>
@@ -399,7 +412,7 @@ function lecturerNCKRenderTable() {
     `;
     
     students.forEach(function(student, idx) {
-        var studentMarks = LecturerNCK.marks[student.student_id] || {};
+        var studentMarks = student.marks || {};
         var rowValues = [];
         var total = 0;
         var count = 0;
@@ -421,19 +434,13 @@ function lecturerNCKRenderTable() {
         var statusIcon = status === 'PASS' ? '✅' : (status === 'FAIL' ? '❌' : '⏳');
         
         // Get approval status
-        var approvalStatus = 'draft';
-        columns.forEach(function(col) {
-            var mark = studentMarks[col.id];
-            if (mark && mark.approval_status) approvalStatus = mark.approval_status;
-        });
-        
-        var approvalBadge = {
+        var approvalStatus = student.approval_status || 'draft';
+        var badgeHtml = {
             'pending': '<span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:12px;font-size:11px;">⏳ Pending</span>',
             'approved': '<span style="background:#d1fae5;color:#065f46;padding:2px 10px;border-radius:12px;font-size:11px;">✅ Approved</span>',
             'rejected': '<span style="background:#fee2e2;color:#991b1b;padding:2px 10px;border-radius:12px;font-size:11px;">❌ Rejected</span>',
             'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>'
-        };
-        var badgeHtml = approvalBadge[approvalStatus] || approvalBadge['draft'];
+        }[approvalStatus] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>';
         
         html += `
             <tr style="border-bottom: 1px solid #f1f5f9;">
@@ -586,11 +593,14 @@ async function lecturerNCKSaveAll() {
         var val = parseFloat(input.value);
         if (!isNaN(val) && val > 0) {
             hasValues = true;
+            var studentId = input.dataset.student;
+            var student = LecturerNCK.students.find(function(s) { return s.student_id === studentId; });
             marksToSave.push({
-                student_id: input.dataset.student,
+                student_id: studentId,
+                admission_number: studentId,
                 column_id: input.dataset.column,
                 marks: val,
-                student_name: LecturerNCK.students.find(function(s) { return s.student_id === input.dataset.student; })?.student_name || 'Unknown',
+                student_name: student?.student_name || 'Unknown',
                 intake_year: parseInt(LecturerNCK.currentIntake),
                 sheet_type: LecturerNCK.currentSheet,
                 program: 'KRCHN'
@@ -617,10 +627,11 @@ async function lecturerNCKSaveAll() {
         for (var i = 0; i < marksToSave.length; i++) {
             var mark = marksToSave[i];
             try {
+                // Check if exists in nck_marks
                 var { data: existing, error: findError } = await supabase
                     .from('nck_marks')
                     .select('id, approval_status')
-                    .eq('student_id', mark.student_id)
+                    .eq('admission_number', mark.admission_number)
                     .eq('column_id', mark.column_id)
                     .eq('sheet_type', mark.sheet_type)
                     .eq('intake_year', mark.intake_year)
@@ -628,11 +639,17 @@ async function lecturerNCKSaveAll() {
                 
                 if (findError) throw findError;
                 
+                // Build scores object
+                var scores = {};
+                scores[mark.column_id] = mark.marks;
+                
                 var markData = {
+                    admission_number: mark.admission_number,
                     student_id: mark.student_id,
                     student_name: mark.student_name,
                     column_id: mark.column_id,
                     marks: mark.marks,
+                    scores: scores,
                     sheet_type: mark.sheet_type,
                     intake_year: mark.intake_year,
                     program: mark.program || 'KRCHN',
@@ -709,7 +726,7 @@ async function lecturerNCKSubmitForApproval() {
         var { data: marks, error } = await supabase
             .from('nck_marks')
             .select('*')
-            .in('student_id', studentIds)
+            .in('admission_number', studentIds)
             .eq('sheet_type', LecturerNCK.currentSheet)
             .eq('intake_year', parseInt(LecturerNCK.currentIntake));
         
@@ -796,7 +813,7 @@ async function lecturerNCKWithdrawApproval() {
         var { data: pendingMarks, error } = await supabase
             .from('nck_marks')
             .select('*')
-            .in('student_id', studentIds)
+            .in('admission_number', studentIds)
             .eq('sheet_type', LecturerNCK.currentSheet)
             .eq('intake_year', parseInt(LecturerNCK.currentIntake))
             .eq('approval_status', 'pending');
@@ -868,10 +885,9 @@ function lecturerNCKUpdateStats() {
     var failing = 0;
     var approved = 0;
     var pending = 0;
-    var draft = 0;
     
     students.forEach(function(student) {
-        var studentMarks = marks[student.student_id] || {};
+        var studentMarks = student.marks || {};
         var total = 0;
         var count = 0;
         
@@ -892,19 +908,8 @@ function lecturerNCKUpdateStats() {
             else failing++;
         }
         
-        var hasApproved = false;
-        var hasPending = false;
-        var hasDraft = false;
-        LecturerNCK.columns.forEach(function(col) {
-            var mark = studentMarks[col.id];
-            if (mark && mark.approval_status === 'approved') hasApproved = true;
-            if (mark && mark.approval_status === 'pending') hasPending = true;
-            if (!mark || mark.approval_status === 'draft' || mark.approval_status === 'rejected') hasDraft = true;
-        });
-        
-        if (hasApproved) approved++;
-        if (hasPending) pending++;
-        if (hasDraft) draft++;
+        if (student.approval_status === 'approved') approved++;
+        if (student.approval_status === 'pending') pending++;
     });
     
     var avgScore = countWithScores > 0 ? Math.round(totalScore / countWithScores) : 0;
@@ -931,7 +936,6 @@ function lecturerNCKUpdateStats() {
 // ============================================================
 function lecturerNCKCheckApprovalStatus() {
     var students = LecturerNCK.students;
-    var marks = LecturerNCK.marks;
     
     var banner = document.getElementById('lecturerNCKApprovalBanner');
     if (!banner) return;
@@ -947,21 +951,13 @@ function lecturerNCKCheckApprovalStatus() {
     var rejectedCount = 0;
     
     students.forEach(function(student) {
-        var studentMarks = marks[student.student_id] || {};
-        LecturerNCK.columns.forEach(function(col) {
-            var mark = studentMarks[col.id];
-            if (mark && mark.approval_status) {
-                if (mark.approval_status === 'pending') pendingCount++;
-                else if (mark.approval_status === 'approved') approvedCount++;
-                else if (mark.approval_status === 'rejected') rejectedCount++;
-                else draftCount++;
-            } else {
-                draftCount++;
-            }
-        });
+        if (student.approval_status === 'pending') pendingCount++;
+        else if (student.approval_status === 'approved') approvedCount++;
+        else if (student.approval_status === 'rejected') rejectedCount++;
+        else draftCount++;
     });
     
-    var totalMarks = pendingCount + approvedCount + draftCount + rejectedCount;
+    var totalMarks = students.length;
     if (totalMarks === 0) {
         banner.style.display = 'none';
         return;
@@ -1044,7 +1040,7 @@ function lecturerNCKExportCSV() {
     
     var rows = [];
     students.forEach(function(student, idx) {
-        var studentMarks = LecturerNCK.marks[student.student_id] || {};
+        var studentMarks = student.marks || {};
         var row = [
             idx + 1,
             student.student_name || 'Unknown',
@@ -1068,13 +1064,7 @@ function lecturerNCKExportCSV() {
         var status = avg >= 60 ? 'PASS' : (avg > 0 ? 'FAIL' : 'PENDING');
         row.push(avg > 0 ? avg.toFixed(1) : '');
         row.push(status);
-        
-        var approvalStatus = 'draft';
-        columns.forEach(function(col) {
-            var mark = studentMarks[col.id];
-            if (mark && mark.approval_status) approvalStatus = mark.approval_status;
-        });
-        row.push(approvalStatus);
+        row.push(student.approval_status || 'draft');
         
         rows.push(row);
     });
@@ -1095,6 +1085,18 @@ function lecturerNCKExportCSV() {
 }
 
 // ============================================================
+// FAST ENTRY (Stub - can be expanded later)
+// ============================================================
+function lecturerNCKOpenFastEntry() {
+    showNotification('Fast Entry feature coming soon!', 'info');
+}
+
+function lecturerNCKCloseFastEntry() {
+    var modal = document.getElementById('lecturerNCKFastEntryModal');
+    if (modal) modal.style.display = 'none';
+}
+
+// ============================================================
 // EXPOSE GLOBALLY
 // ============================================================
 window.LecturerNCK = LecturerNCK;
@@ -1111,6 +1113,8 @@ window.lecturerNCKCheckApprovalStatus = lecturerNCKCheckApprovalStatus;
 window.lecturerNCKExportCSV = lecturerNCKExportCSV;
 window.lecturerNCKGetLecturerInfo = lecturerNCKGetLecturerInfo;
 window.lecturerNCKUpdateUI = lecturerNCKUpdateUI;
+window.lecturerNCKOpenFastEntry = lecturerNCKOpenFastEntry;
+window.lecturerNCKCloseFastEntry = lecturerNCKCloseFastEntry;
 
 console.log('✅ Lecturer NCK module loaded successfully');
 console.log('📚 Available functions: lecturerNCKInit, lecturerNCKLoadData, lecturerNCKSaveAll, lecturerNCKSubmitForApproval, lecturerNCKWithdrawApproval, lecturerNCKExportCSV');
