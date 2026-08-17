@@ -93,7 +93,7 @@ async function nckLoadManageStudents() {
         const { data: enrolled, error: enrolledError } = await sb
             .from('nck_marks')
             .select('*')
-            .eq('intake_year', intake)
+            .eq('academic_year', intake)
             .eq('subject_name', sheet)
             .eq('program', program);
         
@@ -102,9 +102,9 @@ async function nckLoadManageStudents() {
         // Get all KRCHN students from profiles
         const { data: profiles, error: profilesError } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, email, program, intake_year, admission_number, status')
+            .select('student_id, full_name, email, program, academic_year, admission_number, status')
             .eq('role', 'student')
-            .eq('intake_year', intake)
+            .eq('academic_year', intake)
             .eq('program', program);
         
         if (profilesError) throw profilesError;
@@ -184,7 +184,7 @@ function nckRenderManageStudents() {
                 <td style="padding: 8px 8px; font-weight: 500;">${escapeHtml(name)}</td>
                 <td style="padding: 8px 8px; font-size: 12px; color: #64748b;">${escapeHtml(admission)}</td>
                 <td style="padding: 8px 8px; font-size: 12px;">${escapeHtml(s.program || 'KRCHN')}</td>
-                <td style="padding: 8px 8px; font-size: 12px;">${escapeHtml(s.intake_year || '')}</td>
+                <td style="padding: 8px 8px; font-size: 12px;">${escapeHtml(s.academic_year || '')}</td>
                 <td style="padding: 8px 6px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : '#991b1b'};">${score}%</td>
                 <td style="padding: 8px 6px; text-align: center;">
                     <span style="background: ${statusColor}; color: ${statusTextColor}; padding: 2px 10px; border-radius: 12px; font-weight: 600; font-size: 11px;">${statusText}</span>
@@ -295,7 +295,7 @@ async function nckAddSelectedStudent() {
                 admission_number: admission,
                 student_name: student.full_name,
                 student_id: student.student_id,
-                intake_year: intake,
+                academic_year: intake,
                 subject_name: sheet,
                 program: program,
                 status: 'pending',
@@ -332,7 +332,7 @@ async function nckAddAllAvailableStudents() {
                 admission_number: s.admission_number,
                 student_name: s.full_name,
                 student_id: s.student_id,
-                intake_year: intake,
+                academic_year: intake,
                 subject_name: sheet,
                 program: program,
                 status: 'pending',
@@ -359,7 +359,7 @@ async function nckDropStudent(admission) {
             .from('nck_marks')
             .delete()
             .eq('admission_number', admission)
-            .eq('intake_year', intake)
+            .eq('academic_year', intake)
             .eq('subject_name', sheet);
         if (error) throw error;
         showNotification('✅ Student removed from NCK', 'success');
@@ -387,7 +387,7 @@ async function nckDropSelectedStudents() {
             .from('nck_marks')
             .delete()
             .eq('admission_number', admission)
-            .eq('intake_year', intake)
+            .eq('academic_year', intake)
             .eq('subject_name', sheet);
         if (!error) removed++;
     }
@@ -412,7 +412,7 @@ async function nckRemoveAllStudents() {
         const { error } = await sb
             .from('nck_marks')
             .delete()
-            .eq('intake_year', intake)
+            .eq('academic_year', intake)
             .eq('subject_name', sheet);
         if (error) throw error;
         showNotification(`✅ All ${count} students removed from NCK`, 'success');
@@ -548,10 +548,10 @@ async function loadNCKData() {
 
         const { data: students, error: sError } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, admission_number, intake_year, program, status')
+            .select('student_id, full_name, admission_number, academic_year, program, status')
             .eq('role', 'student')
             .eq('status', 'approved')
-            .eq('intake_year', currentNCKIntake)
+            .eq('academic_year', currentNCKIntake)
             .eq('program', 'KRCHN');
 
         if (sError) {
@@ -591,8 +591,8 @@ async function loadNCKData() {
 
         const { data: marks, error: mError } = await sb
             .from('nck_marks')
-            .select('id, student_id, student_name, intake_year, subject_name, program, scores, final_score, grade, status, graded_by, published, published_at')
-            .eq('intake_year', currentNCKIntake)
+            .select('id, student_id, student_name, academic_year, subject_name, program, scores, final_score, grade, status, graded_by, published, published_at')
+            .eq('academic_year', currentNCKIntake)
             .eq('subject_name', currentNCKSheetType)
             .eq('program', 'KRCHN');
 
@@ -1106,7 +1106,7 @@ async function saveAllNCKMarks() {
                     student_id: studentId,
                     student_name: student.full_name || 'Unknown',
                     admission_number: student.admission_number || studentId,
-                    intake_year: currentNCKIntake,
+                    academic_year: currentNCKIntake,
                     subject_name: currentNCKSheetType,
                     program: 'KRCHN',
                     scores: JSON.stringify(scores),
@@ -1116,7 +1116,7 @@ async function saveAllNCKMarks() {
                     graded_by: gradedBy,
                     updated_at: new Date().toISOString()
                 }, { 
-                    onConflict: 'student_id, subject_name, intake_year, program' 
+                    onConflict: 'student_id, subject_name, academic_year, program' 
                 });
 
             if (error) {
@@ -1163,7 +1163,7 @@ async function publishAllNCKMarks() {
                 published_at: new Date().toISOString(),
                 published_by: window.currentUser?.full_name || 'Admin'
             })
-            .eq('intake_year', currentNCKIntake)
+            .eq('academic_year', currentNCKIntake)
             .eq('subject_name', currentNCKSheetType)
             .eq('program', 'KRCHN');
 
@@ -1191,7 +1191,7 @@ async function togglePublishNCK(studentId) {
             .from('nck_marks')
             .select('published')
             .eq('student_id', studentId)
-            .eq('intake_year', currentNCKIntake)
+            .eq('academic_year', currentNCKIntake)
             .eq('subject_name', currentNCKSheetType)
             .eq('program', 'KRCHN')
             .single();
@@ -1208,7 +1208,7 @@ async function togglePublishNCK(studentId) {
                 published_by: window.currentUser?.full_name || 'Admin'
             })
             .eq('student_id', studentId)
-            .eq('intake_year', currentNCKIntake)
+            .eq('academic_year', currentNCKIntake)
             .eq('subject_name', currentNCKSheetType)
             .eq('program', 'KRCHN');
 
@@ -1277,7 +1277,7 @@ async function publishSelectedStudents() {
                 published_by: window.currentUser?.full_name || 'Admin'
             })
             .in('student_id', studentIds)
-            .eq('intake_year', currentNCKIntake)
+            .eq('academic_year', currentNCKIntake)
             .eq('subject_name', currentNCKSheetType)
             .eq('program', 'KRCHN');
 
@@ -1567,7 +1567,7 @@ async function saveSingleStudentMarks(studentId, studentName, scores, gradedBy) 
                 student_id: studentId,
                 student_name: studentName || 'Unknown',
                 admission_number: studentId,
-                intake_year: currentNCKIntake,
+                academic_year: currentNCKIntake,
                 subject_name: currentNCKSheetType,
                 program: 'KRCHN',
                 scores: JSON.stringify(scores),
@@ -1577,7 +1577,7 @@ async function saveSingleStudentMarks(studentId, studentName, scores, gradedBy) 
                 graded_by: gradedBy,
                 updated_at: new Date().toISOString()
             }, { 
-                onConflict: 'student_id, subject_name, intake_year, program' 
+                onConflict: 'student_id, subject_name, academic_year, program' 
             });
 
         if (error) {
@@ -1643,7 +1643,7 @@ async function exportNCKData() {
         const { data: marks, error } = await sb
             .from('nck_marks')
             .select('*')
-            .eq('intake_year', currentNCKIntake)
+            .eq('academic_year', currentNCKIntake)
             .eq('subject_name', currentNCKSheetType)
             .eq('program', 'KRCHN');
 
@@ -1657,12 +1657,12 @@ async function exportNCKData() {
             return;
         }
 
-        const headers = ['Student ID', 'Student Name', 'Admission', 'Intake Year', 'Subject', 'Program', 'Scores', 'Final Score', 'Grade', 'Status', 'Graded By', 'Published'];
+        const headers = ['Student ID', 'Student Name', 'Admission', 'Academic Year', 'Subject', 'Program', 'Scores', 'Final Score', 'Grade', 'Status', 'Graded By', 'Published'];
         const rows = marks.map(m => [
             m.student_id || '',
             m.student_name || '',
             m.admission_number || '',
-            m.intake_year || '',
+            m.academic_year || '',
             m.subject_name || '',
             m.program || '',
             m.scores || '',
