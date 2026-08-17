@@ -129,6 +129,128 @@ const programNames = {
 };
 
 // ============================================================
+// NAVIGATION FUNCTION (Page switching)
+// ============================================================
+function navigateTo(page) {
+    // Hide all pages
+    document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+    
+    // Show the target page
+    const targetPage = document.getElementById(`page-${page}`);
+    if (targetPage) {
+        targetPage.classList.add('active');
+    }
+    
+    // Update nav items
+    document.querySelectorAll('.nav-item').forEach(item => {
+        item.classList.remove('active');
+        if (item.dataset.page === page) {
+            item.classList.add('active');
+        }
+    });
+    
+    // If going to register page, check auth state
+    if (page === 'register') {
+        checkAuth();
+    }
+    
+    // If going to login page, show login tab
+    if (page === 'login') {
+        // Redirect to home with login tab active
+        document.getElementById('page-home').classList.add('active');
+        switchAuthTab('login');
+        // Scroll to auth section
+        document.querySelector('.auth-wrapper')?.scrollIntoView({ behavior: 'smooth' });
+        // Update nav
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.page === 'home') {
+                item.classList.add('active');
+            }
+        });
+    }
+}
+
+// ============================================================
+// UPDATE PROGRAMS FUNCTION (Populate courses based on school)
+// ============================================================
+function updatePrograms() {
+    const school = document.getElementById('school').value;
+    const programSelect = document.getElementById('program');
+    
+    // Clear existing options
+    programSelect.innerHTML = '<option value="">-- Select Course --</option>';
+    
+    // Define programs by school
+    const programs = {
+        'nursing': [
+            { value: 'KRCHN', label: 'KRCHN Nursing - 3.5 years' },
+            { value: 'DCHN', label: 'DCHN Nursing - 3.5 years' }
+        ],
+        'healthcare': [
+            { value: 'CNA', label: 'Certificate in Nursing Assistant (CNA) - 6 Months' },
+            { value: 'CAREGIVER', label: 'Artisan in Caregiver - 2 Modules' },
+            { value: 'HSS', label: 'Certificate in Health Services Support (Level 5) - 4 Modules' },
+            { value: 'HBC', label: 'Craft in Homebased Care Level 3 - 2 Modules' },
+            { value: 'HSSM', label: 'Health Systems Support Management (Level 6) - 6 Modules' }
+        ],
+        'health_social': [
+            { value: 'DPOTT', label: 'Diploma in Perioperative Theatre Technology (Level 6) - 6 Modules' },
+            { value: 'CPOTT', label: 'Certificate in Perioperative Theatre Technology (Level 5) - 4 Modules' },
+            { value: 'DCH', label: 'Diploma in Community Health (Level 6) - 7 Modules' },
+            { value: 'CCH', label: 'Certificate in Community Health (Level 5) - 4 Modules' },
+            { value: 'DSW', label: 'Diploma in Social Work & Community Devt (Level 6) - 5 Modules' },
+            { value: 'CSW', label: 'Certificate in Social Work & Community Devt (Level 5) - 3 Modules' },
+            { value: 'DHRIT', label: 'Diploma in Health Records & IT (Level 6) - 7 Modules' },
+            { value: 'CHRIT', label: 'Certificate in Health Records & IT (Level 5) - 4 Modules' },
+            { value: 'COMT', label: 'Diploma in Orthopedic & Trauma Medicine (Level 6) - 6 Modules' },
+            { value: 'COTM', label: 'Certificate in Orthopedic & Trauma Medicine (Level 5) - 4 Modules' },
+            { value: 'DME', label: 'Diploma in Bio-Medical Engineering (Level 6) - 7 Modules' },
+            { value: 'CBME', label: 'Certificate in Bio-Medical Engineering (Level 5) - 4 Modules' },
+            { value: 'DSL', label: 'Diploma in Science Laboratory (Level 6) - 5 Modules' },
+            { value: 'CSL', label: 'Certificate in Science Laboratory (Level 5) - 3 Modules' },
+            { value: 'DCJS', label: 'Diploma in Criminal Safety Justice (Level 6) - 5 Modules' },
+            { value: 'CCJS', label: 'Certificate in Criminal Safety Justice (Level 5) - 4 Modules' }
+        ],
+        'ict': [
+            { value: 'DICT', label: 'Diploma in Information Communication Technology - 6 Modules' },
+            { value: 'CICT', label: 'Certificate in Information Communication Technology - 4 Modules' },
+            { value: 'DCP', label: 'Diploma in Computer Programming - 6 Modules' },
+            { value: 'DCS', label: 'Diploma in Computer Science - 6 Modules' },
+            { value: 'NSA', label: 'Network System Administration - 4 Modules' },
+            { value: 'DCSEC', label: 'Diploma in Cyber Security (Level 6) - 6 Modules' }
+        ],
+        'ict_short': [
+            { value: 'CCA', label: 'Certificate in Computer Applications - 1 Month' },
+            { value: 'EXCEL', label: 'Certificate in Advance Microsoft Excel - 1 Month' },
+            { value: 'GD', label: 'Certificate in Graphic Design - 3 Months' },
+            { value: 'DM', label: 'Certificate in Digital Marketing - 2 Months' },
+            { value: 'OA', label: 'Certificate in Office Administrator - 3 Months' }
+        ]
+    };
+    
+    // Add options for selected school
+    if (school && programs[school]) {
+        programs[school].forEach(prog => {
+            const option = document.createElement('option');
+            option.value = prog.value;
+            option.textContent = prog.label;
+            programSelect.appendChild(option);
+        });
+    }
+}
+
+// ============================================================
+// TOGGLE STUDENT TYPE
+// ============================================================
+function toggleStudentType() {
+    const selected = document.querySelector('input[name="studentType"]:checked');
+    if (selected) {
+        selectType(selected.value);
+    }
+}
+
+// ============================================================
 // AUTH FUNCTIONS
 // ============================================================
 function switchAuthTab(tab) {
@@ -214,7 +336,7 @@ async function registerUser() {
     const name = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const phone = document.getElementById('regPhone').value.trim();
-    const role = document.getElementById('regRole').value;
+    const role = document.getElementById('regRole')?.value || 'student';
     const password = document.getElementById('regPassword').value;
     const confirm = document.getElementById('regConfirmPassword').value;
     const msg = document.getElementById('registerMessage');
@@ -234,13 +356,6 @@ async function registerUser() {
     if (!name || !email || !phone || !password || !confirm) {
         msg.className = 'auth-message error';
         msg.textContent = '❌ Please fill in all required fields.';
-        return;
-    }
-
-    // Force student role
-    if (role !== 'student') {
-        msg.className = 'auth-message error';
-        msg.textContent = '❌ Only student accounts can be created here.';
         return;
     }
 
@@ -317,8 +432,6 @@ async function registerUser() {
 
         if (appError) throw appError;
 
-        // ⚠️ NO consolidated_user_profiles_table entry here!
-
         msg.className = 'auth-message success';
         msg.textContent = '✅ Account created! You are now logged in. Please complete your application.';
 
@@ -360,8 +473,10 @@ async function checkAuth() {
     const supabaseClient = getSupabase();
     if (!supabaseClient) {
         console.error('❌ Supabase client not available for auth check');
-        document.getElementById('authContainer').style.display = 'block';
-        document.getElementById('admissionApp').style.display = 'none';
+        const authContainer = document.getElementById('authContainer');
+        const admissionApp = document.getElementById('admissionApp');
+        if (authContainer) authContainer.style.display = 'block';
+        if (admissionApp) admissionApp.style.display = 'none';
         return;
     }
 
@@ -370,10 +485,18 @@ async function checkAuth() {
         if (error) throw error;
         if (session) {
             currentUser = session.user;
+            
+            // For home page auth container
             const authContainer = document.getElementById('authContainer');
             const admissionApp = document.getElementById('admissionApp');
             if (authContainer) authContainer.style.display = 'none';
             if (admissionApp) admissionApp.style.display = 'block';
+            
+            // For register page auth container 2
+            const authContainer2 = document.getElementById('authContainer2');
+            const admissionApp2 = document.getElementById('admissionApp');
+            if (authContainer2) authContainer2.style.display = 'none';
+            if (admissionApp2) admissionApp2.style.display = 'block';
             
             const userEmail = document.getElementById('userEmail');
             const userAvatar = document.getElementById('userAvatar');
@@ -385,10 +508,17 @@ async function checkAuth() {
             
             await loadUserApplication(currentUser.id);
         } else {
+            // For home page auth container
             const authContainer = document.getElementById('authContainer');
             const admissionApp = document.getElementById('admissionApp');
             if (authContainer) authContainer.style.display = 'block';
             if (admissionApp) admissionApp.style.display = 'none';
+            
+            // For register page auth container 2
+            const authContainer2 = document.getElementById('authContainer2');
+            const admissionApp2 = document.getElementById('admissionApp');
+            if (authContainer2) authContainer2.style.display = 'block';
+            if (admissionApp2) admissionApp2.style.display = 'none';
         }
     } catch (error) {
         console.error('Auth error:', error);
@@ -543,8 +673,8 @@ async function saveApplication(step) {
 function selectType(type) {
     studentType = type;
     document.querySelectorAll('.student-type-card').forEach(c => c.classList.remove('selected'));
-    document.querySelector(`.student-type-card[data-type="${type}"]`).classList.add('selected');
-    document.querySelector(`.student-type-card[data-type="${type}"] input[type="radio"]`).checked = true;
+    document.querySelector(`.student-type-card[data-type="${type}"]`)?.classList.add('selected');
+    document.querySelector(`.student-type-card[data-type="${type}"] input[type="radio"]`)?.setAttribute('checked', 'checked');
 
     const prevEdu = document.getElementById('prevEducation');
     if (prevEdu) prevEdu.style.display = type === 'transfer' ? 'block' : 'none';
@@ -576,9 +706,9 @@ function goToStep(step) {
     if (!validateStep(currentStep, step)) return;
 
     document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
-    document.querySelector(`.form-section[data-section="${step}"]`).classList.add('active');
+    document.querySelector(`.form-section[data-section="${step}"]`)?.classList.add('active');
 
-    document.querySelectorAll('.progress-step').forEach(el => {
+    document.querySelectorAll('.step-item').forEach(el => {
         el.classList.remove('active', 'completed');
         const s = parseInt(el.dataset.step);
         if (s === step) el.classList.add('active');
@@ -624,10 +754,6 @@ function validateStep(from, to) {
             showValidation('KCSE document has not been scanned and validated.');
             return false;
         }
-        if (!uploadedDocs['id']) {
-            showValidation('Please upload your ID / Birth Certificate.');
-            return false;
-        }
         if (!uploadedDocs['recommendation']) {
             showValidation('Please upload a Recommendation Letter.');
             return false;
@@ -642,11 +768,11 @@ function validateStep(from, to) {
 
 function showValidation(msg) {
     document.getElementById('errorList').innerHTML = `<li>${msg}</li>`;
-    document.getElementById('validationModal').classList.add('show');
+    document.getElementById('validationModal')?.classList.add('show');
 }
 
 function closeValidation() {
-    document.getElementById('validationModal').classList.remove('show');
+    document.getElementById('validationModal')?.classList.remove('show');
 }
 
 // ============================================================
@@ -718,9 +844,38 @@ function updateIntakePreview() {
     const month = document.getElementById('intakeMonth');
     const year = document.getElementById('intakeYear');
     const preview = document.getElementById('intakePreview');
-    if (preview) {
+    if (preview && month && year) {
         preview.textContent = `📅 Intake: ${month.options[month.selectedIndex]?.text || 'March'} ${year.value}`;
     }
+}
+
+// ============================================================
+// ENQUIRY HANDLER
+// ============================================================
+function handleEnquiry(event) {
+    event.preventDefault();
+    const name = document.getElementById('enquiryName').value.trim();
+    const email = document.getElementById('enquiryEmail').value.trim();
+    const phone = document.getElementById('enquiryPhone').value.trim();
+    const subject = document.getElementById('enquirySubject').value.trim();
+    const message = document.getElementById('enquiryMessage').value.trim();
+    const status = document.getElementById('enquiryMessageStatus');
+    
+    if (!name || !email || !subject || !message) {
+        status.className = 'auth-message error';
+        status.textContent = '❌ Please fill in all required fields.';
+        return;
+    }
+    
+    status.className = 'auth-message success';
+    status.textContent = '✅ Your enquiry has been sent! We will get back to you within 24 hours.';
+    
+    // Reset form
+    document.getElementById('enquiryName').value = '';
+    document.getElementById('enquiryEmail').value = '';
+    document.getElementById('enquiryPhone').value = '';
+    document.getElementById('enquirySubject').value = '';
+    document.getElementById('enquiryMessage').value = '';
 }
 
 // ============================================================
@@ -1303,16 +1458,21 @@ function updateSummary() {
     const phone = document.getElementById('phone')?.value || '—';
     const prog = document.getElementById('program');
     const progText = prog?.options[prog.selectedIndex]?.text || '—';
-    const month = document.getElementById('intakeMonth');
-    const year = document.getElementById('intakeYear');
-    const intakeText = `${month?.options[month.selectedIndex]?.text || 'March'} ${year?.value || '2026'}`;
+    const school = document.getElementById('school');
+    const schoolText = school?.options[school.selectedIndex]?.text || '—';
+    const campus = document.getElementById('campus');
+    const campusText = campus?.options[campus.selectedIndex]?.text || '—';
+    const intake = document.getElementById('intake');
+    const intakeText = intake?.options[intake.selectedIndex]?.text || '—';
+    const mode = document.getElementById('modeOfStudy');
+    const modeText = mode?.options[mode.selectedIndex]?.text || '—';
     const count = Object.keys(uploadedDocs).filter(k => uploadedDocs[k]).length;
     const elig = eligibilityPassed ? '✅ Eligible' : '⏳ Pending';
     const validation = kcseValidated ? (eligibilityPassed ? '✅ Passed' : '❌ Failed') : '⏳ Not Scanned';
     const typeLabel = studentType === 'new' ? 'New Student' : 'Transfer Student';
 
-    const ids = ['sumName', 'sumEmail', 'sumPhone', 'sumProgram', 'sumStudentType', 'sumIntake', 'sumDocs', 'sumValidation', 'sumEligibility'];
-    const values = [name, email, phone, progText, typeLabel, intakeText, `${count} uploaded`, validation, elig];
+    const ids = ['sumName', 'sumEmail', 'sumPhone', 'sumProgram', 'sumSchool', 'sumCampus', 'sumIntake', 'sumMode', 'sumStudentType', 'sumDocs', 'sumValidation', 'sumEligibility'];
+    const values = [name, email, phone, progText, schoolText, campusText, intakeText, modeText, typeLabel, `${count} uploaded`, validation, elig];
     ids.forEach((id, i) => {
         const el = document.getElementById(id);
         if (el) el.textContent = values[i];
@@ -1434,7 +1594,330 @@ document.getElementById('successOverlay')?.addEventListener('click', function(e)
     if (e.target === this) this.classList.remove('show');
 });
 
+// ============================================================
+// AUTH 2 FUNCTIONS (For Apply Now page)
+// ============================================================
+
+function switchAuthTab2(tab) {
+    const container = document.getElementById('authContainer2');
+    if (!container) return;
+
+    const tabs = container.querySelectorAll('.auth-tabs .tab');
+    const forms = container.querySelectorAll('.auth-form');
+
+    tabs.forEach(t => t.classList.remove('active'));
+    forms.forEach(f => f.classList.remove('active'));
+
+    const tabBtn = container.querySelector(`.auth-tabs .tab[data-tab="${tab}"]`);
+    if (tabBtn) tabBtn.classList.add('active');
+
+    const formId = tab === 'login2' ? 'loginForm2' : 'registerForm2';
+    const form = document.getElementById(formId);
+    if (form) form.classList.add('active');
+
+    // Clear messages
+    document.getElementById('loginMessage2').className = 'auth-message';
+    document.getElementById('loginMessage2').textContent = '';
+    document.getElementById('registerMessage2').className = 'auth-message';
+    document.getElementById('registerMessage2').textContent = '';
+}
+
+async function loginUser2() {
+    const email = document.getElementById('loginEmail2').value.trim();
+    const password = document.getElementById('loginPassword2').value;
+    const msg = document.getElementById('loginMessage2');
+    const btn = document.getElementById('loginBtn2');
+
+    const supabaseClient = getSupabase();
+    if (!supabaseClient) {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ System error. Please refresh the page.';
+        return;
+    }
+
+    msg.className = 'auth-message';
+    msg.textContent = '';
+
+    if (!email || !password) {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ Please enter both email and password.';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing In...';
+
+    try {
+        const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+
+        msg.className = 'auth-message success';
+        msg.textContent = '✅ Signed in successfully!';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+
+        // Check user status
+        const { data: profile } = await supabaseClient
+            .from('consolidated_user_profiles_table')
+            .select('status, full_name')
+            .eq('user_id', data.user.id)
+            .single();
+
+        if (profile && profile.status === 'pending') {
+            msg.textContent = '⏳ Your account is pending admin approval. You will be notified via email.';
+            await supabaseClient.auth.signOut();
+            return;
+        }
+
+        setTimeout(() => window.location.reload(), 1000);
+    } catch (error) {
+        console.error('Login error:', error);
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ ' + (error.message || 'Login failed.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+    }
+}
+
+async function registerUser2() {
+    const name = document.getElementById('regName2').value.trim();
+    const email = document.getElementById('regEmail2').value.trim();
+    const phone = document.getElementById('regPhone2').value.trim();
+    const password = document.getElementById('regPassword2').value;
+    const confirm = document.getElementById('regConfirmPassword2').value;
+    const msg = document.getElementById('registerMessage2');
+    const btn = document.getElementById('registerBtn2');
+
+    const supabaseClient = getSupabase();
+    if (!supabaseClient) {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ System error. Please refresh the page.';
+        return;
+    }
+
+    msg.className = 'auth-message';
+    msg.textContent = '';
+
+    // Validate
+    if (!name || !email || !phone || !password || !confirm) {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ Please fill in all required fields.';
+        return;
+    }
+
+    if (password.length < 8) {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ Password must be at least 8 characters.';
+        return;
+    }
+
+    if (password !== confirm) {
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ Passwords do not match.';
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
+
+    try {
+        // Check if email exists
+        const { data: existing } = await supabaseClient
+            .from('applications')
+            .select('user_email')
+            .eq('user_email', email)
+            .maybeSingle();
+
+        if (existing) {
+            msg.className = 'auth-message error';
+            msg.textContent = '❌ This email already has an application. Please login.';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+            return;
+        }
+
+        // Create auth user
+        const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+            email,
+            password,
+            options: {
+                data: {
+                    full_name: name,
+                    phone: phone,
+                    role: 'applicant',
+                    status: 'pending_application'
+                }
+            }
+        });
+
+        if (authError) throw authError;
+
+        // Auto-login
+        try {
+            const { error: loginError } = await supabaseClient.auth.signInWithPassword({
+                email,
+                password
+            });
+            if (loginError) console.warn('Auto-login failed:', loginError);
+        } catch (loginErr) {
+            console.warn('Auto-login error:', loginErr);
+        }
+
+        // Create application
+        const { error: appError } = await supabaseClient
+            .from('applications')
+            .insert([{
+                user_id: authData.user.id,
+                user_email: email,
+                full_name: name,
+                email: email,
+                phone: phone,
+                status: 'draft',
+                created_at: new Date().toISOString()
+            }]);
+
+        if (appError) throw appError;
+
+        msg.className = 'auth-message success';
+        msg.textContent = '✅ Account created! You are now logged in. Please complete your application.';
+
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+
+        // Refresh page to show admission form
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+
+    } catch (error) {
+        console.error('Registration error:', error);
+        msg.className = 'auth-message error';
+        msg.textContent = '❌ ' + (error.message || 'Registration failed. Please try again.');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+    }
+}
+
+// Email validation for register2
+document.addEventListener('DOMContentLoaded', function() {
+    const regEmail2 = document.getElementById('regEmail2');
+    if (regEmail2) {
+        regEmail2.addEventListener('input', function() {
+            const email = this.value.trim();
+            const statusEl = document.getElementById('regEmailStatus2');
+
+            if (!email) {
+                if (statusEl) {
+                    statusEl.textContent = '';
+                    statusEl.style.color = '';
+                }
+                this.style.borderColor = '#e2e8f0';
+                return;
+            }
+
+            if (!email.includes('@') || !email.includes('.')) {
+                if (statusEl) {
+                    statusEl.textContent = '❌ Invalid email format';
+                    statusEl.style.color = '#ef4444';
+                }
+                this.style.borderColor = '#ef4444';
+                return;
+            }
+
+            if (statusEl) {
+                statusEl.textContent = '✅ Email format valid';
+                statusEl.style.color = '#0b8a5e';
+            }
+            this.style.borderColor = '#0b8a5e';
+        });
+    }
+
+    // Password strength for register2
+    const regPassword2 = document.getElementById('regPassword2');
+    if (regPassword2) {
+        regPassword2.addEventListener('input', function() {
+            const password = this.value;
+            const bar = document.getElementById('strengthBar2');
+            const text = document.getElementById('strengthText2');
+
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (password.length >= 12) score++;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[a-z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+            const levels = [
+                { text: 'Very Weak', cls: 'weak', width: '10%', color: '#ef4444' },
+                { text: 'Weak', cls: 'weak', width: '25%', color: '#ef4444' },
+                { text: 'Fair', cls: 'fair', width: '45%', color: '#f59e0b' },
+                { text: 'Good', cls: 'good', width: '65%', color: '#3b82f6' },
+                { text: 'Strong', cls: 'strong', width: '85%', color: '#0b8a5e' },
+                { text: 'Very Strong', cls: 'strong', width: '100%', color: '#0b8a5e' }
+            ];
+
+            const level = Math.min(Math.floor(score / 1), 5);
+            const result = levels[level] || levels[0];
+
+            if (bar) {
+                bar.style.width = result.width;
+                bar.style.background = result.color;
+            }
+            if (text) {
+                text.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
+                text.className = `strength-text ${password.length > 0 ? result.cls : ''}`;
+            }
+        });
+    }
+
+    // Password confirmation for register2
+    const regConfirm2 = document.getElementById('regConfirmPassword2');
+    if (regConfirm2) {
+        regConfirm2.addEventListener('input', function() {
+            const password = document.getElementById('regPassword2').value;
+            const confirm = this.value;
+            const matchEl = document.getElementById('passwordMatch2');
+
+            if (!confirm) {
+                if (matchEl) {
+                    matchEl.textContent = '';
+                    matchEl.className = 'password-match';
+                }
+                return;
+            }
+
+            if (password === confirm) {
+                if (matchEl) {
+                    matchEl.textContent = '✅ Passwords match';
+                    matchEl.className = 'password-match match';
+                }
+            } else {
+                if (matchEl) {
+                    matchEl.textContent = '❌ Passwords do not match';
+                    matchEl.className = 'password-match nomatch';
+                }
+            }
+        });
+    }
+
+    // Enter key support for login2
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const activeTab = document.querySelector('#authContainer2 .auth-tabs .tab.active');
+            if (activeTab && activeTab.dataset.tab === 'login2') {
+                loginUser2();
+            } else if (activeTab && activeTab.dataset.tab === 'register2') {
+                registerUser2();
+            }
+        }
+    });
+});
+
 // Make functions globally available
+window.navigateTo = navigateTo;
+window.updatePrograms = updatePrograms;
+window.toggleStudentType = toggleStudentType;
 window.switchAuthTab = switchAuthTab;
 window.loginUser = loginUser;
 window.registerUser = registerUser;
@@ -1453,5 +1936,9 @@ window.updateIntakePreview = updateIntakePreview;
 window.updateSummary = updateSummary;
 window.closeValidation = closeValidation;
 window.showValidation = showValidation;
+window.handleEnquiry = handleEnquiry;
+window.switchAuthTab2 = switchAuthTab2;
+window.loginUser2 = loginUser2;
+window.registerUser2 = registerUser2;
 
 console.log('✅ admissions.js loaded successfully');
