@@ -16,11 +16,9 @@ function getSupabase() {
         return window.sb;
     }
     if (typeof window.supabase !== 'undefined' && window.supabase) {
-        // Check if it's already a client or needs to be created
         if (window.supabase.from) {
             return window.supabase;
         }
-        // Create client if supabase object exists but doesn't have from
         if (window.supabase.createClient) {
             const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
             const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
@@ -29,7 +27,6 @@ function getSupabase() {
             return window.sb;
         }
     }
-    // Create new client as last resort
     if (typeof supabase !== 'undefined' && supabase && supabase.createClient) {
         const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
@@ -151,17 +148,14 @@ function navigateTo(page) {
     
     // If going to register page, check auth state
     if (page === 'register') {
-        checkAuth();
+        checkAuthForRegisterPage();
     }
     
-    // If going to login page, show login tab
+    // If going to login page, redirect to home with login tab active
     if (page === 'login') {
-        // Redirect to home with login tab active
         document.getElementById('page-home').classList.add('active');
         switchAuthTab('login');
-        // Scroll to auth section
         document.querySelector('.auth-wrapper')?.scrollIntoView({ behavior: 'smooth' });
-        // Update nav
         document.querySelectorAll('.nav-item').forEach(item => {
             item.classList.remove('active');
             if (item.dataset.page === 'home') {
@@ -172,16 +166,46 @@ function navigateTo(page) {
 }
 
 // ============================================================
+// CHECK AUTH FOR REGISTER PAGE (Apply Now)
+// ============================================================
+async function checkAuthForRegisterPage() {
+    const supabaseClient = getSupabase();
+    if (!supabaseClient) return;
+
+    try {
+        const { data: { session }, error } = await supabaseClient.auth.getSession();
+        if (error) throw error;
+        
+        if (session) {
+            // User is logged in - show the application form
+            currentUser = session.user;
+            document.getElementById('authContainer2').style.display = 'none';
+            document.getElementById('admissionApp').style.display = 'block';
+            await loadUserApplication(currentUser.id);
+        } else {
+            // User is NOT logged in - show the auth container with register tab active
+            document.getElementById('authContainer2').style.display = 'block';
+            document.getElementById('admissionApp').style.display = 'none';
+            // Default to register tab
+            switchAuthTab2('register2');
+        }
+    } catch (error) {
+        console.error('Auth check error:', error);
+        document.getElementById('authContainer2').style.display = 'block';
+        document.getElementById('admissionApp').style.display = 'none';
+        switchAuthTab2('register2');
+    }
+}
+
+// ============================================================
 // UPDATE PROGRAMS FUNCTION (Populate courses based on school)
 // ============================================================
 function updatePrograms() {
     const school = document.getElementById('school').value;
     const programSelect = document.getElementById('program');
     
-    // Clear existing options
     programSelect.innerHTML = '<option value="">-- Select Course --</option>';
     
-    // Define programs by school
     const programs = {
         'nursing': [
             { value: 'KRCHN', label: 'KRCHN Nursing - 3.5 years' },
@@ -229,7 +253,6 @@ function updatePrograms() {
         ]
     };
     
-    // Add options for selected school
     if (school && programs[school]) {
         programs[school].forEach(prog => {
             const option = document.createElement('option');
@@ -251,7 +274,7 @@ function toggleStudentType() {
 }
 
 // ============================================================
-// AUTH FUNCTIONS
+// AUTH FUNCTIONS - HOME PAGE
 // ============================================================
 function switchAuthTab(tab) {
     const tabs = document.querySelectorAll('.auth-tabs .tab');
@@ -270,7 +293,7 @@ function switchAuthTab(tab) {
 }
 
 // ============================================================
-// LOGIN USER
+// LOGIN USER - HOME PAGE
 // ============================================================
 async function loginUser() {
     const email = document.getElementById('loginEmail').value.trim();
@@ -319,7 +342,10 @@ async function loginUser() {
             return;
         }
 
-        setTimeout(() => window.location.reload(), 1000);
+        // Redirect to register page to show application form
+        setTimeout(() => {
+            navigateTo('register');
+        }, 1000);
     } catch (error) {
         console.error('Login error:', error);
         msg.className = 'auth-message error';
@@ -330,13 +356,12 @@ async function loginUser() {
 }
 
 // ============================================================
-// REGISTER USER - Students Only (Auto-Login)
+// REGISTER USER - HOME PAGE (Auto-Login)
 // ============================================================
 async function registerUser() {
     const name = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
     const phone = document.getElementById('regPhone').value.trim();
-    const role = document.getElementById('regRole')?.value || 'student';
     const password = document.getElementById('regPassword').value;
     const confirm = document.getElementById('regConfirmPassword').value;
     const msg = document.getElementById('registerMessage');
@@ -352,7 +377,6 @@ async function registerUser() {
     msg.className = 'auth-message';
     msg.textContent = '';
 
-    // Validate
     if (!name || !email || !phone || !password || !confirm) {
         msg.className = 'auth-message error';
         msg.textContent = '❌ Please fill in all required fields.';
@@ -375,7 +399,6 @@ async function registerUser() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
 
     try {
-        // Check if email exists
         const { data: existing } = await supabaseClient
             .from('applications')
             .select('user_email')
@@ -390,7 +413,6 @@ async function registerUser() {
             return;
         }
 
-        // Create auth user
         const { data: authData, error: authError } = await supabaseClient.auth.signUp({
             email,
             password,
@@ -406,7 +428,7 @@ async function registerUser() {
 
         if (authError) throw authError;
 
-        // ✅ AUTO-LOGIN
+        // AUTO-LOGIN
         try {
             const { error: loginError } = await supabaseClient.auth.signInWithPassword({
                 email,
@@ -417,7 +439,7 @@ async function registerUser() {
             console.warn('Auto-login error:', loginErr);
         }
 
-        // ✅ CREATE APPLICATION ONLY (NO profile!)
+        // CREATE APPLICATION
         const { error: appError } = await supabaseClient
             .from('applications')
             .insert([{
@@ -438,9 +460,9 @@ async function registerUser() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
 
-        // Refresh page to show admission form
+        // Redirect to register page to show application form
         setTimeout(() => {
-            window.location.reload();
+            navigateTo('register');
         }, 1500);
 
     } catch (error) {
@@ -467,7 +489,7 @@ function logoutUser() {
 }
 
 // ============================================================
-// CHECK AUTH
+// CHECK AUTH - HOME PAGE
 // ============================================================
 async function checkAuth() {
     const supabaseClient = getSupabase();
@@ -485,18 +507,10 @@ async function checkAuth() {
         if (error) throw error;
         if (session) {
             currentUser = session.user;
-            
-            // For home page auth container
             const authContainer = document.getElementById('authContainer');
             const admissionApp = document.getElementById('admissionApp');
             if (authContainer) authContainer.style.display = 'none';
             if (admissionApp) admissionApp.style.display = 'block';
-            
-            // For register page auth container 2
-            const authContainer2 = document.getElementById('authContainer2');
-            const admissionApp2 = document.getElementById('admissionApp');
-            if (authContainer2) authContainer2.style.display = 'none';
-            if (admissionApp2) admissionApp2.style.display = 'block';
             
             const userEmail = document.getElementById('userEmail');
             const userAvatar = document.getElementById('userAvatar');
@@ -508,17 +522,10 @@ async function checkAuth() {
             
             await loadUserApplication(currentUser.id);
         } else {
-            // For home page auth container
             const authContainer = document.getElementById('authContainer');
             const admissionApp = document.getElementById('admissionApp');
             if (authContainer) authContainer.style.display = 'block';
             if (admissionApp) admissionApp.style.display = 'none';
-            
-            // For register page auth container 2
-            const authContainer2 = document.getElementById('authContainer2');
-            const admissionApp2 = document.getElementById('admissionApp');
-            if (authContainer2) authContainer2.style.display = 'block';
-            if (admissionApp2) admissionApp2.style.display = 'none';
         }
     } catch (error) {
         console.error('Auth error:', error);
@@ -550,7 +557,6 @@ async function loadUserApplication(userId) {
             const app = data[0];
             applicationId = app.id;
 
-            // Populate form
             if (app.full_name) document.getElementById('fullName').value = app.full_name;
             if (app.phone) document.getElementById('phone').value = app.phone;
             if (app.alt_phone) document.getElementById('altPhone').value = app.alt_phone;
@@ -700,7 +706,7 @@ function selectType(type) {
 }
 
 // ============================================================
-// NAVIGATION
+// NAVIGATION - FORM STEPS
 // ============================================================
 function goToStep(step) {
     if (!validateStep(currentStep, step)) return;
@@ -870,192 +876,12 @@ function handleEnquiry(event) {
     status.className = 'auth-message success';
     status.textContent = '✅ Your enquiry has been sent! We will get back to you within 24 hours.';
     
-    // Reset form
     document.getElementById('enquiryName').value = '';
     document.getElementById('enquiryEmail').value = '';
     document.getElementById('enquiryPhone').value = '';
     document.getElementById('enquirySubject').value = '';
     document.getElementById('enquiryMessage').value = '';
 }
-
-// ============================================================
-// EMAIL VALIDATION
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    // Email validation on admission form
-    const emailInput = document.getElementById('email');
-    if (emailInput) {
-        emailInput.addEventListener('input', function() {
-            const email = this.value.trim();
-            const statusEl = document.getElementById('emailStatus');
-            if (!email) {
-                if (statusEl) {
-                    statusEl.textContent = '';
-                    statusEl.className = 'email-status';
-                }
-                return;
-            }
-            if (!email.includes('@') || !email.includes('.')) {
-                if (statusEl) {
-                    statusEl.textContent = '❌ Invalid email';
-                    statusEl.className = 'email-status invalid';
-                }
-                return;
-            }
-            if (statusEl) {
-                statusEl.textContent = '⏳ Checking...';
-                statusEl.className = 'email-status checking';
-            }
-            setTimeout(() => {
-                const domain = email.split('@')[1];
-                if (domain && (['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke'].includes(domain) ||
-                        domain.endsWith('.ac.ke') || domain.endsWith('.ke'))) {
-                    if (statusEl) {
-                        statusEl.textContent = '✅ Valid email';
-                        statusEl.className = 'email-status valid';
-                    }
-                } else {
-                    if (statusEl) {
-                        statusEl.textContent = '⚠️ Unusual domain';
-                        statusEl.className = 'email-status invalid';
-                    }
-                }
-            }, 400);
-        });
-    }
-
-    // Register email validation
-    const regEmail = document.getElementById('regEmail');
-    if (regEmail) {
-        regEmail.addEventListener('input', function() {
-            const email = this.value.trim();
-            const statusEl = document.getElementById('regEmailStatus');
-
-            if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
-
-            if (!email) {
-                if (statusEl) {
-                    statusEl.textContent = '';
-                    statusEl.style.color = '';
-                }
-                this.style.borderColor = '#e2e8f0';
-                return;
-            }
-
-            // Basic email format check only
-            if (!email.includes('@') || !email.includes('.')) {
-                if (statusEl) {
-                    statusEl.textContent = '❌ Invalid email format';
-                    statusEl.style.color = '#ef4444';
-                }
-                this.style.borderColor = '#ef4444';
-                return;
-            }
-
-            if (statusEl) {
-                statusEl.textContent = '✅ Email format valid';
-                statusEl.style.color = '#0b8a5e';
-            }
-            this.style.borderColor = '#0b8a5e';
-        });
-    }
-
-    // Password strength
-    const regPassword = document.getElementById('regPassword');
-    if (regPassword) {
-        regPassword.addEventListener('input', function() {
-            const password = this.value;
-            const bar = document.getElementById('strengthBar');
-            const text = document.getElementById('strengthText');
-
-            let score = 0;
-            if (password.length >= 8) score++;
-            if (password.length >= 12) score++;
-            if (/[A-Z]/.test(password)) score++;
-            if (/[a-z]/.test(password)) score++;
-            if (/[0-9]/.test(password)) score++;
-            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
-
-            const levels = [
-                { text: 'Very Weak', cls: 'weak', width: '10%', color: '#ef4444' },
-                { text: 'Weak', cls: 'weak', width: '25%', color: '#ef4444' },
-                { text: 'Fair', cls: 'fair', width: '45%', color: '#f59e0b' },
-                { text: 'Good', cls: 'good', width: '65%', color: '#3b82f6' },
-                { text: 'Strong', cls: 'strong', width: '85%', color: '#0b8a5e' },
-                { text: 'Very Strong', cls: 'strong', width: '100%', color: '#0b8a5e' }
-            ];
-
-            const level = Math.min(Math.floor(score / 1), 5);
-            const result = levels[level] || levels[0];
-
-            if (bar) {
-                bar.style.width = result.width;
-                bar.style.background = result.color;
-            }
-            if (text) {
-                text.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
-                text.className = `strength-text ${password.length > 0 ? result.cls : ''}`;
-            }
-        });
-    }
-
-    // Password confirmation
-    const regConfirm = document.getElementById('regConfirmPassword');
-    if (regConfirm) {
-        regConfirm.addEventListener('input', function() {
-            const password = document.getElementById('regPassword').value;
-            const confirm = this.value;
-            const matchEl = document.getElementById('passwordMatch');
-
-            if (!confirm) {
-                if (matchEl) {
-                    matchEl.textContent = '';
-                    matchEl.className = 'password-match';
-                }
-                return;
-            }
-
-            if (password === confirm) {
-                if (matchEl) {
-                    matchEl.textContent = '✅ Passwords match';
-                    matchEl.className = 'password-match match';
-                }
-            } else {
-                if (matchEl) {
-                    matchEl.textContent = '❌ Passwords do not match';
-                    matchEl.className = 'password-match nomatch';
-                }
-            }
-        });
-    }
-
-    // Initialize PDF.js
-    if (typeof pdfjsLib !== 'undefined') {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-
-    // Check authentication
-    checkAuth();
-
-    // Init form
-    updateProgramDesc();
-    updateIntakePreview();
-    updateSummary();
-
-    // Login form enter key
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const activeTab = document.querySelector('.auth-tabs .tab.active');
-            if (activeTab && activeTab.dataset.tab === 'login') {
-                loginUser();
-            } else if (activeTab && activeTab.dataset.tab === 'register') {
-                registerUser();
-            }
-        }
-    });
-
-    console.log('✅ NCHSM Admission System loaded');
-});
 
 // ============================================================
 // OCR - KCSE DOCUMENT
@@ -1555,24 +1381,181 @@ async function submitAdmission() {
 }
 
 // ============================================================
-// EVENT LISTENERS
+// EMAIL VALIDATION & INIT
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
     const yearEl = document.getElementById('currentYear');
     if (yearEl) yearEl.textContent = new Date().getFullYear();
 
-    // Initialize PDF.js
     if (typeof pdfjsLib !== 'undefined') {
         pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
     }
 
-    // Check auth
+    // Email validation on admission form
+    const emailInput = document.getElementById('email');
+    if (emailInput) {
+        emailInput.addEventListener('input', function() {
+            const email = this.value.trim();
+            const statusEl = document.getElementById('emailStatus');
+            if (!email) {
+                if (statusEl) {
+                    statusEl.textContent = '';
+                    statusEl.className = 'email-status';
+                }
+                return;
+            }
+            if (!email.includes('@') || !email.includes('.')) {
+                if (statusEl) {
+                    statusEl.textContent = '❌ Invalid email';
+                    statusEl.className = 'email-status invalid';
+                }
+                return;
+            }
+            if (statusEl) {
+                statusEl.textContent = '⏳ Checking...';
+                statusEl.className = 'email-status checking';
+            }
+            setTimeout(() => {
+                const domain = email.split('@')[1];
+                if (domain && (['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke'].includes(domain) ||
+                        domain.endsWith('.ac.ke') || domain.endsWith('.ke'))) {
+                    if (statusEl) {
+                        statusEl.textContent = '✅ Valid email';
+                        statusEl.className = 'email-status valid';
+                    }
+                } else {
+                    if (statusEl) {
+                        statusEl.textContent = '⚠️ Unusual domain';
+                        statusEl.className = 'email-status invalid';
+                    }
+                }
+            }, 400);
+        });
+    }
+
+    // Register email validation
+    const regEmail = document.getElementById('regEmail');
+    if (regEmail) {
+        regEmail.addEventListener('input', function() {
+            const email = this.value.trim();
+            const statusEl = document.getElementById('regEmailStatus');
+
+            if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
+
+            if (!email) {
+                if (statusEl) {
+                    statusEl.textContent = '';
+                    statusEl.style.color = '';
+                }
+                this.style.borderColor = '#e2e8f0';
+                return;
+            }
+
+            if (!email.includes('@') || !email.includes('.')) {
+                if (statusEl) {
+                    statusEl.textContent = '❌ Invalid email format';
+                    statusEl.style.color = '#ef4444';
+                }
+                this.style.borderColor = '#ef4444';
+                return;
+            }
+
+            if (statusEl) {
+                statusEl.textContent = '✅ Email format valid';
+                statusEl.style.color = '#0b8a5e';
+            }
+            this.style.borderColor = '#0b8a5e';
+        });
+    }
+
+    // Password strength
+    const regPassword = document.getElementById('regPassword');
+    if (regPassword) {
+        regPassword.addEventListener('input', function() {
+            const password = this.value;
+            const bar = document.getElementById('strengthBar');
+            const text = document.getElementById('strengthText');
+
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (password.length >= 12) score++;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[a-z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+            const levels = [
+                { text: 'Very Weak', cls: 'weak', width: '10%', color: '#ef4444' },
+                { text: 'Weak', cls: 'weak', width: '25%', color: '#ef4444' },
+                { text: 'Fair', cls: 'fair', width: '45%', color: '#f59e0b' },
+                { text: 'Good', cls: 'good', width: '65%', color: '#3b82f6' },
+                { text: 'Strong', cls: 'strong', width: '85%', color: '#0b8a5e' },
+                { text: 'Very Strong', cls: 'strong', width: '100%', color: '#0b8a5e' }
+            ];
+
+            const level = Math.min(Math.floor(score / 1), 5);
+            const result = levels[level] || levels[0];
+
+            if (bar) {
+                bar.style.width = result.width;
+                bar.style.background = result.color;
+            }
+            if (text) {
+                text.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
+                text.className = `strength-text ${password.length > 0 ? result.cls : ''}`;
+            }
+        });
+    }
+
+    // Password confirmation
+    const regConfirm = document.getElementById('regConfirmPassword');
+    if (regConfirm) {
+        regConfirm.addEventListener('input', function() {
+            const password = document.getElementById('regPassword').value;
+            const confirm = this.value;
+            const matchEl = document.getElementById('passwordMatch');
+
+            if (!confirm) {
+                if (matchEl) {
+                    matchEl.textContent = '';
+                    matchEl.className = 'password-match';
+                }
+                return;
+            }
+
+            if (password === confirm) {
+                if (matchEl) {
+                    matchEl.textContent = '✅ Passwords match';
+                    matchEl.className = 'password-match match';
+                }
+            } else {
+                if (matchEl) {
+                    matchEl.textContent = '❌ Passwords do not match';
+                    matchEl.className = 'password-match nomatch';
+                }
+            }
+        });
+    }
+
+    // Check authentication on home page
     checkAuth();
 
     // Init form
     updateProgramDesc();
     updateIntakePreview();
     updateSummary();
+
+    // Enter key support for home page auth
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const activeTab = document.querySelector('.auth-tabs .tab.active');
+            if (activeTab && activeTab.dataset.tab === 'login') {
+                loginUser();
+            } else if (activeTab && activeTab.dataset.tab === 'register') {
+                registerUser();
+            }
+        }
+    });
 
     console.log('✅ NCHSM Admission System loaded');
 });
@@ -1595,7 +1578,7 @@ document.getElementById('successOverlay')?.addEventListener('click', function(e)
 });
 
 // ============================================================
-// AUTH 2 FUNCTIONS (For Apply Now page)
+// AUTH 2 FUNCTIONS (For Apply Now / Register Page)
 // ============================================================
 
 function switchAuthTab2(tab) {
@@ -1615,7 +1598,6 @@ function switchAuthTab2(tab) {
     const form = document.getElementById(formId);
     if (form) form.classList.add('active');
 
-    // Clear messages
     document.getElementById('loginMessage2').className = 'auth-message';
     document.getElementById('loginMessage2').textContent = '';
     document.getElementById('registerMessage2').className = 'auth-message';
@@ -1656,7 +1638,6 @@ async function loginUser2() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
 
-        // Check user status
         const { data: profile } = await supabaseClient
             .from('consolidated_user_profiles_table')
             .select('status, full_name')
@@ -1669,7 +1650,10 @@ async function loginUser2() {
             return;
         }
 
-        setTimeout(() => window.location.reload(), 1000);
+        // Refresh the page to show application form
+        setTimeout(() => {
+            window.location.reload();
+        }, 1000);
     } catch (error) {
         console.error('Login error:', error);
         msg.className = 'auth-message error';
@@ -1698,7 +1682,6 @@ async function registerUser2() {
     msg.className = 'auth-message';
     msg.textContent = '';
 
-    // Validate
     if (!name || !email || !phone || !password || !confirm) {
         msg.className = 'auth-message error';
         msg.textContent = '❌ Please fill in all required fields.';
@@ -1721,7 +1704,6 @@ async function registerUser2() {
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
 
     try {
-        // Check if email exists
         const { data: existing } = await supabaseClient
             .from('applications')
             .select('user_email')
@@ -1736,7 +1718,6 @@ async function registerUser2() {
             return;
         }
 
-        // Create auth user
         const { data: authData, error: authError } = await supabaseClient.auth.signUp({
             email,
             password,
@@ -1779,12 +1760,12 @@ async function registerUser2() {
         if (appError) throw appError;
 
         msg.className = 'auth-message success';
-        msg.textContent = '✅ Account created! You are now logged in. Please complete your application.';
+        msg.textContent = '✅ Account created! You are now logged in.';
 
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
 
-        // Refresh page to show admission form
+        // Refresh page to show application form
         setTimeout(() => {
             window.location.reload();
         }, 1500);
@@ -1798,7 +1779,9 @@ async function registerUser2() {
     }
 }
 
-// Email validation for register2
+// ============================================================
+// REGISTER 2 - Email validation & password strength
+// ============================================================
 document.addEventListener('DOMContentLoaded', function() {
     const regEmail2 = document.getElementById('regEmail2');
     if (regEmail2) {
@@ -1832,7 +1815,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Password strength for register2
     const regPassword2 = document.getElementById('regPassword2');
     if (regPassword2) {
         regPassword2.addEventListener('input', function() {
@@ -1871,7 +1853,6 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Password confirmation for register2
     const regConfirm2 = document.getElementById('regConfirmPassword2');
     if (regConfirm2) {
         regConfirm2.addEventListener('input', function() {
@@ -1901,7 +1882,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // Enter key support for login2
+    // Enter key support for auth2
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
             const activeTab = document.querySelector('#authContainer2 .auth-tabs .tab.active');
@@ -1912,9 +1893,22 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+
+    // Check auth for register page when it becomes visible
+    const registerPage = document.getElementById('page-register');
+    if (registerPage) {
+        const observer = new MutationObserver(function() {
+            if (registerPage.classList.contains('active')) {
+                checkAuthForRegisterPage();
+            }
+        });
+        observer.observe(registerPage, { attributes: true, attributeFilter: ['class'] });
+    }
 });
 
-// Make functions globally available
+// ============================================================
+// MAKE FUNCTIONS GLOBALLY AVAILABLE
+// ============================================================
 window.navigateTo = navigateTo;
 window.updatePrograms = updatePrograms;
 window.toggleStudentType = toggleStudentType;
@@ -1940,5 +1934,6 @@ window.handleEnquiry = handleEnquiry;
 window.switchAuthTab2 = switchAuthTab2;
 window.loginUser2 = loginUser2;
 window.registerUser2 = registerUser2;
+window.checkAuthForRegisterPage = checkAuthForRegisterPage;
 
 console.log('✅ admissions.js loaded successfully');
