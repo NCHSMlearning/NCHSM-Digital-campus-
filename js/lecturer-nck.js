@@ -1,6 +1,6 @@
 // ============================================================
-// LECTURER NCK SYSTEM - ENTER MARKS + SUBMIT FOR APPROVAL
-// FOLLOWS SUPER ADMIN LOGIC WITH LECTURER RESTRICTIONS
+// LECTURER NCK SYSTEM - FOLLOWING MARKS MODULE PATTERN
+// ENTER MARKS + SUBMIT FOR APPROVAL
 // ============================================================
 
 // ============================================================
@@ -14,6 +14,7 @@ var LecturerNCK = {
     currentSheet: 'XY_FORMS',
     lecturerId: null,
     lecturerName: 'Loading...',
+    lecturerProgram: 'KRCHN',
     approvalStatus: 'draft',
     hasPending: false,
     hasApproved: false,
@@ -22,8 +23,8 @@ var LecturerNCK = {
     initialized: false
 };
 
-// Block mapping for intake years (same as Super Admin)
-const LECTURER_BLOCK_MAP = {
+// Block mapping for intake years
+var LECTURER_BLOCK_MAP = {
     '2024': 'Block 4',
     '2025': 'Block 2',
     '2026': 'Introductory',
@@ -33,8 +34,8 @@ const LECTURER_BLOCK_MAP = {
     '2030': 'Block 4'
 };
 
-// Default columns for XY FORMS (22 clinical areas) - same as Super Admin
-const LECTURER_XY_COLUMNS = [
+// Default columns for XY FORMS
+var LECTURER_XY_COLUMNS = [
     'MED1', 'MED2', 'MED3',
     'MCH1', 'MCH2', 'MCH3',
     'MAT1', 'MAT2', 'MAT3',
@@ -45,8 +46,8 @@ const LECTURER_XY_COLUMNS = [
     'RURALS', 'DISTRICT', 'SPECIAL'
 ];
 
-// Default columns for ASSESSMENT & CASE - same as Super Admin
-const LECTURER_ASSESSMENT_COLUMNS = [
+// Default columns for ASSESSMENT & CASE
+var LECTURER_ASSESSMENT_COLUMNS = [
     'ANC WARD',
     'IMMUNIZATION ASSESSMENT',
     'NURSING CARE',
@@ -62,71 +63,228 @@ const LECTURER_ASSESSMENT_COLUMNS = [
 ];
 
 // ============================================================
-// INITIALIZE
+// ADMIN CHECK (Same as Marks Entry)
 // ============================================================
-function lecturerNCKInit() {
-    console.log('📋 Initializing Lecturer NCK System...');
-    lecturerNCKGetLecturerInfo();
-    lecturerNCKLoadColumns();
-    LecturerNCK.initialized = true;
-    console.log('✅ Lecturer NCK System initialized');
-}
-
-// ============================================================
-// GET LECTURER INFO
-// ============================================================
-function lecturerNCKGetLecturerInfo() {
-    console.log('🔍 Getting lecturer info for NCK...');
-    
+function isNckAdmin() {
     try {
-        // Try from lecturerDB
-        var profile = window.lecturerDB?.getCurrentUserProfile?.();
-        if (profile) {
-            LecturerNCK.lecturerId = profile.user_id || profile.id || profile.staff_id || profile.staffId;
-            LecturerNCK.lecturerName = profile.full_name || profile.name || 'Lecturer';
-            console.log('✅ Lecturer info from lecturerDB:', LecturerNCK.lecturerId);
-            lecturerNCKUpdateUI();
-            return;
-        }
-        
-        // Try from staffSession
-        var staffSession = localStorage.getItem('staffSession');
-        if (staffSession) {
-            var data = JSON.parse(staffSession);
-            LecturerNCK.lecturerId = data.staffId || data.user_id || data.id;
-            LecturerNCK.lecturerName = data.name || 'Lecturer';
-            console.log('✅ Lecturer info from staffSession:', LecturerNCK.lecturerId);
-            lecturerNCKUpdateUI();
-            return;
-        }
-        
-        // Try from dashboard
-        if (window.LecturerDashboard) {
-            var dashId = window.LecturerDashboard.lecturerAssignmentId || window.LecturerDashboard.lecturerUuid;
-            if (dashId) {
-                LecturerNCK.lecturerId = dashId;
-                var nameEl = document.getElementById('welcomeHeader');
-                LecturerNCK.lecturerName = nameEl ? nameEl.textContent.replace('Welcome,', '').trim() : 'Lecturer';
-                console.log('✅ Lecturer info from dashboard:', LecturerNCK.lecturerId);
-                lecturerNCKUpdateUI();
-                return;
+        if (window.currentUser) {
+            var role = window.currentUser.role || window.currentUser.user_role || window.currentUser.userRole;
+            if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'Super Admin') {
+                return true;
             }
         }
         
-        // Fallback
-        LecturerNCK.lecturerId = 'NCHSMNUR-007';
-        LecturerNCK.lecturerName = document.getElementById('welcomeHeader')?.textContent?.replace('Welcome,', '').trim() || 'Lecturer';
-        console.log('✅ Using fallback ID:', LecturerNCK.lecturerId);
-        lecturerNCKUpdateUI();
+        var sessionUser = sessionStorage.getItem('user');
+        if (sessionUser) {
+            try {
+                var user = JSON.parse(sessionUser);
+                var role2 = user.role || user.user_role || user.userRole;
+                if (role2 === 'admin' || role2 === 'superadmin' || role2 === 'super_admin' || role2 === 'Super Admin') {
+                    return true;
+                }
+            } catch (e) {}
+        }
+        
+        var urlParams = new URLSearchParams(window.location.search);
+        var roleParam = urlParams.get('role');
+        if (roleParam === 'superadmin' || roleParam === 'admin') {
+            return true;
+        }
+        
+        if (window.location.pathname.includes('superadmin') || window.location.pathname.includes('admin')) {
+            return true;
+        }
+        
+        return false;
         
     } catch (e) {
-        console.error('Error getting lecturer info:', e);
-        lecturerNCKUpdateUI();
+        return false;
     }
 }
 
 // ============================================================
-// UPDATE LECTURER NCK UI
+// GET LECTURER INFO - SAME PATTERN AS MARKS ENTRY
+// ============================================================
+async function lecturerNCKGetLecturerInfo() {
+    console.log('🔍 Getting lecturer info for NCK (using Marks Entry pattern)...');
+    
+    try {
+        var lecturerId = null;
+        var lecturerName = 'Loading...';
+        var program = 'KRCHN';
+        
+        // ============================================================
+        // METHOD 1: Try to get from lecturerDB (same as Marks)
+        // ============================================================
+        try {
+            if (window.lecturerDB && typeof window.lecturerDB.getCurrentUserProfile === 'function') {
+                var profile = window.lecturerDB.getCurrentUserProfile();
+                if (profile) {
+                    lecturerId = profile.user_id || profile.id || profile.staff_id || profile.staffId;
+                    lecturerName = profile.full_name || profile.name || 'Lecturer';
+                    program = profile.program || profile.department || 'KRCHN';
+                    console.log('✅ NCK: Lecturer info from lecturerDB:', lecturerId);
+                    finishSetup(lecturerId, lecturerName, program);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('lecturerDB error:', e.message);
+        }
+        
+        // ============================================================
+        // METHOD 2: Try from auth + database (like Marks Entry)
+        // ============================================================
+        try {
+            var supabase = window.lecturerDB?.supabase || window.sb;
+            if (supabase) {
+                // Get user from auth
+                var { data: { user }, error: userError } = await supabase.auth.getUser();
+                if (userError) throw userError;
+                
+                var userEmail = user?.email;
+                console.log('📧 User email:', userEmail);
+                
+                if (userEmail) {
+                    // Try staff_records first (like Marks Entry)
+                    var { data: staffData, error: staffError } = await supabase
+                        .from('staff_records')
+                        .select('*')
+                        .eq('email', userEmail)
+                        .maybeSingle();
+                    
+                    if (!staffError && staffData) {
+                        lecturerId = staffData.id || staffData.staff_id;
+                        lecturerName = staffData.name || staffData.full_name || 'Lecturer';
+                        program = staffData.program || staffData.department || 'KRCHN';
+                        console.log('✅ NCK: Lecturer from staff_records:', lecturerId);
+                        finishSetup(lecturerId, lecturerName, program);
+                        return;
+                    }
+                    
+                    // Try consolidated_user_profiles_table
+                    var { data: profileData, error: profileError } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .eq('email', userEmail)
+                        .maybeSingle();
+                    
+                    if (!profileError && profileData) {
+                        lecturerId = profileData.user_id || profileData.id || profileData.staff_id;
+                        lecturerName = profileData.full_name || profileData.name || 'Lecturer';
+                        program = profileData.program || profileData.department || 'KRCHN';
+                        console.log('✅ NCK: Lecturer from profiles:', lecturerId);
+                        finishSetup(lecturerId, lecturerName, program);
+                        return;
+                    }
+                }
+            }
+        } catch (e) {
+            console.warn('Auth/database error:', e.message);
+        }
+        
+        // ============================================================
+        // METHOD 3: Try from dashboard (same as Marks Entry fallback)
+        // ============================================================
+        try {
+            if (window.LecturerDashboard) {
+                var dashId = window.LecturerDashboard.lecturerAssignmentId || 
+                             window.LecturerDashboard.lecturerUuid;
+                if (dashId) {
+                    lecturerId = dashId;
+                    var nameEl = document.getElementById('welcomeHeader');
+                    lecturerName = nameEl ? nameEl.textContent.replace('Welcome,', '').trim() : 'Lecturer';
+                    console.log('✅ NCK: Lecturer from dashboard:', lecturerId);
+                    finishSetup(lecturerId, lecturerName, program);
+                    return;
+                }
+            }
+        } catch (e) {
+            console.warn('Dashboard error:', e.message);
+        }
+        
+        // ============================================================
+        // METHOD 4: Try from session storage
+        // ============================================================
+        try {
+            var staffSession = localStorage.getItem('staffSession');
+            if (staffSession) {
+                var data = JSON.parse(staffSession);
+                lecturerId = data.staffId || data.user_id || data.id;
+                lecturerName = data.name || 'Lecturer';
+                program = data.program || data.department || 'KRCHN';
+                console.log('✅ NCK: Lecturer from staffSession:', lecturerId);
+                finishSetup(lecturerId, lecturerName, program);
+                return;
+            }
+        } catch (e) {
+            console.warn('staffSession error:', e.message);
+        }
+        
+        // ============================================================
+        // METHOD 5: Try lecturerData in sessionStorage
+        // ============================================================
+        try {
+            var lecturerData = sessionStorage.getItem('lecturerData');
+            if (lecturerData) {
+                var data = JSON.parse(lecturerData);
+                lecturerId = data.user_id || data.id || data.staff_id || data.staffId;
+                lecturerName = data.full_name || data.name || 'Lecturer';
+                program = data.program || data.department || 'KRCHN';
+                console.log('✅ NCK: Lecturer from lecturerData:', lecturerId);
+                finishSetup(lecturerId, lecturerName, program);
+                return;
+            }
+        } catch (e) {
+            console.warn('lecturerData error:', e.message);
+        }
+        
+        // ============================================================
+        // METHOD 6: Fallback to known ID
+        // ============================================================
+        console.warn('⚠️ All methods failed, using fallback');
+        lecturerId = 'NCHSMNUR-007';
+        lecturerName = document.getElementById('welcomeHeader')?.textContent?.replace('Welcome,', '').trim() || 'Lecturer';
+        program = 'KRCHN';
+        finishSetup(lecturerId, lecturerName, program);
+        
+    } catch (e) {
+        console.error('❌ Error getting lecturer info:', e);
+        // Ultimate fallback
+        finishSetup('NCHSMNUR-007', 'Lecturer', 'KRCHN');
+    }
+}
+
+// ============================================================
+// COMPLETE SETUP (same as Marks Entry)
+// ============================================================
+function finishSetup(lecturerId, lecturerName, program) {
+    console.log('📋 NCK FINAL - ID:', lecturerId);
+    console.log('📋 NCK FINAL - Name:', lecturerName);
+    console.log('📋 NCK FINAL - Program:', program);
+    
+    LecturerNCK.lecturerId = lecturerId;
+    LecturerNCK.lecturerName = lecturerName || 'Lecturer';
+    LecturerNCK.lecturerProgram = program || 'KRCHN';
+    
+    // Update UI
+    lecturerNCKUpdateUI();
+    
+    // Store for other modules
+    window.nckLecturerId = lecturerId;
+    window.nckLecturerName = lecturerName;
+    window.nckLecturerProgram = program;
+    
+    // Dispatch event for other modules
+    document.dispatchEvent(new CustomEvent('nckLecturerReady', {
+        detail: { id: lecturerId, name: lecturerName, program: program }
+    }));
+    
+    console.log('✅ NCK Lecturer info complete!');
+}
+
+// ============================================================
+// UPDATE UI
 // ============================================================
 function lecturerNCKUpdateUI() {
     var nameEl = document.getElementById('lecturerNCKName');
@@ -137,16 +295,19 @@ function lecturerNCKUpdateUI() {
     
     console.log('📋 Current Lecturer ID:', LecturerNCK.lecturerId);
     console.log('📋 Current Lecturer Name:', LecturerNCK.lecturerName);
+    console.log('📋 Current Program:', LecturerNCK.lecturerProgram);
     
     var placeholder = document.getElementById('lecturerNCKPlaceholder');
     if (placeholder) {
         if (LecturerNCK.lecturerId) {
             placeholder.innerHTML = `
-                <i class="fas fa-stethoscope" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                <h3 style="color: #1e293b; margin: 0 0 10px 0;">Load Your NCK Data</h3>
-                <p style="color: #94a3b8; margin: 0 0 5px 0;">Select Intake Year and Assessment Type above</p>
-                <p style="color: #94a3b8; font-size: 13px; margin: 0 0 15px 0;">
+                <i class="fas fa-check-circle" style="font-size: 48px; color: #10b981; margin-bottom: 16px; display: block;"></i>
+                <h3 style="color: #1e293b; margin: 0 0 10px 0;">✅ Lecturer ID Found!</h3>
+                <p style="color: #94a3b8; margin: 0 0 5px 0;">
                     <i class="fas fa-user-tie"></i> Lecturer: <strong>${LecturerNCK.lecturerName}</strong>
+                </p>
+                <p style="color: #94a3b8; font-size: 13px; margin: 0 0 15px 0;">
+                    <i class="fas fa-id-card"></i> ID: <strong>${LecturerNCK.lecturerId}</strong>
                 </p>
                 <button onclick="lecturerNCKLoadData()" style="background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                     <i class="fas fa-sync-alt"></i> Load My Students
@@ -167,7 +328,7 @@ function lecturerNCKUpdateUI() {
 }
 
 // ============================================================
-// LOAD NCK COLUMNS (Read-only - same as Super Admin)
+// LOAD COLUMNS
 // ============================================================
 function lecturerNCKLoadColumns() {
     var sheet = document.getElementById('lecturerNCKSheet')?.value || 'XY_FORMS';
@@ -187,7 +348,18 @@ function lecturerNCKLoadColumns() {
 }
 
 // ============================================================
-// LOAD NCK DATA - LECTURER FILTERED (Only assigned students)
+// INITIALIZE
+// ============================================================
+function lecturerNCKInit() {
+    console.log('📋 Initializing Lecturer NCK System...');
+    lecturerNCKGetLecturerInfo();
+    lecturerNCKLoadColumns();
+    LecturerNCK.initialized = true;
+    console.log('✅ Lecturer NCK System initialized');
+}
+
+// ============================================================
+// LOAD NCK DATA
 // ============================================================
 async function lecturerNCKLoadData() {
     console.log('📊 lecturerNCKLoadData called');
@@ -232,12 +404,12 @@ async function lecturerNCKLoadData() {
             return;
         }
         
-        // Get block from intake
         var block = LECTURER_BLOCK_MAP[intake] || 'Block 1';
         console.log('📋 Intake:', intake, 'Block:', block, 'Sheet:', sheet);
+        console.log('🔍 Lecturer ID:', lecturerId);
         
         // ============================================================
-        // STEP 1: Get students assigned to this lecturer (from lecturer_subject_assignments)
+        // STEP 1: Get students assigned to this lecturer
         // ============================================================
         
         var { data: assignments, error: assignError } = await supabase
@@ -251,7 +423,6 @@ async function lecturerNCKLoadData() {
         
         var assignedStudents = [];
         if (assignments && assignments.length > 0) {
-            // Filter by KRCHN and intake
             assignedStudents = assignments.filter(function(s) {
                 var prog = s.program || '';
                 return (prog === 'KRCHN' || prog.includes('KRCHN')) && 
@@ -299,7 +470,7 @@ async function lecturerNCKLoadData() {
         LecturerNCK.students = assignedStudents;
         
         // ============================================================
-        // STEP 2: Get NCK marks from nck_marks table (same as Super Admin)
+        // STEP 2: Get NCK marks from nck_marks
         // ============================================================
         
         var studentIds = assignedStudents.map(function(s) { return s.student_id; });
@@ -325,7 +496,7 @@ async function lecturerNCKLoadData() {
         });
         
         // ============================================================
-        // STEP 3: Render the table (same as Super Admin)
+        // STEP 3: Render table
         // ============================================================
         
         lecturerNCKRenderTable();
@@ -350,7 +521,7 @@ async function lecturerNCKLoadData() {
 }
 
 // ============================================================
-// RENDER TABLE - LECTURER VERSION (Same as Super Admin but without Publish button)
+// RENDER TABLE
 // ============================================================
 function lecturerNCKRenderTable() {
     var container = document.getElementById('lecturerNCKTableContainer');
@@ -363,6 +534,8 @@ function lecturerNCKRenderTable() {
         container.innerHTML = '<div style="text-align:center;padding:40px;color:#94a3b8;">No students found</div>';
         return;
     }
+    
+    var isAdmin = isNckAdmin();
     
     var html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
@@ -377,18 +550,21 @@ function lecturerNCKRenderTable() {
                     <i class="fas fa-users"></i> ${students.length} students &nbsp;|&nbsp;
                     <i class="fas fa-file-medical"></i> ${columns.length} assessment areas &nbsp;|&nbsp;
                     <i class="fas fa-flag-checkered"></i> Pass Mark: 60%
+                    ${isAdmin ? ' | 👑 Admin Mode' : ''}
                 </p>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button onclick="lecturerNCKSaveAll()" style="background: #059669; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
                     <i class="fas fa-save"></i> Save All
                 </button>
+                ${!isAdmin ? `
                 <button onclick="lecturerNCKSubmitForApproval()" style="background: #4C1D95; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
                     <i class="fas fa-paper-plane"></i> Submit for Approval
                 </button>
                 <button onclick="lecturerNCKWithdrawApproval()" style="background: #d97706; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
                     <i class="fas fa-undo"></i> Withdraw
                 </button>
+                ` : ''}
             </div>
         </div>
         
@@ -513,7 +689,7 @@ function lecturerNCKRenderTable() {
 }
 
 // ============================================================
-// UPDATE AVERAGE - Real-time calculation
+// UPDATE AVERAGE
 // ============================================================
 function lecturerNCKUpdateAverage(studentId) {
     var inputs = document.querySelectorAll(`.nck-score-input[data-student="${studentId}"]`);
@@ -555,7 +731,7 @@ function lecturerNCKUpdateAverage(studentId) {
 }
 
 // ============================================================
-// SAVE ALL MARKS - Saves to nck_marks table (same as Super Admin)
+// SAVE ALL MARKS
 // ============================================================
 async function lecturerNCKSaveAll() {
     if (LecturerNCK.isSaving) return;
@@ -576,6 +752,7 @@ async function lecturerNCKSaveAll() {
     }
     
     var block = LECTURER_BLOCK_MAP[LecturerNCK.currentIntake] || 'Block 1';
+    var isAdmin = isNckAdmin();
     
     showLoading('Saving NCK marks...');
     var savedCount = 0, errorCount = 0;
@@ -602,6 +779,7 @@ async function lecturerNCKSaveAll() {
         var avg = scoredCount > 0 ? (totalScore / scoredCount) : 0;
         var grade = calculateNursingGrade(avg);
         var status = avg > 0 ? (avg >= 60 ? 'passed' : 'failed') : 'pending';
+        var approvalStatus = isAdmin ? 'approved' : 'draft';
         
         try {
             var { data: existing, error: findError } = await supabase
@@ -634,18 +812,32 @@ async function lecturerNCKSaveAll() {
             
             if (existing) {
                 var newStatus = existing.approval_status || 'draft';
-                if (existing.approval_status === 'approved' || existing.approval_status === 'pending') {
+                if (isAdmin) {
+                    newStatus = 'approved';
+                } else if (existing.approval_status === 'approved' || existing.approval_status === 'pending') {
                     newStatus = 'draft';
                 }
                 markData.approval_status = newStatus;
+                
+                if (isAdmin && newStatus === 'approved') {
+                    markData.approved_at = new Date().toISOString();
+                    markData.approved_by = window.currentUser?.id || null;
+                }
+                
                 var { error: updateError } = await supabase
                     .from('nck_marks')
                     .update(markData)
                     .eq('id', existing.id);
                 if (updateError) throw updateError;
             } else {
-                markData.approval_status = 'draft';
+                markData.approval_status = approvalStatus;
                 markData.created_at = new Date().toISOString();
+                
+                if (isAdmin && approvalStatus === 'approved') {
+                    markData.approved_at = new Date().toISOString();
+                    markData.approved_by = window.currentUser?.id || null;
+                }
+                
                 var { error: insertError } = await supabase
                     .from('nck_marks')
                     .insert([markData]);
@@ -670,7 +862,7 @@ async function lecturerNCKSaveAll() {
 }
 
 // ============================================================
-// SUBMIT FOR APPROVAL - Lecturer submits to admin
+// SUBMIT FOR APPROVAL
 // ============================================================
 async function lecturerNCKSubmitForApproval() {
     if (LecturerNCK.isSubmitting) return;
@@ -1057,7 +1249,7 @@ function lecturerNCKExportCSV() {
 }
 
 // ============================================================
-// FAST ENTRY (Stub - can be expanded later)
+// FAST ENTRY (Stub)
 // ============================================================
 function lecturerNCKOpenFastEntry() {
     showNotification('Fast Entry feature coming soon!', 'info');
@@ -1111,10 +1303,21 @@ function hideLoading() {
 }
 
 // ============================================================
+// INITIALIZE
+// ============================================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('📋 Initializing Lecturer NCK System...');
+    setTimeout(function() {
+        lecturerNCKInit();
+    }, 500);
+});
+
+// ============================================================
 // EXPOSE GLOBALLY
 // ============================================================
 window.LecturerNCK = LecturerNCK;
 window.lecturerNCKInit = lecturerNCKInit;
+window.lecturerNCKGetLecturerInfo = lecturerNCKGetLecturerInfo;
 window.lecturerNCKLoadData = lecturerNCKLoadData;
 window.lecturerNCKLoadColumns = lecturerNCKLoadColumns;
 window.lecturerNCKRenderTable = lecturerNCKRenderTable;
@@ -1125,10 +1328,11 @@ window.lecturerNCKWithdrawApproval = lecturerNCKWithdrawApproval;
 window.lecturerNCKUpdateStats = lecturerNCKUpdateStats;
 window.lecturerNCKCheckApprovalStatus = lecturerNCKCheckApprovalStatus;
 window.lecturerNCKExportCSV = lecturerNCKExportCSV;
-window.lecturerNCKGetLecturerInfo = lecturerNCKGetLecturerInfo;
 window.lecturerNCKUpdateUI = lecturerNCKUpdateUI;
 window.lecturerNCKOpenFastEntry = lecturerNCKOpenFastEntry;
 window.lecturerNCKCloseFastEntry = lecturerNCKCloseFastEntry;
+window.isNckAdmin = isNckAdmin;
 
 console.log('✅ Lecturer NCK module loaded successfully');
 console.log('📚 Available functions: lecturerNCKInit, lecturerNCKLoadData, lecturerNCKSaveAll, lecturerNCKSubmitForApproval, lecturerNCKWithdrawApproval, lecturerNCKExportCSV');
+console.log('👑 Admin mode:', isNckAdmin() ? 'ENABLED' : 'DISABLED');
