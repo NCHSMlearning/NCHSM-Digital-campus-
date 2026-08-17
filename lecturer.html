@@ -3530,104 +3530,164 @@
             </section>
 
           <!-- ============================================ -->
-<!-- RESOURCES SECTION - UPDATED -->
+<!-- RESOURCES SECTION - LECTURER WITH DEPARTMENT FILTERING (DYNAMIC) -->
 <!-- ============================================ -->
 <section id="resources-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <h2><i class="fas fa-file-upload"></i> Resource Management</h2>
+    <p style="color: #6b7280; margin-bottom: 16px;">Upload and manage learning materials for your assigned department</p>
     
-    <!-- Success Banner for Resource Upload -->
-    <div id="resourceUploadSuccess" style="display: none; background: #d1fae5; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; border-left: 4px solid #10b981;">
+    <!-- ===== PROGRAM/DEPARTMENT MODE INDICATOR - DYNAMIC ===== -->
+    <div id="lecturer-program-indicator" style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 12px 20px; background: #f1f5f9; border-radius: 12px; flex-wrap: wrap; border: 1px solid #e2e8f0;">
+        <span style="font-weight: 600; color: #475569; font-size: 14px;">
+            <i class="fas fa-user-tie" style="color: #4C1D95;"></i> My Department:
+        </span>
+        <span id="lecturer-dept-badge" style="background: #4C1D95; color: white; padding: 6px 18px; border-radius: 20px; font-size: 14px; font-weight: 600;">
+            <i class="fas fa-graduation-cap"></i> <span id="lecturer-dept-name">Loading...</span>
+        </span>
+        <span id="lecturer-dept-block" style="background: #e2e8f0; color: #1e293b; padding: 6px 18px; border-radius: 20px; font-size: 13px; font-weight: 600;">
+            <i class="fas fa-layer-group"></i> Block: <span id="lecturer-current-block-display">Loading...</span>
+        </span>
+        <span style="margin-left: auto; font-size: 13px; color: #10b981;">
+            <i class="fas fa-check-circle"></i> You can only manage resources for <strong id="lecturer-dept-display">loading...</strong>
+        </span>
+    </div>
+    
+    <!-- ===== RESOURCE TYPE FILTER TABS ===== -->
+    <div style="display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; border-bottom: 2px solid #e2e8f0; padding-bottom: 12px;">
+        <button onclick="LecturerResources.filterType('all')" id="lecturer-type-all" class="resource-type-btn active" style="padding: 10px 24px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
+            <i class="fas fa-layer-group"></i> All Resources
+            <span id="lecturer-all-count" style="background: rgba(255,255,255,0.2); border-radius: 20px; padding: 2px 10px; margin-left: 8px; font-size: 12px;">0</span>
+        </button>
+        <button onclick="LecturerResources.filterType('material')" id="lecturer-type-material" class="resource-type-btn" style="padding: 10px 24px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
+            <i class="fas fa-book"></i> Learning Materials
+            <span id="lecturer-material-count" style="background: #10b981; color: white; border-radius: 20px; padding: 2px 10px; margin-left: 8px; font-size: 12px;">0</span>
+        </button>
+        <button onclick="LecturerResources.filterType('pastpaper')" id="lecturer-type-pastpaper" class="resource-type-btn" style="padding: 10px 24px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
+            <i class="fas fa-history"></i> Past Papers
+            <span id="lecturer-pastpaper-count" style="background: #f59e0b; color: white; border-radius: 20px; padding: 2px 10px; margin-left: 8px; font-size: 12px;">0</span>
+        </button>
+        <button onclick="LecturerResources.filterType('exam')" id="lecturer-type-exam" class="resource-type-btn" style="padding: 10px 24px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
+            <i class="fas fa-graduation-cap"></i> Exam Resources
+            <span id="lecturer-exam-count" style="background: #3b82f6; color: white; border-radius: 20px; padding: 2px 10px; margin-left: 8px; font-size: 12px;">0</span>
+        </button>
+    </div>
+    
+    <!-- ===== SUCCESS BANNER ===== -->
+    <div id="lecturerResourceSuccess" style="display: none; background: #d1fae5; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; border-left: 4px solid #10b981;">
         <div style="display: flex; align-items: center; gap: 12px;">
             <i class="fas fa-check-circle" style="color: #10b981; font-size: 24px;"></i>
             <div>
-                <strong style="color: #065f46;">Resource Uploaded Successfully!</strong>
-                <p style="margin: 4px 0 0 0; color: #065f46; font-size: 14px;">Your resource is now available to students immediately.</p>
+                <strong style="color: #065f46;" id="successMessage">Resource Uploaded Successfully!</strong>
+                <p style="margin: 4px 0 0 0; color: #065f46; font-size: 14px;" id="successSubMessage">Your resource is now available to students in your department immediately.</p>
             </div>
-            <button onclick="document.getElementById('resourceUploadSuccess').style.display='none'" style="margin-left: auto; background: none; border: none; color: #065f46; cursor: pointer; font-size: 18px;">&times;</button>
+            <button onclick="document.getElementById('lecturerResourceSuccess').style.display='none'" style="margin-left: auto; background: none; border: none; color: #065f46; cursor: pointer; font-size: 18px;">&times;</button>
         </div>
     </div>
     
-    <!-- ===== RESOURCE TYPE TABS ===== -->
-    <div style="display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #e2e8f0; padding-bottom: 10px; flex-wrap: wrap;">
-        <button onclick="switchResourceTab('general')" id="tab-general" class="resource-tab-btn active" style="background: #4C1D95; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
-            <i class="fas fa-file-alt"></i> General Resources
-        </button>
-        <button onclick="switchResourceTab('pastpaper')" id="tab-pastpaper" class="resource-tab-btn" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
-            <i class="fas fa-file-pdf"></i> Past Papers
-        </button>
-        <button onclick="switchResourceTab('exam')" id="tab-exam" class="resource-tab-btn" style="background: #e2e8f0; color: #475569; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
-            <i class="fas fa-graduation-cap"></i> Exam Resources
-        </button>
-    </div>
-    
     <!-- ========================================= -->
-    <!-- TAB 1: GENERAL RESOURCES -->
+    <!-- UNIFIED UPLOAD/EDIT FORM - DYNAMIC -->
     <!-- ========================================= -->
-    <div id="resource-tab-general" class="resource-tab-content">
-        <form id="uploadResourceForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); uploadResource();">
-            <!-- Auto-publish indicator -->
-            <div style="background: #f0fdf4; border-radius: 8px; padding: 10px 16px; margin-bottom: 15px; border: 1px solid #bbf7d0; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-globe" style="color: #10b981;"></i>
-                <span style="font-size: 13px; color: #065f46;">
-                    <strong>Auto-Publish:</strong> Resources are published immediately to students.
-                </span>
-            </div>
+    <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 24px; border-radius: 12px; margin-bottom: 25px;">
+        <h3 id="form-title"><i class="fas fa-upload"></i> Upload Resource</h3>
+        <p id="form-subtitle" style="color: #6b7280; font-size: 13px; margin-top: -5px; margin-bottom: 15px;">Upload new learning materials or past examination papers</p>
+        
+        <!-- Past Paper Toggle Checkbox -->
+        <div style="margin-bottom: 15px; padding: 12px 16px; background: white; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <label style="display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                <input type="checkbox" id="lecturer_is_pastpaper" onchange="LecturerResources.togglePastPaperFields()" style="width: 18px; height: 18px; accent-color: #4C1D95;">
+                <i class="fas fa-history" style="color: #f59e0b;"></i>
+                <span style="font-weight: 500;"><strong>This is a Past Paper</strong> <span style="color: #6b7280; font-weight: 400;">(Check this if uploading exam papers from previous years)</span></span>
+            </label>
+        </div>
+        
+        <!-- Unified Form -->
+        <form id="lecturer-upload-form" onsubmit="event.preventDefault(); LecturerResources.handleUpload(event);">
+            <!-- Hidden ID for edit mode -->
+            <input type="hidden" id="lecturer_edit_id" value="">
             
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="resourceTitle" style="font-weight: 600; font-size: 13px; color: #475569;">Resource Title *</label>
-                    <input type="text" id="resourceTitle" placeholder="Resource Title" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="resourceCategory" style="font-weight: 600; font-size: 13px; color: #475569;">Category *</label>
-                    <select id="resourceCategory" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        <option value="">Select Category</option>
-                        <option value="Academic">Academic</option>
-                        <option value="Mental Health">Mental Health</option>
-                        <option value="General">General</option>
+            <!-- Program - AUTO-FILLED from lecturer profile -->
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; margin-bottom: 12px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Program/Department *</label>
+                    <select id="lecturer_program" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc;" disabled>
+                        <option value="">Loading programs...</option>
                     </select>
+                    <small style="color: #6b7280; font-size: 11px;">Auto-assigned from your department</small>
                 </div>
-            </div>
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="resourceProgram" style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
-                    <select id="resourceProgram" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="resourceIntake" style="font-weight: 600; font-size: 13px; color: #475569;">Intake *</label>
-                    <select id="resourceIntake" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                
+                <!-- Intake Year - DYNAMIC -->
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year *</label>
+                    <select id="lecturer_intake" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
                         <option value="">Select Intake</option>
-                        <option value="2026">2026</option>
-                        <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                        <option value="2029">2029</option>
-                        <option value="2030">2030</option>
                     </select>
                 </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="resourceBlock" style="font-weight: 600; font-size: 13px; color: #475569;">Block *</label>
-                    <select id="resourceBlock" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
-                </div>
-            </div>
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="resourceFile" style="font-weight: 600; font-size: 13px; color: #475569;">File *</label>
-                    <input type="file" id="resourceFile" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;" onchange="document.getElementById('resourceFileName').textContent = this.files[0]?.name || 'No file selected'">
-                    <span id="resourceFileName" style="font-size: 12px; color: #94a3b8; margin-top: 4px;">No file selected</span>
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="resourceDescription" style="font-weight: 600; font-size: 13px; color: #475569;">Description (Optional)</label>
-                    <input type="text" id="resourceDescription" placeholder="Brief description of the resource" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                
+                <!-- Block/Term - DYNAMIC -->
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Block/Term *</label>
+                    <select id="lecturer_block" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        <option value="">Select Block</option>
+                    </select>
                 </div>
             </div>
             
-            <!-- Cancel Edit Button -->
-            <div id="currentFileInfo" style="display: none;"></div>
-            <div style="display: flex; gap: 10px; margin-top: 10px;">
-                <button type="submit" class="btn btn-action" style="background: #10b981; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-upload"></i> Publish Resource
+            <!-- Title and File -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 12px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Resource Title *</label>
+                    <input type="text" id="lecturer_resource_title" placeholder="Enter resource title" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Upload File *</label>
+                    <input type="file" id="lecturer_resource_file" accept=".pdf,.doc,.docx,.ppt,.pptx,.jpg,.jpeg,.png,.gif,.mp4" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;" onchange="document.getElementById('lecturer_file_name').textContent = this.files[0]?.name || 'No file selected'">
+                    <span id="lecturer_file_name" style="font-size: 12px; color: #94a3b8; margin-top: 4px; display: block;">No file selected</span>
+                    <span id="lecturer_file_edit_info" style="font-size: 11px; color: #6b7280; display: none;">Leave empty to keep existing file</span>
+                </div>
+            </div>
+            
+            <!-- Description -->
+            <div style="margin-bottom: 12px;">
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Description (Optional)</label>
+                <textarea id="lecturer_resource_description" placeholder="Brief description of the resource" rows="2" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; resize: vertical;"></textarea>
+            </div>
+            
+            <!-- Past Paper Specific Fields (hidden by default) -->
+            <div id="lecturer-pastpaper-fields" style="display: none; border-top: 2px dashed #4C1D95; padding-top: 15px; margin-top: 10px;">
+                <h4 style="margin: 0 0 12px 0; color: #4C1D95;"><i class="fas fa-history"></i> Past Paper Details</h4>
+                <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px;">
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569;">Exam Year *</label>
+                        <select id="lecturer_pastpaper_year" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                            <option value="">Select Year</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569;">Exam Type *</label>
+                        <select id="lecturer_exam_type" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                            <option value="">Select Type</option>
+                            <option value="CAT 1">CAT 1</option>
+                            <option value="CAT 2">CAT 2</option>
+                            <option value="End of Term">End of Term</option>
+                            <option value="Final Exam">Final Exam</option>
+                            <option value="Supplementary">Supplementary</option>
+                            <option value="Special Exam">Special Exam</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569;">Course/Unit Name *</label>
+                        <input type="text" id="lecturer_course_name" placeholder="e.g., Anatomy, Pharmacology" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                    </div>
+                </div>
+                <small style="color: #6b7280; display: block; margin-top: 8px;"><i class="fas fa-info-circle"></i> These fields are required for past papers</small>
+            </div>
+            
+            <!-- Form Buttons -->
+            <div style="display: flex; gap: 12px; margin-top: 16px; flex-wrap: wrap;">
+                <button type="submit" id="lecturer-form-submit-btn" style="background: #4C1D95; color: white; border: none; padding: 12px 32px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.3s;">
+                    <i class="fas fa-upload"></i> <span id="lecturer-submit-btn-text">Upload Resource</span>
                 </button>
-                <button type="button" id="cancelEditResource" style="display: none; background: #e2e8f0; color: #475569; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <button type="button" id="lecturer-form-cancel-btn" onclick="LecturerResources.cancelEdit()" style="display: none; background: #6b7280; color: white; border: none; padding: 12px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-times"></i> Cancel Edit
                 </button>
             </div>
@@ -3635,202 +3695,140 @@
     </div>
     
     <!-- ========================================= -->
-    <!-- TAB 2: PAST PAPERS -->
+    <!-- TOOLBAR - WITH DYNAMIC FILTERS -->
     <!-- ========================================= -->
-    <div id="resource-tab-pastpaper" class="resource-tab-content" style="display: none;">
-        <form id="uploadPastPaperForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); uploadPastPaper();">
-            <!-- Past Paper indicator -->
-            <div style="background: #fef3c7; border-radius: 8px; padding: 10px 16px; margin-bottom: 15px; border: 1px solid #fcd34d; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-history" style="color: #f59e0b;"></i>
-                <span style="font-size: 13px; color: #92400e;">
-                    <strong>Past Paper:</strong> Upload previous exam papers for students to practice. Published immediately.
-                </span>
-            </div>
-            
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="pastpaperTitle" style="font-weight: 600; font-size: 13px; color: #475569;">Paper Title *</label>
-                    <input type="text" id="pastpaperTitle" placeholder="e.g., KRCHN Nursing 101 Exam" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="pastpaperYear" style="font-weight: 600; font-size: 13px; color: #475569;">Year *</label>
-                    <select id="pastpaperYear" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        <option value="">Select Year</option>
-                        <option value="2026">2026</option>
-                        <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                        <option value="2029">2029</option>
-                        <option value="2030">2030</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="pastpaperUnit" style="font-weight: 600; font-size: 13px; color: #475569;">Unit *</label>
-                    <select id="pastpaperUnit" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        <option value="">Select Unit</option>
-                    </select>
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="pastpaperExamType" style="font-weight: 600; font-size: 13px; color: #475569;">Exam Type *</label>
-                    <select id="pastpaperExamType" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        <option value="">Select Type</option>
-                        <option value="CAT 1">CAT 1</option>
-                        <option value="CAT 2">CAT 2</option>
-                        <option value="Main Exam">Main Exam</option>
-                        <option value="Supplementary">Supplementary</option>
-                        <option value="Special">Special</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="pastpaperProgram" style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
-                    <select id="pastpaperProgram" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="pastpaperBlock" style="font-weight: 600; font-size: 13px; color: #475569;">Block *</label>
-                    <select id="pastpaperBlock" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
-                </div>
-            </div>
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="pastpaperFile" style="font-weight: 600; font-size: 13px; color: #475569;">Paper File (PDF) *</label>
-                    <input type="file" id="pastpaperFile" accept=".pdf" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;" onchange="document.getElementById('pastpaperFileName').textContent = this.files[0]?.name || 'No file selected'">
-                    <span id="pastpaperFileName" style="font-size: 12px; color: #94a3b8; margin-top: 4px;">No file selected</span>
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="pastpaperDescription" style="font-weight: 600; font-size: 13px; color: #475569;">Description (Optional)</label>
-                    <input type="text" id="pastpaperDescription" placeholder="e.g., 2026 Main Exam Paper" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                </div>
-            </div>
-            
-            <button type="submit" class="btn btn-action" style="background: #f59e0b; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                <i class="fas fa-upload"></i> Upload Past Paper
-            </button>
-        </form>
-    </div>
-    
-    <!-- ========================================= -->
-    <!-- TAB 3: EXAM RESOURCES -->
-    <!-- ========================================= -->
-    <div id="resource-tab-exam" class="resource-tab-content" style="display: none;">
-        <form id="uploadExamResourceForm" class="check-in-controls" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 20px;" onsubmit="event.preventDefault(); uploadExamResource();">
-            <!-- Exam Resource indicator -->
-            <div style="background: #dbeafe; border-radius: 8px; padding: 10px 16px; margin-bottom: 15px; border: 1px solid #93c5fd; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-graduation-cap" style="color: #3b82f6;"></i>
-                <span style="font-size: 13px; color: #1e40af;">
-                    <strong>Exam Resource:</strong> Upload exam-related materials, revision guides, and study resources.
-                </span>
-            </div>
-            
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="examResourceTitle" style="font-weight: 600; font-size: 13px; color: #475569;">Resource Title *</label>
-                    <input type="text" id="examResourceTitle" placeholder="e.g., Revision Guide - Nursing 101" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="examResourceType" style="font-weight: 600; font-size: 13px; color: #475569;">Resource Type *</label>
-                    <select id="examResourceType" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        <option value="">Select Type</option>
-                        <option value="Revision Guide">Revision Guide</option>
-                        <option value="Study Notes">Study Notes</option>
-                        <option value="Practice Questions">Practice Questions</option>
-                        <option value="Model Answers">Model Answers</option>
-                        <option value="Exam Tips">Exam Tips</option>
-                        <option value="Marking Scheme">Marking Scheme</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="examResourceUnit" style="font-weight: 600; font-size: 13px; color: #475569;">Unit *</label>
-                    <select id="examResourceUnit" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        <option value="">Select Unit</option>
-                    </select>
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="examResourceProgram" style="font-weight: 600; font-size: 13px; color: #475569;">Program *</label>
-                    <select id="examResourceProgram" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
-                </div>
-            </div>
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="examResourceBlock" style="font-weight: 600; font-size: 13px; color: #475569;">Block *</label>
-                    <select id="examResourceBlock" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"></select>
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="examResourceYear" style="font-weight: 600; font-size: 13px; color: #475569;">Year *</label>
-                    <select id="examResourceYear" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                        <option value="">Select Year</option>
-                        <option value="2026">2026</option>
-                        <option value="2027">2027</option>
-                        <option value="2028">2028</option>
-                        <option value="2029">2029</option>
-                        <option value="2030">2030</option>
-                    </select>
-                </div>
-            </div>
-            <div class="form-row" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 15px;">
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="examResourceFile" style="font-weight: 600; font-size: 13px; color: #475569;">File *</label>
-                    <input type="file" id="examResourceFile" required style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;" onchange="document.getElementById('examResourceFileName').textContent = this.files[0]?.name || 'No file selected'">
-                    <span id="examResourceFileName" style="font-size: 12px; color: #94a3b8; margin-top: 4px;">No file selected</span>
-                </div>
-                <div class="form-group" style="display: flex; flex-direction: column; gap: 5px;">
-                    <label for="examResourceDescription" style="font-weight: 600; font-size: 13px; color: #475569;">Description (Optional)</label>
-                    <input type="text" id="examResourceDescription" placeholder="Brief description of the exam resource" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-                </div>
-            </div>
-            
-            <button type="submit" class="btn btn-action" style="background: #3b82f6; color: white; border: none; padding: 10px 24px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-                <i class="fas fa-upload"></i> Upload Exam Resource
-            </button>
-        </form>
-    </div>
-    
-    <!-- ========================================= -->
-    <!-- RESOURCES LIST -->
-    <!-- ========================================= -->
-    <h3 style="color: #0A3D62; margin-bottom: 15px;">My Published Resources</h3>
-    <div style="background: #f0fdf4; border-radius: 8px; padding: 10px 16px; margin-bottom: 20px; border: 1px solid #bbf7d0; display: flex; align-items: center; gap: 10px;">
-        <i class="fas fa-check-circle" style="color: #10b981;"></i>
-        <span style="font-size: 13px; color: #065f46;">
-            All resources listed below are <strong>published</strong> and available to students immediately.
-        </span>
-    </div>
-    
-    <div class="search-container" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;">
-        <input type="text" id="resourceSearch" placeholder="Search resources..." style="flex: 1; min-width: 200px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
-        <button class="btn btn-action" id="resourceSearchBtn" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
-            <i class="fas fa-search"></i> Search
+    <div class="toolbar" style="display: flex; gap: 10px; margin-bottom: 20px; flex-wrap: wrap; align-items: center;">
+        <input type="text" id="lecturer-resource-search" placeholder="🔍 Search resources..." onkeyup="LecturerResources.searchTable()" style="flex: 1; min-width: 180px; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+        
+        <select id="lecturer-block-filter" onchange="LecturerResources.filterTable()" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
+            <option value="all">All Blocks</option>
+        </select>
+        
+        <select id="lecturer-year-filter" onchange="LecturerResources.filterTable()" style="padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white;">
+            <option value="all">All Years</option>
+        </select>
+        
+        <button onclick="LecturerResources.exportToCSV()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+            <i class="fas fa-file-csv"></i> Export CSV
         </button>
-        <button class="btn btn-action" onclick="LecturerResources.loadResources()" style="background: #10b981; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer;">
+        
+        <button onclick="LecturerResources.loadResources()" style="background: #4C1D95; color: white; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
             <i class="fas fa-sync-alt"></i> Refresh
         </button>
     </div>
     
-    <!-- Published Resources Table -->
+    <!-- ========================================= -->
+    <!-- RESOURCES TABLE -->
+    <!-- ========================================= -->
     <div class="table-responsive" style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
         <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
             <thead>
                 <tr style="background: #f8fafc;">
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Type</th>
                     <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Title</th>
-                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Description</th>
-                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Category</th>
-                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program/Block</th>
-                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Uploaded By</th>
-                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date Uploaded</th>
-                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Status</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Year</th>
+                    <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Uploaded</th>
                     <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Actions</th>
                 </tr>
             </thead>
-            <tbody id="resourcesList">
-                <tr><td colspan="8" style="padding: 40px; text-align: center; color: #6b7280;"><div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> Loading resources...</td></tr>
+            <tbody id="lecturer-resources-list">
+                <tr><td colspan="7" style="padding: 40px; text-align: center; color: #6b7280;">
+                    <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div> 
+                    Loading your resources...
+                </td></tr>
             </tbody>
         </table>
     </div>
 </section>
+
+<!-- ============================================ -->
+<!-- EDIT RESOURCE MODAL -->
+<!-- ============================================ -->
+<div id="lecturer-edit-modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 9999; justify-content: center; align-items: center; padding: 20px;">
+    <div style="background: white; border-radius: 16px; max-width: 700px; width: 100%; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: fadeIn 0.3s ease;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+            <h3 style="margin: 0; color: #1e3a5f;"><i class="fas fa-edit"></i> Edit Resource</h3>
+            <button onclick="LecturerResources.closeEditModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #94a3b8; line-height: 1;">&times;</button>
+        </div>
+        
+        <form id="lecturer-edit-form" onsubmit="event.preventDefault(); LecturerResources.saveEdit();">
+            <input type="hidden" id="edit_resource_id">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Program</label>
+                    <select id="edit_lecturer_program" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc;" disabled>
+                        <option value="">Loading...</option>
+                    </select>
+                    <small style="color: #6b7280; font-size: 11px;">Department assignment cannot be changed</small>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569;">Intake Year</label>
+                    <select id="edit_lecturer_intake" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                        <option value="">Select Intake</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div style="margin-top: 12px;">
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Block/Term</label>
+                <select id="edit_lecturer_block" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                    <option value="">Select Block</option>
+                </select>
+            </div>
+            
+            <div style="margin-top: 12px;">
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Resource Title</label>
+                <input type="text" id="edit_lecturer_title" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+            </div>
+            
+            <div style="margin-top: 12px;">
+                <label style="font-weight: 600; font-size: 13px; color: #475569;">Description</label>
+                <textarea id="edit_lecturer_description" rows="2" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; resize: vertical;"></textarea>
+            </div>
+            
+            <!-- Past Paper Edit Fields -->
+            <div style="margin-top: 12px; border-top: 2px dashed #e2e8f0; padding-top: 15px;">
+                <h4 style="margin: 0 0 12px 0; color: #4C1D95; font-size: 15px;"><i class="fas fa-history"></i> Past Paper Information</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569;">Exam Year</label>
+                        <select id="edit_lecturer_pastpaper_year" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                            <option value="">N/A</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569;">Exam Type</label>
+                        <select id="edit_lecturer_exam_type" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                            <option value="">N/A</option>
+                            <option value="CAT 1">CAT 1</option>
+                            <option value="CAT 2">CAT 2</option>
+                            <option value="End of Term">End of Term</option>
+                            <option value="Final Exam">Final Exam</option>
+                            <option value="Supplementary">Supplementary</option>
+                            <option value="Special Exam">Special Exam</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 13px; color: #475569;">Course/Unit</label>
+                        <input type="text" id="edit_lecturer_course_name" placeholder="Course name" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;">
+                    </div>
+                </div>
+            </div>
+            
+            <div style="display: flex; gap: 12px; margin-top: 20px;">
+                <button type="submit" style="flex: 1; padding: 12px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+                    <i class="fas fa-save"></i> Save Changes
+                </button>
+                <button type="button" onclick="LecturerResources.closeEditModal()" style="flex: 1; padding: 12px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
+                    Cancel
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
  <!-- ===== REPORTS SECTION - ENHANCED WITH PDF EXPORT, PREVIEW & ANALYTICS ===== -->
 <section id="reports-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <!-- Header -->
