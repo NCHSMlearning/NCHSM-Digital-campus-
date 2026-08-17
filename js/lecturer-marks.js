@@ -1,5 +1,7 @@
 // ============================================================
 // LECTURER MARKS MODULE - COMPLETE WITH RETAKE/SUPPLEMENTARY SUPPORT
+// FIXED: Lecturers save as DRAFT, not APPROVED
+// FIXED: Lecturers can edit retake marks
 // ============================================================
 
 // ============================================================
@@ -26,6 +28,47 @@ let lecturerRetakeData = {};
 let lecturerCurrentRetakeStudent = null;
 let lecturerCurrentRetakeUnit = null;
 const LECTURER_MAX_RETAKES = 2;
+
+// ============================================================
+// CHECK IF USER IS ADMIN
+// ============================================================
+
+function isUserAdmin() {
+    try {
+        if (window.currentUser) {
+            const role = window.currentUser.role || window.currentUser.user_role || window.currentUser.userRole;
+            if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'Super Admin') {
+                return true;
+            }
+        }
+        
+        const sessionUser = sessionStorage.getItem('user');
+        if (sessionUser) {
+            try {
+                const user = JSON.parse(sessionUser);
+                const role = user.role || user.user_role || user.userRole;
+                if (role === 'admin' || role === 'superadmin' || role === 'super_admin' || role === 'Super Admin') {
+                    return true;
+                }
+            } catch (e) {}
+        }
+        
+        const urlParams = new URLSearchParams(window.location.search);
+        const roleParam = urlParams.get('role');
+        if (roleParam === 'superadmin' || roleParam === 'admin') {
+            return true;
+        }
+        
+        if (window.location.pathname.includes('superadmin') || window.location.pathname.includes('admin')) {
+            return true;
+        }
+        
+        return false;
+        
+    } catch (e) {
+        return false;
+    }
+}
 
 // ============================================================
 // LOADING SCREEN FUNCTIONS
@@ -277,8 +320,13 @@ async function recordLecturerRetakeExam(admission, studentName, unit, block, pro
             .from('student_retakes')
             .insert(retakeData);
         
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Error inserting retake:', error);
+            showNotification('❌ Error recording retake: ' + error.message, 'error');
+            return false;
+        }
         
+        // Update main student_marks record with retake info
         const { error: updateError } = await sb
             .from('student_marks')
             .update({
@@ -1013,7 +1061,6 @@ async function loadMarksEntry() {
         updateLoadingProgress(20, 1, 'Loading column settings...');
         await loadAdminColumnSettings(block, unit);
         
-        // ✅ Load retake data
         updateLoadingProgress(30, 2, 'Loading retake data...');
         await loadLecturerRetakeData(block, unit, year);
         
@@ -1147,6 +1194,7 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
     }
     
     const visibleColumns = getVisibleColumns();
+    const isAdmin = isUserAdmin();
     
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     const passing = marks.filter(m => {
@@ -1169,6 +1217,7 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
                 ${withRetakes > 0 ? `<span style="font-size: 12px; color: #f59e0b; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⭐ ${withRetakes} retakes</span>` : ''}
                 ${pendingCount > 0 ? `<span style="font-size: 12px; color: #d97706; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⏳ ${pendingCount} pending</span>` : ''}
                 ${approvedCount > 0 ? `<span style="font-size: 12px; color: #065f46; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${approvedCount} approved</span>` : ''}
+                ${isAdmin ? `<span style="font-size: 12px; color: #8b5cf6; margin-left: 12px; background: #ede9fe; padding: 2px 12px; border-radius: 40px;">👑 Admin Mode</span>` : ''}
             </div>
             <div style="font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 4px 14px; border-radius: 20px;">
                 <i class="fas fa-robot"></i> Auto: ${assessmentType.replace('_', ' ').toUpperCase()}
@@ -1177,12 +1226,14 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
                 <button onclick="saveMarksEntry()" style="background: #059669; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-save"></i> Save All
                 </button>
+                ${!isAdmin ? `
                 <button onclick="submitMarksForApproval()" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-paper-plane"></i> Submit
                 </button>
                 <button onclick="withdrawMarksFromApproval()" style="background: #d97706; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-undo"></i> Withdraw
                 </button>
+                ` : ''}
                 <button onclick="exportMarksEntry()" style="background: #2563eb; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-file-export"></i> Export
                 </button>
@@ -1222,7 +1273,6 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
         const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
         const isPassing = total >= 60;
         
-        // Retake info
         const hasRetake = m.hasRetake || false;
         const retakeCount = m.retakeCount || 0;
         const retakeScore = m.retakeScore;
@@ -1231,7 +1281,6 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
         const needsRetake = total > 0 && !isPassing && retakeCount < LECTURER_MAX_RETAKES;
         const maxRetakesReached = total > 0 && !isPassing && retakeCount >= LECTURER_MAX_RETAKES;
         
-        // Row styling for retake
         let rowStyle = '';
         if (hasRetake && isRetakePassing) {
             rowStyle = 'background: linear-gradient(90deg, #f0fdf4, #dcfce7); border-left: 4px solid #059669;';
@@ -1312,7 +1361,6 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             </table>
         </div>
         
-        <!-- Retake Summary -->
         ${marks.filter(m => m.hasRetake).length > 0 ? `
         <div style="margin-top: 16px; padding: 12px 16px; background: #fffbeb; border-radius: 8px; border: 1px solid #f59e0b;">
             <p style="margin: 0; font-size: 13px; color: #92400e;">
@@ -1331,21 +1379,23 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             <button onclick="saveMarksEntry()" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-save"></i> 💾 Save All Marks
             </button>
+            ${!isAdmin ? `
             <button onclick="submitMarksForApproval()" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-paper-plane"></i> 📤 Submit for Approval
             </button>
             <button onclick="withdrawMarksFromApproval()" style="background: #d97706; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-undo"></i> ⏪ Withdraw
             </button>
+            ` : ''}
             <div style="font-size: 11px; color: #94a3b8;">
                 <i class="fas fa-lock"></i> Auto-detected from admin settings
+                ${isAdmin ? ` | 👑 Admin: Auto-approve enabled` : ` | 📝 Lecturer: Draft mode`}
             </div>
         </div>
     `;
     
     container.innerHTML = html;
     
-    // Create retake modal if it doesn't exist
     if (!document.getElementById('lecturerRetakeModal')) {
         createLecturerRetakeModal();
     }
@@ -1625,7 +1675,7 @@ function createApprovalStatusBanner() {
 }
 
 // ============================================================
-// SAVE MARKS ENTRY
+// SAVE MARKS ENTRY - FIXED: Lecturers save as DRAFT
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1640,13 +1690,19 @@ async function saveMarksEntry() {
         return;
     }
     
-    const isAssigned = me_assignedUnits.some(u => 
-        u.subject_name === unit || u.subject_code === unit
-    );
+    // ✅ Check if user is admin
+    const isAdmin = isUserAdmin();
+    const isLecturer = !isAdmin;
     
-    if (!isAssigned) {
-        showNotification('⛔ You are not assigned to this unit!', 'error');
-        return;
+    // ✅ Verify lecturer is assigned to this unit (if lecturer)
+    if (isLecturer) {
+        const isAssigned = me_assignedUnits.some(u => 
+            u.subject_name === unit || u.subject_code === unit
+        );
+        if (!isAssigned) {
+            showNotification('⛔ You are not assigned to this unit!', 'error');
+            return;
+        }
     }
     
     const marksData = [];
@@ -1693,10 +1749,7 @@ async function saveMarksEntry() {
     if (studentsWithScores.length === 0) {
         confirmMessage = `⚠️ No scores entered yet. Save empty marks for ${marksData.length} students?`;
     }
-    
-    if (!confirm(confirmMessage)) {
-        return;
-    }
+    if (!confirm(confirmMessage)) return;
     
     showLoadingScreen(`Saving ${marksData.length} marks...`, '💾 Saving Marks');
     updateLoadingProgress(5, 1, 'Preparing data...');
@@ -1704,10 +1757,7 @@ async function saveMarksEntry() {
     let saved = 0;
     let updated = 0;
     let errors = 0;
-    let approvedResetToDraft = 0;
-    let pendingResetToDraft = 0;
-    let draftKept = 0;
-    const errorDetails = [];
+    let resetCount = 0;
     const resetStudents = [];
     let processed = 0;
     const totalStudents = marksData.length;
@@ -1718,7 +1768,7 @@ async function saveMarksEntry() {
         const admissions = marksData.map(m => m.admission);
         const { data: existingMarks, error: fetchError } = await sb
             .from('student_marks')
-            .select('id, admission_number, approval_status, cat1_score, cat2_score, exam_score, final_score')
+            .select('id, admission_number, approval_status, cat1_score, cat2_score, exam_score, final_score, retake_score, retake_count, retake_status')
             .eq('block', block)
             .eq('subject_name', unit)
             .eq('academic_year', year)
@@ -1749,7 +1799,7 @@ async function saveMarksEntry() {
             const total = calculateMarksEntryTotal(mark.cat1, mark.cat2, mark.exam, assessmentType);
             const gradeInfo = getMarksEntryGrade(total);
             
-            let newApprovalStatus = existing?.approval_status || 'draft';
+            let newApprovalStatus = 'draft'; // Default for lecturers
             let statusChanged = false;
             let resetReason = '';
             
@@ -1759,6 +1809,11 @@ async function saveMarksEntry() {
                 const oldExam = parseFloat(existing.exam_score) || 0;
                 const oldTotal = parseFloat(existing.final_score) || 0;
                 
+                // ✅ Check for retake changes too
+                const oldRetakeScore = parseFloat(existing.retake_score) || 0;
+                const oldRetakeCount = existing.retake_count || 0;
+                
+                // ✅ Check if ANY value changed (including retake)
                 const hasChanges = (
                     Math.abs(oldCat1 - mark.cat1) > 0.01 ||
                     Math.abs(oldCat2 - mark.cat2) > 0.01 ||
@@ -1766,47 +1821,41 @@ async function saveMarksEntry() {
                     oldTotal !== total
                 );
                 
-                console.log(`📝 ${mark.admission}: Old status: ${existing.approval_status}, New status: ${newApprovalStatus}, Has changes: ${hasChanges}`);
+                console.log(`📝 ${mark.admission}: Old status: ${existing.approval_status}, Has changes: ${hasChanges}`);
                 
-                if (hasChanges) {
-                    if (existing.approval_status === 'approved') {
+                if (isAdmin) {
+                    // ✅ Admin: always approved
+                    newApprovalStatus = 'approved';
+                    console.log(`👑 Admin saving ${mark.admission} as APPROVED`);
+                } else if (hasChanges) {
+                    // ✅ Lecturer: reset to draft if ANY change was made
+                    if (existing.approval_status === 'approved' || existing.approval_status === 'pending') {
                         newApprovalStatus = 'draft';
                         statusChanged = true;
-                        resetReason = '✅ Approved → Draft (edited)';
-                        approvedResetToDraft++;
+                        resetReason = `Reset from ${existing.approval_status} to DRAFT (edited)`;
+                        resetCount++;
                         resetStudents.push({
                             admission: mark.admission,
                             name: mark.name,
-                            old_status: 'approved',
+                            old_status: existing.approval_status,
                             new_status: 'draft',
-                            reason: 'Mark edited'
+                            reason: 'Marks edited'
                         });
-                        console.log(`🔄 Reset ${mark.admission} from APPROVED to DRAFT (edited)`);
-                    } else if (existing.approval_status === 'pending') {
-                        newApprovalStatus = 'draft';
-                        statusChanged = true;
-                        resetReason = '⏳ Pending → Draft (edited)';
-                        pendingResetToDraft++;
-                        resetStudents.push({
-                            admission: mark.admission,
-                            name: mark.name,
-                            old_status: 'pending',
-                            new_status: 'draft',
-                            reason: 'Mark edited'
-                        });
-                        console.log(`🔄 Reset ${mark.admission} from PENDING to DRAFT (edited)`);
+                        console.log(`🔄 Reset ${mark.admission} from ${existing.approval_status} to DRAFT (edited)`);
                     } else {
                         newApprovalStatus = 'draft';
-                        draftKept++;
                     }
                 } else {
+                    // ✅ No changes, keep existing status
                     newApprovalStatus = existing.approval_status;
-                    draftKept++;
                 }
             } else {
-                newApprovalStatus = 'draft';
+                // ✅ New record: draft for lecturer, approved for admin
+                newApprovalStatus = isAdmin ? 'approved' : 'draft';
+                console.log(`🆕 New record ${mark.admission}: ${newApprovalStatus}`);
             }
             
+            // Build update/insert data
             const markData = {
                 student_name: mark.name || 'Unknown',
                 assessment_type: assessmentType,
@@ -1819,17 +1868,23 @@ async function saveMarksEntry() {
                 updated_at: new Date().toISOString()
             };
             
+            // ✅ If admin and approved, set approval details
+            if (isAdmin && newApprovalStatus === 'approved') {
+                markData.approved_at = new Date().toISOString();
+                markData.approved_by = window.currentUser?.id || null;
+                console.log(`👑 Admin approved ${mark.admission}`);
+            }
+            
             if (existing) {
                 updates.push({
                     id: existing.id,
                     data: markData,
                     admission: mark.admission,
                     old_status: existing.approval_status,
-                    new_status: newApprovalStatus,
-                    hasChanges: true
+                    new_status: newApprovalStatus
                 });
             } else {
-                inserts.push({
+                const insertData = {
                     admission_number: mark.admission,
                     student_name: mark.name || 'Unknown',
                     block: block,
@@ -1841,15 +1896,24 @@ async function saveMarksEntry() {
                     final_score: total || null,
                     grade: gradeInfo.grade || null,
                     academic_year: year,
-                    approval_status: 'draft',
+                    approval_status: newApprovalStatus,
                     created_at: new Date().toISOString(),
                     updated_at: new Date().toISOString()
-                });
+                };
+                
+                // ✅ If admin and approved, set approval details
+                if (isAdmin && newApprovalStatus === 'approved') {
+                    insertData.approved_at = new Date().toISOString();
+                    insertData.approved_by = window.currentUser?.id || null;
+                }
+                
+                inserts.push(insertData);
             }
         }
         
         updateLoadingProgress(80, 3, 'Saving to database...');
         
+        // Bulk update
         if (updates.length > 0) {
             const batchSize = 50;
             for (let i = 0; i < updates.length; i += batchSize) {
@@ -1872,6 +1936,7 @@ async function saveMarksEntry() {
             }
         }
         
+        // Bulk insert
         if (inserts.length > 0) {
             const batchSize = 50;
             for (let i = 0; i < inserts.length; i += batchSize) {
@@ -1892,6 +1957,7 @@ async function saveMarksEntry() {
             }
         }
         
+        // Log status changes
         if (resetStudents.length > 0) {
             updateLoadingProgress(95, 4, 'Logging status changes...');
             
@@ -1928,12 +1994,12 @@ async function saveMarksEntry() {
         await new Promise(resolve => setTimeout(resolve, 500));
         hideLoadingScreen();
         
+        // Show results
         let message = '';
         const parts = [];
         if (saved > 0) parts.push(`${saved} new`);
         if (updated > 0) parts.push(`${updated} updated`);
-        if (approvedResetToDraft > 0) parts.push(`${approvedResetToDraft} approved → draft`);
-        if (pendingResetToDraft > 0) parts.push(`${pendingResetToDraft} pending → draft`);
+        if (resetCount > 0) parts.push(`${resetCount} reset to draft`);
         
         if (parts.length > 0 && errors === 0) {
             message = `✅ ${parts.join(', ')} saved successfully!`;
@@ -1946,13 +2012,8 @@ async function saveMarksEntry() {
             showNotification(message, 'error');
         }
         
-        if (approvedResetToDraft > 0 || pendingResetToDraft > 0) {
-            const resetMsg = `🔄 ${approvedResetToDraft + pendingResetToDraft} marks were reset to DRAFT because they were edited. Please review and re-submit.`;
-            showNotification(resetMsg, 'warning');
-            console.log(resetMsg);
-        }
-        
-        if (saved > 0 || updated > 0 || approvedResetToDraft > 0 || pendingResetToDraft > 0) {
+        // ✅ If lecturer saved as draft, ask if they want to submit
+        if (isLecturer && (saved > 0 || updated > 0 || resetCount > 0)) {
             const { data: draftCheck } = await sb
                 .from('student_marks')
                 .select('id')
@@ -1967,86 +2028,8 @@ async function saveMarksEntry() {
                 
                 if (studentsWithScoresCount > 0) {
                     const submitMessage = `📤 ${draftCount} marks are ready for approval.\n\nWould you like to submit them for admin approval now?`;
-                    
                     if (confirm(submitMessage)) {
-                        showLoadingScreen(`Submitting ${draftCount} marks...`, '📤 Submitting for Approval');
-                        updateLoadingProgress(10, 1, 'Preparing submission...');
-                        
-                        try {
-                            const { data: submitMarks } = await sb
-                                .from('student_marks')
-                                .select('id')
-                                .eq('block', block)
-                                .eq('subject_name', unit)
-                                .eq('academic_year', year)
-                                .in('approval_status', ['draft', 'rejected']);
-                            
-                            if (submitMarks && submitMarks.length > 0) {
-                                const ids = submitMarks.map(m => m.id);
-                                const batchSize = 50;
-                                let submitted = 0;
-                                let submitErrors = 0;
-                                
-                                for (let i = 0; i < ids.length; i += batchSize) {
-                                    const batch = ids.slice(i, i + batchSize);
-                                    const progress = 20 + (i / ids.length) * 70;
-                                    updateLoadingProgress(progress, 2, `Submitting ${Math.min(i + batch.length, ids.length)}/${ids.length} marks...`);
-                                    
-                                    const { error: submitError } = await sb
-                                        .from('student_marks')
-                                        .update({
-                                            approval_status: 'pending',
-                                            submitted_at: new Date().toISOString(),
-                                            submitted_by: me_currentLecturer?.profile?.id || null
-                                        })
-                                        .in('id', batch);
-                                    
-                                    if (submitError) {
-                                        submitErrors += batch.length;
-                                        console.error('Submit error:', submitError);
-                                    } else {
-                                        submitted += batch.length;
-                                    }
-                                }
-                                
-                                if (submitted > 0) {
-                                    updateLoadingProgress(95, 3, 'Logging submission...');
-                                    try {
-                                        await sb
-                                            .from('mark_approval_logs')
-                                            .insert({
-                                                block: block,
-                                                subject: unit,
-                                                academic_year: year,
-                                                action: 'submitted',
-                                                action_by: me_currentLecturer?.profile?.id || null,
-                                                action_by_name: me_currentLecturer?.profile?.full_name || 'Lecturer',
-                                                marks_count: submitted,
-                                                reason: `Submitted ${submitted} marks for "${unit}" in ${block}`,
-                                                created_at: new Date().toISOString()
-                                            });
-                                    } catch (logError) {
-                                        console.warn('Could not save approval log:', logError);
-                                    }
-                                }
-                                
-                                updateLoadingProgress(100, 4, '✅ Complete!');
-                                await new Promise(resolve => setTimeout(resolve, 500));
-                                hideLoadingScreen();
-                                
-                                if (submitErrors > 0 && submitted > 0) {
-                                    showNotification(`⚠️ ${submitted} marks submitted, ${submitErrors} errors`, 'warning');
-                                } else if (submitted > 0) {
-                                    showNotification(`✅ ${submitted} marks submitted for approval!`, 'success');
-                                } else {
-                                    showNotification('❌ Failed to submit marks', 'error');
-                                }
-                            }
-                        } catch (submitError) {
-                            hideLoadingScreen();
-                            showNotification('❌ Error submitting: ' + submitError.message, 'error');
-                            console.error('Submit error:', submitError);
-                        }
+                        await submitMarksForApproval();
                     } else {
                         showNotification('💾 Marks saved as DRAFT. Submit later using the "Submit" button.', 'info');
                     }
@@ -2054,6 +2037,7 @@ async function saveMarksEntry() {
             }
         }
         
+        // Refresh
         setTimeout(() => loadMarksEntry(), 500);
         
     } catch (error) {
@@ -2074,6 +2058,13 @@ async function submitMarksForApproval() {
     
     if (!block || !unit) {
         showNotification('Please load marks first', 'warning');
+        return;
+    }
+    
+    // ✅ Check if user is admin
+    const isAdmin = isUserAdmin();
+    if (isAdmin) {
+        showNotification('👑 Admin: Marks are auto-approved. Use the Save button.', 'info');
         return;
     }
     
@@ -2218,6 +2209,13 @@ async function withdrawMarksFromApproval() {
     
     if (!block || !unit) {
         showNotification('Please load marks first', 'warning');
+        return;
+    }
+    
+    // ✅ Check if user is admin
+    const isAdmin = isUserAdmin();
+    if (isAdmin) {
+        showNotification('👑 Admin: No need to withdraw. Use Save to update marks.', 'info');
         return;
     }
     
@@ -2449,12 +2447,16 @@ window.openLecturerRetakeModal = openLecturerRetakeModal;
 window.closeLecturerRetakeModal = closeLecturerRetakeModal;
 window.saveLecturerRetakeExam = saveLecturerRetakeExam;
 
+// Admin check
+window.isUserAdmin = isUserAdmin;
+
 // ============================================================
 // INITIALIZATION
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
     console.log('🚀 Initializing Lecturer Marks Module with Retake Support...');
+    console.log('👑 Admin mode:', isUserAdmin() ? 'ENABLED' : 'DISABLED');
     
     showLoadingScreen('Starting lecturer module...', 'NCHSM Lecturer Portal');
     updateLoadingProgress(5, 1, 'Detecting user session...');
@@ -2490,7 +2492,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            // Create retake modal
             createLecturerRetakeModal();
             
             updateLoadingProgress(100, 4, '✅ Ready!');
@@ -2501,6 +2502,8 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('📊 Program:', me_currentProgram);
             console.log('📚 Assigned Units:', me_assignedUnits.length);
             console.log('⭐ Retake Support: Enabled (Max 2 attempts)');
+            console.log('👑 Admin Mode:', isUserAdmin() ? 'Yes - Auto-approve enabled' : 'No - Lecturer mode');
+            console.log('📝 Lecturer saves as DRAFT, Admin auto-approves');
             
         } catch (error) {
             console.error('❌ Error initializing:', error);
@@ -2514,6 +2517,8 @@ document.addEventListener('DOMContentLoaded', function() {
 console.log('✅ Lecturer Marks module loaded successfully!');
 console.log('⭐ Retake/Supplementary Exam Support: ENABLED');
 console.log('📋 Max Retakes per student: 2');
+console.log('📝 Lecturers save as DRAFT → Submit → Admin Approves');
+console.log('👑 Admin auto-approves when saving');
 console.log('✅ Synced with admin column settings');
 console.log('✅ Assessment type auto-detected from admin');
 console.log('✅ Strict unit assignment filtering enabled!');
