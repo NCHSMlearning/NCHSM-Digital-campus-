@@ -148,7 +148,10 @@ function navigateTo(page) {
     
     // If going to register page, check auth state
     if (page === 'register') {
-        checkAuthForRegisterPage();
+        // ✅ ADD THIS DELAY - ensures DOM is ready before checking auth
+        setTimeout(function() {
+            checkAuthForRegisterPage();
+        }, 100);
     }
     
     // If going to login page, redirect to home with login tab active
@@ -164,39 +167,61 @@ function navigateTo(page) {
         });
     }
 }
-
 // ============================================================
-// CHECK AUTH FOR REGISTER PAGE (Apply Now)
+// CHECK AUTH FOR REGISTER PAGE (Apply Now) - FIXED
 // ============================================================
 async function checkAuthForRegisterPage() {
+    console.log('🔍 checkAuthForRegisterPage() called');
+    
     const supabaseClient = getSupabase();
-    if (!supabaseClient) return;
+    console.log('📡 Supabase client:', supabaseClient ? '✅ Available' : '❌ NULL');
+    
+    // Get DOM elements with null checks
+    const authContainer = document.getElementById('authContainer2');
+    const admissionApp = document.getElementById('admissionApp');
+    
+    if (!authContainer || !admissionApp) {
+        console.error('❌ DOM elements not found!');
+        return;
+    }
+    
+    if (!supabaseClient) {
+        console.warn('⚠️ No Supabase client - showing register form');
+        authContainer.style.display = 'block';
+        admissionApp.style.display = 'none';
+        switchAuthTab2('register2');
+        return;
+    }
 
     try {
         const { data: { session }, error } = await supabaseClient.auth.getSession();
         if (error) throw error;
         
+        console.log('👤 Session:', session ? '✅ Logged in' : '❌ Not logged in');
+        
         if (session) {
             // User is logged in - show the application form
+            console.log('📋 User is logged in - showing form');
             currentUser = session.user;
-            document.getElementById('authContainer2').style.display = 'none';
-            document.getElementById('admissionApp').style.display = 'block';
+            authContainer.style.display = 'none';
+            admissionApp.style.display = 'block';
             await loadUserApplication(currentUser.id);
         } else {
             // User is NOT logged in - show the auth container with register tab active
-            document.getElementById('authContainer2').style.display = 'block';
-            document.getElementById('admissionApp').style.display = 'none';
+            console.log('📝 User is NOT logged in - showing register form');
+            authContainer.style.display = 'block';
+            admissionApp.style.display = 'none';
             // Default to register tab
             switchAuthTab2('register2');
         }
     } catch (error) {
-        console.error('Auth check error:', error);
-        document.getElementById('authContainer2').style.display = 'block';
-        document.getElementById('admissionApp').style.display = 'none';
+        console.error('❌ Auth check error:', error);
+        // Show register form on error
+        authContainer.style.display = 'block';
+        admissionApp.style.display = 'none';
         switchAuthTab2('register2');
     }
 }
-
 // ============================================================
 // UPDATE PROGRAMS FUNCTION (Populate courses based on school)
 // ============================================================
