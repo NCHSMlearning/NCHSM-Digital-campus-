@@ -424,143 +424,121 @@ async function loginUser2() {
 // ================================================================
 // REGISTER
 // ================================================================
+// ============================================================
+// REGISTER USER - Creates account + auto-login (NO profile)
+// ============================================================
 async function registerUser() {
-    if (!checkSupabase()) return;
-    
-    const name = document.getElementById('regName');
-    const email = document.getElementById('regEmail');
-    const phone = document.getElementById('regPhone');
-    const password = document.getElementById('regPassword');
-    const confirm = document.getElementById('regConfirmPassword');
+    const name = document.getElementById('regName').value.trim();
+    const email = document.getElementById('regEmail').value.trim();
+    const phone = document.getElementById('regPhone').value.trim();
+    const password = document.getElementById('regPassword').value;
+    const confirm = document.getElementById('regConfirmPassword').value;
     const msg = document.getElementById('registerMessage');
     const btn = document.getElementById('registerBtn');
-
-    if (!name || !email || !phone || !password || !confirm || !msg) return;
-
-    const nameVal = name.value.trim();
-    const emailVal = email.value.trim();
-    const phoneVal = phone.value.trim();
-    const passwordVal = password.value;
-    const confirmVal = confirm.value;
 
     msg.className = 'auth-message';
     msg.textContent = '';
 
-    if (!nameVal || !emailVal || !phoneVal || !passwordVal || !confirmVal) {
+    // Validate
+    if (!name || !email || !phone || !password || !confirm) {
         msg.className = 'auth-message error';
         msg.textContent = '❌ Please fill in all required fields.';
         return;
     }
 
-    if (passwordVal.length < 8) {
+    if (password.length < 8) {
         msg.className = 'auth-message error';
         msg.textContent = '❌ Password must be at least 8 characters.';
         return;
     }
 
-    if (passwordVal !== confirmVal) {
+    if (password !== confirm) {
         msg.className = 'auth-message error';
         msg.textContent = '❌ Passwords do not match.';
         return;
     }
 
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
-    }
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Account...';
 
     try {
+        // 1. Check if email exists
+        const { data: existing } = await supabase
+            .from('applications')
+            .select('user_email')
+            .eq('user_email', email)
+            .maybeSingle();
+
+        if (existing) {
+            msg.className = 'auth-message error';
+            msg.textContent = '❌ This email already has an application. Please login.';
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
+            return;
+        }
+
+        // 2. Create auth user
         const { data: authData, error: authError } = await supabase.auth.signUp({
-            email: emailVal,
-            password: passwordVal,
+            email,
+            password,
             options: {
                 data: {
-                    full_name: nameVal,
-                    phone: phoneVal,
-                    role: 'student'
+                    full_name: name,
+                    phone: phone,
+                    role: 'applicant',
+                    status: 'pending_application'
                 }
             }
         });
 
-        if (authError) {
-            if (authError.message.includes('already registered')) {
-                msg.className = 'auth-message error';
-                msg.textContent = '❌ This email is already registered. Please login.';
-            } else {
-                throw authError;
-            }
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
-            }
-            return;
+        if (authError) throw authError;
+
+        // 3. ✅ AUTO-LOGIN
+        const { error: loginError } = await supabase.auth.signInWithPassword({
+            email,
+            password
+        });
+
+        if (loginError) {
+            console.warn('Auto-login failed:', loginError);
         }
 
-        // ✅ Create application (draft) - NO profile yet!
+        // 4. ✅ CREATE APPLICATION ONLY (NO profile!)
         const { error: appError } = await supabase
             .from('applications')
             .insert([{
                 user_id: authData.user.id,
-                user_email: emailVal,
-                full_name: nameVal,
-                email: emailVal,
-                phone: phoneVal,
-                status: 'draft'
+                user_email: email,
+                full_name: name,
+                email: email,
+                phone: phone,
+                status: 'draft',
+                created_at: new Date().toISOString()
             }]);
 
-        if (appError) {
-            console.warn('Application creation error:', appError);
-        }
+        if (appError) throw appError;
+
+        // ⚠️ NO consolidated_user_profiles_table entry here!
 
         msg.className = 'auth-message success';
-        msg.textContent = '✅ Account created! Please login to start your application.';
+        msg.textContent = '✅ Account created! You are now logged in. Please complete your application.';
 
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
-        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
 
-        // Clear form
-        name.value = '';
-        email.value = '';
-        phone.value = '';
-        password.value = '';
-        confirm.value = '';
-        const strengthBar = document.getElementById('strengthBar');
-        if (strengthBar) strengthBar.style.width = '0%';
-        const strengthText = document.getElementById('strengthText');
-        if (strengthText) strengthText.textContent = 'Enter a password';
-        const matchDiv = document.getElementById('passwordMatch');
-        if (matchDiv) matchDiv.textContent = '';
-        const regEmailStatus = document.getElementById('regEmailStatus');
-        if (regEmailStatus) { regEmailStatus.textContent = ''; regEmailStatus.className = 'help-text'; }
-
-        // ✅ Redirect to login - User MUST login first!
+        // 5. Refresh page to show admission form
         setTimeout(() => {
-            navigateTo('home');
-            switchAuthTab('login');
-            
-            const loginEmail = document.getElementById('loginEmail');
-            if (loginEmail) loginEmail.value = emailVal;
-            
-            const loginMsg = document.getElementById('loginMessage');
-            if (loginMsg) {
-                loginMsg.textContent = '✅ Account created! Please login to start your application.';
-                loginMsg.className = 'auth-message success';
-            }
+            window.location.reload();
         }, 1500);
 
     } catch (error) {
         console.error('Registration error:', error);
         msg.className = 'auth-message error';
         msg.textContent = '❌ ' + (error.message || 'Registration failed. Please try again.');
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
-        }
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
     }
 }
-
 // ================================================================
 // LOGOUT
 // ================================================================
@@ -573,141 +551,31 @@ function logoutUser() {
 // ================================================================
 // CHECK AUTH
 // ================================================================
+// ============================================================
+// CHECK AUTH - Shows admission form if logged in
+// ============================================================
 async function checkAuth() {
-    if (!checkSupabase()) return;
-    
     try {
         const { data: { session }, error } = await supabase.auth.getSession();
         if (error) throw error;
-        
-        const authContainer2 = document.getElementById('authContainer2');
-        const admissionApp = document.getElementById('admissionApp');
-        const userEmail = document.getElementById('userEmail');
-        const userAvatar = document.getElementById('userAvatar');
-        const emailInput = document.getElementById('email');
-        const appNumber = document.getElementById('applicationNumber');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const appUserInfo = document.getElementById('appUserInfo');
-
         if (session) {
             currentUser = session.user;
-            
-            // Check applications table
-            const { data: applications, error: appError } = await supabase
-                .from('applications')
-                .select('status, full_name, id, phone')
-                .eq('user_id', currentUser.id)
-                .order('created_at', { ascending: false })
-                .limit(1);
-
-            if (appError) {
-                console.warn('Application fetch error:', appError);
-            }
-
-            const app = applications && applications.length > 0 ? applications[0] : null;
-
-            // No application - shouldn't happen
-            if (!app) {
-                if (authContainer2) authContainer2.style.display = 'block';
-                if (admissionApp) admissionApp.style.display = 'none';
-                return;
-            }
-
-            // CASE 1: Application is 'draft' - Show application form
-            if (app.status === 'draft') {
-                if (authContainer2) authContainer2.style.display = 'none';
-                if (admissionApp) admissionApp.style.display = 'block';
-                if (userEmail) userEmail.textContent = currentUser.email;
-                if (userAvatar) userAvatar.textContent = currentUser.email.charAt(0).toUpperCase();
-                if (emailInput) emailInput.value = currentUser.email;
-                if (appNumber) appNumber.textContent = `ADM-${Date.now().toString().slice(-6)}`;
-                
-                applicationId = app.id;
-                await loadUserApplication(currentUser.id);
-                
-                if (logoutBtn) logoutBtn.style.display = 'inline-flex';
-                if (appUserInfo) appUserInfo.style.display = 'flex';
-                return;
-            }
-
-            // CASE 2: Application is 'submitted' - Show waiting message
-            if (app.status === 'submitted') {
-                if (authContainer2) authContainer2.style.display = 'block';
-                if (admissionApp) admissionApp.style.display = 'none';
-                const loginMsg = document.getElementById('loginMessage2');
-                if (loginMsg) {
-                    loginMsg.textContent = '⏳ Your application is under review. You will be notified once approved.';
-                    loginMsg.className = 'auth-message info';
-                }
-                await supabase.auth.signOut();
-                return;
-            }
-
-            // CASE 3: Application is 'accepted' - Full access
-            if (app.status === 'accepted') {
-                // Check if profile exists
-                const { data: profile } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('id')
-                    .eq('user_id', currentUser.id)
-                    .maybeSingle();
-
-                if (!profile) {
-                    // Insert profile if missing
-                    await supabase
-                        .from('consolidated_user_profiles_table')
-                        .insert([{
-                            user_id: currentUser.id,
-                            email: currentUser.email,
-                            full_name: app.full_name || 'Student',
-                            phone: app.phone || '',
-                            role: 'student',
-                            status: 'active',
-                            created_at: new Date().toISOString()
-                        }]);
-                }
-
-                if (authContainer2) authContainer2.style.display = 'none';
-                if (admissionApp) admissionApp.style.display = 'block';
-                if (userEmail) userEmail.textContent = currentUser.email;
-                if (userAvatar) userAvatar.textContent = currentUser.email.charAt(0).toUpperCase();
-                if (emailInput) emailInput.value = currentUser.email;
-                if (appNumber) appNumber.textContent = `ADM-${Date.now().toString().slice(-6)}`;
-                
-                if (logoutBtn) logoutBtn.style.display = 'inline-flex';
-                if (appUserInfo) appUserInfo.style.display = 'flex';
-                
-                await loadUserApplication(currentUser.id);
-                return;
-            }
-
-            // CASE 4: Application is 'rejected'
-            if (app.status === 'rejected') {
-                if (authContainer2) authContainer2.style.display = 'block';
-                if (admissionApp) admissionApp.style.display = 'none';
-                const loginMsg = document.getElementById('loginMessage2');
-                if (loginMsg) {
-                    loginMsg.textContent = '❌ Your application has been rejected. Please contact admissions.';
-                    loginMsg.className = 'auth-message error';
-                }
-                await supabase.auth.signOut();
-                return;
-            }
-
+            document.getElementById('authContainer').style.display = 'none';
+            document.getElementById('admissionApp').style.display = 'block';
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('userAvatar').textContent = currentUser.email.charAt(0).toUpperCase();
+            document.getElementById('email').value = currentUser.email;
+            await loadUserApplication(currentUser.id);
         } else {
-            // Not logged in - show login
-            if (authContainer2) authContainer2.style.display = 'block';
-            if (admissionApp) admissionApp.style.display = 'none';
+            document.getElementById('authContainer').style.display = 'block';
+            document.getElementById('admissionApp').style.display = 'none';
         }
     } catch (error) {
         console.error('Auth error:', error);
-        const authContainer2 = document.getElementById('authContainer2');
-        const admissionApp = document.getElementById('admissionApp');
-        if (authContainer2) authContainer2.style.display = 'block';
-        if (admissionApp) admissionApp.style.display = 'none';
+        document.getElementById('authContainer').style.display = 'block';
+        document.getElementById('admissionApp').style.display = 'none';
     }
 }
-
 // ================================================================
 // LOAD USER APPLICATION
 // ================================================================
