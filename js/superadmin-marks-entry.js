@@ -1,5 +1,6 @@
 // ============================================================
 // MARKS ENTRY SYSTEM - COMPLETE (NURSING + TVET SUPPORT)
+// WITH RETAKE/SUPPLEMENTARY EXAM SUPPORT
 // WITH AUTO-APPROVE ON SAVE
 // ============================================================
 
@@ -21,6 +22,15 @@ let me_studentManagerData = {
     availableStudents: [],
     enrolledMap: {}
 };
+
+// ============================================================
+// RETAKE/SUPPLEMENTARY STATE
+// ============================================================
+
+let me_retakeData = {};
+let me_currentRetakeStudent = null;
+let me_currentRetakeUnit = null;
+const MAX_RETAKES = 2;
 
 // ============================================================
 // PROGRAM TYPE DETECTION
@@ -380,10 +390,6 @@ function getNursingGrade(score) {
 }
 
 // ============================================================
-// ✅ TVET COMPETENCY-BASED GRADING
-// ============================================================
-
-// ============================================================
 // ✅ TVET COMPETENCY-BASED GRADING WITH POINTS
 // ============================================================
 
@@ -392,7 +398,7 @@ function getTVETGrade(score) {
         return { 
             grade: 'A', 
             rating: 'MASTERY', 
-            points: 4.0,          // ✅ TVET now has points!
+            points: 4.0,
             color: '#065f46', 
             bgColor: '#d1fae5' 
         };
@@ -400,7 +406,7 @@ function getTVETGrade(score) {
         return { 
             grade: 'B', 
             rating: 'PROFICIENT', 
-            points: 3.0,          // ✅ TVET now has points!
+            points: 3.0,
             color: '#1e40af', 
             bgColor: '#dbeafe' 
         };
@@ -408,7 +414,7 @@ function getTVETGrade(score) {
         return { 
             grade: 'C', 
             rating: 'COMPETENT', 
-            points: 2.0,          // ✅ TVET now has points!
+            points: 2.0,
             color: '#92400e', 
             bgColor: '#fef3c7' 
         };
@@ -416,7 +422,7 @@ function getTVETGrade(score) {
         return { 
             grade: 'E', 
             rating: 'NOT YET COMPETENT', 
-            points: 0.0,          // ✅ TVET now has points!
+            points: 0.0,
             color: '#991b1b', 
             bgColor: '#fee2e2' 
         };
@@ -440,6 +446,284 @@ function getMarksEntryGrade(score) {
     } else {
         return getNursingGrade(score);
     }
+}
+
+// ============================================================
+// ✅ RETAKE/SUPPLEMENTARY FUNCTIONS
+// ============================================================
+
+async function loadRetakeData(block, unit, year) {
+    try {
+        const { data, error } = await sb
+            .from('student_retakes')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year)
+            .order('attempt_number', { ascending: true });
+        
+        if (error) throw error;
+        
+        const retakeMap = {};
+        data?.forEach(retake => {
+            const key = retake.admission_number;
+            if (!retakeMap[key]) retakeMap[key] = [];
+            retakeMap[key].push(retake);
+        });
+        
+        me_retakeData = retakeMap;
+        console.log(`📊 Loaded retake data for ${Object.keys(retakeMap).length} students`);
+        return retakeMap;
+        
+    } catch (error) {
+        console.error('Error loading retake data:', error);
+        return {};
+    }
+}
+
+async function recordRetakeExam(admission, studentName, unit, block, program, year, examScore, remarks) {
+    // Get current retake count
+    const existingRetakes = me_retakeData[admission] || [];
+    const attemptNumber = existingRetakes.length + 1;
+    
+    if (attemptNumber > MAX_RETAKES) {
+        showNotification(`⚠️ Maximum retakes (${MAX_RETAKES}) reached for this student`, 'error');
+        return false;
+    }
+    
+    // Calculate total and grade
+    const cat1 = 0; // Retake only uses exam score
+    const cat2 = 0;
+    const assessmentType = 'exam_only';
+    const total = calculateMarksEntryTotal(cat1, cat2, examScore, assessmentType);
+    const gradeInfo = getMarksEntryGrade(total);
+    const isPassing = total >= getPassingThreshold();
+    
+    const retakeData = {
+        admission_number: admission,
+        student_name: studentName,
+        block: block,
+        subject_name: unit,
+        program: program,
+        academic_year: year,
+        attempt_number: attemptNumber,
+        exam_score: examScore,
+        total_score: total,
+        grade: gradeInfo.grade,
+        status: isPassing ? 'PASS' : 'FAIL',
+        remarks: remarks || `Retake attempt #${attemptNumber}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+    
+    try {
+        const { error } = await sb
+            .from('student_retakes')
+            .insert(retakeData);
+        
+        if (error) throw error;
+        
+        // Update main student_marks record with retake info
+        const { error: updateError } = await sb
+            .from('student_marks')
+            .update({
+                retake_count: attemptNumber,
+                retake_score: examScore,
+                retake_grade: gradeInfo.grade,
+                retake_status: isPassing ? 'PASS' : 'FAIL',
+                retake_date: new Date().toISOString(),
+                final_grade: isPassing ? gradeInfo.grade : null,
+                final_status: isPassing ? 'PASS' : 'FAIL',
+                updated_at: new Date().toISOString()
+            })
+            .eq('admission_number', admission)
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('academic_year', year);
+        
+        if (updateError) console.warn('Could not update student_marks with retake info:', updateError);
+        
+        // Refresh retake data
+        await loadRetakeData(block, unit, year);
+        
+        showNotification(`✅ Retake recorded for ${studentName} (Attempt #${attemptNumber})`, 'success');
+        return true;
+        
+    } catch (error) {
+        console.error('Error recording retake:', error);
+        showNotification('❌ Error recording retake: ' + error.message, 'error');
+        return false;
+    }
+}
+
+function getRetakeBadge(retakeCount, isPassing) {
+    if (retakeCount === 0) return '';
+    
+    const color = isPassing ? '#059669' : '#dc2626';
+    const icon = isPassing ? '✅' : '❌';
+    const text = isPassing ? 'Passed' : 'Failed';
+    
+    return `<span style="display: inline-block; margin-left: 6px; background: ${color}; color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 700;">
+        ⭐ R${retakeCount} ${icon}
+    </span>`;
+}
+
+function getRetakeHistoryDisplay(retakes) {
+    if (!retakes || retakes.length === 0) return 'First attempt';
+    
+    let html = '<div style="font-size: 11px; line-height: 1.4;">';
+    retakes.forEach((r, i) => {
+        const isPass = r.status === 'PASS';
+        html += `<div style="display: flex; align-items: center; gap: 4px; ${i > 0 ? 'margin-top: 2px;' : ''}">`;
+        html += `<span style="color: #94a3b8;">#${r.attempt_number}:</span>`;
+        html += `<span style="font-weight: 600; color: ${isPass ? '#059669' : '#dc2626'};">${r.exam_score}%</span>`;
+        html += `<span style="color: ${isPass ? '#059669' : '#dc2626'};">${isPass ? '✅' : '❌'}</span>`;
+        html += `</div>`;
+    });
+    html += '</div>';
+    return html;
+}
+
+// ============================================================
+// OPEN RETAKE MODAL
+// ============================================================
+
+function openRetakeModal(admission, name, unit, block) {
+    const modal = document.getElementById('retakeModal');
+    if (!modal) {
+        // Create modal if it doesn't exist
+        createRetakeModal();
+        setTimeout(() => openRetakeModal(admission, name, unit, block), 100);
+        return;
+    }
+    
+    const retakes = me_retakeData[admission] || [];
+    const attemptNumber = retakes.length + 1;
+    
+    document.getElementById('retake_student_name').textContent = name;
+    document.getElementById('retake_admission').textContent = admission;
+    document.getElementById('retake_unit').textContent = unit;
+    document.getElementById('retake_block').textContent = block.replace(/_/g, ' ');
+    document.getElementById('retake_attempt').textContent = attemptNumber;
+    document.getElementById('retake_max_attempts').textContent = MAX_RETAKES;
+    
+    // Show attempt history
+    const historyContainer = document.getElementById('retake_history');
+    if (historyContainer) {
+        if (retakes.length > 0) {
+            let historyHtml = '<div style="margin-top: 10px; padding: 10px; background: #f8fafc; border-radius: 6px;">';
+            historyHtml += '<p style="font-weight: 600; margin: 0 0 8px 0; font-size: 13px; color: #475569;">📋 Attempt History:</p>';
+            retakes.forEach((r, i) => {
+                const isPass = r.status === 'PASS';
+                historyHtml += `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
+                    <span>Attempt #${r.attempt_number}</span>
+                    <span style="font-weight: 600; color: ${isPass ? '#059669' : '#dc2626'};">${r.exam_score}%</span>
+                    <span style="color: ${isPass ? '#059669' : '#dc2626'};">${r.status}</span>
+                    <span style="color: #94a3b8; font-size: 10px;">${new Date(r.created_at).toLocaleDateString()}</span>
+                </div>`;
+            });
+            historyHtml += '</div>';
+            historyContainer.innerHTML = historyHtml;
+            historyContainer.style.display = 'block';
+        } else {
+            historyContainer.style.display = 'none';
+        }
+    }
+    
+    // Store current retake info
+    me_currentRetakeStudent = { admission, name };
+    me_currentRetakeUnit = unit;
+    
+    // Clear previous input
+    document.getElementById('retake_score').value = '';
+    document.getElementById('retake_remarks').value = '';
+    
+    modal.style.display = 'flex';
+}
+
+function closeRetakeModal() {
+    document.getElementById('retakeModal').style.display = 'none';
+}
+
+async function saveRetakeExam() {
+    const scoreInput = document.getElementById('retake_score');
+    const remarksInput = document.getElementById('retake_remarks');
+    
+    const examScore = parseFloat(scoreInput?.value);
+    const remarks = remarksInput?.value || '';
+    
+    if (isNaN(examScore) || examScore < 0 || examScore > 100) {
+        showNotification('⚠️ Please enter a valid score between 0 and 100', 'warning');
+        return;
+    }
+    
+    if (!me_currentRetakeStudent) {
+        showNotification('⚠️ No student selected', 'error');
+        return;
+    }
+    
+    const { admission, name } = me_currentRetakeStudent;
+    const unit = me_currentRetakeUnit;
+    const block = me_currentBlock;
+    const program = me_currentProgram;
+    const year = me_currentYear;
+    
+    const success = await recordRetakeExam(admission, name, unit, block, program, year, examScore, remarks);
+    
+    if (success) {
+        closeRetakeModal();
+        loadMarksEntry(); // Refresh the table
+    }
+}
+
+function createRetakeModal() {
+    const modalHTML = `
+    <div id="retakeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #1e293b;">
+                    <i class="fas fa-sync-alt" style="color: #f59e0b;"></i> Supplementary/Retake Exam
+                </h3>
+                <button onclick="closeRetakeModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #f59e0b;">
+                <p style="margin: 0 0 4px 0;"><strong>Student:</strong> <span id="retake_student_name"></span></p>
+                <p style="margin: 0 0 4px 0;"><strong>Admission:</strong> <span id="retake_admission"></span></p>
+                <p style="margin: 0 0 4px 0;"><strong>Unit:</strong> <span id="retake_unit"></span></p>
+                <p style="margin: 0 0 4px 0;"><strong>Block:</strong> <span id="retake_block"></span></p>
+                <p style="margin: 0;"><strong>Attempt:</strong> #<span id="retake_attempt"></span> of <span id="retake_max_attempts"></span></p>
+            </div>
+            
+            <div id="retake_history" style="display: none;"></div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px;">Exam Score (%)</label>
+                <input type="number" id="retake_score" min="0" max="100" step="0.5" 
+                       style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px;" 
+                       placeholder="Enter score (0-100)">
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px;">Remarks (Optional)</label>
+                <input type="text" id="retake_remarks" 
+                       style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px;" 
+                       placeholder="e.g., Improvement shown, Second attempt">
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="closeRetakeModal()" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Cancel
+                </button>
+                <button onclick="saveRetakeExam()" style="padding: 10px 24px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-save"></i> Save Retake
+                </button>
+            </div>
+        </div>
+    </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
 }
 
 // ============================================================
@@ -670,6 +954,9 @@ async function loadMarksEntry() {
     `;
     
     try {
+        // Load retake data first
+        await loadRetakeData(block, unit, year);
+        
         const { data: marks, error: marksError } = await sb
             .from('student_marks')
             .select('*')
@@ -714,6 +1001,11 @@ async function loadMarksEntry() {
         
         const fullMarks = marks.map(m => {
             const admission = m.admission_number || '';
+            // Check for retake data
+            const retakes = me_retakeData[admission] || [];
+            const hasRetake = retakes.length > 0;
+            const lastRetake = retakes[retakes.length - 1];
+            
             return {
                 admission: admission,
                 name: studentMap[admission] || m.student_name || 'Unknown',
@@ -727,7 +1019,14 @@ async function loadMarksEntry() {
                 assessmentType: m.assessment_type || assessmentType,
                 id: m.id || null,
                 approval_status: m.approval_status || 'draft',
-                published: m.published || false
+                published: m.published || false,
+                // Retake fields
+                hasRetake: hasRetake,
+                retakeCount: retakes.length,
+                retakeScore: lastRetake?.exam_score || null,
+                retakeGrade: lastRetake?.grade || null,
+                retakeStatus: lastRetake?.status || null,
+                retakeHistory: retakes
             };
         });
         
@@ -759,7 +1058,7 @@ async function loadMarksEntry() {
 }
 
 // ============================================================
-// RENDER MARKS TABLE
+// RENDER MARKS TABLE WITH RETAKE SUPPORT
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType) {
@@ -768,15 +1067,8 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
     
     const isTVET = isTVETProgram();
     const examMax = getExamMax();
-    const totalMax = getTotalMax();
     const passingThreshold = getPassingThreshold();
     const programLabel = getProgramTypeLabel();
-    
-    const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
-    const passing = marks.filter(m => {
-        const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total >= passingThreshold;
-    });
     
     const showCat1 = assessmentType !== 'exam_only';
     const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
@@ -787,17 +1079,10 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
             <div>
                 <h3 style="margin: 0; color: #0f172a;">${unitCode || me_currentUnit}</h3>
-                <span style="font-size: 12px; color: #64748b;">${me_currentProgram} | ${me_currentBlock.replace('_', ' ')} | ${me_currentYear}</span>
+                <span style="font-size: 12px; color: #64748b;">${me_currentProgram} | ${me_currentBlock.replace(/_/g, ' ')} | ${me_currentYear}</span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">${programLabel}</span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
-                <span style="font-size: 12px; color: #059669; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
-                <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} ${isTVET ? 'Competent' : 'Passing'}</span>
-                <span style="font-size: 12px; color: #6b7280; margin-left: 12px; background: #f3f4f6; padding: 2px 12px; border-radius: 40px;">
-                    📋 ${getAssessmentTypeLabel(assessmentType)}
-                </span>
-                <span style="font-size: 11px; color: #475569; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">
-                    ${isTVET ? 'Exam: 100' : 'Exam: 70'}
-                </span>
+                <span style="font-size: 12px; color: #f59e0b; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⭐ Retakes: ${marks.filter(m => m.hasRetake).length}</span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button onclick="openMarksStudentManager()" class="btn-action" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
@@ -834,6 +1119,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                         <th style="padding: 10px 8px; text-align: center;">Grade</th>
                         <th style="padding: 10px 8px; text-align: center;">Points</th>
                         <th style="padding: 10px 8px; text-align: center;">Rating</th>
+                        <th style="padding: 10px 8px; text-align: center;">Retake</th>
                         ${isUserAdmin() ? '<th style="padding: 10px 8px; text-align: center;">Approval</th>' : ''}
                     </tr>
                 </thead>
@@ -850,6 +1136,30 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         const displayGrade = total > 0 ? gradeInfo.grade : '--';
         const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
         
+        // Retake info
+        const hasRetake = m.hasRetake || false;
+        const retakeCount = m.retakeCount || 0;
+        const retakeScore = m.retakeScore;
+        const retakeStatus = m.retakeStatus;
+        const retakeHistory = m.retakeHistory || [];
+        const isRetakePassing = retakeStatus === 'PASS';
+        
+        // Determine if student needs retake (failed original)
+        const needsRetake = total > 0 && !isPassing && retakeCount < MAX_RETAKES;
+        const maxRetakesReached = total > 0 && !isPassing && retakeCount >= MAX_RETAKES;
+        
+        // Row styling for retake
+        let rowStyle = '';
+        if (hasRetake && isRetakePassing) {
+            rowStyle = 'background: linear-gradient(90deg, #f0fdf4, #dcfce7); border-left: 4px solid #059669;';
+        } else if (hasRetake && !isRetakePassing) {
+            rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
+        } else if (needsRetake) {
+            rowStyle = 'background: linear-gradient(90deg, #fffbeb, #fef3c7); border-left: 4px solid #f59e0b;';
+        } else if (maxRetakesReached) {
+            rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
+        }
+        
         const approvalBadge = {
             'pending': '<span style="background:#fef3c7;color:#92400e;padding:2px 8px;border-radius:12px;font-size:10px;">⏳ Pending</span>',
             'approved': '<span style="background:#d1fae5;color:#065f46;padding:2px 8px;border-radius:12px;font-size:10px;">✅ Approved</span>',
@@ -857,10 +1167,27 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>'
         }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>';
         
-        html += `<tr>
+        html += `<tr style="${rowStyle}">
             <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
-            <td style="padding: 8px 8px;"><strong>${m.name || 'Unknown'}</strong></td>
+            <td style="padding: 8px 8px;">
+                <strong>${m.name || 'Unknown'}</strong>
+                ${hasRetake ? `
+                    <span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 700;">
+                        ⭐ R${retakeCount}
+                    </span>
+                ` : ''}
+                ${retakeScore !== null && retakeScore !== undefined ? `
+                    <span style="display: inline-block; margin-left: 4px; font-size: 10px; color: ${isRetakePassing ? '#059669' : '#dc2626'};">
+                        (Retake: ${retakeScore}%)
+                    </span>
+                ` : ''}
+                ${retakeHistory.length > 0 ? `
+                    <span style="display: block; font-size: 10px; color: #94a3b8; margin-top: 2px;">
+                        <i class="fas fa-history"></i> ${retakeHistory.length} attempt(s)
+                    </span>
+                ` : ''}
+            </td>
             ${showCat1 ? `<td style="padding: 8px; text-align: center;">
                 <input type="number" id="me_cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
@@ -877,6 +1204,30 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             <td id="me_rating_${i}" style="padding: 8px 6px; text-align: center; font-size: 12px;">
                 ${total > 0 ? `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
             </td>
+            <td style="padding: 8px 6px; text-align: center;">
+                ${hasRetake ? `
+                    <div style="font-size: 11px;">
+                        <span style="color: ${isRetakePassing ? '#059669' : '#dc2626'}; font-weight: 600;">
+                            ${isRetakePassing ? '✅ Passed' : '❌ Failed'}
+                        </span>
+                        <div style="font-size: 9px; color: #94a3b8;">${retakeHistory.length} attempt(s)</div>
+                    </div>
+                ` : ''}
+                ${needsRetake ? `
+                    <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                            style="background: #f59e0b; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 600;">
+                        <i class="fas fa-sync-alt"></i> Retake
+                    </button>
+                ` : ''}
+                ${maxRetakesReached ? `
+                    <span style="color: #dc2626; font-size: 10px; font-weight: 600;">
+                        ⛔ Max retakes reached
+                    </span>
+                ` : ''}
+                ${isPassing && !hasRetake ? `
+                    <span style="color: #059669; font-size: 11px;">✅ Passed</span>
+                ` : ''}
+            </td>
             ${isUserAdmin() ? `<td style="padding: 8px 6px; text-align: center; font-size: 11px;">${approvalBadge}</td>` : ''}
         </tr>`;
     });
@@ -885,6 +1236,22 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 </tbody>
             </table>
         </div>
+        
+        <!-- Retake Summary -->
+        ${marks.filter(m => m.hasRetake).length > 0 ? `
+        <div style="margin-top: 16px; padding: 12px 16px; background: #fffbeb; border-radius: 8px; border: 1px solid #f59e0b;">
+            <p style="margin: 0; font-size: 13px; color: #92400e;">
+                <i class="fas fa-star" style="color: #f59e0b;"></i>
+                <strong>Retake Summary:</strong> 
+                ${marks.filter(m => m.hasRetake && m.retakeStatus === 'PASS').length} students passed after retake, 
+                ${marks.filter(m => m.hasRetake && m.retakeStatus === 'FAIL').length} still failing after retake
+                <span style="display: inline-block; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 12px; font-size: 11px;">
+                    ⭐ Total retakes: ${marks.reduce((sum, m) => sum + (m.retakeCount || 0), 0)}
+                </span>
+            </p>
+        </div>
+        ` : ''}
+        
         <div style="text-align: center; margin-top: 16px;">
             <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-save"></i> 💾 Save All Marks (Auto-Approved)
@@ -893,6 +1260,11 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
     `;
     
     container.innerHTML = html;
+    
+    // Create retake modal if it doesn't exist
+    if (!document.getElementById('retakeModal')) {
+        createRetakeModal();
+    }
 }
 
 // ============================================================
@@ -963,21 +1335,22 @@ function updateMarksEntryStats(marks, assessmentType) {
     const avg = withScores.length > 0 ? 
         withScores.reduce((sum, m) => sum + calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType), 0) / withScores.length : 0;
     
+    // Count retakes
+    const withRetakes = marks.filter(m => m.hasRetake);
+    const retakePassed = marks.filter(m => m.hasRetake && m.retakeStatus === 'PASS');
+    const retakeFailed = marks.filter(m => m.hasRetake && m.retakeStatus === 'FAIL');
+    
     const totalEl = document.getElementById('me_total_students');
     const subjectsEl = document.getElementById('me_total_subjects');
     const passEl = document.getElementById('me_pass_rate');
     const avgEl = document.getElementById('me_class_avg');
     const atRiskEl = document.getElementById('me_at_risk');
     const publishedEl = document.getElementById('me_published_count');
-    const programTypeEl = document.getElementById('me_program_type');
-    const thresholdEl = document.getElementById('me_passing_threshold');
     
     if (totalEl) totalEl.textContent = totalEnrolled;
     if (subjectsEl) subjectsEl.textContent = marks.length > 0 ? 1 : 0;
     if (passEl) passEl.textContent = totalEnrolled > 0 ? Math.round((passing.length / totalEnrolled) * 100) + '%' : '0%';
     if (avgEl) avgEl.textContent = Math.round(avg) + '%';
-    if (programTypeEl) programTypeEl.textContent = programLabel;
-    if (thresholdEl) thresholdEl.textContent = isTVET ? 'Competent (50%)' : 'Pass (60%)';
     
     const atRisk = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
@@ -988,36 +1361,6 @@ function updateMarksEntryStats(marks, assessmentType) {
     if (publishedEl && marks) {
         const publishedCount = marks.filter(m => m.published === true).length;
         publishedEl.textContent = publishedCount;
-    }
-    
-    // TVET-specific stats
-    if (isTVET) {
-        const mastery = marks.filter(m => {
-            const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-            return total >= 80;
-        });
-        const proficient = marks.filter(m => {
-            const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-            return total >= 65 && total < 80;
-        });
-        const competent = marks.filter(m => {
-            const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-            return total >= 50 && total < 65;
-        });
-        const notYet = marks.filter(m => {
-            const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-            return total > 0 && total < 50;
-        });
-        
-        const masteryEl = document.getElementById('me_mastery_count');
-        const proficientEl = document.getElementById('me_proficient_count');
-        const competentEl = document.getElementById('me_competent_count');
-        const notYetEl = document.getElementById('me_not_yet_count');
-        
-        if (masteryEl) masteryEl.textContent = mastery.length;
-        if (proficientEl) proficientEl.textContent = proficient.length;
-        if (competentEl) competentEl.textContent = competent.length;
-        if (notYetEl) notYetEl.textContent = notYet.length;
     }
 }
 
@@ -1190,7 +1533,7 @@ async function saveMarksEntry() {
 }
 
 // ============================================================
-// EXPORT MARKS TO CSV
+// EXPORT MARKS TO CSV WITH RETAKE DATA
 // ============================================================
 
 function exportMarksEntry() {
@@ -1201,7 +1544,8 @@ function exportMarksEntry() {
     }
     
     const assessmentType = me_currentAssessmentType;
-    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating'];
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating', 
+                     'Has Retake', 'Retake Count', 'Retake Score', 'Retake Grade', 'Retake Status'];
     const rows = marks.map(m => {
         const cat1 = m.cat1 || 0;
         const cat2 = m.cat2 || 0;
@@ -1217,7 +1561,12 @@ function exportMarksEntry() {
             total > 0 ? total : '',
             total > 0 ? gradeInfo.grade : '',
             total > 0 ? gradeInfo.points : '',
-            total > 0 ? gradeInfo.rating : ''
+            total > 0 ? gradeInfo.rating : '',
+            m.hasRetake ? 'Yes' : 'No',
+            m.retakeCount || 0,
+            m.retakeScore || '',
+            m.retakeGrade || '',
+            m.retakeStatus || ''
         ];
     });
     
@@ -1342,6 +1691,7 @@ function renderUnitColumns() {
         { id: 'grade', label: 'Grade', required: false },
         { id: 'points', label: 'Points', required: false },
         { id: 'rating', label: 'Rating', required: false },
+        { id: 'retake', label: 'Retake', required: false },
         { id: 'approval', label: 'Approval', required: false }
     ];
     
@@ -1473,6 +1823,7 @@ function applyColumnVisibility() {
         else if (text.includes('grade')) columnIndexMap['grade'] = index;
         else if (text.includes('points')) columnIndexMap['points'] = index;
         else if (text.includes('rating')) columnIndexMap['rating'] = index;
+        else if (text.includes('retake')) columnIndexMap['retake'] = index;
         else if (text.includes('#')) columnIndexMap['sno'] = index;
         else if (text.includes('admission')) columnIndexMap['admission'] = index;
         else if (text.includes('name')) columnIndexMap['name'] = index;
@@ -1489,6 +1840,7 @@ function applyColumnVisibility() {
         else if (text.includes('grade')) colId = 'grade';
         else if (text.includes('points')) colId = 'points';
         else if (text.includes('rating')) colId = 'rating';
+        else if (text.includes('retake')) colId = 'retake';
         else if (text.includes('#')) colId = 'sno';
         else if (text.includes('admission')) colId = 'admission';
         else if (text.includes('name')) colId = 'name';
@@ -3002,6 +3354,8 @@ function renderStudentPublishList(marks) {
         const isSelected = sp_selected.has(admission);
         const gradeInfo = getMarksEntryGrade(total);
         const gradeColor = gradeInfo.color;
+        const hasRetake = mark.hasRetake || false;
+        const retakeStatus = mark.retakeStatus || '';
         
         html += `
             <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
@@ -3011,7 +3365,10 @@ function renderStudentPublishList(marks) {
                            onchange="toggleStudentSelection('${admission}', this.checked)" 
                            style="width: 16px; height: 16px; cursor: ${isPublished ? 'not-allowed' : 'pointer'};">
                 </td>
-                <td style="padding: 8px 12px; font-weight: 500;">${escapeHtml(name)}</td>
+                <td style="padding: 8px 12px; font-weight: 500;">
+                    ${escapeHtml(name)}
+                    ${hasRetake ? `<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 8px; padding: 1px 8px; border-radius: 10px; font-weight: 700;">⭐ R</span>` : ''}
+                </td>
                 <td style="padding: 8px 12px; font-size: 12px; color: #64748b;">${escapeHtml(admission)}</td>
                 <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${isPassing ? '#10b981' : '#dc2626'};">${total}</td>
                 <td style="padding: 8px 12px; text-align: center;">
@@ -3021,6 +3378,7 @@ function renderStudentPublishList(marks) {
                     <span style="color: ${isPassing ? '#10b981' : '#dc2626'}; font-weight: 600; font-size: 12px;">
                         ${isPassing ? '✅ Pass' : '❌ Fail'}
                     </span>
+                    ${retakeStatus ? `<br><span style="font-size: 9px; color: ${retakeStatus === 'PASS' ? '#059669' : '#dc2626'};">Retake: ${retakeStatus}</span>` : ''}
                 </td>
                 <td style="padding: 8px 12px; text-align: center;">
                     <span style="color: ${isPublished ? '#10b981' : '#94a3b8'}; font-weight: 600; font-size: 12px;">
@@ -3263,6 +3621,14 @@ window.getNursingGrade = getNursingGrade;
 window.getTVETGrade = getTVETGrade;
 window.getMarksEntryGrade = getMarksEntryGrade;
 
+// Retake functions
+window.loadRetakeData = loadRetakeData;
+window.recordRetakeExam = recordRetakeExam;
+window.openRetakeModal = openRetakeModal;
+window.closeRetakeModal = closeRetakeModal;
+window.saveRetakeExam = saveRetakeExam;
+window.createRetakeModal = createRetakeModal;
+
 // Main functions
 window.loadMEBlocks = loadMEBlocks;
 window.loadMEUnits = loadMEUnits;
@@ -3340,7 +3706,7 @@ console.log('📋 Features:');
 console.log('   - ✅ Nursing calculation (CAT1+CAT2=60%, Exam=40%)');
 console.log('   - ✅ TVET calculation (CAT1+CAT2+Exam=160 total)');
 console.log('   - ✅ Nursing grading (A,B,C,D with points)');
-console.log('   - ✅ TVET competency grading (A,B,C,E with 0 points)');
+console.log('   - ✅ TVET competency grading (A,B,C,E with points)');
 console.log('   - ✅ Auto-assessment type detection');
 console.log('   - ✅ Column management (Admin only)');
 console.log('   - ✅ Lecturer assignment management');
@@ -3349,3 +3715,7 @@ console.log('   - ✅ Student management with select all');
 console.log('   - ✅ Auto-approve on save for Admin');
 console.log('   - ✅ Export to CSV');
 console.log('   - ✅ Publish marks (all or selected students)');
+console.log('   - ✅ ⭐ RETAKE/SUPPLEMENTARY EXAM SUPPORT');
+console.log('   - ✅ Retake history tracking');
+console.log('   - ✅ Retake attempt limits (max 2)');
+console.log('   - ✅ Visual retake indicators on report cards');
