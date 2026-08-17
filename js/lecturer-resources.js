@@ -1,218 +1,370 @@
-// js/lecturer-resources.js - COMPLETE VERSION
-/**
- * NCHSM Lecturer Resources Module
- * Supports: General Resources, Past Papers, Exam Resources
- * Auto-published immediately
- */
+// ============================================
+// LECTURER RESOURCES - COMPLETE UPDATED VERSION
+// Supports: Unified Form, Department Filtering, Past Papers, Exam Resources
+// ============================================
 
 const LecturerResources = {
+    // State
     resources: [],
-    pastPapers: [],
-    examResources: [],
-    lecturerAssignmentId: null,
+    currentFilter: 'all',
     isUploading: false,
     editingResourceId: null,
-    currentTab: 'general',
+    lecturerAssignmentId: null,
+    lecturerProfile: null,
+    assignedPrograms: [],
     
+    // ==========================================
+    // INITIALIZE
+    // ==========================================
     async init() {
         console.log('📁 Initializing Lecturer Resources...');
-        await this.resolveLecturerId();
+        await this.loadLecturerProfile();
         await this.loadAllResources();
-        this.populateResourceForms();
+        this.populateFormOptions();
         this.setupEventListeners();
+        this.updateUI();
         console.log('✅ Lecturer Resources initialized');
     },
     
-    // ============================================
-    // RESOLVE THE CORRECT LECTURER ID
-    // ============================================
-    async resolveLecturerId() {
+    // ==========================================
+    // LOAD LECTURER PROFILE
+    // ==========================================
+    async loadLecturerProfile() {
         try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 console.warn('Supabase not available');
-                return;
+                return this.loadFromSession();
             }
             
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (!profile) {
                 console.warn('No lecturer profile found');
-                return;
+                return this.loadFromSession();
             }
             
-            const fullName = profile.full_name;
-            const authId = profile.user_id;
+            this.lecturerProfile = profile;
             
-            console.log('🔍 Auth ID:', authId);
-            console.log('🔍 Lecturer name:', fullName);
-            
-            const { data: nameData, error: nameError } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('lecturer_id, lecturer_name')
-                .ilike('lecturer_name', `%${fullName}%`);
-            
-            if (!nameError && nameData && nameData.length > 0) {
-                const nonStaff = nameData.find(l => !l.lecturer_id.toString().startsWith('STAFF'));
-                if (nonStaff) {
-                    this.lecturerAssignmentId = nonStaff.lecturer_id;
-                    console.log('✅ Found non-STAFF ID by partial name match:', this.lecturerAssignmentId);
-                    return;
-                }
-                this.lecturerAssignmentId = nameData[0].lecturer_id;
-                console.log('⚠️ Found STAFF ID by partial name match:', this.lecturerAssignmentId);
-                return;
+            // Get assigned programs from profile or assignments table
+            if (profile.assigned_programs && profile.assigned_programs.length > 0) {
+                this.assignedPrograms = profile.assigned_programs;
+            } else if (profile.department || profile.program) {
+                this.assignedPrograms = [profile.department || profile.program];
+            } else {
+                // Try to fetch from lecturer_subject_assignments
+                await this.fetchAssignedPrograms(profile.user_id);
             }
             
-            this.lecturerAssignmentId = authId;
-            console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
+            // Get lecturer assignment ID
+            this.lecturerAssignmentId = profile.user_id;
+            
+            // Update UI with department info
+            this.updateDepartmentDisplay();
             
         } catch (error) {
-            console.error('Error resolving lecturer ID:', error);
-            this.lecturerAssignmentId = null;
+            console.error('Error loading lecturer profile:', error);
+            this.loadFromSession();
         }
     },
     
-    // ============================================
-    // LOAD ALL RESOURCES
-    // ============================================
-    async loadAllResources() {
-        await this.loadResources();
-        await this.loadPastPapers();
-        await this.loadExamResources();
+    // ==========================================
+    // FETCH ASSIGNED PROGRAMS FROM DB
+    // ==========================================
+    async fetchAssignedPrograms(userId) {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) return;
+            
+            const { data, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('program')
+                .eq('lecturer_id', String(userId));
+            
+            if (error) throw error;
+            
+            const programs = [...new Set((data || []).map(d => d.program).filter(Boolean))];
+            this.assignedPrograms = programs.length > 0 ? programs : ['KRCHN'];
+            
+        } catch (error) {
+            console.error('Error fetching assigned programs:', error);
+            this.assignedPrograms = ['KRCHN']; // Fallback
+        }
     },
     
-    async loadResources() {
+    // ==========================================
+    // LOAD FROM SESSION (Fallback)
+    // ==========================================
+    loadFromSession() {
         try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
+            const stored = sessionStorage.getItem('lecturerData');
+            if (stored) {
+                const data = JSON.parse(stored);
+                this.lecturerProfile = data;
+                this.assignedPrograms = data.assignedPrograms || [data.department || data.program || 'KRCHN'];
+                this.lecturerAssignmentId = data.user_id || data.id;
+                this.updateDepartmentDisplay();
+            } else {
+                // Ultimate fallback
+                this.assignedPrograms = ['KRCHN'];
+                this.lecturerAssignmentId = 'lecturer-fallback';
+            }
+        } catch {
+            this.assignedPrograms = ['KRCHN'];
+            this.lecturerAssignmentId = 'lecturer-fallback';
+        }
+    },
+    
+    // ==========================================
+    // UPDATE DEPARTMENT DISPLAY
+    // ==========================================
+    updateDepartmentDisplay() {
+        const deptName = this.getProgramDisplayName(this.assignedPrograms[0] || 'KRCHN');
+        document.getElementById('lecturer-dept-name').textContent = deptName;
+        document.getElementById('lecturer-dept-display').textContent = this.assignedPrograms[0] || 'KRCHN';
+        document.getElementById('lecturer-current-block-display').textContent = 
+            this.lecturerProfile?.current_block || this.lecturerProfile?.block || 'Not Assigned';
+    },
+    
+    // ==========================================
+    // GET PROGRAM DISPLAY NAME
+    // ==========================================
+    getProgramDisplayName(code) {
+        const programs = {
+            'KRCHN': 'KRCHN Nursing',
+            'DPOTT': 'DPOTT - Perioperative Theatre Technology',
+            'DCH': 'DCH - Community Health',
+            'DHRIT': 'DHRIT - Health Records and IT',
+            'DSL': 'DSL - Science Lab',
+            'DSW': 'DSW - Social Work & Community Development',
+            'DCJS': 'DCJS - Criminal Justice',
+            'DHSS': 'DHSS - Health Support Services',
+            'DICT': 'DICT - ICT',
+            'DME': 'DME - Medical Engineering',
+            'CPOTT': 'CPOTT - Certificate Perioperative Theatre Technology',
+            'CCH': 'CCH - Certificate Community Health',
+            'CHRIT': 'CHRIT - Certificate Health Records and IT',
+            'CPC': 'CPC - Certificate Patient Care',
+            'CSL': 'CSL - Certificate Science Lab',
+            'CSW': 'CSW - Certificate Social Work',
+            'CCJS': 'CCJS - Certificate Criminal Justice',
+            'CAG': 'CAG - Certificate Agriculture',
+            'CHSS': 'CHSS - Certificate Health Support Services',
+            'CICT': 'CICT - Certificate ICT',
+            'ACH': 'ACH - Artisan Community Health',
+            'AAG': 'AAG - Artisan Agriculture',
+            'ASW': 'ASW - Artisan Social Work',
+            'CCA': 'CCA - Certificate Computer Applications',
+            'PTE': 'PTE - TVET/CDACC'
+        };
+        return programs[code] || code;
+    },
+    
+    // ==========================================
+    // POPULATE FORM OPTIONS
+    // ==========================================
+    populateFormOptions() {
+        this.populateProgramDropdown();
+        this.populateIntakeOptions();
+        this.populateBlockOptions();
+        this.populatePastPaperYears();
+        this.populateFilterOptions();
+    },
+    
+    // ==========================================
+    // POPULATE PROGRAM DROPDOWN
+    // ==========================================
+    populateProgramDropdown() {
+        const selects = ['lecturer_program', 'edit_lecturer_program'];
+        
+        selects.forEach(id => {
+            const select = document.getElementById(id);
+            if (!select) return;
+            
+            select.innerHTML = '';
+            
+            if (!this.assignedPrograms || this.assignedPrograms.length === 0) {
+                select.innerHTML = '<option value="">No programs assigned</option>';
                 return;
             }
             
+            this.assignedPrograms.forEach(program => {
+                const option = document.createElement('option');
+                option.value = program;
+                option.textContent = this.getProgramDisplayName(program);
+                select.appendChild(option);
+            });
+            
+            select.value = this.assignedPrograms[0];
+        });
+    },
+    
+    // ==========================================
+    // POPULATE INTAKE OPTIONS
+    // ==========================================
+    populateIntakeOptions() {
+        const currentYear = new Date().getFullYear();
+        const selects = ['lecturer_intake', 'edit_lecturer_intake'];
+        
+        selects.forEach(id => {
+            const select = document.getElementById(id);
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Select Intake</option>';
+            for (let year = currentYear - 3; year <= currentYear + 2; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                select.appendChild(option);
+            }
+        });
+    },
+    
+    // ==========================================
+    // POPULATE BLOCK OPTIONS
+    // ==========================================
+    populateBlockOptions() {
+        const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+        const selects = ['lecturer_block', 'edit_lecturer_block'];
+        
+        selects.forEach(id => {
+            const select = document.getElementById(id);
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Select Block</option>';
+            blocks.forEach(block => {
+                const option = document.createElement('option');
+                option.value = block;
+                option.textContent = block;
+                select.appendChild(option);
+            });
+        });
+    },
+    
+    // ==========================================
+    // POPULATE PAST PAPER YEARS
+    // ==========================================
+    populatePastPaperYears() {
+        const currentYear = new Date().getFullYear();
+        const selects = ['lecturer_pastpaper_year', 'edit_lecturer_pastpaper_year'];
+        
+        selects.forEach(id => {
+            const select = document.getElementById(id);
+            if (!select) return;
+            
+            select.innerHTML = '<option value="">Select Year</option>';
+            for (let year = currentYear - 10; year <= currentYear; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                select.appendChild(option);
+            }
+        });
+    },
+    
+    // ==========================================
+    // POPULATE FILTER OPTIONS
+    // ==========================================
+    populateFilterOptions() {
+        // Block filter
+        const blockFilter = document.getElementById('lecturer-block-filter');
+        if (blockFilter) {
+            const blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
+            blockFilter.innerHTML = '<option value="all">All Blocks</option>';
+            blocks.forEach(block => {
+                const option = document.createElement('option');
+                option.value = block;
+                option.textContent = block;
+                blockFilter.appendChild(option);
+            });
+        }
+        
+        // Year filter
+        const yearFilter = document.getElementById('lecturer-year-filter');
+        if (yearFilter) {
+            const currentYear = new Date().getFullYear();
+            yearFilter.innerHTML = '<option value="all">All Years</option>';
+            for (let year = currentYear - 5; year <= currentYear + 1; year++) {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearFilter.appendChild(option);
+            }
+        }
+    },
+    
+    // ==========================================
+    // LOAD ALL RESOURCES
+    // ==========================================
+    async loadAllResources() {
+        try {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) {
                 console.warn('Supabase not available');
+                this.resources = [];
+                this.renderTable();
                 return;
             }
             
-            const userId = this.lecturerAssignmentId || profile.user_id;
+            const userId = this.lecturerAssignmentId || this.lecturerProfile?.user_id;
             
-            const { data: resources, error } = await supabase
+            // Build query - only show resources for lecturer's assigned programs
+            let query = supabase
                 .from('resources')
                 .select('*')
                 .eq('uploaded_by', userId)
-                .eq('resource_type', 'general') // Only general resources
                 .order('created_at', { ascending: false });
             
-            if (error) {
-                console.error('Failed to load resources:', error);
-                this.resources = [];
-                return;
+            // If lecturer has specific programs, filter by them
+            if (this.assignedPrograms && this.assignedPrograms.length > 0) {
+                query = query.in('target_program', this.assignedPrograms);
             }
             
-            this.resources = resources || [];
-            this.renderResources();
-            console.log(`✅ Loaded ${this.resources.length} general resources`);
+            const { data, error } = await query;
+            
+            if (error) throw error;
+            
+            this.resources = data || [];
+            this.updateCounts();
+            this.renderTable();
+            console.log(`✅ Loaded ${this.resources.length} resources for ${this.assignedPrograms.join(', ')}`);
             
         } catch (error) {
             console.error('Failed to load resources:', error);
             this.resources = [];
+            this.renderTable();
         }
     },
     
-    async loadPastPapers() {
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                return;
-            }
-            
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                return;
-            }
-            
-            const userId = this.lecturerAssignmentId || profile.user_id;
-            
-            const { data: pastPapers, error } = await supabase
-                .from('resources')
-                .select('*')
-                .eq('uploaded_by', userId)
-                .eq('resource_type', 'pastpaper')
-                .order('created_at', { ascending: false });
-            
-            if (error) {
-                console.error('Failed to load past papers:', error);
-                this.pastPapers = [];
-                return;
-            }
-            
-            this.pastPapers = pastPapers || [];
-            this.renderPastPapers();
-            console.log(`✅ Loaded ${this.pastPapers.length} past papers`);
-            
-        } catch (error) {
-            console.error('Failed to load past papers:', error);
-            this.pastPapers = [];
-        }
+    // ==========================================
+    // UPDATE COUNTS
+    // ==========================================
+    updateCounts() {
+        const total = this.resources.length;
+        const materials = this.resources.filter(r => r.resource_type === 'general' || !r.resource_type);
+        const pastPapers = this.resources.filter(r => r.resource_type === 'pastpaper');
+        const examResources = this.resources.filter(r => r.resource_type === 'exam');
+        
+        document.getElementById('lecturer-all-count').textContent = total;
+        document.getElementById('lecturer-material-count').textContent = materials.length;
+        document.getElementById('lecturer-pastpaper-count').textContent = pastPapers.length;
+        document.getElementById('lecturer-exam-count').textContent = examResources.length;
     },
     
-    async loadExamResources() {
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) {
-                console.warn('No lecturer profile found');
-                return;
-            }
-            
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                console.warn('Supabase not available');
-                return;
-            }
-            
-            const userId = this.lecturerAssignmentId || profile.user_id;
-            
-            const { data: examResources, error } = await supabase
-                .from('resources')
-                .select('*')
-                .eq('uploaded_by', userId)
-                .eq('resource_type', 'exam')
-                .order('created_at', { ascending: false });
-            
-            if (error) {
-                console.error('Failed to load exam resources:', error);
-                this.examResources = [];
-                return;
-            }
-            
-            this.examResources = examResources || [];
-            this.renderExamResources();
-            console.log(`✅ Loaded ${this.examResources.length} exam resources`);
-            
-        } catch (error) {
-            console.error('Failed to load exam resources:', error);
-            this.examResources = [];
-        }
-    },
-    
-    // ============================================
-    // RENDER FUNCTIONS
-    // ============================================
-    renderResources() {
-        const tbody = document.getElementById('resourcesList');
+    // ==========================================
+    // RENDER TABLE
+    // ==========================================
+    renderTable() {
+        const tbody = document.getElementById('lecturer-resources-list');
         if (!tbody) return;
         
-        const resources = this.resources;
+        let filtered = this.getFilteredResources();
         
-        if (!resources || resources.length === 0) {
+        if (filtered.length === 0) {
             tbody.innerHTML = `
                 <tr>
                     <td colspan="8" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                         <i class="fas fa-file-upload" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Resources Uploaded</h3>
+                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Resources Found</h3>
                         <p style="margin: 0; font-size: 14px;">Upload your first resource using the form above.</p>
                     </td>
                 </tr>
@@ -220,62 +372,63 @@ const LecturerResources = {
             return;
         }
         
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const currentUserId = this.lecturerAssignmentId || profile?.user_id;
+        const userId = this.lecturerAssignmentId || this.lecturerProfile?.user_id;
         
-        tbody.innerHTML = resources.map(r => {
-            const isOwner = r.uploaded_by === currentUserId || r.uploaded_by === profile?.user_id;
-            const programDisplay = r.target_program || r.program_type || r.program || 'N/A';
-            const blockDisplay = r.block || r.block_term || 'N/A';
+        tbody.innerHTML = filtered.map(r => {
+            const isOwner = r.uploaded_by === userId || r.uploaded_by === this.lecturerProfile?.user_id;
+            const typeIcon = this.getResourceTypeIcon(r.resource_type);
+            const typeLabel = this.getResourceTypeLabel(r.resource_type);
             
             return `
                 <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
                     onmouseover="this.style.background='#f8fafc'" 
                     onmouseout="this.style.background='transparent'">
-                    <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                        <i class="fas fa-file-alt" style="color: #4C1D95; margin-right: 8px;"></i>
-                        ${this.escapeHtml(r.title || 'Untitled')}
-                    </td>
-                    <td style="padding: 14px 18px; color: #475569; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                        ${this.escapeHtml(r.description || 'No description')}
-                    </td>
-                    <td style="padding: 14px 18px;">
-                        <span style="background: #e2e8f0; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #475569;">
-                            ${this.escapeHtml(r.category || 'Academic')}
+                    <td style="padding: 12px 16px;">
+                        <span style="display: flex; align-items: center; gap: 6px;">
+                            ${typeIcon}
+                            <span style="font-weight: 500; color: #1e293b;">${this.escapeHtml(r.title || 'Untitled')}</span>
                         </span>
                     </td>
-                    <td style="padding: 14px 18px; font-size: 13px; color: #475569;">
-                        ${this.escapeHtml(programDisplay)} / ${this.escapeHtml(blockDisplay)}
+                    <td style="padding: 12px 16px; color: #64748b; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${this.escapeHtml(r.description || '—')}
                     </td>
-                    <td style="padding: 14px 18px; font-size: 13px; color: #475569;">
-                        ${this.escapeHtml(r.uploaded_by_name || r.uploaded_by || 'You')}
+                    <td style="padding: 12px 16px;">
+                        <span style="background: ${this.getTypeColor(r.resource_type)}; color: white; padding: 2px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                            ${typeLabel}
+                        </span>
                     </td>
-                    <td style="padding: 14px 18px; font-size: 13px; color: #475569;">
+                    <td style="padding: 12px 16px; font-size: 13px; color: #475569;">
+                        ${this.getProgramDisplayName(r.target_program || r.program_type || 'N/A')}
+                    </td>
+                    <td style="padding: 12px 16px; font-size: 13px; color: #475569;">
+                        ${this.escapeHtml(r.block || r.block_term || 'N/A')}
+                    </td>
+                    <td style="padding: 12px 16px; font-size: 13px; color: #475569;">
                         ${this.formatDate(r.created_at)}
                     </td>
-                    <td style="padding: 14px 18px;">
+                    <td style="padding: 12px 16px;">
                         <span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
                             <i class="fas fa-check-circle" style="font-size: 11px;"></i> Published
                         </span>
                     </td>
-                    <td style="padding: 14px 18px;">
-                        <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <td style="padding: 12px 16px;">
+                        <div style="display: flex; gap: 4px; flex-wrap: wrap;">
                             ${r.file_url && r.file_url !== '#' ? `
-                                <a href="${r.file_url}" target="_blank" style="background: #4C1D95; color: white; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" 
+                                <a href="${r.file_url}" target="_blank" style="background: #4C1D95; color: white; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; text-decoration: none; display: inline-flex; align-items: center; gap: 4px;" 
                                    onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
                                     <i class="fas fa-download"></i> View
                                 </a>
                             ` : ''}
                             ${isOwner ? `
                                 <button onclick="LecturerResources.editResource('${r.id}')" 
-                                        style="background: #dbeafe; color: #1e40af; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" 
+                                        style="background: #dbeafe; color: #1e40af; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;" 
                                         onmouseover="this.style.background='#bfdbfe'" onmouseout="this.style.background='#dbeafe'">
                                     <i class="fas fa-edit"></i> Edit
                                 </button>
                                 <button onclick="LecturerResources.deleteResource('${r.id}')" 
-                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 12px; border-radius: 6px; cursor: pointer; font-size: 12px; display: inline-flex; align-items: center; gap: 4px;" 
+                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 4px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 4px;" 
                                         onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                                    <i class="fas fa-trash"></i> Delete
+                                    <i class="fas fa-trash"></i>
                                 </button>
                             ` : ''}
                         </div>
@@ -285,216 +438,106 @@ const LecturerResources = {
         }).join('');
     },
     
-    renderPastPapers() {
-        // Similar to renderResources but for past papers
-        // You can add a separate table for past papers if needed
-        // For now, we'll use the same table
-        this.renderResources();
-    },
-    
-    renderExamResources() {
-        // Similar to renderResources but for exam resources
-        this.renderResources();
-    },
-    
-    // ============================================
-    // POPULATE FORMS
-    // ============================================
-    populateResourceForms() {
-        this.populateResourceForm();
-        this.populatePastPaperForm();
-        this.populateExamResourceForm();
-    },
-    
-    populateResourceForm() {
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const program = profile?.program || profile?.department;
+    // ==========================================
+    // GET FILTERED RESOURCES
+    // ==========================================
+    getFilteredResources() {
+        let filtered = [...this.resources];
         
-        const programSelect = document.getElementById('resourceProgram');
-        if (programSelect && program) {
-            programSelect.innerHTML = `<option value="${program}">${program}</option>`;
+        // Filter by type
+        if (this.currentFilter === 'material') {
+            filtered = filtered.filter(r => r.resource_type === 'general' || !r.resource_type);
+        } else if (this.currentFilter === 'pastpaper') {
+            filtered = filtered.filter(r => r.resource_type === 'pastpaper');
+        } else if (this.currentFilter === 'exam') {
+            filtered = filtered.filter(r => r.resource_type === 'exam');
         }
         
-        const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-        const blockSelect = document.getElementById('resourceBlock');
-        if (blockSelect) {
-            blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
-                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
-        }
-    },
-    
-    populatePastPaperForm() {
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const program = profile?.program || profile?.department;
-        
-        const programSelect = document.getElementById('pastpaperProgram');
-        if (programSelect && program) {
-            programSelect.innerHTML = `<option value="${program}">${program}</option>`;
+        // Filter by block
+        const blockFilter = document.getElementById('lecturer-block-filter');
+        if (blockFilter && blockFilter.value !== 'all') {
+            filtered = filtered.filter(r => (r.block || r.block_term) === blockFilter.value);
         }
         
-        const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-        const blockSelect = document.getElementById('pastpaperBlock');
-        if (blockSelect) {
-            blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
-                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
-        }
-        
-        // Load units for past paper
-        this.loadUnitsForPastPaper();
-    },
-    
-    populateExamResourceForm() {
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const program = profile?.program || profile?.department;
-        
-        const programSelect = document.getElementById('examResourceProgram');
-        if (programSelect && program) {
-            programSelect.innerHTML = `<option value="${program}">${program}</option>`;
-        }
-        
-        const blocks = window.LecturerUtils?.getAcademicBlocks(program) || ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
-        const blockSelect = document.getElementById('examResourceBlock');
-        if (blockSelect) {
-            blockSelect.innerHTML = '<option value="">-- Select Block/Term --</option>' +
-                blocks.map(b => `<option value="${b}">${b}</option>`).join('');
-        }
-        
-        // Load units for exam resource
-        this.loadUnitsForExamResource();
-    },
-    
-    async loadUnitsForPastPaper() {
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
-            
-            const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            
-            const { data: assignments, error } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('subject_name, subject_code')
-                .eq('lecturer_id', String(lecturerId));
-            
-            if (error) {
-                console.error('Error loading units:', error);
-                return;
-            }
-            
-            const unitSelect = document.getElementById('pastpaperUnit');
-            if (unitSelect) {
-                unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
-                    (assignments || []).map(u => 
-                        `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
-                    ).join('');
-            }
-            
-        } catch (error) {
-            console.error('Failed to load units:', error);
-        }
-    },
-    
-    async loadUnitsForExamResource() {
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) return;
-            
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            if (!profile) return;
-            
-            const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            
-            const { data: assignments, error } = await supabase
-                .from('lecturer_subject_assignments')
-                .select('subject_name, subject_code')
-                .eq('lecturer_id', String(lecturerId));
-            
-            if (error) {
-                console.error('Error loading units:', error);
-                return;
-            }
-            
-            const unitSelect = document.getElementById('examResourceUnit');
-            if (unitSelect) {
-                unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
-                    (assignments || []).map(u => 
-                        `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
-                    ).join('');
-            }
-            
-        } catch (error) {
-            console.error('Failed to load units:', error);
-        }
-    },
-    
-    // ============================================
-    // SETUP EVENT LISTENERS
-    // ============================================
-    setupEventListeners() {
-        // General Resource Form
-        const form = document.getElementById('uploadResourceForm');
-        if (form) {
-            const newForm = form.cloneNode(true);
-            form.parentNode.replaceChild(newForm, form);
-            newForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.handleUpload(e);
+        // Filter by year
+        const yearFilter = document.getElementById('lecturer-year-filter');
+        if (yearFilter && yearFilter.value !== 'all') {
+            filtered = filtered.filter(r => {
+                const year = r.intake || r.pastpaper_year;
+                return String(year) === yearFilter.value;
             });
         }
         
-        // Past Paper Form
-        const pastPaperForm = document.getElementById('uploadPastPaperForm');
-        if (pastPaperForm) {
-            const newForm = pastPaperForm.cloneNode(true);
-            pastPaperForm.parentNode.replaceChild(newForm, pastPaperForm);
-            newForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.uploadPastPaper(e);
+        // Filter by search
+        const searchInput = document.getElementById('lecturer-resource-search');
+        if (searchInput && searchInput.value.trim()) {
+            const query = searchInput.value.toLowerCase().trim();
+            filtered = filtered.filter(r => {
+                return (r.title || '').toLowerCase().includes(query) ||
+                       (r.description || '').toLowerCase().includes(query) ||
+                       (r.unit_name || '').toLowerCase().includes(query) ||
+                       (r.course_name || '').toLowerCase().includes(query);
             });
         }
         
-        // Exam Resource Form
-        const examForm = document.getElementById('uploadExamResourceForm');
-        if (examForm) {
-            const newForm = examForm.cloneNode(true);
-            examForm.parentNode.replaceChild(newForm, examForm);
-            newForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                this.uploadExamResource(e);
-            });
+        return filtered;
+    },
+    
+    // ==========================================
+    // FILTER TYPE
+    // ==========================================
+    filterType(type) {
+        this.currentFilter = type;
+        
+        // Update button styles
+        document.querySelectorAll('.resource-type-btn').forEach(btn => {
+            btn.className = 'resource-type-btn';
+            btn.style.background = '#e5e7eb';
+            btn.style.color = '#374151';
+        });
+        
+        const activeBtn = document.getElementById(`lecturer-type-${type}`);
+        if (activeBtn) {
+            activeBtn.className = 'resource-type-btn active';
+            activeBtn.style.background = '#4C1D95';
+            activeBtn.style.color = 'white';
         }
         
-        // Search
-        const searchInput = document.getElementById('resourceSearch');
-        if (searchInput) {
-            let timeout;
-            searchInput.addEventListener('input', () => {
-                clearTimeout(timeout);
-                timeout = setTimeout(() => this.filterTable('resourceSearch', 'resourcesList', [0, 1, 2, 3]), 300);
-            });
-        }
-        
-        // Cancel Edit
-        const cancelBtn = document.getElementById('cancelEditResource');
-        if (cancelBtn) {
-            cancelBtn.addEventListener('click', () => this.cancelEdit());
+        this.renderTable();
+    },
+    
+    // ==========================================
+    // FILTER TABLE (Search)
+    // ==========================================
+    filterTable() {
+        this.renderTable();
+    },
+    
+    searchTable() {
+        this.renderTable();
+    },
+    
+    // ==========================================
+    // TOGGLE PAST PAPER FIELDS
+    // ==========================================
+    togglePastPaperFields() {
+        const checkbox = document.getElementById('lecturer_is_pastpaper');
+        const fields = document.getElementById('lecturer-pastpaper-fields');
+        if (checkbox && fields) {
+            fields.style.display = checkbox.checked ? 'block' : 'none';
         }
     },
     
-    // ============================================
-    // UPLOAD FUNCTIONS
-    // ============================================
-    async handleUpload(e) {
-        if (this.isUploading) {
-            console.log('⚠️ Upload already in progress');
-            return;
-        }
+    // ==========================================
+    // UPLOAD RESOURCE - UNIFIED
+    // ==========================================
+    async handleUpload(event) {
+        if (event) event.preventDefault();
+        if (this.isUploading) return;
         
         this.isUploading = true;
-        const btn = document.querySelector('#uploadResourceForm button[type="submit"]');
-        const originalText = btn?.innerHTML || 'Publish Resource';
+        const btn = document.getElementById('lecturer-form-submit-btn');
+        const originalText = btn?.innerHTML || 'Upload Resource';
         
         if (btn) {
             btn.disabled = true;
@@ -502,28 +545,37 @@ const LecturerResources = {
         }
         
         try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const userId = this.lecturerAssignmentId || profile?.user_id;
             const supabase = window.lecturerDB?.supabase;
-            
             if (!supabase) throw new Error('Database connection not available');
             
-            const title = document.getElementById('resourceTitle')?.value.trim();
-            const description = document.getElementById('resourceDescription')?.value?.trim();
-            const category = document.getElementById('resourceCategory')?.value;
-            const program = document.getElementById('resourceProgram')?.value;
-            const intake = document.getElementById('resourceIntake')?.value;
-            const block = document.getElementById('resourceBlock')?.value;
-            const fileInput = document.getElementById('resourceFile');
+            // Get form values
+            const program = document.getElementById('lecturer_program')?.value;
+            const intake = document.getElementById('lecturer_intake')?.value;
+            const block = document.getElementById('lecturer_block')?.value;
+            const title = document.getElementById('lecturer_resource_title')?.value.trim();
+            const description = document.getElementById('lecturer_resource_description')?.value?.trim();
+            const fileInput = document.getElementById('lecturer_resource_file');
+            const isPastPaper = document.getElementById('lecturer_is_pastpaper')?.checked || false;
             
-            if (!title || !program || !intake || !block || !category || !fileInput?.files?.length) {
-                window.showNotification('Please fill all required fields.', 'error');
+            // Validate
+            if (!program || !intake || !block || !title || !fileInput?.files?.length) {
+                window.showNotification?.('Please fill all required fields.', 'error') ||
+                alert('Please fill all required fields.');
                 return;
             }
             
             const file = fileInput.files[0];
             
-            // Upload to storage
+            // Determine resource type
+            let resourceType = 'general';
+            let category = 'Academic';
+            
+            if (isPastPaper) {
+                resourceType = 'pastpaper';
+                category = 'Past Paper';
+            }
+            
+            // Upload file to storage
             const fileExt = file.name.split('.').pop();
             const fileName = `${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
             const filePath = `resources/${program}/${intake}/${block}/${fileName}`;
@@ -537,41 +589,68 @@ const LecturerResources = {
             const { data: urlData } = supabase.storage.from('resources').getPublicUrl(filePath);
             const fileUrl = urlData?.publicUrl || '';
             
+            // Build resource data
+            const resourceData = {
+                title: title,
+                description: description || '',
+                category: category,
+                resource_type: resourceType,
+                program_type: program,
+                target_program: program,
+                intake: intake,
+                block: block,
+                block_term: block,
+                file_url: fileUrl,
+                file_path: filePath,
+                file_name: file.name,
+                file_size: file.size,
+                file_type: file.type || fileExt,
+                uploaded_by: this.lecturerAssignmentId || this.lecturerProfile?.user_id,
+                uploaded_by_name: this.lecturerProfile?.full_name || 'Lecturer',
+                approval_status: 'approved',
+                created_at: new Date().toISOString()
+            };
+            
+            // Add past paper fields if checked
+            if (isPastPaper) {
+                const pastpaperYear = document.getElementById('lecturer_pastpaper_year')?.value;
+                const examType = document.getElementById('lecturer_exam_type')?.value;
+                const courseName = document.getElementById('lecturer_course_name')?.value.trim();
+                
+                if (!pastpaperYear || !examType || !courseName) {
+                    window.showNotification?.('Please fill all past paper fields.', 'error') ||
+                    alert('Please fill all past paper fields.');
+                    return;
+                }
+                
+                resourceData.pastpaper_year = parseInt(pastpaperYear);
+                resourceData.exam_type = examType;
+                resourceData.unit_name = courseName;
+                resourceData.course_name = courseName;
+            }
+            
             // Insert into database
-            const { data: result, error: dbError } = await supabase
+            const { data, error: dbError } = await supabase
                 .from('resources')
-                .insert({
-                    title: title,
-                    description: description || '',
-                    category: category,
-                    resource_type: 'general',
-                    program_type: program,
-                    target_program: program,
-                    intake: intake,
-                    block: block,
-                    block_term: block,
-                    file_url: fileUrl,
-                    file_path: filePath,
-                    file_name: file.name,
-                    file_size: file.size,
-                    file_type: file.type || file.name.split('.').pop(),
-                    uploaded_by: userId,
-                    uploaded_by_name: profile?.full_name || 'Lecturer',
-                    approval_status: 'approved',
-                    created_at: new Date().toISOString()
-                })
+                .insert(resourceData)
                 .select();
             
             if (dbError) throw new Error('Failed to save resource: ' + dbError.message);
             
-            window.showNotification('✅ Resource published successfully!', 'success');
-            document.getElementById('uploadResourceForm')?.reset();
-            document.getElementById('resourceFileName').textContent = 'No file selected';
-            await this.loadResources();
+            // Show success
+            window.showNotification?.('✅ Resource published successfully!', 'success') ||
+            alert('✅ Resource published successfully!');
+            
+            // Reset form
+            this.resetForm();
+            
+            // Reload resources
+            await this.loadAllResources();
             
         } catch (error) {
             console.error('Upload error:', error);
-            window.showNotification('❌ ' + error.message, 'error');
+            window.showNotification?.('❌ ' + error.message, 'error') ||
+            alert('❌ ' + error.message);
         } finally {
             this.isUploading = false;
             if (btn) {
@@ -581,216 +660,36 @@ const LecturerResources = {
         }
     },
     
-    async uploadPastPaper(e) {
-        if (this.isUploading) {
-            console.log('⚠️ Upload already in progress');
-            return;
-        }
+    // ==========================================
+    // RESET FORM
+    // ==========================================
+    resetForm() {
+        const form = document.getElementById('lecturer-upload-form');
+        if (form) form.reset();
         
-        this.isUploading = true;
-        const btn = document.querySelector('#uploadPastPaperForm button[type="submit"]');
-        const originalText = btn?.innerHTML || 'Upload Past Paper';
-        
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-        }
-        
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const userId = this.lecturerAssignmentId || profile?.user_id;
-            const supabase = window.lecturerDB?.supabase;
-            
-            if (!supabase) throw new Error('Database connection not available');
-            
-            const title = document.getElementById('pastpaperTitle')?.value.trim();
-            const year = document.getElementById('pastpaperYear')?.value;
-            const unit = document.getElementById('pastpaperUnit')?.value;
-            const examType = document.getElementById('pastpaperExamType')?.value;
-            const program = document.getElementById('pastpaperProgram')?.value;
-            const block = document.getElementById('pastpaperBlock')?.value;
-            const description = document.getElementById('pastpaperDescription')?.value?.trim();
-            const fileInput = document.getElementById('pastpaperFile');
-            
-            if (!title || !year || !unit || !examType || !program || !block || !fileInput?.files?.length) {
-                window.showNotification('Please fill all required fields.', 'error');
-                return;
-            }
-            
-            const file = fileInput.files[0];
-            
-            // Upload to storage
-            const fileExt = file.name.split('.').pop();
-            const fileName = `pastpapers/${year}/${unit}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-            const filePath = `pastpapers/${year}/${unit}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-            
-            const { error: uploadError } = await supabase.storage
-                .from('resources')
-                .upload(filePath, file);
-            
-            if (uploadError) throw new Error('Failed to upload file: ' + uploadError.message);
-            
-            const { data: urlData } = supabase.storage.from('resources').getPublicUrl(filePath);
-            const fileUrl = urlData?.publicUrl || '';
-            
-            // Insert into database
-            const { data: result, error: dbError } = await supabase
-                .from('resources')
-                .insert({
-                    title: title,
-                    description: description || '',
-                    resource_type: 'pastpaper',
-                    pastpaper_year: parseInt(year),
-                    exam_type: examType,
-                    unit_name: unit,
-                    program_type: program,
-                    target_program: program,
-                    block: block,
-                    block_term: block,
-                    file_url: fileUrl,
-                    file_path: filePath,
-                    file_name: file.name,
-                    file_size: file.size,
-                    file_type: file.type || 'application/pdf',
-                    uploaded_by: userId,
-                    uploaded_by_name: profile?.full_name || 'Lecturer',
-                    approval_status: 'approved',
-                    created_at: new Date().toISOString()
-                })
-                .select();
-            
-            if (dbError) throw new Error('Failed to save past paper: ' + dbError.message);
-            
-            window.showNotification('✅ Past paper uploaded successfully!', 'success');
-            document.getElementById('uploadPastPaperForm')?.reset();
-            document.getElementById('pastpaperFileName').textContent = 'No file selected';
-            await this.loadPastPapers();
-            
-        } catch (error) {
-            console.error('Upload error:', error);
-            window.showNotification('❌ ' + error.message, 'error');
-        } finally {
-            this.isUploading = false;
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-        }
+        document.getElementById('lecturer_file_name').textContent = 'No file selected';
+        document.getElementById('lecturer-pastpaper-fields').style.display = 'none';
+        document.getElementById('lecturer_is_pastpaper').checked = false;
+        document.getElementById('lecturer_file_edit_info').style.display = 'none';
+        document.getElementById('lecturer-form-cancel-btn').style.display = 'none';
+        document.getElementById('lecturer-submit-btn-text').textContent = 'Upload Resource';
+        document.getElementById('lecturer_edit_id').value = '';
+        this.editingResourceId = null;
     },
     
-    async uploadExamResource(e) {
-        if (this.isUploading) {
-            console.log('⚠️ Upload already in progress');
-            return;
-        }
-        
-        this.isUploading = true;
-        const btn = document.querySelector('#uploadExamResourceForm button[type="submit"]');
-        const originalText = btn?.innerHTML || 'Upload Exam Resource';
-        
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Uploading...';
-        }
-        
-        try {
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const userId = this.lecturerAssignmentId || profile?.user_id;
-            const supabase = window.lecturerDB?.supabase;
-            
-            if (!supabase) throw new Error('Database connection not available');
-            
-            const title = document.getElementById('examResourceTitle')?.value.trim();
-            const resourceType = document.getElementById('examResourceType')?.value;
-            const unit = document.getElementById('examResourceUnit')?.value;
-            const program = document.getElementById('examResourceProgram')?.value;
-            const block = document.getElementById('examResourceBlock')?.value;
-            const year = document.getElementById('examResourceYear')?.value;
-            const description = document.getElementById('examResourceDescription')?.value?.trim();
-            const fileInput = document.getElementById('examResourceFile');
-            
-            if (!title || !resourceType || !unit || !program || !block || !year || !fileInput?.files?.length) {
-                window.showNotification('Please fill all required fields.', 'error');
-                return;
-            }
-            
-            const file = fileInput.files[0];
-            
-            // Upload to storage
-            const fileExt = file.name.split('.').pop();
-            const filePath = `exam-resources/${year}/${unit}/${Date.now()}-${Math.random().toString(36).substring(2)}.${fileExt}`;
-            
-            const { error: uploadError } = await supabase.storage
-                .from('resources')
-                .upload(filePath, file);
-            
-            if (uploadError) throw new Error('Failed to upload file: ' + uploadError.message);
-            
-            const { data: urlData } = supabase.storage.from('resources').getPublicUrl(filePath);
-            const fileUrl = urlData?.publicUrl || '';
-            
-            // Insert into database
-            const { data: result, error: dbError } = await supabase
-                .from('resources')
-                .insert({
-                    title: title,
-                    description: description || '',
-                    resource_type: 'exam',
-                    category: resourceType,
-                    unit_name: unit,
-                    program_type: program,
-                    target_program: program,
-                    block: block,
-                    block_term: block,
-                    pastpaper_year: parseInt(year),
-                    file_url: fileUrl,
-                    file_path: filePath,
-                    file_name: file.name,
-                    file_size: file.size,
-                    file_type: file.type || file.name.split('.').pop(),
-                    uploaded_by: userId,
-                    uploaded_by_name: profile?.full_name || 'Lecturer',
-                    approval_status: 'approved',
-                    created_at: new Date().toISOString()
-                })
-                .select();
-            
-            if (dbError) throw new Error('Failed to save exam resource: ' + dbError.message);
-            
-            window.showNotification('✅ Exam resource uploaded successfully!', 'success');
-            document.getElementById('uploadExamResourceForm')?.reset();
-            document.getElementById('examResourceFileName').textContent = 'No file selected';
-            await this.loadExamResources();
-            
-        } catch (error) {
-            console.error('Upload error:', error);
-            window.showNotification('❌ ' + error.message, 'error');
-        } finally {
-            this.isUploading = false;
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = originalText;
-            }
-        }
-    },
-    
-    // ============================================
+    // ==========================================
     // DELETE RESOURCE
-    // ============================================
+    // ==========================================
     async deleteResource(resourceId) {
-        const allResources = [...this.resources, ...this.pastPapers, ...this.examResources];
-        const resource = allResources.find(r => r.id === resourceId);
-        
+        const resource = this.resources.find(r => r.id === resourceId);
         if (!resource) {
-            window.showNotification('Resource not found.', 'error');
+            window.showNotification?.('Resource not found.', 'error');
             return;
         }
         
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const userId = this.lecturerAssignmentId || profile?.user_id;
-        
+        const userId = this.lecturerAssignmentId || this.lecturerProfile?.user_id;
         if (resource.uploaded_by !== userId) {
-            window.showNotification('You can only delete resources you uploaded.', 'warning');
+            window.showNotification?.('You can only delete resources you uploaded.', 'warning');
             return;
         }
         
@@ -798,166 +697,222 @@ const LecturerResources = {
         
         try {
             const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database not available');
             
+            // Delete file from storage
             if (resource.file_path) {
                 await supabase.storage.from('resources').remove([resource.file_path]);
             }
             
-            const { error: dbError } = await supabase
+            // Delete from database
+            const { error } = await supabase
                 .from('resources')
                 .delete()
                 .eq('id', resourceId)
                 .eq('uploaded_by', userId);
             
-            if (dbError) throw new Error('Failed to delete: ' + dbError.message);
+            if (error) throw new Error('Failed to delete: ' + error.message);
             
-            // Remove from local lists
             this.resources = this.resources.filter(r => r.id !== resourceId);
-            this.pastPapers = this.pastPapers.filter(r => r.id !== resourceId);
-            this.examResources = this.examResources.filter(r => r.id !== resourceId);
+            this.updateCounts();
+            this.renderTable();
             
-            this.renderResources();
-            window.showNotification('✅ Resource deleted successfully!', 'success');
+            window.showNotification?.('✅ Resource deleted successfully!', 'success');
             
         } catch (error) {
             console.error('Delete error:', error);
-            window.showNotification('❌ ' + error.message, 'error');
+            window.showNotification?.('❌ ' + error.message, 'error');
         }
     },
     
-    // ============================================
+    // ==========================================
     // EDIT RESOURCE
-    // ============================================
-    async editResource(resourceId) {
-        const allResources = [...this.resources, ...this.pastPapers, ...this.examResources];
-        const resource = allResources.find(r => r.id === resourceId);
-        
+    // ==========================================
+    editResource(resourceId) {
+        const resource = this.resources.find(r => r.id === resourceId);
         if (!resource) {
-            window.showNotification('Resource not found.', 'error');
+            window.showNotification?.('Resource not found.', 'error');
             return;
         }
         
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const userId = this.lecturerAssignmentId || profile?.user_id;
-        
+        const userId = this.lecturerAssignmentId || this.lecturerProfile?.user_id;
         if (resource.uploaded_by !== userId) {
-            window.showNotification('You can only edit resources you uploaded.', 'warning');
+            window.showNotification?.('You can only edit resources you uploaded.', 'warning');
             return;
         }
         
-        this.editingResourceId = resourceId;
+        // Populate edit modal
+        document.getElementById('edit_resource_id').value = resource.id;
+        document.getElementById('edit_lecturer_program').value = resource.target_program || resource.program_type || '';
+        document.getElementById('edit_lecturer_intake').value = resource.intake || '';
+        document.getElementById('edit_lecturer_block').value = resource.block || resource.block_term || '';
+        document.getElementById('edit_lecturer_title').value = resource.title || '';
+        document.getElementById('edit_lecturer_description').value = resource.description || '';
+        document.getElementById('edit_lecturer_pastpaper_year').value = resource.pastpaper_year || '';
+        document.getElementById('edit_lecturer_exam_type').value = resource.exam_type || '';
+        document.getElementById('edit_lecturer_course_name').value = resource.unit_name || resource.course_name || '';
         
-        // Populate form based on resource type
-        if (resource.resource_type === 'general' || !resource.resource_type) {
-            document.getElementById('resourceTitle').value = resource.title || '';
-            document.getElementById('resourceDescription').value = resource.description || '';
-            document.getElementById('resourceCategory').value = resource.category || 'Academic';
-            document.getElementById('resourceProgram').value = resource.target_program || resource.program_type || '';
-            document.getElementById('resourceIntake').value = resource.intake || '';
-            document.getElementById('resourceBlock').value = resource.block || resource.block_term || '';
-            
-            const btn = document.querySelector('#uploadResourceForm button[type="submit"]');
-            if (btn) btn.innerHTML = '<i class="fas fa-save"></i> Update Resource';
-            
-            document.getElementById('cancelEditResource').style.display = 'inline-flex';
-            document.querySelector('#uploadResourceForm h4').textContent = '✏️ Edit Resource';
-            
-            // Show current file
-            const fileInfo = document.getElementById('currentFileInfo');
-            if (fileInfo && resource.file_name) {
-                fileInfo.innerHTML = `
-                    <div style="background: #f1f5f9; padding: 10px; border-radius: 6px; margin: 10px 0; font-size: 13px;">
-                        <strong>Current file:</strong> ${this.escapeHtml(resource.file_name)} 
-                        <span style="color: #64748b;">(leave file empty to keep current)</span>
-                    </div>
-                `;
-                fileInfo.style.display = 'block';
-            }
-            
-            document.getElementById('uploadResourceForm').scrollIntoView({ behavior: 'smooth' });
+        // Show modal
+        const modal = document.getElementById('lecturer-edit-modal');
+        if (modal) {
+            modal.style.display = 'flex';
+            modal.className = 'show';
         }
-        
-        window.showNotification('📝 Editing resource. Make changes and click Update.', 'info');
     },
     
+    // ==========================================
+    // SAVE EDIT
+    // ==========================================
+    async saveEdit() {
+        const resourceId = document.getElementById('edit_resource_id')?.value;
+        if (!resourceId) {
+            window.showNotification?.('No resource selected for editing.', 'error');
+            return;
+        }
+        
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) throw new Error('Database not available');
+            
+            const updates = {
+                target_program: document.getElementById('edit_lecturer_program')?.value,
+                intake: document.getElementById('edit_lecturer_intake')?.value,
+                block: document.getElementById('edit_lecturer_block')?.value,
+                block_term: document.getElementById('edit_lecturer_block')?.value,
+                title: document.getElementById('edit_lecturer_title')?.value.trim(),
+                description: document.getElementById('edit_lecturer_description')?.value?.trim(),
+                pastpaper_year: parseInt(document.getElementById('edit_lecturer_pastpaper_year')?.value) || null,
+                exam_type: document.getElementById('edit_lecturer_exam_type')?.value || null,
+                unit_name: document.getElementById('edit_lecturer_course_name')?.value?.trim() || null,
+                course_name: document.getElementById('edit_lecturer_course_name')?.value?.trim() || null,
+                updated_at: new Date().toISOString()
+            };
+            
+            const { error } = await supabase
+                .from('resources')
+                .update(updates)
+                .eq('id', resourceId);
+            
+            if (error) throw new Error('Failed to update: ' + error.message);
+            
+            window.showNotification?.('✅ Resource updated successfully!', 'success');
+            
+            this.closeEditModal();
+            await this.loadAllResources();
+            
+        } catch (error) {
+            console.error('Edit error:', error);
+            window.showNotification?.('❌ ' + error.message, 'error');
+        }
+    },
+    
+    // ==========================================
+    // CLOSE EDIT MODAL
+    // ==========================================
+    closeEditModal() {
+        const modal = document.getElementById('lecturer-edit-modal');
+        if (modal) {
+            modal.style.display = 'none';
+            modal.className = '';
+        }
+        document.getElementById('edit_resource_id').value = '';
+    },
+    
+    // ==========================================
+    // CANCEL EDIT (Main form)
+    // ==========================================
     cancelEdit() {
-        this.editingResourceId = null;
-        document.getElementById('uploadResourceForm')?.reset();
-        document.getElementById('resourceFileName').textContent = 'No file selected';
-        
-        const btn = document.querySelector('#uploadResourceForm button[type="submit"]');
-        if (btn) btn.innerHTML = '<i class="fas fa-upload"></i> Publish Resource';
-        
-        document.getElementById('cancelEditResource').style.display = 'none';
-        document.querySelector('#uploadResourceForm h4').textContent = '📤 Upload New Resource';
-        document.getElementById('currentFileInfo').style.display = 'none';
-        
-        window.showNotification('Edit cancelled.', 'info');
+        this.resetForm();
+        window.showNotification?.('Edit cancelled.', 'info');
     },
     
-    // ============================================
-    // TAB SWITCHING
-    // ============================================
-    switchTab(tab) {
-        this.currentTab = tab;
+    // ==========================================
+    // EXPORT TO CSV
+    // ==========================================
+    exportToCSV() {
+        const filtered = this.getFilteredResources();
         
-        // Hide all tabs
-        document.querySelectorAll('.resource-tab-content').forEach(el => {
-            el.style.display = 'none';
-        });
-        
-        // Remove active class from all buttons
-        document.querySelectorAll('.resource-tab-btn').forEach(el => {
-            el.style.background = '#e2e8f0';
-            el.style.color = '#475569';
-        });
-        
-        // Show selected tab
-        const tabContent = document.getElementById(`resource-tab-${tab}`);
-        if (tabContent) tabContent.style.display = 'block';
-        
-        // Activate button
-        const btn = document.getElementById(`tab-${tab}`);
-        if (btn) {
-            btn.style.background = '#4C1D95';
-            btn.style.color = 'white';
+        if (filtered.length === 0) {
+            window.showNotification?.('No resources to export.', 'warning');
+            return;
         }
         
-        // Load appropriate resources
-        if (tab === 'general') this.renderResources();
-        else if (tab === 'pastpaper') this.renderPastPapers();
-        else if (tab === 'exam') this.renderExamResources();
+        const headers = ['Title', 'Description', 'Type', 'Program', 'Block', 'Year', 'Uploaded By', 'Date'];
+        const rows = filtered.map(r => [
+            r.title || '',
+            r.description || '',
+            this.getResourceTypeLabel(r.resource_type),
+            this.getProgramDisplayName(r.target_program || r.program_type || ''),
+            r.block || r.block_term || '',
+            r.intake || r.pastpaper_year || '',
+            r.uploaded_by_name || '',
+            this.formatDate(r.created_at)
+        ]);
+        
+        const csvContent = [
+            headers.join(','),
+            ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+        
+        const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `resources-${new Date().toISOString().slice(0, 10)}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        
+        window.showNotification?.('📊 CSV exported successfully!', 'success');
     },
     
-    // ============================================
+    // ==========================================
+    // UPDATE UI
+    // ==========================================
+    updateUI() {
+        // Auto-select first tab
+        this.filterType('all');
+    },
+    
+    // ==========================================
+    // SETUP EVENT LISTENERS
+    // ==========================================
+    setupEventListeners() {
+        // Form submission is handled by onsubmit attribute
+        
+        // Past paper checkbox
+        const checkbox = document.getElementById('lecturer_is_pastpaper');
+        if (checkbox) {
+            checkbox.addEventListener('change', () => this.togglePastPaperFields());
+        }
+    },
+    
+    // ==========================================
     // UTILITY FUNCTIONS
-    // ============================================
-    filterTable(inputId, tableId, columnsToSearch = [0]) {
-        const filter = document.getElementById(inputId)?.value?.toUpperCase() || '';
-        const tbody = document.getElementById(tableId);
-        if (!tbody) return;
-        
-        const rows = tbody.getElementsByTagName('tr');
-        let visibleCount = 0;
-        
-        for (let i = 0; i < rows.length; i++) {
-            const tr = rows[i];
-            if (tr.getElementsByTagName('td').length === 0) continue;
-            
-            let rowMatches = false;
-            for (let j = 0; j < columnsToSearch.length; j++) {
-                const td = tr.getElementsByTagName('td')[columnsToSearch[j]];
-                if (td) {
-                    const txtValue = td.textContent || td.innerText;
-                    if (txtValue.toUpperCase().indexOf(filter) > -1) {
-                        rowMatches = true;
-                        break;
-                    }
-                }
-            }
-            tr.style.display = rowMatches ? '' : 'none';
-            if (rowMatches) visibleCount++;
-        }
+    // ==========================================
+    getResourceTypeIcon(type) {
+        const icons = {
+            'general': '<i class="fas fa-file-alt" style="color: #4C1D95;"></i>',
+            'pastpaper': '<i class="fas fa-history" style="color: #f59e0b;"></i>',
+            'exam': '<i class="fas fa-graduation-cap" style="color: #3b82f6;"></i>'
+        };
+        return icons[type] || icons['general'];
+    },
+    
+    getResourceTypeLabel(type) {
+        const labels = {
+            'general': 'Material',
+            'pastpaper': 'Past Paper',
+            'exam': 'Exam'
+        };
+        return labels[type] || 'Material';
+    },
+    
+    getTypeColor(type) {
+        const colors = {
+            'general': '#4C1D95',
+            'pastpaper': '#f59e0b',
+            'exam': '#3b82f6'
+        };
+        return colors[type] || '#4C1D95';
     },
     
     formatDate(dateString) {
@@ -979,64 +934,87 @@ const LecturerResources = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
-    },
-    
-    async refresh() {
-        await this.resolveLecturerId();
-        await this.loadAllResources();
-        window.showNotification('Resources refreshed!', 'success');
     }
 };
 
 // ============================================
-// GLOBAL FUNCTIONS
+// GLOBAL FUNCTIONS (for HTML onclick)
 // ============================================
-function switchResourceTab(tab) {
-    LecturerResources.switchTab(tab);
+function LecturerResources_filterType(type) {
+    LecturerResources.filterType(type);
 }
 
-function uploadResource(e) {
-    if (e) e.preventDefault();
-    LecturerResources.handleUpload(e);
+function LecturerResources_handleUpload(event) {
+    LecturerResources.handleUpload(event);
 }
 
-function uploadPastPaper(e) {
-    if (e) e.preventDefault();
-    LecturerResources.uploadPastPaper(e);
-}
-
-function uploadExamResource(e) {
-    if (e) e.preventDefault();
-    LecturerResources.uploadExamResource(e);
-}
-
-function loadResources() {
-    LecturerResources.loadAllResources();
-}
-
-function deleteResource(id) {
+function LecturerResources_deleteResource(id) {
     LecturerResources.deleteResource(id);
 }
 
-function editResource(id) {
+function LecturerResources_editResource(id) {
     LecturerResources.editResource(id);
+}
+
+function LecturerResources_closeEditModal() {
+    LecturerResources.closeEditModal();
+}
+
+function LecturerResources_cancelEdit() {
+    LecturerResources.cancelEdit();
+}
+
+function LecturerResources_exportToCSV() {
+    LecturerResources.exportToCSV();
+}
+
+function LecturerResources_loadAllResources() {
+    LecturerResources.loadAllResources();
+}
+
+function LecturerResources_togglePastPaperFields() {
+    LecturerResources.togglePastPaperFields();
 }
 
 // ============================================
 // INITIALIZE
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(() => LecturerResources.init(), 900);
+    // Wait for lecturerDB to be ready
+    if (window.lecturerDB) {
+        setTimeout(() => LecturerResources.init(), 500);
+    } else {
+        // Poll for lecturerDB
+        const checkDB = setInterval(() => {
+            if (window.lecturerDB) {
+                clearInterval(checkDB);
+                setTimeout(() => LecturerResources.init(), 500);
+            }
+        }, 200);
+        
+        // Timeout after 10 seconds
+        setTimeout(() => {
+            clearInterval(checkDB);
+            if (!window.lecturerDB) {
+                console.warn('lecturerDB not available, initializing anyway');
+                setTimeout(() => LecturerResources.init(), 500);
+            }
+        }, 10000);
+    }
 });
 
-// Make globally accessible
+// ============================================
+// EXPOSE TO WINDOW
+// ============================================
 window.LecturerResources = LecturerResources;
-window.switchResourceTab = switchResourceTab;
-window.uploadResource = uploadResource;
-window.uploadPastPaper = uploadPastPaper;
-window.uploadExamResource = uploadExamResource;
-window.loadResources = loadResources;
-window.deleteResource = deleteResource;
-window.editResource = editResource;
+window.LecturerResources_filterType = LecturerResources_filterType;
+window.LecturerResources_handleUpload = LecturerResources_handleUpload;
+window.LecturerResources_deleteResource = LecturerResources_deleteResource;
+window.LecturerResources_editResource = LecturerResources_editResource;
+window.LecturerResources_closeEditModal = LecturerResources_closeEditModal;
+window.LecturerResources_cancelEdit = LecturerResources_cancelEdit;
+window.LecturerResources_exportToCSV = LecturerResources_exportToCSV;
+window.LecturerResources_loadAllResources = LecturerResources_loadAllResources;
+window.LecturerResources_togglePastPaperFields = LecturerResources_togglePastPaperFields;
 
 console.log('✅ LecturerResources module loaded - Complete');
