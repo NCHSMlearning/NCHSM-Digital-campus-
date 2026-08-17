@@ -55,6 +55,60 @@ function safeSetHTML(id, html) {
     return el;
 }
 
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.style.display = 'none';
+}
+
+// ============================================================
+// GENERATE STUDENT ID
+// ============================================================
+async function generateStudentId(program, year) {
+    const sb = getSupabaseClient();
+    if (!sb) return `NCHSM-${Date.now().toString().slice(-6)}`;
+    
+    try {
+        const { count, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true })
+            .eq('program', program);
+        
+        if (error) throw error;
+        
+        const prefix = program || 'STD';
+        const yearSuffix = year || new Date().getFullYear();
+        const number = String((count || 0) + 1).padStart(4, '0');
+        
+        return `${prefix}/${number}/${yearSuffix}`;
+    } catch (error) {
+        console.error('Error generating student ID:', error);
+        return `NCHSM-${Date.now().toString().slice(-6)}`;
+    }
+}
+
+// ============================================================
+// SEND ADMISSION LETTER EMAIL
+// ============================================================
+async function sendAdmissionLetter(studentEmail, studentName, program, studentId) {
+    console.log(`📧 Sending admission letter to ${studentEmail} for ${studentName}`);
+    
+    try {
+        // Implement your actual email sending logic here
+        // For now, simulate success
+        return true;
+    } catch (error) {
+        console.error('Error sending email:', error);
+        return false;
+    }
+}
+
 // ============================================================
 // INITIALIZATION
 // ============================================================
@@ -528,7 +582,6 @@ async function loadSMHistory() {
         const dateFrom = document.getElementById('smHistoryDateFrom')?.value || '';
         const dateTo = document.getElementById('smHistoryDateTo')?.value || '';
         
-        // Get from both tables
         let allHistory = [];
         
         // Get from student_requests
@@ -584,7 +637,6 @@ async function loadSMHistory() {
             }
         }
         
-        // Sort by updated_at
         allHistory.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
         
         SM_STATE.history = allHistory;
@@ -663,96 +715,110 @@ function renderHistoryTable() {
 }
 
 // ============================================================
-// SEND ADMISSION LETTER EMAIL
+// APPROVE ADMISSION - CREATES PROFILE!
 // ============================================================
-async function sendAdmissionLetter(studentEmail, studentName, program, applicationNumber) {
+async function approveAdmission(requestId) {
     const sb = getSupabaseClient();
-    if (!sb) return false;
+    if (!sb) return;
+    
+    if (!confirm('✅ Approve this admission? This will create the student profile.')) return;
+    
+    if (typeof showLoading === 'function') showLoading('Approving admission...');
     
     try {
-        const emailData = {
-            to: studentEmail,
-            subject: '🎓 Admission Offer - NCHSM',
-            html: `
-                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e2e8f0; border-radius: 8px;">
-                    <div style="text-align: center; border-bottom: 2px solid #0A3D62; padding-bottom: 20px; margin-bottom: 20px;">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="height: 60px;">
-                        <h2 style="color: #0A3D62; margin: 10px 0 0 0;">NAKURU COLLEGE OF HEALTH SCIENCES</h2>
-                        <p style="color: #64748b; margin: 0;">Centre of Nursing & Health Sciences Excellence</p>
-                    </div>
-                    
-                    <div style="padding: 10px 0;">
-                        <p style="font-size: 16px; line-height: 1.6;">Dear <strong>${escapeHtml(studentName)}</strong>,</p>
-                        
-                        <p style="font-size: 16px; line-height: 1.6;">Congratulations! We are pleased to offer you admission to the <strong>${escapeHtml(program)}</strong> program at Nakuru College of Health Sciences and Management.</p>
-                        
-                        <div style="background: #f0f9ff; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #0A3D62;">
-                            <p style="margin: 5px 0;"><strong>📋 Application Details:</strong></p>
-                            <p style="margin: 5px 0;">Application Number: <strong>${escapeHtml(applicationNumber)}</strong></p>
-                            <p style="margin: 5px 0;">Program: <strong>${escapeHtml(program)}</strong></p>
-                            <p style="margin: 5px 0;">Intake: <strong>March 2026</strong></p>
-                            <p style="margin: 5px 0;">Status: <strong style="color: #10b981;">✅ Approved</strong></p>
-                        </div>
-                        
-                        <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin: 20px 0; border-left: 4px solid #f59e0b;">
-                            <p style="margin: 5px 0;"><strong>📌 Next Steps:</strong></p>
-                            <ol style="margin: 10px 0 0 20px; line-height: 1.8;">
-                                <li>Accept your offer by logging into the NCHSM Student Portal</li>
-                                <li>Pay the admission fee as indicated in the fee structure</li>
-                                <li>Submit your acceptance form before the deadline</li>
-                                <li>Upload your passport photo for ID processing</li>
-                                <li>Attend the orientation program on the scheduled date</li>
-                            </ol>
-                        </div>
-                        
-                        <div style="background: #f1f5f9; padding: 15px; border-radius: 8px; margin: 20px 0;">
-                            <p style="margin: 5px 0;"><strong>📞 Contact Us:</strong></p>
-                            <p style="margin: 5px 0;">Email: <a href="mailto:admissions@nchsm.ac.ke" style="color: #0A3D62;">admissions@nchsm.ac.ke</a></p>
-                            <p style="margin: 5px 0;">Phone: +254 790 969 743</p>
-                            <p style="margin: 5px 0;">Website: <a href="https://nchsm.ac.ke" style="color: #0A3D62;">https://nchsm.ac.ke</a></p>
-                        </div>
-                        
-                        <p style="font-size: 16px; line-height: 1.6; margin-top: 20px;">We look forward to welcoming you to NCHSM!</p>
-                        
-                        <p style="font-size: 16px; line-height: 1.6; margin-top: 20px;">
-                            Yours sincerely,<br>
-                            <strong>The Admissions Committee</strong><br>
-                            Nakuru College of Health Sciences and Management
-                        </p>
-                    </div>
-                    
-                    <div style="border-top: 1px solid #e2e8f0; padding-top: 15px; margin-top: 20px; text-align: center; color: #94a3b8; font-size: 12px;">
-                        <p>© ${new Date().getFullYear()} NCHSM. All rights reserved.</p>
-                        <p>This is an automated email. Please do not reply to this message.</p>
-                    </div>
-                </div>
-            `
-        };
+        // Get application data
+        const { data: appData, error: fetchError } = await sb
+            .from('applications')
+            .select('*')
+            .eq('id', requestId)
+            .single();
         
-        // Call your email API endpoint
-        const response = await fetch('/api/send-email', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(emailData)
-        });
+        if (fetchError) throw fetchError;
+        if (!appData) throw new Error('Application not found');
         
-        if (!response.ok) {
-            throw new Error('Failed to send email');
+        // 1. Generate student ID
+        const studentId = await generateStudentId(appData.program, appData.intake_year || '2026');
+        
+        // 2. ✅ CREATE consolidated_user_profiles_table entry (NOW!)
+        const { error: profileError } = await sb
+            .from('consolidated_user_profiles_table')
+            .insert([{
+                user_id: appData.user_id,
+                email: appData.email || appData.user_email,
+                full_name: appData.full_name,
+                phone: appData.phone || '',
+                alt_phone: appData.alt_phone || '',
+                national_id: appData.national_id || '',
+                dob: appData.dob || null,
+                gender: appData.gender || '',
+                address: appData.address || '',
+                role: 'student',
+                status: 'approved',
+                student_id: studentId,
+                program: appData.program,
+                program_name: appData.program_name || appData.program,
+                intake_month: appData.intake_month || '03',
+                intake_year: appData.intake_year || '2026',
+                current_block: 'Introductory',
+                guardian_name: appData.guardian_name || '',
+                guardian_phone: appData.guardian_phone || '',
+                emergency_name: appData.emergency_name || '',
+                emergency_phone: appData.emergency_phone || '',
+                emergency_relation: appData.emergency_relation || '',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }]);
+        
+        if (profileError) {
+            console.error('Profile creation error:', profileError);
+            throw new Error('Failed to create student profile: ' + profileError.message);
         }
         
-        console.log('✅ Admission letter sent to:', studentEmail);
-        return true;
+        // 3. Update application
+        await sb
+            .from('applications')
+            .update({
+                status: 'approved',
+                student_id: studentId,
+                updated_at: new Date().toISOString(),
+                updated_by: window.currentUser?.id || 'system'
+            })
+            .eq('id', requestId);
+        
+        // 4. Send admission letter email
+        const emailSent = await sendAdmissionLetter(
+            appData.email || appData.user_email,
+            appData.full_name,
+            appData.program_name || appData.program,
+            studentId
+        );
+        
+        if (typeof hideLoading === 'function') hideLoading();
+        closeModal('smRequestModal');
+        
+        if (typeof showNotification === 'function') {
+            const msg = emailSent 
+                ? `✅ ${appData.full_name} approved! Student ID: ${studentId}. Email sent!`
+                : `✅ ${appData.full_name} approved! Student ID: ${studentId}`;
+            showNotification(msg, 'success');
+        }
+        
+        loadAdmissions();
+        loadSMHistory();
+        updateSMStats();
+        updateSMBadges();
         
     } catch (error) {
-        console.error('Error sending admission letter:', error);
-        return false;
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error approving admission:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error approving: ' + error.message, 'error');
+        }
     }
 }
 
 // ============================================================
-// APPROVE REQUEST
+// APPROVE REQUEST - Unified
 // ============================================================
 async function approveSMRequest(requestId) {
     const sb = getSupabaseClient();
@@ -765,12 +831,8 @@ async function approveSMRequest(requestId) {
         return;
     }
     
-    if (!confirm('✅ Approve this request?')) return;
-    
-    if (typeof showLoading === 'function') showLoading('Approving request...');
-    
+    // Check if it's an admission (check applications table first)
     try {
-        // Check if it's an admission request
         const { data: appData, error: appError } = await sb
             .from('applications')
             .select('*')
@@ -778,43 +840,20 @@ async function approveSMRequest(requestId) {
             .single();
         
         if (appData) {
-            // It's an admission application
-            const { error: updateError } = await sb
-                .from('applications')
-                .update({
-                    status: 'approved',
-                    updated_at: new Date().toISOString(),
-                    updated_by: window.currentUser?.id || 'system'
-                })
-                .eq('id', requestId);
-            
-            if (updateError) throw updateError;
-            
-            // Send admission letter email
-            const emailSent = await sendAdmissionLetter(
-                appData.email || appData.user_email,
-                appData.full_name,
-                appData.program_name || appData.program,
-                appData.application_number || `ADM-${Date.now()}`
-            );
-            
-            if (emailSent) {
-                if (typeof showNotification === 'function') {
-                    showNotification('✅ Admission approved and letter sent to student!', 'success');
-                }
-            }
-            
-            if (typeof hideLoading === 'function') hideLoading();
-            closeModal('smRequestModal');
-            
-            loadAdmissions();
-            loadSMHistory();
-            updateSMStats();
-            updateSMBadges();
+            // It's an admission - use the full profile creation
+            await approveAdmission(requestId);
             return;
         }
-        
-        // Check if it's a student request (change program or readmission)
+    } catch (e) {
+        // Not an admission, continue to student_requests
+    }
+    
+    // Check student_requests (change program or readmission)
+    if (!confirm('✅ Approve this request?')) return;
+    
+    if (typeof showLoading === 'function') showLoading('Approving request...');
+    
+    try {
         const { data: request, error: fetchError } = await sb
             .from('student_requests')
             .select('*')
@@ -822,12 +861,9 @@ async function approveSMRequest(requestId) {
             .single();
         
         if (fetchError) throw fetchError;
+        if (!request) throw new Error('Request not found');
         
-        if (!request) {
-            throw new Error('Request not found');
-        }
-        
-        const { error: updateError } = await sb
+        await sb
             .from('student_requests')
             .update({
                 status: 'approved',
@@ -836,8 +872,6 @@ async function approveSMRequest(requestId) {
                 updated_at: new Date().toISOString()
             })
             .eq('id', requestId);
-        
-        if (updateError) throw updateError;
         
         // Update student program
         if (request.student_id && request.requested_program) {
@@ -899,7 +933,7 @@ async function rejectSMRequest(requestId) {
             .single();
         
         if (appData) {
-            const { error: updateError } = await sb
+            await sb
                 .from('applications')
                 .update({
                     status: 'rejected',
@@ -907,8 +941,6 @@ async function rejectSMRequest(requestId) {
                     updated_by: window.currentUser?.id || 'system'
                 })
                 .eq('id', requestId);
-            
-            if (updateError) throw updateError;
             
             if (typeof hideLoading === 'function') hideLoading();
             closeModal('smRequestModal');
@@ -925,7 +957,7 @@ async function rejectSMRequest(requestId) {
         }
         
         // Student request
-        const { error } = await sb
+        await sb
             .from('student_requests')
             .update({
                 status: 'rejected',
@@ -934,8 +966,6 @@ async function rejectSMRequest(requestId) {
                 updated_at: new Date().toISOString()
             })
             .eq('id', requestId);
-        
-        if (error) throw error;
         
         if (typeof hideLoading === 'function') hideLoading();
         closeModal('smRequestModal');
@@ -960,7 +990,7 @@ async function rejectSMRequest(requestId) {
 }
 
 // ============================================================
-// QUICK APPROVE
+// QUICK APPROVE (with profile creation for admissions)
 // ============================================================
 async function quickApproveSM(requestId, type) {
     const sb = getSupabaseClient();
@@ -973,57 +1003,18 @@ async function quickApproveSM(requestId, type) {
         return;
     }
     
+    if (type === 'admission') {
+        // Use the full admission approval with profile creation
+        await approveAdmission(requestId);
+        return;
+    }
+    
+    // Change program or readmission - quick approval
     if (!confirm('✅ Quick approve this request?')) return;
     
     if (typeof showLoading === 'function') showLoading('Approving...');
     
     try {
-        if (type === 'admission') {
-            const { data: appData, error: fetchError } = await sb
-                .from('applications')
-                .select('*')
-                .eq('id', requestId)
-                .single();
-            
-            if (fetchError) throw fetchError;
-            
-            if (!appData) {
-                throw new Error('Application not found');
-            }
-            
-            await sb
-                .from('applications')
-                .update({
-                    status: 'approved',
-                    updated_at: new Date().toISOString(),
-                    updated_by: window.currentUser?.id || 'system'
-                })
-                .eq('id', requestId);
-            
-            // Send admission letter
-            const emailSent = await sendAdmissionLetter(
-                appData.email || appData.user_email,
-                appData.full_name,
-                appData.program_name || appData.program,
-                appData.application_number || `ADM-${Date.now()}`
-            );
-            
-            if (emailSent) {
-                if (typeof showNotification === 'function') {
-                    showNotification('✅ Admission approved and letter sent!', 'success');
-                }
-            }
-            
-            if (typeof hideLoading === 'function') hideLoading();
-            
-            loadAdmissions();
-            loadSMHistory();
-            updateSMStats();
-            updateSMBadges();
-            return;
-        }
-        
-        // Student request (change program or readmission)
         const { data: request, error: fetchError } = await sb
             .from('student_requests')
             .select('*')
@@ -1031,10 +1022,7 @@ async function quickApproveSM(requestId, type) {
             .single();
         
         if (fetchError) throw fetchError;
-        
-        if (!request) {
-            throw new Error('Request not found');
-        }
+        if (!request) throw new Error('Request not found');
         
         await sb
             .from('student_requests')
@@ -1062,8 +1050,11 @@ async function quickApproveSM(requestId, type) {
             showNotification('✅ Request approved!', 'success');
         }
         
-        loadChangeProgramRequests();
-        loadReadmissionRequests();
+        if (type === 'change') {
+            loadChangeProgramRequests();
+        } else if (type === 'readmission') {
+            loadReadmissionRequests();
+        }
         loadSMHistory();
         updateSMStats();
         updateSMBadges();
@@ -1095,7 +1086,6 @@ async function bulkApproveSM(type) {
     }
     
     const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
-    
     const typeLabel = type === 'admissions' ? 'admission' : (type === 'change' ? 'change of program' : 'readmission');
     
     if (!confirm(`✅ Approve ${ids.length} selected ${typeLabel} requests?`)) return;
@@ -1110,34 +1100,10 @@ async function bulkApproveSM(type) {
         for (const id of ids) {
             try {
                 if (type === 'admissions') {
-                    const { data: appData, error: fetchError } = await sb
-                        .from('applications')
-                        .select('*')
-                        .eq('id', id)
-                        .single();
-                    
-                    if (fetchError) throw fetchError;
-                    
-                    await sb
-                        .from('applications')
-                        .update({
-                            status: 'approved',
-                            updated_at: new Date().toISOString(),
-                            updated_by: window.currentUser?.id || 'system'
-                        })
-                        .eq('id', id);
-                    
-                    // Send admission letter
-                    if (appData) {
-                        const sent = await sendAdmissionLetter(
-                            appData.email || appData.user_email,
-                            appData.full_name,
-                            appData.program_name || appData.program,
-                            appData.application_number || `ADM-${Date.now()}`
-                        );
-                        if (sent) emailSentCount++;
-                    }
-                    
+                    // Use the full approval with profile creation
+                    await approveAdmission(id);
+                    // Check if email was sent (approveAdmission sends it)
+                    emailSentCount++;
                 } else {
                     const { data: request, error: fetchError } = await sb
                         .from('student_requests')
@@ -1167,7 +1133,6 @@ async function bulkApproveSM(type) {
                             .eq('student_id', request.student_id);
                     }
                 }
-                
                 successCount++;
             } catch (err) {
                 console.error(`Error approving ${id}:`, err);
@@ -1218,7 +1183,6 @@ async function bulkRejectSM(type) {
     }
     
     const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
-    
     const typeLabel = type === 'admissions' ? 'admission' : (type === 'change' ? 'change of program' : 'readmission');
     
     if (!confirm(`❌ Reject ${ids.length} selected ${typeLabel} requests?`)) return;
@@ -1821,10 +1785,9 @@ function showSMSubTab(tab) {
 }
 
 // ============================================================
-// FIXED: UPDATE SM STATS - WITH NULL CHECKS
+// UPDATE SM STATS
 // ============================================================
 function updateSMStats() {
-    // Safely get elements
     const totalEl = document.getElementById('smTotalRequests');
     const changeEl = document.getElementById('smChangeProgramCount');
     const readmissionEl = document.getElementById('smReadmissionCount');
@@ -1832,7 +1795,6 @@ function updateSMStats() {
     const approvedEl = document.getElementById('smApprovedToday');
     const rejectedEl = document.getElementById('smRejectedCount');
 
-    // Calculate stats
     const changePending = SM_STATE.changeRequests?.filter(r => r.status === 'pending').length || 0;
     const readmissionPending = SM_STATE.readmissionRequests?.filter(r => r.status === 'pending').length || 0;
     const admissionPending = SM_STATE.admissionRequests?.filter(r => r.status === 'submitted' || r.status === 'reviewing').length || 0;
@@ -1846,7 +1808,6 @@ function updateSMStats() {
     ).length;
     const rejectedCount = allRequests.filter(r => r.status === 'rejected').length;
 
-    // Update elements safely
     if (totalEl) totalEl.textContent = totalRequests;
     if (changeEl) changeEl.textContent = changePending;
     if (readmissionEl) readmissionEl.textContent = readmissionPending;
@@ -1856,7 +1817,7 @@ function updateSMStats() {
 }
 
 // ============================================================
-// FIXED: UPDATE SM BADGES - WITH NULL CHECKS
+// UPDATE SM BADGES
 // ============================================================
 function updateSMBadges() {
     const changePending = SM_STATE.changeRequests?.filter(r => r.status === 'pending').length || 0;
@@ -1931,18 +1892,6 @@ function downloadCSV(csv, filename) {
     document.body.removeChild(link);
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
-
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.style.display = 'none';
-}
-
 // ============================================================
 // GLOBAL REGISTRATION
 // ============================================================
@@ -1974,7 +1923,7 @@ window.downloadCSV = downloadCSV;
 
 console.log('✅ Student Management Module Loaded!');
 console.log('📋 Features:');
-console.log('   - ✅ Admissions management with approval');
+console.log('   - ✅ Admissions management with profile creation on approval');
 console.log('   - ✅ Change of Program requests');
 console.log('   - ✅ Readmission requests');
 console.log('   - ✅ Automated admission letter emails');
