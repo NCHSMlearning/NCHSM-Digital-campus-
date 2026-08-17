@@ -393,7 +393,34 @@
                 <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
             </a>
         </li>
-        
+        <!-- ========================================== -->
+<!-- NURSING SYSTEM - ONLY FOR KRCHN DEPARTMENT -->
+<!-- ========================================== -->
+<li id="nav-nursing-system" style="display: none;">
+    <a 
+        href="#" 
+        data-tab="nursing-system"
+        style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+            background: rgba(16,185,129,0.15);
+            border-left: 3px solid #10b981;
+        "
+        onmouseover="this.style.background='rgba(16,185,129,0.3)'; this.style.color='white'"
+        onmouseout="this.style.background='rgba(16,185,129,0.15)'; this.style.color='rgba(255,255,255,0.8)'"
+    >
+        <i class="fas fa-file-medical" style="width: 18px; text-align: center; font-size: 12px; color: #10b981;"></i>
+        <span>NCK XY Forms</span>
+        <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NUR</span>
+    </a>
+</li>
         <!-- Resources -->
         <li>
             <a 
@@ -4292,6 +4319,287 @@
         </div>
     </div>
 </section>
+            <!-- ============================================ -->
+<!-- LECTURER NCK SYSTEM - SIMPLIFIED             -->
+<!-- ENTER MARKS + SUBMIT FOR APPROVAL ONLY       -->
+<!-- ============================================ -->
+<section id="nursing-system-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    
+    <!-- ===== HEADER ===== -->
+    <div style="background: linear-gradient(135deg, #4C1D95, #7c3aed); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(76,29,149,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700; font-size: 24px;">
+                <i class="fas fa-file-medical"></i> NCK Score Sheet Entry
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-stethoscope"></i> Clinical evaluation (XY FORMS) & Assessment & Case
+                <span style="background: #8b5cf6; padding: 2px 12px; border-radius: 12px; margin-left: 10px; font-size: 11px;">
+                    🎓 KRCHN Nursing Only
+                </span>
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="lecturerNCKSubmitForApproval()" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; box-shadow: 0 2px 8px rgba(253,185,19,0.3);">
+                <i class="fas fa-paper-plane"></i> Submit for Approval
+            </button>
+            <button onclick="lecturerNCKWithdrawApproval()" style="background: #d97706; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; display: none;" id="lecturerNCKWithdrawBtn">
+                <i class="fas fa-undo"></i> Withdraw
+            </button>
+            <button onclick="lecturerNCKLoadData()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="lecturerNCKExportCSV()" style="background: white; color: #4C1D95; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-download"></i> Export CSV
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== LECTURER INFO BANNER ===== -->
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 15px; flex-wrap: wrap;">
+        <i class="fas fa-user-tie" style="color: #4C1D95; font-size: 24px;"></i>
+        <div>
+            <strong style="color: #1e293b;">Lecturer:</strong> 
+            <span id="lecturerNCKName">Loading...</span>
+        </div>
+        <div>
+            <strong style="color: #1e293b;">Department:</strong> 
+            <span style="background: #d1fae5; padding: 2px 12px; border-radius: 12px; color: #065f46;">KRCHN Nursing</span>
+        </div>
+        <div style="margin-left: auto; font-size: 13px; color: #64748b;">
+            <i class="fas fa-info-circle"></i> You can only manage NCK marks for students assigned to you
+        </div>
+    </div>
+
+    <!-- ===== APPROVAL STATUS BANNER ===== -->
+    <div id="lecturerNCKApprovalBanner" style="display: none; background: #fef3c7; border-radius: 12px; padding: 15px 20px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <div>
+                <i class="fas fa-clock" style="color: #d97706;"></i>
+                <strong>Approval Status:</strong>
+                <span id="lecturerNCKStatusText">Checking...</span>
+                <span id="lecturerNCKStatusBadge" style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 12px; margin-left: 10px;">⏳ Pending</span>
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button id="lecturerNCKSubmitBtn" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;" onclick="lecturerNCKSubmitForApproval()">
+                    <i class="fas fa-paper-plane"></i> Submit for Approval
+                </button>
+                <button id="lecturerNCKWithdrawBtn2" style="background: #dc2626; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600; display: none;" onclick="lecturerNCKWithdrawApproval()">
+                    <i class="fas fa-undo"></i> Withdraw
+                </button>
+            </div>
+        </div>
+        <div id="lecturerNCKApprovalDetails" style="margin-top: 10px; font-size: 13px; color: #92400e; display: none;">
+            <p><strong>Submitted:</strong> <span id="lecturerNCKSubmittedDate">-</span></p>
+            <p><strong>Submitted By:</strong> <span id="lecturerNCKSubmittedBy">-</span></p>
+            <p id="lecturerNCKRejectionReason" style="color: #dc2626; display: none;"><strong>Rejection Reason:</strong> <span id="lecturerNCKRejectionText">-</span></p>
+        </div>
+    </div>
+
+    <!-- ===== STATS CARDS ===== -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #4C1D95;">
+            <h3 style="color: #4C1D95; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">My Students</h3>
+            <p style="font-size: 28px; font-weight: 700; color: #4C1D95; margin: 0;" id="lecturerNCKTotalStudents">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;"><i class="fas fa-users"></i> Assigned to you</p>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #059669;">
+            <h3 style="color: #059669; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">Pass Rate</h3>
+            <p style="font-size: 28px; font-weight: 700; color: #059669; margin: 0;" id="lecturerNCKPassRate">0%</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;"><i class="fas fa-check-circle"></i> Passing (≥60%)</p>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #FDB913;">
+            <h3 style="color: #d97706; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">Average Score</h3>
+            <p style="font-size: 28px; font-weight: 700; color: #d97706; margin: 0;" id="lecturerNCKAvgScore">0%</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;"><i class="fas fa-chart-line"></i> Your students</p>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #ef4444;">
+            <h3 style="color: #dc2626; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">Needs Improvement</h3>
+            <p style="font-size: 28px; font-weight: 700; color: #dc2626; margin: 0;" id="lecturerNCKAtRisk">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;"><i class="fas fa-exclamation-triangle"></i> Below 60%</p>
+        </div>
+        <div style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #10b981;">
+            <h3 style="color: #059669; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">📤 Published</h3>
+            <p style="font-size: 28px; font-weight: 700; color: #059669; margin: 0;" id="lecturerNCKPublished">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;"><i class="fas fa-eye"></i> Visible to students</p>
+        </div>
+        <div style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-top: 4px solid #f59e0b;">
+            <h3 style="color: #d97706; font-size: 12px; margin: 0 0 5px 0; text-transform: uppercase; letter-spacing: 0.5px;">⏳ Pending</h3>
+            <p style="font-size: 28px; font-weight: 700; color: #d97706; margin: 0;" id="lecturerNCKPending">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;"><i class="fas fa-clock"></i> Awaiting approval</p>
+        </div>
+    </div>
+
+    <!-- ===== SELECTORS ===== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
+            
+            <div style="grid-column: 1 / -1; background: #f3e8ff; padding: 10px 16px; border-radius: 8px; margin-bottom: 5px; border-left: 4px solid #4C1D95;">
+                <span style="font-weight: 700; color: #4C1D95; font-size: 14px;">
+                    <i class="fas fa-info-circle"></i> 
+                    <span style="background: #4C1D95; color: white; padding: 2px 12px; border-radius: 12px; font-size: 12px;">Intake Year</span> 
+                    is the <strong>academic year of enrollment</strong>
+                </span>
+                <span style="margin-left: 20px; color: #6b21a8; font-size: 13px;">
+                    <i class="fas fa-user-tie"></i> 👨‍🏫 Your assigned students only
+                </span>
+            </div>
+            
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-calendar-alt"></i> Intake Year
+                </label>
+                <select id="lecturerNCKIntake" onchange="lecturerNCKLoadData()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; cursor: pointer;">
+                    <option value="2030">2030 Intake</option>
+                    <option value="2029">2029 Intake</option>
+                    <option value="2028">2028 Intake</option>
+                    <option value="2027">2027 Intake</option>
+                    <option value="2026" selected>2026 Intake</option>
+                    <option value="2025">2025 Intake</option>
+                    <option value="2024">2024 Intake</option>
+                </select>
+            </div>
+            
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-file"></i> Assessment Type
+                </label>
+                <select id="lecturerNCKSheet" onchange="lecturerNCKLoadData()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; cursor: pointer;">
+                    <option value="XY_FORMS" selected>📊 XY FORMS - Clinical Areas</option>
+                    <option value="ASSESSMENT_CASE">📋 ASSESSMENT & CASE - Written</option>
+                </select>
+            </div>
+            
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-bolt"></i> Quick Actions
+                </label>
+                <div style="display: flex; gap: 8px;">
+                    <button onclick="lecturerNCKOpenFastEntry()" style="background: #8b5cf6; color: white; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; flex: 1; font-size: 13px;">
+                        <i class="fas fa-bolt"></i> Fast Entry
+                    </button>
+                    <button onclick="lecturerNCKSaveAll()" style="background: #059669; color: white; padding: 10px 16px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; flex: 1; font-size: 13px;">
+                        <i class="fas fa-save"></i> Save All
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== NCK GRADING REFERENCE ===== -->
+    <div style="background: white; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; display: flex; flex-wrap: wrap; align-items: center; gap: 10px;">
+        <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 NCK Grading:</span>
+        <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 12px;">PASS (≥60%)</span>
+        <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 12px;">FAIL (&lt;60%)</span>
+        <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 12px;">PENDING</span>
+        <span style="font-size: 11px; color: #4C1D95; background: #f3e8ff; padding: 2px 12px; border-radius: 12px; margin-left: auto;">
+            <i class="fas fa-user-tie"></i> 👨‍🏫 <span id="lecturerNCKShortName">You</span>
+        </span>
+    </div>
+
+    <!-- ===== MARKS TABLE ===== -->
+    <div id="lecturerNCKTableContainer" style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb; overflow-x: auto;">
+        <div style="text-align: center; padding: 60px 20px;" id="lecturerNCKPlaceholder">
+            <i class="fas fa-stethoscope" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+            <h3 style="color: #1e293b; margin: 0 0 10px 0;">Load Your NCK Data</h3>
+            <p style="color: #94a3b8; margin: 0 0 5px 0;">Select Intake Year and Assessment Type above</p>
+            <p style="color: #94a3b8; font-size: 13px; margin: 0 0 15px 0;">
+                <i class="fas fa-info-circle"></i> You will only see students assigned to you
+            </p>
+            <button onclick="lecturerNCKLoadData()" style="background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
+                <i class="fas fa-sync-alt"></i> Load My Students
+            </button>
+        </div>
+    </div>
+
+    <!-- ======================================== -->
+    <!-- FAST ENTRY MODAL                         -->
+    <!-- ======================================== -->
+    <div id="lecturerNCKFastEntryModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.85); backdrop-filter: blur(8px); z-index: 10001; overflow-y: auto; padding: 20px; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 24px; max-width: 1400px; width: 95%; max-height: 90vh; overflow-y: auto; margin: 20px auto; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5);">
+            
+            <!-- Header -->
+            <div style="background: linear-gradient(135deg, #667eea, #764ba2); color: white; padding: 20px 24px; border-radius: 24px 24px 0 0; display: flex; justify-content: space-between; align-items: center; position: sticky; top: 0; z-index: 10;">
+                <div style="display: flex; align-items: center; gap: 15px;">
+                    <i class="fas fa-expand-alt" style="font-size: 20px;"></i>
+                    <span style="font-size: 20px; font-weight: 700;"><i class="fas fa-bolt"></i> Fast Entry - NCK XY Forms</span>
+                    <span style="background: rgba(255,255,255,0.2); padding: 2px 12px; border-radius: 12px; font-size: 12px;">
+                        <i class="fas fa-user-tie"></i> Your Students
+                    </span>
+                </div>
+                <div>
+                    <button onclick="lecturerNCKCloseFastEntry()" style="padding: 8px 20px; background: rgba(255,255,255,0.2); border: none; border-radius: 40px; color: white; cursor: pointer; font-weight: 600;">
+                        <i class="fas fa-times"></i> Close (ESC)
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Body -->
+            <div style="padding: 24px;">
+                <!-- Student Selector -->
+                <div style="margin-bottom: 20px; display: flex; gap: 20px; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 2;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-user-graduate"></i> Select Student:
+                        </label>
+                        <select id="lecturerNCKFastStudent" style="width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #e2e8f0; font-size: 14px; font-weight: 500;">
+                            <option value="">-- Select a student --</option>
+                        </select>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-chart-line"></i> Current Avg:
+                        </label>
+                        <div id="lecturerNCKFastAvg" style="padding: 12px; background: #f0fdf4; border-radius: 12px; font-weight: bold; text-align: center; font-size: 18px;">0.00</div>
+                    </div>
+                    <div style="flex: 1;">
+                        <label style="font-weight: 600; display: block; margin-bottom: 8px;">
+                            <i class="fas fa-flag-checkered"></i> Status:
+                        </label>
+                        <div id="lecturerNCKFastStatus" style="padding: 12px; background: #fef3c7; border-radius: 12px; font-weight: bold; text-align: center;">PENDING</div>
+                    </div>
+                </div>
+                
+                <!-- Fast Entry Fields -->
+                <div id="lecturerNCKFastFields" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+                    <!-- Loaded dynamically -->
+                </div>
+                
+                <!-- Grading Info -->
+                <div style="border: 1px solid #e2e8f0; border-radius: 16px; padding: 18px; background: #fafafa; margin-top: 20px;">
+                    <h4 style="margin: 0 0 15px 0; color: #667eea; font-size: 16px;">
+                        <i class="fas fa-pen"></i> 📝 Grading Information
+                    </h4>
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <label style="font-size: 14px; font-weight: 500;">Graded By (Your Name):</label>
+                        <input type="text" id="lecturerNCKFastGraded" placeholder="Enter your name" style="flex: 1; margin-left: 20px; padding: 8px; border-radius: 8px; border: 1px solid #cbd5e1;">
+                    </div>
+                </div>
+                
+                <!-- Buttons -->
+                <div style="display: flex; gap: 15px; margin-top: 30px; padding-top: 20px; border-top: 2px solid #e2e8f0;">
+                    <button id="lecturerNCKFastNext" style="flex: 1; padding: 14px; font-size: 16px; background: #059669; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        <i class="fas fa-save"></i> Save & Next (Enter)
+                    </button>
+                    <button id="lecturerNCKFastStay" style="flex: 1; padding: 14px; font-size: 16px; background: #6b7280; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Save & Stay (Shift+Enter)
+                    </button>
+                    <button onclick="lecturerNCKCloseFastEntry()" style="flex: 0.5; padding: 14px; font-size: 16px; background: #ef4444; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer;">
+                        Close (ESC)
+                    </button>
+                </div>
+                
+                <!-- Shortcuts -->
+                <div style="margin-top: 15px; text-align: center; font-size: 12px; color: #666; padding: 10px; background: #f8fafc; border-radius: 12px;">
+                    <i class="fas fa-keyboard"></i> <strong>Keyboard Shortcuts:</strong> 
+                    <kbd style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">Enter</kbd> = Save & Next | 
+                    <kbd style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">Shift+Enter</kbd> = Save & Stay | 
+                    <kbd style="background: #e2e8f0; padding: 2px 6px; border-radius: 4px;">ESC</kbd> = Close
+                </div>
+            </div>
+        </div>
+    </div>
+
+</section>
           <!-- ===== MESSAGES SECTION - ENHANCED ===== -->
 <section id="messages-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
     <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
@@ -4836,7 +5144,6 @@
     console.log('📦 userProfile:', profile ? '✅ EXISTS' : '❌ NULL');
     console.log('📦 staffSession:', session ? '✅ EXISTS' : '❌ NULL');
     
-    // If userProfile exists but staffSession doesn't, create it
     if (profile && !session) {
         try {
             const userData = JSON.parse(profile);
@@ -4860,7 +5167,6 @@
         }
     }
     
-    // Final check - if no session at all, redirect to login
     const finalSession = localStorage.getItem('staffSession');
     const finalProfile = localStorage.getItem('userProfile');
     
@@ -4882,7 +5188,6 @@ if (window.location.pathname.endsWith('.html')) {
 // GLOBAL DROPDOWN TOGGLE FUNCTION - UPDATED (WORKS)
 // ============================================================
 
-// Close all dropdowns
 function closeAllDropdowns() {
     document.querySelectorAll('.nav-dropdown.open').forEach(dropdown => {
         dropdown.classList.remove('open');
@@ -4893,7 +5198,6 @@ function closeAllDropdowns() {
     });
 }
 
-// Toggle a single dropdown
 function toggleDropdown(dropdown) {
     if (!dropdown) return;
     const isOpen = dropdown.classList.contains('open');
@@ -4920,7 +5224,6 @@ function toggleDropdown(dropdown) {
     }
 }
 
-// Handle dropdown click
 function handleDropdownClick(e) {
     e.preventDefault();
     e.stopPropagation();
@@ -4930,53 +5233,164 @@ function handleDropdownClick(e) {
     }
 }
 
-// Handle outside click
 function handleOutsideClick(e) {
     if (!e.target.closest('.nav-dropdown')) {
         closeAllDropdowns();
     }
 }
 
-// Initialize dropdowns
 function initDropdowns() {
-    // Remove old event listeners by cloning
     document.querySelectorAll('.nav-dropdown > a').forEach(toggle => {
         const newToggle = toggle.cloneNode(true);
         toggle.parentNode.replaceChild(newToggle, toggle);
     });
     
-    // Add new click listeners
     document.querySelectorAll('.nav-dropdown > a').forEach(toggle => {
         toggle.addEventListener('click', handleDropdownClick);
     });
     
-    // Close on outside click
     document.removeEventListener('click', handleOutsideClick);
     document.addEventListener('click', handleOutsideClick);
     
-    console.log('✅ Dropdowns initialized (Superadmin style)');
+    console.log('✅ Dropdowns initialized');
 }
 
-// Run on page load
 document.addEventListener('DOMContentLoaded', function() {
     initDropdowns();
 });
 
-// Also run after dynamic content
 setTimeout(initDropdowns, 500);
 
 console.log('✅ toggleDropdown function updated');
 
 // ============================================================
-// GLOBAL SHOWTAB FUNCTION - FIXES ALL "showTab is not defined" ERRORS
+// NCK SYSTEM VISIBILITY - ONLY FOR KRCHN DEPARTMENT
+// ============================================================
+
+function getProgramDisplayName(code) {
+    const programs = {
+        'KRCHN': 'KRCHN Nursing',
+        'DPOTT': 'DPOTT - Perioperative Theatre Technology',
+        'DCH': 'DCH - Community Health',
+        'DHRIT': 'DHRIT - Health Records and IT',
+        'DSL': 'DSL - Science Lab',
+        'DSW': 'DSW - Social Work & Community Development',
+        'DCJS': 'DCJS - Criminal Justice',
+        'DHSS': 'DHSS - Health Support Services',
+        'DICT': 'DICT - ICT',
+        'DME': 'DME - Medical Engineering',
+        'CPOTT': 'CPOTT - Certificate Perioperative Theatre Technology',
+        'CCH': 'CCH - Certificate Community Health',
+        'CHRIT': 'CHRIT - Certificate Health Records and IT',
+        'CPC': 'CPC - Certificate Patient Care',
+        'CSL': 'CSL - Certificate Science Lab',
+        'CSW': 'CSW - Certificate Social Work',
+        'CCJS': 'CCJS - Certificate Criminal Justice',
+        'CAG': 'CAG - Certificate Agriculture',
+        'CHSS': 'CHSS - Certificate Health Support Services',
+        'CICT': 'CICT - Certificate ICT',
+        'ACH': 'ACH - Artisan Community Health',
+        'AAG': 'AAG - Artisan Agriculture',
+        'ASW': 'ASW - Artisan Social Work',
+        'CCA': 'CCA - Certificate Computer Applications',
+        'PTE': 'PTE - TVET/CDACC'
+    };
+    return programs[code] || code;
+}
+
+function checkNCKVisibility() {
+    try {
+        let department = null;
+        let isKRCHN = false;
+        
+        // Try from lecturerDB
+        const profile = window.lecturerDB?.getCurrentUserProfile?.();
+        if (profile) {
+            department = profile.department || profile.program || profile.assigned_program;
+        }
+        
+        // Try from session
+        if (!department) {
+            const stored = sessionStorage.getItem('lecturerData');
+            if (stored) {
+                const data = JSON.parse(stored);
+                department = data.department || data.program || data.assigned_program;
+            }
+        }
+        
+        // Try from staffSession
+        if (!department) {
+            const staffSession = localStorage.getItem('staffSession');
+            if (staffSession) {
+                const data = JSON.parse(staffSession);
+                department = data.department || data.program;
+            }
+        }
+        
+        // Default fallback - check all sources
+        if (!department) {
+            const allData = {
+                ...JSON.parse(localStorage.getItem('staffSession') || '{}'),
+                ...JSON.parse(sessionStorage.getItem('lecturerData') || '{}'),
+                ...(window.lecturerDB?.getCurrentUserProfile?.() || {})
+            };
+            
+            if (allData.department) department = allData.department;
+            else if (allData.program) department = allData.program;
+            else if (allData.assigned_program) department = allData.assigned_program;
+        }
+        
+        // Check if department is KRCHN (case insensitive)
+        if (department) {
+            const deptUpper = department.toUpperCase();
+            isKRCHN = deptUpper === 'KRCHN' || 
+                     deptUpper === 'NURSING' || 
+                     deptUpper === 'KRCHN NURSING' ||
+                     deptUpper.includes('KRCHN') ||
+                     deptUpper.includes('NURSING');
+        }
+        
+        // Show/Hide NCK menu item
+        const nckMenuItem = document.getElementById('nav-nursing-system');
+        if (nckMenuItem) {
+            nckMenuItem.style.display = isKRCHN ? 'block' : 'none';
+            console.log(`📍 NCK System menu: ${isKRCHN ? '✅ SHOWN' : '❌ HIDDEN'} (Department: ${department || 'unknown'})`);
+        }
+        
+        // Update department badge
+        const deptBadge = document.getElementById('userProgramBadge');
+        if (deptBadge && department) {
+            const displayName = getProgramDisplayName(department);
+            if (displayName) deptBadge.textContent = displayName;
+        }
+        
+        return isKRCHN;
+        
+    } catch (error) {
+        console.error('Error checking NCK visibility:', error);
+        return false;
+    }
+}
+
+// ============================================================
+// GLOBAL SHOWTAB FUNCTION - WITH NCK PROTECTION
 // ============================================================
 
 /**
  * Global showTab function for lecturer dashboard
- * Handles tab switching with proper UI updates
+ * Handles tab switching with NCK visibility protection
  */
 function showTab(tabId) {
     console.log('🔄 Switching to tab:', tabId);
+    
+    // ===== NCK TAB VISIBILITY CHECK =====
+    if (tabId === 'nursing-system') {
+        const isKRCHN = checkNCKVisibility();
+        if (!isKRCHN) {
+            showNotification('⚠️ This section is only available for KRCHN Nursing lecturers.', 'warning');
+            return showTab('dashboard');
+        }
+    }
     
     // Get all tab content sections and navigation links
     const tabContents = document.querySelectorAll('.tab-content');
@@ -5000,11 +5414,9 @@ function showTab(tabId) {
     if (targetTab) {
         targetTab.style.display = 'block';
         targetTab.classList.add('active');
-        // Add a small animation
         targetTab.style.animation = 'fadeIn 0.3s ease';
     } else {
         console.warn('⚠️ Tab content not found:', tabId + '-content');
-        // Try fallback - maybe the tab ID is the content ID directly
         const fallbackTab = document.getElementById(tabId);
         if (fallbackTab && fallbackTab.classList.contains('tab-content')) {
             fallbackTab.style.display = 'block';
@@ -5019,13 +5431,11 @@ function showTab(tabId) {
         activeLink.style.background = 'rgba(255,255,255,0.15)';
         activeLink.style.borderLeft = '3px solid #FDB913';
     } else {
-        // Check dropdown items
         const dropdownLink = document.querySelector(`#mainNav .dropdown-menu a[data-tab="${tabId}"]`);
         if (dropdownLink) {
             dropdownLink.classList.add('active');
             dropdownLink.style.background = 'rgba(255,255,255,0.15)';
             dropdownLink.style.borderLeft = '3px solid #FDB913';
-            // Also open the parent dropdown
             const parentDropdown = dropdownLink.closest('.nav-dropdown');
             if (parentDropdown) {
                 parentDropdown.classList.add('open');
@@ -5040,112 +5450,43 @@ function showTab(tabId) {
     // Save the active tab to localStorage for persistence
     try {
         localStorage.setItem('lecturerActiveTab', tabId);
-    } catch (e) {
-        // Ignore localStorage errors
-    }
+    } catch (e) {}
     
     // Trigger any tab-specific loading
     if (tabId === 'dashboard') {
-        if (window.LecturerDashboard && typeof window.LecturerDashboard.refresh === 'function') {
-            window.LecturerDashboard.refresh();
-        }
+        if (window.LecturerDashboard?.refresh) window.LecturerDashboard.refresh();
     } else if (tabId === 'my-students') {
-        if (window.LecturerStudents && typeof window.LecturerStudents.loadStudents === 'function') {
-            window.LecturerStudents.loadStudents();
-        }
+        if (window.LecturerStudents?.loadStudents) window.LecturerStudents.loadStudents();
     } else if (tabId === 'my-courses') {
-        if (window.LecturerCourses && typeof window.LecturerCourses.loadCourses === 'function') {
-            window.LecturerCourses.loadCourses();
-        }
+        if (window.LecturerCourses?.loadCourses) window.LecturerCourses.loadCourses();
     } else if (tabId === 'attendance') {
-        if (window.LecturerAttendance && typeof window.LecturerAttendance.loadAttendance === 'function') {
-            window.LecturerAttendance.loadAttendance();
-        }
+        if (window.LecturerAttendance?.loadAttendance) window.LecturerAttendance.loadAttendance();
     } else if (tabId === 'cats') {
-        if (window.LecturerExams && typeof window.LecturerExams.loadExams === 'function') {
-            window.LecturerExams.loadExams();
-        }
+        if (window.LecturerExams?.loadExams) window.LecturerExams.loadExams();
     } else if (tabId === 'marks-management') {
-        if (window.LecturerMarks && typeof window.LecturerMarks.init === 'function') {
-            window.LecturerMarks.init();
-        }
+        if (window.LecturerMarks?.init) window.LecturerMarks.init();
     } else if (tabId === 'sessions') {
-        if (window.LecturerSessions && typeof window.LecturerSessions.loadSessions === 'function') {
-            window.LecturerSessions.loadSessions();
-        }
+        if (window.LecturerSessions?.loadSessions) window.LecturerSessions.loadSessions();
     } else if (tabId === 'resources') {
-        if (window.LecturerResources && typeof window.LecturerResources.loadResources === 'function') {
-            window.LecturerResources.loadResources();
-        }
+        if (window.LecturerResources?.loadResources) window.LecturerResources.loadResources();
     } else if (tabId === 'messages') {
-        if (window.LecturerMessages && typeof window.LecturerMessages.loadMessages === 'function') {
-            window.LecturerMessages.loadMessages();
-        }
+        if (window.LecturerMessages?.loadMessages) window.LecturerMessages.loadMessages();
     } else if (tabId === 'profile') {
-        if (window.LecturerProfile && typeof window.LecturerProfile.loadProfile === 'function') {
-            window.LecturerProfile.loadProfile();
-        }
+        if (window.LecturerProfile?.loadProfile) window.LecturerProfile.loadProfile();
     } else if (tabId === 'academic-portfolio') {
-        if (window.AcademicPortfolio && typeof window.AcademicPortfolio.loadDashboard === 'function') {
-            window.AcademicPortfolio.loadDashboard();
-        }
+        if (window.AcademicPortfolio?.loadDashboard) window.AcademicPortfolio.loadDashboard();
     } else if (tabId === 'reports') {
-        if (window.LecturerReports && typeof window.LecturerReports.loadReports === 'function') {
-            window.LecturerReports.loadReports();
-        }
+        if (window.LecturerReports?.loadReports) window.LecturerReports.loadReports();
     } else if (tabId === 'calendar') {
-        if (window.LecturerCalendar && typeof window.LecturerCalendar.loadCalendar === 'function') {
-            window.LecturerCalendar.loadCalendar();
+        if (window.LecturerCalendar?.loadCalendar) window.LecturerCalendar.loadCalendar();
+    } else if (tabId === 'nursing-system') {
+        if (window.lecturerNCKLoadData) {
+            setTimeout(window.lecturerNCKLoadData, 300);
         }
     }
 }
 
-// Also make it available on window
 window.showTab = showTab;
-
-// Restore last active tab on page load
-document.addEventListener('DOMContentLoaded', function() {
-    try {
-        const lastTab = localStorage.getItem('lecturerActiveTab');
-        if (lastTab) {
-            // Check if the tab exists
-            const tabExists = document.querySelector(`#mainNav a[data-tab="${lastTab}"]`);
-            if (tabExists) {
-                setTimeout(() => showTab(lastTab), 300);
-            } else {
-                // If tab doesn't exist, show dashboard
-                showTab('dashboard');
-            }
-        } else {
-            // Default to dashboard
-            setTimeout(() => showTab('dashboard'), 300);
-        }
-    } catch (e) {
-        showTab('dashboard');
-    }
-});
-
-// Also handle tab clicks from navigation links (non-onclick)
-document.addEventListener('DOMContentLoaded', function() {
-    document.querySelectorAll('#mainNav a[data-tab]').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const tabId = this.dataset.tab;
-            showTab(tabId);
-        });
-    });
-    
-    // Handle dropdown links
-    document.querySelectorAll('.dropdown-menu a[data-tab]').forEach(link => {
-        link.addEventListener('click', function(e) {
-            e.preventDefault();
-            const tabId = this.dataset.tab;
-            showTab(tabId);
-        });
-    });
-});
-
-console.log('✅ showTab function registered globally');
 
 // ============================================================
 // GLOBAL CLOSE MODAL FUNCTION
@@ -5243,9 +5584,6 @@ window.hideLoading = function() {
             to { opacity: 1; transform: translateY(0); }
         }
         
-        /* ============================================
-           SIDEBAR FIX FOR DROPDOWNS - PERMANENT
-           ============================================ */
         #sidebar, .sidebar {
             overflow: visible !important;
             overflow-y: visible !important;
@@ -5261,9 +5599,6 @@ window.hideLoading = function() {
             overflow: visible !important;
         }
         
-        /* ============================================
-           DROPDOWN STYLES - PERMANENT
-           ============================================ */
         .nav-dropdown {
             position: relative !important;
             overflow: visible !important;
@@ -5325,9 +5660,6 @@ window.hideLoading = function() {
             transition: transform 0.3s ease;
         }
         
-        /* ============================================
-           SIDEBAR LINK ACTIVE STYLES
-           ============================================ */
         .nav a.active {
             background: rgba(255,255,255,0.15) !important;
             border-left: 3px solid #FDB913 !important;
@@ -5337,9 +5669,6 @@ window.hideLoading = function() {
             background: rgba(255,255,255,0.1) !important;
         }
         
-        /* ============================================
-           FADE IN ANIMATION FOR TABS
-           ============================================ */
         @keyframes fadeIn {
             from { opacity: 0; transform: translateY(10px); }
             to { opacity: 1; transform: translateY(0); }
@@ -5361,7 +5690,6 @@ function fixSidebarOnLoad() {
     const sidebar = document.getElementById('sidebar');
     if (!sidebar) return;
     
-    // Ensure height is 100vh
     sidebar.style.height = '100vh';
     sidebar.style.maxHeight = '100vh';
     sidebar.style.overflow = 'auto';
@@ -5378,7 +5706,6 @@ function fixSidebarOnLoad() {
     sidebar.style.padding = '24px 16px';
     sidebar.style.boxShadow = '4px 0 20px rgba(0,0,0,0.1)';
     
-    // Fix navigation
     const nav = sidebar.querySelector('ul');
     if (nav) {
         nav.style.flex = '1';
@@ -5391,7 +5718,6 @@ function fixSidebarOnLoad() {
         nav.style.maxHeight = 'calc(100vh - 180px)';
     }
     
-    // Fix logout section
     let logoutSection = sidebar.querySelector('.logout-section') || 
                        sidebar.querySelector('div:last-child');
     if (logoutSection) {
@@ -5407,17 +5733,67 @@ function fixSidebarOnLoad() {
     }
 }
 
-// Run on page load
 document.addEventListener('DOMContentLoaded', function() {
     fixSidebarOnLoad();
     initDropdowns();
+    
+    // Check NCK visibility after profile loads
+    setTimeout(checkNCKVisibility, 500);
+    setTimeout(checkNCKVisibility, 1000);
+    setTimeout(checkNCKVisibility, 2000);
+    
+    // Restore last active tab
+    try {
+        const lastTab = localStorage.getItem('lecturerActiveTab');
+        if (lastTab) {
+            const tabExists = document.querySelector(`#mainNav a[data-tab="${lastTab}"]`);
+            if (tabExists) {
+                setTimeout(() => showTab(lastTab), 300);
+            } else {
+                setTimeout(() => showTab('dashboard'), 300);
+            }
+        } else {
+            setTimeout(() => showTab('dashboard'), 300);
+        }
+    } catch (e) {
+        setTimeout(() => showTab('dashboard'), 300);
+    }
 });
 
-// Also run after a slight delay to catch any dynamic changes
+// Also handle tab clicks from navigation links
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('#mainNav a[data-tab]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const tabId = this.dataset.tab;
+            showTab(tabId);
+        });
+    });
+    
+    document.querySelectorAll('.dropdown-menu a[data-tab]').forEach(link => {
+        link.addEventListener('click', function(e) {
+            e.preventDefault();
+            const tabId = this.dataset.tab;
+            showTab(tabId);
+        });
+    });
+});
+
+// Also run after a slight delay to catch dynamic changes
 setTimeout(function() {
     fixSidebarOnLoad();
     initDropdowns();
+    checkNCKVisibility();
 }, 500);
+
+// ============================================================
+// EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
+window.checkNCKVisibility = checkNCKVisibility;
+window.getProgramDisplayName = getProgramDisplayName;
+
+console.log('✅ NCK visibility checker loaded');
+console.log('✅ showTab updated with NCK protection');
 </script>
 
 <!-- ============================================ -->
@@ -5447,6 +5823,8 @@ setTimeout(function() {
 <script src="js/lecturer-messages.js"></script>
 <script src="js/lecturer-reports.js"></script>
 <script src="js/lecturer-calendar.js"></script>
+<script src="js/js/lecturer-nck.js"></script>
+
 
 <!-- ===== NEW: ACADEMIC PORTFOLIO MODULE ===== -->
 <script src="js/lecturer-academic-portfolio.js"></script>
