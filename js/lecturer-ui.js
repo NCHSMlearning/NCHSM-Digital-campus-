@@ -1,5 +1,6 @@
 // ============================================================
 // LECTURER UI MODULE - COMPLETE FIXED VERSION
+// WITH NCK SYSTEM SUPPORT
 // ============================================================
 
 // ============================================================
@@ -338,14 +339,14 @@ console.log('✅ Global functions registered for lecturer');
 })();
 
 // ============================================================
-// LECTURER UI CLASS - UPDATED WITH ACADEMIC PORTFOLIO
+// LECTURER UI CLASS - UPDATED WITH NCK SUPPORT
 // ============================================================
 
 const LecturerUI = {
     currentTab: 'dashboard',
     sidebarOpen: false,
     
-    // Tab ID mapping - UPDATED with Academic Portfolio
+    // Tab ID mapping - UPDATED with NCK
     tabMapping: {
         'dashboard': 'dashboard-content',
         'profile': 'profile-content',
@@ -362,8 +363,10 @@ const LecturerUI = {
         'messages': 'messages-content',
         'calendar': 'calendar-content',
         'settings': 'settings-content',
-        // ===== NEW: Academic Portfolio =====
-        'academic-portfolio': 'academic-portfolio-content'
+        // ===== Academic Portfolio =====
+        'academic-portfolio': 'academic-portfolio-content',
+        // ===== NCK SYSTEM =====
+        'nursing-system': 'nursing-system-content'
     },
     
     // Initialize UI
@@ -628,11 +631,21 @@ const LecturerUI = {
     },
     
     // ==========================================
-    // TAB MANAGEMENT
+    // TAB MANAGEMENT - UPDATED WITH NCK
     // ==========================================
     
     showTab(tabId) {
         console.log('📂 Opening tab:', tabId);
+        
+        // ===== NCK TAB VISIBILITY CHECK =====
+        if (tabId === 'nursing-system') {
+            // Check if user is KRCHN
+            const isKRCHN = this.checkNCKAccess();
+            if (!isKRCHN) {
+                this.showNotification('⚠️ This section is only available for KRCHN Nursing lecturers.', 'warning');
+                return this.showTab('dashboard');
+            }
+        }
         
         // Update URL using SPA Router if available
         if (window.SPA_ROUTER && typeof window.SPA_ROUTER.updateURL === 'function') {
@@ -688,7 +701,60 @@ const LecturerUI = {
         }
     },
     
-    // Load data for a specific section
+    // ==========================================
+    // CHECK NCK ACCESS
+    // ==========================================
+    
+    checkNCKAccess() {
+        try {
+            let department = null;
+            
+            // Try from lecturerDB
+            const profile = window.lecturerDB?.getCurrentUserProfile?.();
+            if (profile) {
+                department = profile.department || profile.program || profile.assigned_program;
+            }
+            
+            // Try from session
+            if (!department) {
+                const stored = sessionStorage.getItem('lecturerData');
+                if (stored) {
+                    const data = JSON.parse(stored);
+                    department = data.department || data.program || data.assigned_program;
+                }
+            }
+            
+            // Try from staffSession
+            if (!department) {
+                const staffSession = localStorage.getItem('staffSession');
+                if (staffSession) {
+                    const data = JSON.parse(staffSession);
+                    department = data.department || data.program;
+                }
+            }
+            
+            // Check if KRCHN
+            if (department) {
+                const deptUpper = department.toUpperCase();
+                return deptUpper === 'KRCHN' || 
+                       deptUpper === 'NURSING' || 
+                       deptUpper === 'KRCHN NURSING' ||
+                       deptUpper.includes('KRCHN') ||
+                       deptUpper.includes('NURSING');
+            }
+            
+            return false;
+            
+        } catch (error) {
+            console.error('Error checking NCK access:', error);
+            return false;
+        }
+    },
+    
+    // ==========================================
+    // LOAD SECTION DATA - UPDATED WITH NCK
+    // ==========================================
+    
     loadSectionData(tabId) {
         console.log('📊 Loading data for tab:', tabId);
         
@@ -804,14 +870,13 @@ const LecturerUI = {
                 }
                 break;
                 
-            // ===== NEW: Academic Portfolio =====
+            // ===== Academic Portfolio =====
             case 'academic-portfolio':
                 console.log('📁 Loading Academic Portfolio...');
                 if (window.AcademicPortfolio && typeof window.AcademicPortfolio.loadDashboard === 'function') {
                     window.AcademicPortfolio.loadDashboard();
                 } else {
                     console.warn('⚠️ AcademicPortfolio not found');
-                    // Fallback: show message
                     const container = document.getElementById('ap-content');
                     if (container) {
                         container.innerHTML = `
@@ -828,6 +893,60 @@ const LecturerUI = {
                             </div>
                         `;
                     }
+                }
+                break;
+            
+            // ===== NCK SYSTEM =====
+            case 'nursing-system':
+                console.log('👩‍⚕️ Loading NCK System...');
+                // Check if NCK module is loaded
+                if (typeof lecturerNCKLoadData === 'function') {
+                    lecturerNCKLoadData();
+                } else if (window.lecturerNCKLoadData) {
+                    window.lecturerNCKLoadData();
+                } else {
+                    // Try to load the script dynamically
+                    console.log('📥 Loading lecturer-nck.js dynamically...');
+                    const script = document.createElement('script');
+                    script.src = 'js/lecturer-nck.js';
+                    script.onload = function() {
+                        console.log('✅ lecturer-nck.js loaded!');
+                        if (typeof lecturerNCKLoadData === 'function') {
+                            lecturerNCKLoadData();
+                        } else if (window.lecturerNCKLoadData) {
+                            window.lecturerNCKLoadData();
+                        } else {
+                            console.warn('⚠️ lecturerNCKLoadData still not available');
+                            showNotification('⚠️ NCK module loading... Please refresh.', 'warning');
+                            // Show placeholder
+                            const container = document.getElementById('nursing-system-content');
+                            if (container) {
+                                const placeholder = document.getElementById('lecturerNCKPlaceholder');
+                                if (placeholder) placeholder.style.display = 'block';
+                            }
+                        }
+                    };
+                    script.onerror = function() {
+                        console.error('❌ Failed to load lecturer-nck.js');
+                        showNotification('❌ Error loading NCK module. Please refresh.', 'error');
+                        // Show placeholder with error
+                        const container = document.getElementById('nursing-system-content');
+                        if (container) {
+                            const placeholder = document.getElementById('lecturerNCKPlaceholder');
+                            if (placeholder) {
+                                placeholder.style.display = 'block';
+                                placeholder.innerHTML = `
+                                    <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
+                                    <h3 style="color: #1e293b; margin: 0 0 10px 0;">NCK Module Load Failed</h3>
+                                    <p style="color: #94a3b8;">Please refresh the page or contact support.</p>
+                                    <button onclick="location.reload()" style="margin-top: 15px; background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
+                                        <i class="fas fa-sync-alt"></i> Refresh Page
+                                    </button>
+                                `;
+                            }
+                        }
+                    };
+                    document.head.appendChild(script);
                 }
                 break;
                 
@@ -1113,3 +1232,4 @@ console.log('✅ logout modal functions loaded');
 console.log('✅ showNotification:', typeof window.showNotification);
 console.log('✅ showLoading:', typeof window.showLoading);
 console.log('✅ hideLoading:', typeof window.hideLoading);
+console.log('✅ NCK System support added');
