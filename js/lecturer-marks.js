@@ -1,9 +1,5 @@
 // ============================================================
-// LECTURER MARKS MODULE - COMPLETE WITH LOADING SCREEN
-// SYNCED WITH ADMIN SETTINGS
-// TERMINOLOGY: "Unit" instead of "Subject"
-// STRICT UNIT ASSIGNMENT FILTERING
-// PERMANENT SUPABASE STORAGE
+// LECTURER MARKS MODULE - COMPLETE WITH RETAKE/SUPPLEMENTARY SUPPORT
 // ============================================================
 
 // ============================================================
@@ -23,6 +19,15 @@ let me_assignedUnits = [];
 let _loadingActive = false;
 
 // ============================================================
+// RETAKE/SUPPLEMENTARY STATE
+// ============================================================
+
+let lecturerRetakeData = {};
+let lecturerCurrentRetakeStudent = null;
+let lecturerCurrentRetakeUnit = null;
+const LECTURER_MAX_RETAKES = 2;
+
+// ============================================================
 // LOADING SCREEN FUNCTIONS
 // ============================================================
 
@@ -40,9 +45,7 @@ function showLoadingScreen(message, title = 'Loading...') {
     if (msgEl) msgEl.textContent = message || 'Please wait while we load your data';
     if (progressEl) progressEl.style.width = '0%';
     
-    // Reset steps
     resetLoadingSteps();
-    
     console.log(`⏳ Loading: ${message}`);
 }
 
@@ -79,7 +82,6 @@ function updateLoadingStep(step, text) {
     if (iconEl) iconEl.textContent = '✅';
     if (textEl) textEl.textContent = text;
     
-    // Make all previous steps complete
     for (let i = 1; i < step; i++) {
         const prev = stepMap[i];
         if (prev) {
@@ -129,28 +131,21 @@ function hideLoadingScreen() {
     }
     console.log('✅ Loading complete');
 }
+
 // ============================================================
-// NOTIFICATION FUNCTIONS - WITH DEDUPLICATION
+// NOTIFICATION FUNCTIONS
 // ============================================================
 
 let _lastNotification = '';
 let _notificationTimeout = null;
 
 function showNotification(message, type) {
-    // Prevent duplicate notifications
     const key = message + type;
-    if (_lastNotification === key) {
-        // Same notification already shown, skip
-        return;
-    }
+    if (_lastNotification === key) return;
     _lastNotification = key;
     
-    if (_notificationTimeout) {
-        clearTimeout(_notificationTimeout);
-    }
-    _notificationTimeout = setTimeout(() => {
-        _lastNotification = '';
-    }, 1000);
+    if (_notificationTimeout) clearTimeout(_notificationTimeout);
+    _notificationTimeout = setTimeout(() => { _lastNotification = ''; }, 1000);
     
     console.log(`[${type || 'info'}] ${message}`);
     
@@ -188,7 +183,278 @@ function showNotification(message, type) {
 }
 
 // ============================================================
-// GET LECTURER ASSIGNED UNITS - FIXED FOR YOUR TABLE STRUCTURE
+// GRADING FUNCTIONS
+// ============================================================
+
+function getMarksEntryGrade(score) {
+    if (score >= 75) return { grade: 'A', rating: 'Distinction', points: 4.0, color: '#065f46' };
+    else if (score >= 65) return { grade: 'B', rating: 'Credit', points: 3.0, color: '#1e40af' };
+    else if (score >= 60) return { grade: 'C', rating: 'Pass', points: 2.0, color: '#92400e' };
+    else return { grade: 'D', rating: 'Fail', points: 0.0, color: '#991b1b' };
+}
+
+function calculateMarksEntryTotal(cat1, cat2, exam, type) {
+    let total = 0;
+    if (type === 'full') {
+        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+    } else if (type === 'single_cat') {
+        total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+    } else if (type === 'exam_only') {
+        total = Math.round(Math.min(exam,100) * 10) / 10;
+    } else if (type === 'cats_only') {
+        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
+    } else if (type === 'cat_only') {
+        total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
+    }
+    return total;
+}
+
+// ============================================================
+// RETAKE/SUPPLEMENTARY FUNCTIONS
+// ============================================================
+
+async function loadLecturerRetakeData(block, unit, year) {
+    try {
+        const { data, error } = await sb
+            .from('student_retakes')
+            .select('*')
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year)
+            .order('attempt_number', { ascending: true });
+        
+        if (error) throw error;
+        
+        const retakeMap = {};
+        data?.forEach(retake => {
+            const key = retake.admission_number;
+            if (!retakeMap[key]) retakeMap[key] = [];
+            retakeMap[key].push(retake);
+        });
+        
+        lecturerRetakeData = retakeMap;
+        console.log(`📊 Loaded lecturer retake data for ${Object.keys(retakeMap).length} students`);
+        return retakeMap;
+        
+    } catch (error) {
+        console.error('Error loading lecturer retake data:', error);
+        return {};
+    }
+}
+
+async function recordLecturerRetakeExam(admission, studentName, unit, block, program, year, examScore, remarks) {
+    const existingRetakes = lecturerRetakeData[admission] || [];
+    const attemptNumber = existingRetakes.length + 1;
+    
+    if (attemptNumber > LECTURER_MAX_RETAKES) {
+        showNotification(`⚠️ Maximum retakes (${LECTURER_MAX_RETAKES}) reached for this student`, 'error');
+        return false;
+    }
+    
+    const total = Math.min(examScore, 100);
+    const gradeInfo = getMarksEntryGrade(total);
+    const isPassing = total >= 60;
+    
+    const retakeData = {
+        admission_number: admission,
+        student_name: studentName,
+        block: block,
+        subject_name: unit,
+        program: program,
+        academic_year: year,
+        attempt_number: attemptNumber,
+        exam_score: examScore,
+        total_score: total,
+        grade: gradeInfo.grade,
+        status: isPassing ? 'PASS' : 'FAIL',
+        remarks: remarks || `Retake attempt #${attemptNumber}`,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+    };
+    
+    try {
+        const { error } = await sb
+            .from('student_retakes')
+            .insert(retakeData);
+        
+        if (error) throw error;
+        
+        const { error: updateError } = await sb
+            .from('student_marks')
+            .update({
+                retake_count: attemptNumber,
+                retake_score: examScore,
+                retake_grade: gradeInfo.grade,
+                retake_status: isPassing ? 'PASS' : 'FAIL',
+                retake_date: new Date().toISOString(),
+                final_grade: isPassing ? gradeInfo.grade : null,
+                final_status: isPassing ? 'PASS' : 'FAIL',
+                updated_at: new Date().toISOString()
+            })
+            .eq('admission_number', admission)
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('academic_year', year);
+        
+        if (updateError) console.warn('Could not update student_marks with retake info:', updateError);
+        
+        await loadLecturerRetakeData(block, unit, year);
+        
+        showNotification(`✅ Retake recorded for ${studentName} (Attempt #${attemptNumber})`, 'success');
+        return true;
+        
+    } catch (error) {
+        console.error('Error recording lecturer retake:', error);
+        showNotification('❌ Error recording retake: ' + error.message, 'error');
+        return false;
+    }
+}
+
+function createLecturerRetakeModal() {
+    if (document.getElementById('lecturerRetakeModal')) return;
+    
+    const modalHTML = `
+    <div id="lecturerRetakeModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 100000; align-items: center; justify-content: center;">
+        <div style="background: white; border-radius: 16px; max-width: 500px; width: 90%; max-height: 90vh; overflow-y: auto; padding: 30px; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                <h3 style="margin: 0; color: #1e293b;">
+                    <i class="fas fa-sync-alt" style="color: #f59e0b;"></i> Supplementary/Retake Exam
+                </h3>
+                <button onclick="closeLecturerRetakeModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
+            </div>
+            
+            <div style="background: #fef3c7; padding: 15px; border-radius: 8px; margin-bottom: 20px; border: 1px solid #f59e0b;">
+                <p style="margin: 0 0 4px 0;"><strong>Student:</strong> <span id="lretake_student_name"></span></p>
+                <p style="margin: 0 0 4px 0;"><strong>Admission:</strong> <span id="lretake_admission"></span></p>
+                <p style="margin: 0 0 4px 0;"><strong>Unit:</strong> <span id="lretake_unit"></span></p>
+                <p style="margin: 0 0 4px 0;"><strong>Block:</strong> <span id="lretake_block"></span></p>
+                <p style="margin: 0;"><strong>Attempt:</strong> #<span id="lretake_attempt"></span> of <span id="lretake_max_attempts">2</span></p>
+            </div>
+            
+            <div id="lretake_history" style="display: none; margin-bottom: 15px; padding: 10px; background: #f8fafc; border-radius: 6px;">
+                <p style="font-weight: 600; margin: 0 0 8px 0; font-size: 13px; color: #475569;">📋 Attempt History:</p>
+                <div id="lretake_history_list"></div>
+            </div>
+            
+            <div style="margin-bottom: 15px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px;">Exam Score (%)</label>
+                <input type="number" id="lretake_score" min="0" max="100" step="0.5" 
+                       style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px;" 
+                       placeholder="Enter score (0-100)">
+            </div>
+            
+            <div style="margin-bottom: 20px;">
+                <label style="font-weight: 600; display: block; margin-bottom: 5px;">Remarks (Optional)</label>
+                <input type="text" id="lretake_remarks" 
+                       style="width: 100%; padding: 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 14px;" 
+                       placeholder="e.g., Improvement shown, Second attempt">
+            </div>
+            
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="closeLecturerRetakeModal()" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    Cancel
+                </button>
+                <button onclick="saveLecturerRetakeExam()" style="padding: 10px 24px; background: #f59e0b; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-save"></i> Save Retake
+                </button>
+            </div>
+        </div>
+    </div>
+    `;
+    
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+}
+
+function openLecturerRetakeModal(admission, name, unit, block) {
+    let modal = document.getElementById('lecturerRetakeModal');
+    if (!modal) {
+        createLecturerRetakeModal();
+        modal = document.getElementById('lecturerRetakeModal');
+        if (!modal) {
+            showNotification('Error opening retake modal', 'error');
+            return;
+        }
+    }
+    
+    const retakes = lecturerRetakeData[admission] || [];
+    const attemptNumber = retakes.length + 1;
+    
+    document.getElementById('lretake_student_name').textContent = name;
+    document.getElementById('lretake_admission').textContent = admission;
+    document.getElementById('lretake_unit').textContent = unit;
+    document.getElementById('lretake_block').textContent = block.replace(/_/g, ' ');
+    document.getElementById('lretake_attempt').textContent = attemptNumber;
+    document.getElementById('lretake_max_attempts').textContent = LECTURER_MAX_RETAKES;
+    
+    const historyContainer = document.getElementById('lretake_history');
+    const historyList = document.getElementById('lretake_history_list');
+    
+    if (historyContainer && historyList) {
+        if (retakes.length > 0) {
+            let historyHtml = '';
+            retakes.forEach((r, i) => {
+                const isPass = r.status === 'PASS';
+                historyHtml += `<div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #e5e7eb; font-size: 12px;">
+                    <span>Attempt #${r.attempt_number}</span>
+                    <span style="font-weight: 600; color: ${isPass ? '#059669' : '#dc2626'};">${r.exam_score}%</span>
+                    <span style="color: ${isPass ? '#059669' : '#dc2626'};">${r.status}</span>
+                    <span style="color: #94a3b8; font-size: 10px;">${new Date(r.created_at).toLocaleDateString()}</span>
+                </div>`;
+            });
+            historyList.innerHTML = historyHtml;
+            historyContainer.style.display = 'block';
+        } else {
+            historyContainer.style.display = 'none';
+        }
+    }
+    
+    lecturerCurrentRetakeStudent = { admission, name };
+    lecturerCurrentRetakeUnit = unit;
+    
+    document.getElementById('lretake_score').value = '';
+    document.getElementById('lretake_remarks').value = '';
+    
+    modal.style.display = 'flex';
+}
+
+function closeLecturerRetakeModal() {
+    const modal = document.getElementById('lecturerRetakeModal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function saveLecturerRetakeExam() {
+    const scoreInput = document.getElementById('lretake_score');
+    const remarksInput = document.getElementById('lretake_remarks');
+    
+    const examScore = parseFloat(scoreInput?.value);
+    const remarks = remarksInput?.value || '';
+    
+    if (isNaN(examScore) || examScore < 0 || examScore > 100) {
+        showNotification('⚠️ Please enter a valid score between 0 and 100', 'warning');
+        return;
+    }
+    
+    if (!lecturerCurrentRetakeStudent) {
+        showNotification('⚠️ No student selected', 'error');
+        return;
+    }
+    
+    const { admission, name } = lecturerCurrentRetakeStudent;
+    const unit = lecturerCurrentRetakeUnit;
+    const block = me_currentBlock;
+    const program = me_currentProgram;
+    const year = me_currentYear;
+    
+    const success = await recordLecturerRetakeExam(admission, name, unit, block, program, year, examScore, remarks);
+    
+    if (success) {
+        closeLecturerRetakeModal();
+        loadMarksEntry();
+    }
+}
+
+// ============================================================
+// GET LECTURER ASSIGNED UNITS
 // ============================================================
 
 async function getLecturerAssignedUnits(lecturerId, block = null) {
@@ -221,7 +487,7 @@ async function getLecturerAssignedUnits(lecturerId, block = null) {
 }
 
 // ============================================================
-// LOAD LECTURER BY EMAIL - HELPER FUNCTION
+// LOAD LECTURER BY EMAIL
 // ============================================================
 
 async function loadLecturerByEmail(email) {
@@ -268,7 +534,7 @@ async function loadLecturerByEmail(email) {
 }
 
 // ============================================================
-// DETECT LECTURER PROGRAM - WITH LOADING
+// DETECT LECTURER PROGRAM
 // ============================================================
 
 async function detectLecturerProgram() {
@@ -388,21 +654,6 @@ async function detectLecturerProgram() {
             programSelect.disabled = false;
         }
         
-        const tvetInfo = document.getElementById('tvetDepartmentInfo');
-        const krchnInfo = document.getElementById('krchnDepartmentInfo');
-        
-        if (isTVET) {
-            if (tvetInfo) tvetInfo.style.display = 'block';
-            if (krchnInfo) krchnInfo.style.display = 'none';
-            const deptName = document.getElementById('tvetDepartmentName');
-            if (deptName) deptName.textContent = departmentName;
-        } else {
-            if (tvetInfo) tvetInfo.style.display = 'none';
-            if (krchnInfo) krchnInfo.style.display = 'block';
-            const blockName = document.getElementById('krchnBlockName');
-            if (blockName) blockName.textContent = staff?.block || 'Block 2';
-        }
-        
         me_currentLecturer = { profile, staff };
         me_currentProgram = programCode;
         
@@ -449,25 +700,10 @@ function updateLecturerUI(data) {
         programSelect.value = programCode;
         programSelect.disabled = false;
     }
-    
-    const tvetInfo = document.getElementById('tvetDepartmentInfo');
-    const krchnInfo = document.getElementById('krchnDepartmentInfo');
-    
-    if (isTVET) {
-        if (tvetInfo) tvetInfo.style.display = 'block';
-        if (krchnInfo) krchnInfo.style.display = 'none';
-        const deptName = document.getElementById('tvetDepartmentName');
-        if (deptName) deptName.textContent = departmentName;
-    } else {
-        if (tvetInfo) tvetInfo.style.display = 'none';
-        if (krchnInfo) krchnInfo.style.display = 'block';
-        const blockName = document.getElementById('krchnBlockName');
-        if (blockName) blockName.textContent = data?.block || 'Block 2';
-    }
 }
 
 // ============================================================
-// LOAD BLOCKS - ONLY SHOW BLOCKS WITH ASSIGNED UNITS
+// LOAD BLOCKS
 // ============================================================
 
 async function loadMEBlocks() {
@@ -545,7 +781,7 @@ async function loadMEBlocks() {
 }
 
 // ============================================================
-// LOAD UNITS - STRICT FILTERING (ONLY ASSIGNED UNITS)
+// LOAD UNITS
 // ============================================================
 
 async function loadMEUnits() {
@@ -722,8 +958,7 @@ function getVisibleColumns() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY - WITH LOADING SCREEN (FIXED)
-// SHOWS ALL ENROLLED STUDENTS FROM student_marks
+// LOAD MARKS ENTRY - WITH RETAKE SUPPORT
 // ============================================================
 
 async function loadMarksEntry() {
@@ -746,11 +981,9 @@ async function loadMarksEntry() {
         return;
     }
     
-    // Show loading screen
     showLoadingScreen(`Loading marks for ${unit}...`, 'Loading Marks');
     updateLoadingProgress(10, 1, 'Checking assignment...');
     
-    // ✅ Check if lecturer is assigned to this unit
     const isAssigned = me_assignedUnits.some(u => 
         u.subject_name === unit || u.subject_code === unit
     );
@@ -777,11 +1010,13 @@ async function loadMarksEntry() {
     me_currentYear = year;
     
     try {
-        // Step 1: Load column settings
         updateLoadingProgress(20, 1, 'Loading column settings...');
         await loadAdminColumnSettings(block, unit);
         
-        // ✅ Step 2: Load marks from student_marks (SOURCE OF TRUTH)
+        // ✅ Load retake data
+        updateLoadingProgress(30, 2, 'Loading retake data...');
+        await loadLecturerRetakeData(block, unit, year);
+        
         updateLoadingProgress(40, 2, 'Loading student marks...');
         const { data: marks, error } = await sb
             .from('student_marks')
@@ -794,7 +1029,6 @@ async function loadMarksEntry() {
         
         console.log(`📊 Found ${marks?.length || 0} enrolled students in student_marks`);
         
-        // ✅ If no students enrolled, show empty state
         if (!marks || marks.length === 0) {
             hideLoadingScreen();
             if (container) {
@@ -810,7 +1044,6 @@ async function loadMarksEntry() {
             return;
         }
         
-        // ✅ Step 3: Get student names from profile (for display only)
         updateLoadingProgress(60, 3, 'Loading student details...');
         const admissions = marks.map(m => m.admission_number);
         const { data: students, error: studentError } = await sb
@@ -828,11 +1061,14 @@ async function loadMarksEntry() {
             studentMap[s.student_id] = s.full_name || 'Unknown';
         });
         
-        // ✅ Step 4: Build marks data - SHOW ALL STUDENTS (even with 0 scores)
         updateLoadingProgress(80, 4, 'Processing marks data...');
         
         const fullMarks = marks.map(m => {
             const admission = m.admission_number || '';
+            const retakes = lecturerRetakeData[admission] || [];
+            const hasRetake = retakes.length > 0;
+            const lastRetake = retakes[retakes.length - 1];
+            
             return {
                 admission: admission,
                 name: studentMap[admission] || m.student_name || 'Unknown',
@@ -845,15 +1081,20 @@ async function loadMarksEntry() {
                 gradedBy: m.graded_by || '',
                 assessmentType: m.assessment_type || me_currentAssessmentType || 'full',
                 id: m.id || null,
-                approval_status: m.approval_status || 'draft'
+                approval_status: m.approval_status || 'draft',
+                hasRetake: hasRetake,
+                retakeCount: retakes.length,
+                retakeScore: lastRetake?.exam_score || null,
+                retakeGrade: lastRetake?.grade || null,
+                retakeStatus: lastRetake?.status || null,
+                retakeHistory: retakes
             };
         });
         
-        console.log(`📊 Displaying ${fullMarks.length} enrolled students (including those with 0 marks)`);
+        console.log(`📊 Displaying ${fullMarks.length} enrolled students`);
         
         me_currentMarks = fullMarks;
         
-        // Step 5: Render
         updateLoadingProgress(95, 4, 'Rendering marks table...');
         renderMarksEntryTable(fullMarks, unit, me_currentAssessmentType);
         updateMarksEntryStats(fullMarks, me_currentAssessmentType);
@@ -863,7 +1104,6 @@ async function loadMarksEntry() {
         const visibleColumns = getVisibleColumns();
         updateVisibleColumnsInfo(visibleColumns);
         
-        // Complete
         updateLoadingProgress(100, 4, '✅ Ready!');
         await new Promise(resolve => setTimeout(resolve, 300));
         hideLoadingScreen();
@@ -888,50 +1128,7 @@ async function loadMarksEntry() {
 }
 
 // ============================================================
-// UPDATE DISPLAY FUNCTIONS
-// ============================================================
-
-function updateAssessmentTypeDisplay(type) {
-    const displayEl = document.getElementById('me_assessment_type_display');
-    if (displayEl) {
-        const labels = {
-            'full': 'Full (CAT1+CAT2+Exam)',
-            'single_cat': 'Single CAT (CAT+Exam)',
-            'exam_only': 'Exam Only',
-            'cats_only': 'CATs Only (No Exam)',
-            'cat_only': 'CAT Only'
-        };
-        displayEl.textContent = labels[type] || type;
-    }
-}
-
-function updateVisibleColumnsInfo(visibleColumns) {
-    const columnsEl = document.getElementById('lecturerVisibleColumns');
-    if (!columnsEl) return;
-    
-    const columnLabels = {
-        'sno': '#',
-        'admission': 'Admission',
-        'name': 'Name',
-        'cat1': 'CAT1',
-        'cat2': 'CAT2',
-        'exam': 'Exam',
-        'total': 'Total',
-        'grade': 'Grade',
-        'points': 'Points',
-        'rating': 'Rating',
-        'approval': 'Approval'
-    };
-    
-    const visible = Object.keys(columnLabels)
-        .filter(key => visibleColumns[key] !== false)
-        .map(key => columnLabels[key]);
-    
-    columnsEl.textContent = visible.length ? visible.join(', ') : 'No columns visible';
-}
-
-// ============================================================
-// RENDER MARKS ENTRY TABLE
+// RENDER MARKS ENTRY TABLE - WITH RETAKE SUPPORT
 // ============================================================
 
 function renderMarksEntryTable(marks, unit, assessmentType) {
@@ -959,6 +1156,7 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
     
     const pendingCount = marks.filter(m => m.approval_status === 'pending').length;
     const approvedCount = marks.filter(m => m.approval_status === 'approved').length;
+    const withRetakes = marks.filter(m => m.hasRetake).length;
     
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
@@ -968,6 +1166,7 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
                 <span style="font-size: 12px; color: #059669; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
                 <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} passing</span>
+                ${withRetakes > 0 ? `<span style="font-size: 12px; color: #f59e0b; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⭐ ${withRetakes} retakes</span>` : ''}
                 ${pendingCount > 0 ? `<span style="font-size: 12px; color: #d97706; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⏳ ${pendingCount} pending</span>` : ''}
                 ${approvedCount > 0 ? `<span style="font-size: 12px; color: #065f46; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${approvedCount} approved</span>` : ''}
             </div>
@@ -1006,6 +1205,7 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
                         ${visibleColumns.total !== false ? '<th style="padding: 10px 8px; text-align: center;">Total</th>' : ''}
                         ${visibleColumns.grade !== false ? '<th style="padding: 10px 8px; text-align: center;">Grade</th>' : ''}
                         ${visibleColumns.rating !== false ? '<th style="padding: 10px 8px; text-align: center;">Rating</th>' : ''}
+                        <th style="padding: 10px 8px; text-align: center;">Retake</th>
                         ${visibleColumns.approval !== false ? '<th style="padding: 10px 8px; text-align: center;">Status</th>' : ''}
                     </tr>
                 </thead>
@@ -1020,6 +1220,28 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
         const displayTotal = total > 0 ? total : '--';
         const displayGrade = total > 0 ? gradeInfo.grade : '--';
         const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
+        const isPassing = total >= 60;
+        
+        // Retake info
+        const hasRetake = m.hasRetake || false;
+        const retakeCount = m.retakeCount || 0;
+        const retakeScore = m.retakeScore;
+        const retakeStatus = m.retakeStatus;
+        const isRetakePassing = retakeStatus === 'PASS';
+        const needsRetake = total > 0 && !isPassing && retakeCount < LECTURER_MAX_RETAKES;
+        const maxRetakesReached = total > 0 && !isPassing && retakeCount >= LECTURER_MAX_RETAKES;
+        
+        // Row styling for retake
+        let rowStyle = '';
+        if (hasRetake && isRetakePassing) {
+            rowStyle = 'background: linear-gradient(90deg, #f0fdf4, #dcfce7); border-left: 4px solid #059669;';
+        } else if (hasRetake && !isRetakePassing) {
+            rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
+        } else if (needsRetake) {
+            rowStyle = 'background: linear-gradient(90deg, #fffbeb, #fef3c7); border-left: 4px solid #f59e0b;';
+        } else if (maxRetakesReached) {
+            rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
+        }
         
         const approvalBadge = {
             'pending': '<span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:12px;font-size:11px;">⏳ Pending</span>',
@@ -1028,10 +1250,22 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>'
         }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>';
         
-        html += `<tr style="${total > 0 ? `background: ${total >= 60 ? '#d1fae5' : '#fee2e2'};` : ''}">
+        html += `<tr style="${rowStyle}">
             <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8; ${visibleColumns.sno === false ? 'display:none;' : ''}">${i + 1}</td>
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px; ${visibleColumns.admission === false ? 'display:none;' : ''}">${m.admission || 'N/A'}</td>
-            <td style="padding: 8px 8px; ${visibleColumns.name === false ? 'display:none;' : ''}"><strong>${m.name || 'Unknown'}</strong></td>
+            <td style="padding: 8px 8px; ${visibleColumns.name === false ? 'display:none;' : ''}">
+                <strong>${m.name || 'Unknown'}</strong>
+                ${hasRetake ? `
+                    <span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 700;">
+                        ⭐ R${retakeCount}
+                    </span>
+                ` : ''}
+                ${retakeScore !== null && retakeScore !== undefined ? `
+                    <span style="display: inline-block; margin-left: 4px; font-size: 10px; color: ${isRetakePassing ? '#059669' : '#dc2626'};">
+                        (Retake: ${retakeScore}%)
+                    </span>
+                ` : ''}
+            </td>
             ${visibleColumns.cat1 !== false ? `<td style="padding: 8px; text-align: center;">
                 <input type="number" id="me_cat1_${i}" value="${cat1}" min="0" max="30" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
@@ -1042,13 +1276,34 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             ${visibleColumns.exam !== false ? `<td style="padding: 8px; text-align: center;">
                 <input type="number" id="me_exam_${i}" value="${exam}" min="0" max="${assessmentType === 'exam_only' ? 100 : 70}" step="0.5" style="width: 60px; padding: 6px; border-radius: 6px; border: 1px solid #e2e8f0; text-align: center;" onchange="updateMarksEntryRow(${i})">
             </td>` : ''}
-            ${visibleColumns.total !== false ? `<td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${total >= 60 ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>` : ''}
+            ${visibleColumns.total !== false ? `<td id="me_total_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; ${isPassing ? 'color: #065f46;' : (total > 0 ? 'color: #991b1b;' : 'color: #f59e0b;')}">${displayTotal}</td>` : ''}
             ${visibleColumns.grade !== false ? `<td id="me_grade_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 16px; color: ${gradeInfo.color};">${displayGrade}</td>` : ''}
             ${visibleColumns.rating !== false ? `<td id="me_points_${i}" style="padding: 8px 6px; text-align: center; font-weight: bold; font-size: 15px; color: ${gradeInfo.color};">${displayPoints}</td>` : ''}
-            ${visibleColumns.approval !== false ? `<td style="padding: 8px 6px; text-align: center;">
-                ${total > 0 ? `<span style="background: ${total >= 60 ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${total >= 60 ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
-                <br><span style="font-size: 10px;">${approvalBadge}</span>
-            </td>` : ''}
+            <td style="padding: 8px 6px; text-align: center;">
+                ${hasRetake ? `
+                    <div style="font-size: 10px;">
+                        <span style="color: ${isRetakePassing ? '#059669' : '#dc2626'}; font-weight: 600;">
+                            ${isRetakePassing ? '✅ Passed' : '❌ Failed'}
+                        </span>
+                        <div style="font-size: 8px; color: #94a3b8;">${retakeCount} attempt(s)</div>
+                    </div>
+                ` : ''}
+                ${needsRetake ? `
+                    <button onclick="openLecturerRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                            style="background: #f59e0b; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 600;">
+                        <i class="fas fa-sync-alt"></i> Retake
+                    </button>
+                ` : ''}
+                ${maxRetakesReached ? `
+                    <span style="color: #dc2626; font-size: 9px; font-weight: 600; display: block;">
+                        ⛔ Max retakes
+                    </span>
+                ` : ''}
+                ${isPassing && !hasRetake ? `
+                    <span style="color: #059669; font-size: 11px;">✅ Passed</span>
+                ` : ''}
+            </td>
+            ${visibleColumns.approval !== false ? `<td style="padding: 8px 6px; text-align: center; font-size: 10px;">${approvalBadge}</td>` : ''}
         </tr>`;
     });
     
@@ -1056,6 +1311,22 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
                 </tbody>
             </table>
         </div>
+        
+        <!-- Retake Summary -->
+        ${marks.filter(m => m.hasRetake).length > 0 ? `
+        <div style="margin-top: 16px; padding: 12px 16px; background: #fffbeb; border-radius: 8px; border: 1px solid #f59e0b;">
+            <p style="margin: 0; font-size: 13px; color: #92400e;">
+                <i class="fas fa-star" style="color: #f59e0b;"></i>
+                <strong>Retake Summary:</strong> 
+                ${marks.filter(m => m.hasRetake && m.retakeStatus === 'PASS').length} students passed after retake, 
+                ${marks.filter(m => m.hasRetake && m.retakeStatus === 'FAIL').length} still failing after retake
+                <span style="display: inline-block; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 12px; font-size: 11px;">
+                    ⭐ Total retakes: ${marks.reduce((sum, m) => sum + (m.retakeCount || 0), 0)}
+                </span>
+            </p>
+        </div>
+        ` : ''}
+        
         <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:16px;">
             <button onclick="saveMarksEntry()" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-save"></i> 💾 Save All Marks
@@ -1073,10 +1344,15 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
     `;
     
     container.innerHTML = html;
+    
+    // Create retake modal if it doesn't exist
+    if (!document.getElementById('lecturerRetakeModal')) {
+        createLecturerRetakeModal();
+    }
 }
 
 // ============================================================
-// UTILITY FUNCTIONS
+// UPDATE MARKS ROW
 // ============================================================
 
 function updateMarksEntryRow(index) {
@@ -1087,11 +1363,12 @@ function updateMarksEntryRow(index) {
     
     const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
     const gradeInfo = getMarksEntryGrade(total);
+    const isPassing = total >= 60;
     
     const totalEl = document.getElementById(`me_total_${index}`);
     if (totalEl) {
         totalEl.textContent = total > 0 ? total : '--';
-        totalEl.style.color = total >= 60 ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
+        totalEl.style.color = isPassing ? '#065f46' : (total > 0 ? '#991b1b' : '#f59e0b');
     }
     
     const gradeEl = document.getElementById(`me_grade_${index}`);
@@ -1113,31 +1390,8 @@ function updateMarksEntryRow(index) {
     }
 }
 
-function calculateMarksEntryTotal(cat1, cat2, exam, type) {
-    let total = 0;
-    if (type === 'full') {
-        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-    } else if (type === 'single_cat') {
-        total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-    } else if (type === 'exam_only') {
-        total = Math.round(Math.min(exam,100) * 10) / 10;
-    } else if (type === 'cats_only') {
-        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
-    } else if (type === 'cat_only') {
-        total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
-    }
-    return total;
-}
-
-function getMarksEntryGrade(score) {
-    if (score >= 75) return { grade: 'A', rating: 'Distinction', points: 4.0, color: '#065f46' };
-    else if (score >= 65) return { grade: 'B', rating: 'Credit', points: 3.0, color: '#1e40af' };
-    else if (score >= 60) return { grade: 'C', rating: 'Pass', points: 2.0, color: '#92400e' };
-    else return { grade: 'D', rating: 'Fail', points: 0.0, color: '#991b1b' };
-}
-
 // ============================================================
-// UPDATE MARKS ENTRY STATS - SHOW ALL ENROLLED STUDENTS
+// UPDATE MARKS ENTRY STATS
 // ============================================================
 
 function updateMarksEntryStats(marks, assessmentType) {
@@ -1146,14 +1400,12 @@ function updateMarksEntryStats(marks, assessmentType) {
     
     console.log('📊 Updating stats for', marks.length, 'marks');
     
-    // Count statuses
     const totalEnrolled = marks.length;
     const pendingCount = marks.filter(m => m.approval_status === 'pending').length;
     const approvedCount = marks.filter(m => m.approval_status === 'approved').length;
     const draftCount = marks.filter(m => m.approval_status === 'draft' || !m.approval_status).length;
     const rejectedCount = marks.filter(m => m.approval_status === 'rejected').length;
     
-    // Calculate scores
     let totalScore = 0;
     let withScores = 0;
     marks.forEach(m => {
@@ -1165,19 +1417,16 @@ function updateMarksEntryStats(marks, assessmentType) {
     });
     const avg = withScores > 0 ? Math.round(totalScore / withScores) : 0;
     
-    // Count passing
     const passing = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1 || 0, m.cat2 || 0, m.exam || 0, assessmentType);
         return total >= 60;
     }).length;
     
-    // Count at risk
     const atRisk = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1 || 0, m.cat2 || 0, m.exam || 0, assessmentType);
         return total > 0 && total < 60;
     }).length;
     
-    // Update ALL stats elements
     const statsMap = {
         'lecTotalStudents': totalEnrolled,
         'lecPendingApproval': pendingCount,
@@ -1205,12 +1454,10 @@ function updateMarksEntryStats(marks, assessmentType) {
         }
     }
     
-    // Also update the approval status banner
     if (typeof checkMarksApprovalStatus === 'function') {
         checkMarksApprovalStatus(marks);
     }
     
-    // Store for debugging
     window.currentMarks = marks;
     window.currentStats = {
         totalEnrolled,
@@ -1228,7 +1475,7 @@ function updateMarksEntryStats(marks, assessmentType) {
 }
 
 // ============================================================
-// CHECK MARKS APPROVAL STATUS - FOR LECTURER VIEW
+// CHECK MARKS APPROVAL STATUS
 // ============================================================
 
 function checkMarksApprovalStatus(marks) {
@@ -1246,7 +1493,6 @@ function checkMarksApprovalStatus(marks) {
     
     console.log(`📊 Approval Status: Draft: ${draftCount}, Pending: ${pendingCount}, Approved: ${approvedCount}, Rejected: ${rejectedCount}`);
     
-    // Update UI elements if they exist
     const banner = document.getElementById('approvalStatusBanner');
     const statusText = document.getElementById('approvalStatusText');
     const statusBadge = document.getElementById('approvalStatusBadge');
@@ -1256,12 +1502,10 @@ function checkMarksApprovalStatus(marks) {
     const rejectionReason = document.getElementById('rejectionReason');
     
     if (!banner) {
-        // Create banner if it doesn't exist
         createApprovalStatusBanner();
         return;
     }
     
-    // Show banner if there are any marks
     if (marks.length > 0) {
         banner.style.display = 'block';
     } else {
@@ -1332,7 +1576,7 @@ function checkMarksApprovalStatus(marks) {
 }
 
 // ============================================================
-// CREATE APPROVAL STATUS BANNER (if missing)
+// CREATE APPROVAL STATUS BANNER
 // ============================================================
 
 function createApprovalStatusBanner() {
@@ -1376,13 +1620,12 @@ function createApprovalStatusBanner() {
         </div>
     `;
     
-    // Insert at the top of the container
     container.parentNode.insertBefore(banner, container);
     console.log('✅ Approval status banner created');
 }
 
 // ============================================================
-// SAVE MARKS ENTRY - WITH PROPER APPROVAL STATUS HANDLING
+// SAVE MARKS ENTRY
 // ============================================================
 
 async function saveMarksEntry() {
@@ -1392,13 +1635,11 @@ async function saveMarksEntry() {
     const year = me_currentYear;
     const assessmentType = me_currentAssessmentType || 'full';
     
-    // Validate required fields
     if (!block || !unit) {
         showNotification('❌ Please select a block and unit first', 'error');
         return;
     }
     
-    // Verify lecturer is assigned to this unit
     const isAssigned = me_assignedUnits.some(u => 
         u.subject_name === unit || u.subject_code === unit
     );
@@ -1408,7 +1649,6 @@ async function saveMarksEntry() {
         return;
     }
     
-    // Collect marks from table
     const marksData = [];
     const rows = document.querySelectorAll('#me_marks_container table tbody tr');
     
@@ -1447,10 +1687,8 @@ async function saveMarksEntry() {
         return;
     }
     
-    // Count how many students have scores
     const studentsWithScores = marksData.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     
-    // Confirm before saving
     let confirmMessage = `💾 Save marks for ${marksData.length} students in "${unit}"?`;
     if (studentsWithScores.length === 0) {
         confirmMessage = `⚠️ No scores entered yet. Save empty marks for ${marksData.length} students?`;
@@ -1460,9 +1698,6 @@ async function saveMarksEntry() {
         return;
     }
     
-    // ============================================================
-    // SHOW LOADING SCREEN WITH PERCENTAGE
-    // ============================================================
     showLoadingScreen(`Saving ${marksData.length} marks...`, '💾 Saving Marks');
     updateLoadingProgress(5, 1, 'Preparing data...');
     
@@ -1478,7 +1713,6 @@ async function saveMarksEntry() {
     const totalStudents = marksData.length;
     
     try {
-        // Bulk fetch existing marks
         updateLoadingProgress(10, 1, 'Fetching existing marks...');
         
         const admissions = marksData.map(m => m.admission);
@@ -1525,7 +1759,6 @@ async function saveMarksEntry() {
                 const oldExam = parseFloat(existing.exam_score) || 0;
                 const oldTotal = parseFloat(existing.final_score) || 0;
                 
-                // ✅ Check if ANY value changed
                 const hasChanges = (
                     Math.abs(oldCat1 - mark.cat1) > 0.01 ||
                     Math.abs(oldCat2 - mark.cat2) > 0.01 ||
@@ -1533,11 +1766,9 @@ async function saveMarksEntry() {
                     oldTotal !== total
                 );
                 
-                // Debug log
                 console.log(`📝 ${mark.admission}: Old status: ${existing.approval_status}, New status: ${newApprovalStatus}, Has changes: ${hasChanges}`);
                 
                 if (hasChanges) {
-                    // ✅ If it was approved, reset to draft
                     if (existing.approval_status === 'approved') {
                         newApprovalStatus = 'draft';
                         statusChanged = true;
@@ -1551,9 +1782,7 @@ async function saveMarksEntry() {
                             reason: 'Mark edited'
                         });
                         console.log(`🔄 Reset ${mark.admission} from APPROVED to DRAFT (edited)`);
-                    }
-                    // ✅ If it was pending, reset to draft
-                    else if (existing.approval_status === 'pending') {
+                    } else if (existing.approval_status === 'pending') {
                         newApprovalStatus = 'draft';
                         statusChanged = true;
                         resetReason = '⏳ Pending → Draft (edited)';
@@ -1566,23 +1795,18 @@ async function saveMarksEntry() {
                             reason: 'Mark edited'
                         });
                         console.log(`🔄 Reset ${mark.admission} from PENDING to DRAFT (edited)`);
-                    }
-                    // ✅ If it was rejected or draft, keep as draft
-                    else {
+                    } else {
                         newApprovalStatus = 'draft';
                         draftKept++;
                     }
                 } else {
-                    // No changes, keep existing status
                     newApprovalStatus = existing.approval_status;
                     draftKept++;
                 }
             } else {
-                // New record, default to draft
                 newApprovalStatus = 'draft';
             }
             
-            // Build update/insert data
             const markData = {
                 student_name: mark.name || 'Unknown',
                 assessment_type: assessmentType,
@@ -1624,10 +1848,8 @@ async function saveMarksEntry() {
             }
         }
         
-        // Execute bulk operations
         updateLoadingProgress(80, 3, 'Saving to database...');
         
-        // Bulk update
         if (updates.length > 0) {
             const batchSize = 50;
             for (let i = 0; i < updates.length; i += batchSize) {
@@ -1640,7 +1862,6 @@ async function saveMarksEntry() {
                 );
                 const results = await Promise.all(promises);
                 
-                // Count successes
                 results.forEach(result => {
                     if (!result.error) updated++;
                     else errors++;
@@ -1651,7 +1872,6 @@ async function saveMarksEntry() {
             }
         }
         
-        // Bulk insert
         if (inserts.length > 0) {
             const batchSize = 50;
             for (let i = 0; i < inserts.length; i += batchSize) {
@@ -1672,12 +1892,10 @@ async function saveMarksEntry() {
             }
         }
         
-        // Log reset actions (if any)
         if (resetStudents.length > 0) {
             updateLoadingProgress(95, 4, 'Logging status changes...');
             
             try {
-                // Log to mark_approval_logs
                 const logs = resetStudents.map(s => ({
                     block: block,
                     subject: unit,
@@ -1706,17 +1924,11 @@ async function saveMarksEntry() {
             }
         }
         
-        // Complete
         updateLoadingProgress(100, 4, '✅ Complete!');
         await new Promise(resolve => setTimeout(resolve, 500));
         hideLoadingScreen();
         
-        // ============================================================
-        // SHOW RESULTS
-        // ============================================================
         let message = '';
-        
-        // Build detailed result message
         const parts = [];
         if (saved > 0) parts.push(`${saved} new`);
         if (updated > 0) parts.push(`${updated} updated`);
@@ -1734,20 +1946,13 @@ async function saveMarksEntry() {
             showNotification(message, 'error');
         }
         
-        // ⭐ If any marks were reset from approved/pending to draft
         if (approvedResetToDraft > 0 || pendingResetToDraft > 0) {
             const resetMsg = `🔄 ${approvedResetToDraft + pendingResetToDraft} marks were reset to DRAFT because they were edited. Please review and re-submit.`;
             showNotification(resetMsg, 'warning');
             console.log(resetMsg);
         }
         
-        // ============================================================
-        // ⭐ ASK TO SUBMIT FOR APPROVAL ⭐
-        // ============================================================
-        
-        // Check if there are any draft marks to submit (including newly created ones)
         if (saved > 0 || updated > 0 || approvedResetToDraft > 0 || pendingResetToDraft > 0) {
-            // Check if there are draft marks
             const { data: draftCheck } = await sb
                 .from('student_marks')
                 .select('id')
@@ -1760,17 +1965,14 @@ async function saveMarksEntry() {
                 const draftCount = draftCheck.length;
                 const studentsWithScoresCount = marksData.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0).length;
                 
-                // Only ask if there are students with scores
                 if (studentsWithScoresCount > 0) {
                     const submitMessage = `📤 ${draftCount} marks are ready for approval.\n\nWould you like to submit them for admin approval now?`;
                     
                     if (confirm(submitMessage)) {
-                        // ✅ User wants to submit
                         showLoadingScreen(`Submitting ${draftCount} marks...`, '📤 Submitting for Approval');
                         updateLoadingProgress(10, 1, 'Preparing submission...');
                         
                         try {
-                            // Get IDs of draft/rejected marks
                             const { data: submitMarks } = await sb
                                 .from('student_marks')
                                 .select('id')
@@ -1807,7 +2009,6 @@ async function saveMarksEntry() {
                                     }
                                 }
                                 
-                                // Log the submission
                                 if (submitted > 0) {
                                     updateLoadingProgress(95, 3, 'Logging submission...');
                                     try {
@@ -1847,14 +2048,12 @@ async function saveMarksEntry() {
                             console.error('Submit error:', submitError);
                         }
                     } else {
-                        // User declined submission
                         showNotification('💾 Marks saved as DRAFT. Submit later using the "Submit" button.', 'info');
                     }
                 }
             }
         }
         
-        // Reload marks
         setTimeout(() => loadMarksEntry(), 500);
         
     } catch (error) {
@@ -1865,7 +2064,7 @@ async function saveMarksEntry() {
 }
 
 // ============================================================
-// SUBMIT MARKS FOR APPROVAL - WITH LOADING SCREEN
+// SUBMIT MARKS FOR APPROVAL
 // ============================================================
 
 async function submitMarksForApproval() {
@@ -1878,12 +2077,10 @@ async function submitMarksForApproval() {
         return;
     }
     
-    // Show loading screen
     showLoadingScreen('Checking marks...', '📤 Submit for Approval');
     updateLoadingProgress(10, 1, 'Checking marks status...');
     
     try {
-        // Get marks for this unit
         const { data: marks, error } = await sb
             .from('student_marks')
             .select('id, approval_status, final_score, admission_number, student_name')
@@ -1899,7 +2096,6 @@ async function submitMarksForApproval() {
             return;
         }
         
-        // Check if any marks have scores
         const hasScores = marks.some(m => m.final_score !== null && m.final_score > 0);
         if (!hasScores) {
             hideLoadingScreen();
@@ -1907,14 +2103,12 @@ async function submitMarksForApproval() {
             return;
         }
         
-        // Count marks by status
         const draftMarks = marks.filter(m => m.approval_status === 'draft' || m.approval_status === 'rejected');
         const pendingMarks = marks.filter(m => m.approval_status === 'pending');
         const approvedMarks = marks.filter(m => m.approval_status === 'approved');
         
         updateLoadingProgress(30, 2, `Found ${draftMarks.length} marks ready for submission...`);
         
-        // Check if there are any draft/rejected marks to submit
         if (draftMarks.length === 0) {
             hideLoadingScreen();
             if (approvedMarks.length === marks.length) {
@@ -1927,7 +2121,6 @@ async function submitMarksForApproval() {
             return;
         }
         
-        // Show summary before submission
         const summary = [
             `📊 ${draftMarks.length} marks ready for submission`,
             approvedMarks.length > 0 ? `✅ ${approvedMarks.length} already approved (will not be resubmitted)` : null,
@@ -1940,14 +2133,10 @@ async function submitMarksForApproval() {
             return;
         }
         
-        // Show loading for submission
         showLoadingScreen(`Submitting ${draftMarks.length} marks...`, '📤 Submitting for Approval');
         updateLoadingProgress(40, 2, 'Preparing submission...');
         
-        // Get the IDs of marks to submit
         const markIds = draftMarks.map(m => m.id);
-        
-        // Update in batches
         const batchSize = 50;
         let submitted = 0;
         let errors = 0;
@@ -1975,7 +2164,6 @@ async function submitMarksForApproval() {
             }
         }
         
-        // Log the submission
         if (submitted > 0) {
             updateLoadingProgress(95, 4, 'Logging submission...');
             
@@ -1998,12 +2186,10 @@ async function submitMarksForApproval() {
             }
         }
         
-        // Complete
         updateLoadingProgress(100, 4, '✅ Complete!');
         await new Promise(resolve => setTimeout(resolve, 500));
         hideLoadingScreen();
         
-        // Show results
         if (errors > 0 && submitted > 0) {
             showNotification(`⚠️ ${submitted} marks submitted, ${errors} errors`, 'warning');
         } else if (submitted > 0) {
@@ -2012,7 +2198,6 @@ async function submitMarksForApproval() {
             showNotification('❌ Failed to submit marks', 'error');
         }
         
-        // Refresh
         setTimeout(() => loadMarksEntry(), 500);
         
     } catch (error) {
@@ -2023,7 +2208,7 @@ async function submitMarksForApproval() {
 }
 
 // ============================================================
-// WITHDRAW MARKS FROM APPROVAL - WITH LOADING SCREEN
+// WITHDRAW MARKS FROM APPROVAL
 // ============================================================
 
 async function withdrawMarksFromApproval() {
@@ -2040,7 +2225,6 @@ async function withdrawMarksFromApproval() {
     updateLoadingProgress(20, 1, 'Checking pending marks...');
     
     try {
-        // Get pending marks
         const { data: pendingMarks, error } = await sb
             .from('student_marks')
             .select('id, admission_number, student_name')
@@ -2058,7 +2242,6 @@ async function withdrawMarksFromApproval() {
             return;
         }
         
-        // Show list of students
         const studentList = pendingMarks.map(m => `  • ${m.student_name} (${m.admission_number})`).join('\n');
         
         if (!confirm(`⏪ Withdraw ${pendingMarks.length} pending marks from approval?\n\nStudents:\n${studentList}\n\nThey will go back to DRAFT status.`)) {
@@ -2068,7 +2251,6 @@ async function withdrawMarksFromApproval() {
         showLoadingScreen(`Withdrawing ${pendingMarks.length} marks...`, '⏪ Withdrawing');
         updateLoadingProgress(30, 2, 'Processing withdrawal...');
         
-        // Withdraw in batches
         const batchSize = 50;
         const ids = pendingMarks.map(m => m.id);
         let withdrawn = 0;
@@ -2097,7 +2279,6 @@ async function withdrawMarksFromApproval() {
             }
         }
         
-        // Complete
         updateLoadingProgress(100, 4, '✅ Complete!');
         await new Promise(resolve => setTimeout(resolve, 500));
         hideLoadingScreen();
@@ -2131,7 +2312,8 @@ function exportMarksEntry() {
     }
     
     const assessmentType = me_currentAssessmentType || 'full';
-    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating', 'Approval Status'];
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating', 
+                     'Has Retake', 'Retake Count', 'Retake Score', 'Retake Grade', 'Retake Status', 'Approval Status'];
     const rows = marks.map(m => {
         const cat1 = m.cat1 || 0;
         const cat2 = m.cat2 || 0;
@@ -2148,6 +2330,11 @@ function exportMarksEntry() {
             total > 0 ? gradeInfo.grade : '',
             total > 0 ? gradeInfo.points : '',
             total > 0 ? gradeInfo.rating : '',
+            m.hasRetake ? 'Yes' : 'No',
+            m.retakeCount || 0,
+            m.retakeScore || '',
+            m.retakeGrade || '',
+            m.retakeStatus || '',
             m.approval_status || 'draft'
         ];
     });
@@ -2172,6 +2359,50 @@ function downloadCSV(csv, filename) {
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
 }
+
+// ============================================================
+// UPDATE DISPLAY FUNCTIONS
+// ============================================================
+
+function updateAssessmentTypeDisplay(type) {
+    const displayEl = document.getElementById('me_assessment_type_display');
+    if (displayEl) {
+        const labels = {
+            'full': 'Full (CAT1+CAT2+Exam)',
+            'single_cat': 'Single CAT (CAT+Exam)',
+            'exam_only': 'Exam Only',
+            'cats_only': 'CATs Only (No Exam)',
+            'cat_only': 'CAT Only'
+        };
+        displayEl.textContent = labels[type] || type;
+    }
+}
+
+function updateVisibleColumnsInfo(visibleColumns) {
+    const columnsEl = document.getElementById('lecturerVisibleColumns');
+    if (!columnsEl) return;
+    
+    const columnLabels = {
+        'sno': '#',
+        'admission': 'Admission',
+        'name': 'Name',
+        'cat1': 'CAT1',
+        'cat2': 'CAT2',
+        'exam': 'Exam',
+        'total': 'Total',
+        'grade': 'Grade',
+        'points': 'Points',
+        'rating': 'Rating',
+        'approval': 'Approval'
+    };
+    
+    const visible = Object.keys(columnLabels)
+        .filter(key => visibleColumns[key] !== false)
+        .map(key => columnLabels[key]);
+    
+    columnsEl.textContent = visible.length ? visible.join(', ') : 'No columns visible';
+}
+
 // ============================================================
 // LOAD LECTURER MARKS ENTRY - Wrapper for onclick
 // ============================================================
@@ -2180,916 +2411,18 @@ function loadLecturerMarksEntry() {
     console.log('📊 loadLecturerMarksEntry called - loading marks...');
     loadMarksEntry();
 }
-// ============================================================
-// LECTURER MARKS CLASS
-// ============================================================
-
-const LecturerMarks = {
-    students: [],
-    marks: [],
-    nckMarks: [],
-    
-    async init() {
-        console.log('📊 Initializing Lecturer Marks...');
-        showLoadingScreen('Starting lecturer marks module...', 'NCHSM Lecturer Portal');
-        updateLoadingProgress(5, 1, 'Initializing...');
-        
-        try {
-            await this.loadMarksManagement();
-            this.setupEventListeners();
-            await detectLecturerProgram();
-            console.log('✅ Lecturer Marks initialized');
-            hideLoadingScreen();
-        } catch (error) {
-            console.error('❌ Error initializing:', error);
-            hideLoadingScreen();
-            showNotification('Error initializing: ' + error.message, 'error');
-        }
-    },
-    
-    async loadMarksManagement() {
-        const blockSelect = document.getElementById('lecBlockSelect');
-        if (!blockSelect) return;
-        
-        await this.loadStudents();
-        await this.loadUnits();
-        await this.loadInternalMarks();
-        await this.loadNCKMarks();
-        this.updateStats();
-    },
-    
-    async loadStudents() {
-        try {
-            const profile = me_currentLecturer?.profile;
-            const program = profile?.program || profile?.department;
-            
-            if (!program) {
-                console.warn('No program found');
-                return;
-            }
-            
-            const { data, error } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('*')
-                .eq('role', 'student')
-                .eq('program', program)
-                .order('full_name', { ascending: true });
-            
-            if (error) throw error;
-            
-            this.students = data || [];
-            const totalEl = document.getElementById('lecTotalStudents');
-            if (totalEl) totalEl.textContent = this.students.length;
-            
-        } catch (error) {
-            console.error('Failed to load students:', error);
-        }
-    },
-    
-    async loadUnits() {
-        const block = document.getElementById('lecBlockSelect')?.value;
-        const unitSelect = document.getElementById('lecSubjectSelect');
-        if (!unitSelect) return;
-        
-        if (!block) {
-            unitSelect.innerHTML = '<option value="">-- Select Block First --</option>';
-            return;
-        }
-        
-        try {
-            const { data, error } = await sb
-                .from('units_catalog')
-                .select('*')
-                .eq('block', block)
-                .eq('status', 'active')
-                .order('unit_name', { ascending: true });
-            
-            if (error) throw error;
-            
-            if (!data || !data.length) {
-                unitSelect.innerHTML = '<option value="">No units found</option>';
-                return;
-            }
-            
-            const lecturerId = me_currentLecturer?.staff?.id || me_currentLecturer?.profile?.id;
-            let assignedUnitNames = [];
-            
-            if (lecturerId) {
-                const { data: assignments, error: assignError } = await sb
-                    .from('lecturer_subject_assignments')
-                    .select('subject_name')
-                    .eq('lecturer_id', String(lecturerId))
-                    .eq('block', block);
-                
-                if (!assignError && assignments) {
-                    assignedUnitNames = assignments.map(a => a.subject_name);
-                }
-            }
-            
-            if (me_currentLecturer?.staff?.assigned_units) {
-                const staffUnits = me_currentLecturer.staff.assigned_units || [];
-                if (Array.isArray(staffUnits)) {
-                    staffUnits.forEach(u => {
-                        if (!assignedUnitNames.includes(u)) {
-                            assignedUnitNames.push(u);
-                        }
-                    });
-                }
-            }
-            
-            let filteredUnits = data;
-            if (assignedUnitNames.length > 0) {
-                filteredUnits = data.filter(u => 
-                    assignedUnitNames.includes(u.unit_name) ||
-                    assignedUnitNames.includes(u.unit_code)
-                );
-                console.log(`📊 Showing ${filteredUnits.length} assigned units out of ${data.length} total`);
-            }
-            
-            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>';
-            filteredUnits.forEach(u => {
-                const option = document.createElement('option');
-                option.value = u.unit_name;
-                option.dataset.assessment = u.assessment_type || 'full';
-                option.dataset.code = u.unit_code || '';
-                const isAssigned = assignedUnitNames.includes(u.unit_name) || 
-                                  assignedUnitNames.includes(u.unit_code);
-                option.textContent = `${u.unit_code || ''} - ${u.unit_name}${isAssigned ? ' 📌' : ''}`;
-                unitSelect.appendChild(option);
-            });
-            
-            if (filteredUnits.length === 0) {
-                unitSelect.innerHTML = '<option value="">-- No units assigned to you --</option>';
-                showNotification('📚 No units assigned to you in this block', 'warning');
-            }
-            
-            const countEl = document.getElementById('lecturerUnitCount');
-            if (countEl) countEl.textContent = filteredUnits.length;
-            
-        } catch (error) {
-            console.error('Error loading units:', error);
-            unitSelect.innerHTML = '<option value="">Error loading units</option>';
-        }
-    },
-    
-    async loadInternalMarks() {
-        const block = document.getElementById('lecBlockSelect')?.value;
-        const unit = document.getElementById('lecSubjectSelect')?.value;
-        const container = document.getElementById('lecInternalContainer');
-        if (!container) return;
-        
-        if (!block || !unit) {
-            container.innerHTML = '<div class="text-center" style="padding:40px;">Select a block and unit</div>';
-            return;
-        }
-        
-        container.innerHTML = '<div class="text-center" style="padding:40px;"><div class="loading-spinner"></div><p>Loading marks...</p></div>';
-        
-        try {
-            await this.loadAdminColumnSettings(block, unit);
-            
-            const students = this.students.filter(s => s.block === block);
-            
-            if (!students.length) {
-                container.innerHTML = '<div class="text-center" style="padding:40px;">No students found in this block</div>';
-                return;
-            }
-            
-            const { data: existing, error } = await sb
-                .from('student_marks')
-                .select('*')
-                .eq('block', block)
-                .eq('subject_name', unit);
-            
-            if (error) throw error;
-            
-            const marksMap = {};
-            existing?.forEach(m => { marksMap[m.admission_number] = m; });
-            
-            const assessmentType = me_currentAssessmentType || 'full';
-            const visibleColumns = this.getVisibleColumns();
-            
-            let html = `<div class="table-responsive"><table class="data-table" style="width:100%;border-collapse:collapse;">
-                <thead><tr style="background:#4C1D95;color:white;">
-                    <th style="padding:10px;" ${visibleColumns.sno === false ? 'style="display:none;"' : ''}>#</th>
-                    <th style="padding:10px;" ${visibleColumns.admission === false ? 'style="display:none;"' : ''}>Admission</th>
-                    <th style="padding:10px;" ${visibleColumns.name === false ? 'style="display:none;"' : ''}>Student Name</th>
-                    ${visibleColumns.cat1 !== false ? '<th style="padding:10px;">CAT1 (0-30)</th>' : ''}
-                    ${visibleColumns.cat2 !== false ? '<th style="padding:10px;">CAT2 (0-30)</th>' : ''}
-                    ${visibleColumns.exam !== false ? '<th style="padding:10px;">Exam (0-70)</th>' : ''}
-                    ${visibleColumns.total !== false ? '<th style="padding:10px;">Total</th>' : ''}
-                    ${visibleColumns.grade !== false ? '<th style="padding:10px;">Grade</th>' : ''}
-                    ${visibleColumns.rating !== false ? '<th style="padding:10px;">Status</th>' : ''}
-                    ${visibleColumns.approval !== false ? '<th style="padding:10px;">Approval</th>' : ''}
-                </tr></thead><tbody>`;
-            
-            for (let i = 0; i < students.length; i++) {
-                const s = students[i];
-                const m = marksMap[s.student_id] || {};
-                const cat1 = m.cat1_score !== undefined && m.cat1_score !== null ? m.cat1_score : '';
-                const cat2 = m.cat2_score !== undefined && m.cat2_score !== null ? m.cat2_score : '';
-                const exam = m.exam_score !== undefined && m.exam_score !== null ? m.exam_score : '';
-                const approvalStatus = m.approval_status || 'draft';
-                
-                let total = 0, grade = '-', status = 'PENDING', color = '#f59e0b';
-                if (cat1 !== '' || cat2 !== '' || exam !== '') {
-                    const ncat1 = Math.min(parseFloat(cat1) || 0, 30);
-                    const ncat2 = Math.min(parseFloat(cat2) || 0, 30);
-                    const nexam = Math.min(parseFloat(exam) || 0, 70);
-                    
-                    if (assessmentType === 'full') {
-                        total = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
-                    } else if (assessmentType === 'single_cat') {
-                        total = Math.round((ncat1 + nexam) * 10) / 10;
-                    } else {
-                        total = Math.round((((ncat1 + ncat2) / 60 * 30) + nexam) * 10) / 10;
-                    }
-                    
-                    const gradeInfo = getMarksEntryGrade(total);
-                    grade = gradeInfo.grade;
-                    status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : 'PENDING');
-                    color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
-                }
-                
-                const approvalBadge = {
-                    'pending': '<span style="background:#fef3c7;color:#92400e;padding:2px 10px;border-radius:12px;font-size:11px;">⏳ Pending</span>',
-                    'approved': '<span style="background:#d1fae5;color:#065f46;padding:2px 10px;border-radius:12px;font-size:11px;">✅ Approved</span>',
-                    'rejected': '<span style="background:#fee2e2;color:#991b1b;padding:2px 10px;border-radius:12px;font-size:11px;">❌ Rejected</span>',
-                    'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>'
-                }[approvalStatus] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>';
-                
-                html += `<tr>
-                    <td ${visibleColumns.sno === false ? 'style="display:none;"' : ''}>${i + 1}</td>
-                    <td ${visibleColumns.admission === false ? 'style="display:none;"' : ''}>${s.student_id || 'N/A'}</td>
-                    <td ${visibleColumns.name === false ? 'style="display:none;"' : ''}><strong>${s.full_name || 'N/A'}</strong></td>
-                    ${visibleColumns.cat1 !== false ? `<td><input type="number" class="internal-cat1" data-student="${s.student_id}" value="${cat1}" min="0" max="30" step="0.5" style="width:65px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>` : ''}
-                    ${visibleColumns.cat2 !== false ? `<td><input type="number" class="internal-cat2" data-student="${s.student_id}" value="${cat2}" min="0" max="30" step="0.5" style="width:65px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>` : ''}
-                    ${visibleColumns.exam !== false ? `<td><input type="number" class="internal-exam" data-student="${s.student_id}" value="${exam}" min="0" max="70" step="0.5" style="width:65px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>` : ''}
-                    ${visibleColumns.total !== false ? `<td id="lecTotal_${s.student_id}" style="font-weight:bold;color:${color};">${total || '-'}</td>` : ''}
-                    ${visibleColumns.grade !== false ? `<td id="lecGrade_${s.student_id}" style="font-weight:bold;color:${color};">${grade}</td>` : ''}
-                    ${visibleColumns.rating !== false ? `<td id="lecStatus_${s.student_id}" style="color:${color};">${status}</td>` : ''}
-                    ${visibleColumns.approval !== false ? `<td>${approvalBadge}</td>` : ''}
-                </tr>`;
-            }
-            
-            html += `</tbody></table></div>
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:20px;">
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <button class="btn btn-action" id="saveInternalMarksBtn" style="background:#059669;padding:8px 20px;border:none;border-radius:6px;color:white;cursor:pointer;font-weight:600;">
-                            <i class="fas fa-save"></i> Save All Marks
-                        </button>
-                        <button class="btn btn-action" id="fillDownInternalBtn" style="background:#3b82f6;padding:8px 20px;border:none;border-radius:6px;color:white;cursor:pointer;font-weight:600;">
-                            <i class="fas fa-arrow-down"></i> Fill Down
-                        </button>
-                        <button class="btn btn-action" id="submitForApprovalBtn" style="background:#4C1D95;padding:8px 20px;border:none;border-radius:6px;color:white;cursor:pointer;font-weight:600;">
-                            <i class="fas fa-paper-plane"></i> Submit for Approval
-                        </button>
-                    </div>
-                    <div style="font-size:13px;color:#64748b;">
-                        <i class="fas fa-info-circle"></i> Total: ${students.length} students
-                        <span style="margin-left:12px;background:#f3f4f6;padding:2px 12px;border-radius:12px;font-size:11px;">
-                            📋 ${assessmentType.replace('_', ' ').toUpperCase()}
-                        </span>
-                    </div>
-                </div>`;
-            
-            container.innerHTML = html;
-            
-            this.updateAssessmentTypeDisplay(assessmentType);
-            this.updateVisibleColumnsInfo(visibleColumns);
-            
-            document.querySelectorAll('.internal-cat1, .internal-cat2, .internal-exam').forEach(input => {
-                input.addEventListener('change', function() {
-                    const studentId = this.dataset.student;
-                    LecturerMarks.updateInternalTotal(studentId);
-                });
-                input.addEventListener('input', function() {
-                    const studentId = this.dataset.student;
-                    LecturerMarks.updateInternalTotal(studentId);
-                });
-            });
-            
-            document.getElementById('saveInternalMarksBtn')?.addEventListener('click', () => this.saveInternalMarks());
-            document.getElementById('fillDownInternalBtn')?.addEventListener('click', () => this.fillDownInternal());
-            document.getElementById('submitForApprovalBtn')?.addEventListener('click', () => submitMarksForApproval());
-            
-        } catch (error) {
-            console.error('Error loading marks:', error);
-            container.innerHTML = `<div class="alert alert-danger" style="padding:20px;background:#fee2e2;border-radius:8px;color:#991b1b;">Error: ${error.message}</div>`;
-        }
-    },
-    
-    async loadAdminColumnSettings(block, unit) {
-        try {
-            const year = document.getElementById('me_year_select')?.value || '2025';
-            
-            const { data, error } = await sb
-                .from('column_settings')
-                .select('*')
-                .eq('block', block)
-                .eq('subject', unit)
-                .eq('year', year)
-                .maybeSingle();
-            
-            if (error) throw error;
-            
-            if (data && data.columns) {
-                me_columnSettings = data;
-                const visibleColumns = this.getVisibleColumns();
-                if (visibleColumns.cat2 === false && visibleColumns.cat1 !== false) {
-                    me_currentAssessmentType = 'single_cat';
-                } else if (visibleColumns.cat1 === false && visibleColumns.cat2 !== false) {
-                    me_currentAssessmentType = 'single_cat';
-                } else if (visibleColumns.exam === false && visibleColumns.cat1 !== false) {
-                    me_currentAssessmentType = 'cats_only';
-                } else if (visibleColumns.cat1 === false && visibleColumns.cat2 === false && visibleColumns.exam !== false) {
-                    me_currentAssessmentType = 'exam_only';
-                } else {
-                    me_currentAssessmentType = 'full';
-                }
-            }
-            
-            console.log('📋 Loaded admin settings:', { 
-                columns: data?.columns, 
-                assessmentType: me_currentAssessmentType 
-            });
-            
-        } catch (error) {
-            console.error('Error loading admin settings:', error);
-        }
-    },
-    
-    getVisibleColumns() {
-        const defaultColumns = {
-            sno: true,
-            admission: true,
-            name: true,
-            cat1: true,
-            cat2: true,
-            exam: true,
-            total: true,
-            grade: true,
-            rating: true,
-            approval: true
-        };
-        
-        const savedColumns = me_columnSettings.columns || [];
-        const result = { ...defaultColumns };
-        savedColumns.forEach(col => {
-            if (col.id in result) {
-                result[col.id] = col.visible;
-            }
-        });
-        
-        return result;
-    },
-    
-    updateAssessmentTypeDisplay(type) {
-        const displayEl = document.getElementById('me_assessment_type_display');
-        if (displayEl) {
-            const labels = {
-                'full': 'Full (CAT1+CAT2+Exam)',
-                'single_cat': 'Single CAT (CAT+Exam)',
-                'exam_only': 'Exam Only',
-                'cats_only': 'CATs Only (No Exam)',
-                'cat_only': 'CAT Only'
-            };
-            displayEl.textContent = labels[type] || type;
-        }
-    },
-    
-    updateVisibleColumnsInfo(visibleColumns) {
-        const columnsEl = document.getElementById('lecturerVisibleColumns');
-        if (!columnsEl) return;
-        
-        const columnLabels = {
-            'sno': '#',
-            'admission': 'Admission',
-            'name': 'Name',
-            'cat1': 'CAT1',
-            'cat2': 'CAT2',
-            'exam': 'Exam',
-            'total': 'Total',
-            'grade': 'Grade',
-            'points': 'Points',
-            'rating': 'Rating',
-            'approval': 'Approval'
-        };
-        
-        const visible = Object.keys(columnLabels)
-            .filter(key => visibleColumns[key] !== false)
-            .map(key => columnLabels[key]);
-        
-        columnsEl.textContent = visible.length ? visible.join(', ') : 'No columns visible';
-    },
-    
-    updateInternalTotal(studentId) {
-        const cat1 = parseFloat(document.querySelector(`.internal-cat1[data-student="${studentId}"]`)?.value) || 0;
-        const cat2 = parseFloat(document.querySelector(`.internal-cat2[data-student="${studentId}"]`)?.value) || 0;
-        const exam = parseFloat(document.querySelector(`.internal-exam[data-student="${studentId}"]`)?.value) || 0;
-        
-        const assessmentType = me_currentAssessmentType || 'full';
-        
-        let total = 0;
-        if (assessmentType === 'full') {
-            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-        } else if (assessmentType === 'single_cat') {
-            total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-        } else {
-            total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-        }
-        
-        const gradeInfo = getMarksEntryGrade(total);
-        const status = total >= 60 ? 'PASS' : (total > 0 ? 'FAIL' : 'PENDING');
-        const color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
-        
-        const totalSpan = document.getElementById(`lecTotal_${studentId}`);
-        const gradeSpan = document.getElementById(`lecGrade_${studentId}`);
-        const statusSpan = document.getElementById(`lecStatus_${studentId}`);
-        
-        if (totalSpan) { totalSpan.innerHTML = total || '-'; totalSpan.style.color = color; }
-        if (gradeSpan) { gradeSpan.innerHTML = total > 0 ? gradeInfo.grade : '-'; gradeSpan.style.color = color; }
-        if (statusSpan) { statusSpan.innerHTML = status; statusSpan.style.color = color; }
-    },
-    
-    fillDownInternal() {
-        const cat1s = document.querySelectorAll('.internal-cat1');
-        if (!cat1s.length) return;
-        
-        const v1 = cat1s[0].value;
-        const v2 = document.querySelector('.internal-cat2')?.value || '';
-        const v3 = document.querySelector('.internal-exam')?.value || '';
-        
-        cat1s.forEach((input, i) => {
-            if (i === 0) return;
-            const sId = input.dataset.student;
-            const cat1Input = document.querySelector(`.internal-cat1[data-student="${sId}"]`);
-            const cat2Input = document.querySelector(`.internal-cat2[data-student="${sId}"]`);
-            const examInput = document.querySelector(`.internal-exam[data-student="${sId}"]`);
-            
-            if (cat1Input) cat1Input.value = v1;
-            if (cat2Input) cat2Input.value = v2;
-            if (examInput) examInput.value = v3;
-            this.updateInternalTotal(sId);
-        });
-        
-        showNotification('Values filled down!', 'success');
-    },
-    
-    async saveInternalMarks() {
-        const block = document.getElementById('lecBlockSelect').value;
-        const unit = document.getElementById('lecSubjectSelect').value;
-        const year = document.getElementById('me_year_select')?.value || '2025';
-        
-        if (!block || !unit) {
-            showNotification('Select block and unit', 'error');
-            return;
-        }
-        
-        const inputs = document.querySelectorAll('.internal-cat1');
-        if (!inputs.length) {
-            showNotification('No data to save', 'error');
-            return;
-        }
-        
-        showLoading('Saving marks...');
-        let saved = 0;
-        let errors = 0;
-        
-        for (const input of inputs) {
-            const sId = input.dataset.student;
-            const cat1 = parseFloat(document.querySelector(`.internal-cat1[data-student="${sId}"]`)?.value) || 0;
-            const cat2 = parseFloat(document.querySelector(`.internal-cat2[data-student="${sId}"]`)?.value) || 0;
-            const exam = parseFloat(document.querySelector(`.internal-exam[data-student="${sId}"]`)?.value) || 0;
-            
-            const student = this.students.find(s => s.student_id === sId);
-            const studentName = student?.full_name || 'Unknown Student';
-            
-            const assessmentType = me_currentAssessmentType || 'full';
-            let finalTotal = 0;
-            if (assessmentType === 'full') {
-                finalTotal = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-            } else if (assessmentType === 'single_cat') {
-                finalTotal = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-            } else {
-                finalTotal = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-            }
-            
-            const gradeInfo = getMarksEntryGrade(finalTotal);
-            
-            const { data: existing } = await sb
-                .from('student_marks')
-                .select('id')
-                .eq('admission_number', sId)
-                .eq('subject_name', unit)
-                .eq('block', block)
-                .eq('academic_year', year)
-                .maybeSingle();
-            
-            try {
-                const markData = {
-                    admission_number: sId,
-                    student_name: studentName,
-                    block: block,
-                    subject_name: unit,
-                    assessment_type: assessmentType,
-                    cat1_score: cat1 || null,
-                    cat2_score: cat2 || null,
-                    exam_score: exam || null,
-                    final_score: finalTotal || null,
-                    grade: gradeInfo.grade || null,
-                    academic_year: year,
-                    updated_at: new Date().toISOString()
-                };
-                
-                let result;
-                if (existing) {
-                    result = await sb
-                        .from('student_marks')
-                        .update(markData)
-                        .eq('id', existing.id);
-                } else {
-                    markData.created_at = new Date().toISOString();
-                    result = await sb
-                        .from('student_marks')
-                        .insert([markData]);
-                }
-                
-                if (result.error) {
-                    errors++;
-                    console.error('Error saving for', sId, ':', result.error);
-                } else {
-                    saved++;
-                }
-            } catch (err) {
-                errors++;
-                console.error('Error saving for', sId, ':', err);
-            }
-        }
-        
-        hideLoading();
-        showNotification(`✅ Saved ${saved} marks${errors > 0 ? `, ${errors} errors` : ''}`, errors > 0 ? 'warning' : 'success');
-        await this.loadInternalMarks();
-    },
-    
-    async loadNCKMarks() {
-        const block = document.getElementById('lecNckBlock')?.value;
-        const sheet = document.getElementById('lecNckSheet')?.value;
-        const container = document.getElementById('lecNckContainer');
-        if (!container) return;
-        
-        if (!block) {
-            container.innerHTML = '<div class="text-center" style="padding:40px;">Select a block</div>';
-            return;
-        }
-        
-        container.innerHTML = '<div class="text-center" style="padding:40px;"><div class="loading-spinner"></div><p>Loading NCK marks...</p></div>';
-        
-        try {
-            const students = this.students.filter(s => s.block === block);
-            
-            if (!students.length) {
-                container.innerHTML = '<div class="text-center" style="padding:40px;">No students found</div>';
-                return;
-            }
-            
-            const { data: existing, error } = await sb
-                .from('nck_marks')
-                .select('*')
-                .eq('block', block)
-                .eq('subject_name', sheet || 'XY FORMS');
-            
-            if (error) throw error;
-            
-            const marksMap = {};
-            existing?.forEach(m => { marksMap[m.admission_number] = m; });
-            
-            let html = `<div class="table-responsive"><table class="data-table" style="width:100%;border-collapse:collapse;">
-                <thead><tr style="background:#4C1D95;color:white;">
-                    <th style="padding:10px;">#</th>
-                    <th style="padding:10px;">Student Name</th>
-                    <th style="padding:10px;">Admission</th>
-                    <th style="padding:10px;">Score (%)</th>
-                    <th style="padding:10px;">Grade</th>
-                    <th style="padding:10px;">Status</th>
-                    <th style="padding:10px;">Graded By</th>
-                    <th style="padding:10px;">Actions</th>
-                </tr></thead><tbody>`;
-            
-            for (let i = 0; i < students.length; i++) {
-                const s = students[i];
-                const m = marksMap[s.student_id] || {};
-                const score = m.final_score !== undefined && m.final_score !== null ? m.final_score : '';
-                const gradeInfo = score !== '' ? getMarksEntryGrade(parseFloat(score)) : { grade: '-', color: '#94a3b8' };
-                const status = score !== '' ? (parseFloat(score) >= 60 ? 'PASS' : (parseFloat(score) > 0 ? 'FAIL' : 'PENDING')) : 'PENDING';
-                const color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
-                
-                html += `<tr>
-                    <td>${i + 1}</td>
-                    <td><strong>${s.full_name || 'N/A'}</strong></td>
-                    <td>${s.student_id || 'N/A'}</td>
-                    <td><input type="number" class="nck-score" data-index="${i}" value="${score}" min="0" max="100" step="0.5" style="width:70px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>
-                    <td id="nckGrade_${i}" style="font-weight:bold;color:${color};">${gradeInfo.grade}</td>
-                    <td id="nckStatus_${i}" style="color:${color};">${status}</td>
-                    <td><input type="text" class="nck-graded" data-index="${i}" value="${m.graded_by || ''}" placeholder="Lecturer" style="width:120px;padding:5px;border-radius:4px;border:1px solid #e2e8f0;"></td>
-                    <td><button class="btn btn-action save-nck" data-index="${i}" data-student="${s.student_id}" style="background:#059669;padding:4px 12px;border:none;border-radius:4px;color:white;cursor:pointer;font-size:12px;"><i class="fas fa-save"></i> Save</button></td>
-                </tr>`;
-            }
-            
-            html += `</tbody></table></div>
-                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-top:20px;">
-                    <div style="display:flex;gap:10px;flex-wrap:wrap;">
-                        <button class="btn btn-action" id="saveAllNckMarksBtn" style="background:#059669;padding:8px 20px;border:none;border-radius:6px;color:white;cursor:pointer;font-weight:600;">
-                            <i class="fas fa-save"></i> Save All NCK Marks
-                        </button>
-                        <button class="btn btn-action" id="fillDownNckBtn" style="background:#3b82f6;padding:8px 20px;border:none;border-radius:6px;color:white;cursor:pointer;font-weight:600;">
-                            <i class="fas fa-arrow-down"></i> Fill Down
-                        </button>
-                    </div>
-                </div>`;
-            
-            container.innerHTML = html;
-            
-            document.querySelectorAll('.nck-score').forEach(input => {
-                input.addEventListener('change', function() {
-                    const idx = parseInt(this.dataset.index);
-                    LecturerMarks.updateNCKTotal(idx);
-                });
-                input.addEventListener('input', function() {
-                    const idx = parseInt(this.dataset.index);
-                    LecturerMarks.updateNCKTotal(idx);
-                });
-            });
-            
-            document.querySelectorAll('.save-nck').forEach(btn => {
-                btn.addEventListener('click', function() {
-                    const idx = parseInt(this.dataset.index);
-                    const studentId = this.dataset.student;
-                    LecturerMarks.saveSingleNCK(idx, studentId);
-                });
-            });
-            
-            document.getElementById('saveAllNckMarksBtn')?.addEventListener('click', () => this.saveAllNCK());
-            document.getElementById('fillDownNckBtn')?.addEventListener('click', () => this.fillDownNCK());
-            
-        } catch (error) {
-            container.innerHTML = `<div class="alert alert-danger" style="padding:20px;background:#fee2e2;border-radius:8px;color:#991b1b;">Error: ${error.message}</div>`;
-        }
-    },
-    
-    updateNCKTotal(idx) {
-        const score = parseFloat(document.querySelector(`.nck-score[data-index="${idx}"]`)?.value) || 0;
-        const gradeInfo = getMarksEntryGrade(score);
-        const status = score >= 60 ? 'PASS' : (score > 0 ? 'FAIL' : 'PENDING');
-        const color = status === 'PASS' ? '#10b981' : (status === 'FAIL' ? '#ef4444' : '#f59e0b');
-        
-        const gradeEl = document.getElementById(`nckGrade_${idx}`);
-        const statusEl = document.getElementById(`nckStatus_${idx}`);
-        
-        if (gradeEl) { gradeEl.innerHTML = score > 0 ? gradeInfo.grade : '-'; gradeEl.style.color = color; }
-        if (statusEl) { statusEl.innerHTML = status; statusEl.style.color = color; }
-    },
-    
-    fillDownNCK() {
-        const inputs = document.querySelectorAll('.nck-score');
-        if (!inputs.length) return;
-        
-        const val = inputs[0].value;
-        inputs.forEach((input, i) => {
-            if (i > 0) {
-                input.value = val;
-                this.updateNCKTotal(i);
-            }
-        });
-        showNotification('Values filled down!', 'success');
-    },
-    
-    async saveSingleNCK(idx, studentId) {
-        const block = document.getElementById('lecNckBlock').value;
-        const sheet = document.getElementById('lecNckSheet').value;
-        const score = parseFloat(document.querySelector(`.nck-score[data-index="${idx}"]`)?.value) || 0;
-        const gradedBy = document.querySelector(`.nck-graded[data-index="${idx}"]`)?.value;
-        const student = this.students.find(s => s.student_id === studentId);
-        
-        const gradeInfo = getMarksEntryGrade(score);
-        
-        try {
-            const { data: existing } = await sb
-                .from('nck_marks')
-                .select('id')
-                .eq('admission_number', studentId)
-                .eq('subject_name', sheet)
-                .eq('block', block)
-                .maybeSingle();
-            
-            const markData = {
-                admission_number: studentId,
-                student_name: student?.full_name || '',
-                block: block,
-                subject_name: sheet || 'XY FORMS',
-                final_score: score || null,
-                grade: gradeInfo.grade || null,
-                status: score >= 60 ? 'passed' : (score > 0 ? 'failed' : 'pending'),
-                graded_by: gradedBy || me_currentLecturer?.profile?.full_name || 'Lecturer',
-                updated_at: new Date().toISOString()
-            };
-            
-            let result;
-            if (existing) {
-                result = await sb
-                    .from('nck_marks')
-                    .update(markData)
-                    .eq('id', existing.id);
-            } else {
-                markData.created_at = new Date().toISOString();
-                result = await sb
-                    .from('nck_marks')
-                    .insert([markData]);
-            }
-            
-            if (result.error) throw new Error(result.error.message);
-            
-            showNotification('✅ Saved!', 'success');
-            await this.loadNCKMarks();
-            
-        } catch (error) {
-            showNotification('Error: ' + error.message, 'error');
-        }
-    },
-    
-    async saveAllNCK() {
-        const inputs = document.querySelectorAll('.nck-score');
-        if (!inputs.length) {
-            showNotification('No data to save', 'error');
-            return;
-        }
-        
-        showLoading('Saving all NCK marks...');
-        let saved = 0;
-        let errors = 0;
-        
-        for (let i = 0; i < inputs.length; i++) {
-            const student = this.students[i];
-            if (!student) continue;
-            
-            const score = parseFloat(document.querySelector(`.nck-score[data-index="${i}"]`)?.value) || 0;
-            const gradedBy = document.querySelector(`.nck-graded[data-index="${i}"]`)?.value;
-            const gradeInfo = getMarksEntryGrade(score);
-            
-            try {
-                const { data: existing } = await sb
-                    .from('nck_marks')
-                    .select('id')
-                    .eq('admission_number', student.student_id)
-                    .eq('subject_name', document.getElementById('lecNckSheet').value)
-                    .eq('block', document.getElementById('lecNckBlock').value)
-                    .maybeSingle();
-                
-                const markData = {
-                    admission_number: student.student_id,
-                    student_name: student.full_name,
-                    block: document.getElementById('lecNckBlock').value,
-                    subject_name: document.getElementById('lecNckSheet').value,
-                    final_score: score || null,
-                    grade: gradeInfo.grade || null,
-                    status: score >= 60 ? 'passed' : (score > 0 ? 'failed' : 'pending'),
-                    graded_by: gradedBy || me_currentLecturer?.profile?.full_name || 'Lecturer',
-                    updated_at: new Date().toISOString()
-                };
-                
-                let result;
-                if (existing) {
-                    result = await sb
-                        .from('nck_marks')
-                        .update(markData)
-                        .eq('id', existing.id);
-                } else {
-                    markData.created_at = new Date().toISOString();
-                    result = await sb
-                        .from('nck_marks')
-                        .insert([markData]);
-                }
-                
-                if (result.error) {
-                    errors++;
-                    console.error('Error saving NCK for', student.student_id, ':', result.error);
-                } else {
-                    saved++;
-                }
-            } catch (err) {
-                errors++;
-                console.error('Error saving NCK for', student.student_id, ':', err);
-            }
-        }
-        
-        hideLoading();
-        showNotification(`✅ Saved ${saved} NCK records${errors > 0 ? `, ${errors} errors` : ''}`, errors > 0 ? 'warning' : 'success');
-        await this.loadNCKMarks();
-    },
-    
-    updateStats() {
-        const totalMarks = this.marks.length || 0;
-        const totalNck = this.nckMarks.length || 0;
-        const avgScore = this.calculateAverageScore();
-        
-        const totalInternal = document.getElementById('lecTotalInternal');
-        const totalNckEl = document.getElementById('lecTotalNck');
-        const avgEl = document.getElementById('lecAvgScore');
-        
-        if (totalInternal) totalInternal.textContent = totalMarks;
-        if (totalNckEl) totalNckEl.textContent = totalNck;
-        if (avgEl) avgEl.textContent = avgScore + '%';
-    },
-    
-    calculateAverageScore() {
-        const allScores = [];
-        document.querySelectorAll('.internal-exam').forEach(input => {
-            const val = parseFloat(input.value);
-            if (!isNaN(val) && val > 0) allScores.push(val);
-        });
-        
-        if (!allScores.length) return 0;
-        const avg = allScores.reduce((a, b) => a + b, 0) / allScores.length;
-        return Math.round(avg);
-    },
-    
-    setupEventListeners() {
-        document.getElementById('lecBlockSelect')?.addEventListener('change', () => {
-            this.loadUnits();
-            this.loadInternalMarks();
-        });
-        
-        document.getElementById('lecSubjectSelect')?.addEventListener('change', () => {
-            this.loadInternalMarks();
-        });
-        
-        document.getElementById('lecNckBlock')?.addEventListener('change', () => {
-            this.loadNCKMarks();
-        });
-        
-        document.getElementById('lecNckSheet')?.addEventListener('change', () => {
-            this.loadNCKMarks();
-        });
-        
-        document.getElementById('lecTabInternal')?.addEventListener('click', () => {
-            switchLecturerMarksTab('internal');
-        });
-        
-        document.getElementById('lecTabNck')?.addEventListener('click', () => {
-            switchLecturerMarksTab('nck');
-        });
-        
-        document.getElementById('lecTabAnalytics')?.addEventListener('click', () => {
-            switchLecturerMarksTab('analytics');
-        });
-    },
-    
-    async refresh() {
-        await this.loadMarksManagement();
-        showNotification('Marks refreshed!', 'success');
-    }
-};
-
-// ============================================================
-// SWITCH LECTURER MARKS TAB
-// ============================================================
-
-function switchLecturerMarksTab(tab) {
-    document.querySelectorAll('.marks-tab').forEach(el => {
-        el.style.display = 'none';
-    });
-    
-    document.querySelectorAll('.tabs-nav .tab-btn').forEach(el => {
-        el.classList.remove('active');
-    });
-    
-    if (tab === 'internal') {
-        document.getElementById('lecInternalTab').style.display = 'block';
-        document.getElementById('lecTabInternal').classList.add('active');
-        LecturerMarks.loadInternalMarks();
-    } else if (tab === 'nck') {
-        document.getElementById('lecNckTab').style.display = 'block';
-        document.getElementById('lecTabNck').classList.add('active');
-        LecturerMarks.loadNCKMarks();
-    } else if (tab === 'analytics') {
-        document.getElementById('lecAnalyticsTab').style.display = 'block';
-        document.getElementById('lecTabAnalytics').classList.add('active');
-        LecturerMarks.updateStats();
-    }
-}
 
 // ============================================================
 // GLOBAL EXPOSURE
 // ============================================================
 
-window.LecturerMarks = LecturerMarks;
 window.detectLecturerProgram = detectLecturerProgram;
 window.loadLecturerByEmail = loadLecturerByEmail;
 window.getLecturerAssignedUnits = getLecturerAssignedUnits;
 window.loadMEBlocks = loadMEBlocks;
 window.loadMEUnits = loadMEUnits;
 window.loadMarksEntry = loadMarksEntry;
-window.loadLecturerMarksEntry = loadLecturerMarksEntry;  // ← ADD THIS LINE
+window.loadLecturerMarksEntry = loadLecturerMarksEntry;
 window.renderMarksEntryTable = renderMarksEntryTable;
 window.updateMarksEntryRow = updateMarksEntryRow;
 window.calculateMarksEntryTotal = calculateMarksEntryTotal;
@@ -3099,44 +2432,44 @@ window.saveMarksEntry = saveMarksEntry;
 window.submitMarksForApproval = submitMarksForApproval;
 window.withdrawMarksFromApproval = withdrawMarksFromApproval;
 window.exportMarksEntry = exportMarksEntry;
-window.switchLecturerMarksTab = switchLecturerMarksTab;
 window.checkMarksApprovalStatus = checkMarksApprovalStatus;
 window.createApprovalStatusBanner = createApprovalStatusBanner;
 window.showNotification = showNotification;
-window.showLoading = showLoading;
-window.hideLoading = hideLoading;
 window.downloadCSV = downloadCSV;
 window.showLoadingScreen = showLoadingScreen;
 window.updateLoadingProgress = updateLoadingProgress;
 window.updateLoadingStep = updateLoadingStep;
 window.hideLoadingScreen = hideLoadingScreen;
 
+// Retake functions
+window.loadLecturerRetakeData = loadLecturerRetakeData;
+window.recordLecturerRetakeExam = recordLecturerRetakeExam;
+window.createLecturerRetakeModal = createLecturerRetakeModal;
+window.openLecturerRetakeModal = openLecturerRetakeModal;
+window.closeLecturerRetakeModal = closeLecturerRetakeModal;
+window.saveLecturerRetakeExam = saveLecturerRetakeExam;
+
 // ============================================================
-// INITIALIZATION - WITH LOADING SCREEN
+// INITIALIZATION
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    console.log('🚀 Initializing Lecturer Marks Module...');
+    console.log('🚀 Initializing Lecturer Marks Module with Retake Support...');
     
-    // Show loading screen
     showLoadingScreen('Starting lecturer module...', 'NCHSM Lecturer Portal');
     updateLoadingProgress(5, 1, 'Detecting user session...');
     
     setTimeout(async function() {
         try {
-            // Step 1: Detect program
             updateLoadingProgress(15, 1, 'Detecting lecturer program...');
             await detectLecturerProgram();
             
-            // Step 2: Load blocks
             updateLoadingProgress(35, 2, 'Loading available blocks...');
             await loadMEBlocks();
             
-            // Step 3: Load units
             updateLoadingProgress(55, 3, 'Loading assigned units...');
             await loadMEUnits();
             
-            // Step 4: Load marks
             updateLoadingProgress(75, 4, 'Loading marks data...');
             
             const blockSelect = document.getElementById('me_block_select');
@@ -3145,7 +2478,6 @@ document.addEventListener('DOMContentLoaded', function() {
             if (blockSelect && blockSelect.value && unitSelect && unitSelect.value) {
                 await loadMarksEntry();
             } else {
-                // Show placeholder
                 const container = document.getElementById('me_marks_container');
                 if (container) {
                     container.innerHTML = `
@@ -3158,14 +2490,17 @@ document.addEventListener('DOMContentLoaded', function() {
                 }
             }
             
-            // Complete
+            // Create retake modal
+            createLecturerRetakeModal();
+            
             updateLoadingProgress(100, 4, '✅ Ready!');
             await new Promise(resolve => setTimeout(resolve, 500));
             hideLoadingScreen();
             
-            console.log('✅ Lecturer Marks Module initialized!');
+            console.log('✅ Lecturer Marks Module initialized with Retake Support!');
             console.log('📊 Program:', me_currentProgram);
             console.log('📚 Assigned Units:', me_assignedUnits.length);
+            console.log('⭐ Retake Support: Enabled (Max 2 attempts)');
             
         } catch (error) {
             console.error('❌ Error initializing:', error);
@@ -3177,9 +2512,10 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('✅ Lecturer Marks module loaded successfully!');
+console.log('⭐ Retake/Supplementary Exam Support: ENABLED');
+console.log('📋 Max Retakes per student: 2');
 console.log('✅ Synced with admin column settings');
 console.log('✅ Assessment type auto-detected from admin');
-console.log('✅ Terminology: Units instead of Subjects');
 console.log('✅ Strict unit assignment filtering enabled!');
 console.log('🔒 Lecturers only see assigned units');
 console.log('💾 Marks are permanently saved to Supabase!');
