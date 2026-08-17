@@ -916,20 +916,20 @@
                 <div class="auth-header" style="text-align:center;margin-bottom:1.5rem;">
                     <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="width:80px;margin-bottom:0.5rem;" />
                     <h2 style="font-size:1.5rem;font-weight:800;">NCHSM <span style="color:var(--primary);">Portal</span></h2>
-                    <p style="color:var(--gray-500);font-size:0.9rem;">Sign in or create an account to start your application</p>
+                    <p style="color:var(--gray-500);font-size:0.9rem;">Create an account to start your application</p>
                 </div>
 
                 <div class="auth-tabs">
-                    <button class="tab active" data-tab="login2" onclick="switchAuthTab2('login2')">
+                    <button class="tab" data-tab="login2" onclick="switchAuthTab2('login2')">
                         <i class="fas fa-sign-in-alt"></i> Sign In
                     </button>
-                    <button class="tab" data-tab="register2" onclick="switchAuthTab2('register2')">
+                    <button class="tab active" data-tab="register2" onclick="switchAuthTab2('register2')">
                         <i class="fas fa-user-plus"></i> Create Account
                     </button>
                 </div>
 
                 <!-- LOGIN FORM 2 -->
-                <div class="auth-form active" id="loginForm2">
+                <div class="auth-form" id="loginForm2">
                     <div class="form-group">
                         <label>Email Address <span class="required">*</span></label>
                         <input type="email" id="loginEmail2" placeholder="your@email.com" />
@@ -947,8 +947,8 @@
                     </div>
                 </div>
 
-                <!-- REGISTER FORM 2 -->
-                <div class="auth-form" id="registerForm2">
+                <!-- REGISTER FORM 2 - ACTIVE BY DEFAULT -->
+                <div class="auth-form active" id="registerForm2">
                     <div class="form-group">
                         <label>Full Name <span class="required">*</span></label>
                         <input type="text" id="regName2" placeholder="John Mwangi" />
