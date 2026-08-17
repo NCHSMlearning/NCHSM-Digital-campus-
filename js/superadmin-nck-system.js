@@ -63,6 +63,10 @@ let nck_ms_enrolledStudents = [];
 let nck_ms_availableStudents = [];
 let nck_ms_selected = new Set();
 
+// ============================================================
+// FIXED: NCK MANAGE STUDENTS
+// ============================================================
+
 async function nckLoadManageStudents() {
     console.log('📚 NCK: Loading Manage Students...');
     
@@ -89,22 +93,22 @@ async function nckLoadManageStudents() {
     if (unitDisplay) unitDisplay.textContent = `${sheet} (${intake} Intake)`;
     
     try {
-        // Get enrolled students from nck_marks
+        // Get enrolled students from nck_marks (uses academic_year)
         const { data: enrolled, error: enrolledError } = await sb
             .from('nck_marks')
             .select('*')
-            .eq('academic_year', intake)
+            .eq('academic_year', intake)  // ✅ nck_marks uses academic_year
             .eq('subject_name', sheet)
             .eq('program', program);
         
         if (enrolledError) throw enrolledError;
         
-        // Get all KRCHN students from profiles
+        // Get KRCHN students from profiles (uses intake_year)
         const { data: profiles, error: profilesError } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, email, program, academic_year, admission_number, status')
+            .select('student_id, full_name, email, program, intake_year, block, admission_number, status')
             .eq('role', 'student')
-            .eq('academic_year', intake)
+            .eq('intake_year', intake)  // ✅ profiles uses intake_year
             .eq('program', program);
         
         if (profilesError) throw profilesError;
@@ -184,7 +188,7 @@ function nckRenderManageStudents() {
                 <td style="padding: 8px 8px; font-weight: 500;">${escapeHtml(name)}</td>
                 <td style="padding: 8px 8px; font-size: 12px; color: #64748b;">${escapeHtml(admission)}</td>
                 <td style="padding: 8px 8px; font-size: 12px;">${escapeHtml(s.program || 'KRCHN')}</td>
-                <td style="padding: 8px 8px; font-size: 12px;">${escapeHtml(s.academic_year || '')}</td>
+<td style="padding: 8px 8px; font-size: 12px;">${escapeHtml(s.intake_year || '')}</td>
                 <td style="padding: 8px 6px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : '#991b1b'};">${score}%</td>
                 <td style="padding: 8px 6px; text-align: center;">
                     <span style="background: ${statusColor}; color: ${statusTextColor}; padding: 2px 10px; border-radius: 12px; font-weight: 600; font-size: 11px;">${statusText}</span>
@@ -546,13 +550,14 @@ async function loadNCKData() {
     try {
         console.log(`📊 Loading: Intake=${currentNCKIntake}, Sheet=${currentNCKSheetType}, Program=KRCHN`);
 
-        const { data: students, error: sError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, admission_number, academic_year, program, status')
-            .eq('role', 'student')
-            .eq('status', 'approved')
-            .eq('academic_year', currentNCKIntake)
-            .eq('program', 'KRCHN');
+        // NEW - using intake_year (exists in profiles)
+const { data: students, error: sError } = await sb
+    .from('consolidated_user_profiles_table')
+    .select('student_id, full_name, admission_number, intake_year, program, status')
+    .eq('role', 'student')
+    .eq('status', 'approved')
+    .eq('intake_year', currentNCKIntake)  
+    .eq('program', 'KRCHN');
 
         if (sError) {
             console.error('❌ Error loading students:', sError);
