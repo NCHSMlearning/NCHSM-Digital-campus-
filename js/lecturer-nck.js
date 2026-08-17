@@ -1,5 +1,6 @@
 // ============================================================
-// LECTURER NCK SYSTEM - ENTER MARKS + SUBMIT FOR APPROVAL
+// LECTURER NCK SYSTEM - COMPLETE FIXED VERSION
+// ENTER MARKS + SUBMIT FOR APPROVAL
 // PURELY KRCHN NURSING - FOLLOWS MARKS ENTRY WORKFLOW
 // ============================================================
 
@@ -10,7 +11,7 @@ var LecturerNCK = {
     students: [],
     marks: {},
     columns: [],
-    currentIntake: '2026',
+    currentIntake: '2025',
     currentSheet: 'XY_FORMS',
     lecturerId: null,
     lecturerName: 'Loading...',
@@ -34,128 +35,90 @@ function lecturerNCKInit() {
 }
 
 // ============================================================
-// GET LECTURER INFO - IMPROVED VERSION
+// GET LECTURER INFO - COMPLETE FIXED VERSION
 // ============================================================
 function lecturerNCKGetLecturerInfo() {
     console.log('🔍 Getting lecturer info for NCK...');
     
     try {
-        // Try multiple sources to get lecturer ID
-        
-        // Source 1: lecturerDB
-        var profile = null;
-        if (window.lecturerDB && typeof window.lecturerDB.getCurrentUserProfile === 'function') {
-            profile = window.lecturerDB.getCurrentUserProfile();
-        }
-        
-        if (!profile && window.lecturerDB && window.lecturerDB.profile) {
-            profile = window.lecturerDB.profile;
-        }
-        
-        if (profile) {
-            LecturerNCK.lecturerId = profile.user_id || profile.id || profile.staff_id || profile.staffId;
-            LecturerNCK.lecturerName = profile.full_name || profile.name || 'Lecturer';
-            console.log('✅ Lecturer info from lecturerDB:', LecturerNCK.lecturerId);
-            lecturerNCKUpdateUI();
-            return;
-        }
-        
-        // Source 2: staffSession
-        var staffSession = localStorage.getItem('staffSession');
-        if (staffSession) {
-            var data = JSON.parse(staffSession);
-            LecturerNCK.lecturerId = data.staffId || data.user_id || data.id;
-            LecturerNCK.lecturerName = data.name || 'Lecturer';
-            console.log('✅ Lecturer info from staffSession:', LecturerNCK.lecturerId);
-            lecturerNCKUpdateUI();
-            return;
-        }
-        
-        // Source 3: lecturerData in sessionStorage
-        var lecturerData = sessionStorage.getItem('lecturerData');
-        if (lecturerData) {
-            var data = JSON.parse(lecturerData);
-            LecturerNCK.lecturerId = data.user_id || data.id || data.staff_id || data.staffId;
-            LecturerNCK.lecturerName = data.full_name || data.name || 'Lecturer';
-            console.log('✅ Lecturer info from lecturerData:', LecturerNCK.lecturerId);
-            lecturerNCKUpdateUI();
-            return;
-        }
-        
-        // Source 4: userProfile in localStorage
-        var userProfile = localStorage.getItem('userProfile');
-        if (userProfile) {
-            var data = JSON.parse(userProfile);
-            LecturerNCK.lecturerId = data.user_id || data.id || data.staff_id || data.staffId;
-            LecturerNCK.lecturerName = data.full_name || data.name || 'Lecturer';
-            console.log('✅ Lecturer info from userProfile:', LecturerNCK.lecturerId);
-            lecturerNCKUpdateUI();
-            return;
-        }
-        
-        // Source 5: Try to get from Supabase auth
-        if (window.sb) {
-            window.sb.auth.getUser().then(function(result) {
-                if (result && result.data && result.data.user) {
-                    var user = result.data.user;
-                    LecturerNCK.lecturerId = user.id;
-                    LecturerNCK.lecturerName = user.email || 'Lecturer';
-                    console.log('✅ Lecturer info from Supabase auth:', LecturerNCK.lecturerId);
-                    lecturerNCKUpdateUI();
-                }
-            }).catch(function(err) {
-                console.warn('Could not get user from Supabase:', err);
-            });
-        }
-        
-        // Source 6: Try staff_records table
-        if (window.sb && LecturerNCK.lecturerName && LecturerNCK.lecturerName !== 'Loading...') {
-            window.sb
-                .from('staff_records')
-                .select('id, staff_id, name, email, program')
-                .eq('name', LecturerNCK.lecturerName)
-                .maybeSingle()
-                .then(function(result) {
-                    if (result && result.data) {
-                        LecturerNCK.lecturerId = result.data.id || result.data.staff_id;
-                        if (LecturerNCK.lecturerId) {
-                            console.log('✅ Lecturer ID from staff_records:', LecturerNCK.lecturerId);
-                            lecturerNCKUpdateUI();
-                        }
-                    }
-                })
-                .catch(function(err) {
-                    console.warn('Could not query staff_records:', err);
-                });
-        }
-        
-        // Fallback: Use a default or show error
-        if (!LecturerNCK.lecturerId) {
-            console.warn('⚠️ Could not find lecturer ID from any source');
-            // Try to get from lecturer_subject_assignments using email
-            var email = localStorage.getItem('lecturerEmail') || sessionStorage.getItem('lecturerEmail');
-            if (email && window.sb) {
-                window.sb
-                    .from('lecturer_subject_assignments')
-                    .select('lecturer_id')
-                    .eq('lecturer_email', email)
-                    .limit(1)
-                    .maybeSingle()
-                    .then(function(result) {
-                        if (result && result.data && result.data.lecturer_id) {
-                            LecturerNCK.lecturerId = result.data.lecturer_id;
-                            console.log('✅ Lecturer ID from assignments by email:', LecturerNCK.lecturerId);
-                            lecturerNCKUpdateUI();
-                        }
-                    })
-                    .catch(function(err) {
-                        console.warn('Could not query assignments:', err);
-                    });
+        // Get lecturer name from UI
+        var nameEl = document.getElementById('welcomeHeader');
+        var lecturerName = 'Lecturer';
+        if (nameEl) {
+            var nameText = nameEl.textContent || '';
+            if (nameText && nameText !== 'Welcome, Lecturer!') {
+                lecturerName = nameText.replace('Welcome,', '').replace('!', '').trim();
             }
         }
         
-        // Update UI with what we have
+        // Try multiple sources to get lecturer ID
+        var lecturerId = null;
+        
+        // Source 1: lecturerDB
+        try {
+            if (window.lecturerDB && typeof window.lecturerDB.getCurrentUserProfile === 'function') {
+                var profile = window.lecturerDB.getCurrentUserProfile();
+                if (profile) {
+                    lecturerId = profile.user_id || profile.id || profile.staff_id || profile.staffId;
+                    lecturerName = profile.full_name || profile.name || lecturerName;
+                    console.log('✅ Lecturer info from lecturerDB:', lecturerId);
+                }
+            }
+        } catch (e) {}
+        
+        // Source 2: staffSession
+        if (!lecturerId) {
+            var staffSession = localStorage.getItem('staffSession');
+            if (staffSession) {
+                try {
+                    var data = JSON.parse(staffSession);
+                    lecturerId = data.staffId || data.user_id || data.id;
+                    lecturerName = data.name || lecturerName;
+                    console.log('✅ Lecturer info from staffSession:', lecturerId);
+                } catch (e) {}
+            }
+        }
+        
+        // Source 3: lecturerData
+        if (!lecturerId) {
+            var lecturerData = sessionStorage.getItem('lecturerData');
+            if (lecturerData) {
+                try {
+                    var data = JSON.parse(lecturerData);
+                    lecturerId = data.user_id || data.id || data.staff_id || data.staffId;
+                    lecturerName = data.full_name || data.name || lecturerName;
+                    console.log('✅ Lecturer info from lecturerData:', lecturerId);
+                } catch (e) {}
+            }
+        }
+        
+        // Source 4: userProfile
+        if (!lecturerId) {
+            var userProfile = localStorage.getItem('userProfile');
+            if (userProfile) {
+                try {
+                    var data = JSON.parse(userProfile);
+                    lecturerId = data.user_id || data.id || data.staff_id || data.staffId;
+                    lecturerName = data.full_name || data.name || lecturerName;
+                    console.log('✅ Lecturer info from userProfile:', lecturerId);
+                } catch (e) {}
+            }
+        }
+        
+        // Set the values
+        LecturerNCK.lecturerId = lecturerId;
+        LecturerNCK.lecturerName = lecturerName || 'Lecturer';
+        
+        // Update UI
         lecturerNCKUpdateUI();
+        
+        // If we have ID, we're ready
+        if (lecturerId) {
+            console.log('✅ Lecturer ID found:', lecturerId);
+            console.log('✅ Lecturer Name:', lecturerName);
+        } else {
+            console.warn('⚠️ No lecturer ID found. Please refresh or contact admin.');
+        }
         
     } catch (e) {
         console.error('Error getting lecturer info:', e);
@@ -180,7 +143,6 @@ function lecturerNCKUpdateUI() {
     console.log('📋 Current Lecturer ID:', LecturerNCK.lecturerId);
     console.log('📋 Current Lecturer Name:', LecturerNCK.lecturerName);
     
-    // If we have ID, show load button
     var placeholder = document.getElementById('lecturerNCKPlaceholder');
     if (placeholder) {
         if (LecturerNCK.lecturerId) {
@@ -190,6 +152,7 @@ function lecturerNCKUpdateUI() {
                 <p style="color: #94a3b8; margin: 0 0 5px 0;">Select Intake Year and Assessment Type above</p>
                 <p style="color: #94a3b8; font-size: 13px; margin: 0 0 15px 0;">
                     <i class="fas fa-user-tie"></i> Lecturer: <strong>${LecturerNCK.lecturerName}</strong>
+                    <br><i class="fas fa-id-card"></i> ID: <strong>${LecturerNCK.lecturerId}</strong>
                 </p>
                 <button onclick="lecturerNCKLoadData()" style="background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                     <i class="fas fa-sync-alt"></i> Load My Students
@@ -203,9 +166,28 @@ function lecturerNCKUpdateUI() {
                 <button onclick="location.reload()" style="margin-top: 15px; background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-sync-alt"></i> Refresh Page
                 </button>
+                <div style="margin-top: 15px; font-size: 12px; color: #94a3b8;">
+                    <i class="fas fa-info-circle"></i> Try running: <code style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px;">lecturerNCKSetManualId('YOUR_ID')</code>
+                </div>
             `;
         }
         placeholder.style.display = 'block';
+    }
+}
+
+// ============================================================
+// MANUAL ID SETTER - FOR EMERGENCY
+// ============================================================
+function lecturerNCKSetManualId(id) {
+    if (id) {
+        LecturerNCK.lecturerId = id;
+        console.log('✅ Manual ID set to:', id);
+        lecturerNCKUpdateUI();
+        if (typeof lecturerNCKLoadData === 'function') {
+            setTimeout(lecturerNCKLoadData, 500);
+        }
+    } else {
+        console.warn('⚠️ Please provide a valid ID');
     }
 }
 
@@ -248,14 +230,14 @@ function lecturerNCKLoadColumns() {
 }
 
 // ============================================================
-// LOAD NCK DATA
+// LOAD NCK DATA - COMPLETE FIXED VERSION
 // ============================================================
 async function lecturerNCKLoadData() {
     console.log('📊 lecturerNCKLoadData called');
     
     var intakeEl = document.getElementById('lecturerNCKIntake');
     var sheetEl = document.getElementById('lecturerNCKSheet');
-    var intake = intakeEl ? intakeEl.value : '2026';
+    var intake = intakeEl ? intakeEl.value : '2025';
     var sheet = sheetEl ? sheetEl.value : 'XY_FORMS';
     
     LecturerNCK.currentIntake = intake;
@@ -280,35 +262,223 @@ async function lecturerNCKLoadData() {
         
         var lecturerId = LecturerNCK.lecturerId;
         if (!lecturerId) {
-            container.innerHTML = '<div style="text-align:center;padding:40px;color:#dc2626;">Lecturer ID not found. Please refresh.</div>';
-            return;
-        }
-        
-        // Get students assigned to this lecturer for KRCHN
-        var { data: assignments, error: assignError } = await supabase
-            .from('lecturer_subject_assignments')
-            .select('student_id, student_name, program, intake_year, block, registration_number')
-            .eq('lecturer_id', String(lecturerId))
-            .eq('intake_year', parseInt(intake));
-        
-        if (assignError) throw assignError;
-        
-        var krchnStudents = (assignments || []).filter(function(s) {
-            return s.program === 'KRCHN' || (s.program && s.program.includes('KRCHN'));
-        });
-        
-        if (krchnStudents.length === 0) {
             container.innerHTML = `
-                <div style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-users" style="font-size: 32px; display: block; margin-bottom: 10px; color: #e2e8f0;"></i>
-                    <p style="font-size: 16px; font-weight: 500; color: #475569;">No KRCHN students assigned to you</p>
-                    <p style="font-size: 13px; margin: 0;">You don't have any KRCHN students for ${intake} intake</p>
-                    <button onclick="lecturerNCKLoadData()" style="margin-top: 15px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-sync-alt"></i> Retry
+                <div style="text-align:center;padding:40px;color:#dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                    <p style="font-size: 16px; font-weight: 500;">Lecturer ID not found</p>
+                    <p style="font-size: 13px; margin: 0;">Please refresh or contact admin</p>
+                    <button onclick="location.reload()" style="margin-top: 15px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Refresh
                     </button>
                 </div>
             `;
             return;
+        }
+        
+        console.log('🔍 Searching for students with lecturer_id:', lecturerId);
+        
+        var students = [];
+        var usedSource = '';
+        
+        // ============================================================
+        // ATTEMPT 1: lecturer_subject_assignments table
+        // ============================================================
+        try {
+            console.log('📋 Trying lecturer_subject_assignments...');
+            
+            // First check what columns exist
+            var { data: testData, error: testError } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('*')
+                .limit(1);
+            
+            if (testError) {
+                console.warn('lecturer_subject_assignments error:', testError.message);
+            } else if (testData && testData.length > 0) {
+                var sample = testData[0];
+                console.log('📋 Sample record:', Object.keys(sample));
+                
+                // Build query dynamically based on available columns
+                var selectFields = [];
+                var studentIdField = null;
+                var studentNameField = null;
+                
+                // Find correct column names
+                Object.keys(sample).forEach(function(key) {
+                    var lower = key.toLowerCase();
+                    if (lower.includes('student_id') || lower === 'id') {
+                        studentIdField = key;
+                        selectFields.push(key + ' as student_id');
+                    }
+                    if (lower.includes('student_name') || lower.includes('full_name') || lower === 'name') {
+                        studentNameField = key;
+                        selectFields.push(key + ' as student_name');
+                    }
+                    if (lower.includes('program')) selectFields.push(key + ' as program');
+                    if (lower.includes('intake') || lower.includes('year')) selectFields.push(key + ' as intake_year');
+                    if (lower.includes('block')) selectFields.push(key + ' as block');
+                    if (lower.includes('registration') || lower.includes('reg') || lower.includes('admission')) {
+                        selectFields.push(key + ' as registration_number');
+                    }
+                });
+                
+                // If we found fields, query with them
+                if (selectFields.length > 0 && studentIdField) {
+                    var selectStr = selectFields.join(',');
+                    console.log('📋 Using select:', selectStr);
+                    
+                    var query = supabase
+                        .from('lecturer_subject_assignments')
+                        .select(selectStr)
+                        .eq('lecturer_id', String(lecturerId));
+                    
+                    // Add intake filter if column exists
+                    if (sample.intake_year !== undefined) {
+                        query = query.eq('intake_year', parseInt(intake));
+                    }
+                    
+                    var { data: assignData, error: assignError } = await query;
+                    
+                    if (!assignError && assignData && assignData.length > 0) {
+                        students = assignData;
+                        usedSource = 'lecturer_subject_assignments';
+                        console.log('✅ Found', students.length, 'students from lecturer_subject_assignments');
+                    } else {
+                        console.log('No students found in lecturer_subject_assignments');
+                    }
+                }
+            }
+        } catch (err) {
+            console.warn('Error with lecturer_subject_assignments:', err.message);
+        }
+        
+        // ============================================================
+        // ATTEMPT 2: consolidated_user_profiles_table
+        // ============================================================
+        if (students.length === 0) {
+            try {
+                console.log('📋 Trying consolidated_user_profiles_table...');
+                
+                // Get lecturer's program
+                var { data: lecturerInfo, error: infoError } = await supabase
+                    .from('staff_records')
+                    .select('program, department')
+                    .eq('id', String(lecturerId))
+                    .maybeSingle();
+                
+                if (infoError) {
+                    console.warn('Could not get lecturer program:', infoError.message);
+                }
+                
+                var program = lecturerInfo?.program || lecturerInfo?.department || 'KRCHN';
+                console.log('📋 Lecturer program:', program);
+                
+                // Get students
+                var { data: studentData, error: studentError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('student_id, full_name, program, intake_year, block')
+                    .eq('role', 'student')
+                    .eq('program', program);
+                
+                if (!studentError && studentData && studentData.length > 0) {
+                    students = studentData.map(function(s) {
+                        return {
+                            student_id: s.student_id,
+                            student_name: s.full_name,
+                            program: s.program,
+                            intake_year: s.intake_year || parseInt(intake),
+                            block: s.block || 'Block 1',
+                            registration_number: s.student_id || 'N/A'
+                        };
+                    });
+                    
+                    // Filter by intake
+                    if (intake) {
+                        students = students.filter(function(s) {
+                            return s.intake_year === parseInt(intake) || !s.intake_year;
+                        });
+                    }
+                    
+                    usedSource = 'consolidated_user_profiles_table';
+                    console.log('✅ Found', students.length, 'students from profiles');
+                }
+            } catch (err) {
+                console.warn('Error with profiles:', err.message);
+            }
+        }
+        
+        // ============================================================
+        // ATTEMPT 3: student_marks table
+        // ============================================================
+        if (students.length === 0) {
+            try {
+                console.log('📋 Trying student_marks...');
+                
+                var { data: marksData, error: marksError } = await supabase
+                    .from('student_marks')
+                    .select('admission_number, student_name, block, academic_year, subject_name')
+                    .eq('graded_by', lecturerId)
+                    .limit(100);
+                
+                if (!marksError && marksData && marksData.length > 0) {
+                    var uniqueStudents = {};
+                    marksData.forEach(function(m) {
+                        if (!uniqueStudents[m.admission_number]) {
+                            uniqueStudents[m.admission_number] = {
+                                student_id: m.admission_number,
+                                student_name: m.student_name || 'Unknown',
+                                program: 'KRCHN',
+                                intake_year: parseInt(intake),
+                                block: m.block || 'Block 1',
+                                registration_number: m.admission_number
+                            };
+                        }
+                    });
+                    
+                    students = Object.values(uniqueStudents);
+                    usedSource = 'student_marks';
+                    console.log('✅ Found', students.length, 'students from student_marks');
+                }
+            } catch (err) {
+                console.warn('Error with student_marks:', err.message);
+            }
+        }
+        
+        // ============================================================
+        // Process results
+        // ============================================================
+        if (students.length === 0) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <i class="fas fa-users" style="font-size: 32px; display: block; margin-bottom: 10px; color: #e2e8f0;"></i>
+                    <p style="font-size: 16px; font-weight: 500; color: #475569;">No KRCHN students found</p>
+                    <p style="font-size: 13px; margin: 0;">No students assigned to you for ${intake} intake</p>
+                    <p style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
+                        <i class="fas fa-info-circle"></i> Try selecting a different intake year
+                    </p>
+                    <div style="margin-top: 15px; display: flex; gap: 10px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="lecturerNCKLoadData()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-sync-alt"></i> Retry
+                        </button>
+                        <button onclick="document.getElementById('lecturerNCKIntake').value='2026'; lecturerNCKLoadData();" style="padding: 8px 20px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            Try 2026 Intake
+                        </button>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+        
+        // Filter KRCHN students
+        var krchnStudents = students.filter(function(s) {
+            var prog = s.program || '';
+            return prog === 'KRCHN' || prog.includes('KRCHN');
+        });
+        
+        if (krchnStudents.length === 0) {
+            // If no KRCHN, use all students
+            krchnStudents = students;
+            console.log('⚠️ No KRCHN filter, using all', krchnStudents.length, 'students');
         }
         
         LecturerNCK.students = krchnStudents;
@@ -321,7 +491,10 @@ async function lecturerNCKLoadData() {
             .in('student_id', studentIds)
             .eq('sheet_type', sheet);
         
-        if (marksError) throw marksError;
+        if (marksError) {
+            console.warn('Could not get marks:', marksError.message);
+            // Continue with empty marks
+        }
         
         // Build marks map
         LecturerNCK.marks = {};
@@ -341,7 +514,7 @@ async function lecturerNCKLoadData() {
         // Check approval status
         lecturerNCKCheckApprovalStatus();
         
-        console.log('✅ Loaded ' + krchnStudents.length + ' KRCHN students for ' + intake);
+        console.log('✅ Loaded', krchnStudents.length, 'KRCHN students from', usedSource);
         
     } catch (error) {
         console.error('Error loading NCK data:', error);
@@ -1114,5 +1287,7 @@ window.lecturerNCKCheckApprovalStatus = lecturerNCKCheckApprovalStatus;
 window.lecturerNCKExportCSV = lecturerNCKExportCSV;
 window.lecturerNCKGetLecturerInfo = lecturerNCKGetLecturerInfo;
 window.lecturerNCKUpdateUI = lecturerNCKUpdateUI;
+window.lecturerNCKSetManualId = lecturerNCKSetManualId;
 
 console.log('✅ Lecturer NCK module loaded successfully');
+console.log('📚 Available functions: lecturerNCKInit, lecturerNCKLoadData, lecturerNCKSaveAll, lecturerNCKSubmitForApproval, lecturerNCKWithdrawApproval, lecturerNCKExportCSV');
