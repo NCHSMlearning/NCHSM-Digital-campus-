@@ -52,6 +52,7 @@ let kcseValidated = false;
 let emailValid = false;
 let studentType = 'new';
 let kcseDataExtracted = {};
+let idDataExtracted = {};
 let applicationId = null;
 let emailCheckTimeout = null;
 
@@ -170,7 +171,7 @@ function showValidationModal(title, subtitle, missingFields) {
     }
 
     // Update progress
-    const totalSteps = 5;
+    const totalSteps = 4;
     const completed = Math.max(0, totalSteps - Math.ceil(count / 3));
     const percent = Math.min(Math.round((completed / totalSteps) * 100), 100);
     if (progressFill) progressFill.style.width = percent + '%';
@@ -190,8 +191,7 @@ function showValidationModal(title, subtitle, missingFields) {
         const sectionIcons = {
             'Personal Details': 'fa-user',
             'Program Details': 'fa-graduation-cap',
-            'Qualifications': 'fa-clipboard-list',
-            'Attachment': 'fa-id-card',
+            'Documents': 'fa-clipboard-list',
             'Submission': 'fa-clipboard-check',
             'Emergency Contact': 'fa-ambulance',
             'Medical History': 'fa-heartbeat',
@@ -274,10 +274,9 @@ function scrollToFirstMissing() {
             'Previous Institution': 'prevInstitution',
             'Previous Year of Study': 'prevYear',
             'KCSE Certificate': 'doc_kcse_input',
+            'National ID / Birth Certificate': 'doc_id_input',
             'Recommendation Letter': 'doc_recommendation_input',
             'Academic Transcript': 'doc_transcript_input',
-            'National ID / Birth Certificate': 'doc_id_input',
-            'Passport Photo': 'doc_passport_input',
             'Father Alive': 'fatherAlive',
             'Father Name': 'fatherName',
             'Father Phone No.': 'fatherPhone',
@@ -389,6 +388,7 @@ function goToStep(step) {
 
     currentStep = step;
     updateSummary();
+    updateDocumentStatus();
     saveApplication(step);
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
@@ -543,10 +543,11 @@ function validateStepWithModal(from, to) {
     }
 
     if (from === 3 && to > 3) {
-        // Qualifications - Documents
+        // Documents - KCSE, ID, Recommendation, Transcript (if transfer)
         const requiredDocs = [
-            { id: 'doc_kcse_input', field: 'KCSE Certificate', section: 'Qualifications', hint: 'Required for validation' },
-            { id: 'doc_recommendation_input', field: 'Recommendation Letter', section: 'Qualifications', hint: 'Required' },
+            { id: 'doc_kcse_input', field: 'KCSE Certificate', section: 'Documents', hint: 'Required for validation' },
+            { id: 'doc_id_input', field: 'National ID / Birth Certificate', section: 'Documents', hint: 'Required' },
+            { id: 'doc_recommendation_input', field: 'Recommendation Letter', section: 'Documents', hint: 'Required' },
         ];
 
         requiredDocs.forEach(check => {
@@ -564,13 +565,13 @@ function validateStepWithModal(from, to) {
         if (transferChecked) {
             const transcript = document.getElementById('doc_transcript_input');
             if (!transcript?.files?.length && !uploadedDocs['transcript']) {
-                missingFields.push({ field: 'Academic Transcript', section: 'Qualifications', hint: 'Required for transfer' });
+                missingFields.push({ field: 'Academic Transcript', section: 'Documents', hint: 'Required for transfer' });
             }
         }
 
         // KCSE validation status
         if (!kcseValidated) {
-            missingFields.push({ field: 'KCSE Validation', section: 'Qualifications', hint: 'Scan your KCSE certificate' });
+            missingFields.push({ field: 'KCSE Validation', section: 'Documents', hint: 'Scan your KCSE certificate' });
         }
 
         if (missingFields.length > 0) {
@@ -584,33 +585,6 @@ function validateStepWithModal(from, to) {
     }
 
     if (from === 4 && to > 4) {
-        // Attachment
-        const requiredDocs = [
-            { id: 'doc_id_input', field: 'National ID / Birth Certificate', section: 'Attachment', hint: 'Required' },
-            { id: 'doc_passport_input', field: 'Passport Photo', section: 'Attachment', hint: 'Upload passport photo' },
-        ];
-
-        requiredDocs.forEach(check => {
-            const el = document.getElementById(check.id);
-            if (el) {
-                const hasFile = el.files && el.files.length > 0;
-                if (!hasFile && !uploadedDocs[check.field.toLowerCase().replace(/[^a-z]/g, '_')]) {
-                    missingFields.push({ field: check.field, section: check.section, hint: check.hint });
-                }
-            }
-        });
-
-        if (missingFields.length > 0) {
-            showValidationModal(
-                'Complete Attachments',
-                'Please upload all required attachments',
-                missingFields
-            );
-            return false;
-        }
-    }
-
-    if (from === 5 && to > 5) {
         // Submission - Terms check
         const terms = document.getElementById('termsCheck');
         if (!terms?.checked) {
@@ -1089,6 +1063,7 @@ async function loadUserApplication(userId) {
 
             updateProgramDesc();
             updateSummary();
+            updateDocumentStatus();
 
             if (app.status === 'submitted') {
                 const submitBtn = document.getElementById('submitBtn');
@@ -1135,6 +1110,7 @@ async function saveApplication(step) {
         eligibility_passed: eligibilityPassed || false,
         kcse_validated: kcseValidated || false,
         kcse_data: kcseDataExtracted,
+        id_data: idDataExtracted,
         documents_uploaded: Object.keys(uploadedDocs).filter(k => uploadedDocs[k]),
         current_step: step || currentStep,
         updated_at: new Date().toISOString()
@@ -1182,6 +1158,7 @@ function selectType(type) {
         document.getElementById('prevYear').required = false;
     }
     updateSummary();
+    updateDocumentStatus();
 }
 
 // ============================================================
@@ -1360,7 +1337,6 @@ async function handleKCSEDocument(event) {
         
         const text = result.data.text;
         console.log('✅ OCR Complete. Text length:', text.length);
-        console.log('📝 OCR Text preview:', text.substring(0, 500));
 
         // Parse the extracted text
         const extractedData = parseKCSEData(text);
@@ -1406,6 +1382,7 @@ async function handleKCSEDocument(event) {
             URL.revokeObjectURL(imageUrl);
         }
         
+        updateDocumentStatus();
         await saveApplication(currentStep);
         
     } catch (error) {
@@ -1452,7 +1429,6 @@ function parseKCSEData(text) {
         const subject = match[1].trim();
         const grade = match[2].trim();
         if (subject.length > 1 && subject.length < 30 && grade.length <= 2) {
-            // Avoid duplicates
             if (!data.subjects.some(s => s.toLowerCase() === subject.toLowerCase())) {
                 data.subjects.push(subject);
                 data.grades[subject] = grade;
@@ -1560,8 +1536,8 @@ function validateKCSEAgainstProgram(data) {
     }
 
     let html = allPass ?
-        `<span style="display:inline-block;background:#d1fae5;color:#0b8a5e;padding:0.4rem 1.2rem;border-radius:40px;font-weight:600;font-size:0.85rem;margin-top:0.5rem;">✅ ELIGIBLE - You meet all requirements!</span>` :
-        `<span style="display:inline-block;background:#fee2e2;color:#dc2626;padding:0.4rem 1.2rem;border-radius:40px;font-weight:600;font-size:0.85rem;margin-top:0.5rem;">❌ NOT ELIGIBLE - You do not meet all requirements.</span>`;
+        `<span class="validation-pass">✅ ELIGIBLE - You meet all requirements!</span>` :
+        `<span class="validation-fail">❌ NOT ELIGIBLE - You do not meet all requirements.</span>`;
     html += `<div style="margin-top:6px;font-size:0.7rem;color:var(--gray-500);">${messages.map(m => `• ${m}`).join('<br>')}</div>`;
     validationResult.innerHTML = html;
     eligibilityPassed = allPass;
@@ -1646,6 +1622,7 @@ async function handleIDDocument(event) {
 
         // Parse the extracted text
         const idData = parseIDData(text);
+        idDataExtracted = idData;
 
         // Mark as uploaded
         uploadedDocs['id'] = true;
@@ -1685,6 +1662,7 @@ async function handleIDDocument(event) {
             URL.revokeObjectURL(imageUrl);
         }
         
+        updateDocumentStatus();
         await saveApplication(currentStep);
         
     } catch (error) {
@@ -1768,6 +1746,7 @@ function handleDocUpload(event, docKey) {
     if (fnameEl) fnameEl.textContent = file.name;
     if (card) card.classList.add('uploaded');
     updateSummary();
+    updateDocumentStatus();
     saveApplication(currentStep);
 }
 
@@ -1797,8 +1776,50 @@ function removeDocument(docKey) {
         if (ocrStatus) ocrStatus.textContent = '';
         if (validationResult) validationResult.innerHTML = '';
     }
+    if (docKey === 'id') {
+        const resultBox = document.getElementById('ocr_id_result');
+        const ocrStatus = document.getElementById('ocr_id_status');
+        if (resultBox) resultBox.style.display = 'none';
+        if (ocrStatus) ocrStatus.textContent = '';
+    }
     updateSummary();
+    updateDocumentStatus();
     saveApplication(currentStep);
+}
+
+// ============================================================
+// UPDATE DOCUMENT STATUS IN STEP 4
+// ============================================================
+function updateDocumentStatus() {
+    const docStatusMap = {
+        'kcse': 'KCSE Certificate',
+        'id': 'National ID',
+        'recommendation': 'Recommendation Letter',
+        'transcript': 'Academic Transcript'
+    };
+
+    for (const [key, label] of Object.entries(docStatusMap)) {
+        const statusEl = document.getElementById(`doc_status_${key}`);
+        if (statusEl) {
+            if (uploadedDocs[key]) {
+                statusEl.textContent = '✅ Uploaded';
+                statusEl.style.color = 'var(--success)';
+            } else {
+                statusEl.textContent = '❌ Not uploaded';
+                statusEl.style.color = 'var(--danger)';
+            }
+        }
+    }
+
+    // Show/hide transcript row
+    const transcriptRow = document.getElementById('doc_status_transcript_row');
+    if (transcriptRow) {
+        if (studentType === 'transfer') {
+            transcriptRow.style.display = 'block';
+        } else {
+            transcriptRow.style.display = 'none';
+        }
+    }
 }
 
 // ============================================================
@@ -1856,25 +1877,31 @@ async function submitAdmission() {
     }
     if (!kcseValidated) {
         showValidationModal('KCSE Not Validated', 'Please scan your KCSE certificate first', [
-            { field: 'KCSE Validation', section: 'Qualifications', hint: 'Upload and scan your KCSE certificate' }
+            { field: 'KCSE Validation', section: 'Documents', hint: 'Upload and scan your KCSE certificate' }
         ]);
         return;
     }
     if (!eligibilityPassed) {
         showValidationModal('Not Eligible', 'You do not meet the program requirements', [
-            { field: 'Eligibility', section: 'Validation', hint: 'Your KCSE grades do not meet the minimum requirements' }
+            { field: 'Eligibility', section: 'Documents', hint: 'Your KCSE grades do not meet the minimum requirements' }
         ]);
         return;
     }
     if (!uploadedDocs['recommendation']) {
         showValidationModal('Missing Document', 'Please upload a Recommendation Letter', [
-            { field: 'Recommendation Letter', section: 'Qualifications', hint: 'Required for all applicants' }
+            { field: 'Recommendation Letter', section: 'Documents', hint: 'Required for all applicants' }
+        ]);
+        return;
+    }
+    if (!uploadedDocs['id']) {
+        showValidationModal('Missing Document', 'Please upload your National ID', [
+            { field: 'National ID / Birth Certificate', section: 'Documents', hint: 'Required for all applicants' }
         ]);
         return;
     }
     if (studentType === 'transfer' && !uploadedDocs['transcript']) {
         showValidationModal('Missing Document', 'Transfer students must upload their Academic Transcript', [
-            { field: 'Academic Transcript', section: 'Qualifications', hint: 'Required for transfer students' }
+            { field: 'Academic Transcript', section: 'Documents', hint: 'Required for transfer students' }
         ]);
         return;
     }
@@ -2285,6 +2312,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Init form
     updateProgramDesc();
     updateSummary();
+    updateDocumentStatus();
 
     // Register email validation (home page)
     const regEmail = document.getElementById('regEmail');
@@ -2568,6 +2596,7 @@ window.submitAdmission = submitAdmission;
 window.updateProgramDesc = updateProgramDesc;
 window.updateCriteria = updateCriteria;
 window.updateSummary = updateSummary;
+window.updateDocumentStatus = updateDocumentStatus;
 window.closeValidation = closeValidation;
 window.showValidation = showValidation;
 window.showValidationModal = showValidationModal;
