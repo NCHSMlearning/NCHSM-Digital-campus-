@@ -3,6 +3,8 @@
 // ✅ Multi-reading GPS averaging (5+ readings)
 // ✅ Confidence scoring & verification
 // ✅ Anti-spoofing protection
+// ✅ 300m radius for clinical locations (hospitals)
+// ✅ 50m radius for classroom/lab
 // ✅ Beautiful modals - NO "This site says" popups!
 // ✅ Working navigation and filters
 // ✅ FULLY SELF-CONTAINED
@@ -31,6 +33,14 @@
         STABILIZATION_TIME: 3000,
         MAX_DRIFT: 20,
         MAX_MOVEMENT_SPEED: 2,
+        // 🆕 CLINICAL RADIUS - 300m for hospitals
+        CLINICAL_RADIUS: 300,
+        // Classroom radius - 50m
+        CLASSROOM_RADIUS: 50,
+        // Lab radius - 50m
+        LAB_RADIUS: 50,
+        // Tutorial radius - 50m
+        TUTORIAL_RADIUS: 50
     };
     
     let approvedUnits = [];
@@ -556,7 +566,9 @@
                 .eq('status', 'approved');
             if (error) throw error;
             approvedUnits = (data || []).map(u => ({
-                id: u.id, unit_code: u.unit_code, unit_name: u.unit_name,
+                id: u.id, 
+                unit_code: u.unit_code, 
+                unit_name: u.unit_name,
                 block: u.block,
                 latitude: u.latitude || CAMPUS_COORDINATES.latitude,
                 longitude: u.longitude || CAMPUS_COORDINATES.longitude,
@@ -566,19 +578,57 @@
         } catch(e) { return []; }
     }
     
+    // 🆕 UPDATED: Load clinical locations with radius
     async function loadClinicalLocations() {
         try {
             const supabase = getSupabase();
             if (!supabase) return [];
+            
             const { data, error } = await supabase
                 .from('clinical_names')
-                .select('id, clinical_area_name, latitude, longitude')
+                .select('id, clinical_area_name, latitude, longitude, radius_meters')
                 .eq('program', 'KRCHN')
                 .eq('intake_year', '2026');
+            
             if (error) throw error;
-            clinicalLocations = data || [];
+            
+            clinicalLocations = (data || []).map(loc => {
+                // Use radius_meters from DB or default to 300m for hospitals
+                let radius = loc.radius_meters || 300;
+                
+                // For smaller clinics, use 150m
+                const lowerName = loc.clinical_area_name.toLowerCase();
+                if (lowerName.includes('clinic') || 
+                    lowerName.includes('health centre') || 
+                    lowerName.includes('dispensary') ||
+                    lowerName.includes('health center')) {
+                    radius = 150;
+                }
+                
+                // For national/teaching hospitals, use 500m
+                if (lowerName.includes('national') || 
+                    lowerName.includes('teaching') || 
+                    lowerName.includes('level 6') ||
+                    lowerName.includes('referral')) {
+                    radius = 500;
+                }
+                
+                return {
+                    id: `clinical_${loc.id}`,
+                    name: loc.clinical_area_name,
+                    type: 'clinical',
+                    latitude: parseFloat(loc.latitude),
+                    longitude: parseFloat(loc.longitude),
+                    radius: radius
+                };
+            });
+            
+            console.log(`🏥 Loaded ${clinicalLocations.length} clinical locations with dynamic radius`);
             return clinicalLocations;
-        } catch(e) { return []; }
+        } catch(e) { 
+            console.error('Error loading clinical locations:', e);
+            return []; 
+        }
     }
     
     async function loadActiveSessions() {
@@ -633,14 +683,14 @@
         if (sessionType === 'clinical') {
             if (clinicalLocations.length === 0) await loadClinicalLocations();
             options = clinicalLocations.map(loc => ({
-                id: `clinical_${loc.id}`,
-                name: loc.clinical_area_name,
+                id: loc.id,
+                name: loc.name,
                 type: 'clinical',
-                latitude: parseFloat(loc.latitude),
-                longitude: parseFloat(loc.longitude),
-                radius: 100
+                latitude: loc.latitude,
+                longitude: loc.longitude,
+                radius: loc.radius || 300  // 🆕 Use dynamic radius
             }));
-            console.log(`🏥 Found ${options.length} clinical locations`);
+            console.log(`🏥 Found ${options.length} clinical locations with ${options[0]?.radius || 300}m radius`);
         } else if (sessionType === 'class' || sessionType === 'lab' || sessionType === 'tutorial') {
             if (approvedUnits.length === 0) await loadApprovedUnits();
             options = approvedUnits.map(unit => ({
@@ -664,7 +714,9 @@
         options.forEach(opt => {
             const option = document.createElement('option');
             option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
-            option.textContent = opt.name;
+            // 🆕 Show radius in the option text
+            const radiusText = opt.type === 'clinical' ? ` (${opt.radius}m radius)` : '';
+            option.textContent = `${opt.name}${radiusText}`;
             targetSelect.appendChild(option);
         });
         targetSelect.disabled = false;
@@ -1282,7 +1334,7 @@
     }
 
     // ============================================
-    // ✅ DO CHECK-IN - ULTRA ACCURATE VERSION
+    // ✅ DO CHECK-IN - ULTRA ACCURATE WITH DYNAMIC RADIUS
     // ============================================
     
     async function doCheckIn() {
@@ -1299,7 +1351,7 @@
                     type: parts[2],
                     latitude: parseFloat(parts[3]),
                     longitude: parseFloat(parts[4]),
-                    radius: parseFloat(parts[5])
+                    radius: parseFloat(parts[5])  // 🆕 Dynamic radius from target
                 };
             }
         }
@@ -1359,34 +1411,55 @@
                 location.lat, location.lon,
                 selectedTarget.latitude, selectedTarget.longitude
             );
-            const radius = selectedTarget.radius || 50;
+            
+            // 🆕 DYNAMIC RADIUS - Clinical gets 300m, Classroom gets 50m
+            let radius = selectedTarget.radius || 50;
+            
+            // If it's clinical and radius is still default, use 300m
+            if (selectedTarget.type === 'clinical' && radius < 100) {
+                radius = ACCURACY_CONFIG.CLINICAL_RADIUS;
+            }
+            
+            // If it's classroom/lab/tutorial, use 50m
+            if (selectedTarget.type === 'class' || selectedTarget.type === 'lab' || selectedTarget.type === 'tutorial') {
+                radius = ACCURACY_CONFIG.CLASSROOM_RADIUS;
+            }
+            
             const accuracy = location.accuracy || 0;
             
+            // 🎯 STATUS DETERMINATION WITH DYNAMIC RADIUS
             let status = 'Absent';
             let statusMessage = '';
             let verificationDetails = [];
             
+            // Check GPS accuracy
             if (accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) {
                 status = 'Pending';
                 statusMessage = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m)`;
                 verificationDetails.push(`GPS Accuracy: ${accuracy.toFixed(0)}m (needs < ${ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY}m)`);
             }
             
+            // 🆕 Check distance with DYNAMIC RADIUS
+            const isClinical = selectedTarget.type === 'clinical';
+            const radiusType = isClinical ? 'Clinical' : 'Classroom';
+            const radiusDisplay = isClinical ? `${radius}m (Hospital Radius)` : `${radius}m (Classroom Radius)`;
+            
             if (distance <= radius) {
                 if (status !== 'Pending') {
                     status = 'Present';
-                    statusMessage = `✅ Verified within ${radius}m (${distance.toFixed(0)}m away)`;
+                    statusMessage = `✅ Verified within ${radius}m (${distance.toFixed(0)}m away) • ${radiusType} Radius`;
                 }
             } else if (distance <= radius * 2) {
                 if (status !== 'Pending') {
                     status = 'Pending';
-                    statusMessage = `⚠️ ${distance.toFixed(0)}m from target (${radius}m required)`;
+                    statusMessage = `⚠️ ${distance.toFixed(0)}m from target (${radius}m ${radiusType} radius required)`;
                 }
             } else {
                 status = 'Absent';
-                statusMessage = `❌ Too far: ${distance.toFixed(0)}m from target`;
+                statusMessage = `❌ Too far: ${distance.toFixed(0)}m from target (${radius}m ${radiusType} radius)`;
             }
             
+            // Confidence check
             if (location.confidence < 50) {
                 status = 'Pending';
                 statusMessage += ` | Low confidence (${location.confidence.toFixed(0)}%)`;
@@ -1404,11 +1477,12 @@
                 'Block': studentBlock,
                 'Program': studentProgram,
                 'Target': selectedTarget.name,
-                'Type': selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'clinical' ? 'Clinical' : 'Session',
+                'Type': selectedTarget.type === 'clinical' ? '🏥 Clinical' : selectedTarget.type === 'class' ? '📚 Classroom' : selectedTarget.type === 'lab' ? '🧪 Lab' : '📖 Tutorial',
                 'Distance': distance.toFixed(0) + 'm',
                 'GPS Accuracy': '±' + accuracy.toFixed(0) + 'm',
                 'Confidence': location.confidence.toFixed(0) + '%',
                 'Readings': location.readingsCount + ' readings',
+                'Radius': radiusDisplay,
                 'Status': status,
                 'Verification': verificationDetails.join(' | ') || 'All checks passed ✅'
             };
@@ -1416,7 +1490,7 @@
             const confirmed = await showConfirmModal({
                 icon: '📍',
                 title: '🔒 Verified Check-in',
-                subtitle: 'Location verified with multi-point GPS',
+                subtitle: `Location verified with ${radiusType} radius (${radius}m)`,
                 details: details
             });
             
@@ -1457,7 +1531,10 @@
                 gps_confidence: location.confidence,
                 gps_readings: location.readingsCount,
                 gps_std_dev: location.stdDev,
-                verification_checks: JSON.stringify(location.verification?.checks || [])
+                verification_checks: JSON.stringify(location.verification?.checks || []),
+                // 🆕 Store the radius type for reference
+                location_type: selectedTarget.type,
+                clinical_radius: isClinical ? radius : null
             };
             
             const { error } = await supabase
@@ -1477,7 +1554,7 @@
             
             showSuccessModal({
                 target: selectedTarget.name,
-                type: selectedTarget.type === 'class' ? 'Classroom' : selectedTarget.type === 'clinical' ? 'Clinical' : 'Session',
+                type: selectedTarget.type === 'clinical' ? '🏥 Clinical' : selectedTarget.type === 'class' ? '📚 Classroom' : selectedTarget.type === 'lab' ? '🧪 Lab' : '📖 Tutorial',
                 distance: distance.toFixed(0),
                 accuracy: accuracy.toFixed(0),
                 status: status,
@@ -1506,6 +1583,8 @@
     
     async function init() {
         console.log('🚀 Initializing ULTRA-ACCURATE attendance system...');
+        console.log('🏥 Clinical radius: 300m for hospitals');
+        console.log('📚 Classroom radius: 50m for classes/labs');
         
         let retries = 0;
         while (!getSupabase() && retries < 10) {
@@ -1555,6 +1634,7 @@
                             radius: parseFloat(parts[5])
                         };
                         console.log('✅ Target selected:', selectedTarget.name);
+                        console.log(`📏 Radius: ${selectedTarget.radius}m`);
                     }
                 } else {
                     selectedTarget = null;
@@ -1585,7 +1665,9 @@
         
         isInitialized = true;
         console.log('✅ Ultra-accurate attendance system ready!');
-        showToast('🎯 Ultra-accurate attendance system ready!', 'success', 2000);
+        console.log(`🏥 Clinical radius: ${ACCURACY_CONFIG.CLINICAL_RADIUS}m`);
+        console.log(`📚 Classroom radius: ${ACCURACY_CONFIG.CLASSROOM_RADIUS}m`);
+        showToast(`🎯 Ultra-accurate attendance ready! (Clinical: ${ACCURACY_CONFIG.CLINICAL_RADIUS}m, Class: ${ACCURACY_CONFIG.CLASSROOM_RADIUS}m)`, 'success', 3000);
     }
     
     // ============================================
@@ -1597,6 +1679,7 @@
     window.filterHistory = filterHistory;
     window.refreshAttendance = init;
     window.attendanceSystemReady = true;
+    window.doCheckIn = doCheckIn;
     
     // ============================================
     // 🏁 START
@@ -1611,5 +1694,7 @@
     console.log('✅ ULTRA-ACCURATE attendance system module loaded!');
     console.log('🎯 5-point GPS verification enabled!');
     console.log('📡 Multi-reading averaging active!');
+    console.log('🏥 Clinical radius: 300m (hospitals)');
+    console.log('📚 Classroom radius: 50m (classes/labs)');
     
 })();
