@@ -1,11 +1,13 @@
-// js/academic-reports.js - COMPLETE STUDENT VERSION
+// js/academic-reports.js - COMPLETE STUDENT VERSION WITH RETAKE SUPPORT
 // All tabs: Semester Report, Yearly Summary, Full Transcript, Course Progress, My Performance
 // INCLUDES: LINE GRAPHS, PROFILE PICTURE, DATABASE UNIT CODES, FIXED GRADE DISPLAY
+// NEW: ⭐ RETAKE/SUPPLEMENTARY EXAM SUPPORT - Star indicators on retaken units
 // ============================================================
 (function() {
     'use strict';
     
     console.log('📊 Student Academic Reports Module Loading...');
+    console.log('⭐ Retake/Supplementary Support: ENABLED');
 
     // ============================================================
     // 1. PROGRAM DETECTION
@@ -127,7 +129,94 @@
     }
 
     // ============================================================
-    // 3. UTILITY FUNCTIONS
+    // 3. RETAKE/SUPPLEMENTARY DATA STATE
+    // ============================================================
+    
+    let studentRetakeData = [];
+    let studentRetakeMap = {};
+    let retakeDataLoaded = false;
+
+    // ============================================================
+    // 4. FETCH RETAKE DATA FOR STUDENT
+    // ============================================================
+    
+    async function fetchStudentRetakeData(admissionNumber) {
+        if (!admissionNumber) return {};
+        if (retakeDataLoaded) return studentRetakeMap;
+        
+        try {
+            const { data, error } = await window.db.supabase
+                .from('student_retakes')
+                .select('*')
+                .eq('admission_number', admissionNumber)
+                .order('attempt_number', { ascending: true });
+            
+            if (error) throw error;
+            
+            studentRetakeData = data || [];
+            
+            // Group by subject_name
+            const retakeMap = {};
+            data?.forEach(retake => {
+                const key = retake.subject_name;
+                if (!retakeMap[key]) retakeMap[key] = [];
+                retakeMap[key].push(retake);
+            });
+            
+            studentRetakeMap = retakeMap;
+            retakeDataLoaded = true;
+            
+            console.log(`📊 Loaded ${data?.length || 0} retake records for student`);
+            return retakeMap;
+            
+        } catch (error) {
+            console.error('Error fetching retake data:', error);
+            return {};
+        }
+    }
+
+    // ============================================================
+    // 5. RETAKE HELPER FUNCTIONS
+    // ============================================================
+    
+    function getRetakeBadgeHtml(retakeCount, status = null) {
+        if (!retakeCount || retakeCount === 0) return '';
+        
+        const isPassing = status === 'PASS';
+        const color = isPassing ? '#059669' : '#dc2626';
+        const icon = isPassing ? '✅' : '❌';
+        const text = isPassing ? 'Passed' : 'Failed';
+        
+        return `
+            <span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 9px; padding: 2px 8px; border-radius: 10px; font-weight: 700;">
+                ⭐ R${retakeCount}
+            </span>
+            ${status ? `<span style="display: inline-block; margin-left: 4px; font-size: 9px; color: ${color}; font-weight: 600;">${icon} ${text}</span>` : ''}
+        `;
+    }
+
+    function getRetakeHistoryHtml(retakes) {
+        if (!retakes || retakes.length === 0) return '';
+        
+        let html = '<div style="font-size: 9px; color: #64748b; margin-top: 2px;">';
+        html += '<span style="font-weight: 600;">🔄 Retake History:</span>';
+        retakes.forEach((r, i) => {
+            const isPass = r.status === 'PASS';
+            html += `<span style="margin-left: 6px; color: ${isPass ? '#059669' : '#dc2626'};">`;
+            html += `#${r.attempt_number}: ${r.exam_score}% ${isPass ? '✅' : '❌'}`;
+            html += `</span>`;
+        });
+        html += '</div>';
+        return html;
+    }
+
+    function getRetakeStarHtml(retakeCount) {
+        if (!retakeCount || retakeCount === 0) return '';
+        return `<span class="retake-star" title="This unit was retaken (${retakeCount} attempts)">⭐</span>`;
+    }
+
+    // ============================================================
+    // 6. UTILITY FUNCTIONS
     // ============================================================
     function escapeHtml(str) {
         if (!str) return '';
@@ -163,7 +252,7 @@
     }
 
     // ============================================================
-    // 4. TVET GRADING FUNCTIONS (Min Pass: 50%)
+    // 7. TVET GRADING FUNCTIONS (Min Pass: 50%)
     // ============================================================
     function calculateTVETGrade(score) {
         if (score === null || score === undefined || score === 0) return 'FAIL';
@@ -193,7 +282,7 @@
     }
 
     // ============================================================
-    // 5. NURSING GRADING FUNCTIONS (Min Pass: 60%)
+    // 8. NURSING GRADING FUNCTIONS (Min Pass: 60%)
     // ============================================================
     function calculateNursingGrade(score) {
         if (score === null || score === undefined || score === 0) return 'D';
@@ -223,7 +312,7 @@
     }
 
     // ============================================================
-    // 6. MAIN GRADING FUNCTIONS
+    // 9. MAIN GRADING FUNCTIONS
     // ============================================================
     function calculateGrade(score, program) {
         const isTVET = PROGRAM.isTVET(program);
@@ -256,7 +345,7 @@
     }
 
     // ============================================================
-    // 7. GET GRADE FROM GPA - FIXED
+    // 10. GET GRADE FROM GPA
     // ============================================================
     function getGradeFromGPA(gpa) {
         if (gpa >= 3.75) return 'A';
@@ -273,7 +362,7 @@
     }
 
     // ============================================================
-    // 8. GENERATE SAMPLE GRADES (Fallback)
+    // 11. GENERATE SAMPLE GRADES (Fallback)
     // ============================================================
     function generateSampleGrades(program) {
         const isTVET = PROGRAM.isTVET(program);
@@ -311,13 +400,15 @@
                 status: status,
                 blockTerm: course.block,
                 year: '2024',
-                examDate: '2024-01-15'
+                examDate: '2024-01-15',
+                hasRetake: false,
+                retakeCount: 0
             };
         });
     }
 
     // ============================================================
-    // 9. MY PERFORMANCE - STATE & FUNCTIONS
+    // 12. MY PERFORMANCE - STATE & FUNCTIONS
     // ============================================================
     let myMarksData = [];
     let myMarksFiltered = [];
@@ -337,13 +428,16 @@
         ];
     }
 
+    // ============================================================
+    // 13. LOAD MY MARKS WITH RETAKE SUPPORT
+    // ============================================================
     async function loadMyMarks() {
         const tbody = document.getElementById('my_marks_table_body');
         if (!tbody) return;
         
         tbody.innerHTML = `
             <tr>
-                <td colspan="6" style="text-align: center; padding: 40px;">
+                <td colspan="9" style="text-align: center; padding: 40px;">
                     <div class="loading-spinner"></div>
                     <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
                 </td>
@@ -355,7 +449,7 @@
             
             const user = window.currentUserProfile || window.db?.currentUserProfile;
             if (!user) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
                 return;
             }
             
@@ -383,6 +477,9 @@
             
             populateMyMarksBlockFilter(userProgram);
             
+            // ✅ FETCH RETAKE DATA
+            await fetchStudentRetakeData(registrationNumber);
+            
             let marks = [];
             try {
                 const result = await window.db.supabase
@@ -395,14 +492,25 @@
                 if (!result.error && result.data && result.data.length > 0) {
                     marks = result.data;
                     
-                    marks = marks.map(mark => ({
-                        ...mark,
-                        unit_code: getUnitCode(mark.subject_name),
-                        grade: mark.grade || calculateGrade(mark.final_score, userProgram),
-                        points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram)
-                    }));
+                    marks = marks.map(mark => {
+                        const retakes = studentRetakeMap[mark.subject_name] || [];
+                        const hasRetake = retakes.length > 0;
+                        const lastRetake = retakes[retakes.length - 1];
+                        
+                        return {
+                            ...mark,
+                            unit_code: getUnitCode(mark.subject_name),
+                            grade: mark.grade || calculateGrade(mark.final_score, userProgram),
+                            points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram),
+                            hasRetake: hasRetake,
+                            retakeCount: retakes.length,
+                            retakeScore: lastRetake?.exam_score || null,
+                            retakeStatus: lastRetake?.status || null,
+                            retakeHistory: retakes
+                        };
+                    });
                     
-                    console.log(`📊 Loaded ${marks.length} marks with unit codes`);
+                    console.log(`📊 Loaded ${marks.length} marks with retake data`);
                 }
             } catch (e) {
                 console.warn('Error fetching marks:', e);
@@ -416,12 +524,15 @@
                     ...mark,
                     unit_code: getUnitCode(mark.subject_name),
                     grade: mark.grade || calculateGrade(mark.final_score, userProgram),
-                    points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram)
+                    points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram),
+                    hasRetake: false,
+                    retakeCount: 0
                 }));
             }
             
             myMarksFiltered = [...myMarksData];
             
+            // Populate filters
             const subjectFilter = document.getElementById('my_marks_subject_filter');
             if (subjectFilter) {
                 const subjects = [...new Set(myMarksData.map(m => m.subject_name).filter(Boolean))];
@@ -450,13 +561,13 @@
             const gpaEl = document.getElementById('my_marks_gpa');
             if (gpaEl) gpaEl.textContent = gpa.toFixed(2);
             
-            renderMyMarksTable();
+            renderMyMarksTableWithRetakes();
             showGradingScale(userProgram, myMarksData);
             setTimeout(renderMyMarksCharts, 300);
             
         } catch (error) {
             console.error('Error loading my marks:', error);
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
         }
     }
 
@@ -500,7 +611,10 @@
         });
     }
 
-    function renderMyMarksTable() {
+    // ============================================================
+    // 14. RENDER MY MARKS TABLE WITH RETAKE SUPPORT
+    // ============================================================
+    function renderMyMarksTableWithRetakes() {
         const tbody = document.getElementById('my_marks_table_body');
         if (!tbody) return;
         
@@ -508,7 +622,7 @@
         if (!marks || marks.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
                         <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
                         No published marks found
                     </td>
@@ -529,23 +643,80 @@
             const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
             const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
             
+            const hasRetake = mark.hasRetake || false;
+            const retakeCount = mark.retakeCount || 0;
+            const retakeScore = mark.retakeScore;
+            const retakeStatus = mark.retakeStatus;
+            const retakeHistory = mark.retakeHistory || [];
+            const isRetakePassed = retakeStatus === 'PASS';
+            const isRetakeFailed = retakeStatus === 'FAIL';
+            
+            let rowStyle = '';
+            if (hasRetake && isRetakePassed) {
+                rowStyle = 'background: linear-gradient(90deg, #f0fdf4, #dcfce7); border-left: 4px solid #059669;';
+            } else if (hasRetake && isRetakeFailed) {
+                rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
+            } else if (hasRetake) {
+                rowStyle = 'background: linear-gradient(90deg, #fffbeb, #fef3c7); border-left: 4px solid #f59e0b;';
+            }
+            
+            let retakeDisplay = '';
+            if (hasRetake) {
+                retakeDisplay = `
+                    <div style="display: flex; flex-direction: column; gap: 2px;">
+                        <span style="display: inline-block; background: #f59e0b; color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 700; text-align: center;">
+                            ⭐ R${retakeCount}
+                        </span>
+                        ${retakeScore !== null ? `
+                            <span style="font-size: 9px; color: ${isRetakePassed ? '#059669' : '#dc2626'}; font-weight: 600; text-align: center;">
+                                ${isRetakePassed ? '✅ Passed' : '❌ Failed'} (${retakeScore}%)
+                            </span>
+                        ` : ''}
+                        ${retakeHistory.length > 0 ? `
+                            <span style="font-size: 7px; color: #94a3b8; text-align: center;">${retakeHistory.length} attempt(s)</span>
+                        ` : ''}
+                    </div>
+                `;
+            }
+            
+            let retakeTooltip = '';
+            if (retakeHistory.length > 0) {
+                const historyItems = retakeHistory.map(r => 
+                    `Attempt #${r.attempt_number}: ${r.exam_score}% ${r.status === 'PASS' ? '✅' : '❌'}`
+                ).join(' | ');
+                retakeTooltip = ` title="Retake History: ${historyItems}"`;
+            }
+            
             html += `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle}" 
                     onmouseover="this.style.background='#f8fafc'" 
-                    onmouseout="this.style.background='transparent'">
+                    onmouseout="this.style.background='${rowStyle.includes('background:') ? rowStyle.match(/background: [^;]+/)?.[0]?.replace('background:', '').trim() || 'transparent' : 'transparent'}'"
+                    ${retakeTooltip}>
                     <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
                     <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
-                    <td style="padding: 10px 14px;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                    <td style="padding: 10px 14px;">
+                        ${escapeHtml(mark.subject_name || 'N/A')}
+                        ${hasRetake ? `<span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 8px; padding: 1px 8px; border-radius: 10px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
+                        ${retakeScore !== null ? `<span style="display: inline-block; margin-left: 4px; font-size: 8px; color: ${isRetakePassed ? '#059669' : '#dc2626'}; font-weight: 600;">${isRetakePassed ? '✅' : '❌'} ${retakeScore}%</span>` : ''}
+                    </td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
                             ${mark.grade || '-'}
                         </span>
+                        ${hasRetake ? `<span style="display: block; font-size: 8px; color: #94a3b8; margin-top: 2px;">Retake: ${retakeCount}x</span>` : ''}
                     </td>
                     <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${points.toFixed(1)}</td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
                             ${status}
                         </span>
+                        ${isRetakePassed ? `<span style="display: block; font-size: 8px; color: #059669; margin-top: 2px;">⭐ Retake Passed!</span>` : ''}
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center; font-size: 10px;">
+                        ${retakeHistory.length > 0 ? getRetakeHistoryHtml(retakeHistory) : '<span style="color: #94a3b8;">First attempt</span>'}
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        ${hasRetake ? `<span style="color: #f59e0b; font-size: 11px;">⭐ R${retakeCount}</span>` : `<span style="color: #94a3b8; font-size: 11px;">—</span>`}
                     </td>
                 </tr>
             `;
@@ -553,6 +724,41 @@
         
         tbody.innerHTML = html;
         document.getElementById('my_marks_count').textContent = `${marks.length} results`;
+        
+        // ✅ Retake summary
+        const retakeCount = marks.filter(m => m.hasRetake).length;
+        const retakePassed = marks.filter(m => m.hasRetake && m.retakeStatus === 'PASS').length;
+        const retakeFailed = marks.filter(m => m.hasRetake && m.retakeStatus === 'FAIL').length;
+        
+        let summaryEl = document.getElementById('my_marks_retake_summary');
+        if (!summaryEl) {
+            summaryEl = document.createElement('div');
+            summaryEl.id = 'my_marks_retake_summary';
+            const container = document.getElementById('my_marks_table_container') || tbody.closest('div');
+            if (container) {
+                container.parentNode.insertBefore(summaryEl, container.nextSibling);
+            }
+        }
+        
+        if (summaryEl) {
+            summaryEl.innerHTML = `
+                <div style="display: flex; gap: 15px; flex-wrap: wrap; padding: 8px 12px; background: #fffbeb; border-radius: 8px; border: 1px solid #f59e0b; margin-top: 10px;">
+                    <span style="font-size: 12px; color: #92400e;">
+                        <i class="fas fa-star" style="color: #f59e0b;"></i>
+                        <strong>Retake Summary:</strong>
+                    </span>
+                    <span style="font-size: 12px; color: #92400e;">
+                        <strong>${retakeCount}</strong> units with retakes
+                    </span>
+                    ${retakePassed > 0 ? `<span style="font-size: 12px; color: #059669;">✅ ${retakePassed} passed after retake</span>` : ''}
+                    ${retakeFailed > 0 ? `<span style="font-size: 12px; color: #dc2626;">❌ ${retakeFailed} still failing</span>` : ''}
+                    <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
+                        Max attempts: 2
+                    </span>
+                </div>
+            `;
+            summaryEl.style.display = retakeCount > 0 ? 'block' : 'none';
+        }
     }
 
     function filterMyMarks() {
@@ -580,13 +786,13 @@
         }
         
         myMarksFiltered = filtered;
-        renderMyMarksTable();
+        renderMyMarksTableWithRetakes();
         document.getElementById('my_marks_count').textContent = `${filtered.length} results`;
         setTimeout(renderMyMarksCharts, 200);
     }
 
     // ============================================================
-    // 10. RENDER CHARTS FOR MY PERFORMANCE - LINE GRAPHS
+    // 15. RENDER CHARTS FOR MY PERFORMANCE
     // ============================================================
     function renderMyMarksCharts() {
         const marks = myMarksFiltered || [];
@@ -816,7 +1022,7 @@
     }
 
     // ============================================================
-    // 11. SEMESTER REPORT
+    // 16. SEMESTER REPORT
     // ============================================================
     let gradeChart = null;
     let currentGrades = [];
@@ -849,7 +1055,9 @@
                         points: calculatePoints(calculateGrade(e.totalPercentage || 0, userProgram), userProgram),
                         status: getGradingStatus(e.totalPercentage || 0, userProgram),
                         blockTerm: e.block_term || e.block || 'General',
-                        year: e.intake_year || '2024'
+                        year: e.intake_year || '2024',
+                        hasRetake: false,
+                        retakeCount: 0
                     }));
                 }
             }
@@ -877,17 +1085,24 @@
             grades.forEach((g, i) => {
                 const statusColor = getStatusColor(g.status);
                 const gradeColor = getGradeColor(g.grade);
+                const hasRetake = g.hasRetake || false;
+                const retakeCount = g.retakeCount || 0;
+                const retakeStar = hasRetake ? `⭐ R${retakeCount}` : '';
                 
                 html += `
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
+                    <tr style="border-bottom: 1px solid #e2e8f0; ${hasRetake ? 'background: #fffbeb;' : ''}">
                         <td style="padding: 12px;">${escapeHtml(g.courseCode)}</td>
-                        <td style="padding: 12px;">${escapeHtml(g.courseName)}</td>
+                        <td style="padding: 12px;">
+                            ${escapeHtml(g.courseName)}
+                            ${hasRetake ? `<span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 8px; padding: 1px 8px; border-radius: 10px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
+                        </td>
                         <td style="padding: 12px; text-align: center;">${g.credits}</td>
                         <td style="padding: 12px; text-align: center;">${g.total}%</td>
                         <td style="padding: 12px; text-align: center;">
                             <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px;">
                                 ${g.grade}
                             </span>
+                            ${hasRetake ? `<span style="display: block; font-size: 8px; color: #f59e0b;">⭐ Retake</span>` : ''}
                         </td>
                         <td style="padding: 12px; text-align: center; font-weight: 600;">${g.points.toFixed(1)}</td>
                         <td style="padding: 12px; text-align: center;">
@@ -982,7 +1197,7 @@
     }
 
     // ============================================================
-    // 12. YEARLY REPORT
+    // 17. YEARLY REPORT
     // ============================================================
     function loadYearlyReport() {
         const user = window.currentUserProfile || {};
@@ -999,7 +1214,7 @@
     }
 
     // ============================================================
-    // 13. FULL TRANSCRIPT
+    // 18. FULL TRANSCRIPT
     // ============================================================
     function loadTranscript() {
         const tbody = document.getElementById('transcript-table-body');
@@ -1023,6 +1238,9 @@
         
         const transcriptData = marksData.map(m => {
             const isFromMyMarks = m.subject_name !== undefined;
+            const hasRetake = m.hasRetake || false;
+            const retakeCount = m.retakeCount || 0;
+            
             return {
                 courseCode: m.unit_code || getUnitCode(m.subject_name || m.courseName || 'N/A'),
                 courseName: m.subject_name || m.courseName || 'Unknown Course',
@@ -1032,7 +1250,11 @@
                 status: getGradingStatus(m.final_score || m.total || 0, userProgram),
                 blockTerm: m.block || m.blockTerm || 'General',
                 year: m.academic_year || m.year || '2024',
-                score: m.final_score || m.total || 0
+                score: m.final_score || m.total || 0,
+                hasRetake: hasRetake,
+                retakeCount: retakeCount,
+                retakeScore: m.retakeScore || null,
+                retakeStatus: m.retakeStatus || null
             };
         });
         
@@ -1043,6 +1265,7 @@
         let passedCourses = 0;
         let failedCourses = 0;
         let pendingCourses = 0;
+        let retakeCourses = 0;
         
         const groupedByBlock = {};
         transcriptData.forEach(g => {
@@ -1051,13 +1274,14 @@
                 groupedByBlock[block] = [];
             }
             groupedByBlock[block].push(g);
+            if (g.hasRetake) retakeCourses++;
         });
         const blockNames = Object.keys(groupedByBlock).sort();
         
         if (transcriptData.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="6" style="text-align: center; padding: 60px; color: #94a3b8;">
+                    <td colspan="7" style="text-align: center; padding: 60px; color: #94a3b8;">
                         <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
                         <h4 style="margin: 0 0 8px 0; color: #1e293b;">No transcript data available</h4>
                         <p style="font-size: 13px;">Your transcript will appear here once you have completed courses.</p>
@@ -1077,13 +1301,15 @@
             const blockPoints = blockGrades.reduce((sum, g) => sum + ((g.points || 0) * (g.credits || 3)), 0);
             const blockGPA = blockCredits > 0 ? (blockPoints / blockCredits) : 0;
             const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
+            const blockRetakes = blockGrades.filter(g => g.hasRetake).length;
             
             html += `
                 <tr style="background: #0A3D62; color: white; font-weight: 700;">
-                    <td colspan="6" style="padding: 8px 12px; text-align: center; font-size: 12px;">
+                    <td colspan="7" style="padding: 8px 12px; text-align: center; font-size: 12px;">
                         <i class="fas fa-folder-open"></i> ${escapeHtml(block)} 
                         <span style="font-size: 10px; opacity: 0.8; margin-left: 10px;">
                             (${blockTotal} courses · GPA: ${blockGPA.toFixed(2)} · Pass: ${blockPassRate}%)
+                            ${blockRetakes > 0 ? ` · ⭐ ${blockRetakes} retakes` : ''}
                         </span>
                     </td>
                 </tr>
@@ -1093,6 +1319,8 @@
                 const gradeColor = getGradeColor(g.grade);
                 const pointsEarned = (g.points || 0) * (g.credits || 3);
                 const isPassing = g.status !== 'FAIL' && g.status !== 'PENDING';
+                const hasRetake = g.hasRetake || false;
+                const retakeCount = g.retakeCount || 0;
                 
                 totalCreditsAttempted += (g.credits || 3);
                 if (isPassing) {
@@ -1106,18 +1334,25 @@
                 totalPoints += pointsEarned;
                 
                 html += `
-                    <tr style="border-bottom: 1px solid #e2e8f0; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                    <tr style="border-bottom: 1px solid #e2e8f0; ${index % 2 === 0 ? 'background: #f8fafc;' : ''} ${hasRetake ? 'border-left: 3px solid #f59e0b;' : ''}">
                         <td style="padding: 6px 10px; font-size: 11px; color: #94a3b8; text-align: center;">${index + 1}</td>
                         <td style="padding: 6px 10px; font-weight: 600; color: #0A3D62; font-size: 12px;">${escapeHtml(g.courseCode)}</td>
-                        <td style="padding: 6px 10px; font-size: 12px;">${escapeHtml(g.courseName)}</td>
+                        <td style="padding: 6px 10px; font-size: 12px;">
+                            ${escapeHtml(g.courseName)}
+                            ${hasRetake ? `<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 8px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
+                        </td>
                         <td style="padding: 6px 10px; text-align: center; font-size: 12px;">${g.credits || 3}</td>
                         <td style="padding: 6px 10px; text-align: center;">
                             <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
                                 ${g.grade || '-'}
                             </span>
+                            ${hasRetake ? `<span style="display: block; font-size: 7px; color: #f59e0b;">⭐ Retake</span>` : ''}
                         </td>
                         <td style="padding: 6px 10px; text-align: center; font-weight: 600; font-size: 12px; color: ${isPassing ? '#10b981' : '#ef4444'};">
                             ${pointsEarned.toFixed(1)}
+                        </td>
+                        <td style="padding: 6px 10px; text-align: center; font-size: 10px;">
+                            ${hasRetake ? `<span style="color: #f59e0b;">⭐ R${retakeCount}</span>` : '—'}
                         </td>
                     </tr>
                 `;
@@ -1127,13 +1362,27 @@
                 <tr style="background: #f1f5f9; border-top: 2px solid #0A3D62;">
                     <td colspan="3" style="padding: 4px 10px; font-size: 10px; color: #64748b;">
                         <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed
+                        ${blockRetakes > 0 ? ` · ⭐ ${blockRetakes} retakes` : ''}
                     </td>
-                    <td colspan="3" style="padding: 4px 10px; font-size: 10px; color: #64748b; text-align: right;">
+                    <td colspan="4" style="padding: 4px 10px; font-size: 10px; color: #64748b; text-align: right;">
                         GPA: <strong>${blockGPA.toFixed(2)}</strong> | Pass Rate: <strong style="color: ${blockPassRate >= 70 ? '#10b981' : '#f59e0b'};">${blockPassRate}%</strong>
                     </td>
                 </tr>
             `;
         });
+        
+        // Add retake summary row at the end
+        if (retakeCourses > 0) {
+            html += `
+                <tr style="background: #fffbeb; border-top: 2px solid #f59e0b;">
+                    <td colspan="7" style="padding: 8px 12px; text-align: center; font-size: 11px; color: #92400e;">
+                        <i class="fas fa-star" style="color: #f59e0b;"></i>
+                        <strong>Retake Summary:</strong> ${retakeCourses} unit(s) were retaken 
+                        ${retakeCourses > 0 ? `(⭐ R1, R2 indicates retake attempts)` : ''}
+                    </td>
+                </tr>
+            `;
+        }
         
         tbody.innerHTML = html;
         
@@ -1148,7 +1397,7 @@
     }
 
     // ============================================================
-    // 14. COURSE PROGRESS
+    // 19. COURSE PROGRESS
     // ============================================================
     function loadCourseProgress() {
         const container = document.getElementById('course-progress-list');
@@ -1162,10 +1411,16 @@
         let html = '';
         grades.forEach(g => {
             const barColor = getGradeColor(g.grade);
+            const hasRetake = g.hasRetake || false;
+            const retakeCount = g.retakeCount || 0;
+            
             html += `
-                <div class="progress-item">
+                <div class="progress-item" style="${hasRetake ? 'border-left: 3px solid #f59e0b; padding-left: 10px;' : ''}">
                     <div class="progress-header">
-                        <span class="course-name">${escapeHtml(g.courseName)}</span>
+                        <span class="course-name">
+                            ${escapeHtml(g.courseName)}
+                            ${hasRetake ? `<span style="background: #f59e0b; color: white; font-size: 8px; padding: 1px 8px; border-radius: 8px; font-weight: 700; margin-left: 4px;">⭐ R${retakeCount}</span>` : ''}
+                        </span>
                         <span class="progress-percent">${g.total}%</span>
                         <span style="background: ${getGradeColor(g.grade)}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 10px;">
                             ${g.grade}
@@ -1176,6 +1431,7 @@
                     </div>
                     <div style="margin-top: 4px; font-size: 12px; color: ${getStatusColor(g.status)};">
                         ${g.status} · Points: ${g.points.toFixed(1)}
+                        ${hasRetake ? ` · ⭐ Retake (${retakeCount}x)` : ''}
                     </div>
                 </div>
             `;
@@ -1187,7 +1443,7 @@
     }
 
     // ============================================================
-    // 15. DOWNLOAD FULL TRANSCRIPT
+    // 20. DOWNLOAD FULL TRANSCRIPT
     // ============================================================
     function downloadTranscriptPDF() {
         const user = window.currentUserProfile || {};
@@ -1209,17 +1465,30 @@
             return;
         }
         
-        const transcriptData = marksData.map(m => ({
-            courseCode: m.unit_code || getUnitCode(m.subject_name || m.courseName || 'N/A'),
-            courseName: m.subject_name || m.courseName || 'Unknown Course',
-            credits: m.credits || 3,
-            grade: m.grade || calculateGrade(m.final_score || m.total || 0, userProgram),
-            points: m.points || calculatePoints(m.grade || calculateGrade(m.final_score || m.total || 0, userProgram), userProgram),
-            status: getGradingStatus(m.final_score || m.total || 0, userProgram),
-            blockTerm: m.block || m.blockTerm || 'General',
-            year: m.academic_year || m.year || '2024',
-            score: m.final_score || m.total || 0
-        }));
+        const transcriptData = marksData.map(m => {
+            const hasRetake = m.hasRetake || false;
+            const retakeCount = m.retakeCount || 0;
+            
+            return {
+                courseCode: m.unit_code || getUnitCode(m.subject_name || m.courseName || 'N/A'),
+                courseName: m.subject_name || m.courseName || 'Unknown Course',
+                credits: m.credits || 3,
+                grade: m.grade || calculateGrade(m.final_score || m.total || 0, userProgram),
+                points: m.points || calculatePoints(m.grade || calculateGrade(m.final_score || m.total || 0, userProgram), userProgram),
+                status: getGradingStatus(m.final_score || m.total || 0, userProgram),
+                blockTerm: m.block || m.blockTerm || 'General',
+                year: m.academic_year || m.year || '2024',
+                score: m.final_score || m.total || 0,
+                hasRetake: hasRetake,
+                retakeCount: retakeCount,
+                retakeScore: m.retakeScore || null,
+                retakeStatus: m.retakeStatus || null
+            };
+        });
+        
+        // Count retakes
+        const retakeCourses = transcriptData.filter(g => g.hasRetake).length;
+        const retakePassed = transcriptData.filter(g => g.hasRetake && g.retakeStatus === 'PASS').length;
         
         let totalCreditsAttempted = 0;
         let totalCreditsEarned = 0;
@@ -1268,11 +1537,13 @@
             const blockPoints = blockGrades.reduce((sum, g) => sum + ((g.points || 0) * (g.credits || 3)), 0);
             const blockGPA = blockCredits > 0 ? (blockPoints / blockCredits) : 0;
             const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
+            const blockRetakes = blockGrades.filter(g => g.hasRetake).length;
             
             tableRows += `
                 <tr style="background: #0A3D62; color: white;">
-                    <td colspan="6" style="padding: 4px 8px; text-align: center; font-size: 9px; font-weight: 700;">
+                    <td colspan="7" style="padding: 4px 8px; text-align: center; font-size: 9px; font-weight: 700;">
                         📁 ${escapeHtml(block)} (${blockTotal} courses · GPA: ${blockGPA.toFixed(2)} · Pass: ${blockPassRate}%)
+                        ${blockRetakes > 0 ? ` · ⭐ ${blockRetakes} retakes` : ''}
                     </td>
                 </tr>
             `;
@@ -1281,12 +1552,17 @@
                 const gradeColor = getGradeColor(g.grade);
                 const pointsEarned = (g.points || 0) * (g.credits || 3);
                 const isPassing = g.status !== 'FAIL' && g.status !== 'PENDING';
+                const hasRetake = g.hasRetake || false;
+                const retakeCount = g.retakeCount || 0;
                 
                 tableRows += `
-                    <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                    <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''} ${hasRetake ? 'border-left: 2px solid #f59e0b;' : ''}">
                         <td style="padding: 3px 6px; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
                         <td style="padding: 3px 6px; font-weight: 600; font-size: 9px; color: #0A3D62;">${escapeHtml(g.courseCode)}</td>
-                        <td style="padding: 3px 6px; font-size: 9px;">${escapeHtml(g.courseName)}</td>
+                        <td style="padding: 3px 6px; font-size: 9px;">
+                            ${escapeHtml(g.courseName)}
+                            ${hasRetake ? `<span style="background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 6px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
+                        </td>
                         <td style="padding: 3px 6px; text-align: center; font-size: 9px;">${g.credits || 3}</td>
                         <td style="padding: 3px 6px; text-align: center;">
                             <span style="background: ${gradeColor}; color: white; padding: 1px 8px; border-radius: 8px; font-weight: 700; font-size: 9px; display: inline-block;">
@@ -1295,6 +1571,9 @@
                         </td>
                         <td style="padding: 3px 6px; text-align: center; font-weight: 600; font-size: 9px; color: ${isPassing ? '#10b981' : '#ef4444'};">
                             ${pointsEarned.toFixed(1)}
+                        </td>
+                        <td style="padding: 3px 6px; text-align: center; font-size: 8px;">
+                            ${hasRetake ? `<span style="color: #f59e0b;">⭐ R${retakeCount}</span>` : '—'}
                         </td>
                     </tr>
                 `;
@@ -1414,7 +1693,7 @@
         }
         .summary-grid { 
             display: grid; 
-            grid-template-columns: repeat(6, 1fr); 
+            grid-template-columns: repeat(7, 1fr); 
             gap: 3px; 
             margin: 4px 0; 
             padding: 4px 8px; 
@@ -1495,6 +1774,17 @@
             font-size: 9px; 
             color: #0A3D62; 
         }
+        .retake-summary {
+            margin: 3px 0;
+            padding: 4px 8px;
+            background: #fffbeb;
+            border-radius: 4px;
+            border: 1px solid #f59e0b;
+            font-size: 8px;
+            color: #92400e;
+            text-align: center;
+        }
+        .retake-summary strong { color: #0A3D62; }
         .watermark { 
             position: fixed; 
             top: 50%; 
@@ -1550,7 +1840,18 @@
             <div class="summary-item"><div class="value">${totalCreditsAttempted}</div><div class="label">Credits Attempted</div></div>
             <div class="summary-item"><div class="value">${passRate}%</div><div class="label">Pass Rate</div></div>
             <div class="summary-item"><div class="value">${passedCourses}/${failedCourses}</div><div class="label">Pass/Fail</div></div>
+            <div class="summary-item"><div class="value">⭐ ${retakeCourses}</div><div class="label">Retakes</div></div>
         </div>
+        
+        ${retakeCourses > 0 ? `
+        <div class="retake-summary">
+            <i class="fas fa-star" style="color: #f59e0b;"></i>
+            <strong>Retake Summary:</strong> ${retakeCourses} unit(s) were retaken 
+            ${retakePassed > 0 ? `· ✅ ${retakePassed} passed after retake` : ''}
+            ${(retakeCourses - retakePassed) > 0 ? `· ❌ ${retakeCourses - retakePassed} still failing` : ''}
+            <span style="font-size: 7px; color: #94a3b8; margin-left: 6px;">(⭐ R1, R2 = retake attempts)</span>
+        </div>
+        ` : ''}
         
         <table>
             <thead>
@@ -1561,6 +1862,7 @@
                     <th style="text-align: center; width: 35px;">Cr</th>
                     <th style="text-align: center; width: 40px;">Grade</th>
                     <th style="text-align: center; width: 45px;">Points</th>
+                    <th style="text-align: center; width: 40px;">Retake</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
@@ -1625,10 +1927,10 @@
     }
 
     // ============================================================
-    // 16. DOWNLOAD SEMESTER REPORT - REORDERED
+    // 21. DOWNLOAD SEMESTER REPORT WITH RETAKE SUPPORT
     // ============================================================
     function downloadReportCard() {
-        console.log('📊 Downloading Semester Report...');
+        console.log('📊 Downloading Semester Report with Retake Support...');
         
         const user = window.currentUserProfile || {};
         const userProgram = user.program || '';
@@ -1641,16 +1943,12 @@
             marks = window.myMarksData;
         } else if (window.myMarksFiltered && window.myMarksFiltered.length > 0) {
             marks = window.myMarksFiltered;
-        } else if (window.PUBLISHED_STATE && window.PUBLISHED_STATE.marks && window.PUBLISHED_STATE.marks.length > 0) {
-            marks = window.PUBLISHED_STATE.marks;
-        } else if (window.me_currentMarks && window.me_currentMarks.length > 0) {
-            marks = window.me_currentMarks;
         } else {
             const tableRows = document.querySelectorAll('#my_marks_table_body tr');
             if (tableRows && tableRows.length > 0 && tableRows[0].cells.length > 1) {
                 tableRows.forEach(row => {
                     const cells = row.querySelectorAll('td');
-                    if (cells.length >= 6) {
+                    if (cells.length >= 7) {
                         const unitCode = cells[1]?.textContent?.trim() || '';
                         const unitName = cells[2]?.textContent?.trim() || '';
                         const grade = cells[3]?.textContent?.trim() || '';
@@ -1663,7 +1961,9 @@
                                 unit_code: unitCode,
                                 grade: grade,
                                 points: points,
-                                status: status
+                                status: status,
+                                hasRetake: false,
+                                retakeCount: 0
                             });
                         }
                     }
@@ -1700,6 +2000,7 @@
         let passed = 0;
         let failed = 0;
         let pending = 0;
+        let retakeUnits = 0;
         
         marks.forEach(m => {
             const points = m.points || 0;
@@ -1715,6 +2016,8 @@
             } else {
                 passed++;
             }
+            
+            if (m.hasRetake) retakeUnits++;
         });
         
         const gpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
@@ -1734,7 +2037,7 @@
         
         const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
         
-        // Build table rows
+        // Build table rows with retake support
         let tableRows = '';
         marks.forEach((mark, index) => {
             const status = mark.status || getGradingStatus(0, userProgram);
@@ -1743,16 +2046,25 @@
             const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
             const gradeColor = getGradeColor(mark.grade);
             const gradeDisplay = mark.grade || calculateGrade(0, userProgram) || '-';
+            const hasRetake = mark.hasRetake || false;
+            const retakeCount = mark.retakeCount || 0;
+            const retakeScore = mark.retakeScore;
+            const isRetakePassed = mark.retakeStatus === 'PASS';
             
             tableRows += `
-                <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''}">
+                <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''} ${hasRetake ? 'border-left: 3px solid #f59e0b;' : ''}">
                     <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 8px; color: #94a3b8;">${index + 1}</td>
                     <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 8px;">${escapeHtml(unitCode)}</td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 8px; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 8px; color: #1e293b;">
+                        ${escapeHtml(mark.subject_name || 'N/A')}
+                        ${hasRetake ? `<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 6px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
+                        ${retakeScore !== null ? `<span style="display: inline-block; margin-left: 4px; font-size: 7px; color: ${isRetakePassed ? '#059669' : '#dc2626'}; font-weight: 600;">${isRetakePassed ? '✅' : '❌'} ${retakeScore}%</span>` : ''}
+                    </td>
                     <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
                         <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 9px; display: inline-block; min-width: 26px;">
                             ${escapeHtml(gradeDisplay)}
                         </span>
+                        ${hasRetake ? `<span style="display: block; font-size: 6px; color: #f59e0b;">⭐ Retake</span>` : ''}
                     </td>
                     <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700; font-size: 9px; color: ${gradeColor};">
                         ${points.toFixed(1)}
@@ -1761,6 +2073,10 @@
                         <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 7px; display: inline-block;">
                             ${status}
                         </span>
+                        ${isRetakePassed ? `<span style="display: block; font-size: 6px; color: #059669;">⭐ Retake Passed!</span>` : ''}
+                    </td>
+                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 7px;">
+                        ${hasRetake ? `<span style="color: #f59e0b;">⭐ R${retakeCount}</span>` : '—'}
                     </td>
                 </tr>
             `;
@@ -1923,8 +2239,6 @@
             border: 2px solid #0A3D62;
             border-radius: 6px;
         }
-        
-        /* HEADER */
         .header { 
             text-align: center; 
             border-bottom: 3px double #0A3D62;
@@ -1965,8 +2279,6 @@
             color: #94a3b8; 
             margin-top: 2px;
         }
-        
-        /* STUDENT INFO WITH PHOTO */
         .student-info-wrapper {
             display: flex;
             align-items: center;
@@ -2010,22 +2322,31 @@
             background: white;
             flex-shrink: 0;
         }
-        .student-photo-placeholder {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            border: 3px solid #0A3D62;
-            padding: 2px;
-            background: #e2e8f0;
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 28px;
-            color: #94a3b8;
+        .summary-grid { 
+            display: grid; 
+            grid-template-columns: repeat(5, 1fr); 
+            gap: 6px; 
+            margin: 8px 0;
         }
-        
-        /* TABLE */
+        .summary-card {
+            background: #f8fafc;
+            border-radius: 6px;
+            padding: 8px 10px;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+        .summary-card .value { 
+            font-size: 18px; 
+            font-weight: 700; 
+            color: #0A3D62; 
+        }
+        .summary-card .label { 
+            font-size: 7px; 
+            color: #94a3b8; 
+            text-transform: uppercase; 
+            letter-spacing: 0.5px; 
+            font-weight: 600; 
+        }
         table { 
             width: 100%; 
             border-collapse: collapse; 
@@ -2048,9 +2369,6 @@
             border-bottom: 1px solid #e5e7eb; 
             font-size: 8px; 
         }
-        tbody td.center { text-align: center; }
-        
-        /* LINE CHART */
         .chart-container {
             margin: 6px 0 8px 0;
             padding: 8px 12px;
@@ -2070,8 +2388,6 @@
             height: 120px !important;
             max-height: 120px;
         }
-        
-        /* GRADING SCALE TABLE */
         .grading-scale-table {
             margin: 6px 0 8px 0;
             padding: 6px 12px;
@@ -2107,8 +2423,17 @@
             border: 1px solid #e2e8f0;
             font-size: 7px;
         }
-        
-        /* DECLARATION */
+        .retake-summary-box {
+            margin: 6px 0 8px 0;
+            padding: 6px 12px;
+            background: #fffbeb;
+            border-radius: 6px;
+            border: 1px solid #f59e0b;
+            font-size: 8px;
+            color: #92400e;
+            text-align: center;
+        }
+        .retake-summary-box strong { color: #0A3D62; }
         .declaration {
             margin: 6px 0 8px 0;
             padding: 6px 12px;
@@ -2141,8 +2466,6 @@
             top: -2px;
             left: 0px;
         }
-        
-        /* SIGNATURES */
         .signatures {
             display: grid;
             grid-template-columns: 1fr 1fr;
@@ -2171,13 +2494,6 @@
             font-size: 10px;
             color: #0A3D62;
         }
-        .signature-box .date {
-            font-size: 7px;
-            color: #94a3b8;
-            margin-top: 2px;
-        }
-        
-        /* FOOTER */
         .footer {
             text-align: center;
             margin-top: 6px;
@@ -2187,7 +2503,6 @@
             color: #94a3b8;
         }
         .footer strong { color: #0A3D62; }
-        
         .no-print { text-align: center; margin-top: 8px; }
         .no-print button {
             padding: 5px 18px;
@@ -2199,7 +2514,6 @@
         }
         .no-print .btn-print { background: #0A3D62; color: white; }
         .no-print .btn-close { background: #e2e8f0; color: #475569; margin-left: 6px; }
-        
         @media print {
             body { padding: 0; background: white; }
             .container { border: 2px solid #0A3D62; border-radius: 0; padding: 12px 16px; max-width: 100%; }
@@ -2209,10 +2523,6 @@
             .student-photo { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
             .chart-container canvas { height: 120px !important; }
         }
-        
-        .container { page-break-after: avoid; }
-        table { page-break-inside: avoid; }
-        tr { page-break-inside: avoid; }
     </style>
 </head>
 <body>
@@ -2253,7 +2563,7 @@
             </div>
         </div>
         
-        <!-- MARKS TABLE - FIRST -->
+        <!-- MARKS TABLE -->
         <table>
             <thead>
                 <tr>
@@ -2263,44 +2573,58 @@
                     <th style="text-align: center; width: 45px;">Grade</th>
                     <th style="text-align: center; width: 45px;">Points</th>
                     <th style="text-align: center; width: 65px;">Status</th>
+                    <th style="text-align: center; width: 45px;">Retake</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
         </table>
         
-        <!-- SUMMARY CARDS - SECOND (After Units Table) -->
-        <div class="summary-grid" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 10px 0;">
-            <div class="summary-card" style="background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0;">
-                <div class="value" style="font-size: 18px; font-weight: 700; color: #0A3D62;">${gpa.toFixed(2)}</div>
-                <div class="label" style="font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">GPA</div>
+        <!-- RETAKE SUMMARY -->
+        ${retakeUnits > 0 ? `
+        <div class="retake-summary-box">
+            <i class="fas fa-star" style="color: #f59e0b;"></i>
+            <strong>Retake Summary:</strong> ${retakeUnits} unit(s) were retaken
+            <span style="font-size: 7px; color: #94a3b8; margin-left: 6px;">(⭐ R1, R2 = retake attempts)</span>
+        </div>
+        ` : ''}
+        
+        <!-- SUMMARY CARDS -->
+        <div class="summary-grid">
+            <div class="summary-card">
+                <div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div>
+                <div class="label">GPA</div>
             </div>
-            <div class="summary-card" style="background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0;">
-                <div class="value" style="font-size: 18px; font-weight: 700; color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div>
-                <div class="label" style="font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Grade</div>
+            <div class="summary-card">
+                <div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div>
+                <div class="label">Grade</div>
             </div>
-            <div class="summary-card" style="background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0;">
-                <div class="value" style="font-size: 18px; font-weight: 700; color: #0A3D62;">${totalUnits}</div>
-                <div class="label" style="font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Units</div>
+            <div class="summary-card">
+                <div class="value" style="color: #0A3D62;">${totalUnits}</div>
+                <div class="label">Units</div>
             </div>
-            <div class="summary-card" style="background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0;">
-                <div class="value" style="font-size: 18px; font-weight: 700; color: #0A3D62;">${passRate}%</div>
-                <div class="label" style="font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Pass Rate</div>
+            <div class="summary-card">
+                <div class="value" style="color: #0A3D62;">${passRate}%</div>
+                <div class="label">Pass Rate</div>
+            </div>
+            <div class="summary-card">
+                <div class="value" style="color: #f59e0b;">⭐ ${retakeUnits}</div>
+                <div class="label">Retakes</div>
             </div>
         </div>
         
-        <!-- GRADING SCALE - THIRD -->
+        <!-- GRADING SCALE -->
         <div class="grading-scale-table">
             <div class="title">📊 Grading Scale (${programType})</div>
             ${gradingScaleHTML}
         </div>
         
-        <!-- LINE GRAPH - FOURTH -->
+        <!-- LINE GRAPH -->
         <div class="chart-container">
             <div class="title">📈 Grade Points Progression</div>
             <canvas id="reportCardLineChart"></canvas>
         </div>
         
-        <!-- DECLARATION - FIFTH -->
+        <!-- DECLARATION -->
         <div class="declaration">
             <span class="title">📋 Student Declaration:</span>
             <span class="checkbox"></span>
@@ -2433,7 +2757,7 @@
     }
 
     // ============================================================
-    // 17. TAB SWITCHING
+    // 22. TAB SWITCHING
     // ============================================================
     function setupTabs() {
         const tabs = document.querySelectorAll('.report-tab');
@@ -2473,10 +2797,10 @@
     }
 
     // ============================================================
-    // 18. INITIALIZE
+    // 23. INITIALIZE
     // ============================================================
     function init() {
-        console.log('🔧 Initializing Academic Reports...');
+        console.log('🔧 Initializing Academic Reports with Retake Support...');
         setupTabs();
         
         const subjectFilter = document.getElementById('my_marks_subject_filter');
@@ -2553,11 +2877,13 @@
             }
         }, 300);
         
-        console.log('✅ Academic Reports ready');
+        console.log('✅ Academic Reports with Retake Support ready!');
+        console.log('⭐ Students will see ⭐R badges on retaken units');
+        console.log('📊 Retake history shown in My Performance tab');
     }
 
     // ============================================================
-    // 19. EXPOSE FUNCTIONS
+    // 24. EXPOSE FUNCTIONS
     // ============================================================
     window.loadMyMarks = loadMyMarks;
     window.filterMyMarks = filterMyMarks;
@@ -2574,9 +2900,13 @@
     window.calculateGPA = calculateGPA;
     window.PROGRAM = PROGRAM;
     window.renderMyMarksCharts = renderMyMarksCharts;
+    window.fetchStudentRetakeData = fetchStudentRetakeData;
+    window.getRetakeBadgeHtml = getRetakeBadgeHtml;
+    window.getRetakeHistoryHtml = getRetakeHistoryHtml;
+    window.renderMyMarksTableWithRetakes = renderMyMarksTableWithRetakes;
 
     // ============================================================
-    // 20. AUTO-INIT
+    // 25. AUTO-INIT
     // ============================================================
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -2586,10 +2916,11 @@
 
     console.log('✅ Student Academic Reports Module loaded');
     console.log('📊 Available functions:');
-    console.log('   - loadMyMarks() - Load published marks (My Performance)');
+    console.log('   - loadMyMarks() - Load published marks with retake data');
     console.log('   - filterMyMarks() - Filter marks');
-    console.log('   - downloadReportCard() - Download semester report (with new order)');
-    console.log('   - downloadTranscriptPDF() - Download full transcript');
+    console.log('   - downloadReportCard() - Download semester report (with retakes)');
+    console.log('   - downloadTranscriptPDF() - Download full transcript (with retakes)');
     console.log('   - renderMyMarksCharts() - Render Line Charts');
+    console.log('⭐ Retake Support: ⭐R1, ⭐R2 badges on retaken units');
     console.log('📊 TVET Min Pass: 50% | Nursing Min Pass: 60%');
 })();
