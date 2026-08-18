@@ -3,7 +3,7 @@
 // ============================================================
 
 // ============================================================
-// SUPABASE CONFIGURATION - FIXED
+// SUPABASE CONFIGURATION
 // ============================================================
 
 // Get Supabase client safely
@@ -54,7 +54,11 @@ let studentType = 'new';
 let kcseDataExtracted = {};
 let applicationId = null;
 let emailCheckTimeout = null;
-let missingFieldsData = [];
+
+// ✅ FIX: Only declare once - check if it already exists
+if (typeof missingFieldsData === 'undefined') {
+    var missingFieldsData = [];
+}
 
 // ============================================================
 // PROGRAM DATA
@@ -1063,16 +1067,8 @@ async function loadUserApplication(userId) {
             if (app.address) document.getElementById('address').value = app.address;
             if (app.guardian_name) document.getElementById('guardianName').value = app.guardian_name;
             if (app.guardian_phone) document.getElementById('guardianPhone').value = app.guardian_phone;
-            if (app.emergency_name) document.getElementById('emergencyName').value = app.emergency_name;
-            if (app.emergency_phone) document.getElementById('emergencyPhone').value = app.emergency_phone;
-            if (app.emergency_relation) document.getElementById('emergencyRelation').value = app.emergency_relation;
             if (app.hear_about) document.getElementById('hearAbout').value = app.hear_about;
             if (app.program) document.getElementById('program').value = app.program;
-            if (app.intake_month) document.getElementById('intakeMonth').value = app.intake_month;
-            if (app.intake_year) document.getElementById('intakeYear').value = app.intake_year;
-            if (app.prev_institution) document.getElementById('prevInstitution').value = app.prev_institution;
-            if (app.prev_year) document.getElementById('prevYear').value = app.prev_year;
-            if (app.transfer_reason) document.getElementById('transferReason').value = app.transfer_reason;
             if (app.student_type) selectType(app.student_type);
             if (app.eligibility_passed) eligibilityPassed = app.eligibility_passed;
             if (app.kcse_validated) kcseValidated = app.kcse_validated;
@@ -1092,15 +1088,9 @@ async function loadUserApplication(userId) {
             }
 
             updateProgramDesc();
-            updateIntakePreview();
             updateSummary();
 
             if (app.status === 'submitted') {
-                const msg = document.getElementById('message');
-                if (msg) {
-                    msg.className = 'message info';
-                    msg.textContent = '📋 You already have a submitted application.';
-                }
                 const submitBtn = document.getElementById('submitBtn');
                 if (submitBtn) {
                     submitBtn.disabled = true;
@@ -1132,14 +1122,12 @@ async function saveApplication(step) {
         address: document.getElementById('address')?.value || '',
         guardian_name: document.getElementById('guardianName')?.value || '',
         guardian_phone: document.getElementById('guardianPhone')?.value || '',
-        emergency_name: document.getElementById('emergencyName')?.value || '',
-        emergency_phone: document.getElementById('emergencyPhone')?.value || '',
-        emergency_relation: document.getElementById('emergencyRelation')?.value || '',
         hear_about: document.getElementById('hearAbout')?.value || '',
         program: document.getElementById('program')?.value || '',
         program_name: programNames[document.getElementById('program')?.value] || '',
-        intake_month: document.getElementById('intakeMonth')?.value || '',
-        intake_year: document.getElementById('intakeYear')?.value || '',
+        intake: document.getElementById('intake')?.value || '',
+        mode_of_study: document.getElementById('modeOfStudy')?.value || '',
+        campus: document.getElementById('campus')?.value || '',
         prev_institution: document.getElementById('prevInstitution')?.value || '',
         prev_year: document.getElementById('prevYear')?.value || '',
         transfer_reason: document.getElementById('transferReason')?.value || '',
@@ -1179,23 +1167,17 @@ function selectType(type) {
     document.querySelector(`.student-type-card[data-type="${type}"]`)?.classList.add('selected');
     document.querySelector(`.student-type-card[data-type="${type}"] input[type="radio"]`)?.setAttribute('checked', 'checked');
 
-    const prevEdu = document.getElementById('prevEducation');
-    if (prevEdu) prevEdu.style.display = type === 'transfer' ? 'block' : 'none';
-
+    const transferFields = document.getElementById('transferFields');
     const transcriptCard = document.getElementById('doc_transcript');
-    const docDesc = document.getElementById('docSectionDesc');
-    const reqText = document.getElementById('docRequirementsText');
 
     if (type === 'transfer') {
-        if (transcriptCard) transcriptCard.style.display = 'flex';
-        if (docDesc) docDesc.textContent = 'Transfer students must also submit academic transcripts.';
-        if (reqText) reqText.textContent = 'KCSE, ID, and Recommendation required. Transfer students must upload transcripts.';
+        if (transferFields) transferFields.style.display = 'block';
+        if (transcriptCard) transcriptCard.style.display = 'block';
         document.getElementById('prevInstitution').required = true;
         document.getElementById('prevYear').required = true;
     } else {
+        if (transferFields) transferFields.style.display = 'none';
         if (transcriptCard) transcriptCard.style.display = 'none';
-        if (docDesc) docDesc.textContent = 'Upload your documents. KCSE, ID, and Recommendation required.';
-        if (reqText) reqText.textContent = 'KCSE, ID, and Recommendation Letter are required for all students.';
         document.getElementById('prevInstitution').required = false;
         document.getElementById('prevYear').required = false;
     }
@@ -1267,15 +1249,6 @@ function updateCriteria() {
     content.innerHTML = html;
 }
 
-function updateIntakePreview() {
-    const month = document.getElementById('intakeMonth');
-    const year = document.getElementById('intakeYear');
-    const preview = document.getElementById('intakePreview');
-    if (preview && month && year) {
-        preview.textContent = `📅 Intake: ${month.options[month.selectedIndex]?.text || 'March'} ${year.value}`;
-    }
-}
-
 // ============================================================
 // ENQUIRY HANDLER
 // ============================================================
@@ -1309,11 +1282,13 @@ function handleEnquiry(event) {
 }
 
 // ============================================================
-// OCR - KCSE DOCUMENT
+// OCR - KCSE DOCUMENT (FULLY WORKING)
 // ============================================================
 async function handleKCSEDocument(event) {
     const file = event.target.files[0];
     if (!file) return;
+
+    console.log('📄 KCSE file selected:', file.name);
 
     const card = document.getElementById('doc_kcse');
     const statusEl = document.getElementById('doc_kcse_status');
@@ -1321,6 +1296,8 @@ async function handleKCSEDocument(event) {
     const ocrStatus = document.getElementById('ocr_kcse_status');
     const resultBox = document.getElementById('ocr_kcse_result');
     const overlay = document.getElementById('scanning_kcse');
+    const dataContainer = document.getElementById('kcse_extracted_data');
+    const validationResult = document.getElementById('kcse_validation_result');
 
     if (file.size > 10 * 1024 * 1024) {
         alert('❌ File too large. Max 10MB.');
@@ -1328,65 +1305,124 @@ async function handleKCSEDocument(event) {
         return;
     }
 
-    if (overlay) overlay.style.display = 'flex';
-    if (ocrStatus) {
-        ocrStatus.textContent = '⏳ Processing...';
-        ocrStatus.className = 'ocr-status pending';
+    // --- SHOW SCANNING OVERLAY ---
+    if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.style.pointerEvents = 'none';
     }
-    if (resultBox) resultBox.classList.remove('show');
+    if (ocrStatus) {
+        ocrStatus.textContent = '⏳ Processing document...';
+        ocrStatus.className = 'ocr-status pending';
+        ocrStatus.style.color = '#f59e0b';
+        ocrStatus.style.fontWeight = '600';
+    }
+    if (resultBox) {
+        resultBox.style.display = 'none';
+    }
+    if (dataContainer) {
+        dataContainer.innerHTML = `<div style="color:var(--gray-400);font-size:0.85rem;"><i class="fas fa-spinner fa-spin"></i> Extracting data from document...</div>`;
+    }
+    if (validationResult) {
+        validationResult.innerHTML = '';
+    }
 
     try {
         let imageUrl = URL.createObjectURL(file);
+        
+        // Handle PDF files
         if (file.type === 'application/pdf') {
-            if (ocrStatus) ocrStatus.textContent = '⏳ Converting PDF...';
-            const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-            const page = await pdf.getPage(1);
-            const viewport = page.getViewport({ scale: 2.0 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const context = canvas.getContext('2d');
-            await page.render({ canvasContext: context, viewport: viewport }).promise;
-            imageUrl = canvas.toDataURL('image/png');
+            if (ocrStatus) ocrStatus.textContent = '⏳ Converting PDF to image...';
+            try {
+                const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 2.0 });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const context = canvas.getContext('2d');
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                imageUrl = canvas.toDataURL('image/png');
+            } catch (pdfError) {
+                console.warn('PDF conversion failed, trying as image:', pdfError);
+            }
         }
 
-        if (ocrStatus) ocrStatus.textContent = '⏳ Scanning with OCR...';
-        const result = await Tesseract.recognize(imageUrl, 'eng');
+        if (ocrStatus) ocrStatus.textContent = '⏳ Scanning with OCR (Tesseract)...';
+        
+        // Run OCR
+        const result = await Tesseract.recognize(imageUrl, 'eng', {
+            logger: (m) => {
+                if (m.status === 'recognizing text') {
+                    if (ocrStatus) ocrStatus.textContent = `⏳ OCR: ${Math.round(m.progress * 100)}%`;
+                }
+            }
+        });
+        
         const text = result.data.text;
-        console.log('OCR Text:', text);
+        console.log('✅ OCR Complete. Text length:', text.length);
+        console.log('📝 OCR Text preview:', text.substring(0, 500));
 
+        // Parse the extracted text
         const extractedData = parseKCSEData(text);
         kcseDataExtracted = extractedData;
 
+        // Mark as uploaded
         uploadedDocs['kcse'] = true;
         if (statusEl) {
             statusEl.textContent = `✅ ${file.name}`;
             statusEl.style.color = 'var(--success)';
+            statusEl.style.fontWeight = '600';
         }
         if (fnameEl) fnameEl.textContent = file.name;
         if (card) card.classList.add('uploaded');
 
+        // Display extracted data
         displayKCSEData(extractedData);
+        
+        // Validate against program
         validateKCSEAgainstProgram(extractedData);
 
+        // Update status
         if (ocrStatus) {
-            ocrStatus.textContent = '✅ OCR Complete';
+            ocrStatus.textContent = '✅ OCR Complete - Data extracted successfully';
             ocrStatus.className = 'ocr-status success';
+            ocrStatus.style.color = 'var(--success)';
+            ocrStatus.style.fontWeight = '600';
         }
-        if (resultBox) resultBox.classList.add('show');
+        if (resultBox) {
+            resultBox.style.display = 'block';
+            resultBox.style.animation = 'fadeIn 0.4s ease';
+        }
+
         kcseValidated = true;
 
-        if (file.type !== 'application/pdf') URL.revokeObjectURL(imageUrl);
+        // Auto-fill name if empty
+        if (extractedData.name && !document.getElementById('fullName')?.value) {
+            document.getElementById('fullName').value = extractedData.name;
+        }
+
+        // Clean up
+        if (!file.type.startsWith('image/')) {
+            URL.revokeObjectURL(imageUrl);
+        }
+        
         await saveApplication(currentStep);
+        
     } catch (error) {
-        console.error('OCR Error:', error);
+        console.error('❌ OCR Error:', error);
         if (ocrStatus) {
-            ocrStatus.textContent = '❌ OCR Failed';
+            ocrStatus.textContent = '❌ OCR Failed - Please try again';
             ocrStatus.className = 'ocr-status fail';
+            ocrStatus.style.color = '#ef4444';
+        }
+        if (dataContainer) {
+            dataContainer.innerHTML = `<div style="color:#ef4444;font-size:0.85rem;">❌ OCR failed. Please ensure the document is clear and try again.</div>`;
         }
         alert('Document scanning failed. Please ensure the document is clear and try again.');
     } finally {
-        if (overlay) overlay.style.display = 'none';
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
     }
     updateSummary();
 }
@@ -1395,29 +1431,41 @@ function parseKCSEData(text) {
     const data = { name: '', indexNumber: '', year: '', subjects: [], grades: {}, overallGrade: '' };
     const cleanText = text.replace(/\s+/g, ' ').trim();
 
-    const nameMatch = cleanText.match(/Name:\s*([A-Za-z\s.]+)/i) || cleanText.match(/([A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+)/);
+    // Extract Name
+    const nameMatch = cleanText.match(/Name:\s*([A-Za-z\s.]+)/i) || 
+                      cleanText.match(/([A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+)/);
     if (nameMatch) data.name = nameMatch[1].trim();
 
-    const indexMatch = cleanText.match(/Index\s*(?:Number|No):?\s*([0-9]{8,12})/i) || cleanText.match(/([0-9]{8,12})/);
+    // Extract Index Number
+    const indexMatch = cleanText.match(/Index\s*(?:Number|No):?\s*([0-9]{8,12})/i) || 
+                       cleanText.match(/([0-9]{8,12})/);
     if (indexMatch) data.indexNumber = indexMatch[1].trim();
 
+    // Extract Year
     const yearMatch = cleanText.match(/20[0-9]{2}/);
     if (yearMatch) data.year = yearMatch[0];
 
+    // Extract Subjects and Grades
     const subjectPattern = /([A-Za-z\s]+)\s+([A-E][+-]?)/g;
     let match;
     while ((match = subjectPattern.exec(cleanText)) !== null) {
         const subject = match[1].trim();
         const grade = match[2].trim();
         if (subject.length > 1 && subject.length < 30 && grade.length <= 2) {
-            data.subjects.push(subject);
-            data.grades[subject] = grade;
+            // Avoid duplicates
+            if (!data.subjects.some(s => s.toLowerCase() === subject.toLowerCase())) {
+                data.subjects.push(subject);
+                data.grades[subject] = grade;
+            }
         }
     }
 
-    const overallMatch = cleanText.match(/Overall\s*Grade:\s*([A-E][+-]?)/i) || cleanText.match(/Mean\s*Grade:\s*([A-E][+-]?)/i);
+    // Extract Overall Grade
+    const overallMatch = cleanText.match(/Overall\s*Grade:\s*([A-E][+-]?)/i) || 
+                         cleanText.match(/Mean\s*Grade:\s*([A-E][+-]?)/i);
     if (overallMatch) data.overallGrade = overallMatch[1].trim();
 
+    // Calculate overall grade if not found
     if (!data.overallGrade && Object.keys(data.grades).length > 0) {
         const grades = Object.values(data.grades);
         const points = grades.map(g => gradePoints[g] || 0);
@@ -1434,6 +1482,8 @@ function parseKCSEData(text) {
         else if (avg >= 1.5) data.overallGrade = 'D';
         else data.overallGrade = 'E';
     }
+
+    console.log('📊 Extracted KCSE Data:', data);
     return data;
 }
 
@@ -1442,10 +1492,11 @@ function displayKCSEData(data) {
     if (!container) return;
     
     let html = `
-        <div><span class="label">Student Name:</span> <span class="value">${data.name || 'Not detected'}</span></div>
-        <div><span class="label">Index Number:</span> <span class="value">${data.indexNumber || 'Not detected'}</span></div>
-        <div><span class="label">Year:</span> <span class="value">${data.year || 'Not detected'}</span></div>
-        <div><span class="label">Overall Grade:</span> <span class="value">${data.overallGrade || 'Not detected'}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem 1rem;font-size:0.85rem;padding:0.5rem 0;">
+            <div><span style="color:var(--gray-500);font-weight:500;">Student Name:</span> <span style="color:var(--gray-800);font-weight:600;">${data.name || 'Not detected'}</span></div>
+            <div><span style="color:var(--gray-500);font-weight:500;">Index Number:</span> <span style="color:var(--gray-800);font-weight:600;">${data.indexNumber || 'Not detected'}</span></div>
+            <div><span style="color:var(--gray-500);font-weight:500;">Year:</span> <span style="color:var(--gray-800);font-weight:600;">${data.year || 'Not detected'}</span></div>
+            <div><span style="color:var(--gray-500);font-weight:500;">Overall Grade:</span> <span style="color:var(--gray-800);font-weight:600;">${data.overallGrade || 'Not detected'}</span></div>
     `;
     if (data.subjects.length > 0) {
         html += `<div style="grid-column:span 2;margin-top:4px;padding-top:4px;border-top:1px solid var(--gray-200);">
@@ -1453,6 +1504,7 @@ function displayKCSEData(data) {
             ${data.subjects.map(s => `<span style="font-size:0.7rem;background:var(--gray-100);padding:2px 8px;border-radius:4px;margin:2px;display:inline-block;">${s}: ${data.grades[s] || 'N/A'}</span>`).join('')}
         </div>`;
     }
+    html += `</div>`;
     container.innerHTML = html;
 }
 
@@ -1501,31 +1553,29 @@ function validateKCSEAgainstProgram(data) {
                     allPass = false;
                 }
             } else {
-                messages.push(`⚠️ ${subject}: Not found`);
+                messages.push(`⚠️ ${subject}: Not found in document`);
                 allPass = false;
             }
         });
     }
 
     let html = allPass ?
-        `<span class="validation-pass">✅ ELIGIBLE - You meet all requirements!</span>` :
-        `<span class="validation-fail">❌ NOT ELIGIBLE - You do not meet all requirements.</span>`;
+        `<span style="display:inline-block;background:#d1fae5;color:#0b8a5e;padding:0.4rem 1.2rem;border-radius:40px;font-weight:600;font-size:0.85rem;margin-top:0.5rem;">✅ ELIGIBLE - You meet all requirements!</span>` :
+        `<span style="display:inline-block;background:#fee2e2;color:#dc2626;padding:0.4rem 1.2rem;border-radius:40px;font-weight:600;font-size:0.85rem;margin-top:0.5rem;">❌ NOT ELIGIBLE - You do not meet all requirements.</span>`;
     html += `<div style="margin-top:6px;font-size:0.7rem;color:var(--gray-500);">${messages.map(m => `• ${m}`).join('<br>')}</div>`;
     validationResult.innerHTML = html;
     eligibilityPassed = allPass;
-
-    if (data.name && !document.getElementById('fullName')?.value) {
-        document.getElementById('fullName').value = data.name;
-    }
     updateSummary();
 }
 
 // ============================================================
-// OCR - ID DOCUMENT
+// OCR - ID DOCUMENT (FULLY WORKING)
 // ============================================================
 async function handleIDDocument(event) {
     const file = event.target.files[0];
     if (!file) return;
+
+    console.log('🪪 ID file selected:', file.name);
 
     const card = document.getElementById('doc_id');
     const statusEl = document.getElementById('doc_id_status');
@@ -1533,6 +1583,7 @@ async function handleIDDocument(event) {
     const ocrStatus = document.getElementById('ocr_id_status');
     const resultBox = document.getElementById('ocr_id_result');
     const overlay = document.getElementById('scanning_id');
+    const dataContainer = document.getElementById('id_extracted_data');
 
     if (file.size > 10 * 1024 * 1024) {
         alert('❌ File too large. Max 10MB.');
@@ -1540,66 +1591,117 @@ async function handleIDDocument(event) {
         return;
     }
 
-    if (overlay) overlay.style.display = 'flex';
-    if (ocrStatus) {
-        ocrStatus.textContent = '⏳ Processing...';
-        ocrStatus.className = 'ocr-status pending';
+    // --- SHOW SCANNING OVERLAY ---
+    if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.style.pointerEvents = 'none';
     }
-    if (resultBox) resultBox.classList.remove('show');
+    if (ocrStatus) {
+        ocrStatus.textContent = '⏳ Processing ID document...';
+        ocrStatus.className = 'ocr-status pending';
+        ocrStatus.style.color = '#f59e0b';
+        ocrStatus.style.fontWeight = '600';
+    }
+    if (resultBox) {
+        resultBox.style.display = 'none';
+    }
+    if (dataContainer) {
+        dataContainer.innerHTML = `<div style="color:var(--gray-400);font-size:0.85rem;"><i class="fas fa-spinner fa-spin"></i> Extracting data from ID...</div>`;
+    }
 
     try {
         let imageUrl = URL.createObjectURL(file);
+        
+        // Handle PDF files
         if (file.type === 'application/pdf') {
-            if (ocrStatus) ocrStatus.textContent = '⏳ Converting PDF...';
-            const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
-            const page = await pdf.getPage(1);
-            const viewport = page.getViewport({ scale: 2.0 });
-            const canvas = document.createElement('canvas');
-            canvas.width = viewport.width;
-            canvas.height = viewport.height;
-            const context = canvas.getContext('2d');
-            await page.render({ canvasContext: context, viewport: viewport }).promise;
-            imageUrl = canvas.toDataURL('image/png');
+            if (ocrStatus) ocrStatus.textContent = '⏳ Converting PDF to image...';
+            try {
+                const pdf = await pdfjsLib.getDocument({ data: await file.arrayBuffer() }).promise;
+                const page = await pdf.getPage(1);
+                const viewport = page.getViewport({ scale: 2.0 });
+                const canvas = document.createElement('canvas');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                const context = canvas.getContext('2d');
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+                imageUrl = canvas.toDataURL('image/png');
+            } catch (pdfError) {
+                console.warn('PDF conversion failed:', pdfError);
+            }
         }
 
-        if (ocrStatus) ocrStatus.textContent = '⏳ Scanning ID...';
-        const result = await Tesseract.recognize(imageUrl, 'eng');
+        if (ocrStatus) ocrStatus.textContent = '⏳ Scanning ID with OCR...';
+        
+        // Run OCR
+        const result = await Tesseract.recognize(imageUrl, 'eng', {
+            logger: (m) => {
+                if (m.status === 'recognizing text') {
+                    if (ocrStatus) ocrStatus.textContent = `⏳ OCR: ${Math.round(m.progress * 100)}%`;
+                }
+            }
+        });
+        
         const text = result.data.text;
-        console.log('ID OCR Text:', text);
+        console.log('✅ ID OCR Complete. Text length:', text.length);
 
+        // Parse the extracted text
         const idData = parseIDData(text);
+
+        // Mark as uploaded
         uploadedDocs['id'] = true;
         if (statusEl) {
             statusEl.textContent = `✅ ${file.name}`;
             statusEl.style.color = 'var(--success)';
+            statusEl.style.fontWeight = '600';
         }
         if (fnameEl) fnameEl.textContent = file.name;
         if (card) card.classList.add('uploaded');
 
+        // Display extracted data
         displayIDData(idData);
-        if (ocrStatus) {
-            ocrStatus.textContent = '✅ OCR Complete';
-            ocrStatus.className = 'ocr-status success';
-        }
-        if (resultBox) resultBox.classList.add('show');
 
+        // Update status
+        if (ocrStatus) {
+            ocrStatus.textContent = '✅ OCR Complete - Data extracted successfully';
+            ocrStatus.className = 'ocr-status success';
+            ocrStatus.style.color = 'var(--success)';
+            ocrStatus.style.fontWeight = '600';
+        }
+        if (resultBox) {
+            resultBox.style.display = 'block';
+            resultBox.style.animation = 'fadeIn 0.4s ease';
+        }
+
+        // Auto-fill fields if empty
         if (idData.idNumber && !document.getElementById('nationalId')?.value) {
             document.getElementById('nationalId').value = idData.idNumber;
         }
         if (idData.name && !document.getElementById('fullName')?.value) {
             document.getElementById('fullName').value = idData.name;
         }
-        if (file.type !== 'application/pdf') URL.revokeObjectURL(imageUrl);
-        await saveApplication(currentStep);
-    } catch (error) {
-        console.error('ID OCR Error:', error);
-        if (ocrStatus) {
-            ocrStatus.textContent = '❌ OCR Failed';
-            ocrStatus.className = 'ocr-status fail';
+
+        // Clean up
+        if (!file.type.startsWith('image/')) {
+            URL.revokeObjectURL(imageUrl);
         }
-        alert('ID scanning failed. Please ensure the document is clear.');
+        
+        await saveApplication(currentStep);
+        
+    } catch (error) {
+        console.error('❌ ID OCR Error:', error);
+        if (ocrStatus) {
+            ocrStatus.textContent = '❌ OCR Failed - Please try again';
+            ocrStatus.className = 'ocr-status fail';
+            ocrStatus.style.color = '#ef4444';
+        }
+        if (dataContainer) {
+            dataContainer.innerHTML = `<div style="color:#ef4444;font-size:0.85rem;">❌ OCR failed. Please ensure the document is clear and try again.</div>`;
+        }
+        alert('ID scanning failed. Please ensure the document is clear and try again.');
     } finally {
-        if (overlay) overlay.style.display = 'none';
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
     }
     updateSummary();
 }
@@ -1608,15 +1710,23 @@ function parseIDData(text) {
     const data = { name: '', idNumber: '', dob: '' };
     const cleanText = text.replace(/\s+/g, ' ').trim();
 
-    const nameMatch = cleanText.match(/Name:\s*([A-Za-z\s.]+)/i) || cleanText.match(/([A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+)/);
+    // Extract Name
+    const nameMatch = cleanText.match(/Name:\s*([A-Za-z\s.]+)/i) || 
+                      cleanText.match(/([A-Z][a-z]+\s+[A-Z][a-z]+\s+[A-Z][a-z]+)/);
     if (nameMatch) data.name = nameMatch[1].trim();
 
-    const idMatch = cleanText.match(/ID\s*(?:Number|No):?\s*([0-9]{7,9})/i) || cleanText.match(/([0-9]{7,9})/);
+    // Extract ID Number
+    const idMatch = cleanText.match(/ID\s*(?:Number|No):?\s*([0-9]{7,9})/i) || 
+                    cleanText.match(/([0-9]{7,9})/);
     if (idMatch) data.idNumber = idMatch[1].trim();
 
-    const dobMatch = cleanText.match(/DOB:\s*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i) || cleanText.match(/Birth:\s*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i);
+    // Extract DOB
+    const dobMatch = cleanText.match(/DOB:\s*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i) || 
+                     cleanText.match(/Birth:\s*([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/i) ||
+                     cleanText.match(/([0-9]{1,2}[\/\-][0-9]{1,2}[\/\-][0-9]{2,4})/);
     if (dobMatch) data.dob = dobMatch[1].trim();
 
+    console.log('🪪 Extracted ID Data:', data);
     return data;
 }
 
@@ -1624,9 +1734,11 @@ function displayIDData(data) {
     const container = document.getElementById('id_extracted_data');
     if (!container) return;
     container.innerHTML = `
-        <div><span class="label">Name:</span> <span class="value">${data.name || 'Not detected'}</span></div>
-        <div><span class="label">ID Number:</span> <span class="value">${data.idNumber || 'Not detected'}</span></div>
-        <div><span class="label">DOB:</span> <span class="value">${data.dob || 'Not detected'}</span></div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem 1rem;font-size:0.85rem;padding:0.5rem 0;">
+            <div><span style="color:var(--gray-500);font-weight:500;">Full Name:</span> <span style="color:var(--gray-800);font-weight:600;">${data.name || 'Not detected'}</span></div>
+            <div><span style="color:var(--gray-500);font-weight:500;">ID Number:</span> <span style="color:var(--gray-800);font-weight:600;">${data.idNumber || 'Not detected'}</span></div>
+            <div><span style="color:var(--gray-500);font-weight:500;">Date of Birth:</span> <span style="color:var(--gray-800);font-weight:600;">${data.dob || 'Not detected'}</span></div>
+        </div>
     `;
 }
 
@@ -1651,6 +1763,7 @@ function handleDocUpload(event, docKey) {
     if (statusEl) {
         statusEl.textContent = `✅ ${file.name}`;
         statusEl.style.color = 'var(--success)';
+        statusEl.style.fontWeight = '600';
     }
     if (fnameEl) fnameEl.textContent = file.name;
     if (card) card.classList.add('uploaded');
@@ -1668,8 +1781,9 @@ function removeDocument(docKey) {
     if (statusEl) {
         statusEl.textContent = 'Not uploaded';
         statusEl.style.color = 'var(--gray-400)';
+        statusEl.style.fontWeight = '400';
     }
-    if (fnameEl) fnameEl.textContent = '';
+    if (fnameEl) fnameEl.textContent = 'No file chosen';
     if (card) card.classList.remove('uploaded');
     if (input) input.value = '';
 
@@ -1679,7 +1793,7 @@ function removeDocument(docKey) {
         const resultBox = document.getElementById('ocr_kcse_result');
         const ocrStatus = document.getElementById('ocr_kcse_status');
         const validationResult = document.getElementById('kcse_validation_result');
-        if (resultBox) resultBox.classList.remove('show');
+        if (resultBox) resultBox.style.display = 'none';
         if (ocrStatus) ocrStatus.textContent = '';
         if (validationResult) validationResult.innerHTML = '';
     }
@@ -1688,15 +1802,15 @@ function removeDocument(docKey) {
 }
 
 // ============================================================
-// DRAFT SAVE/LOAD
+// DRAFT SAVE
 // ============================================================
 function saveDraft() {
     saveApplication(currentStep);
-    const msg = document.getElementById('message');
+    const msg = document.getElementById('submitMessage');
     if (msg) {
-        msg.className = 'message success';
+        msg.className = 'auth-message success';
         msg.textContent = '✅ Draft saved to cloud!';
-        setTimeout(() => { msg.className = 'message'; }, 3000);
+        setTimeout(() => { msg.className = 'auth-message'; msg.textContent = ''; }, 3000);
     }
 }
 
@@ -1735,23 +1849,33 @@ function updateSummary() {
 // ============================================================
 async function submitAdmission() {
     if (!document.getElementById('termsCheck')?.checked) {
-        showValidation('You must agree to the Terms & Conditions.');
+        showValidationModal('Terms & Conditions', 'Please agree to the terms before submitting', [
+            { field: 'Terms & Conditions', section: 'Submission', hint: 'Check the box to agree' }
+        ]);
         return;
     }
     if (!kcseValidated) {
-        showValidation('KCSE document has not been scanned and validated.');
+        showValidationModal('KCSE Not Validated', 'Please scan your KCSE certificate first', [
+            { field: 'KCSE Validation', section: 'Qualifications', hint: 'Upload and scan your KCSE certificate' }
+        ]);
         return;
     }
     if (!eligibilityPassed) {
-        showValidation('You do not meet the program eligibility requirements.');
+        showValidationModal('Not Eligible', 'You do not meet the program requirements', [
+            { field: 'Eligibility', section: 'Validation', hint: 'Your KCSE grades do not meet the minimum requirements' }
+        ]);
         return;
     }
     if (!uploadedDocs['recommendation']) {
-        showValidation('Please upload a Recommendation Letter.');
+        showValidationModal('Missing Document', 'Please upload a Recommendation Letter', [
+            { field: 'Recommendation Letter', section: 'Qualifications', hint: 'Required for all applicants' }
+        ]);
         return;
     }
     if (studentType === 'transfer' && !uploadedDocs['transcript']) {
-        showValidation('Transfer students must upload their Academic Transcript.');
+        showValidationModal('Missing Document', 'Transfer students must upload their Academic Transcript', [
+            { field: 'Academic Transcript', section: 'Qualifications', hint: 'Required for transfer students' }
+        ]);
         return;
     }
 
@@ -1792,9 +1916,9 @@ async function submitAdmission() {
 
     } catch (error) {
         console.error('Submit error:', error);
-        const msg = document.getElementById('message');
+        const msg = document.getElementById('submitMessage');
         if (msg) {
-            msg.className = 'message error';
+            msg.className = 'auth-message error';
             msg.textContent = '❌ Failed to submit: ' + error.message;
         }
     } finally {
@@ -2160,50 +2284,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // Init form
     updateProgramDesc();
-    updateIntakePreview();
     updateSummary();
-
-    // Email validation on admission form
-    const emailInput = document.getElementById('email');
-    if (emailInput) {
-        emailInput.addEventListener('input', function() {
-            const email = this.value.trim();
-            const statusEl = document.getElementById('emailStatus');
-            if (!email) {
-                if (statusEl) {
-                    statusEl.textContent = '';
-                    statusEl.className = 'email-status';
-                }
-                return;
-            }
-            if (!email.includes('@') || !email.includes('.')) {
-                if (statusEl) {
-                    statusEl.textContent = '❌ Invalid email';
-                    statusEl.className = 'email-status invalid';
-                }
-                return;
-            }
-            if (statusEl) {
-                statusEl.textContent = '⏳ Checking...';
-                statusEl.className = 'email-status checking';
-            }
-            setTimeout(() => {
-                const domain = email.split('@')[1];
-                if (domain && (['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke'].includes(domain) ||
-                        domain.endsWith('.ac.ke') || domain.endsWith('.ke'))) {
-                    if (statusEl) {
-                        statusEl.textContent = '✅ Valid email';
-                        statusEl.className = 'email-status valid';
-                    }
-                } else {
-                    if (statusEl) {
-                        statusEl.textContent = '⚠️ Unusual domain';
-                        statusEl.className = 'email-status invalid';
-                    }
-                }
-            }, 400);
-        });
-    }
 
     // Register email validation (home page)
     const regEmail = document.getElementById('regEmail');
@@ -2486,7 +2567,6 @@ window.saveDraft = saveDraft;
 window.submitAdmission = submitAdmission;
 window.updateProgramDesc = updateProgramDesc;
 window.updateCriteria = updateCriteria;
-window.updateIntakePreview = updateIntakePreview;
 window.updateSummary = updateSummary;
 window.closeValidation = closeValidation;
 window.showValidation = showValidation;
