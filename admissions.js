@@ -54,6 +54,7 @@ let studentType = 'new';
 let kcseDataExtracted = {};
 let applicationId = null;
 let emailCheckTimeout = null;
+let missingFieldsData = [];
 
 // ============================================================
 // PROGRAM DATA
@@ -126,7 +127,201 @@ const programNames = {
 };
 
 // ============================================================
-// NAVIGATION FUNCTION (Page switching) - FIXED
+// ULTRA MODERN VALIDATION MODAL FUNCTIONS
+// ============================================================
+
+/**
+ * Show the validation modal with detailed missing fields
+ * @param {string} title - The main title
+ * @param {string} subtitle - The subtitle
+ * @param {Array} missingFields - Array of {field, section, hint} objects
+ */
+function showValidationModal(title, subtitle, missingFields) {
+    const modal = document.getElementById('validationModal');
+    const titleEl = document.getElementById('modalTitle');
+    const subtitleEl = document.getElementById('modalSubtitle');
+    const summaryEl = document.getElementById('validationSummary');
+    const countEl = document.getElementById('missingCount');
+    const listEl = document.getElementById('missingFieldsList');
+    const progressFill = document.getElementById('progressFill');
+    const progressText = document.getElementById('progressText');
+
+    if (!modal) return;
+
+    // Store for later use
+    missingFieldsData = missingFields || [];
+
+    // Set header
+    if (titleEl) titleEl.textContent = title || 'Cannot Proceed';
+    if (subtitleEl) subtitleEl.textContent = subtitle || 'Please complete all required fields';
+
+    // Update summary
+    const count = missingFieldsData.length;
+    if (countEl) countEl.textContent = count;
+    if (summaryEl) {
+        const msg = count === 1 ? 
+            'required field needs your attention before you can proceed.' :
+            'required fields need your attention before you can proceed.';
+        summaryEl.querySelector('div').innerHTML = `<strong>${count}</strong> ${msg}`;
+    }
+
+    // Update progress
+    const totalSteps = 5;
+    const completed = Math.max(0, totalSteps - Math.ceil(count / 3));
+    const percent = Math.min(Math.round((completed / totalSteps) * 100), 100);
+    if (progressFill) progressFill.style.width = percent + '%';
+    if (progressText) progressText.textContent = percent + '%';
+
+    // Build missing fields list grouped by section
+    if (listEl) {
+        // Group by section
+        const grouped = {};
+        missingFieldsData.forEach(item => {
+            const section = item.section || 'General';
+            if (!grouped[section]) grouped[section] = [];
+            grouped[section].push(item);
+        });
+
+        let html = '';
+        const sectionIcons = {
+            'Personal Details': 'fa-user',
+            'Program Details': 'fa-graduation-cap',
+            'Qualifications': 'fa-clipboard-list',
+            'Attachment': 'fa-id-card',
+            'Submission': 'fa-clipboard-check',
+            'Emergency Contact': 'fa-ambulance',
+            'Medical History': 'fa-heartbeat',
+            'Employment': 'fa-briefcase',
+            'Validation': 'fa-exclamation-circle',
+            'General': 'fa-circle'
+        };
+
+        for (const [section, fields] of Object.entries(grouped)) {
+            const icon = sectionIcons[section] || 'fa-circle';
+            html += `
+                <div class="missing-section">
+                    <div class="missing-section-header">
+                        <i class="fas ${icon} section-icon"></i>
+                        ${section}
+                        <span class="badge-count">${fields.length}</span>
+                    </div>
+                    ${fields.map(f => `
+                        <div class="missing-field-item">
+                            <span class="field-name">${f.field}</span>
+                            ${f.hint ? `<span class="field-hint">${f.hint}</span>` : ''}
+                        </div>
+                    `).join('')}
+                </div>
+            `;
+        }
+
+        listEl.innerHTML = html || `
+            <div style="text-align:center;padding:2rem;color:var(--gray-400);">
+                <i class="fas fa-check-circle" style="font-size:2rem;color:var(--success);"></i>
+                <p style="margin-top:0.5rem;">No missing fields found!</p>
+            </div>
+        `;
+    }
+
+    // Show modal
+    modal.classList.add('show');
+    document.body.style.overflow = 'hidden';
+}
+
+/**
+ * Close the validation modal
+ */
+function closeValidation() {
+    const modal = document.getElementById('validationModal');
+    if (modal) {
+        modal.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+}
+
+/**
+ * Scroll to the first missing field and highlight it
+ */
+function scrollToFirstMissing() {
+    closeValidation();
+    
+    // Try to find and focus the first missing field
+    if (missingFieldsData.length > 0) {
+        const fieldMap = {
+            'Full Name': 'fullName',
+            'Email Address': 'email',
+            'Date of Birth': 'dob',
+            'Nationality': 'nationality',
+            'National ID': 'nationalId',
+            'Country of Birth': 'countryOfBirth',
+            'Gender': 'gender',
+            'Address': 'address',
+            'City': 'city',
+            'Phone Number': 'phone',
+            'How did you Know about Us': 'hearAbout',
+            'Are you Sponsored': 'sponsored',
+            'Sponsor Name': 'sponsorName',
+            'School': 'school',
+            'Course': 'program',
+            'Campus': 'campus',
+            'Intake': 'intake',
+            'Mode of Study': 'modeOfStudy',
+            'Student Type': 'studentType',
+            'Previous Institution': 'prevInstitution',
+            'Previous Year of Study': 'prevYear',
+            'KCSE Certificate': 'doc_kcse_input',
+            'Recommendation Letter': 'doc_recommendation_input',
+            'Academic Transcript': 'doc_transcript_input',
+            'National ID / Birth Certificate': 'doc_id_input',
+            'Passport Photo': 'doc_passport_input',
+            'Father Alive': 'fatherAlive',
+            'Father Name': 'fatherName',
+            'Father Phone No.': 'fatherPhone',
+            'Mother Alive': 'motherAlive',
+            'Mother Name': 'motherName',
+            'Mother Phone No.': 'motherPhone',
+            'Person With Disability': 'disability',
+            'Disability Description': 'disabilityDesc',
+            'Any Medical Condition': 'medicalCondition',
+            'Medical Condition Description': 'medicalDesc',
+            'Are you employed': 'employed',
+            'Employment Details': 'employmentDesc',
+            'Terms & Conditions': 'termsCheck'
+        };
+
+        const firstField = missingFieldsData[0];
+        const fieldId = fieldMap[firstField.field];
+        
+        if (fieldId) {
+            const el = document.getElementById(fieldId);
+            if (el) {
+                // Highlight the field
+                el.style.borderColor = '#ef4444';
+                el.style.boxShadow = '0 0 0 4px rgba(239, 68, 68, 0.2)';
+                setTimeout(() => {
+                    el.style.borderColor = '';
+                    el.style.boxShadow = '';
+                }, 3000);
+                
+                // Scroll to it
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                el.focus();
+                return;
+            }
+        }
+    }
+}
+
+/**
+ * Legacy showValidation - now uses modern modal
+ */
+function showValidation(msg) {
+    const missingFields = [{ field: msg, section: 'Validation', hint: 'Required field' }];
+    showValidationModal('Validation Error', 'Please fix the following issues', missingFields);
+}
+
+// ============================================================
+// NAVIGATION FUNCTION (Page switching)
 // ============================================================
 function navigateTo(page) {
     // Hide all pages
@@ -148,7 +343,6 @@ function navigateTo(page) {
     
     // If going to register page, check auth state
     if (page === 'register') {
-        // ✅ INCREASED DELAY - ensures DOM is ready
         setTimeout(function() {
             checkAuthForRegisterPage();
         }, 300);
@@ -169,7 +363,268 @@ function navigateTo(page) {
 }
 
 // ============================================================
-// CHECK AUTH FOR REGISTER PAGE (Apply Now) - FIXED
+// ENHANCED goToStep WITH MODERN VALIDATION
+// ============================================================
+
+function goToStep(step) {
+    // Validate current step before moving
+    if (!validateStepWithModal(currentStep, step)) {
+        return; // Validation failed, modal shown
+    }
+
+    // Update UI
+    document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
+    document.querySelector(`.form-section[data-section="${step}"]`)?.classList.add('active');
+
+    document.querySelectorAll('.step-item').forEach(el => {
+        el.classList.remove('active', 'completed');
+        const s = parseInt(el.dataset.step);
+        if (s === step) el.classList.add('active');
+        else if (s < step) el.classList.add('completed');
+    });
+
+    currentStep = step;
+    updateSummary();
+    saveApplication(step);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/**
+ * Validate step with detailed modal showing all missing fields
+ */
+function validateStepWithModal(from, to) {
+    const missingFields = [];
+
+    if (from === 1 && to > 1) {
+        // Personal Details
+        const checks = [
+            { id: 'fullName', field: 'Full Name', section: 'Personal Details', hint: 'Required field' },
+            { id: 'email', field: 'Email Address', section: 'Personal Details', hint: 'Required field' },
+            { id: 'dob', field: 'Date of Birth', section: 'Personal Details', hint: 'Required field' },
+            { id: 'nationality', field: 'Nationality', section: 'Personal Details', hint: 'Required field' },
+            { id: 'nationalId', field: 'National ID', section: 'Personal Details', hint: 'Required field' },
+            { id: 'countryOfBirth', field: 'Country of Birth', section: 'Personal Details', hint: 'Required field' },
+            { id: 'gender', field: 'Gender', section: 'Personal Details', hint: 'Required field' },
+            { id: 'address', field: 'Address', section: 'Personal Details', hint: 'Required field' },
+            { id: 'city', field: 'City', section: 'Personal Details', hint: 'Required field' },
+            { id: 'phone', field: 'Phone Number', section: 'Personal Details', hint: 'Must be 10+ digits' },
+            { id: 'hearAbout', field: 'How did you Know about Us', section: 'Personal Details', hint: 'Required field' },
+            { id: 'sponsored', field: 'Are you Sponsored', section: 'Personal Details', hint: 'Required field' },
+        ];
+
+        // Phone validation
+        const phone = document.getElementById('phone')?.value.trim();
+        if (phone && phone.length < 10) {
+            missingFields.push({ field: 'Phone Number', section: 'Personal Details', hint: 'Must be at least 10 digits' });
+        }
+
+        // Check all required fields
+        checks.forEach(check => {
+            const el = document.getElementById(check.id);
+            if (el) {
+                const val = el.value.trim();
+                if (!val || val === '') {
+                    missingFields.push({ field: check.field, section: check.section, hint: check.hint });
+                }
+            }
+        });
+
+        // Sponsor field
+        const sponsored = document.getElementById('sponsored')?.value;
+        if (sponsored === 'Yes') {
+            const sponsorName = document.getElementById('sponsorName')?.value.trim();
+            if (!sponsorName) {
+                missingFields.push({ field: 'Sponsor Name', section: 'Personal Details', hint: 'Required since you are sponsored' });
+            }
+        }
+
+        // Emergency Contact
+        const fatherAlive = document.getElementById('fatherAlive')?.value;
+        if (fatherAlive === 'Yes') {
+            const fatherName = document.getElementById('fatherName')?.value.trim();
+            const fatherPhone = document.getElementById('fatherPhone')?.value.trim();
+            if (!fatherName) missingFields.push({ field: 'Father Name', section: 'Emergency Contact', hint: 'Required' });
+            if (!fatherPhone) missingFields.push({ field: 'Father Phone No.', section: 'Emergency Contact', hint: 'Required' });
+        }
+
+        const motherAlive = document.getElementById('motherAlive')?.value;
+        if (motherAlive === 'Yes') {
+            const motherName = document.getElementById('motherName')?.value.trim();
+            const motherPhone = document.getElementById('motherPhone')?.value.trim();
+            if (!motherName) missingFields.push({ field: 'Mother Name', section: 'Emergency Contact', hint: 'Required' });
+            if (!motherPhone) missingFields.push({ field: 'Mother Phone No.', section: 'Emergency Contact', hint: 'Required' });
+        }
+
+        // Medical History
+        const disability = document.getElementById('disability')?.value;
+        if (disability === 'Yes') {
+            const desc = document.getElementById('disabilityDesc')?.value.trim();
+            if (!desc) missingFields.push({ field: 'Disability Description', section: 'Medical History', hint: 'Required' });
+        }
+
+        const medical = document.getElementById('medicalCondition')?.value;
+        if (medical === 'Yes') {
+            const desc = document.getElementById('medicalDesc')?.value.trim();
+            if (!desc) missingFields.push({ field: 'Medical Condition Description', section: 'Medical History', hint: 'Required' });
+        }
+
+        // Employment
+        const employed = document.getElementById('employed')?.value;
+        if (employed === 'Yes') {
+            const desc = document.getElementById('employmentDesc')?.value.trim();
+            if (!desc) missingFields.push({ field: 'Employment Details', section: 'Employment', hint: 'Required' });
+        }
+
+        // Photo
+        const photo = document.getElementById('passportPhoto')?.files?.[0];
+        if (!photo) {
+            missingFields.push({ field: 'Passport Photo', section: 'Personal Details', hint: 'Upload a clear photo' });
+        }
+
+        if (missingFields.length > 0) {
+            showValidationModal(
+                'Complete Your Profile',
+                'Please fill in all required personal details',
+                missingFields
+            );
+            return false;
+        }
+    }
+
+    if (from === 2 && to > 2) {
+        // Program Details
+        const checks = [
+            { id: 'school', field: 'School', section: 'Program Details', hint: 'Select your school' },
+            { id: 'program', field: 'Course', section: 'Program Details', hint: 'Select your course' },
+            { id: 'campus', field: 'Campus', section: 'Program Details', hint: 'Select campus' },
+            { id: 'intake', field: 'Intake', section: 'Program Details', hint: 'Select intake' },
+            { id: 'modeOfStudy', field: 'Mode of Study', section: 'Program Details', hint: 'Select mode' },
+        ];
+
+        checks.forEach(check => {
+            const el = document.getElementById(check.id);
+            if (el) {
+                const val = el.value.trim();
+                if (!val || val === '') {
+                    missingFields.push({ field: check.field, section: check.section, hint: check.hint });
+                }
+            }
+        });
+
+        // Student Type
+        const studentTypeRadios = document.querySelectorAll('input[name="studentType"]');
+        let selected = false;
+        studentTypeRadios.forEach(r => { if (r.checked) selected = true; });
+        if (!selected) {
+            missingFields.push({ field: 'Student Type', section: 'Program Details', hint: 'Select new or transfer' });
+        }
+
+        // Transfer fields
+        const transferChecked = document.querySelector('input[name="studentType"][value="transfer"]')?.checked;
+        if (transferChecked) {
+            const prevInst = document.getElementById('prevInstitution')?.value.trim();
+            const prevYear = document.getElementById('prevYear')?.value.trim();
+            if (!prevInst) missingFields.push({ field: 'Previous Institution', section: 'Program Details', hint: 'Required for transfer' });
+            if (!prevYear) missingFields.push({ field: 'Previous Year of Study', section: 'Program Details', hint: 'Required for transfer' });
+        }
+
+        if (missingFields.length > 0) {
+            showValidationModal(
+                'Complete Program Details',
+                'Please select all required program information',
+                missingFields
+            );
+            return false;
+        }
+    }
+
+    if (from === 3 && to > 3) {
+        // Qualifications - Documents
+        const requiredDocs = [
+            { id: 'doc_kcse_input', field: 'KCSE Certificate', section: 'Qualifications', hint: 'Required for validation' },
+            { id: 'doc_recommendation_input', field: 'Recommendation Letter', section: 'Qualifications', hint: 'Required' },
+        ];
+
+        requiredDocs.forEach(check => {
+            const el = document.getElementById(check.id);
+            if (el) {
+                const hasFile = el.files && el.files.length > 0;
+                if (!hasFile && !uploadedDocs[check.field.toLowerCase().replace(/[^a-z]/g, '_')]) {
+                    missingFields.push({ field: check.field, section: check.section, hint: check.hint });
+                }
+            }
+        });
+
+        // Transcript for transfer students
+        const transferChecked = document.querySelector('input[name="studentType"][value="transfer"]')?.checked;
+        if (transferChecked) {
+            const transcript = document.getElementById('doc_transcript_input');
+            if (!transcript?.files?.length && !uploadedDocs['transcript']) {
+                missingFields.push({ field: 'Academic Transcript', section: 'Qualifications', hint: 'Required for transfer' });
+            }
+        }
+
+        // KCSE validation status
+        if (!kcseValidated) {
+            missingFields.push({ field: 'KCSE Validation', section: 'Qualifications', hint: 'Scan your KCSE certificate' });
+        }
+
+        if (missingFields.length > 0) {
+            showValidationModal(
+                'Upload Required Documents',
+                'Please upload all required documents',
+                missingFields
+            );
+            return false;
+        }
+    }
+
+    if (from === 4 && to > 4) {
+        // Attachment
+        const requiredDocs = [
+            { id: 'doc_id_input', field: 'National ID / Birth Certificate', section: 'Attachment', hint: 'Required' },
+            { id: 'doc_passport_input', field: 'Passport Photo', section: 'Attachment', hint: 'Upload passport photo' },
+        ];
+
+        requiredDocs.forEach(check => {
+            const el = document.getElementById(check.id);
+            if (el) {
+                const hasFile = el.files && el.files.length > 0;
+                if (!hasFile && !uploadedDocs[check.field.toLowerCase().replace(/[^a-z]/g, '_')]) {
+                    missingFields.push({ field: check.field, section: check.section, hint: check.hint });
+                }
+            }
+        });
+
+        if (missingFields.length > 0) {
+            showValidationModal(
+                'Complete Attachments',
+                'Please upload all required attachments',
+                missingFields
+            );
+            return false;
+        }
+    }
+
+    if (from === 5 && to > 5) {
+        // Submission - Terms check
+        const terms = document.getElementById('termsCheck');
+        if (!terms?.checked) {
+            missingFields.push({ field: 'Terms & Conditions', section: 'Submission', hint: 'Check the box to agree' });
+            showValidationModal(
+                'Terms & Conditions',
+                'Please agree to the terms before submitting',
+                missingFields
+            );
+            return false;
+        }
+    }
+
+    return true;
+}
+
+// ============================================================
+// CHECK AUTH FOR REGISTER PAGE (Apply Now)
 // ============================================================
 async function checkAuthForRegisterPage() {
     console.log('🔍 checkAuthForRegisterPage() called');
@@ -177,7 +632,6 @@ async function checkAuthForRegisterPage() {
     const supabaseClient = getSupabase();
     console.log('📡 Supabase client:', supabaseClient ? '✅ Available' : '❌ NULL');
     
-    // ✅ FIXED: Use dashboardApp instead of admissionApp
     const authContainer = document.getElementById('authContainer2');
     const dashboardApp = document.getElementById('dashboardApp');
     
@@ -186,7 +640,6 @@ async function checkAuthForRegisterPage() {
     
     if (!authContainer || !dashboardApp) {
         console.error('❌ DOM elements not found!');
-        // Try to find them again with a delay
         setTimeout(function() {
             const retryAuth = document.getElementById('authContainer2');
             const retryDash = document.getElementById('dashboardApp');
@@ -215,13 +668,11 @@ async function checkAuthForRegisterPage() {
         console.log('👤 Session:', session ? '✅ Logged in' : '❌ Not logged in');
         
         if (session) {
-            // User is logged in - show the dashboard
             console.log('📋 User is logged in - showing dashboard');
             currentUser = session.user;
             authContainer.style.display = 'none';
             dashboardApp.style.display = 'block';
             
-            // Update dashboard header
             const avatar = document.getElementById('dashAvatar');
             const name = document.getElementById('dashName');
             const email = document.getElementById('dashEmail');
@@ -233,16 +684,13 @@ async function checkAuthForRegisterPage() {
             
             await loadUserApplication(currentUser.id);
         } else {
-            // User is NOT logged in - show the auth container with register tab active
             console.log('📝 User is NOT logged in - showing register form');
             authContainer.style.display = 'block';
             dashboardApp.style.display = 'none';
-            // Default to register tab
             switchAuthTab2('register2');
         }
     } catch (error) {
         console.error('❌ Auth check error:', error);
-        // Show register form on error
         authContainer.style.display = 'block';
         dashboardApp.style.display = 'none';
         switchAuthTab2('register2');
@@ -250,11 +698,13 @@ async function checkAuthForRegisterPage() {
 }
 
 // ============================================================
-// UPDATE PROGRAMS FUNCTION (Populate courses based on school)
+// UPDATE PROGRAMS FUNCTION
 // ============================================================
 function updatePrograms() {
-    const school = document.getElementById('school').value;
+    const school = document.getElementById('school')?.value;
     const programSelect = document.getElementById('program');
+    
+    if (!programSelect) return;
     
     programSelect.innerHTML = '<option value="">-- Select Course --</option>';
     
@@ -381,7 +831,6 @@ async function loginUser() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
 
-        // Check user status
         const { data: profile } = await supabaseClient
             .from('consolidated_user_profiles_table')
             .select('status, full_name')
@@ -394,7 +843,6 @@ async function loginUser() {
             return;
         }
 
-        // Redirect to register page to show application form
         setTimeout(() => {
             navigateTo('register');
         }, 1000);
@@ -480,7 +928,6 @@ async function registerUser() {
 
         if (authError) throw authError;
 
-        // AUTO-LOGIN
         try {
             const { error: loginError } = await supabaseClient.auth.signInWithPassword({
                 email,
@@ -491,7 +938,6 @@ async function registerUser() {
             console.warn('Auto-login error:', loginErr);
         }
 
-        // CREATE APPLICATION
         const { error: appError } = await supabaseClient
             .from('applications')
             .insert([{
@@ -512,7 +958,6 @@ async function registerUser() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
 
-        // Redirect to register page to show application form
         setTimeout(() => {
             navigateTo('register');
         }, 1500);
@@ -678,26 +1123,26 @@ async function saveApplication(step) {
     const data = {
         user_id: currentUser.id,
         user_email: currentUser.email,
-        full_name: document.getElementById('fullName').value,
-        phone: document.getElementById('phone').value,
-        alt_phone: document.getElementById('altPhone').value,
-        national_id: document.getElementById('nationalId').value,
-        dob: document.getElementById('dob').value,
-        gender: document.getElementById('gender').value,
-        address: document.getElementById('address').value,
-        guardian_name: document.getElementById('guardianName').value,
-        guardian_phone: document.getElementById('guardianPhone').value,
-        emergency_name: document.getElementById('emergencyName').value,
-        emergency_phone: document.getElementById('emergencyPhone').value,
-        emergency_relation: document.getElementById('emergencyRelation').value,
-        hear_about: document.getElementById('hearAbout').value,
-        program: document.getElementById('program').value,
-        program_name: programNames[document.getElementById('program').value] || '',
-        intake_month: document.getElementById('intakeMonth').value,
-        intake_year: document.getElementById('intakeYear').value,
-        prev_institution: document.getElementById('prevInstitution').value,
-        prev_year: document.getElementById('prevYear').value,
-        transfer_reason: document.getElementById('transferReason').value,
+        full_name: document.getElementById('fullName')?.value || '',
+        phone: document.getElementById('phone')?.value || '',
+        alt_phone: document.getElementById('altPhone')?.value || '',
+        national_id: document.getElementById('nationalId')?.value || '',
+        dob: document.getElementById('dob')?.value || '',
+        gender: document.getElementById('gender')?.value || '',
+        address: document.getElementById('address')?.value || '',
+        guardian_name: document.getElementById('guardianName')?.value || '',
+        guardian_phone: document.getElementById('guardianPhone')?.value || '',
+        emergency_name: document.getElementById('emergencyName')?.value || '',
+        emergency_phone: document.getElementById('emergencyPhone')?.value || '',
+        emergency_relation: document.getElementById('emergencyRelation')?.value || '',
+        hear_about: document.getElementById('hearAbout')?.value || '',
+        program: document.getElementById('program')?.value || '',
+        program_name: programNames[document.getElementById('program')?.value] || '',
+        intake_month: document.getElementById('intakeMonth')?.value || '',
+        intake_year: document.getElementById('intakeYear')?.value || '',
+        prev_institution: document.getElementById('prevInstitution')?.value || '',
+        prev_year: document.getElementById('prevYear')?.value || '',
+        transfer_reason: document.getElementById('transferReason')?.value || '',
         student_type: studentType,
         eligibility_passed: eligibilityPassed || false,
         kcse_validated: kcseValidated || false,
@@ -758,82 +1203,6 @@ function selectType(type) {
 }
 
 // ============================================================
-// NAVIGATION - FORM STEPS
-// ============================================================
-function goToStep(step) {
-    if (!validateStep(currentStep, step)) return;
-
-    document.querySelectorAll('.form-section').forEach(el => el.classList.remove('active'));
-    document.querySelector(`.form-section[data-section="${step}"]`)?.classList.add('active');
-
-    document.querySelectorAll('.step-item').forEach(el => {
-        el.classList.remove('active', 'completed');
-        const s = parseInt(el.dataset.step);
-        if (s === step) el.classList.add('active');
-        else if (s < step) el.classList.add('completed');
-    });
-
-    currentStep = step;
-    updateSummary();
-    saveApplication(step);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function validateStep(from, to) {
-    if (from === 1 && to > 1) {
-        const name = document.getElementById('fullName').value.trim();
-        const email = document.getElementById('email').value.trim();
-        const phone = document.getElementById('phone').value.trim();
-        const id = document.getElementById('nationalId').value.trim();
-        const dob = document.getElementById('dob').value;
-        const gender = document.getElementById('gender').value;
-        if (!name || !email || !phone || !id || !dob || !gender) {
-            showValidation('Please complete all required personal details.');
-            return false;
-        }
-        if (phone.length < 10) {
-            showValidation('Phone number must be at least 10 digits.');
-            return false;
-        }
-    }
-    if (from === 2 && to > 2) {
-        const program = document.getElementById('program').value;
-        if (!program) {
-            showValidation('Please select a Program.');
-            return false;
-        }
-    }
-    if (from === 3 && to > 3) {
-        if (!uploadedDocs['kcse']) {
-            showValidation('Please upload your KCSE certificate.');
-            return false;
-        }
-        if (!kcseValidated) {
-            showValidation('KCSE document has not been scanned and validated.');
-            return false;
-        }
-        if (!uploadedDocs['recommendation']) {
-            showValidation('Please upload a Recommendation Letter.');
-            return false;
-        }
-        if (studentType === 'transfer' && !uploadedDocs['transcript']) {
-            showValidation('Transfer students must upload their Academic Transcript.');
-            return false;
-        }
-    }
-    return true;
-}
-
-function showValidation(msg) {
-    document.getElementById('errorList').innerHTML = `<li>${msg}</li>`;
-    document.getElementById('validationModal')?.classList.add('show');
-}
-
-function closeValidation() {
-    document.getElementById('validationModal')?.classList.remove('show');
-}
-
-// ============================================================
 // PROGRAM FUNCTIONS
 // ============================================================
 function updateProgramDesc() {
@@ -869,12 +1238,12 @@ function updateProgramDesc() {
         'CCA': '💻 Computer Applications · 3 months · No min',
         'PTE': '📚 TVET/CDACC PTE · No min'
     };
-    if (desc) desc.textContent = map[select.value] || 'Select a program to see details';
+    if (desc && select) desc.textContent = map[select.value] || 'Select a program to see details';
     updateCriteria();
 }
 
 function updateCriteria() {
-    const program = document.getElementById('program').value;
+    const program = document.getElementById('program')?.value;
     const criteria = programCriteria[program];
     const content = document.getElementById('criteriaContent');
     if (!content) return;
@@ -912,21 +1281,25 @@ function updateIntakePreview() {
 // ============================================================
 function handleEnquiry(event) {
     event.preventDefault();
-    const name = document.getElementById('enquiryName').value.trim();
-    const email = document.getElementById('enquiryEmail').value.trim();
-    const phone = document.getElementById('enquiryPhone').value.trim();
-    const subject = document.getElementById('enquirySubject').value.trim();
-    const message = document.getElementById('enquiryMessage').value.trim();
+    const name = document.getElementById('enquiryName')?.value.trim();
+    const email = document.getElementById('enquiryEmail')?.value.trim();
+    const phone = document.getElementById('enquiryPhone')?.value.trim();
+    const subject = document.getElementById('enquirySubject')?.value.trim();
+    const message = document.getElementById('enquiryMessage')?.value.trim();
     const status = document.getElementById('enquiryMessageStatus');
     
     if (!name || !email || !subject || !message) {
-        status.className = 'auth-message error';
-        status.textContent = '❌ Please fill in all required fields.';
+        if (status) {
+            status.className = 'auth-message error';
+            status.textContent = '❌ Please fill in all required fields.';
+        }
         return;
     }
     
-    status.className = 'auth-message success';
-    status.textContent = '✅ Your enquiry has been sent! We will get back to you within 24 hours.';
+    if (status) {
+        status.className = 'auth-message success';
+        status.textContent = '✅ Your enquiry has been sent! We will get back to you within 24 hours.';
+    }
     
     document.getElementById('enquiryName').value = '';
     document.getElementById('enquiryEmail').value = '';
@@ -955,7 +1328,7 @@ async function handleKCSEDocument(event) {
         return;
     }
 
-    if (overlay) overlay.classList.add('active');
+    if (overlay) overlay.style.display = 'flex';
     if (ocrStatus) {
         ocrStatus.textContent = '⏳ Processing...';
         ocrStatus.className = 'ocr-status pending';
@@ -1013,7 +1386,7 @@ async function handleKCSEDocument(event) {
         }
         alert('Document scanning failed. Please ensure the document is clear and try again.');
     } finally {
-        if (overlay) overlay.classList.remove('active');
+        if (overlay) overlay.style.display = 'none';
     }
     updateSummary();
 }
@@ -1084,7 +1457,7 @@ function displayKCSEData(data) {
 }
 
 function validateKCSEAgainstProgram(data) {
-    const program = document.getElementById('program').value;
+    const program = document.getElementById('program')?.value;
     const criteria = programCriteria[program];
     const validationResult = document.getElementById('kcse_validation_result');
 
@@ -1141,7 +1514,7 @@ function validateKCSEAgainstProgram(data) {
     validationResult.innerHTML = html;
     eligibilityPassed = allPass;
 
-    if (data.name && !document.getElementById('fullName').value) {
+    if (data.name && !document.getElementById('fullName')?.value) {
         document.getElementById('fullName').value = data.name;
     }
     updateSummary();
@@ -1167,7 +1540,7 @@ async function handleIDDocument(event) {
         return;
     }
 
-    if (overlay) overlay.classList.add('active');
+    if (overlay) overlay.style.display = 'flex';
     if (ocrStatus) {
         ocrStatus.textContent = '⏳ Processing...';
         ocrStatus.className = 'ocr-status pending';
@@ -1210,10 +1583,10 @@ async function handleIDDocument(event) {
         }
         if (resultBox) resultBox.classList.add('show');
 
-        if (idData.idNumber && !document.getElementById('nationalId').value) {
+        if (idData.idNumber && !document.getElementById('nationalId')?.value) {
             document.getElementById('nationalId').value = idData.idNumber;
         }
-        if (idData.name && !document.getElementById('fullName').value) {
+        if (idData.name && !document.getElementById('fullName')?.value) {
             document.getElementById('fullName').value = idData.name;
         }
         if (file.type !== 'application/pdf') URL.revokeObjectURL(imageUrl);
@@ -1226,7 +1599,7 @@ async function handleIDDocument(event) {
         }
         alert('ID scanning failed. Please ensure the document is clear.');
     } finally {
-        if (overlay) overlay.classList.remove('active');
+        if (overlay) overlay.style.display = 'none';
     }
     updateSummary();
 }
@@ -1433,203 +1806,6 @@ async function submitAdmission() {
 }
 
 // ============================================================
-// EMAIL VALIDATION & INIT
-// ============================================================
-document.addEventListener('DOMContentLoaded', function() {
-    const yearEl = document.getElementById('currentYear');
-    if (yearEl) yearEl.textContent = new Date().getFullYear();
-
-    if (typeof pdfjsLib !== 'undefined') {
-        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-    }
-
-    // Email validation on admission form
-    const emailInput = document.getElementById('email');
-    if (emailInput) {
-        emailInput.addEventListener('input', function() {
-            const email = this.value.trim();
-            const statusEl = document.getElementById('emailStatus');
-            if (!email) {
-                if (statusEl) {
-                    statusEl.textContent = '';
-                    statusEl.className = 'email-status';
-                }
-                return;
-            }
-            if (!email.includes('@') || !email.includes('.')) {
-                if (statusEl) {
-                    statusEl.textContent = '❌ Invalid email';
-                    statusEl.className = 'email-status invalid';
-                }
-                return;
-            }
-            if (statusEl) {
-                statusEl.textContent = '⏳ Checking...';
-                statusEl.className = 'email-status checking';
-            }
-            setTimeout(() => {
-                const domain = email.split('@')[1];
-                if (domain && (['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke'].includes(domain) ||
-                        domain.endsWith('.ac.ke') || domain.endsWith('.ke'))) {
-                    if (statusEl) {
-                        statusEl.textContent = '✅ Valid email';
-                        statusEl.className = 'email-status valid';
-                    }
-                } else {
-                    if (statusEl) {
-                        statusEl.textContent = '⚠️ Unusual domain';
-                        statusEl.className = 'email-status invalid';
-                    }
-                }
-            }, 400);
-        });
-    }
-
-    // Register email validation
-    const regEmail = document.getElementById('regEmail');
-    if (regEmail) {
-        regEmail.addEventListener('input', function() {
-            const email = this.value.trim();
-            const statusEl = document.getElementById('regEmailStatus');
-
-            if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
-
-            if (!email) {
-                if (statusEl) {
-                    statusEl.textContent = '';
-                    statusEl.style.color = '';
-                }
-                this.style.borderColor = '#e2e8f0';
-                return;
-            }
-
-            if (!email.includes('@') || !email.includes('.')) {
-                if (statusEl) {
-                    statusEl.textContent = '❌ Invalid email format';
-                    statusEl.style.color = '#ef4444';
-                }
-                this.style.borderColor = '#ef4444';
-                return;
-            }
-
-            if (statusEl) {
-                statusEl.textContent = '✅ Email format valid';
-                statusEl.style.color = '#0b8a5e';
-            }
-            this.style.borderColor = '#0b8a5e';
-        });
-    }
-
-    // Password strength
-    const regPassword = document.getElementById('regPassword');
-    if (regPassword) {
-        regPassword.addEventListener('input', function() {
-            const password = this.value;
-            const bar = document.getElementById('strengthBar');
-            const text = document.getElementById('strengthText');
-
-            let score = 0;
-            if (password.length >= 8) score++;
-            if (password.length >= 12) score++;
-            if (/[A-Z]/.test(password)) score++;
-            if (/[a-z]/.test(password)) score++;
-            if (/[0-9]/.test(password)) score++;
-            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
-
-            const levels = [
-                { text: 'Very Weak', cls: 'weak', width: '10%', color: '#ef4444' },
-                { text: 'Weak', cls: 'weak', width: '25%', color: '#ef4444' },
-                { text: 'Fair', cls: 'fair', width: '45%', color: '#f59e0b' },
-                { text: 'Good', cls: 'good', width: '65%', color: '#3b82f6' },
-                { text: 'Strong', cls: 'strong', width: '85%', color: '#0b8a5e' },
-                { text: 'Very Strong', cls: 'strong', width: '100%', color: '#0b8a5e' }
-            ];
-
-            const level = Math.min(Math.floor(score / 1), 5);
-            const result = levels[level] || levels[0];
-
-            if (bar) {
-                bar.style.width = result.width;
-                bar.style.background = result.color;
-            }
-            if (text) {
-                text.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
-                text.className = `strength-text ${password.length > 0 ? result.cls : ''}`;
-            }
-        });
-    }
-
-    // Password confirmation
-    const regConfirm = document.getElementById('regConfirmPassword');
-    if (regConfirm) {
-        regConfirm.addEventListener('input', function() {
-            const password = document.getElementById('regPassword').value;
-            const confirm = this.value;
-            const matchEl = document.getElementById('passwordMatch');
-
-            if (!confirm) {
-                if (matchEl) {
-                    matchEl.textContent = '';
-                    matchEl.className = 'password-match';
-                }
-                return;
-            }
-
-            if (password === confirm) {
-                if (matchEl) {
-                    matchEl.textContent = '✅ Passwords match';
-                    matchEl.className = 'password-match match';
-                }
-            } else {
-                if (matchEl) {
-                    matchEl.textContent = '❌ Passwords do not match';
-                    matchEl.className = 'password-match nomatch';
-                }
-            }
-        });
-    }
-
-    // Check authentication on home page
-    checkAuth();
-
-    // Init form
-    updateProgramDesc();
-    updateIntakePreview();
-    updateSummary();
-
-    // Enter key support for home page auth
-    document.addEventListener('keydown', function(e) {
-        if (e.key === 'Enter') {
-            const activeTab = document.querySelector('.auth-tabs .tab.active');
-            if (activeTab && activeTab.dataset.tab === 'login') {
-                loginUser();
-            } else if (activeTab && activeTab.dataset.tab === 'register') {
-                registerUser();
-            }
-        }
-    });
-
-    console.log('✅ NCHSM Admission System loaded');
-});
-
-// Click on doc card triggers file input
-document.querySelectorAll('.doc-card').forEach(card => {
-    card.addEventListener('click', function(e) {
-        if (e.target.closest('.doc-remove') || e.target.closest('.ocr-status')) return;
-        const input = this.querySelector('input[type="file"]');
-        if (input) input.click();
-    });
-});
-
-// Modal close on overlay click
-document.getElementById('validationModal')?.addEventListener('click', function(e) {
-    if (e.target === this) closeValidation();
-});
-document.getElementById('successOverlay')?.addEventListener('click', function(e) {
-    if (e.target === this) this.classList.remove('show');
-});
-
-// ============================================================
 // AUTH 2 FUNCTIONS (For Apply Now / Register Page)
 // ============================================================
 
@@ -1702,7 +1878,6 @@ async function loginUser2() {
             return;
         }
 
-        // Refresh the page to show application form
         setTimeout(() => {
             window.location.reload();
         }, 1000);
@@ -1785,7 +1960,6 @@ async function registerUser2() {
 
         if (authError) throw authError;
 
-        // Auto-login
         try {
             const { error: loginError } = await supabaseClient.auth.signInWithPassword({
                 email,
@@ -1796,7 +1970,6 @@ async function registerUser2() {
             console.warn('Auto-login error:', loginErr);
         }
 
-        // Create application
         const { error: appError } = await supabaseClient
             .from('applications')
             .insert([{
@@ -1817,7 +1990,6 @@ async function registerUser2() {
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
 
-        // Refresh page to show application form
         setTimeout(() => {
             window.location.reload();
         }, 1500);
@@ -1832,9 +2004,312 @@ async function registerUser2() {
 }
 
 // ============================================================
-// REGISTER 2 - Email validation & password strength
+// CONDITIONAL FIELD TOGGLES
 // ============================================================
+
+function toggleSponsor() {
+    const val = document.getElementById('sponsored')?.value;
+    const field = document.getElementById('sponsorField');
+    const input = document.getElementById('sponsorName');
+    if (!field) return;
+    if (val === 'Yes') {
+        field.className = 'col conditional-field visible';
+        if (input) input.setAttribute('required', 'required');
+    } else {
+        field.className = 'col conditional-field hidden';
+        if (input) input.removeAttribute('required');
+    }
+}
+
+function toggleFather() {
+    const val = document.getElementById('fatherAlive')?.value;
+    const nameField = document.getElementById('fatherNameField');
+    const phoneField = document.getElementById('fatherPhoneField');
+    const nameInput = document.getElementById('fatherName');
+    const phoneInput = document.getElementById('fatherPhone');
+    if (!nameField || !phoneField) return;
+    if (val === 'Yes') {
+        nameField.className = 'form-group conditional-field visible';
+        phoneField.className = 'form-group conditional-field visible';
+        if (nameInput) nameInput.setAttribute('required', 'required');
+        if (phoneInput) phoneInput.setAttribute('required', 'required');
+    } else {
+        nameField.className = 'form-group conditional-field hidden';
+        phoneField.className = 'form-group conditional-field hidden';
+        if (nameInput) nameInput.removeAttribute('required');
+        if (phoneInput) phoneInput.removeAttribute('required');
+    }
+}
+
+function toggleMother() {
+    const val = document.getElementById('motherAlive')?.value;
+    const nameField = document.getElementById('motherNameField');
+    const phoneField = document.getElementById('motherPhoneField');
+    const nameInput = document.getElementById('motherName');
+    const phoneInput = document.getElementById('motherPhone');
+    if (!nameField || !phoneField) return;
+    if (val === 'Yes') {
+        nameField.className = 'form-group conditional-field visible';
+        phoneField.className = 'form-group conditional-field visible';
+        if (nameInput) nameInput.setAttribute('required', 'required');
+        if (phoneInput) phoneInput.setAttribute('required', 'required');
+    } else {
+        nameField.className = 'form-group conditional-field hidden';
+        phoneField.className = 'form-group conditional-field hidden';
+        if (nameInput) nameInput.removeAttribute('required');
+        if (phoneInput) phoneInput.removeAttribute('required');
+    }
+}
+
+function toggleDisability() {
+    const val = document.getElementById('disability')?.value;
+    const field = document.getElementById('disabilityField');
+    const input = document.getElementById('disabilityDesc');
+    if (!field) return;
+    if (val === 'Yes') {
+        field.className = 'col conditional-field visible';
+        if (input) input.setAttribute('required', 'required');
+    } else {
+        field.className = 'col conditional-field hidden';
+        if (input) input.removeAttribute('required');
+    }
+}
+
+function toggleMedical() {
+    const val = document.getElementById('medicalCondition')?.value;
+    const field = document.getElementById('medicalField');
+    const input = document.getElementById('medicalDesc');
+    if (!field) return;
+    if (val === 'Yes') {
+        field.className = 'col conditional-field visible';
+        if (input) input.setAttribute('required', 'required');
+    } else {
+        field.className = 'col conditional-field hidden';
+        if (input) input.removeAttribute('required');
+    }
+}
+
+function toggleEmployment() {
+    const val = document.getElementById('employed')?.value;
+    const field = document.getElementById('employmentField');
+    const input = document.getElementById('employmentDesc');
+    if (!field) return;
+    if (val === 'Yes') {
+        field.className = 'col col-3 conditional-field visible';
+        if (input) input.setAttribute('required', 'required');
+    } else {
+        field.className = 'col col-3 conditional-field hidden';
+        if (input) input.removeAttribute('required');
+    }
+}
+
+// ============================================================
+// PHOTO PREVIEW
+// ============================================================
+
+function previewPhoto(event) {
+    const file = event.target.files[0];
+    const preview = document.getElementById('photoPreview');
+    const fileName = document.getElementById('photoFileName');
+    const upload = document.getElementById('photoUpload');
+    if (!file || !preview) return;
+    if (!file.type.startsWith('image/')) {
+        alert('Please upload an image file.');
+        event.target.value = '';
+        return;
+    }
+    if (file.size > 4 * 1024 * 1024) {
+        alert('File too large. Max 4MB.');
+        event.target.value = '';
+        return;
+    }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        preview.innerHTML = `<img src="${e.target.result}" alt="Passport" />`;
+        preview.classList.add('has-image');
+        if (fileName) fileName.textContent = file.name;
+        if (upload) upload.classList.add('uploaded');
+    };
+    reader.readAsDataURL(file);
+}
+
+// ============================================================
+// INITIALIZATION
+// ============================================================
+
 document.addEventListener('DOMContentLoaded', function() {
+    const yearEl = document.getElementById('currentYear');
+    if (yearEl) yearEl.textContent = new Date().getFullYear();
+
+    if (typeof pdfjsLib !== 'undefined') {
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    }
+
+    // Initialize conditional fields
+    setTimeout(function() {
+        toggleSponsor();
+        toggleFather();
+        toggleMother();
+        toggleDisability();
+        toggleMedical();
+        toggleEmployment();
+    }, 100);
+
+    // Check authentication on home page
+    checkAuth();
+
+    // Init form
+    updateProgramDesc();
+    updateIntakePreview();
+    updateSummary();
+
+    // Email validation on admission form
+    const emailInput = document.getElementById('email');
+    if (emailInput) {
+        emailInput.addEventListener('input', function() {
+            const email = this.value.trim();
+            const statusEl = document.getElementById('emailStatus');
+            if (!email) {
+                if (statusEl) {
+                    statusEl.textContent = '';
+                    statusEl.className = 'email-status';
+                }
+                return;
+            }
+            if (!email.includes('@') || !email.includes('.')) {
+                if (statusEl) {
+                    statusEl.textContent = '❌ Invalid email';
+                    statusEl.className = 'email-status invalid';
+                }
+                return;
+            }
+            if (statusEl) {
+                statusEl.textContent = '⏳ Checking...';
+                statusEl.className = 'email-status checking';
+            }
+            setTimeout(() => {
+                const domain = email.split('@')[1];
+                if (domain && (['gmail.com', 'yahoo.com', 'outlook.com', 'nchsm.ac.ke'].includes(domain) ||
+                        domain.endsWith('.ac.ke') || domain.endsWith('.ke'))) {
+                    if (statusEl) {
+                        statusEl.textContent = '✅ Valid email';
+                        statusEl.className = 'email-status valid';
+                    }
+                } else {
+                    if (statusEl) {
+                        statusEl.textContent = '⚠️ Unusual domain';
+                        statusEl.className = 'email-status invalid';
+                    }
+                }
+            }, 400);
+        });
+    }
+
+    // Register email validation (home page)
+    const regEmail = document.getElementById('regEmail');
+    if (regEmail) {
+        regEmail.addEventListener('input', function() {
+            const email = this.value.trim();
+            const statusEl = document.getElementById('regEmailStatus');
+
+            if (emailCheckTimeout) clearTimeout(emailCheckTimeout);
+
+            if (!email) {
+                if (statusEl) {
+                    statusEl.textContent = '';
+                    statusEl.style.color = '';
+                }
+                this.style.borderColor = '#e2e8f0';
+                return;
+            }
+
+            if (!email.includes('@') || !email.includes('.')) {
+                if (statusEl) {
+                    statusEl.textContent = '❌ Invalid email format';
+                    statusEl.style.color = '#ef4444';
+                }
+                this.style.borderColor = '#ef4444';
+                return;
+            }
+
+            if (statusEl) {
+                statusEl.textContent = '✅ Email format valid';
+                statusEl.style.color = '#0b8a5e';
+            }
+            this.style.borderColor = '#0b8a5e';
+        });
+    }
+
+    // Password strength (home page)
+    const regPassword = document.getElementById('regPassword');
+    if (regPassword) {
+        regPassword.addEventListener('input', function() {
+            const password = this.value;
+            const bar = document.getElementById('strengthBar');
+            const text = document.getElementById('strengthText');
+
+            let score = 0;
+            if (password.length >= 8) score++;
+            if (password.length >= 12) score++;
+            if (/[A-Z]/.test(password)) score++;
+            if (/[a-z]/.test(password)) score++;
+            if (/[0-9]/.test(password)) score++;
+            if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score++;
+
+            const levels = [
+                { text: 'Very Weak', cls: 'weak', width: '10%', color: '#ef4444' },
+                { text: 'Weak', cls: 'weak', width: '25%', color: '#ef4444' },
+                { text: 'Fair', cls: 'fair', width: '45%', color: '#f59e0b' },
+                { text: 'Good', cls: 'good', width: '65%', color: '#3b82f6' },
+                { text: 'Strong', cls: 'strong', width: '85%', color: '#0b8a5e' },
+                { text: 'Very Strong', cls: 'strong', width: '100%', color: '#0b8a5e' }
+            ];
+
+            const level = Math.min(Math.floor(score / 1), 5);
+            const result = levels[level] || levels[0];
+
+            if (bar) {
+                bar.style.width = result.width;
+                bar.style.background = result.color;
+            }
+            if (text) {
+                text.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
+                text.className = `strength-text ${password.length > 0 ? result.cls : ''}`;
+            }
+        });
+    }
+
+    // Password confirmation (home page)
+    const regConfirm = document.getElementById('regConfirmPassword');
+    if (regConfirm) {
+        regConfirm.addEventListener('input', function() {
+            const password = document.getElementById('regPassword').value;
+            const confirm = this.value;
+            const matchEl = document.getElementById('passwordMatch');
+
+            if (!confirm) {
+                if (matchEl) {
+                    matchEl.textContent = '';
+                    matchEl.className = 'password-match';
+                }
+                return;
+            }
+
+            if (password === confirm) {
+                if (matchEl) {
+                    matchEl.textContent = '✅ Passwords match';
+                    matchEl.className = 'password-match match';
+                }
+            } else {
+                if (matchEl) {
+                    matchEl.textContent = '❌ Passwords do not match';
+                    matchEl.className = 'password-match nomatch';
+                }
+            }
+        });
+    }
+
+    // Register 2 - Email validation
     const regEmail2 = document.getElementById('regEmail2');
     if (regEmail2) {
         regEmail2.addEventListener('input', function() {
@@ -1867,6 +2342,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Register 2 - Password strength
     const regPassword2 = document.getElementById('regPassword2');
     if (regPassword2) {
         regPassword2.addEventListener('input', function() {
@@ -1905,6 +2381,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Register 2 - Password confirmation
     const regConfirm2 = document.getElementById('regConfirmPassword2');
     if (regConfirm2) {
         regConfirm2.addEventListener('input', function() {
@@ -1934,6 +2411,18 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
+    // Enter key support for home page auth
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            const activeTab = document.querySelector('.auth-tabs .tab.active');
+            if (activeTab && activeTab.dataset.tab === 'login') {
+                loginUser();
+            } else if (activeTab && activeTab.dataset.tab === 'register') {
+                registerUser();
+            }
+        }
+    });
+
     // Enter key support for auth2
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Enter') {
@@ -1956,11 +2445,30 @@ document.addEventListener('DOMContentLoaded', function() {
         });
         observer.observe(registerPage, { attributes: true, attributeFilter: ['class'] });
     }
+
+    // Modal close on overlay click
+    document.getElementById('validationModal')?.addEventListener('click', function(e) {
+        if (e.target === this) closeValidation();
+    });
+    
+    document.getElementById('successOverlay')?.addEventListener('click', function(e) {
+        if (e.target === this) this.classList.remove('show');
+    });
+
+    // Close modal on ESC
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeValidation();
+        }
+    });
+
+    console.log('✅ NCHSM Admission System loaded with Ultra Modern Validation Modal');
 });
 
 // ============================================================
 // MAKE FUNCTIONS GLOBALLY AVAILABLE
 // ============================================================
+
 window.navigateTo = navigateTo;
 window.updatePrograms = updatePrograms;
 window.toggleStudentType = toggleStudentType;
@@ -1982,10 +2490,19 @@ window.updateIntakePreview = updateIntakePreview;
 window.updateSummary = updateSummary;
 window.closeValidation = closeValidation;
 window.showValidation = showValidation;
+window.showValidationModal = showValidationModal;
+window.scrollToFirstMissing = scrollToFirstMissing;
 window.handleEnquiry = handleEnquiry;
 window.switchAuthTab2 = switchAuthTab2;
 window.loginUser2 = loginUser2;
 window.registerUser2 = registerUser2;
 window.checkAuthForRegisterPage = checkAuthForRegisterPage;
+window.toggleSponsor = toggleSponsor;
+window.toggleFather = toggleFather;
+window.toggleMother = toggleMother;
+window.toggleDisability = toggleDisability;
+window.toggleMedical = toggleMedical;
+window.toggleEmployment = toggleEmployment;
+window.previewPhoto = previewPhoto;
 
-console.log('✅ admissions.js loaded successfully');
+console.log('✅ admissions.js loaded successfully with all functions registered');
