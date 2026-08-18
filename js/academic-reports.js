@@ -1,13 +1,14 @@
-// js/academic-reports.js - COMPLETE STUDENT VERSION WITH RETAKE SUPPORT
+// js/academic-reports.js - COMPLETE STUDENT VERSION WITH HOLLOW STAR INDICATOR
 // All tabs: Semester Report, Yearly Summary, Full Transcript, Course Progress, My Performance
 // INCLUDES: LINE GRAPHS, PROFILE PICTURE, DATABASE UNIT CODES, FIXED GRADE DISPLAY
-// NEW: ⭐ RETAKE/SUPPLEMENTARY EXAM SUPPORT - Star indicators on retaken units
+// INDICATOR: ☆ (hollow star) - subtle, only appears on retaken units in My Performance
+// NO DEMO DATA - ONLY REAL DATA FROM DATABASE
 // ============================================================
 (function() {
     'use strict';
     
     console.log('📊 Student Academic Reports Module Loading...');
-    console.log('⭐ Retake/Supplementary Support: ENABLED');
+    console.log('☆ Hollow Star Indicator: ENABLED (subtle)');
 
     // ============================================================
     // 1. PROGRAM DETECTION
@@ -155,7 +156,6 @@
             
             studentRetakeData = data || [];
             
-            // Group by subject_name
             const retakeMap = {};
             data?.forEach(retake => {
                 const key = retake.subject_name;
@@ -179,40 +179,23 @@
     // 5. RETAKE HELPER FUNCTIONS
     // ============================================================
     
-    function getRetakeBadgeHtml(retakeCount, status = null) {
-        if (!retakeCount || retakeCount === 0) return '';
-        
-        const isPassing = status === 'PASS';
-        const color = isPassing ? '#059669' : '#dc2626';
-        const icon = isPassing ? '✅' : '❌';
-        const text = isPassing ? 'Passed' : 'Failed';
-        
-        return `
-            <span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 9px; padding: 2px 8px; border-radius: 10px; font-weight: 700;">
-                ⭐ R${retakeCount}
-            </span>
-            ${status ? `<span style="display: inline-block; margin-left: 4px; font-size: 9px; color: ${color}; font-weight: 600;">${icon} ${text}</span>` : ''}
-        `;
+    function hasRetake(subjectName) {
+        if (!subjectName) return false;
+        const retakes = studentRetakeMap[subjectName] || [];
+        return retakes.length > 0;
     }
 
-    function getRetakeHistoryHtml(retakes) {
-        if (!retakes || retakes.length === 0) return '';
-        
-        let html = '<div style="font-size: 9px; color: #64748b; margin-top: 2px;">';
-        html += '<span style="font-weight: 600;">🔄 Retake History:</span>';
-        retakes.forEach((r, i) => {
-            const isPass = r.status === 'PASS';
-            html += `<span style="margin-left: 6px; color: ${isPass ? '#059669' : '#dc2626'};">`;
-            html += `#${r.attempt_number}: ${r.exam_score}% ${isPass ? '✅' : '❌'}`;
-            html += `</span>`;
-        });
-        html += '</div>';
-        return html;
+    function getRetakeCount(subjectName) {
+        if (!subjectName) return 0;
+        const retakes = studentRetakeMap[subjectName] || [];
+        return retakes.length;
     }
 
-    function getRetakeStarHtml(retakeCount) {
-        if (!retakeCount || retakeCount === 0) return '';
-        return `<span class="retake-star" title="This unit was retaken (${retakeCount} attempts)">⭐</span>`;
+    function getHollowStarHtml(subjectName) {
+        if (!hasRetake(subjectName)) return '';
+        const count = getRetakeCount(subjectName);
+        const tooltip = `This unit was retaken (${count} attempt${count > 1 ? 's' : ''})`;
+        return `<span class="hollow-star" title="${tooltip}">☆</span>`;
     }
 
     // ============================================================
@@ -345,91 +328,13 @@
     }
 
     // ============================================================
-    // 10. GET GRADE FROM GPA
-    // ============================================================
-    function getGradeFromGPA(gpa) {
-        if (gpa >= 3.75) return 'A';
-        if (gpa >= 3.0) return 'B';
-        if (gpa >= 2.0) return 'C';
-        return 'D';
-    }
-
-    function getGradeFromGPATVET(gpa) {
-        if (gpa >= 3.75) return 'A';
-        if (gpa >= 3.0) return 'B';
-        if (gpa >= 2.0) return 'C';
-        return 'FAIL';
-    }
-
-    // ============================================================
-    // 11. GENERATE SAMPLE GRADES (Fallback)
-    // ============================================================
-    function generateSampleGrades(program) {
-        const isTVET = PROGRAM.isTVET(program);
-        
-        const courses = isTVET ? [
-            { code: 'TVT101', name: 'Occupational Health & Safety', block: 'Term 1' },
-            { code: 'TVT102', name: 'Workshop Practice', block: 'Term 1' },
-            { code: 'TVT103', name: 'Technical Drawing', block: 'Term 2' },
-            { code: 'TVT104', name: 'Electrical Principles', block: 'Term 2' },
-            { code: 'TVT105', name: 'Mechanical Engineering', block: 'Term 3' },
-            { code: 'TVT106', name: 'Industrial Management', block: 'Term 3' }
-        ] : [
-            { code: 'NUR101', name: 'Fundamentals of Nursing', block: 'Introductory' },
-            { code: 'NUR102', name: 'Anatomy & Physiology', block: 'Introductory' },
-            { code: 'NUR103', name: 'Pharmacology Basics', block: 'Block 1' },
-            { code: 'NUR104', name: 'Medical-Surgical Nursing I', block: 'Block 1' },
-            { code: 'NUR105', name: 'Community Health Nursing', block: 'Block 2' },
-            { code: 'NUR106', name: 'Maternal & Child Health', block: 'Block 2' }
-        ];
-        
-        return courses.map((course) => {
-            const base = isTVET ? 50 + Math.random() * 40 : 65 + Math.random() * 30;
-            const score = Math.min(99, Math.round(base * 10) / 10);
-            const grade = calculateGrade(score, program);
-            const points = calculatePoints(grade, program);
-            const status = getGradingStatus(score, program);
-            
-            return {
-                courseCode: course.code,
-                courseName: course.name,
-                credits: 3,
-                total: score,
-                grade: grade,
-                points: points,
-                status: status,
-                blockTerm: course.block,
-                year: '2024',
-                examDate: '2024-01-15',
-                hasRetake: false,
-                retakeCount: 0
-            };
-        });
-    }
-
-    // ============================================================
-    // 12. MY PERFORMANCE - STATE & FUNCTIONS
+    // 10. MY PERFORMANCE - STATE & FUNCTIONS
     // ============================================================
     let myMarksData = [];
     let myMarksFiltered = [];
 
-    function getDemoMarks(program) {
-        const isTVET = PROGRAM.isTVET(program);
-        
-        if (isTVET) {
-            return [
-                { id: 101, admission_number: 'TVET/001/2025', student_name: 'Student', subject_name: 'Occupational Health & Safety', program: program, block: 'Term 1', year: '2025', final_score: 79, grade: 'B', points: 3.0, published: true, published_at: '2025-01-15', academic_year: '2025' }
-            ];
-        }
-        
-        return [
-            { id: 1, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Fundamentals of Nursing', program: 'KRCHN', block: 'Introductory', year: '2025', final_score: 92, grade: 'A', points: 4.0, published: true, published_at: '2025-01-15', academic_year: '2025' },
-            { id: 2, admission_number: 'NCHSM/KRCHN/0139/03/26', student_name: 'Gigen Mochiri', subject_name: 'Anatomy and Physiology', program: 'KRCHN', block: 'Introductory', year: '2025', final_score: 79, grade: 'B', points: 3.0, published: true, published_at: '2025-01-15', academic_year: '2025' }
-        ];
-    }
-
     // ============================================================
-    // 13. LOAD MY MARKS WITH RETAKE SUPPORT
+    // 11. LOAD MY MARKS WITH HOLLOW STAR SUPPORT - NO DEMO DATA
     // ============================================================
     async function loadMyMarks() {
         const tbody = document.getElementById('my_marks_table_body');
@@ -437,7 +342,7 @@
         
         tbody.innerHTML = `
             <tr>
-                <td colspan="9" style="text-align: center; padding: 40px;">
+                <td colspan="6" style="text-align: center; padding: 40px;">
                     <div class="loading-spinner"></div>
                     <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
                 </td>
@@ -449,7 +354,7 @@
             
             const user = window.currentUserProfile || window.db?.currentUserProfile;
             if (!user) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
                 return;
             }
             
@@ -477,7 +382,6 @@
             
             populateMyMarksBlockFilter(userProgram);
             
-            // ✅ FETCH RETAKE DATA
             await fetchStudentRetakeData(registrationNumber);
             
             let marks = [];
@@ -492,25 +396,16 @@
                 if (!result.error && result.data && result.data.length > 0) {
                     marks = result.data;
                     
-                    marks = marks.map(mark => {
-                        const retakes = studentRetakeMap[mark.subject_name] || [];
-                        const hasRetake = retakes.length > 0;
-                        const lastRetake = retakes[retakes.length - 1];
-                        
-                        return {
-                            ...mark,
-                            unit_code: getUnitCode(mark.subject_name),
-                            grade: mark.grade || calculateGrade(mark.final_score, userProgram),
-                            points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram),
-                            hasRetake: hasRetake,
-                            retakeCount: retakes.length,
-                            retakeScore: lastRetake?.exam_score || null,
-                            retakeStatus: lastRetake?.status || null,
-                            retakeHistory: retakes
-                        };
-                    });
+                    marks = marks.map(mark => ({
+                        ...mark,
+                        unit_code: getUnitCode(mark.subject_name),
+                        grade: mark.grade || calculateGrade(mark.final_score, userProgram),
+                        points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram),
+                        hasRetake: hasRetake(mark.subject_name),
+                        retakeCount: getRetakeCount(mark.subject_name)
+                    }));
                     
-                    console.log(`📊 Loaded ${marks.length} marks with retake data`);
+                    console.log(`📊 Loaded ${marks.length} marks with hollow star data`);
                 }
             } catch (e) {
                 console.warn('Error fetching marks:', e);
@@ -519,20 +414,22 @@
             if (marks && marks.length > 0) {
                 myMarksData = marks;
             } else {
-                myMarksData = getDemoMarks(userProgram);
-                myMarksData = myMarksData.map(mark => ({
-                    ...mark,
-                    unit_code: getUnitCode(mark.subject_name),
-                    grade: mark.grade || calculateGrade(mark.final_score, userProgram),
-                    points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram),
-                    hasRetake: false,
-                    retakeCount: 0
-                }));
+                myMarksData = [];
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="6" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                            <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
+                            <h4 style="margin: 0 0 8px 0; color: #1e293b;">No published marks found</h4>
+                            <p style="font-size: 13px; margin: 0;">Your marks will appear here once they are published by the admin.</p>
+                        </td>
+                    </tr>
+                `;
+                document.getElementById('my_marks_count').textContent = '0 results';
+                return;
             }
             
             myMarksFiltered = [...myMarksData];
             
-            // Populate filters
             const subjectFilter = document.getElementById('my_marks_subject_filter');
             if (subjectFilter) {
                 const subjects = [...new Set(myMarksData.map(m => m.subject_name).filter(Boolean))];
@@ -561,13 +458,13 @@
             const gpaEl = document.getElementById('my_marks_gpa');
             if (gpaEl) gpaEl.textContent = gpa.toFixed(2);
             
-            renderMyMarksTableWithRetakes();
+            renderMyMarksTableWithHollowStars();
             showGradingScale(userProgram, myMarksData);
             setTimeout(renderMyMarksCharts, 300);
             
         } catch (error) {
             console.error('Error loading my marks:', error);
-            tbody.innerHTML = `<tr><td colspan="9" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
         }
     }
 
@@ -612,9 +509,9 @@
     }
 
     // ============================================================
-    // 14. RENDER MY MARKS TABLE WITH RETAKE SUPPORT
+    // 12. RENDER MY MARKS TABLE WITH HOLLOW STARS
     // ============================================================
-    function renderMyMarksTableWithRetakes() {
+    function renderMyMarksTableWithHollowStars() {
         const tbody = document.getElementById('my_marks_table_body');
         if (!tbody) return;
         
@@ -622,7 +519,7 @@
         if (!marks || marks.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
+                    <td colspan="6" style="text-align: center; padding: 40px; color: #94a3b8;">
                         <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
                         No published marks found
                     </td>
@@ -643,80 +540,28 @@
             const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
             const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
             
-            const hasRetake = mark.hasRetake || false;
-            const retakeCount = mark.retakeCount || 0;
-            const retakeScore = mark.retakeScore;
-            const retakeStatus = mark.retakeStatus;
-            const retakeHistory = mark.retakeHistory || [];
-            const isRetakePassed = retakeStatus === 'PASS';
-            const isRetakeFailed = retakeStatus === 'FAIL';
-            
-            let rowStyle = '';
-            if (hasRetake && isRetakePassed) {
-                rowStyle = 'background: linear-gradient(90deg, #f0fdf4, #dcfce7); border-left: 4px solid #059669;';
-            } else if (hasRetake && isRetakeFailed) {
-                rowStyle = 'background: linear-gradient(90deg, #fef2f2, #fee2e2); border-left: 4px solid #dc2626;';
-            } else if (hasRetake) {
-                rowStyle = 'background: linear-gradient(90deg, #fffbeb, #fef3c7); border-left: 4px solid #f59e0b;';
-            }
-            
-            let retakeDisplay = '';
-            if (hasRetake) {
-                retakeDisplay = `
-                    <div style="display: flex; flex-direction: column; gap: 2px;">
-                        <span style="display: inline-block; background: #f59e0b; color: white; font-size: 9px; padding: 2px 10px; border-radius: 10px; font-weight: 700; text-align: center;">
-                            ⭐ R${retakeCount}
-                        </span>
-                        ${retakeScore !== null ? `
-                            <span style="font-size: 9px; color: ${isRetakePassed ? '#059669' : '#dc2626'}; font-weight: 600; text-align: center;">
-                                ${isRetakePassed ? '✅ Passed' : '❌ Failed'} (${retakeScore}%)
-                            </span>
-                        ` : ''}
-                        ${retakeHistory.length > 0 ? `
-                            <span style="font-size: 7px; color: #94a3b8; text-align: center;">${retakeHistory.length} attempt(s)</span>
-                        ` : ''}
-                    </div>
-                `;
-            }
-            
-            let retakeTooltip = '';
-            if (retakeHistory.length > 0) {
-                const historyItems = retakeHistory.map(r => 
-                    `Attempt #${r.attempt_number}: ${r.exam_score}% ${r.status === 'PASS' ? '✅' : '❌'}`
-                ).join(' | ');
-                retakeTooltip = ` title="Retake History: ${historyItems}"`;
-            }
+            const starIndicator = getHollowStarHtml(mark.subject_name);
             
             html += `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle}" 
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s;" 
                     onmouseover="this.style.background='#f8fafc'" 
-                    onmouseout="this.style.background='${rowStyle.includes('background:') ? rowStyle.match(/background: [^;]+/)?.[0]?.replace('background:', '').trim() || 'transparent' : 'transparent'}'"
-                    ${retakeTooltip}>
+                    onmouseout="this.style.background='transparent'">
                     <td style="padding: 10px 14px; text-align: center; color: #94a3b8; font-weight: 600;">${index + 1}</td>
                     <td style="padding: 10px 14px; font-weight: 600; color: #0A3D62;">${escapeHtml(unitCode)}</td>
                     <td style="padding: 10px 14px;">
                         ${escapeHtml(mark.subject_name || 'N/A')}
-                        ${hasRetake ? `<span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 8px; padding: 1px 8px; border-radius: 10px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
-                        ${retakeScore !== null ? `<span style="display: inline-block; margin-left: 4px; font-size: 8px; color: ${isRetakePassed ? '#059669' : '#dc2626'}; font-weight: 600;">${isRetakePassed ? '✅' : '❌'} ${retakeScore}%</span>` : ''}
+                        ${starIndicator}
                     </td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
                             ${mark.grade || '-'}
                         </span>
-                        ${hasRetake ? `<span style="display: block; font-size: 8px; color: #94a3b8; margin-top: 2px;">Retake: ${retakeCount}x</span>` : ''}
                     </td>
                     <td style="padding: 10px 14px; text-align: center; font-weight: 600;">${points.toFixed(1)}</td>
                     <td style="padding: 10px 14px; text-align: center;">
                         <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
                             ${status}
                         </span>
-                        ${isRetakePassed ? `<span style="display: block; font-size: 8px; color: #059669; margin-top: 2px;">⭐ Retake Passed!</span>` : ''}
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center; font-size: 10px;">
-                        ${retakeHistory.length > 0 ? getRetakeHistoryHtml(retakeHistory) : '<span style="color: #94a3b8;">First attempt</span>'}
-                    </td>
-                    <td style="padding: 10px 14px; text-align: center;">
-                        ${hasRetake ? `<span style="color: #f59e0b; font-size: 11px;">⭐ R${retakeCount}</span>` : `<span style="color: #94a3b8; font-size: 11px;">—</span>`}
                     </td>
                 </tr>
             `;
@@ -724,41 +569,6 @@
         
         tbody.innerHTML = html;
         document.getElementById('my_marks_count').textContent = `${marks.length} results`;
-        
-        // ✅ Retake summary
-        const retakeCount = marks.filter(m => m.hasRetake).length;
-        const retakePassed = marks.filter(m => m.hasRetake && m.retakeStatus === 'PASS').length;
-        const retakeFailed = marks.filter(m => m.hasRetake && m.retakeStatus === 'FAIL').length;
-        
-        let summaryEl = document.getElementById('my_marks_retake_summary');
-        if (!summaryEl) {
-            summaryEl = document.createElement('div');
-            summaryEl.id = 'my_marks_retake_summary';
-            const container = document.getElementById('my_marks_table_container') || tbody.closest('div');
-            if (container) {
-                container.parentNode.insertBefore(summaryEl, container.nextSibling);
-            }
-        }
-        
-        if (summaryEl) {
-            summaryEl.innerHTML = `
-                <div style="display: flex; gap: 15px; flex-wrap: wrap; padding: 8px 12px; background: #fffbeb; border-radius: 8px; border: 1px solid #f59e0b; margin-top: 10px;">
-                    <span style="font-size: 12px; color: #92400e;">
-                        <i class="fas fa-star" style="color: #f59e0b;"></i>
-                        <strong>Retake Summary:</strong>
-                    </span>
-                    <span style="font-size: 12px; color: #92400e;">
-                        <strong>${retakeCount}</strong> units with retakes
-                    </span>
-                    ${retakePassed > 0 ? `<span style="font-size: 12px; color: #059669;">✅ ${retakePassed} passed after retake</span>` : ''}
-                    ${retakeFailed > 0 ? `<span style="font-size: 12px; color: #dc2626;">❌ ${retakeFailed} still failing</span>` : ''}
-                    <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
-                        Max attempts: 2
-                    </span>
-                </div>
-            `;
-            summaryEl.style.display = retakeCount > 0 ? 'block' : 'none';
-        }
     }
 
     function filterMyMarks() {
@@ -786,13 +596,13 @@
         }
         
         myMarksFiltered = filtered;
-        renderMyMarksTableWithRetakes();
+        renderMyMarksTableWithHollowStars();
         document.getElementById('my_marks_count').textContent = `${filtered.length} results`;
         setTimeout(renderMyMarksCharts, 200);
     }
 
     // ============================================================
-    // 15. RENDER CHARTS FOR MY PERFORMANCE
+    // 13. RENDER CHARTS FOR MY PERFORMANCE
     // ============================================================
     function renderMyMarksCharts() {
         const marks = myMarksFiltered || [];
@@ -1022,7 +832,7 @@
     }
 
     // ============================================================
-    // 16. SEMESTER REPORT
+    // 14. SEMESTER REPORT
     // ============================================================
     let gradeChart = null;
     let currentGrades = [];
@@ -1055,15 +865,21 @@
                         points: calculatePoints(calculateGrade(e.totalPercentage || 0, userProgram), userProgram),
                         status: getGradingStatus(e.totalPercentage || 0, userProgram),
                         blockTerm: e.block_term || e.block || 'General',
-                        year: e.intake_year || '2024',
-                        hasRetake: false,
-                        retakeCount: 0
+                        year: e.intake_year || '2024'
                     }));
                 }
             }
             
             if (grades.length === 0) {
-                grades = generateSampleGrades(userProgram);
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                            No semester grades available
+                        </td>
+                    </tr>
+                `;
+                return;
             }
             
             currentGrades = grades;
@@ -1085,24 +901,17 @@
             grades.forEach((g, i) => {
                 const statusColor = getStatusColor(g.status);
                 const gradeColor = getGradeColor(g.grade);
-                const hasRetake = g.hasRetake || false;
-                const retakeCount = g.retakeCount || 0;
-                const retakeStar = hasRetake ? `⭐ R${retakeCount}` : '';
                 
                 html += `
-                    <tr style="border-bottom: 1px solid #e2e8f0; ${hasRetake ? 'background: #fffbeb;' : ''}">
+                    <tr style="border-bottom: 1px solid #e2e8f0;">
                         <td style="padding: 12px;">${escapeHtml(g.courseCode)}</td>
-                        <td style="padding: 12px;">
-                            ${escapeHtml(g.courseName)}
-                            ${hasRetake ? `<span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 8px; padding: 1px 8px; border-radius: 10px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
-                        </td>
+                        <td style="padding: 12px;">${escapeHtml(g.courseName)}</td>
                         <td style="padding: 12px; text-align: center;">${g.credits}</td>
                         <td style="padding: 12px; text-align: center;">${g.total}%</td>
                         <td style="padding: 12px; text-align: center;">
                             <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px;">
                                 ${g.grade}
                             </span>
-                            ${hasRetake ? `<span style="display: block; font-size: 8px; color: #f59e0b;">⭐ Retake</span>` : ''}
                         </td>
                         <td style="padding: 12px; text-align: center; font-weight: 600;">${g.points.toFixed(1)}</td>
                         <td style="padding: 12px; text-align: center;">
@@ -1116,7 +925,7 @@
                 `;
             });
             
-            tbody.innerHTML = html || '<tr><td colspan="9" style="text-align: center; padding: 40px;">No grades available</td></tr>';
+            tbody.innerHTML = html;
             createGradeChart(grades);
             
         } catch (error) {
@@ -1197,12 +1006,21 @@
     }
 
     // ============================================================
-    // 17. YEARLY REPORT
+    // 15. YEARLY REPORT
     // ============================================================
     function loadYearlyReport() {
         const user = window.currentUserProfile || {};
         const userProgram = user.program || '';
-        const grades = currentGrades.length > 0 ? currentGrades : generateSampleGrades(userProgram);
+        const grades = currentGrades.length > 0 ? currentGrades : [];
+        
+        if (grades.length === 0) {
+            document.getElementById('year-gpa').textContent = '0.00';
+            document.getElementById('year-credits').textContent = '0';
+            document.getElementById('year-courses').textContent = '0';
+            document.getElementById('year-awards').textContent = '0';
+            return;
+        }
+        
         const total = grades.length;
         const avg = total > 0 ? (grades.reduce((sum, g) => sum + g.total, 0) / total) : 0;
         const gpa = calculateGPA(grades);
@@ -1214,7 +1032,7 @@
     }
 
     // ============================================================
-    // 18. FULL TRANSCRIPT
+    // 16. FULL TRANSCRIPT
     // ============================================================
     function loadTranscript() {
         const tbody = document.getElementById('transcript-table-body');
@@ -1233,14 +1051,20 @@
         } else if (currentGrades && currentGrades.length > 0) {
             marksData = currentGrades;
         } else {
-            marksData = generateSampleGrades(userProgram);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 60px; color: #94a3b8;">
+                        <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b;">No transcript data available</h4>
+                        <p style="font-size: 13px;">Your transcript will appear here once you have completed courses.</p>
+                    </td>
+                </tr>
+            `;
+            updateTranscriptSummary(0, 0, 0, 0);
+            return;
         }
         
         const transcriptData = marksData.map(m => {
-            const isFromMyMarks = m.subject_name !== undefined;
-            const hasRetake = m.hasRetake || false;
-            const retakeCount = m.retakeCount || 0;
-            
             return {
                 courseCode: m.unit_code || getUnitCode(m.subject_name || m.courseName || 'N/A'),
                 courseName: m.subject_name || m.courseName || 'Unknown Course',
@@ -1250,11 +1074,7 @@
                 status: getGradingStatus(m.final_score || m.total || 0, userProgram),
                 blockTerm: m.block || m.blockTerm || 'General',
                 year: m.academic_year || m.year || '2024',
-                score: m.final_score || m.total || 0,
-                hasRetake: hasRetake,
-                retakeCount: retakeCount,
-                retakeScore: m.retakeScore || null,
-                retakeStatus: m.retakeStatus || null
+                score: m.final_score || m.total || 0
             };
         });
         
@@ -1265,7 +1085,6 @@
         let passedCourses = 0;
         let failedCourses = 0;
         let pendingCourses = 0;
-        let retakeCourses = 0;
         
         const groupedByBlock = {};
         transcriptData.forEach(g => {
@@ -1274,14 +1093,13 @@
                 groupedByBlock[block] = [];
             }
             groupedByBlock[block].push(g);
-            if (g.hasRetake) retakeCourses++;
         });
         const blockNames = Object.keys(groupedByBlock).sort();
         
         if (transcriptData.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="7" style="text-align: center; padding: 60px; color: #94a3b8;">
+                    <td colspan="6" style="text-align: center; padding: 60px; color: #94a3b8;">
                         <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
                         <h4 style="margin: 0 0 8px 0; color: #1e293b;">No transcript data available</h4>
                         <p style="font-size: 13px;">Your transcript will appear here once you have completed courses.</p>
@@ -1301,15 +1119,13 @@
             const blockPoints = blockGrades.reduce((sum, g) => sum + ((g.points || 0) * (g.credits || 3)), 0);
             const blockGPA = blockCredits > 0 ? (blockPoints / blockCredits) : 0;
             const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
-            const blockRetakes = blockGrades.filter(g => g.hasRetake).length;
             
             html += `
                 <tr style="background: #0A3D62; color: white; font-weight: 700;">
-                    <td colspan="7" style="padding: 8px 12px; text-align: center; font-size: 12px;">
+                    <td colspan="6" style="padding: 8px 12px; text-align: center; font-size: 12px;">
                         <i class="fas fa-folder-open"></i> ${escapeHtml(block)} 
                         <span style="font-size: 10px; opacity: 0.8; margin-left: 10px;">
                             (${blockTotal} courses · GPA: ${blockGPA.toFixed(2)} · Pass: ${blockPassRate}%)
-                            ${blockRetakes > 0 ? ` · ⭐ ${blockRetakes} retakes` : ''}
                         </span>
                     </td>
                 </tr>
@@ -1319,8 +1135,6 @@
                 const gradeColor = getGradeColor(g.grade);
                 const pointsEarned = (g.points || 0) * (g.credits || 3);
                 const isPassing = g.status !== 'FAIL' && g.status !== 'PENDING';
-                const hasRetake = g.hasRetake || false;
-                const retakeCount = g.retakeCount || 0;
                 
                 totalCreditsAttempted += (g.credits || 3);
                 if (isPassing) {
@@ -1334,25 +1148,18 @@
                 totalPoints += pointsEarned;
                 
                 html += `
-                    <tr style="border-bottom: 1px solid #e2e8f0; ${index % 2 === 0 ? 'background: #f8fafc;' : ''} ${hasRetake ? 'border-left: 3px solid #f59e0b;' : ''}">
+                    <tr style="border-bottom: 1px solid #e2e8f0; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
                         <td style="padding: 6px 10px; font-size: 11px; color: #94a3b8; text-align: center;">${index + 1}</td>
                         <td style="padding: 6px 10px; font-weight: 600; color: #0A3D62; font-size: 12px;">${escapeHtml(g.courseCode)}</td>
-                        <td style="padding: 6px 10px; font-size: 12px;">
-                            ${escapeHtml(g.courseName)}
-                            ${hasRetake ? `<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 8px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
-                        </td>
+                        <td style="padding: 6px 10px; font-size: 12px;">${escapeHtml(g.courseName)}</td>
                         <td style="padding: 6px 10px; text-align: center; font-size: 12px;">${g.credits || 3}</td>
                         <td style="padding: 6px 10px; text-align: center;">
                             <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px; display: inline-block;">
                                 ${g.grade || '-'}
                             </span>
-                            ${hasRetake ? `<span style="display: block; font-size: 7px; color: #f59e0b;">⭐ Retake</span>` : ''}
                         </td>
                         <td style="padding: 6px 10px; text-align: center; font-weight: 600; font-size: 12px; color: ${isPassing ? '#10b981' : '#ef4444'};">
                             ${pointsEarned.toFixed(1)}
-                        </td>
-                        <td style="padding: 6px 10px; text-align: center; font-size: 10px;">
-                            ${hasRetake ? `<span style="color: #f59e0b;">⭐ R${retakeCount}</span>` : '—'}
                         </td>
                     </tr>
                 `;
@@ -1362,27 +1169,13 @@
                 <tr style="background: #f1f5f9; border-top: 2px solid #0A3D62;">
                     <td colspan="3" style="padding: 4px 10px; font-size: 10px; color: #64748b;">
                         <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed
-                        ${blockRetakes > 0 ? ` · ⭐ ${blockRetakes} retakes` : ''}
                     </td>
-                    <td colspan="4" style="padding: 4px 10px; font-size: 10px; color: #64748b; text-align: right;">
+                    <td colspan="3" style="padding: 4px 10px; font-size: 10px; color: #64748b; text-align: right;">
                         GPA: <strong>${blockGPA.toFixed(2)}</strong> | Pass Rate: <strong style="color: ${blockPassRate >= 70 ? '#10b981' : '#f59e0b'};">${blockPassRate}%</strong>
                     </td>
                 </tr>
             `;
         });
-        
-        // Add retake summary row at the end
-        if (retakeCourses > 0) {
-            html += `
-                <tr style="background: #fffbeb; border-top: 2px solid #f59e0b;">
-                    <td colspan="7" style="padding: 8px 12px; text-align: center; font-size: 11px; color: #92400e;">
-                        <i class="fas fa-star" style="color: #f59e0b;"></i>
-                        <strong>Retake Summary:</strong> ${retakeCourses} unit(s) were retaken 
-                        ${retakeCourses > 0 ? `(⭐ R1, R2 indicates retake attempts)` : ''}
-                    </td>
-                </tr>
-            `;
-        }
         
         tbody.innerHTML = html;
         
@@ -1397,7 +1190,7 @@
     }
 
     // ============================================================
-    // 19. COURSE PROGRESS
+    // 17. COURSE PROGRESS
     // ============================================================
     function loadCourseProgress() {
         const container = document.getElementById('course-progress-list');
@@ -1405,22 +1198,22 @@
         
         const user = window.currentUserProfile || {};
         const userProgram = user.program || '';
-        const grades = currentGrades.length > 0 ? currentGrades : generateSampleGrades(userProgram);
-        const total = grades.length;
+        const grades = currentGrades.length > 0 ? currentGrades : [];
+        
+        if (grades.length === 0) {
+            container.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">No course data available</div>';
+            document.getElementById('completed-courses-progress').textContent = '0';
+            document.getElementById('total-courses-progress').textContent = '0';
+            return;
+        }
         
         let html = '';
         grades.forEach(g => {
             const barColor = getGradeColor(g.grade);
-            const hasRetake = g.hasRetake || false;
-            const retakeCount = g.retakeCount || 0;
-            
             html += `
-                <div class="progress-item" style="${hasRetake ? 'border-left: 3px solid #f59e0b; padding-left: 10px;' : ''}">
+                <div class="progress-item">
                     <div class="progress-header">
-                        <span class="course-name">
-                            ${escapeHtml(g.courseName)}
-                            ${hasRetake ? `<span style="background: #f59e0b; color: white; font-size: 8px; padding: 1px 8px; border-radius: 8px; font-weight: 700; margin-left: 4px;">⭐ R${retakeCount}</span>` : ''}
-                        </span>
+                        <span class="course-name">${escapeHtml(g.courseName)}</span>
                         <span class="progress-percent">${g.total}%</span>
                         <span style="background: ${getGradeColor(g.grade)}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 10px;">
                             ${g.grade}
@@ -1431,21 +1224,64 @@
                     </div>
                     <div style="margin-top: 4px; font-size: 12px; color: ${getStatusColor(g.status)};">
                         ${g.status} · Points: ${g.points.toFixed(1)}
-                        ${hasRetake ? ` · ⭐ Retake (${retakeCount}x)` : ''}
                     </div>
                 </div>
             `;
         });
         
         document.getElementById('completed-courses-progress').textContent = grades.filter(g => g.status !== 'FAIL' && g.status !== 'PENDING').length;
-        document.getElementById('total-courses-progress').textContent = total;
-        container.innerHTML = html || '<div style="padding: 40px; text-align: center; color: #94a3b8;">No course data available</div>';
+        document.getElementById('total-courses-progress').textContent = grades.length;
+        container.innerHTML = html;
     }
 
     // ============================================================
-    // 20. DOWNLOAD FULL TRANSCRIPT
+    // 18. TAB SWITCHING
     // ============================================================
+    function setupTabs() {
+        const tabs = document.querySelectorAll('.report-tab');
+        const contents = {
+            'semester': document.getElementById('semester-report'),
+            'yearly': document.getElementById('yearly-report'),
+            'transcript': document.getElementById('transcript-report'),
+            'progress': document.getElementById('progress-report'),
+            'mymarks': document.getElementById('mymarks-report')
+        };
+        
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                const reportType = this.dataset.report;
+                tabs.forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                
+                Object.keys(contents).forEach(key => {
+                    if (contents[key]) {
+                        contents[key].style.display = key === reportType ? 'block' : 'none';
+                    }
+                });
+                
+                if (reportType === 'semester') {
+                    setTimeout(loadSemesterReport, 100);
+                } else if (reportType === 'yearly') {
+                    setTimeout(loadYearlyReport, 100);
+                } else if (reportType === 'transcript') {
+                    setTimeout(loadTranscript, 100);
+                } else if (reportType === 'progress') {
+                    setTimeout(loadCourseProgress, 100);
+                } else if (reportType === 'mymarks') {
+                    setTimeout(loadMyMarks, 100);
+                }
+            });
+        });
+    }
+
+    // ============================================================
+    // 19. DOWNLOAD FUNCTIONS (FULL IMPLEMENTATIONS)
+    // ============================================================
+    
+    // DOWNLOAD FULL TRANSCRIPT
     function downloadTranscriptPDF() {
+        console.log('📊 Downloading Full Transcript...');
+        
         const user = window.currentUserProfile || {};
         const userProgram = user.program || '';
         const isTVET = PROGRAM.isTVET(userProgram);
@@ -1457,7 +1293,8 @@
         } else if (currentGrades && currentGrades.length > 0) {
             marksData = currentGrades;
         } else {
-            marksData = generateSampleGrades(userProgram);
+            alert('No marks available to generate transcript.');
+            return;
         }
         
         if (marksData.length === 0) {
@@ -1465,11 +1302,14 @@
             return;
         }
         
-        const transcriptData = marksData.map(m => {
-            const hasRetake = m.hasRetake || false;
-            const retakeCount = m.retakeCount || 0;
-            
-            return {
+        // Show loading
+        const loadingEl = document.createElement('div');
+        loadingEl.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;';
+        loadingEl.innerHTML = '<div style="background:white;padding:30px;border-radius:12px;text-align:center;"><div class="loading-spinner"></div><p style="margin-top:12px;color:#1e293b;">Generating Transcript...</p></div>';
+        document.body.appendChild(loadingEl);
+        
+        try {
+            const transcriptData = marksData.map(m => ({
                 courseCode: m.unit_code || getUnitCode(m.subject_name || m.courseName || 'N/A'),
                 courseName: m.subject_name || m.courseName || 'Unknown Course',
                 credits: m.credits || 3,
@@ -1478,120 +1318,107 @@
                 status: getGradingStatus(m.final_score || m.total || 0, userProgram),
                 blockTerm: m.block || m.blockTerm || 'General',
                 year: m.academic_year || m.year || '2024',
-                score: m.final_score || m.total || 0,
-                hasRetake: hasRetake,
-                retakeCount: retakeCount,
-                retakeScore: m.retakeScore || null,
-                retakeStatus: m.retakeStatus || null
-            };
-        });
-        
-        // Count retakes
-        const retakeCourses = transcriptData.filter(g => g.hasRetake).length;
-        const retakePassed = transcriptData.filter(g => g.hasRetake && g.retakeStatus === 'PASS').length;
-        
-        let totalCreditsAttempted = 0;
-        let totalCreditsEarned = 0;
-        let totalPoints = 0;
-        let passedCourses = 0;
-        let failedCourses = 0;
-        let pendingCourses = 0;
-        
-        transcriptData.forEach(g => {
-            const credits = g.credits || 3;
-            const points = (g.points || 0) * credits;
-            const isPassing = g.status !== 'FAIL' && g.status !== 'PENDING';
+                score: m.final_score || m.total || 0
+            }));
             
-            totalCreditsAttempted += credits;
-            if (isPassing) {
-                totalCreditsEarned += credits;
-                passedCourses++;
-            } else if (g.status === 'FAIL') {
-                failedCourses++;
-            } else {
-                pendingCourses++;
-            }
-            totalPoints += points;
-        });
-        
-        const cgpa = totalCreditsAttempted > 0 ? (totalPoints / totalCreditsAttempted) : 0;
-        const passRate = transcriptData.length > 0 ? Math.round((passedCourses / transcriptData.length) * 100) : 0;
-        const grade = calculateGrade(totalCreditsAttempted > 0 ? (totalPoints / totalCreditsAttempted) * 10 : 0, userProgram);
-        
-        const groupedByBlock = {};
-        transcriptData.forEach(g => {
-            const block = g.blockTerm || 'General';
-            if (!groupedByBlock[block]) {
-                groupedByBlock[block] = [];
-            }
-            groupedByBlock[block].push(g);
-        });
-        const blockNames = Object.keys(groupedByBlock).sort();
-        
-        let tableRows = '';
-        blockNames.forEach((block) => {
-            const blockGrades = groupedByBlock[block];
-            const blockTotal = blockGrades.length;
-            const blockPassed = blockGrades.filter(g => g.status !== 'FAIL' && g.status !== 'PENDING').length;
-            const blockCredits = blockGrades.reduce((sum, g) => sum + (g.credits || 3), 0);
-            const blockPoints = blockGrades.reduce((sum, g) => sum + ((g.points || 0) * (g.credits || 3)), 0);
-            const blockGPA = blockCredits > 0 ? (blockPoints / blockCredits) : 0;
-            const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
-            const blockRetakes = blockGrades.filter(g => g.hasRetake).length;
+            let totalCreditsAttempted = 0;
+            let totalCreditsEarned = 0;
+            let totalPoints = 0;
+            let passedCourses = 0;
+            let failedCourses = 0;
+            let pendingCourses = 0;
             
-            tableRows += `
-                <tr style="background: #0A3D62; color: white;">
-                    <td colspan="7" style="padding: 4px 8px; text-align: center; font-size: 9px; font-weight: 700;">
-                        📁 ${escapeHtml(block)} (${blockTotal} courses · GPA: ${blockGPA.toFixed(2)} · Pass: ${blockPassRate}%)
-                        ${blockRetakes > 0 ? ` · ⭐ ${blockRetakes} retakes` : ''}
-                    </td>
-                </tr>
-            `;
-            
-            blockGrades.forEach((g, index) => {
-                const gradeColor = getGradeColor(g.grade);
-                const pointsEarned = (g.points || 0) * (g.credits || 3);
+            transcriptData.forEach(g => {
+                const credits = g.credits || 3;
+                const points = (g.points || 0) * credits;
                 const isPassing = g.status !== 'FAIL' && g.status !== 'PENDING';
-                const hasRetake = g.hasRetake || false;
-                const retakeCount = g.retakeCount || 0;
+                
+                totalCreditsAttempted += credits;
+                if (isPassing) {
+                    totalCreditsEarned += credits;
+                    passedCourses++;
+                } else if (g.status === 'FAIL') {
+                    failedCourses++;
+                } else {
+                    pendingCourses++;
+                }
+                totalPoints += points;
+            });
+            
+            const cgpa = totalCreditsAttempted > 0 ? (totalPoints / totalCreditsAttempted) : 0;
+            const passRate = transcriptData.length > 0 ? Math.round((passedCourses / transcriptData.length) * 100) : 0;
+            const grade = calculateGrade(totalCreditsAttempted > 0 ? (totalPoints / totalCreditsAttempted) * 10 : 0, userProgram);
+            
+            const groupedByBlock = {};
+            transcriptData.forEach(g => {
+                const block = g.blockTerm || 'General';
+                if (!groupedByBlock[block]) {
+                    groupedByBlock[block] = [];
+                }
+                groupedByBlock[block].push(g);
+            });
+            const blockNames = Object.keys(groupedByBlock).sort();
+            
+            let tableRows = '';
+            blockNames.forEach((block) => {
+                const blockGrades = groupedByBlock[block];
+                const blockTotal = blockGrades.length;
+                const blockPassed = blockGrades.filter(g => g.status !== 'FAIL' && g.status !== 'PENDING').length;
+                const blockCredits = blockGrades.reduce((sum, g) => sum + (g.credits || 3), 0);
+                const blockPoints = blockGrades.reduce((sum, g) => sum + ((g.points || 0) * (g.credits || 3)), 0);
+                const blockGPA = blockCredits > 0 ? (blockPoints / blockCredits) : 0;
+                const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
                 
                 tableRows += `
-                    <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''} ${hasRetake ? 'border-left: 2px solid #f59e0b;' : ''}">
-                        <td style="padding: 3px 6px; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
-                        <td style="padding: 3px 6px; font-weight: 600; font-size: 9px; color: #0A3D62;">${escapeHtml(g.courseCode)}</td>
-                        <td style="padding: 3px 6px; font-size: 9px;">
-                            ${escapeHtml(g.courseName)}
-                            ${hasRetake ? `<span style="background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 6px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
-                        </td>
-                        <td style="padding: 3px 6px; text-align: center; font-size: 9px;">${g.credits || 3}</td>
-                        <td style="padding: 3px 6px; text-align: center;">
-                            <span style="background: ${gradeColor}; color: white; padding: 1px 8px; border-radius: 8px; font-weight: 700; font-size: 9px; display: inline-block;">
-                                ${g.grade || '-'}
-                            </span>
-                        </td>
-                        <td style="padding: 3px 6px; text-align: center; font-weight: 600; font-size: 9px; color: ${isPassing ? '#10b981' : '#ef4444'};">
-                            ${pointsEarned.toFixed(1)}
-                        </td>
-                        <td style="padding: 3px 6px; text-align: center; font-size: 8px;">
-                            ${hasRetake ? `<span style="color: #f59e0b;">⭐ R${retakeCount}</span>` : '—'}
+                    <tr style="background: #0A3D62; color: white;">
+                        <td colspan="6" style="padding: 4px 8px; text-align: center; font-size: 9px; font-weight: 700;">
+                            📁 ${escapeHtml(block)} (${blockTotal} courses · GPA: ${blockGPA.toFixed(2)} · Pass: ${blockPassRate}%)
                         </td>
                     </tr>
                 `;
+                
+                blockGrades.forEach((g, index) => {
+                    const gradeColor = getGradeColor(g.grade);
+                    const pointsEarned = (g.points || 0) * (g.credits || 3);
+                    const isPassing = g.status !== 'FAIL' && g.status !== 'PENDING';
+                    
+                    tableRows += `
+                        <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
+                            <td style="padding: 3px 6px; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
+                            <td style="padding: 3px 6px; font-weight: 600; font-size: 9px; color: #0A3D62;">${escapeHtml(g.courseCode)}</td>
+                            <td style="padding: 3px 6px; font-size: 9px;">${escapeHtml(g.courseName)}</td>
+                            <td style="padding: 3px 6px; text-align: center; font-size: 9px;">${g.credits || 3}</td>
+                            <td style="padding: 3px 6px; text-align: center;">
+                                <span style="background: ${gradeColor}; color: white; padding: 1px 8px; border-radius: 8px; font-weight: 700; font-size: 9px; display: inline-block;">
+                                    ${g.grade || '-'}
+                                </span>
+                            </td>
+                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; font-size: 9px; color: ${isPassing ? '#10b981' : '#ef4444'};">
+                                ${pointsEarned.toFixed(1)}
+                            </td>
+                        </tr>
+                    `;
+                });
             });
-        });
-        
-        const now = new Date().toLocaleDateString('en-KE', {
-            timeZone: 'Africa/Nairobi',
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-        });
-        
-        const academicYear = user.academic_year || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
-        const programLabel = isTVET ? 'TVET' : 'Nursing';
-        
-        const fullHtml = `
+            
+            const now = new Date().toLocaleDateString('en-KE', {
+                timeZone: 'Africa/Nairobi',
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            
+            const academicYear = user.academic_year || `${new Date().getFullYear()}/${new Date().getFullYear() + 1}`;
+            const programLabel = isTVET ? 'TVET' : 'Nursing';
+            
+            // Remove loading
+            loadingEl.remove();
+            
+            // Open print window with full transcript
+            const printWindow = window.open('', '_blank', 'width=1000,height=800');
+            if (printWindow) {
+                printWindow.document.write(`
 <!DOCTYPE html>
 <html>
 <head>
@@ -1614,7 +1441,6 @@
             border: 2px solid #0A3D62; 
             border-radius: 6px; 
             background: #ffffff;
-            page-break-after: avoid;
         }
         .header { 
             text-align: center; 
@@ -1693,7 +1519,7 @@
         }
         .summary-grid { 
             display: grid; 
-            grid-template-columns: repeat(7, 1fr); 
+            grid-template-columns: repeat(6, 1fr); 
             gap: 3px; 
             margin: 4px 0; 
             padding: 4px 8px; 
@@ -1774,17 +1600,6 @@
             font-size: 9px; 
             color: #0A3D62; 
         }
-        .retake-summary {
-            margin: 3px 0;
-            padding: 4px 8px;
-            background: #fffbeb;
-            border-radius: 4px;
-            border: 1px solid #f59e0b;
-            font-size: 8px;
-            color: #92400e;
-            text-align: center;
-        }
-        .retake-summary strong { color: #0A3D62; }
         .watermark { 
             position: fixed; 
             top: 50%; 
@@ -1804,9 +1619,6 @@
             .container { border: 2px solid #0A3D62; box-shadow: none; padding: 4px; }
             .watermark { display: none; }
         }
-        .container { page-break-after: avoid; }
-        table { page-break-inside: avoid; }
-        tr { page-break-inside: avoid; }
     </style>
 </head>
 <body>
@@ -1840,18 +1652,7 @@
             <div class="summary-item"><div class="value">${totalCreditsAttempted}</div><div class="label">Credits Attempted</div></div>
             <div class="summary-item"><div class="value">${passRate}%</div><div class="label">Pass Rate</div></div>
             <div class="summary-item"><div class="value">${passedCourses}/${failedCourses}</div><div class="label">Pass/Fail</div></div>
-            <div class="summary-item"><div class="value">⭐ ${retakeCourses}</div><div class="label">Retakes</div></div>
         </div>
-        
-        ${retakeCourses > 0 ? `
-        <div class="retake-summary">
-            <i class="fas fa-star" style="color: #f59e0b;"></i>
-            <strong>Retake Summary:</strong> ${retakeCourses} unit(s) were retaken 
-            ${retakePassed > 0 ? `· ✅ ${retakePassed} passed after retake` : ''}
-            ${(retakeCourses - retakePassed) > 0 ? `· ❌ ${retakeCourses - retakePassed} still failing` : ''}
-            <span style="font-size: 7px; color: #94a3b8; margin-left: 6px;">(⭐ R1, R2 = retake attempts)</span>
-        </div>
-        ` : ''}
         
         <table>
             <thead>
@@ -1862,7 +1663,6 @@
                     <th style="text-align: center; width: 35px;">Cr</th>
                     <th style="text-align: center; width: 40px;">Grade</th>
                     <th style="text-align: center; width: 45px;">Points</th>
-                    <th style="text-align: center; width: 40px;">Retake</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
@@ -1914,23 +1714,22 @@
     </div>
 </body>
 </html>
-        `;
-        
-        const printWindow = window.open('', '_blank', 'width=1000,height=800');
-        if (printWindow) {
-            printWindow.document.write(fullHtml);
-            printWindow.document.close();
-            setTimeout(() => { printWindow.print(); }, 500);
-        } else {
-            alert('Please allow popups to download the transcript.');
+                `);
+                printWindow.document.close();
+                setTimeout(() => { printWindow.print(); }, 500);
+            } else {
+                alert('Please allow popups to download the transcript.');
+            }
+        } catch (error) {
+            loadingEl.remove();
+            alert('Error generating transcript: ' + error.message);
+            console.error('Transcript error:', error);
         }
     }
 
-    // ============================================================
-    // 21. DOWNLOAD SEMESTER REPORT WITH RETAKE SUPPORT
-    // ============================================================
+    // DOWNLOAD SEMESTER REPORT CARD
     function downloadReportCard() {
-        console.log('📊 Downloading Semester Report with Retake Support...');
+        console.log('📊 Downloading Semester Report Card...');
         
         const user = window.currentUserProfile || {};
         const userProgram = user.program || '';
@@ -1938,278 +1737,247 @@
         const programType = PROGRAM.getProgramType(userProgram);
         
         let marks = [];
-        
         if (window.myMarksData && window.myMarksData.length > 0) {
             marks = window.myMarksData;
         } else if (window.myMarksFiltered && window.myMarksFiltered.length > 0) {
             marks = window.myMarksFiltered;
         } else {
-            const tableRows = document.querySelectorAll('#my_marks_table_body tr');
-            if (tableRows && tableRows.length > 0 && tableRows[0].cells.length > 1) {
-                tableRows.forEach(row => {
-                    const cells = row.querySelectorAll('td');
-                    if (cells.length >= 7) {
-                        const unitCode = cells[1]?.textContent?.trim() || '';
-                        const unitName = cells[2]?.textContent?.trim() || '';
-                        const grade = cells[3]?.textContent?.trim() || '';
-                        const points = parseFloat(cells[4]?.textContent?.trim()) || 0;
-                        const status = cells[5]?.textContent?.trim() || '';
-                        
-                        if (unitName && unitName !== 'No published marks found') {
-                            marks.push({
-                                subject_name: unitName,
-                                unit_code: unitCode,
-                                grade: grade,
-                                points: points,
-                                status: status,
-                                hasRetake: false,
-                                retakeCount: 0
-                            });
-                        }
-                    }
-                });
-            }
-        }
-        
-        if (marks.length === 0) {
-            alert('No marks available to generate semester report. Please load your marks first.');
+            alert('No marks available to generate semester report.');
             return;
         }
         
-        console.log('📊 Generating semester report for', marks.length, 'marks');
-        
-        let profilePicture = '';
-        if (user.passport_photo || user.profile_picture || user.photo_url) {
-            profilePicture = user.passport_photo || user.profile_picture || user.photo_url || '';
+        if (marks.length === 0) {
+            alert('No marks available to generate semester report.');
+            return;
         }
         
-        const now = new Date().toLocaleDateString('en-KE', {
-            timeZone: 'Africa/Nairobi',
-            weekday: 'long',
-            month: 'long',
-            day: 'numeric',
-            year: 'numeric'
-        });
+        // Show loading
+        const loadingEl = document.createElement('div');
+        loadingEl.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.5);z-index:99999;display:flex;align-items:center;justify-content:center;';
+        loadingEl.innerHTML = '<div style="background:white;padding:30px;border-radius:12px;text-align:center;"><div class="loading-spinner"></div><p style="margin-top:12px;color:#1e293b;">Generating Report Card...</p></div>';
+        document.body.appendChild(loadingEl);
         
-        const currentYear = new Date().getFullYear();
-        const nextYear = currentYear + 1;
-        const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
-        
-        let totalPoints = 0;
-        let totalUnits = 0;
-        let passed = 0;
-        let failed = 0;
-        let pending = 0;
-        let retakeUnits = 0;
-        
-        marks.forEach(m => {
-            const points = m.points || 0;
-            const status = m.status || getGradingStatus(0, userProgram);
+        try {
+            let totalPoints = 0;
+            let totalUnits = 0;
+            let passed = 0;
+            let failed = 0;
+            let pending = 0;
             
-            totalPoints += points;
-            totalUnits++;
+            marks.forEach(m => {
+                const points = m.points || 0;
+                const status = m.status || getGradingStatus(0, userProgram);
+                
+                totalPoints += points;
+                totalUnits++;
+                
+                if (status === 'FAIL') {
+                    failed++;
+                } else if (status === 'PENDING') {
+                    pending++;
+                } else {
+                    passed++;
+                }
+            });
             
-            if (status === 'FAIL') {
-                failed++;
-            } else if (status === 'PENDING') {
-                pending++;
+            const gpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
+            
+            let grade;
+            if (isTVET) {
+                if (gpa >= 3.75) grade = 'A';
+                else if (gpa >= 3.0) grade = 'B';
+                else if (gpa >= 2.0) grade = 'C';
+                else grade = 'FAIL';
             } else {
-                passed++;
+                if (gpa >= 3.75) grade = 'A';
+                else if (gpa >= 3.0) grade = 'B';
+                else if (gpa >= 2.0) grade = 'C';
+                else grade = 'D';
             }
             
-            if (m.hasRetake) retakeUnits++;
-        });
-        
-        const gpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
-        
-        let grade;
-        if (isTVET) {
-            if (gpa >= 3.75) grade = 'A';
-            else if (gpa >= 3.0) grade = 'B';
-            else if (gpa >= 2.0) grade = 'C';
-            else grade = 'FAIL';
-        } else {
-            if (gpa >= 3.75) grade = 'A';
-            else if (gpa >= 3.0) grade = 'B';
-            else if (gpa >= 2.0) grade = 'C';
-            else grade = 'D';
-        }
-        
-        const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
-        
-        // Build table rows with retake support
-        let tableRows = '';
-        marks.forEach((mark, index) => {
-            const status = mark.status || getGradingStatus(0, userProgram);
-            const statusColor = getStatusColor(status);
-            const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
-            const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
-            const gradeColor = getGradeColor(mark.grade);
-            const gradeDisplay = mark.grade || calculateGrade(0, userProgram) || '-';
-            const hasRetake = mark.hasRetake || false;
-            const retakeCount = mark.retakeCount || 0;
-            const retakeScore = mark.retakeScore;
-            const isRetakePassed = mark.retakeStatus === 'PASS';
+            const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
             
-            tableRows += `
-                <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''} ${hasRetake ? 'border-left: 3px solid #f59e0b;' : ''}">
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 8px; color: #94a3b8;">${index + 1}</td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 8px;">${escapeHtml(unitCode)}</td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 8px; color: #1e293b;">
-                        ${escapeHtml(mark.subject_name || 'N/A')}
-                        ${hasRetake ? `<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 6px; font-weight: 700;">⭐ R${retakeCount}</span>` : ''}
-                        ${retakeScore !== null ? `<span style="display: inline-block; margin-left: 4px; font-size: 7px; color: ${isRetakePassed ? '#059669' : '#dc2626'}; font-weight: 600;">${isRetakePassed ? '✅' : '❌'} ${retakeScore}%</span>` : ''}
-                    </td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                        <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 9px; display: inline-block; min-width: 26px;">
-                            ${escapeHtml(gradeDisplay)}
-                        </span>
-                        ${hasRetake ? `<span style="display: block; font-size: 6px; color: #f59e0b;">⭐ Retake</span>` : ''}
-                    </td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700; font-size: 9px; color: ${gradeColor};">
-                        ${points.toFixed(1)}
-                    </td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                        <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 7px; display: inline-block;">
-                            ${status}
-                        </span>
-                        ${isRetakePassed ? `<span style="display: block; font-size: 6px; color: #059669;">⭐ Retake Passed!</span>` : ''}
-                    </td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 7px;">
-                        ${hasRetake ? `<span style="color: #f59e0b;">⭐ R${retakeCount}</span>` : '—'}
-                    </td>
-                </tr>
-            `;
-        });
-        
-        // Generate data for line graph
-        const sortedMarks = [...marks].sort((a, b) => {
-            const blockOrder = {
-                'Introductory': 0, 'Block 1': 1, 'Block 2': 2, 'Block 3': 3,
-                'Block 4': 4, 'Block 5': 5, 'Final': 6,
-                'Term 1': 1, 'Term 2': 2, 'Term 3': 3, 'Term 4': 4,
-                'Term 5': 5, 'Term 6': 6
-            };
-            return (blockOrder[a.block] || 0) - (blockOrder[b.block] || 0);
-        });
-        
-        const graphLabels = sortedMarks.map(m => m.unit_code || getUnitCode(m.subject_name) || 'N/A');
-        const graphData = sortedMarks.map(m => m.points || 0);
-        const avgPoints = graphData.reduce((a, b) => a + b, 0) / graphData.length || 0;
-        
-        // TABLE FORMAT GRADING SCALE
-        let gradingScaleHTML = '';
-        if (isTVET) {
-            gradingScaleHTML = `
-                <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto;">
-                    <thead>
-                        <tr style="background: #0A3D62; color: white;">
-                            <th style="padding: 3px 6px; text-align: center;">Marks Range</th>
-                            <th style="padding: 3px 6px; text-align: center;">Grade</th>
-                            <th style="padding: 3px 6px; text-align: center;">Points</th>
-                            <th style="padding: 3px 6px; text-align: center;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="background: #d1fae5;">
-                            <td style="padding: 3px 6px; text-align: center;">75 - 100%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #065f46;">A</td>
-                            <td style="padding: 3px 6px; text-align: center;">4.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #065f46;">EXCELLENT</td>
-                        </tr>
-                        <tr style="background: #dbeafe;">
-                            <td style="padding: 3px 6px; text-align: center;">65 - 74%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #1e40af;">B</td>
-                            <td style="padding: 3px 6px; text-align: center;">3.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #1e40af;">GOOD</td>
-                        </tr>
-                        <tr style="background: #fef3c7;">
-                            <td style="padding: 3px 6px; text-align: center;">50 - 64%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #92400e;">C</td>
-                            <td style="padding: 3px 6px; text-align: center;">2.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #92400e;">SATISFACTORY</td>
-                        </tr>
-                        <tr style="background: #fee2e2;">
-                            <td style="padding: 3px 6px; text-align: center;">Below 50%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #991b1b;">FAIL</td>
-                            <td style="padding: 3px 6px; text-align: center;">0.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
-                        </tr>
-                        <tr style="background: #f3f4f6;">
-                            <td style="padding: 3px 6px; text-align: center; font-style: italic;">No Score</td>
-                            <td style="padding: 3px 6px; text-align: center;">-</td>
-                            <td style="padding: 3px 6px; text-align: center;">-</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
-                        </tr>
-                    </tbody>
-                    <tfoot>
-                        <tr><td colspan="4" style="padding: 3px 6px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 50%</td></tr>
-                    </tfoot>
-                </table>
-            `;
-        } else {
-            gradingScaleHTML = `
-                <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto;">
-                    <thead>
-                        <tr style="background: #0A3D62; color: white;">
-                            <th style="padding: 3px 6px; text-align: center;">Marks Range</th>
-                            <th style="padding: 3px 6px; text-align: center;">Grade</th>
-                            <th style="padding: 3px 6px; text-align: center;">Points</th>
-                            <th style="padding: 3px 6px; text-align: center;">Status</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr style="background: #d1fae5;">
-                            <td style="padding: 3px 6px; text-align: center;">75 - 100%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #065f46;">A</td>
-                            <td style="padding: 3px 6px; text-align: center;">4.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #065f46;">DISTINCTION</td>
-                        </tr>
-                        <tr style="background: #dbeafe;">
-                            <td style="padding: 3px 6px; text-align: center;">65 - 74%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #1e40af;">B</td>
-                            <td style="padding: 3px 6px; text-align: center;">3.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #1e40af;">CREDIT</td>
-                        </tr>
-                        <tr style="background: #fef3c7;">
-                            <td style="padding: 3px 6px; text-align: center;">60 - 64%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #92400e;">C</td>
-                            <td style="padding: 3px 6px; text-align: center;">2.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #92400e;">PASS</td>
-                        </tr>
-                        <tr style="background: #fee2e2;">
-                            <td style="padding: 3px 6px; text-align: center;">Below 60%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #991b1b;">D</td>
-                            <td style="padding: 3px 6px; text-align: center;">0.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
-                        </tr>
-                        <tr style="background: #f3f4f6;">
-                            <td style="padding: 3px 6px; text-align: center; font-style: italic;">No Score</td>
-                            <td style="padding: 3px 6px; text-align: center;">-</td>
-                            <td style="padding: 3px 6px; text-align: center;">-</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
-                        </tr>
-                    </tbody>
-                    <tfoot>
-                        <tr><td colspan="4" style="padding: 3px 6px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 60%</td></tr>
-                    </tfoot>
-                </table>
-            `;
-        }
-        
-        // Profile picture HTML
-        let profilePictureHTML = '';
-        if (profilePicture) {
-            profilePictureHTML = `
-                <div style="text-align: center; margin-right: 12px; flex-shrink: 0;">
-                    <img src="${profilePicture}" alt="Student Photo" 
-                         style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #0A3D62; padding: 2px; background: white;"
-                         onerror="this.style.display='none'">
-                </div>
-            `;
-        }
-        
-        const fullHtml = `
+            // Build table rows
+            let tableRows = '';
+            marks.forEach((mark, index) => {
+                const status = mark.status || getGradingStatus(0, userProgram);
+                const statusColor = getStatusColor(status);
+                const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
+                const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
+                const gradeColor = getGradeColor(mark.grade);
+                const gradeDisplay = mark.grade || calculateGrade(0, userProgram) || '-';
+                
+                tableRows += `
+                    <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''}">
+                        <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 8px; color: #94a3b8;">${index + 1}</td>
+                        <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 8px;">${escapeHtml(unitCode)}</td>
+                        <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 8px; color: #1e293b;">${escapeHtml(mark.subject_name || 'N/A')}</td>
+                        <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                            <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 9px; display: inline-block; min-width: 26px;">
+                                ${escapeHtml(gradeDisplay)}
+                            </span>
+                        </td>
+                        <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700; font-size: 9px; color: ${gradeColor};">
+                            ${points.toFixed(1)}
+                        </td>
+                        <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
+                            <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 7px; display: inline-block;">
+                                ${status}
+                            </span>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            // Generate data for line graph
+            const sortedMarks = [...marks].sort((a, b) => {
+                const blockOrder = {
+                    'Introductory': 0, 'Block 1': 1, 'Block 2': 2, 'Block 3': 3,
+                    'Block 4': 4, 'Block 5': 5, 'Final': 6,
+                    'Term 1': 1, 'Term 2': 2, 'Term 3': 3, 'Term 4': 4,
+                    'Term 5': 5, 'Term 6': 6
+                };
+                return (blockOrder[a.block] || 0) - (blockOrder[b.block] || 0);
+            });
+            
+            const graphLabels = sortedMarks.map(m => m.unit_code || getUnitCode(m.subject_name) || 'N/A');
+            const graphData = sortedMarks.map(m => m.points || 0);
+            const avgPoints = graphData.reduce((a, b) => a + b, 0) / graphData.length || 0;
+            
+            // TABLE FORMAT GRADING SCALE
+            let gradingScaleHTML = '';
+            if (isTVET) {
+                gradingScaleHTML = `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto;">
+                        <thead>
+                            <tr style="background: #0A3D62; color: white;">
+                                <th style="padding: 3px 6px; text-align: center;">Marks Range</th>
+                                <th style="padding: 3px 6px; text-align: center;">Grade</th>
+                                <th style="padding: 3px 6px; text-align: center;">Points</th>
+                                <th style="padding: 3px 6px; text-align: center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #d1fae5;">
+                                <td style="padding: 3px 6px; text-align: center;">75 - 100%</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #065f46;">A</td>
+                                <td style="padding: 3px 6px; text-align: center;">4.0</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #065f46;">EXCELLENT</td>
+                            </tr>
+                            <tr style="background: #dbeafe;">
+                                <td style="padding: 3px 6px; text-align: center;">65 - 74%</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #1e40af;">B</td>
+                                <td style="padding: 3px 6px; text-align: center;">3.0</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #1e40af;">GOOD</td>
+                            </tr>
+                            <tr style="background: #fef3c7;">
+                                <td style="padding: 3px 6px; text-align: center;">50 - 64%</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #92400e;">C</td>
+                                <td style="padding: 3px 6px; text-align: center;">2.0</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #92400e;">SATISFACTORY</td>
+                            </tr>
+                            <tr style="background: #fee2e2;">
+                                <td style="padding: 3px 6px; text-align: center;">Below 50%</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #991b1b;">FAIL</td>
+                                <td style="padding: 3px 6px; text-align: center;">0.0</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
+                            </tr>
+                            <tr style="background: #f3f4f6;">
+                                <td style="padding: 3px 6px; text-align: center; font-style: italic;">No Score</td>
+                                <td style="padding: 3px 6px; text-align: center;">-</td>
+                                <td style="padding: 3px 6px; text-align: center;">-</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr><td colspan="4" style="padding: 3px 6px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 50%</td></tr>
+                        </tfoot>
+                    </table>
+                `;
+            } else {
+                gradingScaleHTML = `
+                    <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto;">
+                        <thead>
+                            <tr style="background: #0A3D62; color: white;">
+                                <th style="padding: 3px 6px; text-align: center;">Marks Range</th>
+                                <th style="padding: 3px 6px; text-align: center;">Grade</th>
+                                <th style="padding: 3px 6px; text-align: center;">Points</th>
+                                <th style="padding: 3px 6px; text-align: center;">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr style="background: #d1fae5;">
+                                <td style="padding: 3px 6px; text-align: center;">75 - 100%</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #065f46;">A</td>
+                                <td style="padding: 3px 6px; text-align: center;">4.0</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #065f46;">DISTINCTION</td>
+                            </tr>
+                            <tr style="background: #dbeafe;">
+                                <td style="padding: 3px 6px; text-align: center;">65 - 74%</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #1e40af;">B</td>
+                                <td style="padding: 3px 6px; text-align: center;">3.0</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #1e40af;">CREDIT</td>
+                            </tr>
+                            <tr style="background: #fef3c7;">
+                                <td style="padding: 3px 6px; text-align: center;">60 - 64%</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #92400e;">C</td>
+                                <td style="padding: 3px 6px; text-align: center;">2.0</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #92400e;">PASS</td>
+                            </tr>
+                            <tr style="background: #fee2e2;">
+                                <td style="padding: 3px 6px; text-align: center;">Below 60%</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #991b1b;">D</td>
+                                <td style="padding: 3px 6px; text-align: center;">0.0</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
+                            </tr>
+                            <tr style="background: #f3f4f6;">
+                                <td style="padding: 3px 6px; text-align: center; font-style: italic;">No Score</td>
+                                <td style="padding: 3px 6px; text-align: center;">-</td>
+                                <td style="padding: 3px 6px; text-align: center;">-</td>
+                                <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
+                            </tr>
+                        </tbody>
+                        <tfoot>
+                            <tr><td colspan="4" style="padding: 3px 6px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 60%</td></tr>
+                        </tfoot>
+                    </table>
+                `;
+            }
+            
+            let profilePicture = '';
+            if (user.passport_photo || user.profile_picture || user.photo_url) {
+                profilePicture = user.passport_photo || user.profile_picture || user.photo_url || '';
+            }
+            
+            const now = new Date().toLocaleDateString('en-KE', {
+                timeZone: 'Africa/Nairobi',
+                weekday: 'long',
+                month: 'long',
+                day: 'numeric',
+                year: 'numeric'
+            });
+            
+            const currentYear = new Date().getFullYear();
+            const nextYear = currentYear + 1;
+            const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
+            
+            // Profile picture HTML
+            let profilePictureHTML = '';
+            if (profilePicture) {
+                profilePictureHTML = `
+                    <div style="text-align: center; margin-right: 12px; flex-shrink: 0;">
+                        <img src="${profilePicture}" alt="Student Photo" 
+                             style="width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #0A3D62; padding: 2px; background: white;"
+                             onerror="this.style.display='none'">
+                    </div>
+                `;
+            }
+            
+            loadingEl.remove();
+            
+            const printWindow = window.open('', '_blank', 'width=750,height=1050');
+            if (printWindow) {
+                printWindow.document.write(`
 <!DOCTYPE html>
 <html>
 <head>
@@ -2218,300 +1986,51 @@
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        @page {
-            size: A4 portrait;
-            margin: 8mm 10mm;
-        }
-        body { 
-            font-family: 'Times New Roman', 'Georgia', serif; 
-            background: #ffffff; 
-            font-size: 10px;
-            margin: 0;
-            padding: 10px;
-            color: #1e293b;
-        }
-        .container { 
-            max-width: 750px;
-            width: 100%;
-            margin: 0 auto; 
-            padding: 16px 20px;
-            background: #ffffff;
-            border: 2px solid #0A3D62;
-            border-radius: 6px;
-        }
-        .header { 
-            text-align: center; 
-            border-bottom: 3px double #0A3D62;
-            padding-bottom: 10px;
-            margin-bottom: 12px;
-        }
-        .header-top {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        .header-top img { 
-            max-height: 40px; 
-            width: auto; 
-        }
-        .header .school { 
-            font-size: 16px; 
-            font-weight: 700; 
-            color: #0A3D62; 
-            font-family: 'Georgia', serif;
-        }
-        .header .motto { 
-            font-size: 8px; 
-            color: #64748b; 
-            font-style: italic; 
-        }
-        .header .subtitle { 
-            font-size: 13px; 
-            color: #0A3D62; 
-            font-weight: 700;
-            margin-top: 3px;
-            letter-spacing: 1.5px;
-            font-family: 'Georgia', serif;
-        }
-        .header .date { 
-            font-size: 8px; 
-            color: #94a3b8; 
-            margin-top: 2px;
-        }
-        .student-info-wrapper {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            margin: 6px 0 10px 0;
-            padding: 8px 12px;
-            background: #f8fafc;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-        }
-        .student-info {
-            display: grid;
-            grid-template-columns: 1fr 1fr 1fr;
-            gap: 6px;
-            flex: 1;
-        }
-        .student-info .field { 
-            display: flex;
-            flex-direction: column;
-        }
-        .student-info .label { 
-            font-size: 7px; 
-            color: #94a3b8; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        .student-info .value { 
-            font-weight: 600; 
-            font-size: 10px; 
-            color: #0A3D62; 
-            margin-top: 1px;
-        }
-        .student-photo {
-            width: 60px;
-            height: 60px;
-            border-radius: 50%;
-            object-fit: cover;
-            border: 3px solid #0A3D62;
-            padding: 2px;
-            background: white;
-            flex-shrink: 0;
-        }
-        .summary-grid { 
-            display: grid; 
-            grid-template-columns: repeat(5, 1fr); 
-            gap: 6px; 
-            margin: 8px 0;
-        }
-        .summary-card {
-            background: #f8fafc;
-            border-radius: 6px;
-            padding: 8px 10px;
-            text-align: center;
-            border: 1px solid #e2e8f0;
-        }
-        .summary-card .value { 
-            font-size: 18px; 
-            font-weight: 700; 
-            color: #0A3D62; 
-        }
-        .summary-card .label { 
-            font-size: 7px; 
-            color: #94a3b8; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px; 
-            font-weight: 600; 
-        }
-        table { 
-            width: 100%; 
-            border-collapse: collapse; 
-            margin: 6px 0 8px 0;
-            font-size: 8px;
-        }
-        thead th { 
-            background: #0A3D62; 
-            color: white; 
-            padding: 5px 8px; 
-            text-align: left; 
-            font-size: 7px; 
-            text-transform: uppercase; 
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
+        @page { size: A4 portrait; margin: 8mm 10mm; }
+        body { font-family: 'Times New Roman', 'Georgia', serif; background: #ffffff; font-size: 10px; margin: 0; padding: 10px; color: #1e293b; }
+        .container { max-width: 750px; width: 100%; margin: 0 auto; padding: 16px 20px; background: #ffffff; border: 2px solid #0A3D62; border-radius: 6px; }
+        .header { text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 10px; margin-bottom: 12px; }
+        .header-top { display: flex; align-items: center; justify-content: center; gap: 12px; }
+        .header-top img { max-height: 40px; width: auto; }
+        .header .school { font-size: 16px; font-weight: 700; color: #0A3D62; font-family: 'Georgia', serif; }
+        .header .motto { font-size: 8px; color: #64748b; font-style: italic; }
+        .header .subtitle { font-size: 13px; color: #0A3D62; font-weight: 700; margin-top: 3px; letter-spacing: 1.5px; font-family: 'Georgia', serif; }
+        .header .date { font-size: 8px; color: #94a3b8; margin-top: 2px; }
+        .student-info-wrapper { display: flex; align-items: center; gap: 12px; margin: 6px 0 10px 0; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .student-info { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; flex: 1; }
+        .student-info .field { display: flex; flex-direction: column; }
+        .student-info .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .student-info .value { font-weight: 600; font-size: 10px; color: #0A3D62; margin-top: 1px; }
+        .student-photo { width: 60px; height: 60px; border-radius: 50%; object-fit: cover; border: 3px solid #0A3D62; padding: 2px; background: white; flex-shrink: 0; }
+        .summary-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin: 8px 0; }
+        .summary-card { background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0; }
+        .summary-card .value { font-size: 18px; font-weight: 700; color: #0A3D62; }
+        .summary-card .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; }
+        thead th { background: #0A3D62; color: white; padding: 5px 8px; text-align: left; font-size: 7px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
         thead th.center { text-align: center; }
-        tbody td { 
-            padding: 4px 8px; 
-            border-bottom: 1px solid #e5e7eb; 
-            font-size: 8px; 
-        }
-        .chart-container {
-            margin: 6px 0 8px 0;
-            padding: 8px 12px;
-            background: #f8fafc;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-        }
-        .chart-container .title {
-            font-weight: 700;
-            font-size: 8px;
-            color: #0A3D62;
-            text-align: center;
-            margin-bottom: 4px;
-        }
-        .chart-container canvas {
-            width: 100% !important;
-            height: 120px !important;
-            max-height: 120px;
-        }
-        .grading-scale-table {
-            margin: 6px 0 8px 0;
-            padding: 6px 12px;
-            background: #f8fafc;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-        }
-        .grading-scale-table .title {
-            font-weight: 700;
-            font-size: 8px;
-            color: #0A3D62;
-            text-align: center;
-            margin-bottom: 4px;
-        }
-        .grading-scale-table table {
-            width: 100%;
-            border-collapse: collapse;
-            font-size: 7px;
-            margin: 0 auto;
-        }
-        .grading-scale-table th {
-            background: #0A3D62;
-            color: white;
-            padding: 3px 6px;
-            text-align: center;
-            font-size: 6px;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-        }
-        .grading-scale-table td {
-            padding: 3px 6px;
-            text-align: center;
-            border: 1px solid #e2e8f0;
-            font-size: 7px;
-        }
-        .retake-summary-box {
-            margin: 6px 0 8px 0;
-            padding: 6px 12px;
-            background: #fffbeb;
-            border-radius: 6px;
-            border: 1px solid #f59e0b;
-            font-size: 8px;
-            color: #92400e;
-            text-align: center;
-        }
-        .retake-summary-box strong { color: #0A3D62; }
-        .declaration {
-            margin: 6px 0 8px 0;
-            padding: 6px 12px;
-            background: #f8fafc;
-            border-radius: 6px;
-            border: 1px solid #e2e8f0;
-            font-size: 8px;
-        }
-        .declaration .title {
-            font-weight: 700;
-            color: #0A3D62;
-            font-size: 8px;
-        }
-        .declaration .checkbox {
-            display: inline-block;
-            width: 9px;
-            height: 9px;
-            border: 2px solid #0A3D62;
-            border-radius: 2px;
-            margin-right: 4px;
-            vertical-align: middle;
-            background: #0A3D62;
-            position: relative;
-        }
-        .declaration .checkbox::after {
-            content: "✓";
-            color: white;
-            font-size: 6px;
-            position: absolute;
-            top: -2px;
-            left: 0px;
-        }
-        .signatures {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 30px;
-            margin: 8px 0 6px 0;
-            padding-top: 8px;
-            border-top: 1px solid #e2e8f0;
-        }
-        .signature-box {
-            text-align: center;
-        }
-        .signature-box .line {
-            border-bottom: 2px solid #1e293b;
-            width: 130px;
-            margin: 8px auto 2px auto;
-        }
-        .signature-box .label {
-            font-size: 7px;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        .signature-box .name {
-            font-weight: 600;
-            font-size: 10px;
-            color: #0A3D62;
-        }
-        .footer {
-            text-align: center;
-            margin-top: 6px;
-            padding-top: 6px;
-            border-top: 1px solid #e2e8f0;
-            font-size: 7px;
-            color: #94a3b8;
-        }
+        tbody td { padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 8px; }
+        .chart-container { margin: 6px 0 8px 0; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .chart-container .title { font-weight: 700; font-size: 8px; color: #0A3D62; text-align: center; margin-bottom: 4px; }
+        .chart-container canvas { width: 100% !important; height: 120px !important; max-height: 120px; }
+        .grading-scale-table { margin: 6px 0 8px 0; padding: 6px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
+        .grading-scale-table .title { font-weight: 700; font-size: 8px; color: #0A3D62; text-align: center; margin-bottom: 4px; }
+        .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; }
+        .grading-scale-table th { background: #0A3D62; color: white; padding: 3px 6px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .grading-scale-table td { padding: 3px 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 7px; }
+        .declaration { margin: 6px 0 8px 0; padding: 6px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 8px; }
+        .declaration .title { font-weight: 700; color: #0A3D62; font-size: 8px; }
+        .declaration .checkbox { display: inline-block; width: 9px; height: 9px; border: 2px solid #0A3D62; border-radius: 2px; margin-right: 4px; vertical-align: middle; background: #0A3D62; position: relative; }
+        .declaration .checkbox::after { content: "✓"; color: white; font-size: 6px; position: absolute; top: -2px; left: 0px; }
+        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin: 8px 0 6px 0; padding-top: 8px; border-top: 1px solid #e2e8f0; }
+        .signature-box { text-align: center; }
+        .signature-box .line { border-bottom: 2px solid #1e293b; width: 130px; margin: 8px auto 2px auto; }
+        .signature-box .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        .signature-box .name { font-weight: 600; font-size: 10px; color: #0A3D62; }
+        .footer { text-align: center; margin-top: 6px; padding-top: 6px; border-top: 1px solid #e2e8f0; font-size: 7px; color: #94a3b8; }
         .footer strong { color: #0A3D62; }
         .no-print { text-align: center; margin-top: 8px; }
-        .no-print button {
-            padding: 5px 18px;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: 600;
-            font-size: 10px;
-        }
+        .no-print button { padding: 5px 18px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 10px; }
         .no-print .btn-print { background: #0A3D62; color: white; }
         .no-print .btn-close { background: #e2e8f0; color: #475569; margin-left: 6px; }
         @media print {
@@ -2527,7 +2046,6 @@
 </head>
 <body>
     <div class="container">
-        <!-- HEADER -->
         <div class="header">
             <div class="header-top">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
@@ -2540,30 +2058,16 @@
             <div class="date">Generated: ${now}</div>
         </div>
         
-        <!-- STUDENT INFO WITH PHOTO -->
         <div class="student-info-wrapper">
             ${profilePictureHTML}
             <div class="student-info">
-                <div class="field">
-                    <span class="label">👤 Student Name</span>
-                    <span class="value">${escapeHtml(user.full_name || 'Student')}</span>
-                </div>
-                <div class="field">
-                    <span class="label">🪪 Admission Number</span>
-                    <span class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</span>
-                </div>
-                <div class="field">
-                    <span class="label">🎓 Program</span>
-                    <span class="value">${escapeHtml(userProgram || 'KRCHN')}</span>
-                </div>
-                <div class="field">
-                    <span class="label">📅 Academic Year</span>
-                    <span class="value">${escapeHtml(academicYear)}</span>
-                </div>
+                <div class="field"><span class="label">👤 Student Name</span><span class="value">${escapeHtml(user.full_name || 'Student')}</span></div>
+                <div class="field"><span class="label">🪪 Admission Number</span><span class="value">${escapeHtml(user.student_id || user.admission_number || 'N/A')}</span></div>
+                <div class="field"><span class="label">🎓 Program</span><span class="value">${escapeHtml(userProgram || 'KRCHN')}</span></div>
+                <div class="field"><span class="label">📅 Academic Year</span><span class="value">${escapeHtml(academicYear)}</span></div>
             </div>
         </div>
         
-        <!-- MARKS TABLE -->
         <table>
             <thead>
                 <tr>
@@ -2573,58 +2077,28 @@
                     <th style="text-align: center; width: 45px;">Grade</th>
                     <th style="text-align: center; width: 45px;">Points</th>
                     <th style="text-align: center; width: 65px;">Status</th>
-                    <th style="text-align: center; width: 45px;">Retake</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
         </table>
         
-        <!-- RETAKE SUMMARY -->
-        ${retakeUnits > 0 ? `
-        <div class="retake-summary-box">
-            <i class="fas fa-star" style="color: #f59e0b;"></i>
-            <strong>Retake Summary:</strong> ${retakeUnits} unit(s) were retaken
-            <span style="font-size: 7px; color: #94a3b8; margin-left: 6px;">(⭐ R1, R2 = retake attempts)</span>
-        </div>
-        ` : ''}
-        
-        <!-- SUMMARY CARDS -->
         <div class="summary-grid">
-            <div class="summary-card">
-                <div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div>
-                <div class="label">GPA</div>
-            </div>
-            <div class="summary-card">
-                <div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div>
-                <div class="label">Grade</div>
-            </div>
-            <div class="summary-card">
-                <div class="value" style="color: #0A3D62;">${totalUnits}</div>
-                <div class="label">Units</div>
-            </div>
-            <div class="summary-card">
-                <div class="value" style="color: #0A3D62;">${passRate}%</div>
-                <div class="label">Pass Rate</div>
-            </div>
-            <div class="summary-card">
-                <div class="value" style="color: #f59e0b;">⭐ ${retakeUnits}</div>
-                <div class="label">Retakes</div>
-            </div>
+            <div class="summary-card"><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
+            <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div><div class="label">Grade</div></div>
+            <div class="summary-card"><div class="value" style="color: #0A3D62;">${totalUnits}</div><div class="label">Units</div></div>
+            <div class="summary-card"><div class="value" style="color: #0A3D62;">${passRate}%</div><div class="label">Pass Rate</div></div>
         </div>
         
-        <!-- GRADING SCALE -->
         <div class="grading-scale-table">
             <div class="title">📊 Grading Scale (${programType})</div>
             ${gradingScaleHTML}
         </div>
         
-        <!-- LINE GRAPH -->
         <div class="chart-container">
             <div class="title">📈 Grade Points Progression</div>
             <canvas id="reportCardLineChart"></canvas>
         </div>
         
-        <!-- DECLARATION -->
         <div class="declaration">
             <span class="title">📋 Student Declaration:</span>
             <span class="checkbox"></span>
@@ -2632,7 +2106,6 @@
             <div style="font-size: 6px; color: #94a3b8; margin-top: 2px;">I understand that falsification will result in disciplinary action.</div>
         </div>
         
-        <!-- SIGNATURES -->
         <div class="signatures">
             <div class="signature-box">
                 <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
@@ -2648,13 +2121,11 @@
             </div>
         </div>
         
-        <!-- FOOTER -->
         <div class="footer">
             <p>This is an official document. For verification, contact the Academic Office.</p>
             <p><strong>NCHSM</strong> · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
         </div>
         
-        <!-- PRINT BUTTONS -->
         <div class="no-print">
             <button class="btn-print" onclick="window.print()">🖨️ Print Semester Report</button>
             <button class="btn-close" onclick="window.close()">Close</button>
@@ -2713,29 +2184,13 @@
                                 labels: {
                                     boxWidth: 10,
                                     padding: 6,
-                                    font: {
-                                        size: 8,
-                                        weight: '600'
-                                    }
+                                    font: { size: 8, weight: '600' }
                                 }
                             }
                         },
                         scales: {
-                            y: {
-                                min: 0,
-                                max: 4.5,
-                                ticks: {
-                                    stepSize: 0.5,
-                                    font: { size: 8 }
-                                }
-                            },
-                            x: {
-                                ticks: {
-                                    font: { size: 7 },
-                                    maxRotation: 30,
-                                    minRotation: 20
-                                }
-                            }
+                            y: { min: 0, max: 4.5, ticks: { stepSize: 0.5, font: { size: 8 } } },
+                            x: { ticks: { font: { size: 7 }, maxRotation: 30, minRotation: 20 } }
                         }
                     }
                 });
@@ -2744,20 +2199,21 @@
     <\/script>
 </body>
 </html>
-        `;
-        
-        const printWindow = window.open('', '_blank', 'width=750,height=1050');
-        if (printWindow) {
-            printWindow.document.write(fullHtml);
-            printWindow.document.close();
-            setTimeout(() => { printWindow.print(); }, 800);
-        } else {
-            alert('Please allow popups to download the semester report.');
+                `);
+                printWindow.document.close();
+                setTimeout(() => { printWindow.print(); }, 800);
+            } else {
+                alert('Please allow popups to download the semester report.');
+            }
+        } catch (error) {
+            loadingEl.remove();
+            alert('Error generating report: ' + error.message);
+            console.error('Report error:', error);
         }
     }
 
     // ============================================================
-    // 22. TAB SWITCHING
+    // 20. TAB SWITCHING
     // ============================================================
     function setupTabs() {
         const tabs = document.querySelectorAll('.report-tab');
@@ -2797,10 +2253,10 @@
     }
 
     // ============================================================
-    // 23. INITIALIZE
+    // 21. INITIALIZE
     // ============================================================
     function init() {
-        console.log('🔧 Initializing Academic Reports with Retake Support...');
+        console.log('🔧 Initializing Academic Reports with Hollow Star Indicator...');
         setupTabs();
         
         const subjectFilter = document.getElementById('my_marks_subject_filter');
@@ -2877,13 +2333,13 @@
             }
         }, 300);
         
-        console.log('✅ Academic Reports with Retake Support ready!');
-        console.log('⭐ Students will see ⭐R badges on retaken units');
-        console.log('📊 Retake history shown in My Performance tab');
+        console.log('✅ Academic Reports with Hollow Star Indicator ready!');
+        console.log('☆ Hollow Star: Subtle indicator for retaken units (My Performance only)');
+        console.log('📊 NO DEMO DATA - Only real data from database');
     }
 
     // ============================================================
-    // 24. EXPOSE FUNCTIONS
+    // 22. EXPOSE FUNCTIONS
     // ============================================================
     window.loadMyMarks = loadMyMarks;
     window.filterMyMarks = filterMyMarks;
@@ -2901,12 +2357,12 @@
     window.PROGRAM = PROGRAM;
     window.renderMyMarksCharts = renderMyMarksCharts;
     window.fetchStudentRetakeData = fetchStudentRetakeData;
-    window.getRetakeBadgeHtml = getRetakeBadgeHtml;
-    window.getRetakeHistoryHtml = getRetakeHistoryHtml;
-    window.renderMyMarksTableWithRetakes = renderMyMarksTableWithRetakes;
+    window.hasRetake = hasRetake;
+    window.getRetakeCount = getRetakeCount;
+    window.getHollowStarHtml = getHollowStarHtml;
 
     // ============================================================
-    // 25. AUTO-INIT
+    // 23. AUTO-INIT
     // ============================================================
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
@@ -2916,11 +2372,12 @@
 
     console.log('✅ Student Academic Reports Module loaded');
     console.log('📊 Available functions:');
-    console.log('   - loadMyMarks() - Load published marks with retake data');
+    console.log('   - loadMyMarks() - Load published marks with hollow star indicator');
     console.log('   - filterMyMarks() - Filter marks');
-    console.log('   - downloadReportCard() - Download semester report (with retakes)');
-    console.log('   - downloadTranscriptPDF() - Download full transcript (with retakes)');
+    console.log('   - downloadReportCard() - Download semester report');
+    console.log('   - downloadTranscriptPDF() - Download full transcript');
     console.log('   - renderMyMarksCharts() - Render Line Charts');
-    console.log('⭐ Retake Support: ⭐R1, ⭐R2 badges on retaken units');
+    console.log('☆ Hollow Star: Subtle indicator for retaken units (My Performance only)');
     console.log('📊 TVET Min Pass: 50% | Nursing Min Pass: 60%');
+    console.log('📊 NO DEMO DATA - Only real data from database');
 })();
