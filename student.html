@@ -3192,7 +3192,7 @@
 <!-- ==================== ACADEMIC REPORTS TAB ==================== -->
 <section id="academic-reports" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 
-    <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== HEADER ========== -->
     <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
         <div>
             <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
@@ -3200,7 +3200,6 @@
             </h2>
             <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
                 <i class="fas fa-graduation-cap"></i> View your academic performance, transcripts, and progress reports
-                <span style="display: inline-block; margin-left: 10px; background: #f59e0b; color: #92400e; font-size: 10px; padding: 2px 10px; border-radius: 12px; font-weight: 700;">⭐</span>
             </p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -3216,7 +3215,7 @@
         </div>
     </div>
 
-    <!-- ========== REPORT TABS - MATCHING SUPER ADMIN ========== -->
+    <!-- ========== REPORT TABS ========== -->
     <div style="background: white; border-radius: 12px; padding: 12px 16px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
             <span style="font-weight: 600; color: #475569; font-size: 13px; margin-right: 4px;">
@@ -3245,7 +3244,7 @@
     <!-- ============================================================ -->
     <div id="mymarks-report" class="report-content" style="display: block;">
         
-        <!-- Student Info Card - Matching Super Admin -->
+        <!-- Student Info Card -->
         <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 12px; padding: 20px 24px; margin-bottom: 20px; color: white; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
             <div>
                 <div style="font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px;">Student Name</div>
@@ -3267,13 +3266,9 @@
                 <div style="font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px;">Overall GPA</div>
                 <div style="font-size: 20px; font-weight: 700; color: #FDB913; margin-top: 2px;" id="my_marks_gpa">0.0</div>
             </div>
-            <div>
-                <div style="font-size: 10px; opacity: 0.7; text-transform: uppercase; letter-spacing: 0.5px;">⭐</div>
-                <div style="font-size: 20px; font-weight: 700; color: #f59e0b; margin-top: 2px;" id="my_marks_star_count">0</div>
-            </div>
         </div>
 
-        <!-- Filters - Matching Super Admin -->
+        <!-- Filters -->
         <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <select id="my_marks_subject_filter" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
                 <option value="all">All Units</option>
@@ -3311,7 +3306,7 @@
             </button>
         </div>
 
-        <!-- Marks Table with Star Indicators -->
+        <!-- Marks Table with Hollow Star Indicator -->
         <div style="background: white; border-radius: 12px; overflow: hidden; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
             <div style="overflow-x: auto;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
@@ -3323,12 +3318,11 @@
                             <th style="padding: 12px 16px; text-align: center; width: 60px;">Grade</th>
                             <th style="padding: 12px 16px; text-align: center; width: 70px;">Points</th>
                             <th style="padding: 12px 16px; text-align: center; width: 100px;">Status</th>
-                            <th style="padding: 12px 16px; text-align: center; width: 80px;">⭐</th>
                         </tr>
                     </thead>
                     <tbody id="my_marks_table_body">
                         <tr>
-                            <td colspan="7" style="text-align: center; padding: 40px;">
+                            <td colspan="6" style="text-align: center; padding: 40px;">
                                 <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
                                 <p style="margin: 0; color: #94a3b8;">Loading your marks...</p>
                             </td>
@@ -3337,9 +3331,6 @@
                 </table>
             </div>
         </div>
-
-        <!-- ⭐ Star Summary -->
-        <div id="my_marks_star_summary" style="display: none; margin-top: 15px;"></div>
 
         <!-- ============================================================ -->
         <!-- 📊 GRAPHS SECTION - AFTER MARKS TABLE                       -->
@@ -3492,14 +3483,14 @@
                 <div style="font-size: 28px; font-weight: 700; color: #d97706; margin-top: 4px;" id="total-credits-earned">0</div>
                 <div style="font-size: 12px; color: #94a3b8;">Attempted: 0</div>
             </div>
-            <div style="background: white; border-radius: 12px; padding: 20px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">⭐</div>
-                <div style="font-size: 28px; font-weight: 700; color: #f59e0b; margin-top: 4px;" id="semester-stars">0</div>
-                <div style="font-size: 12px; color: #94a3b8;">Units</div>
+            <div style="background: white; border-radius: 12px; padding: 20px; border-left: 4px solid #8B5CF6; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Class Rank</div>
+                <div style="font-size: 28px; font-weight: 700; color: #6d28d9; margin-top: 4px;" id="class-rank">-</div>
+                <div style="font-size: 12px; color: #94a3b8;">/ students</div>
             </div>
         </div>
 
-        <!-- Course Grades Table with Star Indicators -->
+        <!-- Course Grades Table -->
         <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
             <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb;">
                 <h4 style="margin: 0; color: #0A3D62;"><i class="fas fa-table-list"></i> Course Grades</h4>
@@ -3511,15 +3502,16 @@
                             <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course Code</th>
                             <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Course Name</th>
                             <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Credits</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Score</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">CAT 1</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">CAT 2</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Final</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Total</th>
                             <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Grade</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Points</th>
                             <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Status</th>
-                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">⭐</th>
                         </tr>
                     </thead>
                     <tbody id="grades-table-body">
-                        <tr><td colspan="8" style="padding: 40px; text-align: center; color: #94a3b8;"><div class="loading-spinner"></div> Loading grades...</td></tr>
+                        <tr><td colspan="9" style="padding: 40px; text-align: center; color: #94a3b8;"><div class="loading-spinner"></div> Loading grades...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -3599,11 +3591,10 @@
                             <th style="padding: 12px 16px; text-align: center;">Credits</th>
                             <th style="padding: 12px 16px; text-align: center;">Grade</th>
                             <th style="padding: 12px 16px; text-align: center;">Points</th>
-                            <th style="padding: 12px 16px; text-align: center;">⭐</th>
                         </tr>
                     </thead>
                     <tbody id="transcript-table-body">
-                        <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;"><div class="loading-spinner"></div> Loading transcript...</td></tr>
+                        <tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;"><div class="loading-spinner"></div> Loading transcript...</td></tr>
                     </tbody>
                 </table>
             </div>
@@ -3613,7 +3604,6 @@
             <div><span style="font-weight: 600;">Total Credits Attempted:</span> <span id="total-attempted">0</span></div>
             <div><span style="font-weight: 600;">Total Credits Earned:</span> <span id="total-earned">0</span></div>
             <div><span style="font-weight: 600;">Cumulative GPA:</span> <span id="transcript-cgpa">0.00</span></div>
-            <div><span style="font-weight: 600;">⭐:</span> <span id="transcript-stars">0</span></div>
         </div>
     </div>
 
@@ -3633,7 +3623,6 @@
                 <div>
                     <p style="margin: 0; font-size: 14px; color: #475569;">Overall Completion: <strong id="overall-progress-text">0%</strong></p>
                     <p style="margin: 4px 0 0 0; font-size: 14px; color: #475569;">Completed Courses: <strong id="completed-courses-progress">0</strong> / <span id="total-courses-progress">0</span></p>
-                    <p style="margin: 4px 0 0 0; font-size: 14px; color: #f59e0b;">⭐: <strong id="star-courses-progress">0</strong></p>
                 </div>
             </div>
 
@@ -3646,38 +3635,34 @@
 </section>
 
 <style>
-    /* Star Animation */
-    .star-icon {
+    /* Spinner animation */
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    .loading-spinner {
+        width: 30px;
+        height: 30px;
+        border: 3px solid #e5e7eb;
+        border-top-color: #4C1D95;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+        margin: 0 auto 10px;
+    }
+    
+    /* Hollow Star Indicator - Subtle */
+    .hollow-star {
         display: inline-block;
-        color: #f59e0b;
-        font-size: 14px;
+        font-size: 11px;
+        color: #94a3b8;
         margin-left: 4px;
-        animation: starPulse 2s ease-in-out infinite;
+        opacity: 0.5;
+        cursor: help;
+        font-family: Arial, sans-serif;
+        transition: opacity 0.2s ease;
     }
     
-    @keyframes starPulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.7; transform: scale(1.1); }
-    }
-    
-    .star-badge {
-        display: inline-block;
-        background: #f59e0b;
-        color: white;
-        font-size: 8px;
-        padding: 1px 8px;
-        border-radius: 10px;
-        font-weight: 700;
-        margin-left: 4px;
-    }
-    
-    .has-star {
-        border-left: 3px solid #f59e0b !important;
-    }
-    
-    .star-passed {
-        border-left: 3px solid #059669 !important;
-        background: #f0fdf4 !important;
+    .hollow-star:hover {
+        opacity: 1;
     }
 </style>
 
