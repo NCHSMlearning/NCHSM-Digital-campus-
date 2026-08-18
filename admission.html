@@ -1937,22 +1937,23 @@
                                         <div class="form-group">
                                             <label>KCSE Certificate / Results Slip <span class="required">*</span></label>
                                             <div class="file-upload" id="doc_kcse">
-                                                <div class="scanning-overlay" id="scanning_kcse" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.9);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10;">
-                                                    <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
-                                                    <span style="margin-top:0.5rem;font-size:0.85rem;font-weight:600;">🔍 Scanning document...</span>
-                                                </div>
-                                                <input type="file" id="doc_kcse_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleKCSEDocument(event)" />
-                                                <div class="icon"><i class="fas fa-file-pdf"></i></div>
-                                                <div class="text">Upload KCSE Certificate <strong>for auto-extraction</strong></div>
-                                                <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_kcse_filename">No file chosen</div>
-                                                <div class="doc-status" id="doc_kcse_status" style="font-size:0.75rem;color:var(--gray-400);margin-top:0.3rem;">Not uploaded</div>
-                                                <div class="ocr-status" id="ocr_kcse_status"></div>
-                                                <div class="ocr-result" id="ocr_kcse_result">
-                                                    <div class="ocr-title" style="font-weight:600;font-size:0.85rem;margin-bottom:0.3rem;"><i class="fas fa-robot"></i> Extracted Data</div>
-                                                    <div class="data-grid" id="kcse_extracted_data"></div>
-                                                    <div id="kcse_validation_result" style="margin-top:0.5rem;"></div>
-                                                </div>
-                                            </div>
+    <!-- SCANNING OVERLAY - HIDDEN BY DEFAULT -->
+    <div class="scanning-overlay" id="scanning_kcse" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.9);border-radius:var(--radius-sm);align-items:center;justify-content:center;flex-direction:column;z-index:10;">
+        <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary);"></i>
+        <span style="margin-top:0.5rem;font-size:0.85rem;font-weight:600;color:var(--primary);">🔍 Scanning document...</span>
+    </div>
+    <input type="file" id="doc_kcse_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleKCSEDocument(event)" />
+    <div class="icon"><i class="fas fa-file-pdf"></i></div>
+    <div class="text">Upload KCSE Certificate <strong>for auto-extraction</strong></div>
+    <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_kcse_filename">No file chosen</div>
+    <div class="doc-status" id="doc_kcse_status" style="font-size:0.75rem;color:var(--gray-400);margin-top:0.3rem;">Not uploaded</div>
+    <div class="ocr-status" id="ocr_kcse_status"></div>
+    <div class="ocr-result" id="ocr_kcse_result">
+        <div class="ocr-title" style="font-weight:600;font-size:0.85rem;margin-bottom:0.3rem;display:none;"><i class="fas fa-robot"></i> Extracted Data</div>
+        <div class="data-grid" id="kcse_extracted_data"></div>
+        <div id="kcse_validation_result" style="margin-top:0.5rem;"></div>
+    </div>
+</div>
                                         </div>
                                     </div>
                                 </div>
@@ -2018,22 +2019,23 @@
                                     <div class="col">
                                         <div class="form-group">
                                             <label>National ID / Birth Certificate <span class="required">*</span></label>
-                                            <div class="file-upload" id="doc_id">
-                                                <div class="scanning-overlay" id="scanning_id" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.9);border-radius:var(--radius-sm);display:flex;align-items:center;justify-content:center;flex-direction:column;z-index:10;">
-                                                    <i class="fas fa-spinner fa-spin fa-2x text-primary"></i>
-                                                    <span style="margin-top:0.5rem;font-size:0.85rem;font-weight:600;">🔍 Scanning ID...</span>
-                                                </div>
-                                                <input type="file" id="doc_id_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleIDDocument(event)" />
-                                                <div class="icon"><i class="fas fa-id-card"></i></div>
-                                                <div class="text">Upload National ID <strong>for auto-extraction</strong></div>
-                                                <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_id_filename">No file chosen</div>
-                                                <div class="doc-status" id="doc_id_status" style="font-size:0.75rem;color:var(--gray-400);margin-top:0.3rem;">Not uploaded</div>
-                                                <div class="ocr-status" id="ocr_id_status"></div>
-                                                <div class="ocr-result" id="ocr_id_result">
-                                                    <div class="ocr-title" style="font-weight:600;font-size:0.85rem;margin-bottom:0.3rem;"><i class="fas fa-robot"></i> Extracted Data</div>
-                                                    <div class="data-grid" id="id_extracted_data"></div>
-                                                </div>
-                                            </div>
+                                           <div class="file-upload" id="doc_id">
+    <!-- SCANNING OVERLAY - HIDDEN BY DEFAULT -->
+    <div class="scanning-overlay" id="scanning_id" style="display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(255,255,255,0.9);border-radius:var(--radius-sm);align-items:center;justify-content:center;flex-direction:column;z-index:10;">
+        <i class="fas fa-spinner fa-spin fa-2x" style="color:var(--primary);"></i>
+        <span style="margin-top:0.5rem;font-size:0.85rem;font-weight:600;color:var(--primary);">🔍 Scanning ID...</span>
+    </div>
+    <input type="file" id="doc_id_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleIDDocument(event)" />
+    <div class="icon"><i class="fas fa-id-card"></i></div>
+    <div class="text">Upload National ID <strong>for auto-extraction</strong></div>
+    <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_id_filename">No file chosen</div>
+    <div class="doc-status" id="doc_id_status" style="font-size:0.75rem;color:var(--gray-400);margin-top:0.3rem;">Not uploaded</div>
+    <div class="ocr-status" id="ocr_id_status"></div>
+    <div class="ocr-result" id="ocr_id_result">
+        <div class="ocr-title" style="font-weight:600;font-size:0.85rem;margin-bottom:0.3rem;display:none;"><i class="fas fa-robot"></i> Extracted Data</div>
+        <div class="data-grid" id="id_extracted_data"></div>
+    </div>
+</div>
                                         </div>
                                     </div>
                                     <div class="col">
@@ -3001,82 +3003,199 @@
             // Dummy function
         }
 
-        // ============================================================
-        // DUMMY OCR FUNCTIONS
-        // ============================================================
+       // ============================================================
+// OCR FUNCTIONS - FIXED
+// ============================================================
 
-        function handleKCSEDocument(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const statusEl = document.getElementById('doc_kcse_status');
-            if (statusEl) {
-                statusEl.textContent = '✅ ' + file.name;
-                statusEl.style.color = 'var(--success)';
-            }
-            
-            const card = document.getElementById('doc_kcse');
-            if (card) card.classList.add('uploaded');
-            
-            kcseValidated = true;
-            eligibilityPassed = true;
-            
-            const dataContainer = document.getElementById('kcse_extracted_data');
-            if (dataContainer) {
-                dataContainer.innerHTML = `
-                    <div><span class="label">Student Name:</span> <span class="value">John Doe</span></div>
-                    <div><span class="label">Index Number:</span> <span class="value">1234567890</span></div>
-                    <div><span class="label">Overall Grade:</span> <span class="value">B+</span></div>
-                `;
-            }
-            
-            const validationResult = document.getElementById('kcse_validation_result');
-            if (validationResult) {
-                validationResult.innerHTML = `<span class="validation-pass">✅ ELIGIBLE - You meet all requirements!</span>`;
-            }
-            
-            const ocrStatus = document.getElementById('ocr_kcse_status');
-            if (ocrStatus) {
-                ocrStatus.textContent = '✅ OCR Complete';
-                ocrStatus.className = 'ocr-status success';
-            }
-            
-            const resultBox = document.getElementById('ocr_kcse_result');
-            if (resultBox) resultBox.classList.add('show');
+function handleKCSEDocument(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // --- 1. SHOW SCANNING OVERLAY ---
+    const overlay = document.getElementById('scanning_kcse');
+    if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.style.pointerEvents = 'none'; // Prevent blocking clicks during scan
+    }
+
+    // --- 2. UPDATE FILE STATUS ---
+    const statusEl = document.getElementById('doc_kcse_status');
+    if (statusEl) {
+        statusEl.textContent = '⏳ Scanning... ' + file.name;
+        statusEl.style.color = 'var(--warning)';
+    }
+
+    const filenameEl = document.getElementById('doc_kcse_filename');
+    if (filenameEl) {
+        filenameEl.textContent = file.name;
+    }
+
+    const card = document.getElementById('doc_kcse');
+    if (card) card.classList.add('uploaded');
+
+    // --- 3. SIMULATE OCR PROCESSING (Replace with real Tesseract.js) ---
+    setTimeout(() => {
+        // HIDE SCANNING OVERLAY
+        if (overlay) {
+            overlay.style.display = 'none';
         }
 
-        function handleIDDocument(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-            
-            const statusEl = document.getElementById('doc_id_status');
-            if (statusEl) {
-                statusEl.textContent = '✅ ' + file.name;
-                statusEl.style.color = 'var(--success)';
-            }
-            
-            const card = document.getElementById('doc_id');
-            if (card) card.classList.add('uploaded');
-            
-            const dataContainer = document.getElementById('id_extracted_data');
-            if (dataContainer) {
-                dataContainer.innerHTML = `
-                    <div><span class="label">Name:</span> <span class="value">John Doe</span></div>
-                    <div><span class="label">ID Number:</span> <span class="value">12345678</span></div>
-                    <div><span class="label">DOB:</span> <span class="value">01/01/2000</span></div>
-                `;
-            }
-            
-            const ocrStatus = document.getElementById('ocr_id_status');
-            if (ocrStatus) {
-                ocrStatus.textContent = '✅ OCR Complete';
-                ocrStatus.className = 'ocr-status success';
-            }
-            
-            const resultBox = document.getElementById('ocr_id_result');
-            if (resultBox) resultBox.classList.add('show');
+        // UPDATE STATUS
+        if (statusEl) {
+            statusEl.textContent = '✅ ' + file.name;
+            statusEl.style.color = 'var(--success)';
         }
 
+        // SET VALIDATION FLAGS
+        kcseValidated = true;
+        eligibilityPassed = true;
+
+        // --- 4. SHOW EXTRACTED DATA ---
+        const dataContainer = document.getElementById('kcse_extracted_data');
+        if (dataContainer) {
+            dataContainer.innerHTML = `
+                <div><span class="label">Student Name:</span> <span class="value">John Doe</span></div>
+                <div><span class="label">Index Number:</span> <span class="value">1234567890</span></div>
+                <div><span class="label">Overall Grade:</span> <span class="value">B+</span></div>
+                <div><span class="label">Subjects:</span> <span class="value">Math B+, English B, Biology B</span></div>
+            `;
+        }
+
+        // --- 5. SHOW VALIDATION RESULT ---
+        const validationResult = document.getElementById('kcse_validation_result');
+        if (validationResult) {
+            validationResult.innerHTML = `
+                <span class="validation-pass" style="display:inline-block;background:#d1fae5;color:#0b8a5e;padding:0.3rem 1rem;border-radius:40px;font-weight:600;font-size:0.85rem;">
+                    ✅ ELIGIBLE - You meet all requirements!
+                </span>
+            `;
+        }
+
+        // --- 6. SHOW OCR STATUS ---
+        const ocrStatus = document.getElementById('ocr_kcse_status');
+        if (ocrStatus) {
+            ocrStatus.textContent = '✅ OCR Complete';
+            ocrStatus.className = 'ocr-status success';
+            ocrStatus.style.color = 'var(--success)';
+            ocrStatus.style.fontWeight = '600';
+        }
+
+        // --- 7. SHOW THE OCR RESULT BOX WITH TITLE ---
+        const resultBox = document.getElementById('ocr_kcse_result');
+        if (resultBox) {
+            resultBox.classList.add('show');
+            // Also show the title
+            const title = resultBox.querySelector('.ocr-title');
+            if (title) {
+                title.style.display = 'block';
+            }
+        }
+
+        // --- 8. UPDATE SUMMARY (optional) ---
+        updateSummary();
+
+        console.log('✅ KCSE OCR completed successfully!');
+
+    }, 2000); // Simulate 2-second scan
+}
+       function handleIDDocument(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // --- 1. SHOW SCANNING OVERLAY ---
+    const overlay = document.getElementById('scanning_id');
+    if (overlay) {
+        overlay.style.display = 'flex';
+        overlay.style.pointerEvents = 'none';
+    }
+
+    // --- 2. UPDATE FILE STATUS ---
+    const statusEl = document.getElementById('doc_id_status');
+    if (statusEl) {
+        statusEl.textContent = '⏳ Scanning... ' + file.name;
+        statusEl.style.color = 'var(--warning)';
+    }
+
+    const filenameEl = document.getElementById('doc_id_filename');
+    if (filenameEl) {
+        filenameEl.textContent = file.name;
+    }
+
+    const card = document.getElementById('doc_id');
+    if (card) card.classList.add('uploaded');
+
+    // --- 3. SIMULATE OCR PROCESSING ---
+    setTimeout(() => {
+        // HIDE SCANNING OVERLAY
+        if (overlay) {
+            overlay.style.display = 'none';
+        }
+
+        // UPDATE STATUS
+        if (statusEl) {
+            statusEl.textContent = '✅ ' + file.name;
+            statusEl.style.color = 'var(--success)';
+        }
+
+        // --- 4. SHOW EXTRACTED DATA ---
+        const dataContainer = document.getElementById('id_extracted_data');
+        if (dataContainer) {
+            dataContainer.innerHTML = `
+                <div><span class="label">Full Name:</span> <span class="value">John Mwangi</span></div>
+                <div><span class="label">ID Number:</span> <span class="value">12345678</span></div>
+                <div><span class="label">Date of Birth:</span> <span class="value">15/05/2000</span></div>
+                <div><span class="label">Gender:</span> <span class="value">Male</span></div>
+            `;
+        }
+
+        // --- 5. SHOW OCR STATUS ---
+        const ocrStatus = document.getElementById('ocr_id_status');
+        if (ocrStatus) {
+            ocrStatus.textContent = '✅ OCR Complete';
+            ocrStatus.className = 'ocr-status success';
+            ocrStatus.style.color = 'var(--success)';
+            ocrStatus.style.fontWeight = '600';
+        }
+
+        // --- 6. SHOW THE OCR RESULT BOX ---
+        const resultBox = document.getElementById('ocr_id_result');
+        if (resultBox) {
+            resultBox.classList.add('show');
+            const title = resultBox.querySelector('.ocr-title');
+            if (title) {
+                title.style.display = 'block';
+            }
+        }
+
+        console.log('✅ ID OCR completed successfully!');
+
+    }, 2000);
+}
+function handleDocUpload(event, docKey) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    uploadedDocs[docKey] = true;
+
+    // Update status
+    const statusEl = document.getElementById(`doc_${docKey}_status`);
+    if (statusEl) {
+        statusEl.textContent = '✅ ' + file.name;
+        statusEl.style.color = 'var(--success)';
+    }
+
+    // Update filename
+    const filenameEl = document.getElementById(`doc_${docKey}_filename`);
+    if (filenameEl) {
+        filenameEl.textContent = file.name;
+    }
+
+    // Add uploaded class
+    const card = document.getElementById(`doc_${docKey}`);
+    if (card) card.classList.add('uploaded');
+
+    console.log(`✅ ${docKey} uploaded successfully!`);
+}
         function handleDocUpload(event, docKey) {
             const file = event.target.files[0];
             if (!file) return;
