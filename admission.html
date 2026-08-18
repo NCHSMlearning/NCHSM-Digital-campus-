@@ -2907,7 +2907,23 @@
                 </div>
             </div>
         </div>
-
+<!-- ============================================================ -->
+<!-- VALIDATION MODAL -->
+<!-- ============================================================ -->
+<div class="validation-modal" id="validationModal" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);backdrop-filter:blur(4px);z-index:9999;align-items:center;justify-content:center;">
+    <div style="background:#fff;border-radius:16px;padding:2rem;max-width:400px;width:90%;box-shadow:0 12px 48px rgba(0,0,0,0.2);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;">
+            <h3 style="color:var(--danger);font-size:1.1rem;font-weight:700;">
+                <i class="fas fa-exclamation-circle"></i> Validation Error
+            </h3>
+            <button onclick="closeValidation()" style="background:none;border:none;font-size:1.5rem;cursor:pointer;color:var(--gray-400);">&times;</button>
+        </div>
+        <ul id="errorList" style="list-style:none;padding:0;margin:0;color:var(--gray-700);font-size:0.9rem;"></ul>
+        <button onclick="closeValidation()" class="btn btn-primary" style="width:100%;margin-top:1rem;justify-content:center;">
+            <i class="fas fa-check"></i> OK
+        </button>
+    </div>
+</div>
         <!-- ============================================================ -->
         <!-- PAGE: LOGIN (Redirect) -->
         <!-- ============================================================ -->
