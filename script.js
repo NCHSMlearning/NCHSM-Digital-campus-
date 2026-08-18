@@ -10757,6 +10757,9 @@ async function loadAttendance() {
                 latitude,
                 longitude,
                 target_name,
+                location_address,
+                location_name,
+                location_friendly_name,
                 program,
                 block_term,
                 ${USER_PROFILE_TABLE}:student_id(full_name, role, program, block)
@@ -10775,7 +10778,6 @@ async function loadAttendance() {
             todayBody.innerHTML = '<tr><td colspan="9" style="text-align: center; padding: 30px; color: #6b7280;">📭 No check-in records for today.</td></tr>';
             pastBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #6b7280;">📭 No past attendance history found.</td></tr>';
             
-            // ✅ FIXED: Use proper if checks, NOT optional chaining
             var todayCountEl = document.getElementById('todayCount');
             if (todayCountEl) {
                 todayCountEl.textContent = '0';
@@ -10824,7 +10826,15 @@ async function loadAttendance() {
             
             var dateTime = new Date(r.check_in_time).toLocaleString();
             var targetDetail = r.target_name || r.department || r.location_name || 'N/A Target';
-            var locationDisplay = r.location_friendly_name || r.location_name || r.department || 'N/A';
+            
+            // ✅ FIXED: Show location_address first, then target_name, then others
+            var locationDisplay = r.location_address || r.target_name || r.location_friendly_name || r.location_name || r.department || 'N/A';
+            
+            // ✅ Also show GPS coordinates if available
+            if (r.latitude && r.longitude && locationDisplay === 'N/A') {
+                locationDisplay = `${r.latitude}, ${r.longitude}`;
+            }
+            
             var geoStatus = (r.latitude && r.longitude) ? '✅ Geo-Logged' : '📝 Manual';
 
             // Apply filters
@@ -10877,7 +10887,6 @@ async function loadAttendance() {
             }
         }
 
-        // ✅ FIXED: Use proper if checks
         var todayCountEl = document.getElementById('todayCount');
         if (todayCountEl) {
             todayCountEl.textContent = todayCount;
