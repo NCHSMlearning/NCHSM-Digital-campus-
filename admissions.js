@@ -126,7 +126,7 @@ const programNames = {
 };
 
 // ============================================================
-// NAVIGATION FUNCTION (Page switching)
+// NAVIGATION FUNCTION (Page switching) - FIXED
 // ============================================================
 function navigateTo(page) {
     // Hide all pages
@@ -148,10 +148,10 @@ function navigateTo(page) {
     
     // If going to register page, check auth state
     if (page === 'register') {
-        // ✅ ADD THIS DELAY - ensures DOM is ready before checking auth
+        // ✅ INCREASED DELAY - ensures DOM is ready
         setTimeout(function() {
             checkAuthForRegisterPage();
-        }, 100);
+        }, 300);
     }
     
     // If going to login page, redirect to home with login tab active
@@ -167,6 +167,7 @@ function navigateTo(page) {
         });
     }
 }
+
 // ============================================================
 // CHECK AUTH FOR REGISTER PAGE (Apply Now) - FIXED
 // ============================================================
@@ -176,19 +177,33 @@ async function checkAuthForRegisterPage() {
     const supabaseClient = getSupabase();
     console.log('📡 Supabase client:', supabaseClient ? '✅ Available' : '❌ NULL');
     
-    // Get DOM elements with null checks
+    // ✅ FIXED: Use dashboardApp instead of admissionApp
     const authContainer = document.getElementById('authContainer2');
-    const admissionApp = document.getElementById('admissionApp');
+    const dashboardApp = document.getElementById('dashboardApp');
     
-    if (!authContainer || !admissionApp) {
+    console.log('📦 authContainer:', authContainer ? '✅ Found' : '❌ NOT FOUND');
+    console.log('📦 dashboardApp:', dashboardApp ? '✅ Found' : '❌ NOT FOUND');
+    
+    if (!authContainer || !dashboardApp) {
         console.error('❌ DOM elements not found!');
+        // Try to find them again with a delay
+        setTimeout(function() {
+            const retryAuth = document.getElementById('authContainer2');
+            const retryDash = document.getElementById('dashboardApp');
+            if (retryAuth && retryDash) {
+                console.log('✅ Retry found elements!');
+                checkAuthForRegisterPage();
+            } else {
+                console.error('❌ Elements still not found. Check HTML IDs.');
+            }
+        }, 500);
         return;
     }
     
     if (!supabaseClient) {
         console.warn('⚠️ No Supabase client - showing register form');
         authContainer.style.display = 'block';
-        admissionApp.style.display = 'none';
+        dashboardApp.style.display = 'none';
         switchAuthTab2('register2');
         return;
     }
@@ -200,17 +215,28 @@ async function checkAuthForRegisterPage() {
         console.log('👤 Session:', session ? '✅ Logged in' : '❌ Not logged in');
         
         if (session) {
-            // User is logged in - show the application form
-            console.log('📋 User is logged in - showing form');
+            // User is logged in - show the dashboard
+            console.log('📋 User is logged in - showing dashboard');
             currentUser = session.user;
             authContainer.style.display = 'none';
-            admissionApp.style.display = 'block';
+            dashboardApp.style.display = 'block';
+            
+            // Update dashboard header
+            const avatar = document.getElementById('dashAvatar');
+            const name = document.getElementById('dashName');
+            const email = document.getElementById('dashEmail');
+            const appNo = document.getElementById('dashAppNo');
+            
+            if (avatar) avatar.textContent = currentUser.email.charAt(0).toUpperCase();
+            if (name) name.textContent = 'Welcome, ' + (currentUser.user_metadata?.full_name || 'User') + '!';
+            if (email) email.textContent = currentUser.email;
+            
             await loadUserApplication(currentUser.id);
         } else {
             // User is NOT logged in - show the auth container with register tab active
             console.log('📝 User is NOT logged in - showing register form');
             authContainer.style.display = 'block';
-            admissionApp.style.display = 'none';
+            dashboardApp.style.display = 'none';
             // Default to register tab
             switchAuthTab2('register2');
         }
@@ -218,10 +244,11 @@ async function checkAuthForRegisterPage() {
         console.error('❌ Auth check error:', error);
         // Show register form on error
         authContainer.style.display = 'block';
-        admissionApp.style.display = 'none';
+        dashboardApp.style.display = 'none';
         switchAuthTab2('register2');
     }
 }
+
 // ============================================================
 // UPDATE PROGRAMS FUNCTION (Populate courses based on school)
 // ============================================================
