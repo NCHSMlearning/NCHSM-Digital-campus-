@@ -1,12 +1,6 @@
 // ============================================================
 // SUPER ADMIN TRANSCRIPT GENERATOR - COMPLETE FINAL VERSION
-// WITH EXACT GRADING STRUCTURE FROM MARKS ENTRY
-// TVET: A(80-100%)=4, B(65-79%)=3, C(50-64%)=2, E(0-49%)=0
-// NURSING: A(75-100%)=4.0, B(65-74%)=3.0, C(60-64%)=2.0, D(0-59%)=0.0
-// TVET: Certificate (1 Year - 3 Terms), Diploma (2 Years - 6 Terms)
-// KRCHN Nursing: Blocks (Introductory, Block 1-6, Final)
-// INCLUDES SCHOOL LOGO, CREDITS & POINTS
-// UNIT CODE FETCHED FROM DATABASE (MATCHES MARKS ENTRY)
+// WITH ALL FEATURES: LOGO, UNIT CODES, GRADING, RETAKE INDICATOR, ETC.
 // ============================================================
 
 console.log('📄 Super Admin Transcript Generator Loading... (FINAL VERSION)');
@@ -30,7 +24,6 @@ window.transcriptData = {
 
 let unitCodeCache = {};
 
-// Fetch unit codes from database - MATCHES MARKS ENTRY
 async function fetchUnitCodes() {
     try {
         const { data, error } = await window.sb
@@ -52,23 +45,19 @@ async function fetchUnitCodes() {
     }
 }
 
-// Get unit code - EXACTLY MATCHES MARKS ENTRY BEHAVIOR
 function getUnitCode(subjectName) {
     if (!subjectName) return 'N/A';
     
-    // First check cache (exact match)
     if (unitCodeCache[subjectName]) {
         return unitCodeCache[subjectName];
     }
     
-    // Try partial match (like marks entry does)
     for (const [name, code] of Object.entries(unitCodeCache)) {
         if (subjectName.includes(name) || name.includes(subjectName)) {
             return code;
         }
     }
     
-    // Fallback: generate from name (same as marks entry)
     const words = subjectName.split(' ');
     const skipWords = ['and', 'of', 'for', 'the', 'to', 'with', 'on', 'at', 'in', 'from', '&'];
     let code = words
@@ -87,7 +76,6 @@ function getUnitCode(subjectName) {
 // ============================================================
 
 const GRADE_CONFIG = {
-    // TVET Competency-Based Grading
     tvet: {
         grades: {
             'A': { min: 80, max: 100, points: 4.0, label: 'MASTERY', color: '#065f46', bgColor: '#d1fae5' },
@@ -99,7 +87,6 @@ const GRADE_CONFIG = {
         label: 'TVET Competency-Based',
         display: 'A(80-100%)=4, B(65-79%)=3, C(50-64%)=2, E(0-49%)=0'
     },
-    // Nursing Academic Grading
     nursing: {
         grades: {
             'A': { min: 75, max: 100, points: 4.0, label: 'DISTINCTION', color: '#065f46', bgColor: '#d1fae5' },
@@ -244,7 +231,6 @@ function escapeHtml(str) {
 window.loadTranscriptStudents = async function() {
     console.log('📄 Loading transcript students...');
     
-    // ✅ Fetch unit codes first (match marks entry)
     await fetchUnitCodes();
     
     const program = document.getElementById('transcript_program_select')?.value || 'all';
@@ -256,7 +242,6 @@ window.loadTranscriptStudents = async function() {
     const studentList = document.getElementById('transcriptStudentList');
     const previewContainer = document.getElementById('transcriptPreviewContainer');
     
-    // Show loading
     if (studentList) {
         studentList.innerHTML = `
             <div style="grid-column: 1 / -1; text-align: center; padding: 40px;">
@@ -1252,6 +1237,7 @@ console.log('📊 TVET: Certificate (3 Terms), Diploma (6 Terms)');
 console.log('📊 KRCHN: Blocks (Introductory, Block 1-6, Final)');
 console.log('📋 Unit codes fetched from database (matches Marks Entry)');
 console.log('📋 Features:');
+console.log('   - School Logo');
 console.log('   - GPA for the year / Cumulative GPA');
 console.log('   - Credits Covered / Total Credits');
 console.log('   - Grading Scale table');
@@ -1259,3 +1245,6 @@ console.log('   - Student & Registrar signatures');
 console.log('   - Print / PDF export');
 console.log('   - CSV export for bulk transcripts');
 console.log('   - ☆ Subtle retake indicator');
+console.log('   - Block/Term headers with summaries');
+console.log('   - TVET + Nursing support');
+console.log('   - All official format');
