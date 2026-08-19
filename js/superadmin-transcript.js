@@ -1,9 +1,8 @@
 // ============================================================
 // SUPER ADMIN TRANSCRIPT GENERATOR - COMPLETE
-// WITH OFFICIAL GRADE MAPPING FROM MARKS ENTRY SYSTEM
+// OFFICIAL TRANSCRIPT FORMAT - MATCHES KENYA METHODIST UNIVERSITY STYLE
 // TVET: Certificate (1 Year - 3 Terms), Diploma (2 Years - 6 Terms)
 // KRCHN Nursing: Blocks (Introductory, Block 1-6, Final)
-// PROFESSIONAL TRANSCRIPT DOCUMENT
 // ============================================================
 
 console.log('📄 Super Admin Transcript Generator Loading...');
@@ -41,11 +40,13 @@ const GRADE_CONFIG = {
     nursing: {
         grades: {
             'A': { min: 75, max: 100, points: 4.0, label: 'DISTINCTION', color: '#065f46', bgColor: '#d1fae5' },
-            'B': { min: 65, max: 74, points: 3.0, label: 'CREDIT', color: '#1e40af', bgColor: '#dbeafe' },
-            'C': { min: 60, max: 64, points: 2.0, label: 'PASS', color: '#92400e', bgColor: '#fef3c7' },
-            'D': { min: 0, max: 59, points: 0.0, label: 'FAIL', color: '#991b1b', bgColor: '#fee2e2' }
+            'B+': { min: 69, max: 74, points: 3.5, label: 'CREDIT', color: '#1e40af', bgColor: '#dbeafe' },
+            'B': { min: 60, max: 68, points: 3.0, label: 'CREDIT', color: '#1e40af', bgColor: '#dbeafe' },
+            'C+': { min: 54, max: 59, points: 2.5, label: 'PASS', color: '#92400e', bgColor: '#fef3c7' },
+            'C': { min: 50, max: 53, points: 2.0, label: 'PASS', color: '#92400e', bgColor: '#fef3c7' },
+            'D': { min: 0, max: 49, points: 0.0, label: 'FAIL', color: '#991b1b', bgColor: '#fee2e2' }
         },
-        passMark: 60,
+        passMark: 50,
         label: 'Nursing Academic'
     },
     creditHours: 3
@@ -109,33 +110,31 @@ function calculateOfficialGrade(score, programCode) {
     const grades = config.grades;
     
     if (score === null || score === undefined || score === 0) {
-        const defaultGrade = programCode === 'KRCHN' ? 'D' : 'E';
         return {
-            grade: defaultGrade,
+            grade: 'D',
             points: 0.0,
-            label: config === GRADE_CONFIG.tvet ? 'NOT YET COMPETENT' : 'FAIL',
+            label: 'FAIL',
             color: '#991b1b',
             bgColor: '#fee2e2'
         };
     }
     
-    for (const [grade, config] of Object.entries(grades)) {
-        if (score >= config.min && score <= config.max) {
+    for (const [grade, gConfig] of Object.entries(grades)) {
+        if (score >= gConfig.min && score <= gConfig.max) {
             return {
                 grade: grade,
-                points: config.points,
-                label: config.label,
-                color: config.color,
-                bgColor: config.bgColor
+                points: gConfig.points,
+                label: gConfig.label,
+                color: gConfig.color,
+                bgColor: gConfig.bgColor
             };
         }
     }
     
-    const defaultGrade = programCode === 'KRCHN' ? 'D' : 'E';
     return {
-        grade: defaultGrade,
+        grade: 'D',
         points: 0.0,
-        label: config === GRADE_CONFIG.tvet ? 'NOT YET COMPETENT' : 'FAIL',
+        label: 'FAIL',
         color: '#991b1b',
         bgColor: '#fee2e2'
     };
@@ -172,6 +171,64 @@ function escapeHtml(str) {
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
+}
+
+function getUnitCode(subjectName) {
+    if (!subjectName) return 'N/A';
+    
+    // Common unit codes mapping
+    const unitCodes = {
+        'Fundamentals of Nursing': 'NUR101',
+        'Anatomy and Physiology': 'NUR102',
+        'Pharmacology Basics': 'NUR103',
+        'Medical-Surgical Nursing I': 'NUR104',
+        'Community Health Nursing': 'NUR105',
+        'Maternal & Child Health': 'NUR106',
+        'Medical Surgical Nursing II': 'NCHSGN 201',
+        'Medical Surgical Nursing III': 'NCHSGN 209',
+        'Midwifery I': 'NCHSMW 110',
+        'Midwifery II': 'NCHSMW 123',
+        'Community Health I': 'NCHSCH 125',
+        'Introduction to Community Health': 'NCHSCH 101',
+        'Environmental and Occupational Health': 'NCHSEN 101',
+        'Information Communication Technology': 'NCHSIC 101',
+        'Microbiology, Parasitology and Immunology': 'NCHSMP 101',
+        'Community Diagnosis': 'NCHSCD 101',
+        'Fundamentals of Entrepreneurship': 'BUSI 221',
+        'Educational Psychology': 'EDUC 114',
+        'Clinical Nutrition and Dietetics': 'HSC 104',
+        'Parasitology': 'HSC 201',
+        'Pathophysiology': 'HSC 202',
+        'Community Health Nursing I': 'NRG 101',
+        'Community Health Nursing II & III (Clinical)': 'NRG 113',
+        'Fundamentals of Nursing (Clinical)': 'NRG 123',
+        'Community Health Nursing IV': 'NRG 214',
+        'Adult Nursing I & II (Clinical)': 'NRG 227',
+        'Pathology': 'NRG 233',
+        'Reproductive Health Nursing I': 'NRG 241',
+        'Introduction to Sociology': 'HST 131',
+        'Introduction to Psychology': 'HST 134'
+    };
+    
+    // Check exact match or partial match
+    for (const [name, code] of Object.entries(unitCodes)) {
+        if (subjectName.includes(name) || name.includes(subjectName)) {
+            return code;
+        }
+    }
+    
+    // Generate code from name
+    const words = subjectName.split(' ');
+    const skipWords = ['and', 'of', 'for', 'the', 'to', 'with', 'on', 'at', 'in', 'from', '&'];
+    let code = words
+        .filter(w => !skipWords.includes(w.toLowerCase()))
+        .map(w => w[0].toUpperCase())
+        .join('');
+    
+    if (code.length > 6) code = code.substring(0, 6);
+    if (code.length < 3) code = subjectName.substring(0, 6).toUpperCase();
+    
+    return code || 'N/A';
 }
 
 // ============================================================
@@ -685,7 +742,7 @@ window.generateSelectedTranscripts = async function() {
 };
 
 // ============================================================
-// SHOW TRANSCRIPT PREVIEW - PROFESSIONAL OFFICIAL VERSION
+// SHOW TRANSCRIPT PREVIEW - OFFICIAL FORMAT
 // ============================================================
 
 window.showTranscriptPreview = function(student, marks, year) {
@@ -697,10 +754,9 @@ window.showTranscriptPreview = function(student, marks, year) {
     const program = student.program || 'KRCHN';
     const isTVET = isTVETProgram(program);
     const programType = isTVET ? 'TVET' : 'Nursing';
+    const blockLabel = isTVET ? 'Term' : 'Block';
     const config = getGradingConfig(program);
     const passMark = config.passMark;
-    const blockLabel = isTVET ? 'Term' : 'Block';
-    const programLabel = isTVET ? 'Competency-Based Education & Training (CBET)' : 'Academic Program';
     
     // Group marks by block/term
     const groupedMarks = {};
@@ -711,23 +767,26 @@ window.showTranscriptPreview = function(student, marks, year) {
     });
     const blockNames = Object.keys(groupedMarks).sort();
     
-    // Build marks table
+    // Build marks table - OFFICIAL FORMAT (Code, Title, Credit, Grade)
     let marksHtml = '';
     let totalScore = 0;
     let scoredCount = 0;
     let totalPoints = 0;
     let totalCredits = 0;
+    let totalUnits = marks.length;
+    let passedUnits = 0;
+    let retakeUnits = 0;
     
     blockNames.forEach((block) => {
         const blockMarks = groupedMarks[block];
         const blockTotal = blockMarks.length;
         let blockPassed = 0;
         
-        // Block header
+        // Block/Term Header
         marksHtml += `
-            <tr style="background: #0A3D62; color: white;">
-                <td colspan="11" style="padding: 6px 12px; text-align: center; font-size: 11px; font-weight: 700;">
-                    📁 ${escapeHtml(block)} (${blockTotal} units)
+            <tr style="background: #f0f4f8; border-bottom: 2px solid #0A3D62;">
+                <td colspan="4" style="padding: 8px 12px; font-weight: 700; color: #0A3D62; font-size: 12px; letter-spacing: 0.5px;">
+                    ${escapeHtml(block)}
                 </td>
             </tr>
         `;
@@ -736,40 +795,38 @@ window.showTranscriptPreview = function(student, marks, year) {
             const score = m.final_score || 0;
             const gradeInfo = calculateOfficialGrade(score, program);
             const isPassing = score >= passMark;
-            const statusLabel = getStatusLabel(score, program);
+            const unitCode = m.unit_code || getUnitCode(m.subject_name) || 'N/A';
+            
+            // Check for retake
+            const hasRetake = m.retake_count > 0 || false;
+            if (hasRetake) retakeUnits++;
+            if (isPassing) blockPassed++;
             
             if (score > 0) {
                 totalScore += score;
                 scoredCount++;
                 totalPoints += gradeInfo.points * GRADE_CONFIG.creditHours;
                 totalCredits += GRADE_CONFIG.creditHours;
-                if (isPassing) blockPassed++;
+                if (isPassing) passedUnits++;
             }
             
-            const rowBg = index % 2 === 0 ? '#f8fafc' : 'transparent';
+            // Star for retake (subtle)
+            const starIndicator = hasRetake ? `<span style="color: #94a3b8; font-size: 9px; margin-left: 4px; opacity: 0.5;">☆</span>` : '';
             
             marksHtml += `
-                <tr style="border-bottom: 1px solid #e5e7eb; background: ${rowBg};">
-                    <td style="padding: 6px 10px; text-align: center; font-size: 11px; color: #94a3b8;">${index + 1}</td>
-                    <td style="padding: 6px 10px; font-weight: 500; font-size: 12px;">${escapeHtml(m.subject_name || 'N/A')}</td>
-                    <td style="padding: 6px 10px; text-align: center; font-size: 11px;">${escapeHtml(m.unit_code || m.unit_code || 'N/A')}</td>
-                    <td style="padding: 6px 10px; text-align: center; font-size: 11px;">${m.cat1_score || '-'}</td>
-                    <td style="padding: 6px 10px; text-align: center; font-size: 11px;">${m.cat2_score || '-'}</td>
-                    <td style="padding: 6px 10px; text-align: center; font-size: 11px;">${m.exam_score || '-'}</td>
-                    <td style="padding: 6px 10px; text-align: center; font-weight: 700; font-size: 13px; color: ${isPassing ? '#059669' : '#dc2626'};">${score || '-'}</td>
-                    <td style="padding: 6px 10px; text-align: center;">
-                        <span style="background: ${gradeInfo.bgColor}; color: ${gradeInfo.color}; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 12px;">
-                            ${gradeInfo.grade}
-                        </span>
+                <tr style="border-bottom: 1px solid #e5e7eb;">
+                    <td style="padding: 6px 12px; font-size: 11px; font-weight: 500; color: #1e293b;">
+                        ${escapeHtml(unitCode)}
                     </td>
-                    <td style="padding: 6px 10px; text-align: center; font-weight: 600; font-size: 11px; color: ${gradeInfo.color};">${gradeInfo.points.toFixed(1)}</td>
-                    <td style="padding: 6px 10px; text-align: center; font-size: 10px;">
-                        <span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; color: ${isPassing ? '#065f46' : '#991b1b'}; padding: 1px 8px; border-radius: 8px; font-weight: 600;">
-                            ${statusLabel}
-                        </span>
+                    <td style="padding: 6px 12px; font-size: 11px; color: #1e293b;">
+                        ${escapeHtml(m.subject_name || 'N/A')}
+                        ${starIndicator}
                     </td>
-                    <td style="padding: 6px 10px; text-align: center; font-size: 10px;">
-                        ${isPassing ? '✅' : '❌'}
+                    <td style="padding: 6px 12px; text-align: center; font-size: 11px; color: #1e293b;">
+                        ${GRADE_CONFIG.creditHours}
+                    </td>
+                    <td style="padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 700; color: ${gradeInfo.color};">
+                        ${gradeInfo.grade}
                     </td>
                 </tr>
             `;
@@ -778,12 +835,9 @@ window.showTranscriptPreview = function(student, marks, year) {
         // Block summary
         const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
         marksHtml += `
-            <tr style="background: #f1f5f9; border-top: 2px solid #0A3D62;">
-                <td colspan="6" style="padding: 4px 10px; font-size: 10px; color: #64748b;">
+            <tr style="background: #f8fafc; border-bottom: 2px solid #0A3D62;">
+                <td colspan="4" style="padding: 4px 12px; font-size: 9px; color: #64748b; text-align: right;">
                     <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%)
-                </td>
-                <td colspan="5" style="padding: 4px 10px; font-size: 10px; color: #64748b; text-align: right;">
-                    GPA: <strong>${calculateGPA(blockMarks, program).toFixed(2)}</strong>
                 </td>
             </tr>
         `;
@@ -792,28 +846,9 @@ window.showTranscriptPreview = function(student, marks, year) {
     // Calculate overall stats
     const overallAvg = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
     const overallGradeInfo = calculateOfficialGrade(overallAvg, program);
-    const overallStatus = getStatusLabel(overallAvg, program);
-    const isOverallPassing = overallAvg >= passMark;
     const gpa = totalCredits > 0 ? Math.round((totalPoints / totalCredits) * 100) / 100 : 0;
-    const totalUnits = marks.length;
-    const passedUnits = marks.filter(m => (m.final_score || 0) >= passMark).length;
-    const failedUnits = marks.filter(m => (m.final_score || 0) > 0 && (m.final_score || 0) < passMark).length;
-    const pendingUnits = marks.filter(m => (m.final_score || 0) === 0).length;
-    
-    // Grading scale table
-    let gradingScaleHtml = '';
-    const grades = config.grades;
-    for (const [grade, gConfig] of Object.entries(grades)) {
-        const range = `${gConfig.min}-${gConfig.max === 100 ? '100' : gConfig.max}`;
-        gradingScaleHtml += `
-            <tr>
-                <td style="padding: 3px 8px; text-align: center;"><span style="background: ${gConfig.color}; color: white; padding: 1px 10px; border-radius: 4px; font-weight: 700; font-size: 10px;">${grade}</span></td>
-                <td style="padding: 3px 8px; text-align: center; font-size: 10px;">${range}%</td>
-                <td style="padding: 3px 8px; text-align: center; font-size: 10px;">${gConfig.points.toFixed(1)}</td>
-                <td style="padding: 3px 8px; text-align: center; font-size: 10px;">${gConfig.label}</td>
-            </tr>
-        `;
-    }
+    const failedUnits = totalUnits - passedUnits - (totalUnits - scoredCount);
+    const pendingUnits = totalUnits - scoredCount;
     
     const now = new Date().toLocaleDateString('en-KE', {
         timeZone: 'Africa/Nairobi',
@@ -823,149 +858,146 @@ window.showTranscriptPreview = function(student, marks, year) {
         year: 'numeric'
     });
     
-    // Build full professional transcript HTML
+    // Build grading scale table
+    let gradingScaleHtml = '';
+    const grades = config.grades;
+    for (const [grade, gConfig] of Object.entries(grades)) {
+        const range = `${gConfig.min}-${gConfig.max === 100 ? '100' : gConfig.max}`;
+        gradingScaleHtml += `
+            <tr>
+                <td style="padding: 2px 8px; text-align: center; font-weight: 700; color: ${gConfig.color};">${grade}</td>
+                <td style="padding: 2px 8px; text-align: center;">${range}%</td>
+                <td style="padding: 2px 8px; text-align: center;">${gConfig.points.toFixed(1)}</td>
+            </tr>
+        `;
+    }
+    
+    // Build full official transcript HTML
     const html = `
-        <div id="transcriptDocument" style="background: white; padding: 30px; border: 2px solid #0A3D62; border-radius: 12px; box-shadow: 0 4px 20px rgba(10,61,98,0.15); font-family: 'Times New Roman', Times, serif;">
+        <div id="transcriptDocument" style="background: white; padding: 30px 35px; border: 2px solid #0A3D62; border-radius: 8px; box-shadow: 0 4px 20px rgba(10,61,98,0.12); font-family: 'Times New Roman', Times, serif; max-width: 850px; margin: 0 auto;">
             
-            <!-- WATERMARK -->
-            <div style="position: relative; overflow: hidden;">
-                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) rotate(-30deg); font-size: 80px; color: rgba(10,61,98,0.03); font-weight: 700; white-space: nowrap; pointer-events: none; z-index: 0;">NCHSM</div>
-                
-                <!-- HEADER -->
-                <div style="text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 15px; margin-bottom: 20px; position: relative; z-index: 1;">
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 5px;">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="max-height: 55px; width: auto;" onerror="this.style.display='none'">
-                        <div>
-                            <h1 style="color: #0A3D62; margin: 0; font-size: 20px; font-weight: 700; letter-spacing: 1px;">NAKURU COLLEGE OF HEALTH SCIENCES</h1>
-                            <p style="color: #64748b; margin: 0; font-size: 11px; font-style: italic;">AND MANAGEMENT (NCHSM)</p>
-                            <p style="color: #0A3D62; margin: 2px 0 0 0; font-size: 11px; font-weight: 600;">"Excellence in Health Sciences Education"</p>
-                        </div>
-                    </div>
-                    <h2 style="color: #0A3D62; margin: 8px 0 0 0; font-size: 16px; letter-spacing: 3px; font-weight: 700;">ACADEMIC TRANSCRIPT</h2>
-                    <p style="color: #94a3b8; margin: 2px 0 0 0; font-size: 10px;">Generated: ${now}</p>
-                </div>
-                
-                <!-- STUDENT INFO -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px 20px; margin-bottom: 16px; padding: 12px 16px; background: #f8fafc; border-radius: 6px; border: 1px solid #e5e7eb; position: relative; z-index: 1;">
-                    <div><span style="font-weight: 600; color: #475569; font-size: 10px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Student Name</span><span style="font-weight: 700; color: #0A3D62; font-size: 14px;">${escapeHtml(student.full_name || 'Unknown')}</span></div>
-                    <div><span style="font-weight: 600; color: #475569; font-size: 10px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Admission Number</span><span style="font-weight: 600; color: #0A3D62; font-size: 14px;">${escapeHtml(student.student_id || 'N/A')}</span></div>
-                    <div><span style="font-weight: 600; color: #475569; font-size: 10px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Program</span><span style="font-weight: 600; color: #0A3D62; font-size: 14px;">${escapeHtml(student.program || 'N/A')}</span></div>
-                    <div><span style="font-weight: 600; color: #475569; font-size: 10px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Program Type</span><span style="font-weight: 600; color: #0A3D62; font-size: 14px;">${programType} - ${programLabel}</span></div>
-                    <div><span style="font-weight: 600; color: #475569; font-size: 10px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">${blockLabel}</span><span style="font-weight: 600; color: #0A3D62; font-size: 14px;">${escapeHtml(student.block || 'N/A')}</span></div>
-                    <div><span style="font-weight: 600; color: #475569; font-size: 10px; display: block; text-transform: uppercase; letter-spacing: 0.5px;">Academic Year</span><span style="font-weight: 600; color: #0A3D62; font-size: 14px;">${escapeHtml(year)}</span></div>
-                </div>
-                
-                <!-- ACADEMIC SUMMARY -->
-                <div style="display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; margin-bottom: 16px; padding: 10px 12px; background: #0A3D62; border-radius: 6px; position: relative; z-index: 1;">
-                    <div style="text-align: center;">
-                        <div style="font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">GPA</div>
-                        <div style="font-size: 18px; font-weight: 700; color: #FDB913;">${gpa.toFixed(2)}</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Average</div>
-                        <div style="font-size: 18px; font-weight: 700; color: ${isOverallPassing ? '#10b981' : '#dc2626'};">${overallAvg || '-'}%</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Grade</div>
-                        <div style="font-size: 18px; font-weight: 700; color: ${overallGradeInfo.color};">${overallGradeInfo.grade}</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Status</div>
-                        <div style="font-size: 14px; font-weight: 700; color: ${isOverallPassing ? '#10b981' : '#dc2626'};">${overallStatus}</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Units</div>
-                        <div style="font-size: 18px; font-weight: 700; color: white;">${totalUnits}</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 9px; color: rgba(255,255,255,0.7); text-transform: uppercase; letter-spacing: 0.5px;">Pass/Fail</div>
-                        <div style="font-size: 14px; font-weight: 700; color: white;">${passedUnits}/${failedUnits}</div>
-                        <div style="font-size: 8px; color: rgba(255,255,255,0.5);">${pendingUnits} pending</div>
-                    </div>
-                </div>
-                
-                <!-- MARKS TABLE -->
-                <div style="overflow-x: auto; margin-bottom: 16px; position: relative; z-index: 1;">
-                    <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-                        <thead>
-                            <tr style="background: #0A3D62; color: white;">
-                                <th style="padding: 6px 10px; text-align: center; width: 30px;">#</th>
-                                <th style="padding: 6px 10px; text-align: left; min-width: 120px;">Unit Name</th>
-                                <th style="padding: 6px 10px; text-align: center; min-width: 60px;">Code</th>
-                                <th style="padding: 6px 10px; text-align: center; width: 40px;">CAT1</th>
-                                <th style="padding: 6px 10px; text-align: center; width: 40px;">CAT2</th>
-                                <th style="padding: 6px 10px; text-align: center; width: 40px;">Exam</th>
-                                <th style="padding: 6px 10px; text-align: center; width: 45px;">Total</th>
-                                <th style="padding: 6px 10px; text-align: center; width: 40px;">Grade</th>
-                                <th style="padding: 6px 10px; text-align: center; width: 40px;">Points</th>
-                                <th style="padding: 6px 10px; text-align: center; min-width: 60px;">Status</th>
-                                <th style="padding: 6px 10px; text-align: center; width: 30px;">Pass</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${marksHtml}
-                        </tbody>
-                    </table>
-                </div>
-                
-                <!-- GRADING SCALE -->
-                <div style="margin-bottom: 16px; padding: 10px 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #e5e7eb; position: relative; z-index: 1;">
-                    <div style="font-weight: 700; color: #0A3D62; font-size: 11px; text-align: center; margin-bottom: 6px;">📊 Grading Scale (${programType})</div>
-                    <table style="width: 100%; border-collapse: collapse; font-size: 9px;">
-                        <thead>
-                            <tr style="background: #e5e7eb;">
-                                <th style="padding: 2px 8px; text-align: center;">Grade</th>
-                                <th style="padding: 2px 8px; text-align: center;">Range</th>
-                                <th style="padding: 2px 8px; text-align: center;">Points</th>
-                                <th style="padding: 2px 8px; text-align: center;">Description</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${gradingScaleHtml}
-                            <tr>
-                                <td colspan="4" style="padding: 4px 8px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 9px;">
-                                    Min Pass: ${passMark}% · Credit Hours: ${GRADE_CONFIG.creditHours} per unit
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-                
-                <!-- DECLARATION -->
-                <div style="margin-bottom: 12px; padding: 10px 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #e5e7eb; position: relative; z-index: 1;">
-                    <div style="display: flex; align-items: center; gap: 8px;">
-                        <span style="font-weight: 700; color: #0A3D62; font-size: 10px;">📋 DECLARATION:</span>
-                        <span style="font-size: 10px; color: #475569;">I confirm that the grades presented are accurate and reflect my academic performance.</span>
-                    </div>
-                    <div style="font-size: 8px; color: #94a3b8; margin-top: 2px; text-align: center;">I understand that falsification will result in disciplinary action.</div>
-                </div>
-                
-                <!-- SIGNATURES -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-bottom: 12px; padding-top: 10px; border-top: 1px solid #e5e7eb; position: relative; z-index: 1;">
-                    <div style="text-align: center;">
-                        <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">${escapeHtml(student.full_name || 'Student')}</div>
-                        <div style="border-bottom: 2px solid #1e293b; width: 140px; margin: 6px auto 2px auto;"></div>
-                        <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Student Signature</div>
-                        <div style="font-size: 8px; color: #94a3b8;">Date: ${now}</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-weight: 600; font-size: 12px; color: #94a3b8;">_________________________</div>
-                        <div style="border-bottom: 2px solid #1e293b; width: 140px; margin: 6px auto 2px auto;"></div>
-                        <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Registrar / Head of Department</div>
-                        <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
-                    </div>
-                </div>
-                
-                <!-- FOOTER -->
-                <div style="text-align: center; padding-top: 10px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #94a3b8; position: relative; z-index: 1;">
-                    <p>This is an official document. For verification, contact the Academic Office.</p>
-                    <p><strong style="color: #0A3D62;">NCHSM</strong> · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
-                    <p style="font-size: 7px; color: #cbd5e1;">Document ID: ${Date.now().toString(36).toUpperCase()} · Generated by NCHSM Transcript System</p>
+            <!-- HEADER -->
+            <div style="text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 14px; margin-bottom: 18px;">
+                <div style="font-size: 18px; font-weight: 700; color: #0A3D62; letter-spacing: 1px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+                <div style="font-size: 11px; color: #64748b; font-style: italic; margin-top: -2px;">AND MANAGEMENT (NCHSM)</div>
+                <div style="font-size: 11px; color: #64748b;">P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743 · E-Mail: admin@nchsm.co.ke · Website: www.nchsm.co.ke</div>
+                <div style="font-size: 16px; font-weight: 700; color: #0A3D62; letter-spacing: 2px; margin-top: 6px;">OFFICIAL ACADEMIC TRANSCRIPT</div>
+            </div>
+            
+            <!-- STUDENT INFO -->
+            <div style="margin-bottom: 16px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 30px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
+                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">NAME</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.full_name || 'Unknown')}</span></div>
+                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">ADMISSION NUMBER</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.student_id || 'N/A')}</span></div>
+                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">PROGRAMME</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.program || 'N/A')}</span></div>
+                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">YEAR OF STUDY</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.year_of_study || student.block || 'N/A')}</span></div>
                 </div>
             </div>
             
+            <!-- MARKS TABLE -->
+            <div style="overflow-x: auto; margin-bottom: 16px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #e5e7eb;">
+                    <thead>
+                        <tr style="background: #0A3D62; color: white;">
+                            <th style="padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62;">CODE</th>
+                            <th style="padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62;">COURSE TITLE</th>
+                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">CREDIT</th>
+                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 70px;">GRADE</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${marksHtml}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- GPA SUMMARY -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; padding: 10px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">GPA FOR THE YEAR</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${gpa.toFixed(2)}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">CUMULATIVE GPA</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${gpa.toFixed(2)}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">CREDITS COVERED</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalCredits}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL CREDITS</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalCredits}</div>
+                </div>
+            </div>
+            
+            <!-- GRADING SCALE -->
+            <div style="margin-bottom: 14px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <div style="font-weight: 600; color: #0A3D62; font-size: 10px; text-align: center; margin-bottom: 4px;">GRADING SCALE</div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px; border: 1px solid #e5e7eb;">
+                    <thead>
+                        <tr style="background: #e5e7eb;">
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #d1d5db;">GRADE</th>
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #d1d5db;">RANGE</th>
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #d1d5db;">POINTS</th>
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #d1d5db;">REMARKS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${Object.entries(grades).map(([grade, gConfig]) => `
+                            <tr>
+                                <td style="padding: 2px 8px; text-align: center; font-weight: 700; color: ${gConfig.color}; border: 1px solid #d1d5db;">${grade}</td>
+                                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.min}-${gConfig.max === 100 ? '100' : gConfig.max}%</td>
+                                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.points.toFixed(1)}</td>
+                                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.label}</td>
+                            </tr>
+                        `).join('')}
+                        <tr>
+                            <td colspan="4" style="padding: 3px 8px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 8px; border-top: 2px solid #0A3D62;">
+                                Min Pass: ${passMark}% · Credit Hours: ${GRADE_CONFIG.creditHours} per unit
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- STATUS -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">STATUS</div>
+                    <div style="font-size: 14px; font-weight: 700; color: ${passedUnits === totalUnits ? '#059669' : '#f59e0b'};">${passedUnits === totalUnits ? '✅ COMPLETE' : 'IN PROGRESS'}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">⭐ RETAKE UNITS</div>
+                    <div style="font-size: 14px; font-weight: 700; color: ${retakeUnits > 0 ? '#f59e0b' : '#94a3b8'};">${retakeUnits > 0 ? retakeUnits : 'None'}</div>
+                </div>
+            </div>
+            
+            <!-- SIGNATURES -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                <div style="text-align: center;">
+                    <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">${escapeHtml(student.full_name || 'Student')}</div>
+                    <div style="border-bottom: 2px solid #1e293b; width: 140px; margin: 6px auto 2px auto;"></div>
+                    <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Student Signature</div>
+                    <div style="font-size: 8px; color: #94a3b8;">Date: ${now}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-weight: 600; font-size: 12px; color: #94a3b8;">_________________________</div>
+                    <div style="border-bottom: 2px solid #1e293b; width: 140px; margin: 6px auto 2px auto;"></div>
+                    <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Registrar (Academic Affairs)</div>
+                    <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
+                </div>
+            </div>
+            
+            <!-- FOOTER -->
+            <div style="text-align: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #94a3b8;">
+                <p style="font-style: italic;">This Transcript is issued without any alteration whatsoever, and is only valid with the College Seal.</p>
+                <p>Any queries relating to this document should be addressed to the Registrar (Academic Affairs).</p>
+                <p style="font-size: 7px; color: #cbd5e1; margin-top: 4px;">Document ID: ${Date.now().toString(36).toUpperCase()} · Generated: ${now}</p>
+            </div>
+            
             <!-- ACTION BUTTONS -->
-            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
+            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
                 <button onclick="window.printTranscriptDocument()" style="background: #0A3D62; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                     <i class="fas fa-print"></i> Print / PDF
                 </button>
@@ -995,10 +1027,8 @@ window.printTranscriptDocument = function() {
     const content = document.getElementById('transcriptPreviewContent');
     if (!content) return;
     
-    // Get the transcript HTML
     const transcriptHtml = content.innerHTML;
     
-    // Open print window
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) {
         alert('Please allow popups to print the transcript.');
@@ -1023,7 +1053,7 @@ window.printTranscriptDocument = function() {
                     margin: 0;
                 }
                 #transcriptContent {
-                    max-width: 900px;
+                    max-width: 850px;
                     margin: 0 auto;
                     padding: 20px;
                 }
@@ -1084,8 +1114,7 @@ window.exportAllTranscripts = function() {
         return;
     }
     
-    // Generate a summary CSV
-    const headers = ['Admission', 'Student Name', 'Program', 'Program Type', 'Block/Term', 'Academic Year', 'Units', 'Average', 'Grade', 'Points', 'GPA', 'Status', 'Passed', 'Failed', 'Pending'];
+    const headers = ['Admission', 'Student Name', 'Program', 'Program Type', 'Block/Term', 'Academic Year', 'Units', 'Average', 'Grade', 'Points', 'GPA', 'Status', 'Passed', 'Failed', 'Pending', 'Retakes'];
     const rows = [];
     
     for (const studentId of selectedIds) {
@@ -1103,6 +1132,7 @@ window.exportAllTranscripts = function() {
         let passed = 0;
         let failed = 0;
         let pending = 0;
+        let retakes = 0;
         
         studentMarks.forEach(m => {
             const score = m.final_score || 0;
@@ -1117,6 +1147,7 @@ window.exportAllTranscripts = function() {
             } else {
                 pending++;
             }
+            if (m.retake_count > 0) retakes++;
         });
         
         const avg = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
@@ -1140,17 +1171,16 @@ window.exportAllTranscripts = function() {
             status,
             passed,
             failed,
-            pending
+            pending,
+            retakes
         ]);
     }
     
-    // Build CSV
     let csv = headers.join(',') + '\n';
     rows.forEach(row => {
         csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
     });
     
-    // Download CSV
     const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -1201,20 +1231,18 @@ window.getBlockOptions = getBlockOptions;
 window.getGradingConfig = getGradingConfig;
 window.calculateGPA = calculateGPA;
 window.getStatusLabel = getStatusLabel;
+window.getUnitCode = getUnitCode;
 window.escapeHtml = escapeHtml;
 
 console.log('✅ Super Admin Transcript Generator Module Loaded Successfully!');
-console.log('📄 Professional transcript document with official grade mapping');
+console.log('📄 Official transcript format (CODE, COURSE TITLE, CREDIT, GRADE)');
+console.log('⭐ Retake indicator: ☆ (subtle star next to unit name)');
 console.log('📊 TVET: Certificate (3 Terms), Diploma (6 Terms)');
 console.log('📊 KRCHN: Blocks (Introductory, Block 1-6, Final)');
-console.log('⭐ Official grade mapping from marks entry system');
-console.log('📋 Available functions:');
-console.log('   - loadTranscriptStudents()');
-console.log('   - filterTranscriptStudents()');
-console.log('   - refreshTranscriptData()');
-console.log('   - exportAllTranscripts()');
-console.log('   - generateSelectedTranscript()');
-console.log('   - generateSelectedTranscripts()');
-console.log('   - selectAllTranscriptStudents()');
-console.log('   - deselectAllTranscriptStudents()');
-console.log('   - printTranscriptDocument()');
+console.log('📋 Features:');
+console.log('   - GPA for the year / Cumulative GPA');
+console.log('   - Credits Covered / Total Credits');
+console.log('   - Grading Scale table');
+console.log('   - Student & Registrar signatures');
+console.log('   - Print / PDF export');
+console.log('   - CSV export for bulk transcripts');
