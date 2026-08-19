@@ -419,45 +419,44 @@ async function loadMyMarks() {
             if (!result.error && result.data && result.data.length > 0) {
                 marks = result.data;
                 
-                marks = marks.map(mark => {
-                    // ✅ Get retake info for THIS SPECIFIC UNIT
-                    const retakes = studentRetakeMap[mark.subject_name] || [];
-                    const hasRetake = retakes.length > 0;
-                    const lastRetake = retakes[retakes.length - 1];
-                    
-                    // ✅ Use retake score if available, otherwise use original
-                    let finalScore = mark.final_score;
-                    let retakeScore = null;
-                    let retakeStatus = null;
-                    
-                    if (hasRetake && lastRetake) {
-                        retakeScore = lastRetake.exam_score;
-                        retakeStatus = lastRetake.status;
-                        // ✅ Use retake score if it exists
-                        if (retakeScore !== null && retakeScore !== undefined) {
-                            finalScore = retakeScore;
-                        }
-                    }
-                    
-                    // ✅ Calculate grade based on the final score (which may be retake score)
-                    const grade = mark.grade || calculateGrade(finalScore, userProgram);
-                    const points = mark.points || calculatePoints(grade, userProgram);
-                    
-                    return {
-                        ...mark,
-                        unit_code: getUnitCode(mark.subject_name),
-                        grade: grade,
-                        points: points,
-                        final_score: finalScore, // ✅ Override with retake score if available
-                        original_score: mark.final_score, // ✅ Keep original for reference
-                        hasRetake: hasRetake,
-                        retakeCount: retakes.length,
-                        retakeScore: retakeScore,
-                        retakeStatus: retakeStatus,
-                        retakeHistory: retakes
-                    };
-                });
-                
+              marks = marks.map(mark => {
+    // ✅ Get retake info for THIS SPECIFIC UNIT
+    const retakes = studentRetakeMap[mark.subject_name] || [];
+    const hasRetake = retakes.length > 0;
+    const lastRetake = retakes[retakes.length - 1];
+    
+    // ✅ Use retake score if available, otherwise use original
+    let finalScore = mark.final_score;
+    let retakeScore = null;
+    let retakeStatus = null;
+    
+    if (hasRetake && lastRetake) {
+        retakeScore = lastRetake.exam_score;
+        retakeStatus = lastRetake.status;
+        // ✅ Use retake score if it exists
+        if (retakeScore !== null && retakeScore !== undefined) {
+            finalScore = retakeScore;
+        }
+    }
+    
+    // ✅ ALWAYS recalculate grade and points (don't use existing mark.grade)
+    const grade = calculateGrade(finalScore, userProgram);
+    const points = calculatePoints(grade, userProgram);
+    
+    return {
+        ...mark,
+        unit_code: getUnitCode(mark.subject_name),
+        grade: grade,        // ✅ Override with recalculated grade
+        points: points,      // ✅ Override with recalculated points
+        final_score: finalScore,
+        original_score: mark.final_score,
+        hasRetake: hasRetake,
+        retakeCount: retakes.length,
+        retakeScore: retakeScore,
+        retakeStatus: retakeStatus,
+        retakeHistory: retakes
+    };
+});
                 console.log(`📊 Loaded ${marks.length} marks with retake data`);
             } else {
                 // ✅ No marks found - show empty state
