@@ -1,6 +1,6 @@
 // ============================================================
 // SUPER ADMIN TRANSCRIPT GENERATOR - COMPLETE FINAL VERSION
-// WITH ALL FEATURES: LOGO, UNIT CODES, GRADING, RETAKE INDICATOR, ETC.
+// WITH FIXED GRADING SCALE (TVET/NURSING) AND FULL TABLE BORDERS
 // ============================================================
 
 console.log('📄 Super Admin Transcript Generator Loading... (FINAL VERSION)');
@@ -76,6 +76,7 @@ function getUnitCode(subjectName) {
 // ============================================================
 
 const GRADE_CONFIG = {
+    // TVET Competency-Based Grading
     tvet: {
         grades: {
             'A': { min: 80, max: 100, points: 4.0, label: 'MASTERY', color: '#065f46', bgColor: '#d1fae5' },
@@ -87,6 +88,7 @@ const GRADE_CONFIG = {
         label: 'TVET Competency-Based',
         display: 'A(80-100%)=4, B(65-79%)=3, C(50-64%)=2, E(0-49%)=0'
     },
+    // Nursing Academic Grading
     nursing: {
         grades: {
             'A': { min: 75, max: 100, points: 4.0, label: 'DISTINCTION', color: '#065f46', bgColor: '#d1fae5' },
@@ -716,6 +718,11 @@ window.generateSelectedTranscripts = async function() {
 
 // ============================================================
 // SHOW TRANSCRIPT PREVIEW - FINAL OFFICIAL VERSION
+// WITH FIXED GRADING SCALE AND FULL TABLE BORDERS
+// ============================================================
+
+// ============================================================
+// SHOW TRANSCRIPT PREVIEW - STATUS BLOCK REMOVED
 // ============================================================
 
 window.showTranscriptPreview = function(student, marks, year) {
@@ -729,6 +736,7 @@ window.showTranscriptPreview = function(student, marks, year) {
     const config = getGradingConfig(program);
     const passMark = config.passMark;
     const gradingDisplay = config.display;
+    const programType = isTVET ? 'TVET' : 'Nursing';
     
     // Group marks by block/term
     const groupedMarks = {};
@@ -758,7 +766,7 @@ window.showTranscriptPreview = function(student, marks, year) {
         
         marksHtml += `
             <tr style="background: #f0f4f8; border-bottom: 2px solid #0A3D62;">
-                <td colspan="5" style="padding: 8px 12px; font-weight: 700; color: #0A3D62; font-size: 12px; letter-spacing: 0.5px;">
+                <td colspan="5" style="padding: 8px 12px; font-weight: 700; color: #0A3D62; font-size: 12px; letter-spacing: 0.5px; border: 1px solid #0A3D62;">
                     ${escapeHtml(block)}
                 </td>
             </tr>
@@ -769,9 +777,7 @@ window.showTranscriptPreview = function(student, marks, year) {
             const gradeInfo = calculateOfficialGrade(score, program);
             const isPassing = score >= passMark;
             
-            // ✅ Use getUnitCode() - matches marks entry
             const unitCode = getUnitCode(m.subject_name);
-            
             const credits = GRADE_CONFIG.creditHours;
             const pointsEarned = gradeInfo.points * credits;
             
@@ -791,25 +797,24 @@ window.showTranscriptPreview = function(student, marks, year) {
                 blockCredits += credits;
             }
             
-            // ✅ Subtle retake indicator (☆) next to unit name
             const starIndicator = hasRetake ? `<span style="color: #94a3b8; font-size: 9px; margin-left: 4px; opacity: 0.5;" title="Retaken">☆</span>` : '';
             
             marksHtml += `
-                <tr style="border-bottom: 1px solid #e5e7eb;">
-                    <td style="padding: 6px 12px; font-size: 11px; font-weight: 500; color: #1e293b;">
+                <tr style="border-bottom: 1px solid #d1d5db;">
+                    <td style="padding: 6px 12px; font-size: 11px; font-weight: 500; color: #1e293b; border: 1px solid #d1d5db;">
                         ${escapeHtml(unitCode)}
                     </td>
-                    <td style="padding: 6px 12px; font-size: 11px; color: #1e293b;">
+                    <td style="padding: 6px 12px; font-size: 11px; color: #1e293b; border: 1px solid #d1d5db;">
                         ${escapeHtml(m.subject_name || 'N/A')}
                         ${starIndicator}
                     </td>
-                    <td style="padding: 6px 12px; text-align: center; font-size: 11px; color: #1e293b;">
+                    <td style="padding: 6px 12px; text-align: center; font-size: 11px; color: #1e293b; border: 1px solid #d1d5db;">
                         ${credits}
                     </td>
-                    <td style="padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 700; color: ${gradeInfo.color};">
+                    <td style="padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 700; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
                         ${gradeInfo.grade}
                     </td>
-                    <td style="padding: 6px 12px; text-align: center; font-size: 11px; font-weight: 600; color: ${gradeInfo.color};">
+                    <td style="padding: 6px 12px; text-align: center; font-size: 11px; font-weight: 600; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
                         ${pointsEarned.toFixed(1)}
                     </td>
                 </tr>
@@ -820,7 +825,7 @@ window.showTranscriptPreview = function(student, marks, year) {
         const blockGPA = blockCredits > 0 ? Math.round((blockPoints / blockCredits) * 100) / 100 : 0;
         marksHtml += `
             <tr style="background: #f8fafc; border-bottom: 2px solid #0A3D62;">
-                <td colspan="5" style="padding: 4px 12px; font-size: 9px; color: #64748b; text-align: right;">
+                <td colspan="5" style="padding: 4px 12px; font-size: 9px; color: #64748b; text-align: right; border: 1px solid #d1d5db;">
                     <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%) · GPA: ${blockGPA.toFixed(2)}
                 </td>
             </tr>
@@ -831,9 +836,6 @@ window.showTranscriptPreview = function(student, marks, year) {
     const overallAvg = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
     const overallGradeInfo = calculateOfficialGrade(overallAvg, program);
     const gpa = totalCredits > 0 ? Math.round((totalPoints / totalCredits) * 100) / 100 : 0;
-    const failedUnits = totalUnits - passedUnits - (totalUnits - scoredCount);
-    const pendingUnits = totalUnits - scoredCount;
-    const programType = isTVET ? 'TVET' : 'Nursing';
     const blockLabel = isTVET ? 'Term' : 'Block';
     
     const now = new Date().toLocaleDateString('en-KE', {
@@ -844,22 +846,22 @@ window.showTranscriptPreview = function(student, marks, year) {
         year: 'numeric'
     });
     
-    // Build grading scale table - EXACT MATCH
+    // Build grading scale table
     let gradingScaleHtml = '';
     const grades = config.grades;
     for (const [grade, gConfig] of Object.entries(grades)) {
         const range = `${gConfig.min}-${gConfig.max === 100 ? '100' : gConfig.max}`;
         gradingScaleHtml += `
             <tr>
-                <td style="padding: 2px 8px; text-align: center; font-weight: 700; color: ${gConfig.color};">${grade}</td>
-                <td style="padding: 2px 8px; text-align: center;">${range}%</td>
-                <td style="padding: 2px 8px; text-align: center;">${gConfig.points.toFixed(1)}</td>
-                <td style="padding: 2px 8px; text-align: center;">${gConfig.label}</td>
+                <td style="padding: 2px 8px; text-align: center; font-weight: 700; color: ${gConfig.color}; border: 1px solid #d1d5db;">${grade}</td>
+                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${range}%</td>
+                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.points.toFixed(1)}</td>
+                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.label}</td>
             </tr>
         `;
     }
     
-    // Build full official transcript HTML with LOGO
+    // Build full official transcript HTML - STATUS BLOCK REMOVED
     const html = `
         <div id="transcriptDocument" style="background: white; padding: 30px 35px; border: 2px solid #0A3D62; border-radius: 8px; box-shadow: 0 4px 20px rgba(10,61,98,0.12); font-family: 'Times New Roman', Times, serif; max-width: 850px; margin: 0 auto;">
             
@@ -889,9 +891,9 @@ window.showTranscriptPreview = function(student, marks, year) {
                 </div>
             </div>
             
-            <!-- MARKS TABLE - CODE, TITLE, CREDIT, GRADE, POINTS -->
+            <!-- MARKS TABLE - ALL BORDERS -->
             <div style="overflow-x: auto; margin-bottom: 16px;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #e5e7eb;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #0A3D62;">
                     <thead>
                         <tr style="background: #0A3D62; color: white;">
                             <th style="padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62;">CODE</th>
@@ -927,28 +929,21 @@ window.showTranscriptPreview = function(student, marks, year) {
                 </div>
             </div>
             
-            <!-- GRADING SCALE - EXACT MATCH -->
+            <!-- GRADING SCALE -->
             <div style="margin-bottom: 14px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
                 <div style="font-weight: 600; color: #0A3D62; font-size: 10px; text-align: center; margin-bottom: 4px;">GRADING SCALE (${programType})</div>
                 <div style="text-align: center; font-size: 9px; color: #64748b; margin-bottom: 4px;">${gradingDisplay}</div>
-                <table style="width: 100%; border-collapse: collapse; font-size: 9px; border: 1px solid #e5e7eb;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px; border: 1px solid #0A3D62;">
                     <thead>
-                        <tr style="background: #e5e7eb;">
-                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #d1d5db;">GRADE</th>
-                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #d1d5db;">RANGE</th>
-                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #d1d5db;">POINTS</th>
-                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #d1d5db;">REMARKS</th>
+                        <tr style="background: #0A3D62; color: white;">
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">GRADE</th>
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">RANGE</th>
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">POINTS</th>
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">REMARKS</th>
                         </tr>
                     </thead>
                     <tbody>
-                        ${Object.entries(grades).map(([grade, gConfig]) => `
-                            <tr>
-                                <td style="padding: 2px 8px; text-align: center; font-weight: 700; color: ${gConfig.color}; border: 1px solid #d1d5db;">${grade}</td>
-                                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.min}-${gConfig.max === 100 ? '100' : gConfig.max}%</td>
-                                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.points.toFixed(1)}</td>
-                                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.label}</td>
-                            </tr>
-                        `).join('')}
+                        ${gradingScaleHtml}
                         <tr>
                             <td colspan="4" style="padding: 3px 8px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 8px; border-top: 2px solid #0A3D62;">
                                 Min Pass: ${passMark}% · Credit Hours: ${GRADE_CONFIG.creditHours} per unit
@@ -956,18 +951,6 @@ window.showTranscriptPreview = function(student, marks, year) {
                         </tr>
                     </tbody>
                 </table>
-            </div>
-            
-            <!-- STATUS -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
-                <div style="text-align: center;">
-                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">STATUS</div>
-                    <div style="font-size: 14px; font-weight: 700; color: ${passedUnits === totalUnits ? '#059669' : '#f59e0b'};">${passedUnits === totalUnits ? '✅ COMPLETE' : 'IN PROGRESS'}</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">⭐ RETAKE UNITS</div>
-                    <div style="font-size: 14px; font-weight: 700; color: ${retakeUnits > 0 ? '#f59e0b' : '#94a3b8'};">${retakeUnits > 0 ? retakeUnits : 'None'}</div>
-                </div>
             </div>
             
             <!-- SIGNATURES -->
@@ -1240,11 +1223,11 @@ console.log('📋 Features:');
 console.log('   - School Logo');
 console.log('   - GPA for the year / Cumulative GPA');
 console.log('   - Credits Covered / Total Credits');
-console.log('   - Grading Scale table');
+console.log('   - Fixed Grading Scale (TVET/Nursing based on program)');
 console.log('   - Student & Registrar signatures');
 console.log('   - Print / PDF export');
 console.log('   - CSV export for bulk transcripts');
 console.log('   - ☆ Subtle retake indicator');
 console.log('   - Block/Term headers with summaries');
+console.log('   - All borders on tables');
 console.log('   - TVET + Nursing support');
-console.log('   - All official format');
