@@ -26814,7 +26814,7 @@ console.log('✅ Entry Control functions loaded successfully!');
 console.log('✅ renderECSubjects:', typeof renderECSubjects);
 console.log('✅ toggleSubjectEntry:', typeof toggleSubjectEntry);
 // ============================================================
-// MARKS APPROVAL SYSTEM - COMPLETE (USING "UNITS")
+// MARKS APPROVAL SYSTEM - COMPLETE WITH RETAKE SUPPORT
 // ============================================================
 
 // ============================================================
@@ -26827,6 +26827,7 @@ let marksApprovalFilters = {
     unit: 'all',
     block: 'all'
 };
+
 
 
 // ============================================================
@@ -26909,6 +26910,11 @@ function updateMarksApprovalStats() {
     const units = new Set(pending.map(m => m.subject_name).filter(Boolean));
     const unitsCount = document.getElementById('pendingSubjectsCount');
     if (unitsCount) unitsCount.textContent = units.size || 0;
+    
+    // Count retakes
+    const retakeCount = pending.filter(m => m.retake_count > 0).length;
+    const retakeEl = document.getElementById('pendingRetakesCount');
+    if (retakeEl) retakeEl.textContent = retakeCount;
 }
 
 // ============================================================
@@ -26950,7 +26956,7 @@ function populateMarksApprovalFilters() {
 }
 
 // ============================================================
-// RENDER GROUPED APPROVAL TABLE (BY UNIT)
+// RENDER GROUPED APPROVAL TABLE (BY UNIT) WITH RETAKE SUPPORT
 // ============================================================
 
 function renderGroupedApprovalTable() {
@@ -27013,16 +27019,22 @@ function renderGroupedApprovalTable() {
                 <span style="font-size: 12px; color: #64748b; margin-left: 10px;">
                     (${filtered.length} total students)
                 </span>
+                <span style="font-size: 12px; color: #f59e0b; margin-left: 10px;">
+                    ⭐ ${filtered.filter(m => m.retake_count > 0).length} retakes
+                </span>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button onclick="approveAllPendingMarks()" class="btn-action" style="background: #10b981; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-check-double"></i> Approve All Units
+                    <i class="fas fa-check-double"></i> Approve All
                 </button>
                 <button onclick="rejectAllPendingMarks()" class="btn-action" style="background: #dc2626; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-times"></i> Reject All Units
+                    <i class="fas fa-times"></i> Reject All
                 </button>
                 <button onclick="loadMarksApprovals()" class="btn-action" style="background: #6b7280; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
                     <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+                <button onclick="exportMarksApprovalsToCSV()" class="btn-action" style="background: #2563eb; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-file-export"></i> Export
                 </button>
             </div>
         </div>
@@ -27036,6 +27048,8 @@ function renderGroupedApprovalTable() {
         const avgScore = Math.round(marks.reduce((sum, m) => sum + (m.final_score || 0), 0) / count);
         const passCount = marks.filter(m => (m.final_score || 0) >= 60).length;
         const passRate = Math.round((passCount / count) * 100);
+        const retakeCount = marks.filter(m => m.retake_count > 0).length;
+        const retakePassed = marks.filter(m => m.retake_count > 0 && m.retake_status === 'PASS').length;
         const safeUnitName = escapeHtml(unitName);
         
         html += `
@@ -27051,6 +27065,10 @@ function renderGroupedApprovalTable() {
                                 <span>👥 ${count} students</span>
                                 <span>📊 Avg: ${avgScore}%</span>
                                 <span style="color: ${passRate >= 60 ? '#10b981' : '#f59e0b'};">✅ ${passRate}% passing</span>
+                                ${retakeCount > 0 ? `
+                                    <span style="color: #f59e0b;">⭐ ${retakeCount} retakes</span>
+                                    ${retakePassed > 0 ? `<span style="color: #059669;">✅ ${retakePassed} passed after retake</span>` : ''}
+                                ` : ''}
                             </div>
                         </div>
                     </div>
@@ -27070,7 +27088,7 @@ function renderGroupedApprovalTable() {
                     </div>
                 </div>
                 
-                <!-- STUDENT DETAILS (HIDDEN BY DEFAULT) -->
+                <!-- STUDENT DETAILS WITH RETAKE COLUMN -->
                 <div id="details_${safeUnitName}" style="display: none;">
                     <div style="padding: 16px 20px; background: #fafafa; overflow-x: auto;">
                         <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
@@ -27085,6 +27103,7 @@ function renderGroupedApprovalTable() {
                                     <th style="padding: 8px; text-align: center;">Exam</th>
                                     <th style="padding: 8px; text-align: center;">Total</th>
                                     <th style="padding: 8px; text-align: center;">Grade</th>
+                                    <th style="padding: 8px; text-align: center;">⭐ Retake</th>
                                     <th style="padding: 8px; text-align: center;">Actions</th>
                                 </tr>
                             </thead>
@@ -27097,9 +27116,24 @@ function renderGroupedApprovalTable() {
             const safeName = escapeHtml(m.student_name || 'Unknown');
             const safeAdmission = escapeHtml(m.admission_number || 'N/A');
             const safeBlock = escapeHtml(m.block || '');
+            const hasRetake = m.retake_count > 0;
+            const retakeCount = m.retake_count || 0;
+            const retakeScore = m.retake_score || null;
+            const retakeStatus = m.retake_status || '';
+            const isRetakePassing = retakeStatus === 'PASS';
+            
+            // Row styling for retake
+            let rowStyle = '';
+            if (hasRetake && isRetakePassing) {
+                rowStyle = 'border-left: 3px solid #059669;';
+            } else if (hasRetake && !isRetakePassing) {
+                rowStyle = 'border-left: 3px solid #dc2626;';
+            } else if (hasRetake) {
+                rowStyle = 'border-left: 3px solid #f59e0b;';
+            }
             
             html += `
-                <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #ffffff;' : 'background: #f8fafc;'}">
+                <tr style="border-bottom: 1px solid #e5e7eb; ${i % 2 === 0 ? 'background: #ffffff;' : 'background: #f8fafc;'} ${rowStyle}">
                     <td style="padding: 8px; text-align: center;">${i + 1}</td>
                     <td style="padding: 8px; font-weight: 500;">${safeName}</td>
                     <td style="padding: 8px;">${safeAdmission}</td>
@@ -27109,6 +27143,25 @@ function renderGroupedApprovalTable() {
                     <td style="padding: 8px; text-align: center;">${m.exam_score || '-'}</td>
                     <td style="padding: 8px; text-align: center; font-weight: bold; color: ${isPassing ? '#065f46' : '#991b1b'};">${total || '-'}</td>
                     <td style="padding: 8px; text-align: center; font-weight: bold; font-size: 15px; color: ${m.grade === 'A' || m.grade === 'B' ? '#065f46' : '#991b1b'};">${m.grade || '-'}</td>
+                    <td style="padding: 8px; text-align: center;">
+                        ${hasRetake ? `
+                            <div style="display: flex; flex-direction: column; align-items: center; gap: 2px;">
+                                <span style="background: #f59e0b; color: white; font-size: 8px; padding: 2px 8px; border-radius: 10px; font-weight: 700; display: inline-block;">
+                                    ⭐ R${retakeCount}
+                                </span>
+                                ${retakeScore !== null ? `
+                                    <span style="font-size: 9px; color: ${isRetakePassing ? '#059669' : '#dc2626'}; font-weight: 600;">
+                                        ${isRetakePassing ? '✅' : '❌'} ${retakeScore}%
+                                    </span>
+                                ` : ''}
+                                ${retakeStatus ? `
+                                    <span style="font-size: 8px; color: ${isRetakePassing ? '#059669' : '#dc2626'}; font-weight: 600;">
+                                        ${retakeStatus}
+                                    </span>
+                                ` : ''}
+                            </div>
+                        ` : '<span style="color: #94a3b8; font-size: 11px;">—</span>'}
+                    </td>
                     <td style="padding: 8px; text-align: center; white-space: nowrap;">
                         <button onclick="approveMark('${m.id}')" style="background: #10b981; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 3px;">
                             <i class="fas fa-check"></i>
@@ -27186,6 +27239,8 @@ async function approveByUnit(unitName) {
             .from('student_marks')
             .update({
                 approval_status: 'approved',
+                published: true,
+                published_at: new Date().toISOString(),
                 approved_at: new Date().toISOString(),
                 approved_by: window.currentUser?.id || null
             })
@@ -27253,10 +27308,19 @@ async function approveMark(id) {
     if (!confirm('✅ Approve this mark?')) return;
     
     try {
+        // Get mark details first for email
+        const { data: mark } = await sb
+            .from('student_marks')
+            .select('*')
+            .eq('id', id)
+            .single();
+        
         const { error } = await sb
             .from('student_marks')
             .update({
                 approval_status: 'approved',
+                published: true,
+                published_at: new Date().toISOString(),
                 approved_at: new Date().toISOString(),
                 approved_by: window.currentUser?.id || null
             })
@@ -27266,6 +27330,34 @@ async function approveMark(id) {
         
         showNotification('✅ Mark approved successfully!', 'success');
         await logApprovalAction(id, 'approved');
+        
+        // Send email notification to student
+        if (mark) {
+            try {
+                const { data: student } = await sb
+                    .from('consolidated_user_profiles_table')
+                    .select('email')
+                    .eq('student_id', mark.admission_number)
+                    .or('admission_number.eq.' + mark.admission_number)
+                    .maybeSingle();
+                
+                if (student?.email) {
+                    await sendMarksApprovedEmail(
+                        student.email,
+                        mark.student_name || 'Student',
+                        mark.subject_name || 'Unit',
+                        mark.block || '',
+                        mark.final_score || 0,
+                        mark.grade || '-',
+                        mark.retake_count || 0,
+                        mark.retake_status || ''
+                    );
+                }
+            } catch (emailError) {
+                console.warn('Email notification failed:', emailError);
+            }
+        }
+        
         await loadMarksApprovals();
         
     } catch (error) {
@@ -27323,6 +27415,8 @@ async function approveAllPendingMarks() {
             .from('student_marks')
             .update({
                 approval_status: 'approved',
+                published: true,
+                published_at: new Date().toISOString(),
                 approved_at: new Date().toISOString(),
                 approved_by: window.currentUser?.id || null
             })
@@ -27443,31 +27537,7 @@ function filterMarksApprovals() {
 }
 
 // ============================================================
-// INIT MARKS APPROVAL
-// ============================================================
-
-function initMarksApproval() {
-    console.log('📋 Initializing Marks Approval system...');
-    
-    // Load data
-    loadMarksApprovals();
-    
-    // Set up auto-refresh (every 30 seconds)
-    if (window.marksApprovalInterval) {
-        clearInterval(window.marksApprovalInterval);
-    }
-    window.marksApprovalInterval = setInterval(function() {
-        const tab = document.querySelector('#marks-approval');
-        if (tab && tab.style.display !== 'none') {
-            loadMarksApprovals();
-        }
-    }, 30000);
-    
-    console.log('✅ Marks Approval system initialized!');
-}
-
-// ============================================================
-// EXPORT MARKS APPROVALS TO CSV
+// EXPORT MARKS APPROVALS TO CSV WITH RETAKE DATA
 // ============================================================
 
 function exportMarksApprovalsToCSV() {
@@ -27477,7 +27547,8 @@ function exportMarksApprovalsToCSV() {
         return;
     }
     
-    const headers = ['Student', 'Admission', 'Unit', 'Block', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Submitted By', 'Submitted At'];
+    const headers = ['Student', 'Admission', 'Unit', 'Block', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 
+                     'Has Retake', 'Retake Count', 'Retake Score', 'Retake Status', 'Submitted By', 'Submitted At'];
     const rows = pending.map(m => [
         m.student_name || 'Unknown',
         m.admission_number || 'N/A',
@@ -27488,6 +27559,10 @@ function exportMarksApprovalsToCSV() {
         m.exam_score || '',
         m.final_score || '',
         m.grade || '',
+        m.retake_count > 0 ? 'Yes' : 'No',
+        m.retake_count || 0,
+        m.retake_score || '',
+        m.retake_status || '',
         m.submitted_by_name || 'Unknown',
         m.submitted_at ? new Date(m.submitted_at).toLocaleString() : ''
     ]);
@@ -27508,6 +27583,98 @@ function exportMarksApprovalsToCSV() {
 }
 
 // ============================================================
+// SEND MARKS APPROVED EMAIL
+// ============================================================
+
+async function sendMarksApprovedEmail(studentEmail, studentName, subjectName, block, score, grade, retakeCount, retakeStatus) {
+    try {
+        if (!studentEmail) return;
+        
+        const hasRetake = retakeCount > 0;
+        const retakeText = hasRetake ? ` (Retake: ${retakeCount} attempt${retakeCount > 1 ? 's' : ''}${retakeStatus ? ', Status: ' + retakeStatus : ''})` : '';
+        
+        const html = `
+            <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb;">
+                <div style="text-align: center; padding: 20px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 8px 8px 0 0; color: white;">
+                    <h2 style="margin: 0;">✅ Results Approved</h2>
+                    <p style="margin: 4px 0 0 0; opacity: 0.8;">Nakuru College of Health Sciences and Management</p>
+                </div>
+                <div style="padding: 20px; background: white; border-radius: 0 0 8px 8px;">
+                    <p style="font-size: 16px; color: #1e293b;">Dear <strong>${escapeHtml(studentName)}</strong>,</p>
+                    <p style="color: #475569;">Your marks have been <strong style="color: #10b981;">approved</strong> by the admin.</p>
+                    
+                    <div style="background: #f8fafc; padding: 16px; border-radius: 8px; margin: 12px 0; border: 1px solid #e5e7eb;">
+                        <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                            <tr><td style="padding: 4px 0;"><strong>Unit:</strong></td><td style="padding: 4px 0; text-align: right;">${escapeHtml(subjectName)}</td></tr>
+                            <tr><td style="padding: 4px 0;"><strong>Block:</strong></td><td style="padding: 4px 0; text-align: right;">${escapeHtml(block)}</td></tr>
+                            <tr><td style="padding: 4px 0;"><strong>Score:</strong></td><td style="padding: 4px 0; text-align: right; font-weight: 700; color: ${score >= 60 ? '#10b981' : '#dc2626'};">${score}%</td></tr>
+                            <tr><td style="padding: 4px 0;"><strong>Grade:</strong></td><td style="padding: 4px 0; text-align: right; font-weight: 700;">${escapeHtml(grade)}</td></tr>
+                            ${hasRetake ? `
+                                <tr><td style="padding: 4px 0;"><strong>⭐ Retake:</strong></td><td style="padding: 4px 0; text-align: right;">${retakeCount} attempt(s) ${retakeStatus ? ' - ' + retakeStatus : ''}</td></tr>
+                            ` : ''}
+                        </table>
+                    </div>
+                    
+                    <p style="color: #475569; font-size: 14px;">You can view your full results in the student portal.</p>
+                    <div style="text-align: center; margin: 20px 0;">
+                        <a href="https://nchsm.co.ke/student.html#academic-reports" style="background: #0A3D62; color: white; padding: 12px 24px; border-radius: 8px; text-decoration: none; font-weight: 600; display: inline-block;">📊 View Results</a>
+                    </div>
+                    <p style="font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #e5e7eb; padding-top: 12px;">
+                        This is an automated message from NCHSM Academic System.
+                    </p>
+                </div>
+            </div>
+        `;
+        
+        const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: studentEmail,
+                subject: '✅ Your Results Have Been Approved - ' + escapeHtml(subjectName),
+                html: html,
+                from: 'NCHSM Academic Office <admin@nchsm.co.ke>'
+            })
+        });
+        
+        const data = await response.json();
+        console.log('📧 Email sent:', data.success ? '✅' : '❌');
+        
+    } catch (error) {
+        console.error('Email error:', error);
+    }
+}
+
+// ============================================================
+// INIT MARKS APPROVAL
+// ============================================================
+
+function initMarksApproval() {
+    console.log('📋 Initializing Marks Approval system with Retake Support...');
+    
+    // Load data
+    loadMarksApprovals();
+    
+    // Set up auto-refresh (every 30 seconds)
+    if (window.marksApprovalInterval) {
+        clearInterval(window.marksApprovalInterval);
+    }
+    window.marksApprovalInterval = setInterval(function() {
+        const tab = document.querySelector('#marks-approval');
+        if (tab && tab.style.display !== 'none') {
+            loadMarksApprovals();
+        }
+    }, 30000);
+    
+    console.log('✅ Marks Approval system initialized with Retake Support!');
+    console.log('⭐ Retake indicators: ⭐R1, ⭐R2 badges shown for retaken units');
+    console.log('📊 Retake summary shown in unit cards');
+}
+
+// ============================================================
 // GLOBAL EXPOSURE
 // ============================================================
 
@@ -27523,14 +27690,19 @@ window.toggleUnitDetails = toggleUnitDetails;
 window.initMarksApproval = initMarksApproval;
 window.exportMarksApprovalsToCSV = exportMarksApprovalsToCSV;
 window.escapeHtml = escapeHtml;
+window.sendMarksApprovedEmail = sendMarksApprovedEmail;
 
-console.log('✅ Marks Approval functions loaded!');
+console.log('✅ Marks Approval functions loaded with Retake Support!');
 console.log('📋 Run: initMarksApproval() to initialize');
-console.log('📋 Features:');
+console.log('⭐ Features:');
 console.log('   - View units with pending marks');
 console.log('   - Approve/Reject entire units');
 console.log('   - Expand to see individual students');
 console.log('   - Approve/Reject individual students');
+console.log('   - ⭐ Retake indicators (⭐R1, ⭐R2)');
+console.log('   - Retake summary in unit cards');
+console.log('   - CSV export includes retake data');
+console.log('   - Email notifications for students');
 // =====================================================
 // INITIALIZE THE APPLICATION - ONLY ONE EVENT LISTENER
 // =====================================================
