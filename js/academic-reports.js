@@ -354,112 +354,113 @@
     // ============================================================
     // 12. LOAD MY MARKS WITH HOLLOW STAR SUPPORT - NO DEMO DATA
     // ============================================================
-    async function loadMyMarks() {
-        const tbody = document.getElementById('my_marks_table_body');
-        if (!tbody) return;
+    // ============================================================
+// REPLACE the loadMyMarks() function in academic-reports.js
+// ============================================================
+
+async function loadMyMarks() {
+    const tbody = document.getElementById('my_marks_table_body');
+    if (!tbody) return;
+    
+    tbody.innerHTML = `
+        <tr>
+            <td colspan="6" style="text-align: center; padding: 40px;">
+                <div class="loading-spinner"></div>
+                <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
+            </td>
+        </tr>
+    `;
+    
+    try {
+        await fetchUnitCodes();
         
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 40px;">
-                    <div class="loading-spinner"></div>
-                    <p style="margin-top: 10px; color: #94a3b8;">Loading your marks...</p>
-                </td>
-            </tr>
-        `;
+        const user = window.currentUserProfile || window.db?.currentUserProfile;
+        if (!user) {
+            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
+            return;
+        }
         
+        const registrationNumber = user.student_id || user.admission_number || user.user_id;
+        const userProgram = user.program || '';
+        
+        const nameEl = document.getElementById('my_marks_student_name');
+        if (nameEl) nameEl.textContent = user.full_name || 'Student';
+        
+        const admissionEl = document.getElementById('my_marks_admission');
+        if (admissionEl) admissionEl.textContent = registrationNumber || '-';
+        
+        const programEl = document.getElementById('my_marks_program');
+        if (programEl) programEl.textContent = userProgram || '-';
+        
+        const currentYear = new Date().getFullYear();
+        const nextYear = currentYear + 1;
+        const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
+        const academicYearEl = document.getElementById('my_marks_academic_year');
+        if (academicYearEl) academicYearEl.textContent = academicYear;
+        
+        const blockLabel = PROGRAM.getBlockLabel(userProgram);
+        const headerEl = document.querySelector('#my_marks_table_body')?.closest('table')?.querySelector('th:nth-child(3)');
+        if (headerEl) headerEl.textContent = blockLabel;
+        
+        populateMyMarksBlockFilter(userProgram);
+        
+        // ✅ FETCH RETAKE DATA
+        await fetchStudentRetakeData(registrationNumber);
+        
+        let marks = [];
         try {
-            await fetchUnitCodes();
+            const result = await window.db.supabase
+                .from('student_marks')
+                .select('*')
+                .eq('admission_number', registrationNumber)
+                .eq('published', true)
+                .order('published_at', { ascending: false });
             
-            const user = window.currentUserProfile || window.db?.currentUserProfile;
-            if (!user) {
-                tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Please log in to view your marks</td></tr>`;
-                return;
-            }
-            
-            const registrationNumber = user.student_id || user.admission_number || user.user_id;
-            const userProgram = user.program || '';
-            
-            const nameEl = document.getElementById('my_marks_student_name');
-            if (nameEl) nameEl.textContent = user.full_name || 'Student';
-            
-            const admissionEl = document.getElementById('my_marks_admission');
-            if (admissionEl) admissionEl.textContent = registrationNumber || '-';
-            
-            const programEl = document.getElementById('my_marks_program');
-            if (programEl) programEl.textContent = userProgram || '-';
-            
-            const currentYear = new Date().getFullYear();
-            const nextYear = currentYear + 1;
-            const academicYear = user.academic_year || `${currentYear}/${nextYear}`;
-            const academicYearEl = document.getElementById('my_marks_academic_year');
-            if (academicYearEl) academicYearEl.textContent = academicYear;
-            
-            const blockLabel = PROGRAM.getBlockLabel(userProgram);
-            const headerEl = document.querySelector('#my_marks_table_body')?.closest('table')?.querySelector('th:nth-child(3)');
-            if (headerEl) headerEl.textContent = blockLabel;
-            
-            populateMyMarksBlockFilter(userProgram);
-            
-            // ✅ FETCH RETAKE DATA
-            await fetchStudentRetakeData(registrationNumber);
-            
-            let marks = [];
-            try {
-                const result = await window.db.supabase
-                    .from('student_marks')
-                    .select('*')
-                    .eq('admission_number', registrationNumber)
-                    .eq('published', true)
-                    .order('published_at', { ascending: false });
+            if (!result.error && result.data && result.data.length > 0) {
+                marks = result.data;
                 
-                if (!result.error && result.data && result.data.length > 0) {
-                    marks = result.data;
+                marks = marks.map(mark => {
+                    // ✅ Get retake info for THIS SPECIFIC UNIT
+                    const retakes = studentRetakeMap[mark.subject_name] || [];
+                    const hasRetake = retakes.length > 0;
+                    const lastRetake = retakes[retakes.length - 1];
                     
-                    marks = marks.map(mark => ({
+                    // ✅ Use retake score if available, otherwise use original
+                    let finalScore = mark.final_score;
+                    let retakeScore = null;
+                    let retakeStatus = null;
+                    
+                    if (hasRetake && lastRetake) {
+                        retakeScore = lastRetake.exam_score;
+                        retakeStatus = lastRetake.status;
+                        // ✅ Use retake score if it exists
+                        if (retakeScore !== null && retakeScore !== undefined) {
+                            finalScore = retakeScore;
+                        }
+                    }
+                    
+                    // ✅ Calculate grade based on the final score (which may be retake score)
+                    const grade = mark.grade || calculateGrade(finalScore, userProgram);
+                    const points = mark.points || calculatePoints(grade, userProgram);
+                    
+                    return {
                         ...mark,
                         unit_code: getUnitCode(mark.subject_name),
-                        grade: mark.grade || calculateGrade(mark.final_score, userProgram),
-                        points: mark.points || calculatePoints(mark.grade || calculateGrade(mark.final_score, userProgram), userProgram),
-                        hasRetake: hasRetake(mark.subject_name),
-                        retakeCount: getRetakeCount(mark.subject_name)
-                    }));
-                    
-                    console.log(`📊 Loaded ${marks.length} marks with hollow star data`);
-                } else {
-                    // ✅ No marks found - show empty state (NO DEMO DATA)
-                    tbody.innerHTML = `
-                        <tr>
-                            <td colspan="6" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                                <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
-                                <h4 style="margin: 0 0 8px 0; color: #1e293b;">No published marks found</h4>
-                                <p style="font-size: 13px; margin: 0;">Your marks will appear here once they are published by the admin.</p>
-                            </td>
-                        </tr>
-                    `;
-                    document.getElementById('my_marks_count').textContent = '0 results';
-                    return;
-                }
-            } catch (e) {
-                console.warn('Error fetching marks:', e);
-                // ✅ No demo data - show empty state
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
-                            <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
-                            <h4 style="margin: 0 0 8px 0; color: #1e293b;">No published marks found</h4>
-                            <p style="font-size: 13px; margin: 0;">Your marks will appear here once they are published by the admin.</p>
-                        </td>
-                    </tr>
-                `;
-                document.getElementById('my_marks_count').textContent = '0 results';
-                return;
-            }
-            
-            if (marks && marks.length > 0) {
-                myMarksData = marks;
+                        grade: grade,
+                        points: points,
+                        final_score: finalScore, // ✅ Override with retake score if available
+                        original_score: mark.final_score, // ✅ Keep original for reference
+                        hasRetake: hasRetake,
+                        retakeCount: retakes.length,
+                        retakeScore: retakeScore,
+                        retakeStatus: retakeStatus,
+                        retakeHistory: retakes
+                    };
+                });
+                
+                console.log(`📊 Loaded ${marks.length} marks with retake data`);
             } else {
-                // ✅ Empty state - NO DEMO DATA
-                myMarksData = [];
+                // ✅ No marks found - show empty state
                 tbody.innerHTML = `
                     <tr>
                         <td colspan="6" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
@@ -472,47 +473,78 @@
                 document.getElementById('my_marks_count').textContent = '0 results';
                 return;
             }
-            
-            myMarksFiltered = [...myMarksData];
-            
-            // Populate filters
-            const subjectFilter = document.getElementById('my_marks_subject_filter');
-            if (subjectFilter) {
-                const subjects = [...new Set(myMarksData.map(m => m.subject_name).filter(Boolean))];
-                subjectFilter.innerHTML = '<option value="all">All Units</option>';
-                subjects.sort().forEach(subject => {
-                    const option = document.createElement('option');
-                    option.value = subject;
-                    option.textContent = subject;
-                    subjectFilter.appendChild(option);
-                });
-            }
-            
-            const yearFilter = document.getElementById('my_marks_year_filter');
-            if (yearFilter) {
-                const years = [...new Set(myMarksData.map(m => m.academic_year || m.year || '2025').filter(Boolean))];
-                yearFilter.innerHTML = '<option value="all">All Years</option>';
-                years.sort().reverse().forEach(year => {
-                    const option = document.createElement('option');
-                    option.value = year;
-                    option.textContent = year;
-                    yearFilter.appendChild(option);
-                });
-            }
-            
-            const gpa = calculateGPA(myMarksData);
-            const gpaEl = document.getElementById('my_marks_gpa');
-            if (gpaEl) gpaEl.textContent = gpa.toFixed(2);
-            
-            renderMyMarksTableWithHollowStars();
-            showGradingScale(userProgram, myMarksData);
-            setTimeout(renderMyMarksCharts, 300);
-            
-        } catch (error) {
-            console.error('Error loading my marks:', error);
-            tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
+        } catch (e) {
+            console.warn('Error fetching marks:', e);
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                        <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b;">No published marks found</h4>
+                        <p style="font-size: 13px; margin: 0;">Your marks will appear here once they are published by the admin.</p>
+                    </td>
+                </tr>
+            `;
+            document.getElementById('my_marks_count').textContent = '0 results';
+            return;
         }
+        
+        if (marks && marks.length > 0) {
+            myMarksData = marks;
+        } else {
+            myMarksData = [];
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="6" style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                        <i class="fas fa-file-alt" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
+                        <h4 style="margin: 0 0 8px 0; color: #1e293b;">No published marks found</h4>
+                        <p style="font-size: 13px; margin: 0;">Your marks will appear here once they are published by the admin.</p>
+                    </td>
+                </tr>
+            `;
+            document.getElementById('my_marks_count').textContent = '0 results';
+            return;
+        }
+        
+        myMarksFiltered = [...myMarksData];
+        
+        // Populate filters
+        const subjectFilter = document.getElementById('my_marks_subject_filter');
+        if (subjectFilter) {
+            const subjects = [...new Set(myMarksData.map(m => m.subject_name).filter(Boolean))];
+            subjectFilter.innerHTML = '<option value="all">All Units</option>';
+            subjects.sort().forEach(subject => {
+                const option = document.createElement('option');
+                option.value = subject;
+                option.textContent = subject;
+                subjectFilter.appendChild(option);
+            });
+        }
+        
+        const yearFilter = document.getElementById('my_marks_year_filter');
+        if (yearFilter) {
+            const years = [...new Set(myMarksData.map(m => m.academic_year || m.year || '2025').filter(Boolean))];
+            yearFilter.innerHTML = '<option value="all">All Years</option>';
+            years.sort().reverse().forEach(year => {
+                const option = document.createElement('option');
+                option.value = year;
+                option.textContent = year;
+                yearFilter.appendChild(option);
+            });
+        }
+        
+        const gpa = calculateGPA(myMarksData);
+        const gpaEl = document.getElementById('my_marks_gpa');
+        if (gpaEl) gpaEl.textContent = gpa.toFixed(2);
+        
+        renderMyMarksTableWithHollowStars();
+        showGradingScale(userProgram, myMarksData);
+        setTimeout(renderMyMarksCharts, 300);
+        
+    } catch (error) {
+        console.error('Error loading my marks:', error);
+        tbody.innerHTML = `<tr><td colspan="6" style="text-align: center; padding: 40px; color: #dc2626;">Error: ${error.message}</td></tr>`;
     }
+}
 
     function showGradingScale(program, marks) {
         const isTVET = PROGRAM.isTVET(program);
