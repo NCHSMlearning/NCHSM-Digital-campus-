@@ -5692,70 +5692,75 @@
         </div>
     </div>
 </section>
-    <!-- ============================================ -->
-<!-- TRANSCRIPT GENERATOR - TVET & KRCHN -->
+   <!-- ============================================ -->
+<!-- TRANSCRIPT GENERATOR - ENHANCED FAST ACCESS -->
+<!-- TVET & KRCHN - WITH OFFICIAL GRADE MAPPING -->
+<!-- CORRECTED TVET TERM STRUCTURE -->
 <!-- ============================================ -->
 <section id="transcript-generator" class="tab-content">
     <!-- Header -->
-    <div style="background: linear-gradient(135deg, #667eea, #764ba2); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(99,102,241,0.3);">
+    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
         <div>
-            <h2 style="color: white; margin: 0; font-weight: 700;">
-                <i class="fas fa-file-pdf"></i> Transcript Generator
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                <i class="fas fa-file-pdf" style="color: #FDB913;"></i> Transcript Generator
             </h2>
             <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
                 <i class="fas fa-graduation-cap"></i> KRCHN Nursing &nbsp;|&nbsp; <i class="fas fa-tools"></i> TVET Programs
+                <span style="display: inline-block; margin-left: 10px; background: #059669; color: white; font-size: 10px; padding: 2px 10px; border-radius: 12px; font-weight: 600;">⭐ Official Grade Mapping</span>
             </p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <button onclick="refreshTranscriptData()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <button onclick="refreshTranscriptData()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.3)'" onmouseout="this.style.background='rgba(255,255,255,0.2)'">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
-            <button onclick="exportAllTranscripts()" class="btn-action" style="background: white; color: #667eea; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+            <button onclick="exportAllTranscripts()" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(253,185,19,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                 <i class="fas fa-download"></i> Export All
+            </button>
+            <button onclick="window.print()" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; transition: all 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.15)'">
+                <i class="fas fa-print"></i> Print
             </button>
         </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 25px;">
-        <div class="card" style="border-top: 4px solid #667eea;">
-            <h3 style="color: #667eea; font-size: 12px;">Total Students</h3>
-            <p class="data" id="transcript_total_students" style="font-size: 28px; font-weight: 700; color: #667eea;">0</p>
-            <p class="minor-data" style="font-size: 11px;">With transcripts</p>
+    <!-- Stats Cards - Enhanced -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 14px; margin-bottom: 20px;">
+        <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #0A3D62; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px;">Total Students</div>
+            <div style="font-size: 26px; font-weight: 700; color: #0A3D62; margin-top: 2px;" id="transcript_total_students">0</div>
         </div>
-        <div class="card" style="border-top: 4px solid #10b981;">
-            <h3 style="color: #10b981; font-size: 12px;">Passing</h3>
-            <p class="data" id="transcript_passing" style="font-size: 28px; font-weight: 700; color: #10b981;">0</p>
-            <p class="minor-data" style="font-size: 11px;">≥ 60%</p>
+        <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #10b981; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px;">Passing</div>
+            <div style="font-size: 26px; font-weight: 700; color: #10b981; margin-top: 2px;" id="transcript_passing">0</div>
         </div>
-        <div class="card" style="border-top: 4px solid #ef4444;">
-            <h3 style="color: #dc2626; font-size: 12px;">Failing</h3>
-            <p class="data" id="transcript_failing" style="font-size: 28px; font-weight: 700; color: #dc2626;">0</p>
-            <p class="minor-data" style="font-size: 11px;">Below 60%</p>
+        <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #dc2626; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px;">Failing</div>
+            <div style="font-size: 26px; font-weight: 700; color: #dc2626; margin-top: 2px;" id="transcript_failing">0</div>
         </div>
-        <div class="card" style="border-top: 4px solid #f59e0b;">
-            <h3 style="color: #d97706; font-size: 12px;">Pending</h3>
-            <p class="data" id="transcript_pending" style="font-size: 28px; font-weight: 700; color: #d97706;">0</p>
-            <p class="minor-data" style="font-size: 11px;">No scores yet</p>
+        <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #f59e0b; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px;">Pending</div>
+            <div style="font-size: 26px; font-weight: 700; color: #f59e0b; margin-top: 2px;" id="transcript_pending">0</div>
         </div>
-        <div class="card" style="border-top: 4px solid #8b5cf6;">
-            <h3 style="color: #6d28d9; font-size: 12px;">Average</h3>
-            <p class="data" id="transcript_avg" style="font-size: 28px; font-weight: 700; color: #6d28d9;">0%</p>
-            <p class="minor-data" style="font-size: 11px;">Overall average</p>
+        <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #8b5cf6; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px;">Average</div>
+            <div style="font-size: 26px; font-weight: 700; color: #6d28d9; margin-top: 2px;" id="transcript_avg">0%</div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 16px 18px; border-left: 4px solid #4C1D95; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.3px;">Overall GPA</div>
+            <div style="font-size: 26px; font-weight: 700; color: #4C1D95; margin-top: 2px;" id="transcript_overall_gpa">0.00</div>
         </div>
     </div>
 
-    <!-- Selectors -->
-    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+    <!-- Quick Filters - Enhanced -->
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e5e7eb;">
+        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr auto; gap: 12px; align-items: end;">
             <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
                     <i class="fas fa-tag"></i> Program
                 </label>
-                <select id="transcript_program_select" class="form-control" onchange="loadTranscriptStudents()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                <select id="transcript_program_select" onchange="loadTranscriptStudents()" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 13px;">
                     <option value="all">All Programs</option>
                     <option value="KRCHN">🎓 KRCHN Nursing</option>
-                    <optgroup label="🎯 TVET Diploma Programs">
+                    <optgroup label="🎯 TVET Diploma Programs (2 Years)">
                         <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
                         <option value="DCH">Diploma in Community Health</option>
                         <option value="DHRIT">Diploma in Health Records and IT</option>
@@ -5766,7 +5771,7 @@
                         <option value="DICT">Diploma in ICT</option>
                         <option value="DME">Diploma in Medical Engineering</option>
                     </optgroup>
-                    <optgroup label="📜 TVET Certificate Programs">
+                    <optgroup label="📜 TVET Certificate Programs (1 Year)">
                         <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
                         <option value="CCH">Certificate in Community Health</option>
                         <option value="CHRIT">Certificate in Health Records and IT</option>
@@ -5778,7 +5783,7 @@
                         <option value="CHSS">Certificate in Health Support Services</option>
                         <option value="CICT">Certificate in ICT</option>
                     </optgroup>
-                    <optgroup label="🔧 TVET Artisan Programs">
+                    <optgroup label="🔧 TVET Artisan Programs (1 Year)">
                         <option value="ACH">Artisan in Community Health</option>
                         <option value="AAG">Artisan in Agriculture</option>
                         <option value="ASW">Artisan in Social Work</option>
@@ -5790,18 +5795,10 @@
                 </select>
             </div>
             <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-user-graduate"></i> Student
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-calendar"></i> Year
                 </label>
-                <select id="transcript_student_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
-                    <option value="">-- Select Student --</option>
-                </select>
-            </div>
-            <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-calendar"></i> Academic Year
-                </label>
-                <select id="transcript_year_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                <select id="transcript_year_select" onchange="loadTranscriptStudents()" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 13px;">
                     <option value="2024">2024</option>
                     <option value="2025" selected>2025</option>
                     <option value="2026">2026</option>
@@ -5810,97 +5807,150 @@
                 </select>
             </div>
             <div>
-                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                    <i class="fas fa-layer-group"></i> Block
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-layer-group"></i> Block/Term
                 </label>
-                <select id="transcript_block_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
-                    <option value="all">All Blocks</option>
-                    <option value="BLOCK_0">Block 0</option>
-                    <option value="BLOCK_1">Block 1</option>
-                    <option value="BLOCK_2">Block 2</option>
-                    <option value="BLOCK_3">Block 3</option>
-                    <option value="BLOCK_4">Block 4</option>
-                    <option value="BLOCK_5">Block 5</option>
+                <select id="transcript_block_select" onchange="loadTranscriptStudents()" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 13px;">
+                    <!-- KRCHN Nursing Blocks -->
+                    <optgroup label="🎓 KRCHN Nursing Blocks">
+                        <option value="all">All Blocks</option>
+                        <option value="Introductory">Introductory</option>
+                        <option value="Block 1">Block 1</option>
+                        <option value="Block 2">Block 2</option>
+                        <option value="Block 3">Block 3</option>
+                        <option value="Block 4">Block 4</option>
+                        <option value="Block 5">Block 5</option>
+                        <option value="Block 6">Block 6</option>
+                        <option value="Final">Final</option>
+                    </optgroup>
+                    <!-- TVET Terms -->
+                    <optgroup label="🔧 TVET Terms">
+                        <option value="Year 1 Term 1">Year 1 Term 1</option>
+                        <option value="Year 1 Term 2">Year 1 Term 2</option>
+                        <option value="Year 1 Term 3">Year 1 Term 3</option>
+                        <option value="Year 2 Term 1">Year 2 Term 1</option>
+                        <option value="Year 2 Term 2">Year 2 Term 2</option>
+                        <option value="Year 2 Term 3">Year 2 Term 3</option>
+                    </optgroup>
                 </select>
             </div>
-            <div style="display: flex; align-items: flex-end; gap: 10px;">
-                <button onclick="loadTranscriptStudents()" style="flex: 1; background: #4C1D95; padding: 10px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-users"></i> Load Students
+            <div>
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-search"></i> Student
+                </label>
+                <input type="text" id="transcript_search_input" placeholder="Search student..." onkeyup="filterTranscriptStudents()" style="width: 100%; padding: 9px 12px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 13px;">
+            </div>
+            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                <button onclick="loadTranscriptStudents()" style="padding: 9px 18px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-users"></i> Load
                 </button>
-                <button onclick="generateSelectedTranscript()" style="flex: 1; background: #059669; padding: 10px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
+                <button onclick="generateSelectedTranscript()" style="padding: 9px 18px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(5,150,105,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                     <i class="fas fa-file-pdf"></i> Generate
                 </button>
             </div>
         </div>
-    </div>
-
-    <!-- Grading System Reference -->
-    <div style="background: white; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
-        <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
-            <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading System:</span>
-            <span style="background: #d1fae5; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 11px;">A (75-100%) → 4.0</span>
-            <span style="background: #dbeafe; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 11px;">B (65-74%) → 3.0</span>
-            <span style="background: #fef3c7; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 11px;">C (60-64%) → 2.0</span>
-            <span style="background: #fee2e2; padding: 2px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 11px;">D (Below 60%) → 0.0</span>
-            <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
-                <i class="fas fa-info-circle"></i> Applicable to all programs
+        
+        <!-- Quick Action Buttons -->
+        <div style="display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb;">
+            <button onclick="selectAllTranscriptStudents()" style="padding: 5px 14px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                <i class="fas fa-check-double"></i> Select All
+            </button>
+            <button onclick="deselectAllTranscriptStudents()" style="padding: 5px 14px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                <i class="fas fa-times"></i> Deselect
+            </button>
+            <button onclick="generateSelectedTranscripts()" style="padding: 5px 14px; background: #059669; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                <i class="fas fa-file-pdf"></i> Generate Selected (<span id="transcriptSelectedCount">0</span>)
+            </button>
+            <button onclick="exportAllTranscripts()" style="padding: 5px 14px; background: #FDB913; color: #0A3D62; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                <i class="fas fa-file-excel"></i> Export CSV
+            </button>
+            <span style="font-size: 11px; color: #94a3b8; margin-left: auto; display: flex; align-items: center;">
+                <span id="transcript_student_count">0</span> students loaded
             </span>
         </div>
     </div>
 
-    <!-- PLACEHOLDER - Shown when no students loaded -->
-    <div id="transcriptPlaceholder" style="text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb;">
-        <i class="fas fa-file-pdf" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-        <h3 style="color: #1e293b;">Select filters and click "Load Students"</h3>
-        <p style="color: #94a3b8;">Choose program, block, and year to load students for transcript generation</p>
+    <!-- Grading System Reference - Official -->
+    <div style="background: white; border-radius: 12px; padding: 10px 16px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+            <span style="font-weight: 700; color: #475569; font-size: 12px;">📊 Official Grading:</span>
+            
+            <!-- TVET Grading -->
+            <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap; background: #f0fdf4; padding: 3px 10px; border-radius: 6px; border: 1px solid #86efac;">
+                <span style="font-size: 10px; font-weight: 700; color: #065f46;">🔧 TVET</span>
+                <span style="background: #d1fae5; padding: 1px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 9px;">A (80-100%) = 4</span>
+                <span style="background: #dbeafe; padding: 1px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 9px;">B (65-79%) = 3</span>
+                <span style="background: #fef3c7; padding: 1px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 9px;">C (50-64%) = 2</span>
+                <span style="background: #fee2e2; padding: 1px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 9px;">E (0-49%) = 0</span>
+            </div>
+            
+            <!-- Nursing Grading -->
+            <div style="display: flex; align-items: center; gap: 4px; flex-wrap: wrap; background: #eff6ff; padding: 3px 10px; border-radius: 6px; border: 1px solid #93c5fd;">
+                <span style="font-size: 10px; font-weight: 700; color: #1e40af;">🎓 Nursing</span>
+                <span style="background: #d1fae5; padding: 1px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 9px;">A (75-100%) = 4</span>
+                <span style="background: #dbeafe; padding: 1px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 9px;">B (65-74%) = 3</span>
+                <span style="background: #fef3c7; padding: 1px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 9px;">C (60-64%) = 2</span>
+                <span style="background: #fee2e2; padding: 1px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 9px;">D (0-59%) = 0</span>
+            </div>
+            
+            <span style="font-size: 10px; color: #94a3b8; margin-left: auto;">
+                <i class="fas fa-flag"></i> Min Pass: <span id="transcript_pass_mark">60%</span>
+            </span>
+        </div>
     </div>
 
-    <!-- DYNAMIC CONTENT - Shows when students are loaded -->
+    <!-- LOADING PLACEHOLDER -->
+    <div id="transcriptPlaceholder" style="text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <i class="fas fa-file-pdf" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+        <h3 style="color: #1e293b;">Select filters and click "Load Students"</h3>
+        <p style="color: #94a3b8;">Choose program, block/term, and year to load students for transcript generation</p>
+        <button onclick="loadTranscriptStudents()" style="margin-top: 16px; padding: 10px 32px; background: #0A3D62; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+            <i class="fas fa-users"></i> Load Students
+        </button>
+    </div>
+
+    <!-- DYNAMIC CONTENT -->
     <div id="transcriptDynamicContent" style="display: none;">
         
         <!-- Student List -->
-        <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+        <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
                 <div>
-                    <h3 style="margin: 0; color: #1e293b;">
+                    <h4 style="margin: 0; color: #0A3D62; font-size: 15px;">
                         <i class="fas fa-users" style="color: #4C1D95;"></i> Student List
-                    </h3>
-                    <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
-                        <i class="fas fa-info-circle"></i> Select a student to generate transcript
+                    </h4>
+                    <p style="margin: 2px 0 0 0; color: #64748b; font-size: 12px;">
+                        <i class="fas fa-info-circle"></i> Click a student to select, or use checkboxes
                     </p>
                 </div>
-                <div style="display: flex; gap: 8px;">
-                    <button onclick="selectAllTranscriptStudents()" class="btn-action" style="background: #4C1D95; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                        <i class="fas fa-check-double"></i> Select All
-                    </button>
-                    <button onclick="deselectAllTranscriptStudents()" class="btn-action" style="background: #6b7280; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                        <i class="fas fa-times"></i> Deselect
-                    </button>
-                    <button onclick="generateSelectedTranscripts()" class="btn-action" style="background: #059669; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                        <i class="fas fa-file-pdf"></i> Generate Selected
-                    </button>
+                <div style="display: flex; gap: 6px; flex-wrap: wrap;">
+                    <span style="background: #f1f5f9; padding: 4px 12px; border-radius: 12px; font-size: 11px; color: #475569;">
+                        Selected: <strong id="transcriptSelectedCount">0</strong>
+                    </span>
                 </div>
             </div>
-            <div id="transcriptStudentList" style="max-height: 400px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px;">
-                <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 20px;">
-                    <i class="fas fa-info-circle"></i> Loading students...
+            <div id="transcriptStudentList" style="max-height: 450px; overflow-y: auto; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 8px;">
+                <div style="color: #94a3b8; font-size: 13px; grid-column: 1 / -1; text-align: center; padding: 30px;">
+                    <div class="loading-spinner" style="display: inline-block; width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #0A3D62; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                    <p style="margin-top: 10px;">Loading students...</p>
                 </div>
             </div>
         </div>
 
         <!-- Transcript Preview -->
-        <div id="transcriptPreviewContainer" style="display: none; background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+        <div id="transcriptPreviewContainer" style="display: none; background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 12px; border-bottom: 2px solid #e2e8f0;">
-                <h4 style="margin: 0; color: #1e293b;">
+                <h4 style="margin: 0; color: #0A3D62;">
                     <i class="fas fa-file-pdf" style="color: #4C1D95;"></i> Transcript Preview
                 </h4>
-                <button onclick="closeTranscriptPreview()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8;">
+                <button onclick="closeTranscriptPreview()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; transition: color 0.2s;" onmouseover="this.style.color='#1e293b'" onmouseout="this.style.color='#94a3b8'">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
             <div id="transcriptPreviewContent"></div>
         </div>
     </div>
+
 </section>
 <!-- ============================================ -->
 <!-- ANALYTICS MODULE - TVET & KRCHN (FULLY MERGED) -->
