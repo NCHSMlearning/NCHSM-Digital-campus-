@@ -10,6 +10,7 @@
 // 6. Attendance map view
 // 7. CSV export and print
 // 8. Search and filter functionality
+// 9. Single and Bulk Attendance Approval
 // ============================================================
 
 const LecturerAttendance = {
@@ -263,144 +264,165 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // RENDER TODAY'S ATTENDANCE
+    // RENDER TODAY'S ATTENDANCE - WITH APPROVE BUTTON
     // ============================================================
- // ============================================================
-// RENDER TODAY'S ATTENDANCE - FIXED TO USE REGISTRATION NUMBER
-// ============================================================
-renderTodayAttendance() {
-    const tbody = document.getElementById('attendanceTable');
-    if (!tbody) return;
+    renderTodayAttendance() {
+        const tbody = document.getElementById('attendanceTable');
+        if (!tbody) return;
 
-    const logs = this.todayLogs;
+        const logs = this.todayLogs;
 
-    // Update count
-    const countEl = document.getElementById('todayLogCount');
-    if (countEl) countEl.textContent = `${logs.length} records`;
+        // Update count
+        const countEl = document.getElementById('todayLogCount');
+        if (countEl) countEl.textContent = `${logs.length} records`;
 
-    // Empty state
-    if (!logs || logs.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                    <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                    <p style="margin:0;">No student attendance records today.</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
+        // Empty state
+        if (!logs || logs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+                        <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                        <p style="margin:0;">No student attendance records today.</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
 
-    const statusColors = {
-        'Present': '#10b981',
-        'Absent': '#ef4444',
-        'Pending': '#f59e0b',
-        'Late': '#f59e0b',
-        'Excused': '#3b82f6'
-    };
+        const statusColors = {
+            'Present': '#10b981',
+            'Absent': '#ef4444',
+            'Pending': '#f59e0b',
+            'Late': '#f59e0b',
+            'Excused': '#3b82f6'
+        };
 
-    tbody.innerHTML = logs.map((log, index) => {
-        const hasLocation = log.latitude && log.longitude;
-        const status = log.attendance_status || 'Pending';
-        const statusColor = statusColors[status] || '#6b7280';
-        
-        const studentName = log.student_name || 'Unknown Student';
-        
-        // ✅ FIX: Use registration_number instead of student_id
-        // registration_number contains: KRCHN/0052/MAR/2024
-        // student_id contains: 28fa4da5-93a9-4098-ac2e-88ba142a77ee (UUID)
-        const regNumber = log.registration_number || log.student_id || 'N/A';
-        const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
-        
-        const blockDisplay = log.block || 'N/A';
-        const programDisplay = log.program || 'N/A';
-        
-        const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
-        const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { 
-            hour: '2-digit', 
-            minute: '2-digit' 
-        }) : 'N/A';
+        tbody.innerHTML = logs.map((log, index) => {
+            const hasLocation = log.latitude && log.longitude;
+            const status = log.attendance_status || 'Pending';
+            const statusColor = statusColors[status] || '#6b7280';
+            
+            const studentName = log.student_name || 'Unknown Student';
+            
+            // Use registration_number instead of student_id
+            const regNumber = log.registration_number || log.student_id || 'N/A';
+            const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
+            
+            const blockDisplay = log.block || 'N/A';
+            const programDisplay = log.program || 'N/A';
+            
+            const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
+            const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { 
+                hour: '2-digit', 
+                minute: '2-digit' 
+            }) : 'N/A';
 
-        // Determine if this is a lecturer check-in
-        const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-        const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
-            (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
+            // Determine if this is a lecturer check-in
+            const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
+            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
+                (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
 
-        return `
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
-                onmouseover="this.style.background='${isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
-                onmouseout="this.style.background='${isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
-                
-                <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
-                    ${this.escapeHtml(studentName)}
-                    ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
-                </td>
-                
-                <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
-                    title="${this.escapeHtml(regNumber)}">
-                    ${this.escapeHtml(displayReg)}
-                </td>
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
-                    <span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; 
-                                 color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'}; 
-                                 padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                        ${this.escapeHtml(programDisplay)}
-                    </span>
-                </td>
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                    ${this.escapeHtml(blockDisplay)}
-                </td>
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                    ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
-                </td>
-                
-                <td style="padding: 10px 14px;">
-                    <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; 
-                                 color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; 
-                                 padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                        ${this.escapeHtml(log.session_type || 'Class')}
-                    </span>
-                </td>
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                    ${timeStr}
-                </td>
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    ${this.escapeHtml(locationDisplay)}
-                </td>
-                
-                <td style="padding: 10px 14px; text-align: center;">
-                    <span style="background: ${statusColor}20; 
-                                 color: ${statusColor}; 
-                                 padding: 3px 12px; 
-                                 border-radius: 12px; 
-                                 font-size: 11px; 
-                                 font-weight: 600;">
-                        ${status}
-                    </span>
-                    ${log.is_verified ? '<span style="font-size:10px;color:#10b981;margin-left:4px;">✓</span>' : ''}
-                </td>
-                
-                <td style="padding: 10px 14px; text-align: center;">
-                    ${hasLocation && !isLecturerCheckin ? 
-                        `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
-                                style="background: #4C1D95; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
-                            <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> Map
-                        </button>` : 
-                        `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
-                    }
-                </td>
-            </tr>
-        `;
-    }).join('');
-},
+            // Check if can be approved
+            const canApprove = !isLecturerCheckin && 
+                              log.session_type !== 'Lecturer Check-in' && 
+                              log.role !== 'lecturer' &&
+                              !log.is_verified;
+
+            return `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
+                    onmouseover="this.style.background='${isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
+                    onmouseout="this.style.background='${isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
+                    
+                    <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
+                        ${this.escapeHtml(studentName)}
+                        ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
+                        title="${this.escapeHtml(regNumber)}">
+                        ${this.escapeHtml(displayReg)}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
+                        <span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; 
+                                     color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'}; 
+                                     padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${this.escapeHtml(programDisplay)}
+                        </span>
+                    </td>
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                        ${this.escapeHtml(blockDisplay)}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                        ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
+                    </td>
+                    
+                    <td style="padding: 10px 14px;">
+                        <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; 
+                                     color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; 
+                                     padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${this.escapeHtml(log.session_type || 'Class')}
+                        </span>
+                    </td>
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                        ${timeStr}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${this.escapeHtml(locationDisplay)}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="background: ${statusColor}20; 
+                                     color: ${statusColor}; 
+                                     padding: 3px 12px; 
+                                     border-radius: 12px; 
+                                     font-size: 11px; 
+                                     font-weight: 600;">
+                            ${status}
+                        </span>
+                        ${log.is_verified ? '<span style="font-size:10px;color:#10b981;margin-left:4px;">✓</span>' : ''}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            <!-- Map Button -->
+                            ${hasLocation && !isLecturerCheckin ? 
+                                `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
+                                        style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseout="this.style.transform='scale(1)'">
+                                    <i class="fas fa-map-marker-alt" style="font-size:10px;"></i>
+                                </button>` : 
+                                `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
+                            }
+                            
+                            <!-- Approve Button -->
+                            ${canApprove ? 
+                                (log.is_verified ? 
+                                    `<span style="color: #10b981; font-size: 11px; font-weight: 600;">✓ Verified</span>` :
+                                    `<button onclick="LecturerAttendance.approveAttendance('${log.id}')" 
+                                            data-approve-id="${log.id}"
+                                            style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
+                                            onmouseover="this.style.transform='scale(1.05)'" 
+                                            onmouseout="this.style.transform='scale(1)'">
+                                        <i class="fas fa-check" style="font-size:10px;"></i> Approve
+                                    </button>`
+                                ) : 
+                                `<span style="color: #94a3b8; font-size: 11px;">—</span>`
+                            }
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
 
     // ============================================================
-    // UPDATE STATS - FULL FUNCTION
+    // UPDATE STATS
     // ============================================================
     updateStats(logs) {
         if (!logs) logs = this.todayLogs || [];
@@ -529,120 +551,145 @@ renderTodayAttendance() {
     },
 
     // ============================================================
-    // RENDER PAST ATTENDANCE
+    // RENDER PAST ATTENDANCE - WITH APPROVE BUTTON
     // ============================================================
-   // ============================================================
-// RENDER PAST ATTENDANCE - FIXED TO USE REGISTRATION NUMBER
-// ============================================================
-renderPastAttendance() {
-    const tbody = document.getElementById('pastAttendanceTable');
-    if (!tbody) return;
+    renderPastAttendance() {
+        const tbody = document.getElementById('pastAttendanceTable');
+        if (!tbody) return;
 
-    const logs = this.pastLogs;
+        const logs = this.pastLogs;
 
-    // Update count
-    const countEl = document.getElementById('pastLogCount');
-    if (countEl) countEl.textContent = `${logs.length} records`;
+        // Update count
+        const countEl = document.getElementById('pastLogCount');
+        if (countEl) countEl.textContent = `${logs.length} records`;
 
-    // Empty state
-    if (!logs || logs.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
-                    <i class="fas fa-history" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                    <p style="margin:0;">No past attendance records found.</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
+        // Empty state
+        if (!logs || logs.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
+                        <i class="fas fa-history" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
+                        <p style="margin:0;">No past attendance records found.</p>
+                    </td>
+                </tr>
+            `;
+            return;
+        }
 
-    const statusColors = {
-        'Present': '#10b981',
-        'Absent': '#ef4444',
-        'Pending': '#f59e0b',
-        'Late': '#f59e0b',
-        'Excused': '#3b82f6'
-    };
+        const statusColors = {
+            'Present': '#10b981',
+            'Absent': '#ef4444',
+            'Pending': '#f59e0b',
+            'Late': '#f59e0b',
+            'Excused': '#3b82f6'
+        };
 
-    tbody.innerHTML = logs.map((log) => {
-        const hasLocation = log.latitude && log.longitude;
-        const status = log.attendance_status || 'Pending';
-        const statusColor = statusColors[status] || '#6b7280';
-        const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
-        
-        const studentName = log.student_name || 'Unknown Student';
-        
-        // ✅ FIX: Use registration_number instead of student_id
-        const regNumber = log.registration_number || log.student_id || 'N/A';
-        const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
-        
-        const blockDisplay = log.block || 'N/A';
-        const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-        const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
-            (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
+        tbody.innerHTML = logs.map((log) => {
+            const hasLocation = log.latitude && log.longitude;
+            const status = log.attendance_status || 'Pending';
+            const statusColor = statusColors[status] || '#6b7280';
+            const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
+            
+            const studentName = log.student_name || 'Unknown Student';
+            
+            // Use registration_number instead of student_id
+            const regNumber = log.registration_number || log.student_id || 'N/A';
+            const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
+            
+            const blockDisplay = log.block || 'N/A';
+            const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
+            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
+                (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
 
-        return `
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
-                onmouseover="this.style.background='${isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
-                onmouseout="this.style.background='${isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
-                    ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
-                </td>
-                
-                <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
-                    ${this.escapeHtml(studentName)}
-                </td>
-                
-                <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
-                    title="${this.escapeHtml(regNumber)}">
-                    ${this.escapeHtml(displayReg)}
-                </td>
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                    ${this.escapeHtml(blockDisplay)}
-                </td>
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                    ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
-                </td>
-                
-                <td style="padding: 10px 14px;">
-                    <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; 
-                                 color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; 
-                                 padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                        ${this.escapeHtml(log.session_type || 'Class')}
-                    </span>
-                </td>
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
-                    ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                </td>
-                
-                <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
-                    ${this.escapeHtml(locationDisplay)}
-                </td>
-                
-                <td style="padding: 10px 14px; text-align: center;">
-                    <span style="background: ${statusColor}20; color: ${statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                        ${status}
-                    </span>
-                </td>
-                
-                <td style="padding: 10px 14px; text-align: center;">
-                    ${hasLocation && !isLecturerCheckin ? 
-                        `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
-                                style="background: #4C1D95; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;">
-                            <i class="fas fa-map-marker-alt" style="font-size:10px;"></i> Map
-                        </button>` : 
-                        `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
-                    }
-                </td>
-            </tr>
-        `;
-    }).join('');
-},
+            // Check if can be approved
+            const canApprove = !isLecturerCheckin && 
+                              log.session_type !== 'Lecturer Check-in' && 
+                              log.role !== 'lecturer' &&
+                              !log.is_verified;
+
+            return `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
+                    onmouseover="this.style.background='${isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
+                    onmouseout="this.style.background='${isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
+                        ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
+                        ${this.escapeHtml(studentName)}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
+                        title="${this.escapeHtml(regNumber)}">
+                        ${this.escapeHtml(displayReg)}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                        ${this.escapeHtml(blockDisplay)}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                        ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
+                    </td>
+                    
+                    <td style="padding: 10px 14px;">
+                        <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; 
+                                     color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; 
+                                     padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${this.escapeHtml(log.session_type || 'Class')}
+                        </span>
+                    </td>
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
+                        ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${this.escapeHtml(locationDisplay)}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="background: ${statusColor}20; color: ${statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">
+                            ${status}
+                        </span>
+                        ${log.is_verified ? '<span style="font-size:10px;color:#10b981;margin-left:4px;">✓</span>' : ''}
+                    </td>
+                    
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            <!-- Map Button -->
+                            ${hasLocation && !isLecturerCheckin ? 
+                                `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
+                                        style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseout="this.style.transform='scale(1)'">
+                                    <i class="fas fa-map-marker-alt" style="font-size:10px;"></i>
+                                </button>` : 
+                                `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
+                            }
+                            
+                            <!-- Approve Button -->
+                            ${canApprove ? 
+                                (log.is_verified ? 
+                                    `<span style="color: #10b981; font-size: 11px; font-weight: 600;">✓ Verified</span>` :
+                                    `<button onclick="LecturerAttendance.approveAttendance('${log.id}')" 
+                                            data-approve-id="${log.id}"
+                                            style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
+                                            onmouseover="this.style.transform='scale(1.05)'" 
+                                            onmouseout="this.style.transform='scale(1)'">
+                                        <i class="fas fa-check" style="font-size:10px;"></i> Approve
+                                    </button>`
+                                ) : 
+                                `<span style="color: #94a3b8; font-size: 11px;">—</span>`
+                            }
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+    },
+
     // ============================================================
     // LOAD ATTENDANCE STATS (for dashboard cards)
     // ============================================================
@@ -859,175 +906,164 @@ renderPastAttendance() {
     // ============================================================
     // LECTURER SELF CHECK-IN
     // ============================================================
-   // ============================================================
-// LECTURER SELF CHECK-IN - FIXED
-// ============================================================
-async lecturerCheckIn() {
-    if (this.isProcessing) {
-        this.showNotification('Please wait, processing...', 'warning');
-        return;
-    }
-
-    const btn = document.getElementById('lecturerCheckinBtn');
-    const statusEl = document.getElementById('lecturerCheckinStatus');
-
-    if (!btn) return;
-
-    this.isProcessing = true;
-    btn.disabled = true;
-    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
-
-    if (statusEl) {
-        statusEl.textContent = '⏳ Getting location...';
-        statusEl.style.color = '#f59e0b';
-    }
-
-    if (!navigator.geolocation) {
-        this.showNotification('Geolocation not supported by your browser.', 'error');
-        btn.disabled = false;
-        btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-        if (statusEl) {
-            statusEl.textContent = '❌ Geolocation not supported';
-            statusEl.style.color = '#ef4444';
+    async lecturerCheckIn() {
+        if (this.isProcessing) {
+            this.showNotification('Please wait, processing...', 'warning');
+            return;
         }
-        this.isProcessing = false;
-        return;
-    }
 
-    navigator.geolocation.getCurrentPosition(
-        async (position) => {
-            try {
-                const supabase = window.lecturerDB?.supabase;
-                const profile = window.lecturerDB?.getCurrentUserProfile();
-                
-                // ✅ Use the correct ID (UUID) from the profile
-                const userId = profile?.user_id || this.lecturerUuid || this.lecturerAssignmentId;
-                
-                // ✅ Get staff number from profile or use a default
-                const staffNumber = profile?.staff_id || profile?.staff_number || 'LECTURER';
-                const fullName = profile?.full_name || 'Lecturer';
-                const staffId = profile?.id || userId;
+        const btn = document.getElementById('lecturerCheckinBtn');
+        const statusEl = document.getElementById('lecturerCheckinStatus');
 
-                if (!supabase || !userId) {
-                    throw new Error('Database or user not available');
-                }
+        if (!btn) return;
 
-                if (statusEl) {
-                    statusEl.textContent = '⏳ Checking in...';
-                    statusEl.style.color = '#f59e0b';
-                }
+        this.isProcessing = true;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Getting location...';
 
-                const today = new Date().toISOString().split('T')[0];
-                
-                // ✅ Check existing check-in using user_id (UUID)
-                const { data: existing, error: checkError } = await supabase
-                    .from('geo_attendance_logs')
-                    .select('id')
-                    .eq('user_id', userId)  // ✅ Use user_id (UUID)
-                    .eq('session_type', 'Lecturer Check-in')
-                    .gte('check_in_time', `${today}T00:00:00.000Z`)
-                    .lte('check_in_time', `${today}T23:59:59.999Z`)
-                    .limit(1);
+        if (statusEl) {
+            statusEl.textContent = '⏳ Getting location...';
+            statusEl.style.color = '#f59e0b';
+        }
 
-                if (checkError) {
-                    console.warn('⚠️ Error checking existing check-in:', checkError);
-                }
+        if (!navigator.geolocation) {
+            this.showNotification('Geolocation not supported by your browser.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
+            if (statusEl) {
+                statusEl.textContent = '❌ Geolocation not supported';
+                statusEl.style.color = '#ef4444';
+            }
+            this.isProcessing = false;
+            return;
+        }
 
-                if (existing && existing.length > 0) {
-                    this.showNotification('✅ You have already checked in today!', 'success');
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                try {
+                    const supabase = window.lecturerDB?.supabase;
+                    const profile = window.lecturerDB?.getCurrentUserProfile();
+                    
+                    // Use the correct ID (UUID) from the profile
+                    const userId = profile?.user_id || this.lecturerUuid || this.lecturerAssignmentId;
+                    
+                    // Get staff number from profile or use a default
+                    const staffNumber = profile?.staff_id || profile?.staff_number || 'LECTURER';
+                    const fullName = profile?.full_name || 'Lecturer';
+                    const staffId = profile?.id || userId;
+
+                    if (!supabase || !userId) {
+                        throw new Error('Database or user not available');
+                    }
+
                     if (statusEl) {
-                        statusEl.textContent = '✅ Already checked in today';
+                        statusEl.textContent = '⏳ Checking in...';
+                        statusEl.style.color = '#f59e0b';
+                    }
+
+                    const today = new Date().toISOString().split('T')[0];
+                    
+                    // Check existing check-in using user_id (UUID)
+                    const { data: existing, error: checkError } = await supabase
+                        .from('geo_attendance_logs')
+                        .select('id')
+                        .eq('user_id', userId)
+                        .eq('session_type', 'Lecturer Check-in')
+                        .gte('check_in_time', `${today}T00:00:00.000Z`)
+                        .lte('check_in_time', `${today}T23:59:59.999Z`)
+                        .limit(1);
+
+                    if (checkError) {
+                        console.warn('⚠️ Error checking existing check-in:', checkError);
+                    }
+
+                    if (existing && existing.length > 0) {
+                        this.showNotification('✅ You have already checked in today!', 'success');
+                        if (statusEl) {
+                            statusEl.textContent = '✅ Already checked in today';
+                            statusEl.style.color = '#10b981';
+                        }
+                        btn.disabled = false;
+                        btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
+                        this.isProcessing = false;
+                        return;
+                    }
+
+                    // Insert with correct column types
+                    const { error: insertError } = await supabase
+                        .from('geo_attendance_logs')
+                        .insert({
+                            student_id: userId,
+                            user_id: userId,
+                            registration_number: staffNumber,
+                            student_name: fullName,
+                            check_in_time: new Date().toISOString(),
+                            session_type: 'Lecturer Check-in',
+                            latitude: position.coords.latitude,
+                            longitude: position.coords.longitude,
+                            accuracy_m: position.coords.accuracy || null,
+                            attendance_status: 'Present',
+                            is_verified: true,
+                            target_name: 'Lecturer Check-in',
+                            location_address: 'Lecturer Check-in',
+                            program: profile?.program || profile?.department || 'KRCHN',
+                            block: profile?.block || 'Staff',
+                            role: 'lecturer',
+                            recorded_by_name: fullName,
+                            created_at: new Date().toISOString()
+                        });
+
+                    if (insertError) {
+                        console.error('❌ Insert error:', insertError);
+                        throw new Error(insertError.message);
+                    }
+
+                    this.showNotification('✅ Lecturer check-in logged successfully!', 'success');
+                    if (statusEl) {
+                        statusEl.textContent = '✅ Checked in successfully';
                         statusEl.style.color = '#10b981';
                     }
+
+                    // Refresh attendance data
+                    await this.loadTodayAttendance();
+                    await this.loadAttendanceStats();
+
+                } catch (error) {
+                    console.error('❌ Check-in error:', error);
+                    this.showNotification('Check-in failed: ' + error.message, 'error');
+                    if (statusEl) {
+                        statusEl.textContent = '❌ Check-in failed';
+                        statusEl.style.color = '#ef4444';
+                    }
+                } finally {
                     btn.disabled = false;
                     btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
                     this.isProcessing = false;
-                    return;
                 }
+            },
+            (error) => {
+                console.error('❌ Geolocation error:', error);
+                let errorMessage = 'Location unavailable';
+                if (error.code === 1) errorMessage = 'Location access denied. Please enable location services.';
+                else if (error.code === 2) errorMessage = 'Location unavailable. Please try again.';
+                else if (error.code === 3) errorMessage = 'Location request timed out.';
 
-                // ✅ Insert with correct column types
-                // student_id = UUID (use userId)
-                // user_id = UUID (use userId)  
-                // registration_number = TEXT (use staffNumber)
-                const { error: insertError } = await supabase
-                    .from('geo_attendance_logs')
-                    .insert({
-                        // ✅ UUID columns - use userId (valid UUID)
-                        student_id: userId,           // ✅ UUID, not STAFF102
-                        user_id: userId,              // ✅ UUID
-                        
-                        // ✅ TEXT columns - can store staff ID
-                        registration_number: staffNumber,  // ✅ "STAFF102" or "LECTURER"
-                        student_name: fullName,
-                        
-                        // ✅ Other fields
-                        check_in_time: new Date().toISOString(),
-                        session_type: 'Lecturer Check-in',
-                        latitude: position.coords.latitude,
-                        longitude: position.coords.longitude,
-                        accuracy_m: position.coords.accuracy || null,
-                        attendance_status: 'Present',
-                        is_verified: true,
-                        target_name: 'Lecturer Check-in',
-                        location_address: 'Lecturer Check-in',
-                        program: profile?.program || profile?.department || 'KRCHN',
-                        block: profile?.block || 'Staff',
-                        role: 'lecturer',
-                        recorded_by_name: fullName,
-                        created_at: new Date().toISOString()
-                    });
-
-                if (insertError) {
-                    console.error('❌ Insert error:', insertError);
-                    throw new Error(insertError.message);
-                }
-
-                this.showNotification('✅ Lecturer check-in logged successfully!', 'success');
+                this.showNotification('Geolocation error: ' + errorMessage, 'error');
                 if (statusEl) {
-                    statusEl.textContent = '✅ Checked in successfully';
-                    statusEl.style.color = '#10b981';
-                }
-
-                // Refresh attendance data
-                await this.loadTodayAttendance();
-                await this.loadAttendanceStats();
-
-            } catch (error) {
-                console.error('❌ Check-in error:', error);
-                this.showNotification('Check-in failed: ' + error.message, 'error');
-                if (statusEl) {
-                    statusEl.textContent = '❌ Check-in failed';
+                    statusEl.textContent = '❌ ' + errorMessage;
                     statusEl.style.color = '#ef4444';
                 }
-            } finally {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
                 this.isProcessing = false;
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 15000,
+                maximumAge: 30000
             }
-        },
-        (error) => {
-            console.error('❌ Geolocation error:', error);
-            let errorMessage = 'Location unavailable';
-            if (error.code === 1) errorMessage = 'Location access denied. Please enable location services.';
-            else if (error.code === 2) errorMessage = 'Location unavailable. Please try again.';
-            else if (error.code === 3) errorMessage = 'Location request timed out.';
-
-            this.showNotification('Geolocation error: ' + errorMessage, 'error');
-            if (statusEl) {
-                statusEl.textContent = '❌ ' + errorMessage;
-                statusEl.style.color = '#ef4444';
-            }
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check-circle"></i> Mark My Attendance';
-            this.isProcessing = false;
-        },
-        {
-            enableHighAccuracy: true,
-            timeout: 15000,
-            maximumAge: 30000
-        }
-    );
-},
+        );
+    },
 
     // ============================================================
     // MARK STUDENT ATTENDANCE (Manual)
@@ -1222,7 +1258,6 @@ async lecturerCheckIn() {
     // ============================================================
     applyFilters() {
         console.log('🔍 Applying filters...');
-        // Just re-render with current data
         this.renderTodayAttendance();
         this.renderPastAttendance();
     },
@@ -1259,7 +1294,7 @@ async lecturerCheckIn() {
             return;
         }
 
-        const headers = ['Student Name', 'Reg No', 'Program', 'Block', 'Unit', 'Session Type', 'Date/Time', 'Location', 'Status'];
+        const headers = ['Student Name', 'Reg No', 'Program', 'Block', 'Unit', 'Session Type', 'Date/Time', 'Location', 'Status', 'Verified'];
         const rows = [headers.join(',')];
 
         logs.forEach(log => {
@@ -1268,14 +1303,15 @@ async lecturerCheckIn() {
 
             const row = [
                 `"${(log.student_name || 'Unknown')}"`,
-                `"${(log.student_id || 'N/A')}"`,
+                `"${(log.registration_number || log.student_id || 'N/A')}"`,
                 `"${(log.program || 'N/A')}"`,
                 `"${(log.block || 'N/A')}"`,
                 `"${(log.unit_name || log.target_name || 'General')}"`,
                 `"${(log.session_type || 'Class')}"`,
                 `"${date.toLocaleString('en-GB')}"`,
                 `"${(log.location_address || log.location_friendly_name || log.location_name || 'N/A')}"`,
-                `"${status}"`
+                `"${status}"`,
+                `"${log.is_verified ? '✅ Verified' : '⏳ Pending'}"`
             ];
             rows.push(row.join(','));
         });
@@ -1429,6 +1465,221 @@ async lecturerCheckIn() {
         if (loc) {
             window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lng}`, '_blank');
         }
+    },
+
+    // ============================================================
+    // ATTENDANCE APPROVAL FUNCTIONS
+    // ============================================================
+
+    /**
+     * Approve a single attendance record
+     * @param {string|number} recordId - The ID of the attendance record to approve
+     */
+    async approveAttendance(recordId) {
+        if (!recordId) {
+            this.showNotification('Error: Record ID is required', 'error');
+            return;
+        }
+
+        if (this.isProcessing) {
+            this.showNotification('Please wait, processing...', 'warning');
+            return;
+        }
+
+        this.isProcessing = true;
+
+        // Find and update the button
+        const approveBtn = document.querySelector(`[data-approve-id="${recordId}"]`);
+        if (approveBtn) {
+            approveBtn.disabled = true;
+            approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
+            approveBtn.style.background = '#8b5cf6';
+        }
+
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database not available');
+            }
+
+            // First, check if record exists and get current status
+            const { data: record, error: fetchError } = await supabase
+                .from('geo_attendance_logs')
+                .select('id, attendance_status, is_verified, student_name')
+                .eq('id', recordId)
+                .single();
+
+            if (fetchError) {
+                throw new Error('Record not found: ' + fetchError.message);
+            }
+
+            if (record.is_verified) {
+                this.showNotification(`⚠️ ${record.student_name || 'Student'} is already verified`, 'warning');
+                if (approveBtn) {
+                    approveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Approved ✓';
+                    approveBtn.style.background = '#10b981';
+                    approveBtn.disabled = true;
+                    approveBtn.style.cursor = 'default';
+                }
+                this.isProcessing = false;
+                return;
+            }
+
+            // Update the record - mark as verified and update status
+            const { error: updateError } = await supabase
+                .from('geo_attendance_logs')
+                .update({
+                    is_verified: true,
+                    attendance_status: 'Present',
+                    verified_by: this.lecturerUuid || this.lecturerAssignmentId,
+                    verified_at: new Date().toISOString(),
+                    verified_by_name: window.lecturerDB?.getCurrentUserProfile()?.full_name || 'Lecturer'
+                })
+                .eq('id', recordId);
+
+            if (updateError) {
+                throw new Error('Failed to approve: ' + updateError.message);
+            }
+
+            // Show success
+            this.showNotification(`✅ ${record.student_name || 'Attendance'} approved successfully!`, 'success');
+
+            // Update button
+            if (approveBtn) {
+                approveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Approved ✓';
+                approveBtn.style.background = '#10b981';
+                approveBtn.disabled = true;
+                approveBtn.style.cursor = 'default';
+            }
+
+            // Refresh attendance data
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+
+        } catch (error) {
+            console.error('❌ Approval error:', error);
+            this.showNotification('Failed to approve: ' + error.message, 'error');
+            
+            // Reset button
+            if (approveBtn) {
+                approveBtn.disabled = false;
+                approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve';
+                approveBtn.style.background = '#8b5cf6';
+            }
+        } finally {
+            this.isProcessing = false;
+        }
+    },
+
+    /**
+     * Bulk approve multiple attendance records
+     * @param {string} date - Optional date filter for bulk approval
+     */
+    async bulkApproveAttendance(date = null) {
+        const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
+        
+        if (!targetDate) {
+            this.showNotification('Please select a date to bulk approve', 'warning');
+            return;
+        }
+
+        // Confirm with user
+        if (!confirm(`Are you sure you want to approve ALL unverified attendance records for ${targetDate}?`)) {
+            return;
+        }
+
+        if (this.isProcessing) {
+            this.showNotification('Please wait, processing...', 'warning');
+            return;
+        }
+
+        this.isProcessing = true;
+        const btn = document.querySelector('.btn-approve');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
+        }
+
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database not available');
+            }
+
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+
+            // Get all unverified records for the date
+            const { data: records, error: fetchError } = await supabase
+                .from('geo_attendance_logs')
+                .select('id, student_name')
+                .eq('is_verified', false)
+                .neq('session_type', 'Lecturer Check-in')
+                .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
+                .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
+
+            if (fetchError) {
+                throw new Error('Failed to fetch records: ' + fetchError.message);
+            }
+
+            if (!records || records.length === 0) {
+                this.showNotification(`No unverified records found for ${targetDate}`, 'info');
+                this.isProcessing = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Approve';
+                }
+                return;
+            }
+
+            // Update all records
+            const recordIds = records.map(r => r.id);
+            const { error: updateError } = await supabase
+                .from('geo_attendance_logs')
+                .update({
+                    is_verified: true,
+                    attendance_status: 'Present',
+                    verified_by: this.lecturerUuid || this.lecturerAssignmentId,
+                    verified_at: new Date().toISOString(),
+                    verified_by_name: profile?.full_name || 'Lecturer'
+                })
+                .in('id', recordIds);
+
+            if (updateError) {
+                throw new Error('Failed to bulk approve: ' + updateError.message);
+            }
+
+            this.showNotification(`✅ ${records.length} records approved successfully!`, 'success');
+
+            // Refresh attendance data
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+
+        } catch (error) {
+            console.error('❌ Bulk approval error:', error);
+            this.showNotification('Bulk approval failed: ' + error.message, 'error');
+        } finally {
+            this.isProcessing = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Approve';
+            }
+        }
+    },
+
+    /**
+     * Check if a record can be approved (not already verified)
+     * @param {Object} record - The attendance record
+     * @returns {boolean} - True if can be approved
+     */
+    canApproveRecord(record) {
+        if (!record) return false;
+        // Already verified or not a student record or lecturer check-in
+        if (record.is_verified === true) return false;
+        if (record.session_type === 'Lecturer Check-in') return false;
+        if (record.role === 'lecturer') return false;
+        return true;
     }
 };
 
@@ -1453,6 +1704,9 @@ window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();
 window.printAttendanceReport = () => LecturerAttendance.printReport();
 window.lecturerCheckin = () => LecturerAttendance.lecturerCheckIn();
 window.markAttendance = (e) => LecturerAttendance.markStudentAttendance(e);
+window.approveAttendance = (id) => LecturerAttendance.approveAttendance(id);
+window.bulkApproveAttendance = (date) => LecturerAttendance.bulkApproveAttendance(date);
+window.canApproveRecord = (record) => LecturerAttendance.canApproveRecord(record);
 
 window.closeAttendanceMap = () => {
     const modal = document.getElementById('attendanceMapModal');
@@ -1471,4 +1725,4 @@ window.openInGoogleMaps = () => {
 };
 
 console.log('✅ LecturerAttendance module loaded');
-console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Export, Print');
+console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Export, Print, Approve');
