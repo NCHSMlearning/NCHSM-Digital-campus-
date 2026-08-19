@@ -1,11 +1,11 @@
 // ============================================================
 // PUBLISHED MARKS - SUPER ADMIN (TVET & KRCHN Nursing)
-// WITH RETAKE/SUPPLEMENTARY EXAM SUPPORT
+// WITH RETAKE/SUPPLEMENTARY EXAM SUPPORT - PER UNIT FIXED
 // COMPLETE FIXED VERSION - All functions exposed globally
 // ============================================================
 
 console.log('📊 Published Marks module loading...');
-console.log('⭐ Retake/Supplementary Support: ENABLED');
+console.log('⭐ Retake/Supplementary Support: ENABLED (per unit)');
 
 // Global state
 const PUBLISHED_STATE = {
@@ -244,11 +244,23 @@ async function loadPublishedRetakeData() {
     }
 }
 
-function getStudentRetakeInfo(admissionNumber) {
-    const retakes = PUBLISHED_STATE.retakeMap[admissionNumber] || [];
+// ============================================================
+// ✅ FIXED: Get retake info per unit
+// ============================================================
+
+function getStudentRetakeInfo(admissionNumber, subjectName) {
+    var retakes = PUBLISHED_STATE.retakeMap[admissionNumber] || [];
+    
+    // ✅ Filter retakes by subject_name (unit)
+    if (subjectName) {
+        retakes = retakes.filter(function(r) {
+            return r.subject_name === subjectName;
+        });
+    }
+    
     if (retakes.length === 0) return null;
     
-    const lastRetake = retakes[retakes.length - 1];
+    var lastRetake = retakes[retakes.length - 1];
     return {
         count: retakes.length,
         score: lastRetake?.exam_score || null,
@@ -258,13 +270,17 @@ function getStudentRetakeInfo(admissionNumber) {
     };
 }
 
-function getRetakeBadgeHtml(admissionNumber) {
-    const info = getStudentRetakeInfo(admissionNumber);
+// ============================================================
+// ✅ FIXED: Get retake badge per unit
+// ============================================================
+
+function getRetakeBadgeHtml(admissionNumber, subjectName) {
+    var info = getStudentRetakeInfo(admissionNumber, subjectName);
     if (!info) return '';
     
-    const isPassing = info.status === 'PASS';
-    const color = isPassing ? '#059669' : '#dc2626';
-    const icon = isPassing ? '✅' : '❌';
+    var isPassing = info.status === 'PASS';
+    var color = isPassing ? '#059669' : '#dc2626';
+    var icon = isPassing ? '✅' : '❌';
     
     return `<span style="display: inline-block; margin-left: 6px; background: #f59e0b; color: white; font-size: 8px; padding: 1px 8px; border-radius: 10px; font-weight: 700;">
         ⭐ R${info.count}
@@ -272,14 +288,18 @@ function getRetakeBadgeHtml(admissionNumber) {
     ${info.score !== null ? `<span style="display: inline-block; margin-left: 4px; font-size: 8px; color: ${color}; font-weight: 600;">${icon} ${info.score}%</span>` : ''}`;
 }
 
-function getRetakeHistoryHtml(admissionNumber) {
-    const info = getStudentRetakeInfo(admissionNumber);
+// ============================================================
+// ✅ FIXED: Get retake history per unit
+// ============================================================
+
+function getRetakeHistoryHtml(admissionNumber, subjectName) {
+    var info = getStudentRetakeInfo(admissionNumber, subjectName);
     if (!info || info.history.length === 0) return '';
     
-    let html = '<div style="font-size: 9px; color: #64748b; margin-top: 2px;">';
+    var html = '<div style="font-size: 9px; color: #64748b; margin-top: 2px;">';
     html += '<span style="font-weight: 600;">🔄 Retake History:</span>';
-    info.history.forEach((r, i) => {
-        const isPass = r.status === 'PASS';
+    info.history.forEach(function(r, i) {
+        var isPass = r.status === 'PASS';
         html += `<span style="margin-left: 6px; color: ${isPass ? '#059669' : '#dc2626'};">`;
         html += `#${r.attempt_number}: ${r.exam_score}% ${isPass ? '✅' : '❌'}`;
         html += `</span>`;
@@ -359,7 +379,7 @@ async function getCurrentUser() {
 }
 
 // ============================================================
-// LOAD PUBLISHED MARKS - WITH RETAKE SUPPORT
+// ✅ FIXED: LOAD PUBLISHED MARKS - WITH PER UNIT RETAKE SUPPORT
 // ============================================================
 
 async function loadPublishedMarks() {
@@ -435,14 +455,17 @@ async function loadPublishedMarks() {
         for (var i = 0; i < marks.length; i++) {
             var mark = marks[i];
             var program = PUBLISHED_STATE.unitProgramCache[mark.subject_name] || 'KRCHN';
-            var grade = mark.grade || calculateGrade(mark.final_score, program);
-            var points = mark.points || calculatePoints(grade, program);
-            var status = getGradingStatus(mark.final_score, program);
-            var comment = getGradeComment(mark.final_score, program);
             
-            // ✅ Get retake info
-            var retakeInfo = getStudentRetakeInfo(mark.admission_number);
+            // ✅ Get retake info for THIS SPECIFIC UNIT
+            var retakeInfo = getStudentRetakeInfo(mark.admission_number, mark.subject_name);
             var hasRetake = retakeInfo !== null && retakeInfo.count > 0;
+            
+            // ✅ Use retake score if available, otherwise use original
+            var finalScore = hasRetake && retakeInfo.score !== null ? retakeInfo.score : mark.final_score;
+            var grade = mark.grade || calculateGrade(finalScore, program);
+            var points = mark.points || calculatePoints(grade, program);
+            var status = getGradingStatus(finalScore, program);
+            var comment = getGradeComment(finalScore, program);
             
             processedMarks.push({
                 id: mark.id,
@@ -453,7 +476,8 @@ async function loadPublishedMarks() {
                 cat1_score: mark.cat1_score,
                 cat2_score: mark.cat2_score,
                 exam_score: mark.exam_score,
-                final_score: mark.final_score,
+                final_score: finalScore, // ✅ Use retake score if available
+                original_score: mark.final_score, // ✅ Keep original for reference
                 grade: grade,
                 points: points,
                 published: mark.published,
@@ -464,7 +488,7 @@ async function loadPublishedMarks() {
                 program: program,
                 status: status,
                 comment: comment,
-                // ✅ Retake fields
+                // ✅ Retake fields - specific to this unit
                 hasRetake: hasRetake,
                 retakeCount: retakeInfo?.count || 0,
                 retakeScore: retakeInfo?.score || null,
@@ -830,7 +854,7 @@ function populateFilters(marks) {
 }
 
 // ============================================================
-// RENDER PUBLISHED MARKS - WITH RETAKE SUPPORT
+// ✅ FIXED: RENDER PUBLISHED MARKS - PER UNIT RETAKE
 // ============================================================
 
 function renderPublishedMarks() {
@@ -928,10 +952,9 @@ function renderPublishedMarks() {
         var programIcon = isTVET ? '🔧' : '🎓';
         var threshold = isTVET ? 50 : 60;
         
-        // ✅ Check if student has retake
-        var retakeInfo = getStudentRetakeInfo(admissionNumber);
-        var hasRetake = retakeInfo !== null && retakeInfo.count > 0;
-        var retakeBadge = hasRetake ? '<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 8px; font-weight: 700;">⭐ R' + retakeInfo.count + '</span>' : '';
+        // ✅ Check if student has ANY retake (for the student-level badge)
+        var studentHasRetake = studentMarks.some(function(m) { return m.hasRetake; });
+        var studentRetakeBadge = studentHasRetake ? '<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 8px; font-weight: 700;">⭐</span>' : '';
         
         var totalUnits = studentMarks.length;
         var passedUnits = 0;
@@ -963,7 +986,7 @@ function renderPublishedMarks() {
                 'onmouseover="this.style.background=\'#f8fafc\'" ' +
                 'onmouseout="this.style.background=\'' + (index % 2 === 0 ? '#fafafa' : 'transparent') + '\'">' +
                 '<td style="padding: 6px 10px; text-align: center; color: #94a3b8;">' + index + '</td>' +
-                '<td style="padding: 6px 10px; font-weight: 500;">' + escapeHtml(studentName) + retakeBadge + '</td>' +
+                '<td style="padding: 6px 10px; font-weight: 500;">' + escapeHtml(studentName) + studentRetakeBadge + '</td>' +
                 '<td style="padding: 6px 10px; font-size: 11px; color: #64748b;">' + escapeHtml(admissionNumber) + '</td>' +
                 '<td style="padding: 6px 10px;">' +
                     '<span style="background: ' + (isTVET ? '#fef3c7' : '#dbeafe') + '; padding: 2px 8px; border-radius: 10px; font-size: 10px;">' +
@@ -974,7 +997,7 @@ function renderPublishedMarks() {
                     '<span style="color: #10b981;">' + passedUnits + '</span> / ' +
                     '<span style="color: #dc2626;">' + failedUnits + '</span> / ' +
                     '<span style="color: #94a3b8;">' + pendingUnits + '</span>' +
-                    (hasRetake ? '<span style="font-size: 7px; color: #f59e0b; display: block;">⭐ Retake: ' + retakeInfo.count + 'x</span>' : '') +
+                    (studentHasRetake ? '<span style="font-size: 7px; color: #f59e0b; display: block;">⭐ Retake unit(s)</span>' : '') +
                     '<span style="font-size: 7px; color: #94a3b8; display: block;">P/F/P</span>' +
                 '</td>' +
                 '<td style="padding: 6px 10px; text-align: center; font-weight: 600; color: ' + (avgScore >= threshold ? '#10b981' : '#dc2626') + ';">' + avgScore.toFixed(1) + '%</td>' +
@@ -1021,7 +1044,7 @@ function renderPublishedMarks() {
 }
 
 // ============================================================
-// VIEW STUDENT MARKS DETAIL - WITH RETAKE SUPPORT
+// ✅ FIXED: VIEW STUDENT MARKS DETAIL - PER UNIT RETAKE
 // ============================================================
 
 function viewStudentMarks(admissionNumber) {
@@ -1045,9 +1068,9 @@ function viewStudentMarks(admissionNumber) {
     var isTVET = getProgramType(firstMark.program) === 'TVET';
     var threshold = isTVET ? 50 : 60;
     
-    // ✅ Get retake info
-    var retakeInfo = getStudentRetakeInfo(admissionNumber);
-    var hasRetake = retakeInfo !== null && retakeInfo.count > 0;
+    // ✅ Check if student has ANY retake (for the header)
+    var studentHasRetake = marks.some(function(m) { return m.hasRetake; });
+    var totalStudentRetakes = marks.reduce(function(sum, m) { return sum + (m.retakeCount || 0); }, 0);
     
     var tableRows = '';
     for (var i = 0; i < marks.length; i++) {
@@ -1059,11 +1082,16 @@ function viewStudentMarks(admissionNumber) {
         var publishColor = isPublished ? '#10b981' : '#94a3b8';
         var publishText = isPublished ? '✅ Published' : '📝 Draft';
         
-        // ✅ Check if this specific unit has retake
-        var unitRetakeInfo = getStudentRetakeInfo(admissionNumber);
-        var unitHasRetake = unitRetakeInfo !== null && unitRetakeInfo.count > 0;
+        // ✅ Get retake info for THIS SPECIFIC UNIT
+        var unitHasRetake = mark.hasRetake || false;
         var retakeBadge = unitHasRetake ? 
-            `<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 8px; font-weight: 700;">⭐ R${unitRetakeInfo.count}</span>` : '';
+            `<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 8px; font-weight: 700;">⭐ R${mark.retakeCount}</span>` : '';
+        
+        var retakeScoreDisplay = unitHasRetake && mark.retakeScore !== null ?
+            `<div style="font-size: 9px; color: ${mark.retakeStatus === 'PASS' ? '#059669' : '#dc2626'}; margin-top: 2px;">
+                Retake: ${mark.retakeScore}% ${mark.retakeStatus === 'PASS' ? '✅' : '❌'}
+                ${mark.original_score !== null && mark.original_score !== undefined ? `<span style="color: #94a3b8; font-size: 8px;"> (Original: ${mark.original_score}%)</span>` : ''}
+            </div>` : '';
         
         var publishButton = isPublished ? 
             '<button onclick="unpublishSingleUnit(\'' + mark.id + '\', \'' + escapeHtml(mark.subject_name) + '\', \'' + escapeHtml(admissionNumber) + '\')" ' +
@@ -1080,9 +1108,9 @@ function viewStudentMarks(admissionNumber) {
             '</button>';
         
         tableRows += 
-            '<tr style="border-bottom: 1px solid #f1f5f9; ' + (i % 2 === 0 ? 'background: #fafafa;' : '') + '">' +
+            '<tr style="border-bottom: 1px solid #f1f5f9; ' + (i % 2 === 0 ? 'background: #fafafa;' : '') + (unitHasRetake ? ' border-left: 3px solid #f59e0b;' : '') + '">' +
                 '<td style="padding: 8px 12px; text-align: center; color: #94a3b8;">' + (i + 1) + '</td>' +
-                '<td style="padding: 8px 12px; font-weight: 500;">' + escapeHtml(mark.subject_name || 'N/A') + retakeBadge + '</td>' +
+                '<td style="padding: 8px 12px; font-weight: 500;">' + escapeHtml(mark.subject_name || 'N/A') + retakeBadge + retakeScoreDisplay + '</td>' +
                 '<td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ' + (mark.final_score >= threshold ? '#10b981' : '#dc2626') + ';">' + (mark.final_score || 0) + '%</td>' +
                 '<td style="padding: 8px 12px; text-align: center;">' +
                     '<span style="background: ' + gradeColor + '; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 12px;">' + (mark.grade || '-') + '</span>' +
@@ -1118,15 +1146,14 @@ function viewStudentMarks(admissionNumber) {
                     '<div>' +
                         '<h3 style="margin: 0; color: #0A3D62; font-size: 20px;">' +
                             '<i class="fas fa-user-graduate"></i> ' + escapeHtml(firstMark.student_name || 'Student') +
-                            (hasRetake ? '<span style="display: inline-block; margin-left: 8px; background: #f59e0b; color: white; font-size: 10px; padding: 2px 12px; border-radius: 12px; font-weight: 700;">⭐ R' + retakeInfo.count + '</span>' : '') +
+                            (studentHasRetake ? '<span style="display: inline-block; margin-left: 8px; background: #f59e0b; color: white; font-size: 10px; padding: 2px 12px; border-radius: 12px; font-weight: 700;">⭐ R' + totalStudentRetakes + '</span>' : '') +
                         '</h3>' +
                         '<p style="margin: 4px 0 0 0; font-size: 13px; color: #64748b;">' +
                             '<i class="fas fa-id-card"></i> ' + escapeHtml(firstMark.admission_number || 'N/A') + ' &nbsp;|&nbsp; ' +
                             '<i class="fas fa-graduation-cap"></i> ' + escapeHtml(firstMark.program || 'N/A') + ' &nbsp;|&nbsp; ' +
                             '<i class="fas fa-layer-group"></i> ' + escapeHtml(firstMark.block || 'N/A') +
-                            (hasRetake ? ' &nbsp;|&nbsp; ⭐ Retake: ' + retakeInfo.count + ' attempt(s)' : '') +
+                            (studentHasRetake ? ' &nbsp;|&nbsp; ⭐ Retake unit(s): ' + totalStudentRetakes : '') +
                         '</p>' +
-                        (hasRetake && retakeInfo.status ? '<p style="margin: 2px 0 0 0; font-size: 12px; color: ' + (retakeInfo.status === 'PASS' ? '#059669' : '#dc2626') + ';">Retake Status: ' + retakeInfo.status + (retakeInfo.score !== null ? ' (' + retakeInfo.score + '%)' : '') + '</p>' : '') +
                     '</div>' +
                     '<button onclick="closeStudentMarksModal()" style="background: #dc2626; color: white; border: none; border-radius: 50%; width: 36px; height: 36px; cursor: pointer; font-size: 18px; transition: all 0.2s;" ' +
                             'onmouseover="this.style.background=\'#b91c1c\'" ' +
@@ -1158,7 +1185,7 @@ function viewStudentMarks(admissionNumber) {
                     '</div>' +
                     '<div style="text-align: center;">' +
                         '<div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">⭐ Retake</div>' +
-                        '<div style="font-size: 20px; font-weight: 700; color: #f59e0b;">' + (hasRetake ? retakeInfo.count : '0') + '</div>' +
+                        '<div style="font-size: 20px; font-weight: 700; color: #f59e0b;">' + totalStudentRetakes + '</div>' +
                     '</div>' +
                 '</div>' +
                 
@@ -2140,7 +2167,7 @@ function exportPublishedMarksToCSV() {
         return;
     }
     
-    var headers = ['Student Name', 'Admission Number', 'Subject/Unit', 'Block/Term', 'Program', 'Score', 'Grade', 'Points', 'Comment', 'Published', 'Has Retake', 'Retake Count'];
+    var headers = ['Student Name', 'Admission Number', 'Subject/Unit', 'Block/Term', 'Program', 'Score', 'Grade', 'Points', 'Comment', 'Published', 'Has Retake', 'Retake Count', 'Retake Score'];
     var csvRows = [];
     csvRows.push(headers.join(','));
     
@@ -2159,7 +2186,8 @@ function exportPublishedMarksToCSV() {
             '"' + comment + '"',
             mark.published ? 'Yes' : 'No',
             mark.hasRetake ? 'Yes' : 'No',
-            mark.retakeCount || 0
+            mark.retakeCount || 0,
+            mark.retakeScore || ''
         ];
         csvRows.push(row.join(','));
     }
@@ -2363,7 +2391,7 @@ async function initPublishedMarks() {
     console.log('✅ Published Marks module initialized with Retake Support!');
     console.log('📊 TVET Grading: A (75-100%), B (65-74%), C (50-64%), FAIL (Below 50%)');
     console.log('📊 Nursing Grading: A (75-100%), B (65-74%), C (60-64%), D (Below 60%)');
-    console.log('⭐ Retake Support: ENABLED');
+    console.log('⭐ Retake Support: ENABLED (per unit)');
     console.log('📧 Email notifications enabled when publishing marks');
     console.log('📋 Per-unit publish/unpublish available in student view');
 }
@@ -2400,7 +2428,7 @@ window.getRetakeHistoryHtml = getRetakeHistoryHtml;
 
 console.log('✅ Published Marks functions exposed globally');
 console.log('📊 Available: loadPublishedMarks, filterPublishedMarks, publishStudentAllMarks, etc.');
-console.log('⭐ Retake support functions: loadPublishedRetakeData, getStudentRetakeInfo, getRetakeBadgeHtml');
+console.log('⭐ Retake support: PER UNIT - only units with retakes show badges');
 
 // ============================================================
 // AUTO-INITIALIZE
@@ -2420,6 +2448,7 @@ console.log('   - ✅ Per-unit publish/unpublish');
 console.log('   - ✅ Email notifications');
 console.log('   - ✅ Bulk publish/unpublish');
 console.log('   - ✅ Export to CSV & Print');
-console.log('   - ✅ ⭐ Retake/Supplementary Support');
-console.log('   - ✅ Retake badges (⭐ R1, ⭐ R2)');
+console.log('   - ✅ ⭐ Retake/Supplementary Support (PER UNIT)');
+console.log('   - ✅ Retake badges only on retaken units (⭐ R1, ⭐ R2)');
+console.log('   - ✅ Retake scores override original scores');
 console.log('   - ✅ All functions working!');
