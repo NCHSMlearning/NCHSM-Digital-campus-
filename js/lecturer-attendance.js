@@ -40,24 +40,14 @@ const LecturerAttendance = {
         console.log('📋 Initializing Lecturer Attendance Module...');
         
         try {
-            // Step 1: Resolve lecturer identity
             await this.resolveLecturerId();
-            
-            // Step 2: Load assigned units
             await this.loadAssignedUnits();
-            
-            // Step 3: Load all attendance data
             await this.loadAllAttendance();
-            
-            // Step 4: Setup event listeners
             this.setupEventListeners();
-            
-            // Step 5: Populate filters and dropdowns
             this.populateFilters();
             
             console.log('✅ Lecturer Attendance Module initialized successfully');
             
-            // Auto-refresh every 60 seconds
             setInterval(() => {
                 console.log('🔄 Auto-refreshing attendance...');
                 this.loadAllAttendance();
@@ -94,7 +84,6 @@ const LecturerAttendance = {
 
             this.lecturerUuid = authId;
 
-            // Check if authId is a UUID
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
 
             if (!isUUID && authId) {
@@ -103,7 +92,6 @@ const LecturerAttendance = {
                 return;
             }
 
-            // Try to find from lecturer_subject_assignments
             const { data: assignments, error: assignError } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('lecturer_id, lecturer_name')
@@ -126,7 +114,6 @@ const LecturerAttendance = {
                 return;
             }
 
-            // Fallback to auth ID
             this.lecturerAssignmentId = authId;
             console.log('⚠️ Falling back to auth ID:', this.lecturerAssignmentId);
 
@@ -169,7 +156,6 @@ const LecturerAttendance = {
             this.assignedUnits = assignments || [];
             console.log(`📚 Loaded ${this.assignedUnits.length} assigned units`);
 
-            // Populate unit dropdown
             this.populateUnitSelectors();
 
         } catch (error) {
@@ -236,7 +222,6 @@ const LecturerAttendance = {
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
 
-            // Get ALL records for today (no program filter)
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
@@ -253,7 +238,6 @@ const LecturerAttendance = {
             this.todayLogs = logs || [];
             console.log(`📊 Loaded ${this.todayLogs.length} today's attendance records`);
 
-            // Render and update stats
             this.renderTodayAttendance();
             this.updateStats(this.todayLogs);
 
@@ -272,11 +256,9 @@ const LecturerAttendance = {
 
         const logs = this.todayLogs;
 
-        // Update count
         const countEl = document.getElementById('todayLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
 
-        // Empty state
         if (!logs || logs.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -304,7 +286,6 @@ const LecturerAttendance = {
             
             const studentName = log.student_name || 'Unknown Student';
             
-            // Use registration_number instead of student_id
             const regNumber = log.registration_number || log.student_id || 'N/A';
             const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
             
@@ -317,25 +298,25 @@ const LecturerAttendance = {
                 minute: '2-digit' 
             }) : 'N/A';
 
-            // Determine if this is a lecturer check-in
             const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
             const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
                 (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
 
-            // Check if can be approved
+            const isVerified = log.is_verified === true;
             const canApprove = !isLecturerCheckin && 
                               log.session_type !== 'Lecturer Check-in' && 
                               log.role !== 'lecturer' &&
-                              !log.is_verified;
+                              !isVerified;
 
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
-                    onmouseover="this.style.background='${isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
-                    onmouseout="this.style.background='${isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''} ${isVerified ? 'background: #f0fdf4;' : ''}" 
+                    onmouseover="this.style.background='${isLecturerCheckin || isVerified ? '#dcfce7' : '#f8fafc'}'" 
+                    onmouseout="this.style.background='${isLecturerCheckin || isVerified ? '#f0fdf4' : 'transparent'}'">
                     
                     <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
                         ${this.escapeHtml(studentName)}
                         ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
+                        ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
                     </td>
                     
                     <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
@@ -376,20 +357,18 @@ const LecturerAttendance = {
                     </td>
                     
                     <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${statusColor}20; 
-                                     color: ${statusColor}; 
+                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; 
+                                     color: ${isVerified ? '#10b981' : statusColor}; 
                                      padding: 3px 12px; 
                                      border-radius: 12px; 
                                      font-size: 11px; 
                                      font-weight: 600;">
-                            ${status}
+                            ${isVerified ? 'Verified ✓' : status}
                         </span>
-                        ${log.is_verified ? '<span style="font-size:10px;color:#10b981;margin-left:4px;">✓</span>' : ''}
                     </td>
                     
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            <!-- Map Button -->
                             ${hasLocation && !isLecturerCheckin ? 
                                 `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
                                         style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
@@ -400,19 +379,17 @@ const LecturerAttendance = {
                                 `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
                             }
                             
-                            <!-- Approve Button -->
                             ${canApprove ? 
-                                (log.is_verified ? 
-                                    `<span style="color: #10b981; font-size: 11px; font-weight: 600;">✓ Verified</span>` :
-                                    `<button onclick="LecturerAttendance.approveAttendance('${log.id}')" 
-                                            data-approve-id="${log.id}"
-                                            style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
-                                            onmouseover="this.style.transform='scale(1.05)'" 
-                                            onmouseout="this.style.transform='scale(1)'">
-                                        <i class="fas fa-check" style="font-size:10px;"></i> Approve
-                                    </button>`
-                                ) : 
-                                `<span style="color: #94a3b8; font-size: 11px;">—</span>`
+                                `<button onclick="LecturerAttendance.approveAttendance('${log.id}')" 
+                                        data-approve-id="${log.id}"
+                                        style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
+                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseout="this.style.transform='scale(1)'">
+                                    <i class="fas fa-check" style="font-size:10px;"></i> Approve
+                                </button>` : 
+                                `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px; font-weight: ${isVerified ? '600' : 'normal'};">
+                                    ${isVerified ? '✓ Verified' : '—'}
+                                </span>`
                             }
                         </div>
                     </td>
@@ -427,7 +404,6 @@ const LecturerAttendance = {
     updateStats(logs) {
         if (!logs) logs = this.todayLogs || [];
         
-        // Calculate stats
         const total = logs.length;
         const present = logs.filter(l => {
             const status = (l.attendance_status || '').toLowerCase();
@@ -446,13 +422,10 @@ const LecturerAttendance = {
         
         const rate = total > 0 ? Math.round((present / total) * 100) : 0;
         
-        // Store stats
         this.stats = { total, present, absent, pending, rate };
         
-        // Log for debugging
         console.log(`📊 Stats: total=${total}, present=${present}, absent=${absent}, pending=${pending}, rate=${rate}%`);
         
-        // Update all UI elements
         const elementMap = {
             'todayTotal': total,
             'todayPresent': present,
@@ -481,7 +454,6 @@ const LecturerAttendance = {
             }
         }
         
-        // Update progress bar
         const progressBar = document.getElementById('attendanceProgressBar');
         if (progressBar) {
             progressBar.style.width = rate + '%';
@@ -489,7 +461,6 @@ const LecturerAttendance = {
             progressBar.style.background = rate >= 80 ? '#10b981' : (rate >= 60 ? '#f59e0b' : '#ef4444');
         }
         
-        // Update rate badge
         const rateBadge = document.getElementById('attendanceRateBadge');
         if (rateBadge) {
             rateBadge.textContent = rate + '%';
@@ -525,7 +496,6 @@ const LecturerAttendance = {
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
 
-            // Get past records (excluding today)
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
@@ -559,11 +529,9 @@ const LecturerAttendance = {
 
         const logs = this.pastLogs;
 
-        // Update count
         const countEl = document.getElementById('pastLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
 
-        // Empty state
         if (!logs || logs.length === 0) {
             tbody.innerHTML = `
                 <tr>
@@ -592,7 +560,6 @@ const LecturerAttendance = {
             
             const studentName = log.student_name || 'Unknown Student';
             
-            // Use registration_number instead of student_id
             const regNumber = log.registration_number || log.student_id || 'N/A';
             const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
             
@@ -601,16 +568,16 @@ const LecturerAttendance = {
             const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
                 (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
 
-            // Check if can be approved
+            const isVerified = log.is_verified === true;
             const canApprove = !isLecturerCheckin && 
                               log.session_type !== 'Lecturer Check-in' && 
                               log.role !== 'lecturer' &&
-                              !log.is_verified;
+                              !isVerified;
 
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
-                    onmouseover="this.style.background='${isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
-                    onmouseout="this.style.background='${isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin || isVerified ? 'background: #f0fdf4;' : ''}" 
+                    onmouseover="this.style.background='${isLecturerCheckin || isVerified ? '#dcfce7' : '#f8fafc'}'" 
+                    onmouseout="this.style.background='${isLecturerCheckin || isVerified ? '#f0fdf4' : 'transparent'}'">
                     
                     <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
                         ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -618,6 +585,7 @@ const LecturerAttendance = {
                     
                     <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
                         ${this.escapeHtml(studentName)}
+                        ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
                     </td>
                     
                     <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
@@ -650,15 +618,18 @@ const LecturerAttendance = {
                     </td>
                     
                     <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${statusColor}20; color: ${statusColor}; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600;">
-                            ${status}
+                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; 
+                                     color: ${isVerified ? '#10b981' : statusColor}; 
+                                     padding: 3px 12px; 
+                                     border-radius: 12px; 
+                                     font-size: 11px; 
+                                     font-weight: 600;">
+                            ${isVerified ? 'Verified ✓' : status}
                         </span>
-                        ${log.is_verified ? '<span style="font-size:10px;color:#10b981;margin-left:4px;">✓</span>' : ''}
                     </td>
                     
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            <!-- Map Button -->
                             ${hasLocation && !isLecturerCheckin ? 
                                 `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
                                         style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
@@ -669,19 +640,17 @@ const LecturerAttendance = {
                                 `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
                             }
                             
-                            <!-- Approve Button -->
                             ${canApprove ? 
-                                (log.is_verified ? 
-                                    `<span style="color: #10b981; font-size: 11px; font-weight: 600;">✓ Verified</span>` :
-                                    `<button onclick="LecturerAttendance.approveAttendance('${log.id}')" 
-                                            data-approve-id="${log.id}"
-                                            style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
-                                            onmouseover="this.style.transform='scale(1.05)'" 
-                                            onmouseout="this.style.transform='scale(1)'">
-                                        <i class="fas fa-check" style="font-size:10px;"></i> Approve
-                                    </button>`
-                                ) : 
-                                `<span style="color: #94a3b8; font-size: 11px;">—</span>`
+                                `<button onclick="LecturerAttendance.approveAttendance('${log.id}')" 
+                                        data-approve-id="${log.id}"
+                                        style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
+                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseout="this.style.transform='scale(1)'">
+                                    <i class="fas fa-check" style="font-size:10px;"></i> Approve
+                                </button>` : 
+                                `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px; font-weight: ${isVerified ? '600' : 'normal'};">
+                                    ${isVerified ? '✓ Verified' : '—'}
+                                </span>`
                             }
                         </div>
                     </td>
@@ -701,7 +670,6 @@ const LecturerAttendance = {
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
 
-            // Get today's stats
             const { data: logs, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('attendance_status, is_verified')
@@ -725,7 +693,6 @@ const LecturerAttendance = {
             const pending = total - present - absent;
             const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
-            // Update dashboard cards
             const cardMap = {
                 'totalStudentsCount': total,
                 'presentTodayCount': present,
@@ -758,14 +725,12 @@ const LecturerAttendance = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
 
-            // Get student count
             const { count: studentCount } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('*', { count: 'exact', head: true })
                 .eq('program', program)
                 .eq('role', 'student');
 
-            // Get block from assigned units
             const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
             const currentBlock = blocks.length > 0 ? blocks[0] : 'N/A';
 
@@ -808,13 +773,11 @@ const LecturerAttendance = {
 
         this.currentLocation = { lat: latNum, lng: lngNum, name: name };
 
-        // Show modal
         const modal = document.getElementById('attendanceMapModal');
         if (modal) {
             modal.style.display = 'flex';
         }
 
-        // Update location info
         const infoEl = document.getElementById('mapLocationInfo');
         const textEl = document.getElementById('mapLocationText');
         if (infoEl && textEl) {
@@ -822,7 +785,6 @@ const LecturerAttendance = {
             textEl.textContent = `📍 ${name} - Latitude: ${latNum.toFixed(6)}, Longitude: ${lngNum.toFixed(6)}`;
         }
 
-        // Initialize map after a delay
         setTimeout(() => {
             this.initMap(latNum, lngNum, name);
         }, 300);
@@ -835,17 +797,14 @@ const LecturerAttendance = {
         const container = document.getElementById('mapContainer');
         if (!container) return;
 
-        // Clean up existing map
         if (this.mapInstance) {
             this.mapInstance.remove();
             this.mapInstance = null;
         }
 
-        // Hide loading
         const loadingEl = document.getElementById('mapLoading');
         if (loadingEl) loadingEl.style.display = 'none';
 
-        // Check if Leaflet is loaded
         if (typeof L === 'undefined') {
             container.innerHTML = `
                 <div style="display:flex;align-items:center;justify-content:center;height:100%;color:#94a3b8;flex-direction:column;padding:20px;">
@@ -861,22 +820,18 @@ const LecturerAttendance = {
         }
 
         try {
-            // Create map
             this.mapInstance = L.map(container).setView([lat, lng], 16);
 
-            // Add tile layer
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
                 maxZoom: 19
             }).addTo(this.mapInstance);
 
-            // Add marker
             L.marker([lat, lng])
                 .addTo(this.mapInstance)
                 .bindPopup(`<b>${this.escapeHtml(name)}</b><br>Lat: ${lat.toFixed(6)}<br>Lng: ${lng.toFixed(6)}`)
                 .openPopup();
 
-            // Add radius circle
             L.circle([lat, lng], {
                 radius: 50,
                 color: '#4C1D95',
@@ -885,7 +840,6 @@ const LecturerAttendance = {
                 weight: 2
             }).addTo(this.mapInstance);
 
-            // Fix map size after render
             setTimeout(() => {
                 if (this.mapInstance) {
                     this.mapInstance.invalidateSize();
@@ -944,13 +898,9 @@ const LecturerAttendance = {
                     const supabase = window.lecturerDB?.supabase;
                     const profile = window.lecturerDB?.getCurrentUserProfile();
                     
-                    // Use the correct ID (UUID) from the profile
                     const userId = profile?.user_id || this.lecturerUuid || this.lecturerAssignmentId;
-                    
-                    // Get staff number from profile or use a default
                     const staffNumber = profile?.staff_id || profile?.staff_number || 'LECTURER';
                     const fullName = profile?.full_name || 'Lecturer';
-                    const staffId = profile?.id || userId;
 
                     if (!supabase || !userId) {
                         throw new Error('Database or user not available');
@@ -963,7 +913,6 @@ const LecturerAttendance = {
 
                     const today = new Date().toISOString().split('T')[0];
                     
-                    // Check existing check-in using user_id (UUID)
                     const { data: existing, error: checkError } = await supabase
                         .from('geo_attendance_logs')
                         .select('id')
@@ -989,7 +938,6 @@ const LecturerAttendance = {
                         return;
                     }
 
-                    // Insert with correct column types
                     const { error: insertError } = await supabase
                         .from('geo_attendance_logs')
                         .insert({
@@ -1024,7 +972,6 @@ const LecturerAttendance = {
                         statusEl.style.color = '#10b981';
                     }
 
-                    // Refresh attendance data
                     await this.loadTodayAttendance();
                     await this.loadAttendanceStats();
 
@@ -1090,7 +1037,6 @@ const LecturerAttendance = {
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Marking...';
 
         try {
-            // Get form values
             const studentId = document.getElementById('attStudentId')?.value;
             const sessionType = document.getElementById('attSessionType')?.value;
             const unit = document.getElementById('attUnit')?.value;
@@ -1098,7 +1044,6 @@ const LecturerAttendance = {
             const date = document.getElementById('attDate')?.value;
             const time = document.getElementById('attTime')?.value;
 
-            // Validate
             if (!studentId) {
                 this.showNotification('Please select a student.', 'error');
                 btn.disabled = false;
@@ -1130,7 +1075,6 @@ const LecturerAttendance = {
                 throw new Error('Database not available');
             }
 
-            // Get student details
             const { data: student, error: studentError } = await supabase
                 .from('consolidated_user_profiles_table')
                 .select('full_name, program, block, intake_year, student_id')
@@ -1146,10 +1090,8 @@ const LecturerAttendance = {
                 throw new Error('Student not found');
             }
 
-            // Build check-in time
             const checkInTime = time ? `${date}T${time}:00.000Z` : `${date}T12:00:00.000Z`;
 
-            // Insert attendance record
             const { error: insertError } = await supabase
                 .from('geo_attendance_logs')
                 .insert({
@@ -1180,12 +1122,10 @@ const LecturerAttendance = {
 
             this.showNotification(`✅ ${student.full_name || 'Student'} marked present!`, 'success');
 
-            // Reset form
             form.reset();
             const today = new Date();
             document.getElementById('attDate').value = today.toISOString().split('T')[0];
 
-            // Refresh attendance
             await this.loadTodayAttendance();
             await this.loadAttendanceStats();
 
@@ -1203,7 +1143,6 @@ const LecturerAttendance = {
     // POPULATE FILTERS AND DROPDOWNS
     // ============================================================
     populateFilters() {
-        // Set today's date on date inputs
         const today = new Date().toISOString().split('T')[0];
         
         const filterDate = document.getElementById('filterDate');
@@ -1212,7 +1151,6 @@ const LecturerAttendance = {
         const attDate = document.getElementById('attDate');
         if (attDate) attDate.value = today;
 
-        // Populate student dropdown
         this.populateStudentSelect();
     },
 
@@ -1352,7 +1290,6 @@ const LecturerAttendance = {
             // Silent fallback
         }
 
-        // Fallback notification
         try {
             const toast = document.createElement('div');
             const colors = {
@@ -1403,19 +1340,16 @@ const LecturerAttendance = {
     // SETUP EVENT LISTENERS
     // ============================================================
     setupEventListeners() {
-        // Lecturer check-in button
         const checkinBtn = document.getElementById('lecturerCheckinBtn');
         if (checkinBtn) {
             checkinBtn.addEventListener('click', () => this.lecturerCheckIn());
         }
 
-        // Manual attendance form
         const form = document.getElementById('manualAttendanceForm');
         if (form) {
             form.addEventListener('submit', (e) => this.markStudentAttendance(e));
         }
 
-        // Filter inputs
         ['filterDate', 'filterBlock', 'filterYear', 'filterSessionType'].forEach(id => {
             const el = document.getElementById(id);
             if (el) {
@@ -1423,7 +1357,6 @@ const LecturerAttendance = {
             }
         });
 
-        // Search input with debounce
         const searchInput = document.getElementById('filterSearch');
         if (searchInput) {
             let timeout;
@@ -1468,11 +1401,11 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ATTENDANCE APPROVAL FUNCTIONS
+    // ATTENDANCE APPROVAL FUNCTIONS - FIXED VERSION
     // ============================================================
 
     /**
-     * Approve a single attendance record
+     * Approve a single attendance record - FIXED with proper UI refresh
      * @param {string|number} recordId - The ID of the attendance record to approve
      */
     async approveAttendance(recordId) {
@@ -1502,10 +1435,14 @@ const LecturerAttendance = {
                 throw new Error('Database not available');
             }
 
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const lecturerName = profile?.full_name || 'Lecturer';
+            const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
+
             // First, check if record exists and get current status
             const { data: record, error: fetchError } = await supabase
                 .from('geo_attendance_logs')
-                .select('id, attendance_status, is_verified, student_name')
+                .select('id, attendance_status, is_verified, student_name, check_in_time')
                 .eq('id', recordId)
                 .single();
 
@@ -1525,16 +1462,20 @@ const LecturerAttendance = {
                 return;
             }
 
-            // Update the record - mark as verified and update status
+            // Update the record
+            const updateData = {
+                is_verified: true,
+                attendance_status: 'Present',
+                verified_by: lecturerId,
+                verified_at: new Date().toISOString(),
+                verified_by_name: lecturerName
+            };
+
+            console.log('📝 Updating record:', { recordId, updateData });
+
             const { error: updateError } = await supabase
                 .from('geo_attendance_logs')
-                .update({
-                    is_verified: true,
-                    attendance_status: 'Present',
-                    verified_by: this.lecturerUuid || this.lecturerAssignmentId,
-                    verified_at: new Date().toISOString(),
-                    verified_by_name: window.lecturerDB?.getCurrentUserProfile()?.full_name || 'Lecturer'
-                })
+                .update(updateData)
                 .eq('id', recordId);
 
             if (updateError) {
@@ -1552,10 +1493,21 @@ const LecturerAttendance = {
                 approveBtn.style.cursor = 'default';
             }
 
-            // Refresh attendance data
+            // CRITICAL: Force refresh the data from database
+            console.log('🔄 Refreshing attendance data...');
+            
+            // Load fresh data from Supabase
             await this.loadTodayAttendance();
             await this.loadPastAttendance();
             await this.loadAttendanceStats();
+            
+            // Force re-render with fresh data
+            console.log('📊 Re-rendering with fresh data...');
+            this.renderTodayAttendance();
+            this.renderPastAttendance();
+            this.updateStats(this.todayLogs);
+
+            console.log('✅ Approval complete and UI updated');
 
         } catch (error) {
             console.error('❌ Approval error:', error);
@@ -1573,7 +1525,7 @@ const LecturerAttendance = {
     },
 
     /**
-     * Bulk approve multiple attendance records
+     * Bulk approve multiple attendance records - FIXED with proper UI refresh
      * @param {string} date - Optional date filter for bulk approval
      */
     async bulkApproveAttendance(date = null) {
@@ -1608,6 +1560,8 @@ const LecturerAttendance = {
             }
 
             const profile = window.lecturerDB?.getCurrentUserProfile();
+            const lecturerName = profile?.full_name || 'Lecturer';
+            const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
 
             // Get all unverified records for the date
             const { data: records, error: fetchError } = await supabase
@@ -1634,15 +1588,17 @@ const LecturerAttendance = {
 
             // Update all records
             const recordIds = records.map(r => r.id);
+            const updateData = {
+                is_verified: true,
+                attendance_status: 'Present',
+                verified_by: lecturerId,
+                verified_at: new Date().toISOString(),
+                verified_by_name: lecturerName
+            };
+
             const { error: updateError } = await supabase
                 .from('geo_attendance_logs')
-                .update({
-                    is_verified: true,
-                    attendance_status: 'Present',
-                    verified_by: this.lecturerUuid || this.lecturerAssignmentId,
-                    verified_at: new Date().toISOString(),
-                    verified_by_name: profile?.full_name || 'Lecturer'
-                })
+                .update(updateData)
                 .in('id', recordIds);
 
             if (updateError) {
@@ -1655,6 +1611,11 @@ const LecturerAttendance = {
             await this.loadTodayAttendance();
             await this.loadPastAttendance();
             await this.loadAttendanceStats();
+            
+            // Force re-render
+            this.renderTodayAttendance();
+            this.renderPastAttendance();
+            this.updateStats(this.todayLogs);
 
         } catch (error) {
             console.error('❌ Bulk approval error:', error);
@@ -1675,7 +1636,6 @@ const LecturerAttendance = {
      */
     canApproveRecord(record) {
         if (!record) return false;
-        // Already verified or not a student record or lecturer check-in
         if (record.is_verified === true) return false;
         if (record.session_type === 'Lecturer Check-in') return false;
         if (record.role === 'lecturer') return false;
