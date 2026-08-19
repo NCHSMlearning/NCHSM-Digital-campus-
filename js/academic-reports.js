@@ -1360,6 +1360,10 @@ async function loadMyMarks() {
  // ============================================================
 // 20. DOWNLOAD SEMESTER REPORT - FIXED VERSION
 // ============================================================
+// ============================================================
+// DOWNLOAD SEMESTER REPORT - ☆ STAR NEXT TO UNIT NAME
+// ALL BORDERS APPLIED - CLEAN TABLE LOOK
+// ============================================================
 function downloadReportCard() {
     console.log('📊 Downloading Semester Report...');
     
@@ -1371,23 +1375,16 @@ function downloadReportCard() {
     let marks = [];
     
     // ✅ Try multiple ways to get marks data
-    // 1. Try from the closure variables (myMarksData)
     if (typeof myMarksData !== 'undefined' && myMarksData.length > 0) {
         marks = myMarksData;
         console.log('📊 Got marks from myMarksData:', marks.length);
-    } 
-    // 2. Try from myMarksFiltered
-    else if (typeof myMarksFiltered !== 'undefined' && myMarksFiltered.length > 0) {
+    } else if (typeof myMarksFiltered !== 'undefined' && myMarksFiltered.length > 0) {
         marks = myMarksFiltered;
         console.log('📊 Got marks from myMarksFiltered:', marks.length);
-    }
-    // 3. Try from window
-    else if (window.myMarksData && window.myMarksData.length > 0) {
+    } else if (window.myMarksData && window.myMarksData.length > 0) {
         marks = window.myMarksData;
         console.log('📊 Got marks from window.myMarksData:', marks.length);
-    } 
-    // 4. Try from the table directly
-    else {
+    } else {
         const tableRows = document.querySelectorAll('#my_marks_table_body tr');
         if (tableRows && tableRows.length > 0) {
             console.log('📊 Reading marks from table...');
@@ -1398,10 +1395,8 @@ function downloadReportCard() {
                     const unitName = cells[2]?.textContent?.trim() || '';
                     const grade = cells[3]?.textContent?.trim() || '';
                     const points = parseFloat(cells[4]?.textContent?.trim()) || 0;
-                    const status = cells[5]?.textContent?.trim() || '';
                     
                     if (unitName && unitName !== 'No published marks found' && unitName !== 'No marks match the current filter') {
-                        // Check if this unit has a hollow star (retake)
                         const hasRetake = unitName.includes('☆') || cells[2]?.querySelector('.hollow-star') !== null;
                         const cleanUnitName = unitName.replace('☆', '').trim();
                         
@@ -1410,10 +1405,11 @@ function downloadReportCard() {
                             unit_code: unitCode,
                             grade: grade,
                             points: points,
-                            status: status,
                             final_score: 0,
                             hasRetake: hasRetake,
-                            retakeCount: hasRetake ? 1 : 0
+                            retakeCount: hasRetake ? 1 : 0,
+                            retakeScore: null,
+                            retakeStatus: null
                         });
                     }
                 }
@@ -1423,7 +1419,6 @@ function downloadReportCard() {
     }
     
     if (marks.length === 0) {
-        // ✅ Show a better message with instructions
         alert('📊 No marks available to generate semester report.\n\nPlease:\n1. Click the "Refresh" button to load your marks\n2. Make sure you have published marks\n3. Try switching tabs and coming back\n\nIf the problem persists, contact support.');
         return;
     }
@@ -1463,18 +1458,16 @@ function downloadReportCard() {
         
         marks.forEach(m => {
             const points = m.points || 0;
-            const status = m.status || getGradingStatus(0, userProgram);
             
             totalPoints += points;
             totalUnits++;
             
-            if (status === 'FAIL') {
-                failed++;
-            } else if (status === 'PENDING') {
-                pending++;
-            } else {
-                passed++;
-            }
+            // Determine pass/fail based on program type
+            const threshold = isTVET ? 50 : 60;
+            const score = m.final_score || 0;
+            if (score >= threshold) passed++;
+            else if (score > 0) failed++;
+            else pending++;
             
             if (m.hasRetake) retakeUnits++;
         });
@@ -1496,50 +1489,34 @@ function downloadReportCard() {
         
         const passRate = totalUnits > 0 ? Math.round((passed / totalUnits) * 100) : 0;
         
-        // Build table rows with HOLLOW STAR (☆)
+        // ✅ Build table rows - ☆ star next to unit name, ALL BORDERS
         let tableRows = '';
         marks.forEach((mark, index) => {
-            const status = mark.status || getGradingStatus(0, userProgram);
-            const statusColor = getStatusColor(status);
             const unitCode = mark.unit_code || getUnitCode(mark.subject_name) || 'N/A';
             const points = mark.points || calculatePoints(mark.grade, userProgram) || 0;
             const gradeColor = getGradeColor(mark.grade);
             const gradeDisplay = mark.grade || calculateGrade(0, userProgram) || '-';
             const hasRetake = mark.hasRetake || false;
             const retakeCount = mark.retakeCount || 0;
-            const retakeScore = mark.retakeScore;
-            const isRetakePassed = mark.retakeStatus === 'PASS';
             
-            // ✅ HOLLOW STAR indicator (☆) - subtle
-            const starIndicator = hasRetake ? '☆' : '';
-            const starTooltip = hasRetake ? `title="Retaken (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})"` : '';
+            // ✅ ☆ star next to unit name (not a separate column)
+            const starIndicator = hasRetake ? `<span style="display: inline-block; margin-left: 4px; font-size: 11px; color: #94a3b8; opacity: 0.5; cursor: help;" title="Retaken (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})">☆</span>` : '';
             
             tableRows += `
-                <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''} ${hasRetake ? 'border-left: 2px solid #94a3b8;' : ''}">
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 8px; color: #94a3b8;">${index + 1}</td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62; font-size: 8px;">${escapeHtml(unitCode)}</td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 8px; color: #1e293b;">
+                <tr style="${index % 2 === 0 ? 'background: #f9fafb;' : ''} ${hasRetake ? 'border-left: 3px solid #94a3b8;' : ''}">
+                    <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-size: 9px; color: #94a3b8;">${index + 1}</td>
+                    <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-weight: 600; color: #0A3D62; font-size: 9px;">${escapeHtml(unitCode)}</td>
+                    <td style="padding: 6px 10px; border: 1px solid #d1d5db; font-size: 9px; color: #1e293b;">
                         ${escapeHtml(mark.subject_name || 'N/A')}
-                        ${hasRetake ? `<span ${starTooltip} style="display: inline-block; margin-left: 4px; font-size: 11px; color: #94a3b8; opacity: 0.5; cursor: help;">☆</span>` : ''}
-                        ${retakeScore !== null ? `<span style="display: inline-block; margin-left: 4px; font-size: 7px; color: ${isRetakePassed ? '#059669' : '#dc2626'}; font-weight: 600;">${isRetakePassed ? '✅' : '❌'} ${retakeScore}%</span>` : ''}
+                        ${starIndicator}
                     </td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                        <span style="background: ${gradeColor}; color: white; padding: 2px 10px; border-radius: 10px; font-weight: 700; font-size: 9px; display: inline-block; min-width: 26px;">
+                    <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center;">
+                        <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 10px; font-weight: 700; font-size: 10px; display: inline-block; min-width: 28px;">
                             ${escapeHtml(gradeDisplay)}
                         </span>
-                        ${hasRetake ? `<span style="display: block; font-size: 6px; color: #94a3b8; opacity: 0.5;">☆ retake</span>` : ''}
                     </td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-weight: 700; font-size: 9px; color: ${gradeColor};">
+                    <td style="padding: 6px 10px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; font-size: 10px; color: ${gradeColor};">
                         ${points.toFixed(1)}
-                    </td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center;">
-                        <span style="background: ${statusColor}; color: white; padding: 2px 8px; border-radius: 10px; font-weight: 600; font-size: 7px; display: inline-block;">
-                            ${status}
-                        </span>
-                        ${isRetakePassed ? `<span style="display: block; font-size: 6px; color: #059669;">☆ Passed!</span>` : ''}
-                    </td>
-                    <td style="padding: 4px 8px; border-bottom: 1px solid #e5e7eb; text-align: center; font-size: 7px; color: #94a3b8; opacity: 0.5;">
-                        ${hasRetake ? `☆ R${retakeCount}` : '—'}
                     </td>
                 </tr>
             `;
@@ -1564,97 +1541,97 @@ function downloadReportCard() {
         let gradingScaleHTML = '';
         if (isTVET) {
             gradingScaleHTML = `
-                <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db;">
                     <thead>
                         <tr style="background: #0A3D62; color: white;">
-                            <th style="padding: 3px 6px; text-align: center;">Marks Range</th>
-                            <th style="padding: 3px 6px; text-align: center;">Grade</th>
-                            <th style="padding: 3px 6px; text-align: center;">Points</th>
-                            <th style="padding: 3px 6px; text-align: center;">Status</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Marks Range</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Grade</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Points</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr style="background: #d1fae5;">
-                            <td style="padding: 3px 6px; text-align: center;">75 - 100%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #065f46;">A</td>
-                            <td style="padding: 3px 6px; text-align: center;">4.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #065f46;">EXCELLENT</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">75 - 100%</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #065f46;">A</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">4.0</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #065f46;">EXCELLENT</td>
                         </tr>
                         <tr style="background: #dbeafe;">
-                            <td style="padding: 3px 6px; text-align: center;">65 - 74%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #1e40af;">B</td>
-                            <td style="padding: 3px 6px; text-align: center;">3.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #1e40af;">GOOD</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">65 - 74%</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #1e40af;">B</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">3.0</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #1e40af;">GOOD</td>
                         </tr>
                         <tr style="background: #fef3c7;">
-                            <td style="padding: 3px 6px; text-align: center;">50 - 64%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #92400e;">C</td>
-                            <td style="padding: 3px 6px; text-align: center;">2.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #92400e;">SATISFACTORY</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">50 - 64%</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #92400e;">C</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">2.0</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #92400e;">SATISFACTORY</td>
                         </tr>
                         <tr style="background: #fee2e2;">
-                            <td style="padding: 3px 6px; text-align: center;">Below 50%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #991b1b;">FAIL</td>
-                            <td style="padding: 3px 6px; text-align: center;">0.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">Below 50%</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #991b1b;">FAIL</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">0.0</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
                         </tr>
                         <tr style="background: #f3f4f6;">
-                            <td style="padding: 3px 6px; text-align: center; font-style: italic;">No Score</td>
-                            <td style="padding: 3px 6px; text-align: center;">-</td>
-                            <td style="padding: 3px 6px; text-align: center;">-</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-style: italic;">No Score</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
                         </tr>
                     </tbody>
                     <tfoot>
-                        <tr><td colspan="4" style="padding: 3px 6px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 50%</td></tr>
+                        <tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 50%</td></tr>
                     </tfoot>
                 </table>
             `;
         } else {
             gradingScaleHTML = `
-                <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db;">
                     <thead>
                         <tr style="background: #0A3D62; color: white;">
-                            <th style="padding: 3px 6px; text-align: center;">Marks Range</th>
-                            <th style="padding: 3px 6px; text-align: center;">Grade</th>
-                            <th style="padding: 3px 6px; text-align: center;">Points</th>
-                            <th style="padding: 3px 6px; text-align: center;">Status</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Marks Range</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Grade</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Points</th>
+                            <th style="padding: 4px 8px; border: 1px solid #0A3D62; text-align: center;">Status</th>
                         </tr>
                     </thead>
                     <tbody>
                         <tr style="background: #d1fae5;">
-                            <td style="padding: 3px 6px; text-align: center;">75 - 100%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #065f46;">A</td>
-                            <td style="padding: 3px 6px; text-align: center;">4.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #065f46;">DISTINCTION</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">75 - 100%</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #065f46;">A</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">4.0</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #065f46;">DISTINCTION</td>
                         </tr>
                         <tr style="background: #dbeafe;">
-                            <td style="padding: 3px 6px; text-align: center;">65 - 74%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #1e40af;">B</td>
-                            <td style="padding: 3px 6px; text-align: center;">3.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #1e40af;">CREDIT</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">65 - 74%</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #1e40af;">B</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">3.0</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #1e40af;">CREDIT</td>
                         </tr>
                         <tr style="background: #fef3c7;">
-                            <td style="padding: 3px 6px; text-align: center;">60 - 64%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #92400e;">C</td>
-                            <td style="padding: 3px 6px; text-align: center;">2.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #92400e;">PASS</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">60 - 64%</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #92400e;">C</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">2.0</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #92400e;">PASS</td>
                         </tr>
                         <tr style="background: #fee2e2;">
-                            <td style="padding: 3px 6px; text-align: center;">Below 60%</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 700; color: #991b1b;">D</td>
-                            <td style="padding: 3px 6px; text-align: center;">0.0</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">Below 60%</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 700; color: #991b1b;">D</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">0.0</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #991b1b;">FAIL</td>
                         </tr>
                         <tr style="background: #f3f4f6;">
-                            <td style="padding: 3px 6px; text-align: center; font-style: italic;">No Score</td>
-                            <td style="padding: 3px 6px; text-align: center;">-</td>
-                            <td style="padding: 3px 6px; text-align: center;">-</td>
-                            <td style="padding: 3px 6px; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-style: italic;">No Score</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center;">-</td>
+                            <td style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #94a3b8;">PENDING</td>
                         </tr>
                     </tbody>
                     <tfoot>
-                        <tr><td colspan="4" style="padding: 3px 6px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 60%</td></tr>
+                        <tr><td colspan="4" style="padding: 4px 8px; border: 1px solid #d1d5db; text-align: center; font-weight: 600; color: #0A3D62; font-size: 7px;">Min Pass: 60%</td></tr>
                     </tfoot>
                 </table>
             `;
@@ -1705,28 +1682,18 @@ function downloadReportCard() {
         .summary-card { background: #f8fafc; border-radius: 6px; padding: 8px 10px; text-align: center; border: 1px solid #e2e8f0; }
         .summary-card .value { font-size: 18px; font-weight: 700; color: #0A3D62; }
         .summary-card .label { font-size: 7px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
-        /* Hollow Star Style */
-        .hollow-star { 
-            display: inline-block; 
-            font-size: 11px; 
-            color: #94a3b8; 
-            opacity: 0.5; 
-            cursor: help; 
-            margin-left: 2px; 
-        }
-        .hollow-star:hover { opacity: 1; }
-        table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; }
-        thead th { background: #0A3D62; color: white; padding: 5px 8px; text-align: left; font-size: 7px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; }
+        table { width: 100%; border-collapse: collapse; margin: 6px 0 8px 0; font-size: 8px; border: 1px solid #d1d5db; }
+        thead th { background: #0A3D62; color: white; padding: 6px 10px; text-align: left; font-size: 7px; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600; border: 1px solid #0A3D62; }
         thead th.center { text-align: center; }
-        tbody td { padding: 4px 8px; border-bottom: 1px solid #e5e7eb; font-size: 8px; }
+        tbody td { padding: 6px 10px; border: 1px solid #d1d5db; font-size: 8px; }
         .chart-container { margin: 6px 0 8px 0; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
         .chart-container .title { font-weight: 700; font-size: 8px; color: #0A3D62; text-align: center; margin-bottom: 4px; }
         .chart-container canvas { width: 100% !important; height: 120px !important; max-height: 120px; }
         .grading-scale-table { margin: 6px 0 8px 0; padding: 6px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; }
         .grading-scale-table .title { font-weight: 700; font-size: 8px; color: #0A3D62; text-align: center; margin-bottom: 4px; }
-        .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; }
-        .grading-scale-table th { background: #0A3D62; color: white; padding: 3px 6px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
-        .grading-scale-table td { padding: 3px 6px; text-align: center; border: 1px solid #e2e8f0; font-size: 7px; }
+        .grading-scale-table table { width: 100%; border-collapse: collapse; font-size: 7px; margin: 0 auto; border: 1px solid #d1d5db; }
+        .grading-scale-table th { background: #0A3D62; color: white; padding: 4px 8px; text-align: center; font-size: 6px; text-transform: uppercase; letter-spacing: 0.5px; border: 1px solid #0A3D62; }
+        .grading-scale-table td { padding: 4px 8px; text-align: center; border: 1px solid #d1d5db; font-size: 7px; }
         .retake-summary-box { margin: 6px 0 8px 0; padding: 6px 12px; background: #fffbeb; border-radius: 6px; border: 1px solid #f59e0b; font-size: 8px; color: #92400e; text-align: center; }
         .retake-summary-box strong { color: #0A3D62; }
         .declaration { margin: 6px 0 8px 0; padding: 6px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 8px; }
@@ -1757,6 +1724,7 @@ function downloadReportCard() {
 </head>
 <body>
     <div class="container">
+        <!-- HEADER -->
         <div class="header">
             <div class="header-top">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" onerror="this.style.display='none'">
@@ -1769,6 +1737,7 @@ function downloadReportCard() {
             <div class="date">Generated: ${now}</div>
         </div>
         
+        <!-- STUDENT INFO WITH PHOTO -->
         <div class="student-info-wrapper">
             ${profilePictureHTML}
             <div class="student-info">
@@ -1787,21 +1756,21 @@ function downloadReportCard() {
         </div>
         ` : ''}
         
+        <!-- TABLE WITH ALL BORDERS - ☆ STAR NEXT TO UNIT NAME -->
         <table>
             <thead>
                 <tr>
-                    <th style="text-align: center; width: 25px;">#</th>
-                    <th style="min-width: 65px;">Unit Code</th>
-                    <th style="min-width: 120px;">Unit Name</th>
-                    <th style="text-align: center; width: 45px;">Grade</th>
-                    <th style="text-align: center; width: 45px;">Points</th>
-                    <th style="text-align: center; width: 65px;">Status</th>
-                    <th style="text-align: center; width: 45px;">☆</th>
+                    <th style="text-align: center; width: 25px; border: 1px solid #0A3D62;">#</th>
+                    <th style="min-width: 65px; border: 1px solid #0A3D62;">Unit Code</th>
+                    <th style="min-width: 150px; border: 1px solid #0A3D62;">Unit Name</th>
+                    <th style="text-align: center; width: 50px; border: 1px solid #0A3D62;">Grade</th>
+                    <th style="text-align: center; width: 50px; border: 1px solid #0A3D62;">Points</th>
                 </tr>
             </thead>
             <tbody>${tableRows}</tbody>
         </table>
         
+        <!-- SUMMARY CARDS -->
         <div class="summary-grid">
             <div class="summary-card"><div class="value" style="color: #0A3D62;">${gpa.toFixed(2)}</div><div class="label">GPA</div></div>
             <div class="summary-card"><div class="value" style="color: ${grade === 'A' ? '#10b981' : grade === 'B' ? '#3b82f6' : grade === 'C' ? '#f59e0b' : '#ef4444'};">${grade}</div><div class="label">Grade</div></div>
@@ -1810,16 +1779,19 @@ function downloadReportCard() {
             <div class="summary-card"><div class="value" style="color: #94a3b8; opacity: 0.5;">${retakeUnits}</div><div class="label">☆ Retakes</div></div>
         </div>
         
+        <!-- GRADING SCALE -->
         <div class="grading-scale-table">
             <div class="title">📊 Grading Scale (${programType})</div>
             ${gradingScaleHTML}
         </div>
         
+        <!-- LINE CHART -->
         <div class="chart-container">
             <div class="title">📈 Grade Points Progression</div>
             <canvas id="reportCardLineChart"></canvas>
         </div>
         
+        <!-- DECLARATION -->
         <div class="declaration">
             <span class="title">📋 Student Declaration:</span>
             <span class="checkbox"></span>
@@ -1827,6 +1799,7 @@ function downloadReportCard() {
             <div style="font-size: 6px; color: #94a3b8; margin-top: 2px;">I understand that falsification will result in disciplinary action.</div>
         </div>
         
+        <!-- SIGNATURES -->
         <div class="signatures">
             <div class="signature-box">
                 <div class="name">${escapeHtml(user.full_name || 'Student')}</div>
@@ -1842,6 +1815,7 @@ function downloadReportCard() {
             </div>
         </div>
         
+        <!-- FOOTER -->
         <div class="footer">
             <p>This is an official document. For verification, contact the Academic Office.</p>
             <p><strong>NCHSM</strong> · P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743</p>
