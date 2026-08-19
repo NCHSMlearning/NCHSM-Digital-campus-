@@ -1058,7 +1058,8 @@ async function loadMarksEntry() {
 }
 
 // ============================================================
-// RENDER MARKS TABLE WITH RETAKE SUPPORT
+// REPLACE the renderMarksEntryTable function in your super-admin-marks.js
+// with this updated version that includes Edit Retake button
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType) {
@@ -1069,6 +1070,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
     const examMax = getExamMax();
     const passingThreshold = getPassingThreshold();
     const programLabel = getProgramTypeLabel();
+    const isAdmin = isUserAdmin();
     
     const showCat1 = assessmentType !== 'exam_only';
     const showCat2 = assessmentType === 'full' || assessmentType === 'cats_only';
@@ -1083,6 +1085,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">${programLabel}</span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
                 <span style="font-size: 12px; color: #f59e0b; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⭐ Retakes: ${marks.filter(m => m.hasRetake).length}</span>
+                ${isAdmin ? `<span style="font-size: 12px; color: #8b5cf6; margin-left: 12px; background: #ede9fe; padding: 2px 12px; border-radius: 40px;">👑 Admin Mode</span>` : ''}
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
                 <button onclick="openMarksStudentManager()" class="btn-action" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
@@ -1097,7 +1100,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 <button onclick="loadMarksEntry()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
-                ${isUserAdmin() ? `
+                ${isAdmin ? `
                 <button onclick="resetUnitColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
                     <i class="fas fa-undo"></i> Reset Columns
                 </button>
@@ -1120,7 +1123,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                         <th style="padding: 10px 8px; text-align: center;">Points</th>
                         <th style="padding: 10px 8px; text-align: center;">Rating</th>
                         <th style="padding: 10px 8px; text-align: center;">Retake</th>
-                        ${isUserAdmin() ? '<th style="padding: 10px 8px; text-align: center;">Approval</th>' : ''}
+                        ${isAdmin ? '<th style="padding: 10px 8px; text-align: center;">Approval</th>' : ''}
                     </tr>
                 </thead>
                 <tbody>`;
@@ -1167,6 +1170,57 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>'
         }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>';
         
+        // ✅ Build retake actions
+        let retakeActionsHtml = '';
+        
+        if (hasRetake) {
+            // ✅ Show retake status
+            retakeActionsHtml += `
+                <div style="font-size: 10px; margin-bottom: 4px;">
+                    <span style="color: ${isRetakePassing ? '#059669' : '#dc2626'}; font-weight: 600;">
+                        ${isRetakePassing ? '✅ Passed' : '❌ Failed'} (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})
+                    </span>
+                    ${retakeScore !== null && retakeScore !== undefined ? `
+                        <span style="display: block; font-size: 9px; color: #64748b;">Score: ${retakeScore}%</span>
+                    ` : ''}
+                </div>
+            `;
+            
+            // ✅ ALWAYS show Edit button for retakes (even if max attempts reached)
+            retakeActionsHtml += `
+                <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                        style="background: #3b82f6; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
+                    <i class="fas fa-edit"></i> Edit Retake
+                </button>
+            `;
+        }
+        
+        // ✅ If student failed and hasn't reached max retakes, show "Add Retake" button
+        if (needsRetake) {
+            retakeActionsHtml += `
+                <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                        style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
+                    <i class="fas fa-sync-alt"></i> Add Retake
+                </button>
+            `;
+        }
+        
+        // ✅ If max retakes reached and failed, show message + Edit button
+        if (maxRetakesReached) {
+            retakeActionsHtml += `
+                <span style="color: #dc2626; font-size: 8px; font-weight: 600; display: block; text-align: center; margin-top: 2px;">
+                    ⛔ Max retakes reached
+                </span>
+            `;
+        }
+        
+        // ✅ If passed and no retake, show passed message
+        if (isPassing && !hasRetake) {
+            retakeActionsHtml = `
+                <span style="color: #059669; font-size: 11px;">✅ Passed</span>
+            `;
+        }
+        
         html += `<tr style="${rowStyle}">
             <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
@@ -1205,30 +1259,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 ${total > 0 ? `<span style="background: ${isPassing ? '#d1fae5' : '#fee2e2'}; padding: 3px 12px; border-radius: 12px; color: ${isPassing ? '#065f46' : '#991b1b'}; font-weight: 600; display: inline-block;">${gradeInfo.rating}</span>` : '<span style="color: #94a3b8;">PENDING</span>'}
             </td>
             <td style="padding: 8px 6px; text-align: center;">
-                ${hasRetake ? `
-                    <div style="font-size: 11px;">
-                        <span style="color: ${isRetakePassing ? '#059669' : '#dc2626'}; font-weight: 600;">
-                            ${isRetakePassing ? '✅ Passed' : '❌ Failed'}
-                        </span>
-                        <div style="font-size: 9px; color: #94a3b8;">${retakeHistory.length} attempt(s)</div>
-                    </div>
-                ` : ''}
-                ${needsRetake ? `
-                    <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
-                            style="background: #f59e0b; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 600;">
-                        <i class="fas fa-sync-alt"></i> Retake
-                    </button>
-                ` : ''}
-                ${maxRetakesReached ? `
-                    <span style="color: #dc2626; font-size: 10px; font-weight: 600;">
-                        ⛔ Max retakes reached
-                    </span>
-                ` : ''}
-                ${isPassing && !hasRetake ? `
-                    <span style="color: #059669; font-size: 11px;">✅ Passed</span>
-                ` : ''}
+                ${retakeActionsHtml}
             </td>
-            ${isUserAdmin() ? `<td style="padding: 8px 6px; text-align: center; font-size: 11px;">${approvalBadge}</td>` : ''}
+            ${isAdmin ? `<td style="padding: 8px 6px; text-align: center; font-size: 11px;">${approvalBadge}</td>` : ''}
         </tr>`;
     });
     
@@ -1248,6 +1281,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 <span style="display: inline-block; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 12px; font-size: 11px;">
                     ⭐ Total retakes: ${marks.reduce((sum, m) => sum + (m.retakeCount || 0), 0)}
                 </span>
+                <span style="display: inline-block; margin-left: 12px; font-size: 10px; color: #3b82f6;">
+                    <i class="fas fa-edit"></i> Click "Edit Retake" to modify retake scores
+                </span>
             </p>
         </div>
         ` : ''}
@@ -1256,6 +1292,11 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             <button onclick="saveMarksEntry()" class="btn-action" style="background: #059669; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-save"></i> 💾 Save All Marks (Auto-Approved)
             </button>
+            ${marks.filter(m => m.hasRetake).length > 0 ? `
+            <span style="display: inline-block; margin-left: 12px; font-size: 11px; color: #3b82f6;">
+                <i class="fas fa-edit"></i> Click Edit Retake to modify retake scores
+            </span>
+            ` : ''}
         </div>
     `;
     
