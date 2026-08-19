@@ -1,11 +1,15 @@
 // ============================================================
-// SUPER ADMIN TRANSCRIPT GENERATOR - COMPLETE
-// OFFICIAL TRANSCRIPT FORMAT - MATCHES KENYA METHODIST UNIVERSITY STYLE
+// SUPER ADMIN TRANSCRIPT GENERATOR - COMPLETE FINAL VERSION
+// WITH EXACT GRADING STRUCTURE FROM MARKS ENTRY
+// TVET: A(80-100%)=4, B(65-79%)=3, C(50-64%)=2, E(0-49%)=0
+// NURSING: A(75-100%)=4.0, B(65-74%)=3.0, C(60-64%)=2.0, D(0-59%)=0.0
 // TVET: Certificate (1 Year - 3 Terms), Diploma (2 Years - 6 Terms)
 // KRCHN Nursing: Blocks (Introductory, Block 1-6, Final)
+// INCLUDES SCHOOL LOGO, CREDITS & POINTS
+// UNIT CODE FETCHED FROM DATABASE (MATCHES MARKS ENTRY)
 // ============================================================
 
-console.log('📄 Super Admin Transcript Generator Loading...');
+console.log('📄 Super Admin Transcript Generator Loading... (FINAL VERSION)');
 
 // ============================================================
 // GLOBAL VARIABLES
@@ -21,7 +25,65 @@ window.transcriptData = {
 };
 
 // ============================================================
-// OFFICIAL GRADE MAPPING - MATCHES MARKS ENTRY SYSTEM
+// UNIT CODE CACHE - MATCHES MARKS ENTRY SYSTEM
+// ============================================================
+
+let unitCodeCache = {};
+
+// Fetch unit codes from database - MATCHES MARKS ENTRY
+async function fetchUnitCodes() {
+    try {
+        const { data, error } = await window.sb
+            .from('units_catalog')
+            .select('unit_name, unit_code');
+        
+        if (error) throw error;
+        
+        unitCodeCache = {};
+        data.forEach(item => {
+            unitCodeCache[item.unit_name] = item.unit_code;
+        });
+        
+        console.log(`📊 Cached ${Object.keys(unitCodeCache).length} unit codes`);
+        return unitCodeCache;
+    } catch (error) {
+        console.error('❌ Error fetching unit codes:', error);
+        return {};
+    }
+}
+
+// Get unit code - EXACTLY MATCHES MARKS ENTRY BEHAVIOR
+function getUnitCode(subjectName) {
+    if (!subjectName) return 'N/A';
+    
+    // First check cache (exact match)
+    if (unitCodeCache[subjectName]) {
+        return unitCodeCache[subjectName];
+    }
+    
+    // Try partial match (like marks entry does)
+    for (const [name, code] of Object.entries(unitCodeCache)) {
+        if (subjectName.includes(name) || name.includes(subjectName)) {
+            return code;
+        }
+    }
+    
+    // Fallback: generate from name (same as marks entry)
+    const words = subjectName.split(' ');
+    const skipWords = ['and', 'of', 'for', 'the', 'to', 'with', 'on', 'at', 'in', 'from', '&'];
+    let code = words
+        .filter(w => !skipWords.includes(w.toLowerCase()))
+        .map(w => w[0].toUpperCase())
+        .join('');
+    
+    if (code.length > 6) code = code.substring(0, 6);
+    if (code.length < 3) code = subjectName.substring(0, 6).toUpperCase();
+    
+    return code || 'N/A';
+}
+
+// ============================================================
+// EXACT GRADE MAPPING - MATCHES YOUR GRADING STRUCTURE
 // ============================================================
 
 const GRADE_CONFIG = {
@@ -34,20 +96,20 @@ const GRADE_CONFIG = {
             'E': { min: 0, max: 49, points: 0.0, label: 'NOT YET COMPETENT', color: '#991b1b', bgColor: '#fee2e2' }
         },
         passMark: 50,
-        label: 'TVET Competency-Based'
+        label: 'TVET Competency-Based',
+        display: 'A(80-100%)=4, B(65-79%)=3, C(50-64%)=2, E(0-49%)=0'
     },
     // Nursing Academic Grading
     nursing: {
         grades: {
             'A': { min: 75, max: 100, points: 4.0, label: 'DISTINCTION', color: '#065f46', bgColor: '#d1fae5' },
-            'B+': { min: 69, max: 74, points: 3.5, label: 'CREDIT', color: '#1e40af', bgColor: '#dbeafe' },
-            'B': { min: 60, max: 68, points: 3.0, label: 'CREDIT', color: '#1e40af', bgColor: '#dbeafe' },
-            'C+': { min: 54, max: 59, points: 2.5, label: 'PASS', color: '#92400e', bgColor: '#fef3c7' },
-            'C': { min: 50, max: 53, points: 2.0, label: 'PASS', color: '#92400e', bgColor: '#fef3c7' },
-            'D': { min: 0, max: 49, points: 0.0, label: 'FAIL', color: '#991b1b', bgColor: '#fee2e2' }
+            'B': { min: 65, max: 74, points: 3.0, label: 'CREDIT', color: '#1e40af', bgColor: '#dbeafe' },
+            'C': { min: 60, max: 64, points: 2.0, label: 'PASS', color: '#92400e', bgColor: '#fef3c7' },
+            'D': { min: 0, max: 59, points: 0.0, label: 'FAIL', color: '#991b1b', bgColor: '#fee2e2' }
         },
-        passMark: 50,
-        label: 'Nursing Academic'
+        passMark: 60,
+        label: 'Nursing Academic',
+        display: 'A(75-100%)=4.0, B(65-74%)=3.0, C(60-64%)=2.0, D(0-59%)=0.0'
     },
     creditHours: 3
 };
@@ -110,10 +172,11 @@ function calculateOfficialGrade(score, programCode) {
     const grades = config.grades;
     
     if (score === null || score === undefined || score === 0) {
+        const defaultGrade = programCode === 'KRCHN' ? 'D' : 'E';
         return {
-            grade: 'D',
+            grade: defaultGrade,
             points: 0.0,
-            label: 'FAIL',
+            label: config === GRADE_CONFIG.tvet ? 'NOT YET COMPETENT' : 'FAIL',
             color: '#991b1b',
             bgColor: '#fee2e2'
         };
@@ -131,10 +194,11 @@ function calculateOfficialGrade(score, programCode) {
         }
     }
     
+    const defaultGrade = programCode === 'KRCHN' ? 'D' : 'E';
     return {
-        grade: 'D',
+        grade: defaultGrade,
         points: 0.0,
-        label: 'FAIL',
+        label: config === GRADE_CONFIG.tvet ? 'NOT YET COMPETENT' : 'FAIL',
         color: '#991b1b',
         bgColor: '#fee2e2'
     };
@@ -173,70 +237,15 @@ function escapeHtml(str) {
     return div.innerHTML;
 }
 
-function getUnitCode(subjectName) {
-    if (!subjectName) return 'N/A';
-    
-    // Common unit codes mapping
-    const unitCodes = {
-        'Fundamentals of Nursing': 'NUR101',
-        'Anatomy and Physiology': 'NUR102',
-        'Pharmacology Basics': 'NUR103',
-        'Medical-Surgical Nursing I': 'NUR104',
-        'Community Health Nursing': 'NUR105',
-        'Maternal & Child Health': 'NUR106',
-        'Medical Surgical Nursing II': 'NCHSGN 201',
-        'Medical Surgical Nursing III': 'NCHSGN 209',
-        'Midwifery I': 'NCHSMW 110',
-        'Midwifery II': 'NCHSMW 123',
-        'Community Health I': 'NCHSCH 125',
-        'Introduction to Community Health': 'NCHSCH 101',
-        'Environmental and Occupational Health': 'NCHSEN 101',
-        'Information Communication Technology': 'NCHSIC 101',
-        'Microbiology, Parasitology and Immunology': 'NCHSMP 101',
-        'Community Diagnosis': 'NCHSCD 101',
-        'Fundamentals of Entrepreneurship': 'BUSI 221',
-        'Educational Psychology': 'EDUC 114',
-        'Clinical Nutrition and Dietetics': 'HSC 104',
-        'Parasitology': 'HSC 201',
-        'Pathophysiology': 'HSC 202',
-        'Community Health Nursing I': 'NRG 101',
-        'Community Health Nursing II & III (Clinical)': 'NRG 113',
-        'Fundamentals of Nursing (Clinical)': 'NRG 123',
-        'Community Health Nursing IV': 'NRG 214',
-        'Adult Nursing I & II (Clinical)': 'NRG 227',
-        'Pathology': 'NRG 233',
-        'Reproductive Health Nursing I': 'NRG 241',
-        'Introduction to Sociology': 'HST 131',
-        'Introduction to Psychology': 'HST 134'
-    };
-    
-    // Check exact match or partial match
-    for (const [name, code] of Object.entries(unitCodes)) {
-        if (subjectName.includes(name) || name.includes(subjectName)) {
-            return code;
-        }
-    }
-    
-    // Generate code from name
-    const words = subjectName.split(' ');
-    const skipWords = ['and', 'of', 'for', 'the', 'to', 'with', 'on', 'at', 'in', 'from', '&'];
-    let code = words
-        .filter(w => !skipWords.includes(w.toLowerCase()))
-        .map(w => w[0].toUpperCase())
-        .join('');
-    
-    if (code.length > 6) code = code.substring(0, 6);
-    if (code.length < 3) code = subjectName.substring(0, 6).toUpperCase();
-    
-    return code || 'N/A';
-}
-
 // ============================================================
 // LOAD TRANSCRIPT STUDENTS
 // ============================================================
 
 window.loadTranscriptStudents = async function() {
     console.log('📄 Loading transcript students...');
+    
+    // ✅ Fetch unit codes first (match marks entry)
+    await fetchUnitCodes();
     
     const program = document.getElementById('transcript_program_select')?.value || 'all';
     const year = document.getElementById('transcript_year_select')?.value || '2025';
@@ -258,7 +267,6 @@ window.loadTranscriptStudents = async function() {
     }
     
     try {
-        // Get students
         let query = window.sb
             .from('consolidated_user_profiles_table')
             .select('*')
@@ -290,7 +298,6 @@ window.loadTranscriptStudents = async function() {
         window.transcriptData.filteredStudents = students || [];
         
         if (students && students.length > 0) {
-            // Get marks for all students
             const studentIds = students.map(s => s.student_id);
             const { data: marks, error: marksError } = await window.sb
                 .from('student_marks')
@@ -302,23 +309,17 @@ window.loadTranscriptStudents = async function() {
             
             window.transcriptData.marks = marks || [];
             
-            // Update stats
             window.updateTranscriptStats(students, marks);
-            
-            // Render student list
             window.renderTranscriptStudentList(students, marks);
             
-            // Update student count
             const countEl = document.getElementById('transcript_student_count');
             if (countEl) countEl.textContent = students.length;
             
-            // Show dynamic content, hide placeholder
             if (placeholder) placeholder.style.display = 'none';
             if (dynamicContent) dynamicContent.style.display = 'block';
             if (previewContainer) previewContainer.style.display = 'none';
             
         } else {
-            // No students found
             if (studentList) {
                 studentList.innerHTML = `
                     <div style="grid-column: 1 / -1; text-align: center; padding: 40px; color: #94a3b8;">
@@ -333,7 +334,6 @@ window.loadTranscriptStudents = async function() {
             if (placeholder) placeholder.style.display = 'none';
         }
         
-        // Populate student dropdown
         window.populateTranscriptStudentDropdown(students);
         
         console.log(`✅ Loaded ${students?.length || 0} students`);
@@ -361,7 +361,6 @@ window.loadTranscriptStudents = async function() {
 window.updateTranscriptStats = function(students, marks) {
     const totalStudents = students?.length || 0;
     
-    // Calculate passing/failing/pending
     let passing = 0;
     let failing = 0;
     let pending = 0;
@@ -370,7 +369,6 @@ window.updateTranscriptStats = function(students, marks) {
     let totalCreditHours = 0;
     let totalGradePoints = 0;
     
-    // Group marks by student
     const studentMarks = {};
     marks?.forEach(m => {
         const admission = m.admission_number;
@@ -378,7 +376,6 @@ window.updateTranscriptStats = function(students, marks) {
         studentMarks[admission].push(m);
     });
     
-    // Calculate per student
     for (const [admission, markList] of Object.entries(studentMarks)) {
         let studentTotal = 0;
         let studentCount = 0;
@@ -446,7 +443,6 @@ window.renderTranscriptStudentList = function(students, marks) {
         return;
     }
     
-    // Calculate averages per student
     const studentAverages = {};
     marks?.forEach(m => {
         const admission = m.admission_number;
@@ -524,8 +520,6 @@ window.renderTranscriptStudentList = function(students, marks) {
     });
     
     container.innerHTML = html;
-    
-    // Update selected count
     window.updateTranscriptSelectedCount();
 };
 
@@ -568,7 +562,6 @@ window.toggleTranscriptStudent = function(studentId) {
         window.transcriptData.selectedStudents.push(studentId);
     }
     
-    // Re-render the student list
     const students = window.transcriptData.filteredStudents || window.transcriptData.students;
     window.renderTranscriptStudentList(students, window.transcriptData.marks);
 };
@@ -647,7 +640,6 @@ window.generateSelectedTranscript = async function() {
         return;
     }
     
-    // Find student
     const student = window.transcriptData.students.find(s => s.student_id === studentId);
     if (!student) {
         if (typeof window.showNotification === 'function') {
@@ -656,7 +648,6 @@ window.generateSelectedTranscript = async function() {
         return;
     }
     
-    // Get student marks
     const studentMarks = window.transcriptData.marks.filter(m => m.admission_number === studentId);
     
     if (studentMarks.length === 0) {
@@ -666,7 +657,6 @@ window.generateSelectedTranscript = async function() {
         return;
     }
     
-    // Generate and show transcript
     window.showTranscriptPreview(student, studentMarks, year);
 };
 
@@ -714,11 +704,9 @@ window.generateSelectedTranscripts = async function() {
                 continue;
             }
             
-            // Generate transcript preview
             window.showTranscriptPreview(student, studentMarks, year);
             successCount++;
             
-            // Small delay to prevent overload
             await new Promise(resolve => setTimeout(resolve, 300));
         }
         
@@ -742,7 +730,7 @@ window.generateSelectedTranscripts = async function() {
 };
 
 // ============================================================
-// SHOW TRANSCRIPT PREVIEW - OFFICIAL FORMAT
+// SHOW TRANSCRIPT PREVIEW - FINAL OFFICIAL VERSION
 // ============================================================
 
 window.showTranscriptPreview = function(student, marks, year) {
@@ -753,10 +741,9 @@ window.showTranscriptPreview = function(student, marks, year) {
     
     const program = student.program || 'KRCHN';
     const isTVET = isTVETProgram(program);
-    const programType = isTVET ? 'TVET' : 'Nursing';
-    const blockLabel = isTVET ? 'Term' : 'Block';
     const config = getGradingConfig(program);
     const passMark = config.passMark;
+    const gradingDisplay = config.display;
     
     // Group marks by block/term
     const groupedMarks = {};
@@ -767,7 +754,7 @@ window.showTranscriptPreview = function(student, marks, year) {
     });
     const blockNames = Object.keys(groupedMarks).sort();
     
-    // Build marks table - OFFICIAL FORMAT (Code, Title, Credit, Grade)
+    // Build marks table
     let marksHtml = '';
     let totalScore = 0;
     let scoredCount = 0;
@@ -781,11 +768,12 @@ window.showTranscriptPreview = function(student, marks, year) {
         const blockMarks = groupedMarks[block];
         const blockTotal = blockMarks.length;
         let blockPassed = 0;
+        let blockPoints = 0;
+        let blockCredits = 0;
         
-        // Block/Term Header
         marksHtml += `
             <tr style="background: #f0f4f8; border-bottom: 2px solid #0A3D62;">
-                <td colspan="4" style="padding: 8px 12px; font-weight: 700; color: #0A3D62; font-size: 12px; letter-spacing: 0.5px;">
+                <td colspan="5" style="padding: 8px 12px; font-weight: 700; color: #0A3D62; font-size: 12px; letter-spacing: 0.5px;">
                     ${escapeHtml(block)}
                 </td>
             </tr>
@@ -795,23 +783,31 @@ window.showTranscriptPreview = function(student, marks, year) {
             const score = m.final_score || 0;
             const gradeInfo = calculateOfficialGrade(score, program);
             const isPassing = score >= passMark;
-            const unitCode = m.unit_code || getUnitCode(m.subject_name) || 'N/A';
             
-            // Check for retake
+            // ✅ Use getUnitCode() - matches marks entry
+            const unitCode = getUnitCode(m.subject_name);
+            
+            const credits = GRADE_CONFIG.creditHours;
+            const pointsEarned = gradeInfo.points * credits;
+            
             const hasRetake = m.retake_count > 0 || false;
             if (hasRetake) retakeUnits++;
-            if (isPassing) blockPassed++;
+            if (isPassing) {
+                blockPassed++;
+                passedUnits++;
+            }
             
             if (score > 0) {
                 totalScore += score;
                 scoredCount++;
-                totalPoints += gradeInfo.points * GRADE_CONFIG.creditHours;
-                totalCredits += GRADE_CONFIG.creditHours;
-                if (isPassing) passedUnits++;
+                totalPoints += pointsEarned;
+                totalCredits += credits;
+                blockPoints += pointsEarned;
+                blockCredits += credits;
             }
             
-            // Star for retake (subtle)
-            const starIndicator = hasRetake ? `<span style="color: #94a3b8; font-size: 9px; margin-left: 4px; opacity: 0.5;">☆</span>` : '';
+            // ✅ Subtle retake indicator (☆) next to unit name
+            const starIndicator = hasRetake ? `<span style="color: #94a3b8; font-size: 9px; margin-left: 4px; opacity: 0.5;" title="Retaken">☆</span>` : '';
             
             marksHtml += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
@@ -823,21 +819,24 @@ window.showTranscriptPreview = function(student, marks, year) {
                         ${starIndicator}
                     </td>
                     <td style="padding: 6px 12px; text-align: center; font-size: 11px; color: #1e293b;">
-                        ${GRADE_CONFIG.creditHours}
+                        ${credits}
                     </td>
                     <td style="padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 700; color: ${gradeInfo.color};">
                         ${gradeInfo.grade}
+                    </td>
+                    <td style="padding: 6px 12px; text-align: center; font-size: 11px; font-weight: 600; color: ${gradeInfo.color};">
+                        ${pointsEarned.toFixed(1)}
                     </td>
                 </tr>
             `;
         });
         
-        // Block summary
         const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
+        const blockGPA = blockCredits > 0 ? Math.round((blockPoints / blockCredits) * 100) / 100 : 0;
         marksHtml += `
             <tr style="background: #f8fafc; border-bottom: 2px solid #0A3D62;">
-                <td colspan="4" style="padding: 4px 12px; font-size: 9px; color: #64748b; text-align: right;">
-                    <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%)
+                <td colspan="5" style="padding: 4px 12px; font-size: 9px; color: #64748b; text-align: right;">
+                    <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%) · GPA: ${blockGPA.toFixed(2)}
                 </td>
             </tr>
         `;
@@ -849,6 +848,8 @@ window.showTranscriptPreview = function(student, marks, year) {
     const gpa = totalCredits > 0 ? Math.round((totalPoints / totalCredits) * 100) / 100 : 0;
     const failedUnits = totalUnits - passedUnits - (totalUnits - scoredCount);
     const pendingUnits = totalUnits - scoredCount;
+    const programType = isTVET ? 'TVET' : 'Nursing';
+    const blockLabel = isTVET ? 'Term' : 'Block';
     
     const now = new Date().toLocaleDateString('en-KE', {
         timeZone: 'Africa/Nairobi',
@@ -858,7 +859,7 @@ window.showTranscriptPreview = function(student, marks, year) {
         year: 'numeric'
     });
     
-    // Build grading scale table
+    // Build grading scale table - EXACT MATCH
     let gradingScaleHtml = '';
     const grades = config.grades;
     for (const [grade, gConfig] of Object.entries(grades)) {
@@ -868,18 +869,27 @@ window.showTranscriptPreview = function(student, marks, year) {
                 <td style="padding: 2px 8px; text-align: center; font-weight: 700; color: ${gConfig.color};">${grade}</td>
                 <td style="padding: 2px 8px; text-align: center;">${range}%</td>
                 <td style="padding: 2px 8px; text-align: center;">${gConfig.points.toFixed(1)}</td>
+                <td style="padding: 2px 8px; text-align: center;">${gConfig.label}</td>
             </tr>
         `;
     }
     
-    // Build full official transcript HTML
+    // Build full official transcript HTML with LOGO
     const html = `
         <div id="transcriptDocument" style="background: white; padding: 30px 35px; border: 2px solid #0A3D62; border-radius: 8px; box-shadow: 0 4px 20px rgba(10,61,98,0.12); font-family: 'Times New Roman', Times, serif; max-width: 850px; margin: 0 auto;">
             
-            <!-- HEADER -->
+            <!-- HEADER WITH LOGO -->
             <div style="text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 14px; margin-bottom: 18px;">
-                <div style="font-size: 18px; font-weight: 700; color: #0A3D62; letter-spacing: 1px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
-                <div style="font-size: 11px; color: #64748b; font-style: italic; margin-top: -2px;">AND MANAGEMENT (NCHSM)</div>
+                <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 2px;">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                         alt="NCHSM Logo" 
+                         style="max-height: 55px; width: auto;"
+                         onerror="this.style.display='none'">
+                    <div>
+                        <div style="font-size: 18px; font-weight: 700; color: #0A3D62; letter-spacing: 1px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+                        <div style="font-size: 11px; color: #64748b; font-style: italic; margin-top: -2px;">AND MANAGEMENT (NCHSM)</div>
+                    </div>
+                </div>
                 <div style="font-size: 11px; color: #64748b;">P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743 · E-Mail: admin@nchsm.co.ke · Website: www.nchsm.co.ke</div>
                 <div style="font-size: 16px; font-weight: 700; color: #0A3D62; letter-spacing: 2px; margin-top: 6px;">OFFICIAL ACADEMIC TRANSCRIPT</div>
             </div>
@@ -894,7 +904,7 @@ window.showTranscriptPreview = function(student, marks, year) {
                 </div>
             </div>
             
-            <!-- MARKS TABLE -->
+            <!-- MARKS TABLE - CODE, TITLE, CREDIT, GRADE, POINTS -->
             <div style="overflow-x: auto; margin-bottom: 16px;">
                 <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #e5e7eb;">
                     <thead>
@@ -902,7 +912,8 @@ window.showTranscriptPreview = function(student, marks, year) {
                             <th style="padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62;">CODE</th>
                             <th style="padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62;">COURSE TITLE</th>
                             <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">CREDIT</th>
-                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 70px;">GRADE</th>
+                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">GRADE</th>
+                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">POINTS</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -931,9 +942,10 @@ window.showTranscriptPreview = function(student, marks, year) {
                 </div>
             </div>
             
-            <!-- GRADING SCALE -->
+            <!-- GRADING SCALE - EXACT MATCH -->
             <div style="margin-bottom: 14px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
-                <div style="font-weight: 600; color: #0A3D62; font-size: 10px; text-align: center; margin-bottom: 4px;">GRADING SCALE</div>
+                <div style="font-weight: 600; color: #0A3D62; font-size: 10px; text-align: center; margin-bottom: 4px;">GRADING SCALE (${programType})</div>
+                <div style="text-align: center; font-size: 9px; color: #64748b; margin-bottom: 4px;">${gradingDisplay}</div>
                 <table style="width: 100%; border-collapse: collapse; font-size: 9px; border: 1px solid #e5e7eb;">
                     <thead>
                         <tr style="background: #e5e7eb;">
@@ -1011,7 +1023,6 @@ window.showTranscriptPreview = function(student, marks, year) {
     content.innerHTML = html;
     container.style.display = 'block';
     
-    // Store current transcript data for printing
     window._currentTranscript = {
         student: student,
         marks: marks,
@@ -1235,10 +1246,11 @@ window.getUnitCode = getUnitCode;
 window.escapeHtml = escapeHtml;
 
 console.log('✅ Super Admin Transcript Generator Module Loaded Successfully!');
-console.log('📄 Official transcript format (CODE, COURSE TITLE, CREDIT, GRADE)');
+console.log('📄 Official transcript format (CODE, COURSE TITLE, CREDIT, GRADE, POINTS)');
 console.log('⭐ Retake indicator: ☆ (subtle star next to unit name)');
 console.log('📊 TVET: Certificate (3 Terms), Diploma (6 Terms)');
 console.log('📊 KRCHN: Blocks (Introductory, Block 1-6, Final)');
+console.log('📋 Unit codes fetched from database (matches Marks Entry)');
 console.log('📋 Features:');
 console.log('   - GPA for the year / Cumulative GPA');
 console.log('   - Credits Covered / Total Credits');
@@ -1246,3 +1258,4 @@ console.log('   - Grading Scale table');
 console.log('   - Student & Registrar signatures');
 console.log('   - Print / PDF export');
 console.log('   - CSV export for bulk transcripts');
+console.log('   - ☆ Subtle retake indicator');
