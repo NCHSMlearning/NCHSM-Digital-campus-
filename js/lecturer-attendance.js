@@ -10,7 +10,7 @@
 // 6. Attendance map view
 // 7. CSV export and print
 // 8. Search and filter functionality
-// 9. Single and Bulk Attendance Approval
+// 9. Single and Bulk Attendance Verification (NEW)
 // ============================================================
 
 const LecturerAttendance = {
@@ -248,7 +248,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // RENDER TODAY'S ATTENDANCE - WITH APPROVE BUTTON
+    // RENDER TODAY'S ATTENDANCE - WITH VERIFY BUTTON
     // ============================================================
     renderTodayAttendance() {
         const tbody = document.getElementById('attendanceTable');
@@ -276,13 +276,27 @@ const LecturerAttendance = {
             'Absent': '#ef4444',
             'Pending': '#f59e0b',
             'Late': '#f59e0b',
-            'Excused': '#3b82f6'
+            'Excused': '#3b82f6',
+            'Verified': '#10b981'
         };
 
         tbody.innerHTML = logs.map((log, index) => {
             const hasLocation = log.latitude && log.longitude;
-            const status = log.attendance_status || 'Pending';
-            const statusColor = statusColors[status] || '#6b7280';
+            
+            // ✅ Check if verified properly
+            const isVerified = log.is_verified === true || 
+                              log.is_verified === 'true' || 
+                              log.is_verified === 1 ||
+                              log.attendance_status === 'Verified' ||
+                              (log.attendance_status === 'Present' && log.verified_at !== null);
+            
+            // Determine display status
+            let displayStatus = log.attendance_status || 'Pending';
+            if (isVerified && displayStatus !== 'Absent') {
+                displayStatus = 'Verified ✓';
+            }
+            
+            const statusColor = statusColors[displayStatus] || '#6b7280';
             
             const studentName = log.student_name || 'Unknown Student';
             
@@ -302,16 +316,19 @@ const LecturerAttendance = {
             const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
                 (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
 
-            const isVerified = log.is_verified === true;
-            const canApprove = !isLecturerCheckin && 
+            // ✅ Show verify button only if NOT verified and NOT lecturer check-in
+            const canVerify = !isLecturerCheckin && 
                               log.session_type !== 'Lecturer Check-in' && 
                               log.role !== 'lecturer' &&
                               !isVerified;
 
+            // Show who verified if available
+            const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
+
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin ? 'background: #f0fdf4;' : ''} ${isVerified ? 'background: #f0fdf4;' : ''}" 
-                    onmouseover="this.style.background='${isLecturerCheckin || isVerified ? '#dcfce7' : '#f8fafc'}'" 
-                    onmouseout="this.style.background='${isLecturerCheckin || isVerified ? '#f0fdf4' : 'transparent'}'">
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
+                    onmouseover="this.style.background='${isVerified || isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
+                    onmouseout="this.style.background='${isVerified || isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
                     
                     <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
                         ${this.escapeHtml(studentName)}
@@ -357,14 +374,19 @@ const LecturerAttendance = {
                     </td>
                     
                     <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; 
-                                     color: ${isVerified ? '#10b981' : statusColor}; 
-                                     padding: 3px 12px; 
-                                     border-radius: 12px; 
-                                     font-size: 11px; 
-                                     font-weight: 600;">
-                            ${isVerified ? 'Verified ✓' : status}
-                        </span>
+                        <div>
+                            <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; 
+                                         color: ${isVerified ? '#10b981' : statusColor}; 
+                                         padding: 3px 12px; 
+                                         border-radius: 12px; 
+                                         font-size: 11px; 
+                                         font-weight: 600;
+                                         display: inline-block;">
+                                ${isVerified ? '✅ Verified' : displayStatus}
+                            </span>
+                            ${isVerified && verifiedByDisplay ? 
+                                `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
+                        </div>
                     </td>
                     
                     <td style="padding: 10px 14px; text-align: center;">
@@ -379,16 +401,16 @@ const LecturerAttendance = {
                                 `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
                             }
                             
-                            ${canApprove ? 
-                                `<button onclick="LecturerAttendance.approveAttendance('${log.id}')" 
-                                        data-approve-id="${log.id}"
+                            ${canVerify ? 
+                                `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" 
+                                        data-verify-id="${log.id}"
                                         style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
                                         onmouseover="this.style.transform='scale(1.05)'" 
                                         onmouseout="this.style.transform='scale(1)'">
-                                    <i class="fas fa-check" style="font-size:10px;"></i> Approve
+                                    <i class="fas fa-check" style="font-size:10px;"></i> Verify
                                 </button>` : 
                                 `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px; font-weight: ${isVerified ? '600' : 'normal'};">
-                                    ${isVerified ? '✓ Verified' : '—'}
+                                    ${isVerified ? '✅ Verified' : '—'}
                                 </span>`
                             }
                         </div>
@@ -521,7 +543,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // RENDER PAST ATTENDANCE - WITH APPROVE BUTTON
+    // RENDER PAST ATTENDANCE - WITH VERIFY BUTTON
     // ============================================================
     renderPastAttendance() {
         const tbody = document.getElementById('pastAttendanceTable');
@@ -549,13 +571,25 @@ const LecturerAttendance = {
             'Absent': '#ef4444',
             'Pending': '#f59e0b',
             'Late': '#f59e0b',
-            'Excused': '#3b82f6'
+            'Excused': '#3b82f6',
+            'Verified': '#10b981'
         };
 
         tbody.innerHTML = logs.map((log) => {
             const hasLocation = log.latitude && log.longitude;
-            const status = log.attendance_status || 'Pending';
-            const statusColor = statusColors[status] || '#6b7280';
+            
+            const isVerified = log.is_verified === true || 
+                              log.is_verified === 'true' || 
+                              log.is_verified === 1 ||
+                              log.attendance_status === 'Verified' ||
+                              (log.attendance_status === 'Present' && log.verified_at !== null);
+            
+            let displayStatus = log.attendance_status || 'Pending';
+            if (isVerified && displayStatus !== 'Absent') {
+                displayStatus = 'Verified ✓';
+            }
+            
+            const statusColor = statusColors[displayStatus] || '#6b7280';
             const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
             
             const studentName = log.student_name || 'Unknown Student';
@@ -568,16 +602,17 @@ const LecturerAttendance = {
             const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
                 (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
 
-            const isVerified = log.is_verified === true;
-            const canApprove = !isLecturerCheckin && 
+            const canVerify = !isLecturerCheckin && 
                               log.session_type !== 'Lecturer Check-in' && 
                               log.role !== 'lecturer' &&
                               !isVerified;
 
+            const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
+
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isLecturerCheckin || isVerified ? 'background: #f0fdf4;' : ''}" 
-                    onmouseover="this.style.background='${isLecturerCheckin || isVerified ? '#dcfce7' : '#f8fafc'}'" 
-                    onmouseout="this.style.background='${isLecturerCheckin || isVerified ? '#f0fdf4' : 'transparent'}'">
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
+                    onmouseover="this.style.background='${isVerified || isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
+                    onmouseout="this.style.background='${isVerified || isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
                     
                     <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
                         ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -618,14 +653,19 @@ const LecturerAttendance = {
                     </td>
                     
                     <td style="padding: 10px 14px; text-align: center;">
-                        <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; 
-                                     color: ${isVerified ? '#10b981' : statusColor}; 
-                                     padding: 3px 12px; 
-                                     border-radius: 12px; 
-                                     font-size: 11px; 
-                                     font-weight: 600;">
-                            ${isVerified ? 'Verified ✓' : status}
-                        </span>
+                        <div>
+                            <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; 
+                                         color: ${isVerified ? '#10b981' : statusColor}; 
+                                         padding: 3px 12px; 
+                                         border-radius: 12px; 
+                                         font-size: 11px; 
+                                         font-weight: 600;
+                                         display: inline-block;">
+                                ${isVerified ? '✅ Verified' : displayStatus}
+                            </span>
+                            ${isVerified && verifiedByDisplay ? 
+                                `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
+                        </div>
                     </td>
                     
                     <td style="padding: 10px 14px; text-align: center;">
@@ -640,16 +680,16 @@ const LecturerAttendance = {
                                 `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
                             }
                             
-                            ${canApprove ? 
-                                `<button onclick="LecturerAttendance.approveAttendance('${log.id}')" 
-                                        data-approve-id="${log.id}"
+                            ${canVerify ? 
+                                `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" 
+                                        data-verify-id="${log.id}"
                                         style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
                                         onmouseover="this.style.transform='scale(1.05)'" 
                                         onmouseout="this.style.transform='scale(1)'">
-                                    <i class="fas fa-check" style="font-size:10px;"></i> Approve
+                                    <i class="fas fa-check" style="font-size:10px;"></i> Verify
                                 </button>` : 
                                 `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px; font-weight: ${isVerified ? '600' : 'normal'};">
-                                    ${isVerified ? '✓ Verified' : '—'}
+                                    ${isVerified ? '✅ Verified' : '—'}
                                 </span>`
                             }
                         </div>
@@ -1232,7 +1272,7 @@ const LecturerAttendance = {
             return;
         }
 
-        const headers = ['Student Name', 'Reg No', 'Program', 'Block', 'Unit', 'Session Type', 'Date/Time', 'Location', 'Status', 'Verified'];
+        const headers = ['Student Name', 'Reg No', 'Program', 'Block', 'Unit', 'Session Type', 'Date/Time', 'Location', 'Status', 'Verified', 'Verified By'];
         const rows = [headers.join(',')];
 
         logs.forEach(log => {
@@ -1249,7 +1289,8 @@ const LecturerAttendance = {
                 `"${date.toLocaleString('en-GB')}"`,
                 `"${(log.location_address || log.location_friendly_name || log.location_name || 'N/A')}"`,
                 `"${status}"`,
-                `"${log.is_verified ? '✅ Verified' : '⏳ Pending'}"`
+                `"${log.is_verified ? '✅ Verified' : '⏳ Pending'}"`,
+                `"${log.verified_by_name || 'N/A'}"`
             ];
             rows.push(row.join(','));
         });
@@ -1401,255 +1442,256 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ATTENDANCE APPROVAL FUNCTIONS - FIXED VERSION
+    // ✅ VERIFY ATTENDANCE - SINGLE RECORD
     // ============================================================
-
-   // ============================================================
-// APPROVE ATTENDANCE - COMPLETE FIXED VERSION
-// ============================================================
-async approveAttendance(recordId) {
-    if (!recordId) {
-        this.showNotification('Error: Record ID is required', 'error');
-        return;
-    }
-
-    if (this.isProcessing) {
-        this.showNotification('Please wait, processing...', 'warning');
-        return;
-    }
-
-    this.isProcessing = true;
-
-    // Find and update the button
-    const approveBtn = document.querySelector(`[data-approve-id="${recordId}"]`);
-    if (approveBtn) {
-        approveBtn.disabled = true;
-        approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
-        approveBtn.style.background = '#8b5cf6';
-    }
-
-    try {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase) {
-            throw new Error('Database not available');
-        }
-
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const lecturerName = profile?.full_name || 'Lecturer';
-        const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
-
-        // First, check if record exists
-        const { data: record, error: fetchError } = await supabase
-            .from('geo_attendance_logs')
-            .select('id, attendance_status, is_verified, student_name')
-            .eq('id', recordId)
-            .single();
-
-        if (fetchError) {
-            throw new Error('Record not found: ' + fetchError.message);
-        }
-
-        if (record.is_verified) {
-            this.showNotification(`⚠️ ${record.student_name || 'Student'} is already verified`, 'warning');
-            if (approveBtn) {
-                approveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Approved ✓';
-                approveBtn.style.background = '#10b981';
-                approveBtn.disabled = true;
-            }
-            this.isProcessing = false;
+    async verifyAttendance(recordId) {
+        if (!recordId) {
+            this.showNotification('Error: Record ID is required', 'error');
             return;
         }
 
-        // ✅ CRITICAL FIX: Set ALL verification fields
-        const now = new Date().toISOString();
-        const updateData = {
-            is_verified: true,
-            attendance_status: 'Present',
-            verified_by: lecturerId,           // ✅ MUST BE SET
-            verified_by_name: lecturerName,    // ✅ MUST BE SET
-            verified_at: now,                  // ✅ MUST BE SET
-            verification_source: 'Manual Approval',
-            verification_checks: JSON.stringify({
-                approved_by: lecturerName,
-                approved_at: now,
-                method: 'Lecturer Approval'
-            })
-        };
-
-        console.log('📝 Updating record with ALL fields:', { recordId, updateData });
-
-        // Update the record
-        const { error: updateError } = await supabase
-            .from('geo_attendance_logs')
-            .update(updateData)
-            .eq('id', recordId);
-
-        if (updateError) {
-            throw new Error('Failed to approve: ' + updateError.message);
+        if (this.isProcessing) {
+            this.showNotification('Please wait, processing...', 'warning');
+            return;
         }
 
-        // Show success
-        this.showNotification(`✅ ${record.student_name || 'Attendance'} approved successfully!`, 'success');
+        this.isProcessing = true;
 
-        // Update button
-        if (approveBtn) {
-            approveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Approved ✓';
-            approveBtn.style.background = '#10b981';
-            approveBtn.disabled = true;
-            approveBtn.style.cursor = 'default';
+        // Find and update the verify button
+        const verifyBtn = document.querySelector(`[data-verify-id="${recordId}"]`);
+        if (verifyBtn) {
+            verifyBtn.disabled = true;
+            verifyBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+            verifyBtn.style.background = '#8b5cf6';
         }
 
-        // ✅ FORCE COMPLETE REFRESH
-        console.log('🔄 Force refreshing all attendance data...');
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database not available');
+            }
+
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const lecturerName = profile?.full_name || 'Lecturer';
+            const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
+
+            // First, check if record exists and get current status
+            const { data: record, error: fetchError } = await supabase
+                .from('geo_attendance_logs')
+                .select('id, attendance_status, is_verified, student_name, check_in_time')
+                .eq('id', recordId)
+                .single();
+
+            if (fetchError) {
+                throw new Error('Record not found: ' + fetchError.message);
+            }
+
+            if (record.is_verified) {
+                this.showNotification(`⚠️ ${record.student_name || 'Student'} is already verified`, 'warning');
+                if (verifyBtn) {
+                    verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verified ✓';
+                    verifyBtn.style.background = '#10b981';
+                    verifyBtn.disabled = true;
+                    verifyBtn.style.cursor = 'default';
+                }
+                this.isProcessing = false;
+                return;
+            }
+
+            // ✅ Set ALL verification fields
+            const now = new Date().toISOString();
+            const updateData = {
+                is_verified: true,
+                attendance_status: 'Verified',
+                verified_by: lecturerId,
+                verified_by_name: lecturerName,
+                verified_at: now,
+                verification_source: 'Manual Verification',
+                verification_checks: JSON.stringify({
+                    verified_by: lecturerName,
+                    verified_at: now,
+                    method: 'Lecturer Verification',
+                    record_id: recordId,
+                    student: record.student_name
+                })
+            };
+
+            console.log('📝 Verifying record:', { recordId, updateData });
+
+            // Update the record
+            const { error: updateError } = await supabase
+                .from('geo_attendance_logs')
+                .update(updateData)
+                .eq('id', recordId);
+
+            if (updateError) {
+                throw new Error('Failed to verify: ' + updateError.message);
+            }
+
+            // Show success
+            this.showNotification(`✅ ${record.student_name || 'Attendance'} verified successfully!`, 'success');
+
+            // Update button
+            if (verifyBtn) {
+                verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verified ✓';
+                verifyBtn.style.background = '#10b981';
+                verifyBtn.disabled = true;
+                verifyBtn.style.cursor = 'default';
+            }
+
+            // ✅ FORCE COMPLETE REFRESH
+            console.log('🔄 Force refreshing all attendance data...');
+            
+            // Clear cache
+            this.todayLogs = [];
+            this.pastLogs = [];
+            
+            // Load fresh data
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+            
+            // Force re-render
+            this.renderTodayAttendance();
+            this.renderPastAttendance();
+            this.updateStats(this.todayLogs);
+
+            console.log('✅ Verification complete - UI should now show Verified');
+
+        } catch (error) {
+            console.error('❌ Verification error:', error);
+            this.showNotification('Failed to verify: ' + error.message, 'error');
+            
+            // Reset button
+            if (verifyBtn) {
+                verifyBtn.disabled = false;
+                verifyBtn.innerHTML = '<i class="fas fa-check"></i> Verify';
+                verifyBtn.style.background = '#8b5cf6';
+            }
+        } finally {
+            this.isProcessing = false;
+        }
+    },
+
+    // ============================================================
+    // ✅ BULK VERIFY ATTENDANCE
+    // ============================================================
+    async bulkVerifyAttendance(date = null) {
+        const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
         
-        // Clear cache
-        this.todayLogs = [];
-        this.pastLogs = [];
-        
-        // Load fresh data
-        await this.loadTodayAttendance();
-        await this.loadPastAttendance();
-        await this.loadAttendanceStats();
-        
-        // Force re-render
-        this.renderTodayAttendance();
-        this.renderPastAttendance();
-        this.updateStats(this.todayLogs);
-
-        console.log('✅ Approval complete - UI should now show Verified');
-
-    } catch (error) {
-        console.error('❌ Approval error:', error);
-        this.showNotification('Failed to approve: ' + error.message, 'error');
-        
-        // Reset button
-        if (approveBtn) {
-            approveBtn.disabled = false;
-            approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve';
-            approveBtn.style.background = '#8b5cf6';
-        }
-    } finally {
-        this.isProcessing = false;
-    }
-},
-
-   // ============================================================
-// BULK APPROVE - COMPLETE FIXED VERSION
-// ============================================================
-async bulkApproveAttendance(date = null) {
-    const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
-    
-    if (!targetDate) {
-        this.showNotification('Please select a date to bulk approve', 'warning');
-        return;
-    }
-
-    if (!confirm(`Are you sure you want to approve ALL unverified attendance records for ${targetDate}?`)) {
-        return;
-    }
-
-    if (this.isProcessing) {
-        this.showNotification('Please wait, processing...', 'warning');
-        return;
-    }
-
-    this.isProcessing = true;
-    const btn = document.querySelector('.btn-approve');
-    if (btn) {
-        btn.disabled = true;
-        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
-    }
-
-    try {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase) {
-            throw new Error('Database not available');
+        if (!targetDate) {
+            this.showNotification('Please select a date to bulk verify', 'warning');
+            return;
         }
 
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const lecturerName = profile?.full_name || 'Lecturer';
-        const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
-
-        // Get all unverified records for the date
-        const { data: records, error: fetchError } = await supabase
-            .from('geo_attendance_logs')
-            .select('id, student_name')
-            .eq('is_verified', false)
-            .neq('session_type', 'Lecturer Check-in')
-            .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
-            .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
-
-        if (fetchError) {
-            throw new Error('Failed to fetch records: ' + fetchError.message);
+        // Confirm with user
+        if (!confirm(`Are you sure you want to verify ALL unverified attendance records for ${targetDate}?`)) {
+            return;
         }
 
-        if (!records || records.length === 0) {
-            this.showNotification(`No unverified records found for ${targetDate}`, 'info');
+        if (this.isProcessing) {
+            this.showNotification('Please wait, processing...', 'warning');
+            return;
+        }
+
+        this.isProcessing = true;
+        const btn = document.querySelector('.btn-bulk-verify');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+        }
+
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                throw new Error('Database not available');
+            }
+
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const lecturerName = profile?.full_name || 'Lecturer';
+            const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
+
+            // Get all unverified records for the date
+            const { data: records, error: fetchError } = await supabase
+                .from('geo_attendance_logs')
+                .select('id, student_name')
+                .eq('is_verified', false)
+                .neq('session_type', 'Lecturer Check-in')
+                .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
+                .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
+
+            if (fetchError) {
+                throw new Error('Failed to fetch records: ' + fetchError.message);
+            }
+
+            if (!records || records.length === 0) {
+                this.showNotification(`No unverified records found for ${targetDate}`, 'info');
+                this.isProcessing = false;
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Verify';
+                }
+                return;
+            }
+
+            // ✅ Set ALL fields for bulk verification
+            const now = new Date().toISOString();
+            const updateData = {
+                is_verified: true,
+                attendance_status: 'Verified',
+                verified_by: lecturerId,
+                verified_by_name: lecturerName,
+                verified_at: now,
+                verification_source: 'Bulk Verification',
+                verification_checks: JSON.stringify({
+                    verified_by: lecturerName,
+                    verified_at: now,
+                    method: 'Bulk Lecturer Verification',
+                    record_count: records.length
+                })
+            };
+
+            // Update all records
+            const recordIds = records.map(r => r.id);
+            const { error: updateError } = await supabase
+                .from('geo_attendance_logs')
+                .update(updateData)
+                .in('id', recordIds);
+
+            if (updateError) {
+                throw new Error('Failed to bulk verify: ' + updateError.message);
+            }
+
+            this.showNotification(`✅ ${records.length} records verified successfully!`, 'success');
+
+            // Force refresh
+            this.todayLogs = [];
+            this.pastLogs = [];
+            await this.loadTodayAttendance();
+            await this.loadPastAttendance();
+            await this.loadAttendanceStats();
+            this.renderTodayAttendance();
+            this.renderPastAttendance();
+            this.updateStats(this.todayLogs);
+
+        } catch (error) {
+            console.error('❌ Bulk verification error:', error);
+            this.showNotification('Bulk verification failed: ' + error.message, 'error');
+        } finally {
             this.isProcessing = false;
             if (btn) {
                 btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Approve';
+                btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Verify';
             }
-            return;
         }
+    },
 
-        // ✅ CRITICAL FIX: Set ALL fields
-        const now = new Date().toISOString();
-        const updateData = {
-            is_verified: true,
-            attendance_status: 'Present',
-            verified_by: lecturerId,
-            verified_by_name: lecturerName,
-            verified_at: now,
-            verification_source: 'Bulk Approval',
-            verification_checks: JSON.stringify({
-                approved_by: lecturerName,
-                approved_at: now,
-                method: 'Bulk Lecturer Approval',
-                record_count: records.length
-            })
-        };
-
-        // Update all records
-        const recordIds = records.map(r => r.id);
-        const { error: updateError } = await supabase
-            .from('geo_attendance_logs')
-            .update(updateData)
-            .in('id', recordIds);
-
-        if (updateError) {
-            throw new Error('Failed to bulk approve: ' + updateError.message);
-        }
-
-        this.showNotification(`✅ ${records.length} records approved successfully!`, 'success');
-
-        // Force refresh
-        this.todayLogs = [];
-        this.pastLogs = [];
-        await this.loadTodayAttendance();
-        await this.loadPastAttendance();
-        await this.loadAttendanceStats();
-        this.renderTodayAttendance();
-        this.renderPastAttendance();
-        this.updateStats(this.todayLogs);
-
-    } catch (error) {
-        console.error('❌ Bulk approval error:', error);
-        this.showNotification('Bulk approval failed: ' + error.message, 'error');
-    } finally {
-        this.isProcessing = false;
-        if (btn) {
-            btn.disabled = false;
-            btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Approve';
-        }
-    }
-},
     /**
-     * Check if a record can be approved (not already verified)
+     * Check if a record can be verified (not already verified)
      * @param {Object} record - The attendance record
-     * @returns {boolean} - True if can be approved
+     * @returns {boolean} - True if can be verified
      */
-    canApproveRecord(record) {
+    canVerifyRecord(record) {
         if (!record) return false;
         if (record.is_verified === true) return false;
         if (record.session_type === 'Lecturer Check-in') return false;
@@ -1679,9 +1721,9 @@ window.exportAttendanceCSV = () => LecturerAttendance.exportCSV();
 window.printAttendanceReport = () => LecturerAttendance.printReport();
 window.lecturerCheckin = () => LecturerAttendance.lecturerCheckIn();
 window.markAttendance = (e) => LecturerAttendance.markStudentAttendance(e);
-window.approveAttendance = (id) => LecturerAttendance.approveAttendance(id);
-window.bulkApproveAttendance = (date) => LecturerAttendance.bulkApproveAttendance(date);
-window.canApproveRecord = (record) => LecturerAttendance.canApproveRecord(record);
+window.verifyAttendance = (id) => LecturerAttendance.verifyAttendance(id);
+window.bulkVerifyAttendance = (date) => LecturerAttendance.bulkVerifyAttendance(date);
+window.canVerifyRecord = (record) => LecturerAttendance.canVerifyRecord(record);
 
 window.closeAttendanceMap = () => {
     const modal = document.getElementById('attendanceMapModal');
@@ -1700,4 +1742,4 @@ window.openInGoogleMaps = () => {
 };
 
 console.log('✅ LecturerAttendance module loaded');
-console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Export, Print, Approve');
+console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Export, Print, Verify, Bulk Verify');
