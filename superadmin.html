@@ -5528,27 +5528,57 @@
         </div>
     </div>
 
-    <!-- Stats Cards -->
-    <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
+    <!-- ============================================================ -->
+    <!-- STATS CARDS - WITH PUBLISHED & UNPUBLISHED                    -->
+    <!-- ============================================================ -->
+    <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <!-- Total Marks -->
         <div class="card" style="border-top: 4px solid #059669; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             <h3 style="color: #059669; font-size: 10px; text-transform: uppercase; margin: 0;">Total Marks</h3>
             <p class="data" id="pm_total_marks" style="font-size: 24px; font-weight: 700; color: #059669; margin: 4px 0;">0</p>
-            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">All programs</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">All records</p>
         </div>
+        
+        <!-- Total Students -->
         <div class="card" style="border-top: 4px solid #10b981; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
             <h3 style="color: #10b981; font-size: 10px; text-transform: uppercase; margin: 0;">Students</h3>
             <p class="data" id="pm_total_students" style="font-size: 24px; font-weight: 700; color: #10b981; margin: 4px 0;">0</p>
             <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Total students</p>
         </div>
-        <div class="card" style="border-top: 4px solid #ef4444; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <h3 style="color: #dc2626; font-size: 10px; text-transform: uppercase; margin: 0;">Passed</h3>
-            <p class="data" id="pm_passed" style="font-size: 24px; font-weight: 700; color: #dc2626; margin: 4px 0;">0</p>
-            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Students passed</p>
+        
+        <!-- Passed -->
+        <div class="card" style="border-top: 4px solid #22c55e; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #16a34a; font-size: 10px; text-transform: uppercase; margin: 0;">Passed</h3>
+            <p class="data" id="pm_passed" style="font-size: 24px; font-weight: 700; color: #16a34a; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Passed units</p>
         </div>
+        
+        <!-- Failed -->
+        <div class="card" style="border-top: 4px solid #ef4444; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #dc2626; font-size: 10px; text-transform: uppercase; margin: 0;">Failed</h3>
+            <p class="data" id="pm_failed" style="font-size: 24px; font-weight: 700; color: #dc2626; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Failed units</p>
+        </div>
+        
+        <!-- ✅ Published (Green) -->
+        <div class="card" style="border-top: 4px solid #059669; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #059669; font-size: 10px; text-transform: uppercase; margin: 0;">✅ Published</h3>
+            <p class="data" id="pm_published_count" style="font-size: 24px; font-weight: 700; color: #059669; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Published units</p>
+        </div>
+        
+        <!-- ✅ Unpublished (Orange) -->
         <div class="card" style="border-top: 4px solid #f59e0b; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
-            <h3 style="color: #d97706; font-size: 10px; text-transform: uppercase; margin: 0;">Published</h3>
-            <p class="data" id="pm_published_count" style="font-size: 24px; font-weight: 700; color: #d97706; margin: 4px 0;">0</p>
-            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Students published</p>
+            <h3 style="color: #d97706; font-size: 10px; text-transform: uppercase; margin: 0;">📝 Unpublished</h3>
+            <p class="data" id="pm_unpublished_count" style="font-size: 24px; font-weight: 700; color: #d97706; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Draft units</p>
+        </div>
+        
+        <!-- ⭐ Retakes -->
+        <div class="card" style="border-top: 4px solid #8b5cf6; text-align: center; background: white; border-radius: 8px; padding: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            <h3 style="color: #7c3aed; font-size: 10px; text-transform: uppercase; margin: 0;">⭐ Retakes</h3>
+            <p class="data" id="pm_retake_count" style="font-size: 24px; font-weight: 700; color: #7c3aed; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 10px; margin: 0; color: #94a3b8;">Total retake records</p>
         </div>
     </div>
 
@@ -5568,13 +5598,18 @@
         </span>
     </div>
 
-    <!-- Filters -->
+    <!-- ============================================================ -->
+    <!-- FILTERS - WITH ACADEMIC YEAR                                 -->
+    <!-- ============================================================ -->
     <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 20px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-        <select id="pm_student_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 200px;">
+        
+        <!-- 1. Student Filter -->
+        <select id="pm_student_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 180px;">
             <option value="all">All Students</option>
         </select>
         
-        <select id="pm_program_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 200px;">
+        <!-- 2. Program Filter -->
+        <select id="pm_program_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 180px;">
             <option value="all">All Programs</option>
             <option value="KRCHN">🎓 KRCHN - Nursing</option>
             <optgroup label="🎯 TVET Programs">
@@ -5605,8 +5640,18 @@
             </optgroup>
         </select>
         
+        <!-- ✅ 3. ACADEMIC YEAR FILTER -->
+        <select id="pm_year_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 100px;">
+            <option value="all">📅 All Years</option>
+            <option value="2026">2026</option>
+            <option value="2025">2025</option>
+            <option value="2024">2024</option>
+            <option value="2023">2023</option>
+        </select>
+        
+        <!-- 4. Block/Term Filter -->
         <select id="pm_block_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 130px;">
-            <option value="all">All Blocks/Terms</option>
+            <option value="all">📦 All Blocks/Terms</option>
             <optgroup label="📚 KRCHN Blocks">
                 <option value="Introductory">Introductory</option>
                 <option value="Block 1">Block 1</option>
@@ -5614,6 +5659,7 @@
                 <option value="Block 3">Block 3</option>
                 <option value="Block 4">Block 4</option>
                 <option value="Block 5">Block 5</option>
+                <option value="Block 6">Block 6</option>
                 <option value="Final">Final</option>
             </optgroup>
             <optgroup label="📖 TVET Terms">
@@ -5623,17 +5669,26 @@
                 <option value="Term 4">Term 4</option>
                 <option value="Term 5">Term 5</option>
                 <option value="Term 6">Term 6</option>
+                <option value="Year 1 Term 1">Year 1 Term 1</option>
+                <option value="Year 1 Term 2">Year 1 Term 2</option>
+                <option value="Year 1 Term 3">Year 1 Term 3</option>
+                <option value="Year 2 Term 1">Year 2 Term 1</option>
+                <option value="Year 2 Term 2">Year 2 Term 2</option>
+                <option value="Year 2 Term 3">Year 2 Term 3</option>
             </optgroup>
         </select>
         
+        <!-- 5. Status Filter -->
         <select id="pm_status_filter" onchange="filterPublishedMarks()" style="padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 120px;">
-            <option value="all">All Status</option>
+            <option value="all">📌 All Status</option>
             <option value="published">✅ Published</option>
             <option value="draft">📝 Draft</option>
         </select>
         
+        <!-- 6. Search Input -->
         <input type="text" id="pm_search" placeholder="🔍 Search student..." onkeyup="filterPublishedMarks()" style="flex: 1; min-width: 120px; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
         
+        <!-- Results Count -->
         <span style="font-size: 12px; color: #94a3b8; white-space: nowrap;">
             <i class="fas fa-info-circle"></i> <span id="pm_filter_count">0</span> results
         </span>
@@ -5654,6 +5709,9 @@
                 </button>
                 <button onclick="unpublishAllFilteredMarks()" class="btn-action" style="background: #dc2626; color: white; padding: 5px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">
                     <i class="fas fa-times"></i> Unpublish All Filtered
+                </button>
+                <button onclick="loadPublishedMarks()" class="btn-action" style="background: #6b7280; color: white; padding: 5px 14px; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600;">
+                    <i class="fas fa-sync-alt"></i> Refresh
                 </button>
             </div>
         </div>
