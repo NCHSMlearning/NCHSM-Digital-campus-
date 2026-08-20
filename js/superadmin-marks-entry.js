@@ -3030,6 +3030,9 @@ function renderStudentManager(blockWarning = '') {
     const totalStudents = allStudents?.length || 0;
     const differentBlockCount = availableStudents?.filter(s => s.block !== block).length || 0;
     
+    // ✅ Get unique intake years from available students
+    const intakeYears = [...new Set(availableStudents.map(s => s.intake_year).filter(y => y))].sort();
+    
     body.innerHTML = `
         <div style="padding: 16px;">
             <!-- SUPER ADMIN INFO -->
@@ -3065,55 +3068,150 @@ function renderStudentManager(blockWarning = '') {
                 ` : ''}
             </div>
             
-            <!-- Search -->
-            <div style="margin-bottom: 12px;">
-                <input type="text" id="studentSearchInput" placeholder="🔍 Search students by name or admission..." 
-                       style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px;"
-                       oninput="filterStudentManagerList()">
-            </div>
-            
-            <!-- Available Students -->
-            <div style="border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
-                <div style="background: #f8fafc; padding: 10px 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
-                    <span style="font-weight: 600;">📋 Available Students</span>
+            <!-- ============================================================ -->
+            <!-- ENROLLED STUDENTS SECTION -->
+            <!-- ============================================================ -->
+            <div style="margin-top: 16px; border: 1px solid #d1fae5; border-radius: 8px; overflow: hidden;">
+                <div style="background: #d1fae5; padding: 10px 16px; border-bottom: 1px solid #d1fae5; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-weight: 600; color: #065f46;">
+                        <i class="fas fa-user-check"></i> Enrolled Students (${totalEnrolled})
+                    </span>
+                    ${totalEnrolled > 0 ? `
                     <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                        <button onclick="selectAllAvailableStudents()" style="background: none; border: none; color: #4C1D95; cursor: pointer; font-size: 13px; font-weight: 500;">
+                        <button onclick="selectAllEnrolledStudents()" style="background: none; border: none; color: #065f46; cursor: pointer; font-size: 12px; font-weight: 500;">
                             <i class="fas fa-check-square"></i> Select All
                         </button>
-                        <button onclick="deselectAllAvailableStudents()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 13px;">
+                        <button onclick="deselectAllEnrolledStudents()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 12px;">
                             <i class="fas fa-square"></i> Deselect All
                         </button>
-                        <button onclick="selectDifferentBlockStudents()" style="background: none; border: none; color: #f59e0b; cursor: pointer; font-size: 13px;">
-                            <i class="fas fa-exclamation-triangle"></i> Select Different Block
+                        <button onclick="dropSelectedEnrolledStudents()" id="dropEnrolledBtn" style="display: none; background: #dc2626; color: white; border: none; padding: 4px 14px; border-radius: 4px; cursor: pointer; font-size: 12px; font-weight: 500;">
+                            <i class="fas fa-user-minus"></i> Drop Selected (<span id="dropEnrolledCount">0</span>)
+                        </button>
+                    </div>
+                    ` : ''}
+                </div>
+                <div id="enrolledStudentsList" style="max-height: 300px; overflow-y: auto; padding: 8px; background: #f8fafc;">
+                    ${enrolledStudents.length === 0 ? `
+                        <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                            <i class="fas fa-users" style="font-size: 30px; display: block; margin-bottom: 8px;"></i>
+                            <p>No students enrolled in this unit yet.</p>
+                        </div>
+                    ` : `
+                        ${enrolledStudents.map((s, index) => {
+                            const admission = s.admission_number || s.student_id || 'N/A';
+                            const name = s.student_name || s.full_name || 'Unknown';
+                            const studentBlock = s.block || 'N/A';
+                            const blockMatch = studentBlock === block;
+                            const intakeYear = s.intake_year || s.academic_year || 'N/A';
+                            return `
+                                <div class="enrolled-student-item" data-admission="${admission}" 
+                                     style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #ffffff;' : 'background: #f8fafc;'}">
+                                    <input type="checkbox" class="enrolled-checkbox" data-admission="${admission}" 
+                                           style="margin-right: 12px; width: 15px; height: 15px; cursor: pointer;" 
+                                           onchange="updateEnrolledSelectedCount()">
+                                    <span style="flex: 1;">
+                                        <strong>${escapeHtml(name)}</strong>
+                                        <span style="font-size: 11px; color: #94a3b8; margin-left: 8px;">${escapeHtml(admission)}</span>
+                                    </span>
+                                    <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                        <span style="font-size: 10px; background: #e0e7ff; padding: 2px 8px; border-radius: 10px; color: #3730a3;">
+                                            📅 ${escapeHtml(intakeYear)}
+                                        </span>
+                                        <span style="font-size: 11px; background: ${blockMatch ? '#e0f2fe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px;">
+                                            ${escapeHtml(studentBlock)}
+                                        </span>
+                                        ${!blockMatch ? `<span style="font-size: 10px; color: #f59e0b; font-weight: 600;">⚠️</span>` : ''}
+                                        ${s.cat1_score > 0 || s.cat2_score > 0 || s.exam_score > 0 ? 
+                                            `<span style="font-size: 10px; color: #3b82f6;">📝 Has marks</span>` : 
+                                            `<span style="font-size: 10px; color: #94a3b8;">No marks</span>`}
+                                        <button onclick="dropSingleEnrolledStudent('${admission}')" 
+                                                style="background: #dc2626; color: white; border: none; padding: 3px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                                            <i class="fas fa-user-minus"></i> Drop
+                                        </button>
+                                    </span>
+                                </div>
+                            `;
+                        }).join('')}
+                    `}
+                </div>
+                ${enrolledStudents.length > 0 ? `
+                <div style="background: #f1f5f9; padding: 6px 16px; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; font-size: 12px; color: #64748b;">
+                    <span><span id="enrolledSelectedCount">0</span> selected</span>
+                    <button onclick="clearAllEnrolledStudents()" style="background: #dc2626; color: white; border: none; padding: 4px 14px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                        <i class="fas fa-trash"></i> Remove All
+                    </button>
+                </div>
+                ` : ''}
+            </div>
+            
+            <!-- ============================================================ -->
+            <!-- AVAILABLE STUDENTS SECTION -->
+            <!-- ============================================================ -->
+            <div style="margin-top: 16px; border: 1px solid #e2e8f0; border-radius: 8px; overflow: hidden;">
+                <div style="background: #f8fafc; padding: 10px 16px; border-bottom: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <span style="font-weight: 600;">📋 Available Students (${totalAvailable})</span>
+                    <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                        <button onclick="selectAllAvailableStudents()" style="background: none; border: none; color: #4C1D95; cursor: pointer; font-size: 12px; font-weight: 500;">
+                            <i class="fas fa-check-square"></i> Select All
+                        </button>
+                        <button onclick="deselectAllAvailableStudents()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-square"></i> Deselect All
+                        </button>
+                        <button onclick="selectDifferentBlockStudents()" style="background: none; border: none; color: #f59e0b; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-exclamation-triangle"></i> Different Block
+                        </button>
+                        <button onclick="selectSameIntakeYear()" style="background: none; border: none; color: #4C1D95; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-calendar"></i> Same Year
                         </button>
                     </div>
                 </div>
-                <div id="availableStudentsList" style="max-height: 400px; overflow-y: auto; padding: 8px;">
+                
+                <!-- ✅ YEAR FILTER DROPDOWN -->
+                <div style="padding: 8px 16px; background: #f8fafc; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
+                    <span style="font-size: 12px; color: #64748b; font-weight: 500;">
+                        <i class="fas fa-filter"></i> Filter by Intake Year:
+                    </span>
+                    <select id="intakeYearFilter" onchange="filterAvailableStudentsByYear()" style="padding: 5px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; background: white;">
+                        <option value="all">📅 All Years</option>
+                        ${intakeYears.map(y => `<option value="${y}">📅 ${escapeHtml(y)}</option>`).join('')}
+                    </select>
+                    <span style="font-size: 11px; color: #94a3b8; margin-left: 4px;">
+                        Showing <span id="filteredAvailableCount">${totalAvailable}</span> students
+                    </span>
+                    <button onclick="resetYearFilter()" style="background: #e2e8f0; border: none; padding: 3px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; color: #475569;">
+                        Reset
+                    </button>
+                </div>
+                
+                <div id="availableStudentsList" style="max-height: 300px; overflow-y: auto; padding: 8px;">
                     ${availableStudents.length === 0 ? `
-                        <div style="text-align: center; padding: 40px; color: #94a3b8;">
-                            <i class="fas fa-users" style="font-size: 36px; display: block; margin-bottom: 12px;"></i>
+                        <div style="text-align: center; padding: 30px; color: #94a3b8;">
+                            <i class="fas fa-users" style="font-size: 30px; display: block; margin-bottom: 8px;"></i>
                             <p>All students are already enrolled in this unit.</p>
                         </div>
                     ` : `
                         ${availableStudents.map(s => {
                             const blockMatch = s.block === block;
+                            const intakeYear = s.intake_year || 'N/A';
                             return `
-                                <div class="student-item" data-name="${(s.full_name || '').toLowerCase()}" data-admission="${s.student_id}" 
+                                <div class="student-item" data-name="${(s.full_name || '').toLowerCase()}" data-admission="${s.student_id}" data-year="${intakeYear}"
                                      style="display: flex; align-items: center; padding: 8px 12px; border-bottom: 1px solid #f1f5f9; ${!blockMatch ? 'background: #fffbeb; border-left: 3px solid #f59e0b;' : ''}">
                                     <input type="checkbox" id="student_${s.student_id}" value="${s.student_id}" 
-                                           data-name="${s.full_name || 'Unknown'}" data-block="${s.block || ''}"
-                                           style="margin-right: 12px; width: 16px; height: 16px; cursor: pointer;">
+                                           data-name="${s.full_name || 'Unknown'}" data-block="${s.block || ''}" data-year="${intakeYear}"
+                                           style="margin-right: 12px; width: 15px; height: 15px; cursor: pointer;">
                                     <label for="student_${s.student_id}" style="cursor: pointer; flex: 1; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px;">
                                         <span>
                                             <strong>${escapeHtml(s.full_name || 'Unknown')}</strong>
                                             <span style="font-size: 11px; color: #94a3b8; margin-left: 8px;">${escapeHtml(s.student_id || '')}</span>
                                         </span>
-                                        <span style="display: flex; align-items: center; gap: 8px;">
+                                        <span style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                            <span style="font-size: 10px; background: #e0e7ff; padding: 2px 8px; border-radius: 10px; color: #3730a3;">
+                                                📅 ${escapeHtml(intakeYear)}
+                                            </span>
                                             <span style="font-size: 11px; background: ${s.block === block ? '#e0f2fe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px;">
                                                 ${escapeHtml(s.block || 'N/A')}
                                             </span>
                                             ${!blockMatch ? `<span style="font-size: 10px; color: #f59e0b; font-weight: 600;">⚠️ Different block</span>` : ''}
-                                            ${s.intake_year ? `<span style="font-size: 10px; color: #94a3b8;">${escapeHtml(s.intake_year)}</span>` : ''}
                                         </span>
                                     </label>
                                 </div>
@@ -3126,7 +3224,7 @@ function renderStudentManager(blockWarning = '') {
             <!-- Selected Count -->
             <div style="margin-top: 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 6px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
                 <span style="font-size: 13px; color: #475569;">
-                    <span id="selectedStudentCount">0</span> students selected
+                    <span id="selectedStudentCount">0</span> students selected to add
                 </span>
                 <span style="font-size: 12px; color: #94a3b8;">
                     ${differentBlockCount > 0 ? `⚠️ ${differentBlockCount} students from different blocks` : 'All students match the current block'}
@@ -3146,6 +3244,57 @@ function renderStudentManager(blockWarning = '') {
     `;
     
     updateSelectedCount();
+    updateEnrolledSelectedCount();
+}
+// ============================================================
+// INTAKE YEAR FILTER FUNCTIONS
+// ============================================================
+
+function filterAvailableStudentsByYear() {
+    const selectedYear = document.getElementById('intakeYearFilter')?.value || 'all';
+    const items = document.querySelectorAll('#availableStudentsList .student-item');
+    let visibleCount = 0;
+    
+    items.forEach(item => {
+        const year = item.dataset.year || 'N/A';
+        if (selectedYear === 'all' || year === selectedYear) {
+            item.style.display = 'flex';
+            visibleCount++;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    const countEl = document.getElementById('filteredAvailableCount');
+    if (countEl) countEl.textContent = visibleCount;
+}
+
+function resetYearFilter() {
+    const filter = document.getElementById('intakeYearFilter');
+    if (filter) filter.value = 'all';
+    filterAvailableStudentsByYear();
+}
+
+function selectSameIntakeYear() {
+    // Get the current selected year from filter
+    const selectedYear = document.getElementById('intakeYearFilter')?.value || 'all';
+    
+    if (selectedYear === 'all') {
+        showNotification('Please select a specific year from the filter dropdown first', 'info');
+        return;
+    }
+    
+    const items = document.querySelectorAll('#availableStudentsList .student-item');
+    items.forEach(item => {
+        const year = item.dataset.year || 'N/A';
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        if (checkbox) {
+            checkbox.checked = (year === selectedYear);
+        }
+    });
+    
+    updateSelectedCount();
+    showNotification(`✅ Selected all students from ${selectedYear}`, 'success');
 }
 // ============================================================
 // STUDENT MANAGER HELPER FUNCTIONS
