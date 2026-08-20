@@ -3246,6 +3246,8 @@ function renderStudentManager(blockWarning = '') {
     updateSelectedCount();
     updateEnrolledSelectedCount();
 }
+
+
 // ============================================================
 // INTAKE YEAR FILTER FUNCTIONS
 // ============================================================
