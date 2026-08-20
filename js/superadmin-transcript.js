@@ -795,7 +795,7 @@ window.showTranscriptPreview = function(student, marks, year) {
 // ============================================================
 // RENDER A SPECIFIC BLOCK - WITH SMALL SUBTLE MESSAGE
 // Message appears BEFORE grading scale (after table & GPA)
-// YEAR OF STUDY shows Academic Year Range (e.g., 2026/2027)
+// NO EMOJIS - Clean text only
 // ============================================================
 
 function renderBlock(index) {
@@ -966,23 +966,23 @@ function renderBlock(index) {
     }
 
     // ============================================================
-    // 🎯 PROGRESSION MESSAGE - SMALL, SUBTLE TEXT ONLY
+    // 🎯 PROGRESSION MESSAGE - NO EMOJIS, CLEAN TEXT ONLY
     // ============================================================
     const currentBlockIndex = index;
     const nextBlockIndex = currentBlockIndex + 1;
     const hasNextBlock = nextBlockIndex < blockNames.length;
     const nextBlockName = hasNextBlock ? blockNames[nextBlockIndex] : null;
     
-    // Determine progression message - SMALL TEXT ONLY
+    // Determine progression message - NO EMOJIS
     let progressionMessage = '';
     let messageColor = '#94a3b8'; // default gray
     
     if (allPassed && hasNextBlock) {
         messageColor = '#059669';
-        progressionMessage = `✅ Passed — Proceed to ${nextBlockName} · ${yearLabel}`;
+        progressionMessage = `Passed — Proceed to ${nextBlockName} · ${yearLabel}`;
     } else if (allPassed && !hasNextBlock) {
         messageColor = '#4C1D95';
-        progressionMessage = `🏆 All blocks completed — Ready for Graduation · ${yearLabel}`;
+        progressionMessage = `All blocks completed — Ready for Graduation · ${yearLabel}`;
     } else if (hasFailed && blockPassed > 0) {
         // Get failed unit names
         const failedNames = blockMarks
@@ -990,12 +990,12 @@ function renderBlock(index) {
             .map(m => m.subject_name)
             .join(', ');
         messageColor = '#dc2626';
-        progressionMessage = `⚠️ ${failedUnits} unit(s) failed: ${failedNames} — Retake required · ${yearLabel}`;
+        progressionMessage = `${failedUnits} unit(s) failed: ${failedNames} — Retake required · ${yearLabel}`;
     } else if (blockPassed === 0 && blockTotal > 0) {
         messageColor = '#dc2626';
-        progressionMessage = `❌ Academic intervention required — Contact Registrar · ${yearLabel}`;
+        progressionMessage = `Academic intervention required — Contact Registrar · ${yearLabel}`;
     } else {
-        progressionMessage = `⏳ Results pending · ${yearLabel}`;
+        progressionMessage = `Results pending · ${yearLabel}`;
     }
 
     // Build grading scale table
@@ -1023,7 +1023,7 @@ function renderBlock(index) {
             <div style="display: flex; justify-content: center; gap: 15px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
                 ${prevBlock ? `
                     <button onclick="window.navigateBlock(-1)" style="background: #0A3D62; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-                        ⬅️ Previous: ${escapeHtml(prevBlock)}
+                        Previous: ${escapeHtml(prevBlock)}
                     </button>
                 ` : ''}
                 <span style="color: #64748b; font-size: 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 20px;">
@@ -1031,11 +1031,11 @@ function renderBlock(index) {
                 </span>
                 ${nextBlock ? `
                     <button onclick="window.navigateBlock(1)" style="background: #0A3D62; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-                        Next: ${escapeHtml(nextBlock)} ▶️
+                        Next: ${escapeHtml(nextBlock)}
                     </button>
                 ` : `
                     <button style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: default; font-weight: 600; font-size: 12px;">
-                        🏆 Final Block
+                        Final Block
                     </button>
                 `}
             </div>
@@ -1074,10 +1074,10 @@ function renderBlock(index) {
             
             <!-- BLOCK HEADER -->
             <div style="margin-bottom: 10px; padding: 6px 14px; background: #e0e7ff; border-radius: 4px; border-left: 4px solid #0A3D62;">
-                <span style="font-weight: 700; font-size: 14px; color: #0A3D62;">📚 ${escapeHtml(blockName)}</span>
+                <span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(blockName)}</span>
                 <span style="font-size: 11px; color: #64748b; margin-left: 12px;">${blockTotal} units</span>
                 <span style="float: right; font-size: 11px; font-weight: 600; color: ${allPassed ? '#059669' : (hasFailed ? '#dc2626' : '#f59e0b')};">
-                    ${allPassed ? '✅ COMPLETED' : (hasFailed ? '⚠️ RETAKE REQUIRED' : '⏳ PENDING')}
+                    ${allPassed ? 'COMPLETED' : (hasFailed ? 'RETAKE REQUIRED' : 'PENDING')}
                 </span>
             </div>
             
@@ -1119,7 +1119,7 @@ function renderBlock(index) {
                 </div>
             </div>
             
-            <!-- 🎯 PROGRESSION MESSAGE - BEFORE GRADING SCALE -->
+            <!-- PROGRESSION MESSAGE - BEFORE GRADING SCALE, NO EMOJIS -->
             <div style="text-align: center; padding: 4px 0 10px 0; font-size: 11px; color: ${messageColor}; font-weight: 500; border-bottom: 1px dashed #e5e7eb; margin-bottom: 12px;">
                 ${progressionMessage}
             </div>
@@ -1177,13 +1177,13 @@ function renderBlock(index) {
             <!-- ACTION BUTTONS -->
             <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
                 <button onclick="window.printTranscriptDocument()" style="background: #0A3D62; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                    <i class="fas fa-print"></i> Print / PDF
+                    Print / PDF
                 </button>
                 <button onclick="window.downloadTranscript()" style="background: #059669; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(5,150,105,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                    <i class="fas fa-download"></i> Download
+                    Download
                 </button>
                 <button onclick="window.closeTranscriptPreview()" style="background: #6b7280; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-                    <i class="fas fa-times"></i> Close
+                    Close
                 </button>
             </div>
         </div>
