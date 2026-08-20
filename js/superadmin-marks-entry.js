@@ -1,7 +1,7 @@
 // ============================================================
 // STATE
 // ============================================================
-
+const getSupabase = () => window.sb || window.supabase || null;
 let me_currentMarks = [];
 let me_currentBlock = '';
 let me_currentUnit = '';
