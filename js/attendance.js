@@ -1,5 +1,6 @@
 // ============================================
-// ✅ attendance.js - ULTRA-ACCURATE COMPLETE VERSION
+// ✅ attendance.js - FIXED FOR STUDENT SELF CHECK-IN
+// ✅ Captures student ID from logged-in user profile
 // ✅ Multi-reading GPS averaging (5+ readings)
 // ✅ Confidence scoring & verification
 // ✅ Anti-spoofing protection
@@ -24,7 +25,6 @@
         longitude: 36.0112599
     };
     
-    // 🆕 ACCURACY CONFIGURATION
     const ACCURACY_CONFIG = {
         STRICT_MODE: true,
         MAX_ACCEPTABLE_ACCURACY: 50,
@@ -33,13 +33,9 @@
         STABILIZATION_TIME: 3000,
         MAX_DRIFT: 20,
         MAX_MOVEMENT_SPEED: 2,
-        // 🆕 CLINICAL RADIUS - 300m for hospitals
         CLINICAL_RADIUS: 300,
-        // Classroom radius - 50m
         CLASSROOM_RADIUS: 50,
-        // Lab radius - 50m
         LAB_RADIUS: 50,
-        // Tutorial radius - 50m
         TUTORIAL_RADIUS: 50
     };
     
@@ -61,6 +57,130 @@
     let isGettingLocation = false;
     
     // ============================================
+    // ✅ FIXED: GET CURRENT STUDENT INFO
+    // ============================================
+    
+    function getCurrentStudentInfo() {
+        // Try multiple sources to get student info
+        let profile = null;
+        
+        // 1. Try from localStorage
+        try {
+            const stored = localStorage.getItem('userProfile');
+            if (stored) {
+                profile = JSON.parse(stored);
+            }
+        } catch(e) {}
+        
+        // 2. Try from window.db
+        if (!profile && window.db?.currentUserProfile) {
+            profile = window.db.currentUserProfile;
+        }
+        
+        // 3. Try from window
+        if (!profile && window.currentUserProfile) {
+            profile = window.currentUserProfile;
+        }
+        
+        if (profile) {
+            return {
+                user_id: profile.user_id || profile.id || null,
+                student_id: profile.student_id || profile.registration_number || null,
+                full_name: profile.full_name || profile.name || 'Student',
+                program: profile.program || 'KRCHN',
+                block: profile.block || profile.current_block || 'Introductory'
+            };
+        }
+        
+        // 4. Try to get from URL params (for testing)
+        const urlParams = new URLSearchParams(window.location.search);
+        const testUserId = urlParams.get('student_id');
+        if (testUserId) {
+            return {
+                user_id: testUserId,
+                student_id: 'TEST/STUDENT',
+                full_name: 'Test Student',
+                program: 'KRCHN',
+                block: 'Introductory'
+            };
+        }
+        
+        console.warn('⚠️ No student profile found! Please log in.');
+        return null;
+    }
+    
+    // ✅ FIXED: Get student ID - use user_id from profile
+    function getCurrentStudentId() {
+        const info = getCurrentStudentInfo();
+        return info?.user_id || null;
+    }
+    
+    // ✅ FIXED: Get student registration number
+    function getCurrentStudentRegNumber() {
+        const info = getCurrentStudentInfo();
+        return info?.student_id || null;
+    }
+    
+    // ✅ FIXED: Get student name
+    function getCurrentStudentName() {
+        const info = getCurrentStudentInfo();
+        return info?.full_name || 'Student';
+    }
+    
+    // ✅ FIXED: Get student program
+    function getCurrentStudentProgram() {
+        const info = getCurrentStudentInfo();
+        return info?.program || 'KRCHN';
+    }
+    
+    // ✅ FIXED: Get student block
+    function getCurrentStudentBlock() {
+        const info = getCurrentStudentInfo();
+        return info?.block || 'Introductory';
+    }
+    
+    function getSupabase() {
+        if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
+            return window.db.supabase;
+        }
+        if (window.supabase && typeof window.supabase.from === 'function') {
+            return window.supabase;
+        }
+        if (window.sb && typeof window.sb.from === 'function') {
+            return window.sb;
+        }
+        return null;
+    }
+    
+    function calculateDistance(lat1, lon1, lat2, lon2) {
+        const R = 6371000;
+        const toRad = (x) => (x * Math.PI) / 180;
+        const dLat = toRad(lat2 - lat1);
+        const dLon = toRad(lon2 - lon1);
+        const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    
+    async function getAddressFromCoordinates(lat, lon) {
+        try {
+            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
+                headers: { 'User-Agent': 'NCHSM-Attendance-System/1.0' }
+            });
+            const data = await response.json();
+            if (data && data.display_name) {
+                const road = data.address?.road || '';
+                const city = data.address?.city || data.address?.town || '';
+                if (road && city) return `${road}, ${city}`;
+                if (city) return city;
+                return data.display_name.split(',')[0];
+            }
+            return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+        } catch(e) {
+            return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
+        }
+    }
+
+    // ============================================
     // 📍 ULTRA-ACCURATE GPS CLASS
     // ============================================
     
@@ -76,7 +196,6 @@
             this.lastTimestamp = null;
         }
 
-        // 📡 Get multiple GPS readings and average them
         async getUltraAccurateLocation(options = {}) {
             return new Promise((resolve) => {
                 const {
@@ -93,11 +212,8 @@
                 }
 
                 let readings = [];
-                let bestReading = null;
-                let startTime = Date.now();
                 let isResolved = false;
 
-                // 🎯 Get a single reading with high accuracy
                 const getReading = () => {
                     return new Promise((resolveReading) => {
                         navigator.geolocation.getCurrentPosition(
@@ -125,7 +241,6 @@
                     });
                 };
 
-                // 📊 Calculate weighted average of readings
                 const calculateWeightedAverage = (readings) => {
                     if (readings.length === 0) return null;
 
@@ -171,7 +286,6 @@
                     };
                 };
 
-                // 🎯 Collect readings
                 const collectReadings = async () => {
                     while (readings.length < minReadings && !isResolved) {
                         const reading = await getReading();
@@ -195,7 +309,6 @@
                             this.updateGPSProgress(readings.length, minReadings);
                         }
                         
-                        // Check if we have enough good readings
                         if (readings.length >= minReadings) {
                             break;
                         }
@@ -248,36 +361,30 @@
             });
         }
 
-        // 🔍 Verify location with multiple checks
         verifyLocation(location) {
             let passed = true;
             let reason = '';
 
-            // Check 1: GPS Accuracy
             if (location.accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) {
                 passed = false;
                 reason = `GPS accuracy too low (±${location.accuracy.toFixed(0)}m). Need ±${ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY}m`;
             }
 
-            // Check 2: Consistency (standard deviation)
             if (location.stdDev > ACCURACY_CONFIG.MAX_DRIFT) {
                 passed = false;
                 reason = `GPS readings inconsistent (drift: ${location.stdDev.toFixed(0)}m)`;
             }
 
-            // Check 3: Number of readings
             if (location.readingsCount < 3) {
                 passed = false;
                 reason = `Not enough GPS readings (${location.readingsCount}/3)`;
             }
 
-            // Check 4: Confidence score
             if (location.confidence < 50) {
                 passed = false;
                 reason = `Low confidence score (${location.confidence.toFixed(0)}%)`;
             }
 
-            // Check 5: Plausibility
             if (!this.isPlausibleLocation(location.lat, location.lon)) {
                 passed = false;
                 reason = 'Location appears implausible';
@@ -286,7 +393,6 @@
             return { passed, reason };
         }
 
-        // 🌍 Check if location is on land
         isPlausibleLocation(lat, lon) {
             if (lat < -4.5 || lat > 5.5) return false;
             if (lon < 33.5 || lon > 42.5) return false;
@@ -294,7 +400,6 @@
             return true;
         }
 
-        // 📐 Calculate distance
         calculateDistance(lat1, lon1, lat2, lon2) {
             const R = 6371000;
             const toRad = (x) => (x * Math.PI) / 180;
@@ -304,7 +409,6 @@
             return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         }
 
-        // 📊 Update GPS progress UI
         updateGPSProgress(current, total) {
             const progressEl = document.getElementById('gps-progress');
             const statusEl = document.getElementById('gps-status');
@@ -344,171 +448,6 @@
     // ============================================
     
     const ultraGPS = new UltraAccurateGPS();
-
-    // ============================================
-    // ✅ HELPER FUNCTIONS
-    // ============================================
-    
-    function getCurrentStudentId() {
-        if (window.db?.currentUserId) return window.db.currentUserId;
-        if (window.db?.currentUserProfile?.user_id) return window.db.currentUserProfile.user_id;
-        if (window.currentUserId) return window.currentUserId;
-        try {
-            const profile = localStorage.getItem('userProfile');
-            if (profile) {
-                const parsed = JSON.parse(profile);
-                return parsed.user_id || parsed.id || null;
-            }
-        } catch(e) {}
-        return null;
-    }
-    
-    function getSupabase() {
-        if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
-            return window.db.supabase;
-        }
-        if (window.supabase && typeof window.supabase.from === 'function') {
-            return window.supabase;
-        }
-        if (window.sb && typeof window.sb.from === 'function') {
-            return window.sb;
-        }
-        return null;
-    }
-    
-    function calculateDistance(lat1, lon1, lat2, lon2) {
-        return ultraGPS.calculateDistance(lat1, lon1, lat2, lon2);
-    }
-    
-    async function getAddressFromCoordinates(lat, lon) {
-        try {
-            const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}&zoom=18&addressdetails=1`, {
-                headers: { 'User-Agent': 'NCHSM-Attendance-System/1.0' }
-            });
-            const data = await response.json();
-            if (data && data.display_name) {
-                const road = data.address?.road || '';
-                const city = data.address?.city || data.address?.town || '';
-                if (road && city) return `${road}, ${city}`;
-                if (city) return city;
-                return data.display_name.split(',')[0];
-            }
-            return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-        } catch(e) {
-            return `${lat.toFixed(6)}, ${lon.toFixed(6)}`;
-        }
-    }
-
-    // ============================================
-    // 📍 ULTRA-ACCURATE GPS LOCATION
-    // ============================================
-    
-    async function getAccurateLocation() {
-        console.log('📍 Getting ULTRA-ACCURATE GPS with 5-point verification...');
-        showToast('📡 Acquiring accurate GPS signal...', 'info', 2000);
-        
-        try {
-            const location = await ultraGPS.getUltraAccurateLocation({
-                minReadings: ACCURACY_CONFIG.MIN_READINGS,
-                stabilizationTime: ACCURACY_CONFIG.STABILIZATION_TIME,
-                maxAccuracy: ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY,
-                timeout: 25000
-            });
-            
-            if (!location) {
-                showToast('❌ Could not get accurate GPS. Please try again in an open area.', 'error', 5000);
-                return null;
-            }
-            
-            console.log('✅ Ultra-accurate GPS acquired:', {
-                lat: location.lat,
-                lon: location.lon,
-                accuracy: location.accuracy,
-                confidence: location.confidence,
-                readings: location.readingsCount
-            });
-            
-            const confidenceEmoji = location.confidence > 80 ? '🟢' : location.confidence > 60 ? '🟡' : '🔴';
-            showToast(`${confidenceEmoji} GPS locked! Accuracy: ±${location.accuracy.toFixed(0)}m (${location.confidence.toFixed(0)}% confidence)`, 'success', 3000);
-            
-            return location;
-            
-        } catch (error) {
-            console.error('GPS Error:', error);
-            showToast('❌ GPS error: ' + error.message, 'error', 5000);
-            return null;
-        }
-    }
-
-    // ============================================
-    // 🏆 AWARD ATTENDANCE POINTS
-    // ============================================
-
-    async function awardAttendancePoints(studentId, targetName, distance) {
-        try {
-            const supabase = getSupabase();
-            if (!supabase) {
-                console.warn('No Supabase client available');
-                return 0;
-            }
-            
-            let points = 10;
-            
-            if (distance < 20) {
-                points += 5;
-                console.log('🎯 Super accurate! +5 bonus points!');
-            }
-            
-            const { data: profile, error: fetchError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('gamification_points, attendance_points, total_points, login_count')
-                .eq('user_id', studentId)
-                .single();
-            
-            if (fetchError) {
-                console.warn('Could not fetch profile:', fetchError);
-                return 0;
-            }
-            
-            const currentPoints = profile?.gamification_points || 0;
-            const currentAttendancePoints = profile?.attendance_points || 0;
-            const loginCount = profile?.login_count || 0;
-            const newPoints = currentPoints + points;
-            const newAttendancePoints = currentAttendancePoints + points;
-            const newTotal = newPoints + (loginCount * 10);
-            
-            const { error: updateError } = await supabase
-                .from('consolidated_user_profiles_table')
-                .update({
-                    gamification_points: newPoints,
-                    attendance_points: newAttendancePoints,
-                    total_points: newTotal,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('user_id', studentId);
-            
-            if (updateError) {
-                console.error('❌ Error updating points:', updateError);
-                return 0;
-            }
-            
-            console.log(`✅ Awarded ${points} points for attendance at ${targetName}`);
-            
-            document.dispatchEvent(new CustomEvent('attendanceCheckedIn', {
-                detail: { points, target: targetName, distance, newTotal }
-            }));
-            
-            if (window.dashboardModule && typeof window.dashboardModule.loadFreshData === 'function') {
-                setTimeout(() => window.dashboardModule.loadFreshData(), 500);
-            }
-            
-            return points;
-            
-        } catch (error) {
-            console.error('❌ Error awarding attendance points:', error);
-            return 0;
-        }
-    }
 
     // ============================================
     // 🍞 BEAUTIFUL TOAST
@@ -578,7 +517,6 @@
         } catch(e) { return []; }
     }
     
-    // 🆕 UPDATED: Load clinical locations with radius
     async function loadClinicalLocations() {
         try {
             const supabase = getSupabase();
@@ -593,10 +531,8 @@
             if (error) throw error;
             
             clinicalLocations = (data || []).map(loc => {
-                // Use radius_meters from DB or default to 300m for hospitals
                 let radius = loc.radius_meters || 300;
                 
-                // For smaller clinics, use 150m
                 const lowerName = loc.clinical_area_name.toLowerCase();
                 if (lowerName.includes('clinic') || 
                     lowerName.includes('health centre') || 
@@ -605,7 +541,6 @@
                     radius = 150;
                 }
                 
-                // For national/teaching hospitals, use 500m
                 if (lowerName.includes('national') || 
                     lowerName.includes('teaching') || 
                     lowerName.includes('level 6') ||
@@ -639,8 +574,8 @@
             const studentId = getCurrentStudentId();
             if (!studentId) return [];
             
-            const profile = window.db?.currentUserProfile || JSON.parse(localStorage.getItem('userProfile') || '{}');
-            const program = profile.program || profile.department || 'KRCHN';
+            const profile = getCurrentStudentInfo();
+            const program = profile?.program || 'KRCHN';
             
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
@@ -688,7 +623,7 @@
                 type: 'clinical',
                 latitude: loc.latitude,
                 longitude: loc.longitude,
-                radius: loc.radius || 300  // 🆕 Use dynamic radius
+                radius: loc.radius || 300
             }));
             console.log(`🏥 Found ${options.length} clinical locations with ${options[0]?.radius || 300}m radius`);
         } else if (sessionType === 'class' || sessionType === 'lab' || sessionType === 'tutorial') {
@@ -714,7 +649,6 @@
         options.forEach(opt => {
             const option = document.createElement('option');
             option.value = `${opt.id}|${opt.name}|${opt.type}|${opt.latitude}|${opt.longitude}|${opt.radius}`;
-            // 🆕 Show radius in the option text
             const radiusText = opt.type === 'clinical' ? ` (${opt.radius}m radius)` : '';
             option.textContent = `${opt.name}${radiusText}`;
             targetSelect.appendChild(option);
@@ -1303,7 +1237,7 @@
             
             const { data, error } = await supabase
                 .from('geo_attendance_logs')
-                .select('attendance_status')
+                .select('attendance_status, is_verified')
                 .eq('student_id', studentId)
                 .gte('check_in_time', today.toISOString());
             
@@ -1318,9 +1252,15 @@
             
             data?.forEach(log => {
                 const status = log.attendance_status || 'Pending';
-                if (status === 'Present' || status === 'Verified') stats.present++;
-                else if (status === 'Pending') stats.pending++;
-                else if (status === 'Absent') stats.absent++;
+                const isVerified = log.is_verified === true;
+                
+                if (status === 'Present' || status === 'Verified' || isVerified) {
+                    stats.present++;
+                } else if (status === 'Pending') {
+                    stats.pending++;
+                } else if (status === 'Absent') {
+                    stats.absent++;
+                }
             });
             
             document.getElementById('presentCount').textContent = stats.present;
@@ -1334,7 +1274,118 @@
     }
 
     // ============================================
-    // ✅ DO CHECK-IN - ULTRA ACCURATE WITH DYNAMIC RADIUS
+    // 📍 GET ULTRA-ACCURATE LOCATION
+    // ============================================
+    
+    async function getAccurateLocation() {
+        console.log('📍 Getting ULTRA-ACCURATE GPS with 5-point verification...');
+        showToast('📡 Acquiring accurate GPS signal...', 'info', 2000);
+        
+        try {
+            const location = await ultraGPS.getUltraAccurateLocation({
+                minReadings: ACCURACY_CONFIG.MIN_READINGS,
+                stabilizationTime: ACCURACY_CONFIG.STABILIZATION_TIME,
+                maxAccuracy: ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY,
+                timeout: 25000
+            });
+            
+            if (!location) {
+                showToast('❌ Could not get accurate GPS. Please try again in an open area.', 'error', 5000);
+                return null;
+            }
+            
+            console.log('✅ Ultra-accurate GPS acquired:', {
+                lat: location.lat,
+                lon: location.lon,
+                accuracy: location.accuracy,
+                confidence: location.confidence,
+                readings: location.readingsCount
+            });
+            
+            const confidenceEmoji = location.confidence > 80 ? '🟢' : location.confidence > 60 ? '🟡' : '🔴';
+            showToast(`${confidenceEmoji} GPS locked! Accuracy: ±${location.accuracy.toFixed(0)}m (${location.confidence.toFixed(0)}% confidence)`, 'success', 3000);
+            
+            return location;
+            
+        } catch (error) {
+            console.error('GPS Error:', error);
+            showToast('❌ GPS error: ' + error.message, 'error', 5000);
+            return null;
+        }
+    }
+
+    // ============================================
+    // 🏆 AWARD ATTENDANCE POINTS
+    // ============================================
+
+    async function awardAttendancePoints(studentId, targetName, distance) {
+        try {
+            const supabase = getSupabase();
+            if (!supabase) {
+                console.warn('No Supabase client available');
+                return 0;
+            }
+            
+            let points = 10;
+            
+            if (distance < 20) {
+                points += 5;
+                console.log('🎯 Super accurate! +5 bonus points!');
+            }
+            
+            const { data: profile, error: fetchError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('gamification_points, attendance_points, total_points, login_count')
+                .eq('user_id', studentId)
+                .single();
+            
+            if (fetchError) {
+                console.warn('Could not fetch profile:', fetchError);
+                return 0;
+            }
+            
+            const currentPoints = profile?.gamification_points || 0;
+            const currentAttendancePoints = profile?.attendance_points || 0;
+            const loginCount = profile?.login_count || 0;
+            const newPoints = currentPoints + points;
+            const newAttendancePoints = currentAttendancePoints + points;
+            const newTotal = newPoints + (loginCount * 10);
+            
+            const { error: updateError } = await supabase
+                .from('consolidated_user_profiles_table')
+                .update({
+                    gamification_points: newPoints,
+                    attendance_points: newAttendancePoints,
+                    total_points: newTotal,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('user_id', studentId);
+            
+            if (updateError) {
+                console.error('❌ Error updating points:', updateError);
+                return 0;
+            }
+            
+            console.log(`✅ Awarded ${points} points for attendance at ${targetName}`);
+            
+            document.dispatchEvent(new CustomEvent('attendanceCheckedIn', {
+                detail: { points, target: targetName, distance, newTotal }
+            }));
+            
+            if (window.dashboardModule && typeof window.dashboardModule.loadFreshData === 'function') {
+                setTimeout(() => window.dashboardModule.loadFreshData(), 500);
+            }
+            
+            return points;
+            
+        } catch (error) {
+            console.error('❌ Error awarding attendance points:', error);
+            return 0;
+        }
+    }
+
+    // ============================================
+    // ✅ DO CHECK-IN - FIXED WITH PROPER STUDENT ID
     // ============================================
     
     async function doCheckIn() {
@@ -1351,7 +1402,7 @@
                     type: parts[2],
                     latitude: parseFloat(parts[3]),
                     longitude: parseFloat(parts[4]),
-                    radius: parseFloat(parts[5])  // 🆕 Dynamic radius from target
+                    radius: parseFloat(parts[5])
                 };
             }
         }
@@ -1366,14 +1417,30 @@
         btn.style.opacity = '0.6';
         
         try {
-            const studentId = getCurrentStudentId();
-            if (!studentId) {
+            // ✅ FIXED: Get student info from the logged-in user
+            const studentInfo = getCurrentStudentInfo();
+            
+            if (!studentInfo || !studentInfo.user_id) {
                 showToast('Please log in first', 'error');
                 btn.disabled = false;
                 btn.innerHTML = '📍 Check In Now';
                 btn.style.opacity = '1';
                 return;
             }
+            
+            const studentId = studentInfo.user_id;
+            const studentFullName = studentInfo.full_name || 'Student';
+            const studentBlock = studentInfo.block || 'Not Assigned';
+            const studentProgram = studentInfo.program || 'KRCHN';
+            const studentRegNumber = studentInfo.student_id || 'N/A';
+            
+            console.log('👤 Student info:', {
+                student_id: studentId,
+                full_name: studentFullName,
+                reg_number: studentRegNumber,
+                program: studentProgram,
+                block: studentBlock
+            });
             
             const supabase = getSupabase();
             if (!supabase) {
@@ -1396,50 +1463,33 @@
             
             await updateLocationDisplay(location);
             
-            const { data: studentProfile } = await supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, student_id, full_name, block, program, intake_year')
-                .eq('user_id', studentId)
-                .maybeSingle();
-            
-            const studentFullName = studentProfile?.full_name || 'Student';
-            const studentBlock = studentProfile?.block || 'Not Assigned';
-            const studentProgram = studentProfile?.program || 'KRCHN';
-            const studentRegNumber = studentProfile?.student_id || 'N/A';
-            
             const distance = ultraGPS.calculateDistance(
                 location.lat, location.lon,
                 selectedTarget.latitude, selectedTarget.longitude
             );
             
-            // 🆕 DYNAMIC RADIUS - Clinical gets 300m, Classroom gets 50m
             let radius = selectedTarget.radius || 50;
             
-            // If it's clinical and radius is still default, use 300m
             if (selectedTarget.type === 'clinical' && radius < 100) {
                 radius = ACCURACY_CONFIG.CLINICAL_RADIUS;
             }
             
-            // If it's classroom/lab/tutorial, use 50m
             if (selectedTarget.type === 'class' || selectedTarget.type === 'lab' || selectedTarget.type === 'tutorial') {
                 radius = ACCURACY_CONFIG.CLASSROOM_RADIUS;
             }
             
             const accuracy = location.accuracy || 0;
             
-            // 🎯 STATUS DETERMINATION WITH DYNAMIC RADIUS
             let status = 'Absent';
             let statusMessage = '';
             let verificationDetails = [];
             
-            // Check GPS accuracy
             if (accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) {
                 status = 'Pending';
                 statusMessage = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m)`;
                 verificationDetails.push(`GPS Accuracy: ${accuracy.toFixed(0)}m (needs < ${ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY}m)`);
             }
             
-            // 🆕 Check distance with DYNAMIC RADIUS
             const isClinical = selectedTarget.type === 'clinical';
             const radiusType = isClinical ? 'Clinical' : 'Classroom';
             const radiusDisplay = isClinical ? `${radius}m (Hospital Radius)` : `${radius}m (Classroom Radius)`;
@@ -1459,7 +1509,6 @@
                 statusMessage = `❌ Too far: ${distance.toFixed(0)}m from target (${radius}m ${radiusType} radius)`;
             }
             
-            // Confidence check
             if (location.confidence < 50) {
                 status = 'Pending';
                 statusMessage += ` | Low confidence (${location.confidence.toFixed(0)}%)`;
@@ -1506,13 +1555,17 @@
             
             const sessionType = sessionTypeSelect?.value || 'class';
             
+            // ✅ FIXED: Record with proper student ID
             const record = {
-                student_id: studentId,
-                user_id: studentId,
-                registration_number: studentRegNumber,
-                student_name: studentFullName,
-                block: studentBlock,
-                program: studentProgram,
+                // ✅ STUDENT INFO - Use the logged-in student's data
+                student_id: studentId,                          // ✅ UUID from profile
+                user_id: studentId,                             // ✅ Same as student_id
+                registration_number: studentRegNumber,          // ✅ Student's registration number
+                student_name: studentFullName,                  // ✅ Student's full name
+                block: studentBlock,                            // ✅ Student's block
+                program: studentProgram,                        // ✅ Student's program
+                
+                // ✅ CHECK-IN INFO
                 check_in_time: new Date().toISOString(),
                 session_type: sessionType,
                 target_id: selectedTarget.id,
@@ -1521,27 +1574,44 @@
                 longitude: location.lon,
                 accuracy_m: location.accuracy,
                 distance_meters: distance,
+                
+                // ✅ VERIFICATION INFO
                 is_verified: status === 'Present',
                 attendance_status: status,
+                
+                // ✅ TARGET INFO
                 target_latitude: selectedTarget.latitude,
                 target_longitude: selectedTarget.longitude,
                 target_radius: radius,
                 location_address: location.address || '',
+                
+                // ✅ ROLE
                 role: 'student',
+                
+                // ✅ GPS INFO
                 gps_confidence: location.confidence,
                 gps_readings: location.readingsCount,
                 gps_std_dev: location.stdDev,
                 verification_checks: JSON.stringify(location.verification?.checks || []),
-                // 🆕 Store the radius type for reference
+                
+                // ✅ LOCATION TYPE
                 location_type: selectedTarget.type,
-                clinical_radius: isClinical ? radius : null
+                clinical_radius: isClinical ? radius : null,
+                
+                // ✅ CREATED AT
+                created_at: new Date().toISOString()
             };
+            
+            console.log('📝 Saving record:', record);
             
             const { error } = await supabase
                 .from('geo_attendance_logs')
                 .insert([record]);
             
-            if (error) throw error;
+            if (error) {
+                console.error('❌ Insert error:', error);
+                throw error;
+            }
             
             let awardedPoints = 0;
             if (status === 'Present') {
@@ -1585,6 +1655,17 @@
         console.log('🚀 Initializing ULTRA-ACCURATE attendance system...');
         console.log('🏥 Clinical radius: 300m for hospitals');
         console.log('📚 Classroom radius: 50m for classes/labs');
+        
+        // Check if student is logged in
+        const studentInfo = getCurrentStudentInfo();
+        if (!studentInfo || !studentInfo.user_id) {
+            console.warn('⚠️ No student logged in. Please log in first.');
+            showToast('Please log in to check in', 'warning', 5000);
+        } else {
+            console.log('👤 Student logged in:', studentInfo.full_name);
+            console.log('📋 Student ID (UUID):', studentInfo.user_id);
+            console.log('📋 Registration Number:', studentInfo.student_id);
+        }
         
         let retries = 0;
         while (!getSupabase() && retries < 10) {
@@ -1680,6 +1761,8 @@
     window.refreshAttendance = init;
     window.attendanceSystemReady = true;
     window.doCheckIn = doCheckIn;
+    window.getCurrentStudentInfo = getCurrentStudentInfo;
+    window.getCurrentStudentId = getCurrentStudentId;
     
     // ============================================
     // 🏁 START
@@ -1696,5 +1779,6 @@
     console.log('📡 Multi-reading averaging active!');
     console.log('🏥 Clinical radius: 300m (hospitals)');
     console.log('📚 Classroom radius: 50m (classes/labs)');
+    console.log('👤 Student ID capture: FIXED!');
     
 })();
