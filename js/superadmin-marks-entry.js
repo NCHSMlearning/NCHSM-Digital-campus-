@@ -1056,7 +1056,7 @@ async function loadMEUnits() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY
+// LOAD MARKS ENTRY - WITH TVET SUPPORT AND RETAKE HISTORY FIX
 // ============================================================
 
 async function loadMarksEntry() {
@@ -1064,75 +1064,91 @@ async function loadMarksEntry() {
     const block = document.getElementById('me_block_select')?.value;
     const unit = document.getElementById('me_subject_select')?.value;
     const year = document.getElementById('me_year_select')?.value;
-    const unitSelect = document.getElementById('me_subject_select');
-    const selectedOption = unitSelect.options[unitSelect.selectedIndex];
-    const assessmentType = selectedOption?.dataset?.assessment || 'full';
-    const unitCode = selectedOption?.dataset?.code || '';
-    
-    const dynamicContent = document.getElementById('marksEntryDynamicContent');
-    const placeholder = document.getElementById('marksEntryPlaceholder');
+    const container = document.getElementById('me_marks_container');
     
     if (!program || !block || !unit) {
-        if (dynamicContent) dynamicContent.style.display = 'none';
-        if (placeholder) placeholder.style.display = 'block';
-        document.getElementById('me_marks_container').innerHTML = `
-            <div style="text-align: center; padding: 60px 20px;">
-                <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
-                <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
-            </div>
-        `;
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b;">Select Block and Unit</h3>
+                    <p style="color: #94a3b8;">Choose from the dropdowns above to load marks for your assigned units</p>
+                </div>
+            `;
+        }
         return;
     }
     
-    if (dynamicContent) dynamicContent.style.display = 'block';
-    if (placeholder) placeholder.style.display = 'none';
+    showLoadingScreen(`Loading marks for ${unit}...`, 'Loading Marks');
+    updateLoadingProgress(10, 1, 'Checking assignment...');
+    
+    const isAssigned = me_assignedUnits.some(u => 
+        u.subject_name === unit || u.subject_code === unit
+    );
+    
+    if (!isAssigned) {
+        hideLoadingScreen();
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-lock" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b;">Access Denied</h3>
+                    <p style="color: #94a3b8;">You are not assigned to this unit.</p>
+                    <p style="color: #94a3b8; font-size: 13px; margin-top: 8px;">Please contact the administrator for access.</p>
+                </div>
+            `;
+        }
+        showNotification('⛔ You are not assigned to this unit', 'error');
+        return;
+    }
     
     me_currentProgram = program;
     me_currentBlock = block;
     me_currentUnit = unit;
     me_currentYear = year;
-    me_currentAssessmentType = assessmentType;
-    
-    document.getElementById('me_marks_container').innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div class="loading-spinner"></div>
-            <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unitCode || unit}...</p>
-        </div>
-    `;
     
     try {
-        // Load retake data first
-        await loadRetakeData(block, unit, year);
+        const supabase = getSupabase();
+        if (!supabase) {
+            throw new Error('Database not available');
+        }
         
-        const { data: marks, error: marksError } = await sb
+        updateLoadingProgress(20, 1, 'Loading column settings...');
+        await loadAdminColumnSettings(block, unit);
+        
+        updateLoadingProgress(30, 2, 'Loading retake data...');
+        await loadLecturerRetakeData(block, unit, year);
+        
+        updateLoadingProgress(40, 2, 'Loading student marks...');
+        const { data: marks, error } = await supabase
             .from('student_marks')
             .select('*')
             .eq('block', block)
             .eq('subject_name', unit)
             .eq('academic_year', year);
         
-        if (marksError) throw marksError;
+        if (error) throw error;
         
-        console.log(`📊 Found ${marks?.length || 0} enrolled students for ${unit}`);
+        console.log(`📊 Found ${marks?.length || 0} enrolled students in student_marks`);
         
         if (!marks || marks.length === 0) {
-            document.getElementById('me_marks_container').innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                    <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
-                    <p style="color: #94a3b8;">Use "Manage Students" to add students to this unit</p>
-                    <button onclick="openMarksStudentManager()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-users"></i> Manage Students
-                    </button>
-                </div>
-            `;
-            updateMarksEntryStats([], assessmentType);
+            hideLoadingScreen();
+            if (container) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
+                        <p style="color: #94a3b8;">Please contact the administrator to add students.</p>
+                    </div>
+                `;
+            }
+            updateMarksEntryStats([], me_currentAssessmentType);
             return;
         }
         
+        updateLoadingProgress(60, 3, 'Loading student details...');
         const admissions = marks.map(m => m.admission_number);
-        const { data: students, error: studentError } = await sb
+        const { data: students, error: studentError } = await supabase
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, block, intake_year, program')
             .eq('role', 'student')
@@ -1147,10 +1163,11 @@ async function loadMarksEntry() {
             studentMap[s.student_id] = s.full_name || 'Unknown';
         });
         
+        updateLoadingProgress(80, 4, 'Processing marks data...');
+        
         const fullMarks = marks.map(m => {
             const admission = m.admission_number || '';
-            // Check for retake data
-            const retakes = me_retakeData[admission] || [];
+            const retakes = lecturerRetakeData[admission] || [];
             const hasRetake = retakes.length > 0;
             const lastRetake = retakes[retakes.length - 1];
             
@@ -1164,44 +1181,51 @@ async function loadMarksEntry() {
                 final: m.final_score || 0,
                 grade: m.grade || '',
                 gradedBy: m.graded_by || '',
-                assessmentType: m.assessment_type || assessmentType,
+                assessmentType: m.assessment_type || me_currentAssessmentType || 'full',
                 id: m.id || null,
                 approval_status: m.approval_status || 'draft',
-                published: m.published || false,
-                // Retake fields
                 hasRetake: hasRetake,
                 retakeCount: retakes.length,
                 retakeScore: lastRetake?.exam_score || null,
                 retakeGrade: lastRetake?.grade || null,
                 retakeStatus: lastRetake?.status || null,
-                retakeHistory: retakes
+                retakeHistory: retakes  // ✅ FIX: Add retakeHistory
             };
         });
         
         console.log(`📊 Displaying ${fullMarks.length} enrolled students`);
         
         me_currentMarks = fullMarks;
-        renderMarksEntryTable(fullMarks, unitCode, assessmentType);
-        updateMarksEntryStats(fullMarks, assessmentType);
         
-        await loadUnitColumnSettings();
-        updateAssessmentTypeDisplay();
+        updateLoadingProgress(95, 4, 'Rendering marks table...');
+        renderMarksEntryTable(fullMarks, unit, me_currentAssessmentType);
+        updateMarksEntryStats(fullMarks, me_currentAssessmentType);
+        checkMarksApprovalStatus(fullMarks);
+        
+        updateAssessmentTypeDisplay(me_currentAssessmentType);
+        const visibleColumns = getVisibleColumns();
+        updateVisibleColumnsInfo(visibleColumns);
+        
+        updateLoadingProgress(100, 4, '✅ Ready!');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        hideLoadingScreen();
         
     } catch (error) {
+        hideLoadingScreen();
         console.error('Error loading marks:', error);
-        document.getElementById('me_marks_container').innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
-                <h4 style="color: #991b1b;">Error loading marks</h4>
-                <p style="color: #64748b;">${error.message}</p>
-                <button onclick="loadMarksEntry()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    <i class="fas fa-sync-alt"></i> Retry
-                </button>
-            </div>
-        `;
-        if (typeof showNotification === 'function') {
-            showNotification('Error loading marks: ' + error.message, 'error');
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                    <h4 style="color: #991b1b;">Error loading marks</h4>
+                    <p style="color: #64748b;">${error.message}</p>
+                    <button onclick="loadMarksEntry()" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
         }
+        showNotification('Error loading marks: ' + error.message, 'error');
     }
 }
 
