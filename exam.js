@@ -2,16 +2,11 @@
 // CONFIGURATION
 // ============================================================
 const CONFIG = {
-    // Supabase
     SUPABASE_URL: 'https://lwhtjozfsmbyihenfunw.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
-    
-    // Face Detection
     FACE_MODEL_URL: 'https://justadudewhohacks.github.io/face-api.js/models',
-    FACE_DETECTION_INTERVAL: 500,
-    FACE_SCORE_THRESHOLD: 0.7,
-    
-    // Exam Settings
+    FACE_DETECTION_INTERVAL: 300,
+    FACE_SCORE_THRESHOLD: 0.6,
     MAX_BLUR_COUNT: 5,
     MAX_TAB_SWITCHES: 3,
     MAX_TIME_PER_QUESTION: 120,
@@ -19,8 +14,6 @@ const CONFIG = {
     TOTAL_VIOLATIONS_LIMIT: 3,
     RECOVERY_TIMER_SECONDS: 20,
     RETRY_COOLDOWN_SECONDS: 10,
-    
-    // Storage
     STORAGE_PREFIX: 'exam_',
     SNAPSHOT_INTERVAL: 30000,
     HEARTBEAT_INTERVAL: 15000,
@@ -37,11 +30,8 @@ const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 // APPLICATION STATE
 // ============================================================
 const AppState = {
-    // Student
     studentId: null,
     studentProfile: null,
-    
-    // Exam
     examId: null,
     examData: null,
     questions: [],
@@ -54,24 +44,15 @@ const AppState = {
     isExamActive: false,
     isExamPaused: false,
     isSubmitting: false,
-    
-    // Lobby
     termsAgreed: false,
     cameraWorking: false,
     faceVerified: false,
     currentStep: 1,
-    
-    // Proctoring
-    blurCount: 0,
-    tabSwitchCount: 0,
-    videoStream: null,
-    examVideoStream: null,
+    cameraStream: null,
     isCameraTesting: false,
     timerWarningShown: false,
     fullscreenWarningActive: false,
     attendanceRecorded: false,
-    
-    // Timers
     timerInterval: null,
     snapshotInterval: null,
     heartbeatInterval: null,
@@ -79,13 +60,9 @@ const AppState = {
     questionTimerInterval: null,
     inactivityTimer: null,
     countdownInterval: null,
-    
-    // Timing
     questionStartTime: Date.now(),
     questionTimeElapsed: 0,
     questionTimes: {},
-    
-    // Proctoring Objects
     secureProctor: null,
     stealthProctor: null,
 };
@@ -144,7 +121,6 @@ function initDomRefs() {
     DOM.submissionModal = document.getElementById('submission-modal');
     DOM.modalMessage = document.getElementById('modal-message');
     
-    // Lobby DOM
     DOM.termsCheckbox = document.getElementById('termsCheckbox');
     DOM.termsNextBtn = document.getElementById('termsNextBtn');
     DOM.cameraNextBtn = document.getElementById('cameraNextBtn');
@@ -159,8 +135,6 @@ function initDomRefs() {
     DOM.retryCameraBtn = document.getElementById('retryCameraBtn');
     DOM.faceVerifiedCheck = document.getElementById('faceVerifiedCheck');
     DOM.readyStudentName = document.getElementById('readyStudentName');
-    
-    // Student info
     DOM.studentName = document.getElementById('studentName');
     DOM.studentReg = document.getElementById('studentReg');
     DOM.studentProgram = document.getElementById('studentProgram');
@@ -176,15 +150,6 @@ function initDomRefs() {
 // ============================================================
 // UTILITY FUNCTIONS
 // ============================================================
-
-function shuffleArray(array) {
-    const shuffled = [...array];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-        const j = Math.floor(Math.random() * (i + 1));
-        [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    return shuffled;
-}
 
 function shuffleArrayWithSeed(array, seed) {
     const shuffled = [...array];
@@ -205,43 +170,28 @@ function saveToLocalStorage(key, data) {
     try {
         localStorage.setItem(getStorageKey(key), JSON.stringify(data));
         return true;
-    } catch (e) {
-        console.warn('Storage save failed:', e);
-        return false;
-    }
+    } catch (e) { return false; }
 }
 
 function loadFromLocalStorage(key) {
     try {
         const data = localStorage.getItem(getStorageKey(key));
         return data ? JSON.parse(data) : null;
-    } catch (e) {
-        console.warn('Storage load failed:', e);
-        return null;
-    }
+    } catch (e) { return null; }
 }
 
 function removeFromLocalStorage(key) {
     try {
         localStorage.removeItem(getStorageKey(key));
         return true;
-    } catch (e) {
-        console.warn('Storage remove failed:', e);
-        return false;
-    }
+    } catch (e) { return false; }
 }
 
 function showToast(message, type = 'info') {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
 
-    const icons = {
-        success: '✅',
-        error: '❌',
-        warning: '⚠️',
-        info: 'ℹ️'
-    };
-
+    const icons = { success: '✅', error: '❌', warning: '⚠️', info: 'ℹ️' };
     const toast = document.createElement('div');
     toast.className = `toast toast-${type}`;
     toast.innerHTML = `${icons[type] || ''} ${message}`;
@@ -251,17 +201,7 @@ function showToast(message, type = 'info') {
         toast.style.opacity = '0';
         toast.style.transition = 'opacity 0.5s ease';
         setTimeout(() => toast.remove(), 500);
-    }, 4000);
-}
-
-async function getIPAddress() {
-    try {
-        const response = await fetch('https://api.ipify.org?format=json');
-        const data = await response.json();
-        return data.ip;
-    } catch (e) {
-        return 'unknown';
-    }
+    }, 3000);
 }
 
 function formatTime(seconds) {
@@ -270,10 +210,178 @@ function formatTime(seconds) {
     return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-// ============================================================
-// TOAST - Expose to window for inline onclick
-// ============================================================
 window.showToast = showToast;
+
+async function getIPAddress() {
+    try {
+        const response = await fetch('https://api.ipify.org?format=json');
+        const data = await response.json();
+        return data.ip;
+    } catch { return 'unknown'; }
+}
+
+// ============================================================
+// FACE DETECTION - LOAD ONCE
+// ============================================================
+let faceModelsLoaded = false;
+
+async function loadFaceDetectionModels() {
+    if (faceModelsLoaded) return true;
+    try {
+        await faceapi.nets.tinyFaceDetector.loadFromUri(CONFIG.FACE_MODEL_URL);
+        faceModelsLoaded = true;
+        console.log('✅ Face detection models loaded');
+        return true;
+    } catch (error) {
+        console.warn('Face detection not available:', error);
+        return false;
+    }
+}
+
+async function fastDetectFace(videoElement) {
+    if (!videoElement || !videoElement.srcObject) return null;
+    try {
+        const options = new faceapi.TinyFaceDetectorOptions({
+            inputSize: 160,
+            scoreThreshold: CONFIG.FACE_SCORE_THRESHOLD
+        });
+        const detections = await faceapi.detectAllFaces(videoElement, options);
+        return detections;
+    } catch (error) {
+        return null;
+    }
+}
+
+// ============================================================
+// SINGLE CAMERA TEST - FAST & ONLY IN LOBBY
+// ============================================================
+window.testCamera = async function() {
+    if (AppState.isCameraTesting) return;
+    AppState.isCameraTesting = true;
+    DOM.testCameraBtn.disabled = true;
+    DOM.testCameraBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
+
+    try {
+        const constraints = {
+            video: {
+                facingMode: 'user',
+                width: { ideal: 480 },
+                height: { ideal: 360 },
+                frameRate: { ideal: 20 }
+            },
+            audio: false
+        };
+
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        AppState.cameraStream = stream;
+
+        // Use same stream for both lobby and exam
+        DOM.cameraVideo.srcObject = stream;
+        DOM.faceVideo.srcObject = stream;
+        
+        await Promise.all([
+            DOM.cameraVideo.play(),
+            DOM.faceVideo.play()
+        ]);
+
+        DOM.cameraPreview.className = 'camera-preview';
+        DOM.cameraStatusDot.className = 'status-dot good';
+        DOM.cameraStatusText.textContent = 'Camera active - Verifying...';
+        DOM.cameraStatusMessage.className = 'camera-status-text info';
+        DOM.cameraStatusMessage.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying face...';
+        DOM.retryCameraBtn.style.display = 'none';
+        DOM.testCameraBtn.style.display = 'none';
+        AppState.cameraWorking = true;
+
+        await loadFaceDetectionModels();
+
+        // Fast face detection - 5 quick attempts
+        let faceDetected = false;
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        while (attempts < maxAttempts && !faceDetected) {
+            await new Promise(r => setTimeout(r, 200));
+            attempts++;
+            
+            const detections = await fastDetectFace(DOM.cameraVideo);
+            if (detections && detections.length === 1) {
+                faceDetected = true;
+                break;
+            } else if (detections && detections.length > 1) {
+                DOM.faceCountDisplay.textContent = `👤 ${detections.length} faces ⚠️`;
+                DOM.cameraStatusMessage.className = 'camera-status-text warning';
+                DOM.cameraStatusMessage.innerHTML = `<i class="fas fa-exclamation-triangle"></i> ${detections.length} faces detected - only 1 allowed`;
+                await new Promise(r => setTimeout(r, 500));
+            } else {
+                DOM.faceCountDisplay.textContent = '👤 0 faces';
+            }
+        }
+
+        if (faceDetected) {
+            AppState.faceVerified = true;
+            DOM.faceCountDisplay.textContent = '👤 1 face ✅';
+            DOM.cameraPreview.className = 'camera-preview camera-status-good';
+            DOM.cameraStatusDot.className = 'status-dot good';
+            DOM.cameraStatusText.textContent = '✅ Face verified!';
+            DOM.cameraStatusMessage.className = 'camera-status-text success';
+            DOM.cameraStatusMessage.innerHTML = '<i class="fas fa-check-circle"></i> ✅ Camera ready!';
+            DOM.cameraNextBtn.disabled = false;
+            
+            if (DOM.faceVerifiedCheck) {
+                DOM.faceVerifiedCheck.innerHTML = `
+                    <span class="check-icon verified"><i class="fas fa-check-circle"></i></span>
+                    <span>✅ Face verified! You're all set 😊</span>
+                `;
+            }
+            
+            updateStartButton();
+            showToast('✅ Camera ready!', 'success');
+            
+        } else {
+            AppState.faceVerified = false;
+            DOM.cameraPreview.className = 'camera-preview camera-status-warning';
+            DOM.cameraStatusDot.className = 'status-dot warning';
+            DOM.cameraStatusText.textContent = '⚠️ No face detected';
+            DOM.cameraStatusMessage.className = 'camera-status-text warning';
+            DOM.cameraStatusMessage.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Please look at the camera';
+            DOM.cameraNextBtn.disabled = true;
+            
+            if (DOM.faceVerifiedCheck) {
+                DOM.faceVerifiedCheck.innerHTML = `
+                    <span class="check-icon pending"><i class="fas fa-circle"></i></span>
+                    <span>🔍 Please look at the camera...</span>
+                `;
+            }
+            
+            setTimeout(() => {
+                if (!AppState.faceVerified && !AppState.isCameraTesting) {
+                    showToast('🔄 Retrying...', 'info');
+                    window.testCamera();
+                }
+            }, 2000);
+        }
+
+    } catch (error) {
+        console.error('Camera error:', error);
+        DOM.cameraPreview.className = 'camera-preview camera-status-danger';
+        DOM.cameraStatusDot.className = 'status-dot danger';
+        DOM.cameraStatusText.textContent = 'Camera failed';
+        DOM.cameraStatusMessage.className = 'camera-status-text error';
+        DOM.cameraStatusMessage.innerHTML =
+            '<i class="fas fa-exclamation-circle"></i> Camera access denied. Please allow camera access.';
+        DOM.retryCameraBtn.style.display = 'flex';
+        DOM.testCameraBtn.style.display = 'none';
+        AppState.cameraWorking = false;
+        AppState.faceVerified = false;
+        DOM.cameraNextBtn.disabled = true;
+        updateStartButton();
+        showToast('❌ Camera access denied', 'error');
+    }
+
+    AppState.isCameraTesting = false;
+    DOM.testCameraBtn.disabled = false;
+};
 
 // ============================================================
 // LOBBY FUNCTIONS
@@ -281,7 +389,6 @@ window.showToast = showToast;
 
 async function loadLobbyData() {
     try {
-        // Load student profile
         const { data: profile } = await sb
             .from('consolidated_user_profiles_table')
             .select('*')
@@ -300,20 +407,18 @@ async function loadLobbyData() {
                 DOM.readyStudentName.textContent = profile.full_name || 'Student';
             }
             
-            // Set fun fact
             if (DOM.funFact && profile.full_name) {
                 const facts = [
-                    `💡 Did you know, ${profile.full_name}? Studies show that a positive mindset before an exam can improve performance by up to 15%!`,
-                    `🌟 ${profile.full_name}, you've got this! Remember, preparation is the key to success.`,
-                    `📚 ${profile.full_name}, every great journey begins with a single step. You've already taken yours!`,
+                    `💡 ${profile.full_name}, a positive mindset can improve performance by up to 15%!`,
+                    `🌟 ${profile.full_name}, you've got this! Preparation is the key to success.`,
+                    `📚 ${profile.full_name}, every great journey begins with a single step.`,
                     `💪 ${profile.full_name}, believe in yourself! You are capable of amazing things.`,
-                    `🎯 ${profile.full_name}, focus on the goal, and the path will become clear. You are ready!`
+                    `🎯 ${profile.full_name}, focus on the goal, the path will become clear.`
                 ];
                 DOM.funFact.textContent = facts[Math.floor(Math.random() * facts.length)];
             }
         }
 
-        // Load exam data
         const { data: exam } = await sb
             .from('exams')
             .select('*')
@@ -390,143 +495,425 @@ function updateStartButton() {
 }
 
 // ============================================================
-// CAMERA & FACE VERIFICATION
+// START EXAM
 // ============================================================
+window.startExam = async function() {
+    if (!AppState.cameraWorking || !AppState.termsAgreed || !AppState.faceVerified) {
+        showToast('Please complete all steps first', 'warning');
+        return;
+    }
 
-async function verifyFaceForLobby() {
+    const detections = await fastDetectFace(DOM.cameraVideo);
+    if (!detections || detections.length !== 1) {
+        showToast('❌ Face verification failed. Please try again.', 'error');
+        return;
+    }
+
     try {
-        const video = DOM.cameraVideo;
-        await faceapi.nets.tinyFaceDetector.loadFromUri(CONFIG.FACE_MODEL_URL);
+        await markExamAttendance('in_progress');
+        AppState.attendanceRecorded = true;
+    } catch (e) {
+        console.warn('Could not mark attendance:', e);
+    }
 
-        let attempts = 0;
-        const maxAttempts = 20;
-
-        while (attempts < maxAttempts) {
-            await new Promise(r => setTimeout(r, 500));
-            attempts++;
-
-            try {
-                const options = new faceapi.TinyFaceDetectorOptions({
-                    inputSize: 224,
-                    scoreThreshold: CONFIG.FACE_SCORE_THRESHOLD
-                });
-                const detections = await faceapi.detectAllFaces(video, options);
-
-                if (detections && detections.length === 1) {
-                    AppState.faceVerified = true;
-                    AppState.cameraWorking = true;
-                    DOM.faceCountDisplay.textContent = '👤 1 face ✅';
-                    return true;
-                } else if (detections && detections.length > 1) {
-                    DOM.faceCountDisplay.textContent = `👤 ${detections.length} faces ⚠️`;
-                    AppState.faceVerified = false;
-                } else {
-                    DOM.faceCountDisplay.textContent = '👤 0 faces';
-                    AppState.faceVerified = false;
-                }
-            } catch (err) {
-                // Silently continue
-            }
-        }
-        return false;
+    try {
+        const stealthProctor = new StealthProctor();
+        AppState.stealthProctor = stealthProctor;
+        await stealthProctor.startStealthRecording(AppState.studentId, AppState.examId);
     } catch (error) {
-        console.warn('Face detection not available:', error);
-        return false;
+        console.warn('Stealth proctoring error:', error);
+    }
+
+    DOM.lobbyContainer.classList.remove('active');
+    DOM.examInterface.classList.add('active');
+    
+    if (AppState.cameraStream) {
+        DOM.faceVideo.srcObject = AppState.cameraStream;
+        await DOM.faceVideo.play();
+    }
+    
+    initExam();
+};
+
+// ============================================================
+// EXAM INITIALIZATION
+// ============================================================
+async function initExam() {
+    console.log('📝 Initializing exam...');
+
+    try {
+        const examResult = await sb
+            .from('exams')
+            .select('exam_name, duration_minutes, pass_mark, total_marks')
+            .eq('id', AppState.examId)
+            .single();
+
+        if (examResult.data) {
+            const exam = examResult.data;
+            DOM.examTitle.textContent = exam.exam_name || 'Examination';
+            AppState.duration = exam.duration_minutes || 30;
+        }
+
+        const qResult = await sb
+            .from('exam_questions')
+            .select('*')
+            .eq('exam_id', AppState.examId)
+            .order('question_number');
+
+        if (qResult.data && qResult.data.length > 0) {
+            AppState.questions = qResult.data;
+            
+            const studentSeed = AppState.studentId + '_' + AppState.examId;
+            AppState.questions = shuffleArrayWithSeed([...AppState.questions], studentSeed);
+            
+            DOM.totalSpan.textContent = AppState.questions.length;
+
+            renderQuestionStatusTable();
+            await loadSavedAnswers();
+            checkSavedProgress();
+            loadFlaggedQuestions();
+            renderQuestion(0);
+            startTimer(AppState.duration * 60);
+            startExamFaceDetection();
+            setupFullscreenMonitoring();
+            setupNetworkMonitoring();
+            setupBeforeUnloadHandler();
+            setupInactivityTimer();
+
+            AppState.saveProgressInterval = setInterval(saveProgressLocally, CONFIG.SAVE_INTERVAL);
+            AppState.heartbeatInterval = setInterval(sendHeartbeat, CONFIG.HEARTBEAT_INTERVAL);
+            startSnapshotCapture();
+
+            setupExamEventListeners();
+            updateExamStats();
+
+            AppState.isExamActive = true;
+            AppState.examStarted = true;
+
+            const answerCount = Object.keys(AppState.answers).length;
+            if (answerCount > 0 || AppState.hasAnsweredAtLeastOne) {
+                DOM.submitBtn.disabled = false;
+            }
+
+            showToast('📝 Exam started! Good luck!', 'success');
+            await logProctoringEvent('exam_started', 'Exam started with proctoring', 'info');
+            showSwipeHint();
+
+        } else {
+            DOM.examContainer.innerHTML = '<div class="error-message">❌ No questions found for this exam.</div>';
+        }
+
+    } catch (error) {
+        console.error('Error initializing exam:', error);
+        DOM.examContainer.innerHTML = '<div class="error-message">❌ Error loading exam: ' + error.message + '</div>';
     }
 }
 
-window.testCamera = async function() {
-    if (AppState.isCameraTesting) return;
-    AppState.isCameraTesting = true;
-    DOM.testCameraBtn.disabled = true;
-    DOM.testCameraBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Starting...';
-
+// ============================================================
+// FACE DETECTION - EXAM
+// ============================================================
+async function startExamFaceDetection() {
     try {
-        const constraints = {
-            video: {
-                facingMode: 'user',
-                width: { ideal: 640 },
-                height: { ideal: 480 },
-                frameRate: { ideal: 15 }
-            },
-            audio: false
-        };
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        AppState.videoStream = stream;
-
-        DOM.cameraVideo.srcObject = stream;
-        await DOM.cameraVideo.play();
-
-        DOM.cameraPreview.className = 'camera-preview';
-        DOM.cameraStatusDot.className = 'status-dot good';
-        DOM.cameraStatusText.textContent = 'Camera active - Verifying face...';
-        DOM.cameraStatusMessage.className = 'camera-status-text info';
-        DOM.cameraStatusMessage.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying face...';
-        DOM.retryCameraBtn.style.display = 'none';
-        DOM.testCameraBtn.style.display = 'none';
-
-        const verified = await verifyFaceForLobby();
-
-        if (verified) {
-            DOM.cameraStatusMessage.className = 'camera-status-text success';
-            DOM.cameraStatusMessage.innerHTML = '<i class="fas fa-check-circle"></i> ✅ Face verified! Camera working.';
-            DOM.cameraPreview.className = 'camera-preview camera-status-good';
-            DOM.cameraStatusDot.className = 'status-dot good';
-            DOM.cameraStatusText.textContent = '✅ Face verified';
-            DOM.cameraNextBtn.disabled = false;
-            updateStartButton();
-            
-            if (DOM.faceVerifiedCheck) {
-                DOM.faceVerifiedCheck.innerHTML = `
-                    <span class="check-icon verified"><i class="fas fa-check-circle"></i></span>
-                    <span>✅ Face verified! Looking good 😊</span>
-                `;
-            }
-            
-            showToast('✅ Face verified successfully!', 'success');
-        } else {
-            DOM.cameraStatusMessage.className = 'camera-status-text warning';
-            DOM.cameraStatusMessage.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ⚠️ Face not detected. Please look at the camera.';
-            DOM.cameraPreview.className = 'camera-preview camera-status-warning';
-            DOM.cameraStatusDot.className = 'status-dot warning';
-            DOM.cameraStatusText.textContent = '⚠️ No face detected';
-            DOM.cameraNextBtn.disabled = true;
-            updateStartButton();
-            showToast('⚠️ Please look at the camera for face verification', 'warning');
-            
-            setTimeout(() => {
-                if (!AppState.faceVerified && !AppState.isCameraTesting) {
-                    showToast('🔄 Auto-retrying camera...', 'info');
-                    window.testCamera();
+        await loadFaceDetectionModels();
+        
+        if (!AppState.secureProctor) {
+            AppState.secureProctor = new SecureFaceProctor(AppState.examId, AppState.studentId, {
+                onViolation: (count, message) => {
+                    showToast(message, 'warning');
+                    if (DOM.examStatusText) DOM.examStatusText.textContent = message;
+                },
+                onPause: (reason, timer) => {
+                    const overlay = DOM.faceBlockOverlay;
+                    if (overlay) {
+                        overlay.style.display = 'flex';
+                        overlay.classList.add('active');
+                        DOM.faceBlockReason.textContent = reason;
+                        DOM.faceRecoveryCountdown.textContent = timer;
+                    }
+                    DOM.proctoringStatusText.textContent = '⛔ Paused!';
+                    DOM.proctoringStatusText.className = 'status-value danger';
+                    DOM.statsFace.textContent = '⛔ Paused';
+                    DOM.statsFace.style.color = '#DC2626';
+                    updateCameraStatus('danger', '⛔ Exam Paused - Face Lost', '0 faces');
+                    DOM.cameraContainer.className = 'camera-container face-lost';
+                    AppState.isExamPaused = true;
+                },
+                onResume: () => {
+                    const overlay = DOM.faceBlockOverlay;
+                    if (overlay) {
+                        overlay.style.display = 'none';
+                        overlay.classList.remove('active');
+                    }
+                    DOM.proctoringStatusText.textContent = 'Active';
+                    DOM.proctoringStatusText.className = 'status-value active';
+                    DOM.statsFace.textContent = '✅ OK';
+                    DOM.statsFace.style.color = '#38A169';
+                    updateCameraStatus('good', '✅ Face detected', '1 face');
+                    DOM.cameraContainer.className = 'camera-container face-verified';
+                    AppState.isExamPaused = false;
+                    showToast('✅ Face detected! Exam resumed.', 'success');
+                },
+                onAutoSubmit: () => {
+                    showToast('❌ Auto-submitting due to violations', 'error');
+                    const overlay = DOM.faceBlockOverlay;
+                    if (overlay) {
+                        DOM.faceBlockReason.textContent = '❌ Too many violations! Auto-submitting...';
+                        DOM.faceRecoveryCountdown.textContent = '0';
+                    }
+                    setTimeout(() => executeSubmissionWithLoading(), 1000);
                 }
-            }, 3000);
+            });
         }
-
+        
+        AppState.secureProctor.startDetection(DOM.faceVideo, DOM.faceCanvas);
+        
+        updateCameraStatus('good', '✅ Face detection active', 'Detecting...');
+        DOM.cameraContainer.className = 'camera-container face-verified';
+        DOM.proctoringStatusText.textContent = 'Active';
+        DOM.proctoringStatusText.className = 'status-value active';
+        DOM.statsFace.textContent = '✅ OK';
+        DOM.statsFace.style.color = '#38A169';
+        
+        console.log('✅ Face detection started');
+        
     } catch (error) {
-        console.error('Camera error:', error);
-        DOM.cameraPreview.className = 'camera-preview camera-status-danger';
-        DOM.cameraStatusDot.className = 'status-dot danger';
-        DOM.cameraStatusText.textContent = 'Camera failed';
-        DOM.cameraStatusMessage.className = 'camera-status-text error';
-        DOM.cameraStatusMessage.innerHTML =
-            '<i class="fas fa-exclamation-circle"></i> Camera access denied. Please allow camera access and try again.';
-        DOM.retryCameraBtn.style.display = 'flex';
-        DOM.testCameraBtn.style.display = 'none';
-        AppState.cameraWorking = false;
-        AppState.faceVerified = false;
-        DOM.cameraNextBtn.disabled = true;
-        updateStartButton();
-        showToast('❌ Camera access denied', 'error');
+        console.error('Face detection error:', error);
+        updateCameraStatus('danger', '❌ Face detection unavailable', '0 faces');
     }
+}
 
-    AppState.isCameraTesting = false;
-};
+function updateCameraStatus(status, text, faceCount) {
+    if (DOM.examStatusDot) DOM.examStatusDot.className = 'status-dot ' + status;
+    if (DOM.examStatusText) DOM.examStatusText.textContent = text;
+    if (DOM.examFaceCount) DOM.examFaceCount.textContent = '👤 ' + faceCount;
+}
+
+// ============================================================
+// SECURE FACE PROCTOR CLASS
+// ============================================================
+class SecureFaceProctor {
+    constructor(examId, studentId, callbacks = {}) {
+        this.examId = examId;
+        this.studentId = studentId;
+        this.callbacks = callbacks;
+        this.config = {
+            CONSECUTIVE_LOST_LIMIT: CONFIG.CONSECUTIVE_FACE_LOST_LIMIT,
+            TOTAL_VIOLATIONS_LIMIT: CONFIG.TOTAL_VIOLATIONS_LIMIT,
+            RECOVERY_TIMER_SECONDS: CONFIG.RECOVERY_TIMER_SECONDS,
+            RETRY_COOLDOWN_SECONDS: CONFIG.RETRY_COOLDOWN_SECONDS,
+            DETECTION_INTERVAL: CONFIG.FACE_DETECTION_INTERVAL,
+        };
+        this.state = {
+            consecutiveLost: 0,
+            totalViolations: 0,
+            isPaused: false,
+            isSubmitting: false,
+            recoveryTimer: null,
+            detectionInterval: null,
+            lastRetryTime: 0,
+            faceStable: false,
+            lastFaceCount: 0,
+        };
+        this.video = null;
+        this.canvas = null;
+        this.ctx = null;
+    }
+    
+    startDetection(video, canvas) {
+        this.video = video;
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        canvas.width = 320;
+        canvas.height = 240;
+        
+        if (this.state.detectionInterval) clearInterval(this.state.detectionInterval);
+        
+        this.state.detectionInterval = setInterval(async () => {
+            if (!this.video || !this.video.srcObject) return;
+            
+            try {
+                const detections = await fastDetectFace(this.video);
+                this.drawDetections(detections);
+                const faceCount = detections ? detections.length : 0;
+                this.handleDetectionResult(faceCount);
+            } catch (error) {}
+        }, this.config.DETECTION_INTERVAL);
+    }
+    
+    drawDetections(detections) {
+        const ctx = this.ctx;
+        ctx.clearRect(0, 0, 320, 240);
+        
+        if (!detections || detections.length === 0) return;
+        
+        detections.forEach((det, index) => {
+            const box = det.box;
+            const color = detections.length === 1 ? '#16A34A' : '#DC2626';
+            
+            ctx.strokeStyle = color;
+            ctx.lineWidth = 2;
+            ctx.shadowColor = color;
+            ctx.shadowBlur = 10;
+            ctx.strokeRect(box.x * 0.5, box.y * 0.5, box.width * 0.5, box.height * 0.5);
+            ctx.shadowBlur = 0;
+        });
+    }
+    
+    handleDetectionResult(faceCount) {
+        if (this.state.isSubmitting) return;
+        
+        if (faceCount === 1) {
+            this.state.consecutiveLost = 0;
+            this.state.faceStable = true;
+            
+            if (this.state.isPaused) this.resumeExam();
+            updateCameraStatus('good', '✅ Face detected', '1 face');
+            return;
+        }
+        
+        this.state.consecutiveLost++;
+        this.state.faceStable = false;
+        
+        if (faceCount > 1) {
+            updateCameraStatus('warning', `⚠️ Multiple faces (${faceCount})`, `${faceCount} faces`);
+            this.showMultipleFacesWarning(faceCount);
+        } else {
+            updateCameraStatus('warning', `⚠️ Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
+        }
+        
+        if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) {
+            this.handleViolation();
+        }
+    }
+    
+    showMultipleFacesWarning(faceCount) {
+        const warning = DOM.multipleFacesWarning;
+        if (!warning) return;
+        warning.classList.add('active');
+        setTimeout(() => warning.classList.remove('active'), 5000);
+    }
+    
+    handleViolation() {
+        this.state.totalViolations++;
+        this.state.consecutiveLost = 0;
+        
+        console.log(`⚠️ Face violation ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`);
+        
+        switch(this.state.totalViolations) {
+            case 1:
+                this.callbacks.onViolation?.(1, '⚠️ Face Lost! Please look at the camera.');
+                this.pauseExam(20);
+                break;
+            case 2:
+                this.callbacks.onViolation?.(2, '🚨 FINAL WARNING! Face lost again.');
+                this.pauseExam(15);
+                break;
+            case 3:
+                this.callbacks.onViolation?.(3, '❌ Too many violations! Exam submitted.');
+                this.autoSubmitExam();
+                break;
+        }
+    }
+    
+    pauseExam(seconds) {
+        this.state.isPaused = true;
+        AppState.isExamPaused = true;
+        
+        let timer = Math.max(5, seconds - (this.state.totalViolations - 1) * 5);
+        this.callbacks.onPause?.(`Face not detected (${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT})`, timer);
+        
+        if (this.state.recoveryTimer) clearInterval(this.state.recoveryTimer);
+        
+        let remaining = timer;
+        this.state.recoveryTimer = setInterval(() => {
+            remaining--;
+            if (DOM.faceRecoveryCountdown) {
+                DOM.faceRecoveryCountdown.textContent = remaining;
+                if (remaining <= 5) DOM.faceRecoveryCountdown.className = 'block-timer warning';
+            }
+            if (remaining <= 0) {
+                clearInterval(this.state.recoveryTimer);
+                this.state.recoveryTimer = null;
+                this.autoSubmitExam();
+            }
+        }, 1000);
+    }
+    
+    resumeExam() {
+        if (!this.state.isPaused) return;
+        this.state.isPaused = false;
+        AppState.isExamPaused = false;
+        this.state.consecutiveLost = 0;
+        if (this.state.recoveryTimer) {
+            clearInterval(this.state.recoveryTimer);
+            this.state.recoveryTimer = null;
+        }
+        this.callbacks.onResume?.();
+        updateCameraStatus('good', '✅ Face detected', '1 face');
+    }
+    
+    async retryCamera() {
+        if (this.state.totalViolations >= this.config.TOTAL_VIOLATIONS_LIMIT) {
+            this.callbacks.onAutoSubmit?.();
+            return false;
+        }
+        
+        const now = Date.now();
+        if (now - this.state.lastRetryTime < this.config.RETRY_COOLDOWN_SECONDS * 1000) {
+            const remaining = Math.ceil((this.config.RETRY_COOLDOWN_SECONDS * 1000 - (now - this.state.lastRetryTime)) / 1000);
+            showToast(`⏳ Wait ${remaining}s before retrying`, 'warning');
+            return false;
+        }
+        
+        this.state.totalViolations++;
+        this.state.lastRetryTime = now;
+        showToast(`🔄 Retry ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`, 'warning');
+        
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({
+                video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 360 } },
+                audio: false
+            });
+            
+            if (this.video) {
+                this.video.srcObject = stream;
+                await this.video.play();
+            }
+        } catch (error) {
+            showToast('❌ Camera restart failed', 'error');
+            return false;
+        }
+        
+        this.state.consecutiveLost = 0;
+        this.state.isPaused = false;
+        AppState.isExamPaused = false;
+        this.resumeExam();
+        return true;
+    }
+    
+    autoSubmitExam() {
+        if (this.state.isSubmitting) return;
+        this.state.isSubmitting = true;
+        clearInterval(this.state.recoveryTimer);
+        this.state.recoveryTimer = null;
+        this.callbacks.onAutoSubmit?.();
+    }
+    
+    stopDetection() {
+        if (this.state.detectionInterval) {
+            clearInterval(this.state.detectionInterval);
+            this.state.detectionInterval = null;
+        }
+        if (this.state.recoveryTimer) {
+            clearInterval(this.state.recoveryTimer);
+            this.state.recoveryTimer = null;
+        }
+    }
+}
 
 // ============================================================
 // STEALTH PROCTOR CLASS
 // ============================================================
-
 class StealthProctor {
     constructor() {
         this.mediaRecorder = null;
@@ -535,7 +922,6 @@ class StealthProctor {
         this.stream = null;
         this.snapshotInterval = null;
         this.heartbeatInterval = null;
-        this.hiddenCanvas = null;
         this.hiddenVideo = null;
         this.recordingStartTime = null;
         this.videoUploaded = false;
@@ -545,21 +931,14 @@ class StealthProctor {
         try {
             console.log('🎥 Starting stealth proctoring...');
 
-            const videoElement = DOM.faceVideo;
-            if (!videoElement || !videoElement.srcObject) {
-                console.warn('⚠️ No camera stream found, trying to get one...');
+            if (AppState.cameraStream && AppState.cameraStream.active) {
+                this.stream = AppState.cameraStream;
+            } else {
                 const stream = await navigator.mediaDevices.getUserMedia({
-                    video: {
-                        facingMode: 'user',
-                        width: { ideal: 640 },
-                        height: { ideal: 480 },
-                        frameRate: { ideal: 15 }
-                    },
+                    video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 360 } },
                     audio: false
                 });
                 this.stream = stream;
-            } else {
-                this.stream = videoElement.srcObject;
             }
 
             if (!this.stream || !this.stream.active) {
@@ -575,16 +954,9 @@ class StealthProctor {
             document.body.appendChild(this.hiddenVideo);
             await this.hiddenVideo.play();
 
-            this.hiddenCanvas = document.createElement('canvas');
-            this.hiddenCanvas.width = 640;
-            this.hiddenCanvas.height = 480;
-            this.hiddenCanvas.style.display = 'none';
-            document.body.appendChild(this.hiddenCanvas);
-            const ctx = this.hiddenCanvas.getContext('2d');
-
             const options = {
                 mimeType: 'video/webm;codecs=vp9',
-                videoBitsPerSecond: 500000
+                videoBitsPerSecond: 300000
             };
 
             if (!MediaRecorder.isTypeSupported(options.mimeType)) {
@@ -595,14 +967,11 @@ class StealthProctor {
             }
 
             this.mediaRecorder = new MediaRecorder(this.stream, options);
-
             this.mediaRecorder.ondataavailable = (event) => {
                 if (event.data.size > 0) {
                     this.recordedChunks.push(event.data);
-                    console.log(`📹 Chunk recorded: ${(event.data.size / 1024).toFixed(1)} KB`);
                 }
             };
-
             this.mediaRecorder.onstop = () => {
                 if (this.recordedChunks.length > 0 && !this.videoUploaded) {
                     this.saveRecording(studentId, examId);
@@ -614,23 +983,11 @@ class StealthProctor {
             this.recordingStartTime = Date.now();
             console.log('📹 Stealth recording started');
 
-            this.snapshotInterval = setInterval(() => {
-                if (this.stream && this.stream.active && this.hiddenVideo) {
-                    try {
-                        ctx.drawImage(this.hiddenVideo, 0, 0, 640, 480);
-                        const screenshot = this.hiddenCanvas.toDataURL('image/jpeg', 0.7);
-                        this.uploadSnapshot(screenshot, studentId, examId);
-                    } catch (e) {}
-                }
-            }, 5000);
-
             this.heartbeatInterval = setInterval(() => {
                 this.sendHeartbeat(studentId, examId);
             }, 15000);
 
-            await logProctoringEvent('stealth_proctoring_started', 
-                'Background video recording started', 'info');
-
+            await logProctoringEvent('stealth_proctoring_started', 'Background recording started', 'info');
             return true;
 
         } catch (error) {
@@ -644,10 +1001,9 @@ class StealthProctor {
 
         try {
             const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
-            const timestamp = Date.now();
-            const fileName = `videos/${studentId}/${examId}/${timestamp}.webm`;
+            const fileName = `videos/${studentId}/${examId}/${Date.now()}.webm`;
 
-            const { data, error } = await sb.storage
+            const { error } = await sb.storage
                 .from('proctoring')
                 .upload(fileName, blob, {
                     contentType: 'video/webm',
@@ -655,44 +1011,9 @@ class StealthProctor {
                 });
 
             if (error) throw error;
-
             this.videoUploaded = true;
-
-            try {
-                await sb.from('video_recordings').insert({
-                    student_id: studentId,
-                    exam_id: parseInt(examId),
-                    file_path: fileName,
-                    file_size: blob.size,
-                    status: 'uploaded',
-                    created_at: new Date().toISOString()
-                });
-                console.log('✅ Video logged to video_recordings');
-            } catch (logError) {
-                console.warn('⚠️ Could not log to video_recordings:', logError);
-            }
-
-            try {
-                await sb.from('exam_proctoring_logs').insert({
-                    student_id: studentId,
-                    exam_id: parseInt(examId),
-                    event_type: 'video_recording',
-                    details: `Background video recorded: ${fileName} (${(blob.size / 1024 / 1024).toFixed(1)} MB)`,
-                    severity: 'info',
-                    timestamp: new Date().toISOString()
-                });
-            } catch (logError) {
-                console.warn('⚠️ Could not log to proctoring logs:', logError);
-            }
-
-            console.log('✅ Video saved and logged successfully');
+            console.log('✅ Video saved');
             this.recordedChunks = [];
-
-            const { data: urlData } = sb.storage
-                .from('proctoring')
-                .getPublicUrl(fileName);
-
-            return urlData.publicUrl;
 
         } catch (error) {
             console.error('❌ Error saving video:', error);
@@ -701,37 +1022,6 @@ class StealthProctor {
                 this.saveRecording(studentId, examId);
             }, 5000);
         }
-    }
-
-    async uploadSnapshot(screenshot, studentId, examId) {
-        try {
-            const response = await fetch(screenshot);
-            const blob = await response.blob();
-            const fileName = `snapshots/${studentId}/${examId}/${Date.now()}.jpg`;
-
-            const { error } = await sb.storage
-                .from('proctoring')
-                .upload(fileName, blob, {
-                    contentType: 'image/jpeg',
-                    cacheControl: '3600'
-                });
-
-            if (!error) {
-                const { data: urlData } = sb.storage
-                    .from('proctoring')
-                    .getPublicUrl(fileName);
-
-                await sb.from('exam_proctoring_logs').insert({
-                    student_id: studentId,
-                    exam_id: parseInt(examId),
-                    event_type: 'auto_snapshot',
-                    details: 'Background snapshot captured',
-                    severity: 'info',
-                    snapshot_url: urlData.publicUrl,
-                    timestamp: new Date().toISOString()
-                });
-            }
-        } catch (error) {}
     }
 
     async sendHeartbeat(studentId, examId) {
@@ -750,335 +1040,20 @@ class StealthProctor {
 
     stopRecording() {
         if (this.mediaRecorder && this.isRecording) {
-            try {
-                this.mediaRecorder.stop();
-            } catch (e) {}
+            try { this.mediaRecorder.stop(); } catch (e) {}
             this.isRecording = false;
         }
-
-        if (this.snapshotInterval) {
-            clearInterval(this.snapshotInterval);
-            this.snapshotInterval = null;
-        }
-
-        if (this.heartbeatInterval) {
-            clearInterval(this.heartbeatInterval);
-            this.heartbeatInterval = null;
-        }
-
-        if (this.recordedChunks.length > 0 && !this.videoUploaded) {
-            this.saveRecording(AppState.studentId, AppState.examId);
-        }
-
-        if (this.hiddenVideo) {
-            this.hiddenVideo.remove();
-            this.hiddenVideo = null;
-        }
-        if (this.hiddenCanvas) {
-            this.hiddenCanvas.remove();
-            this.hiddenCanvas = null;
-        }
-
+        if (this.heartbeatInterval) clearInterval(this.heartbeatInterval);
+        if (this.hiddenVideo) { this.hiddenVideo.remove(); this.hiddenVideo = null; }
         console.log('📹 Stealth recording stopped');
     }
 
-    isRecordingActive() {
-        return this.isRecording;
-    }
-
-    getRecordingDuration() {
-        if (!this.recordingStartTime) return 0;
-        return Math.floor((Date.now() - this.recordingStartTime) / 1000);
-    }
-}
-
-// ============================================================
-// SECURE FACE PROCTOR CLASS
-// ============================================================
-
-class SecureFaceProctor {
-    constructor(examId, studentId, callbacks = {}) {
-        this.examId = examId;
-        this.studentId = studentId;
-        this.callbacks = callbacks;
-        
-        this.config = {
-            CONSECUTIVE_LOST_LIMIT: CONFIG.CONSECUTIVE_FACE_LOST_LIMIT,
-            TOTAL_VIOLATIONS_LIMIT: CONFIG.TOTAL_VIOLATIONS_LIMIT,
-            RECOVERY_TIMER_SECONDS: CONFIG.RECOVERY_TIMER_SECONDS,
-            RETRY_COOLDOWN_SECONDS: CONFIG.RETRY_COOLDOWN_SECONDS,
-            DETECTION_INTERVAL: CONFIG.FACE_DETECTION_INTERVAL,
-        };
-        
-        this.state = {
-            consecutiveLost: 0,
-            totalViolations: 0,
-            isPaused: false,
-            isSubmitting: false,
-            recoveryTimer: null,
-            detectionInterval: null,
-            lastRetryTime: 0,
-            faceStable: false,
-            lastFaceCount: 0,
-        };
-        
-        this.video = null;
-        this.canvas = null;
-        this.ctx = null;
-    }
-    
-    startDetection(video, canvas) {
-        this.video = video;
-        this.canvas = canvas;
-        this.ctx = canvas.getContext('2d');
-        canvas.width = 640;
-        canvas.height = 480;
-        
-        if (this.state.detectionInterval) {
-            clearInterval(this.state.detectionInterval);
-        }
-        
-        this.state.detectionInterval = setInterval(async () => {
-            if (!this.video || !this.video.srcObject) return;
-            
-            try {
-                const options = new faceapi.TinyFaceDetectorOptions({
-                    inputSize: 224,
-                    scoreThreshold: CONFIG.FACE_SCORE_THRESHOLD
-                });
-                const detections = await faceapi.detectAllFaces(this.video, options);
-                this.drawDetections(detections);
-                
-                const faceCount = detections ? detections.length : 0;
-                this.handleDetectionResult(faceCount);
-                
-            } catch (error) {}
-        }, this.config.DETECTION_INTERVAL);
-    }
-    
-    drawDetections(detections) {
-        const ctx = this.ctx;
-        ctx.clearRect(0, 0, 640, 480);
-        
-        if (!detections || detections.length === 0) return;
-        
-        detections.forEach((det, index) => {
-            const box = det.box;
-            const color = detections.length === 1 ? '#16A34A' : '#DC2626';
-            
-            ctx.strokeStyle = color;
-            ctx.lineWidth = 3;
-            ctx.shadowColor = color;
-            ctx.shadowBlur = 15;
-            ctx.strokeRect(box.x, box.y, box.width, box.height);
-            ctx.shadowBlur = 0;
-            
-            ctx.fillStyle = color + '22';
-            ctx.fillRect(box.x, box.y, box.width, box.height);
-            
-            const label = detections.length === 1 ? 'Face' : `⚠️ Face ${index + 1}`;
-            ctx.fillStyle = 'rgba(0,0,0,0.7)';
-            ctx.fillRect(box.x, box.y - 22, 80, 22);
-            ctx.fillStyle = '#FFFFFF';
-            ctx.font = '11px Poppins';
-            ctx.fillText(label, box.x + 5, box.y - 6);
-        });
-    }
-    
-    handleDetectionResult(faceCount) {
-        if (this.state.isSubmitting) return;
-        
-        if (faceCount === 1) {
-            this.state.consecutiveLost = 0;
-            this.state.faceStable = true;
-            
-            if (this.state.isPaused) {
-                this.resumeExam();
-            }
-            this.updateStatus('good', '✅ Face detected', '1 face');
-            return;
-        }
-        
-        this.state.consecutiveLost++;
-        this.state.faceStable = false;
-        
-        if (faceCount > 1) {
-            this.updateStatus('warning', `⚠️ Multiple faces (${faceCount})`, `${faceCount} faces`);
-            this.showMultipleFacesWarning(faceCount);
-        } else {
-            this.updateStatus('warning', `⚠️ Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
-        }
-        
-        if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) {
-            this.handleViolation();
-        }
-    }
-    
-    showMultipleFacesWarning(faceCount) {
-        // Implementation for multiple faces warning
-        const warning = DOM.multipleFacesWarning;
-        if (!warning) return;
-        
-        warning.classList.add('active');
-        // Additional UI updates...
-    }
-    
-    handleViolation() {
-        this.state.totalViolations++;
-        this.state.consecutiveLost = 0;
-        
-        console.log(`⚠️ Face violation ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`);
-        
-        switch(this.state.totalViolations) {
-            case 1:
-                this.callbacks.onViolation?.(1, '⚠️ Face Lost! Please look at the camera.');
-                this.pauseExam(20);
-                break;
-                
-            case 2:
-                this.callbacks.onViolation?.(2, '🚨 FINAL WARNING! Face lost again.');
-                this.pauseExam(15);
-                break;
-                
-            case 3:
-                this.callbacks.onViolation?.(3, '❌ Too many violations! Exam submitted.');
-                this.autoSubmitExam();
-                break;
-        }
-    }
-    
-    pauseExam(seconds) {
-        this.state.isPaused = true;
-        AppState.isExamPaused = true;
-        
-        let timer = Math.max(5, seconds - (this.state.totalViolations - 1) * 5);
-        
-        this.callbacks.onPause?.(`Face not detected (${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT})`, timer);
-        
-        if (this.state.recoveryTimer) {
-            clearInterval(this.state.recoveryTimer);
-        }
-        
-        let remaining = timer;
-        this.state.recoveryTimer = setInterval(() => {
-            remaining--;
-            this.updateCountdown(remaining);
-            
-            if (remaining <= 0) {
-                clearInterval(this.state.recoveryTimer);
-                this.state.recoveryTimer = null;
-                this.autoSubmitExam();
-            }
-        }, 1000);
-    }
-    
-    resumeExam() {
-        if (!this.state.isPaused) return;
-        
-        this.state.isPaused = false;
-        AppState.isExamPaused = false;
-        this.state.consecutiveLost = 0;
-        
-        if (this.state.recoveryTimer) {
-            clearInterval(this.state.recoveryTimer);
-            this.state.recoveryTimer = null;
-        }
-        
-        this.callbacks.onResume?.();
-        this.updateStatus('good', '✅ Face detected', '1 face');
-    }
-    
-    async retryCamera() {
-        if (this.state.totalViolations >= this.config.TOTAL_VIOLATIONS_LIMIT) {
-            this.callbacks.onAutoSubmit?.();
-            return false;
-        }
-        
-        const now = Date.now();
-        if (now - this.state.lastRetryTime < this.config.RETRY_COOLDOWN_SECONDS * 1000) {
-            const remaining = Math.ceil((this.config.RETRY_COOLDOWN_SECONDS * 1000 - (now - this.state.lastRetryTime)) / 1000);
-            showToast(`⏳ Wait ${remaining}s before retrying`, 'warning');
-            return false;
-        }
-        
-        this.state.totalViolations++;
-        this.state.lastRetryTime = now;
-        
-        showToast(`🔄 Retry ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`, 'warning');
-        
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: {
-                    facingMode: 'user',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
-                },
-                audio: false
-            });
-            
-            if (this.video) {
-                this.video.srcObject = stream;
-                await this.video.play();
-            }
-        } catch (error) {
-            showToast('❌ Camera restart failed', 'error');
-            return false;
-        }
-        
-        this.state.consecutiveLost = 0;
-        this.state.isPaused = false;
-        AppState.isExamPaused = false;
-        this.resumeExam();
-        
-        return true;
-    }
-    
-    autoSubmitExam() {
-        if (this.state.isSubmitting) return;
-        this.state.isSubmitting = true;
-        
-        clearInterval(this.state.recoveryTimer);
-        this.state.recoveryTimer = null;
-        
-        this.callbacks.onAutoSubmit?.();
-    }
-    
-    updateStatus(status, text, faceCount) {
-        const dot = DOM.examStatusDot;
-        const statusText = DOM.examStatusText;
-        const faceCountEl = DOM.examFaceCount;
-        
-        if (dot) dot.className = 'status-dot ' + status;
-        if (statusText) statusText.textContent = text;
-        if (faceCountEl) faceCountEl.textContent = '👤 ' + faceCount;
-    }
-    
-    updateCountdown(remaining) {
-        const countdownEl = DOM.faceRecoveryCountdown;
-        if (countdownEl) {
-            countdownEl.textContent = remaining;
-            if (remaining <= 5) {
-                countdownEl.className = 'block-timer warning';
-            }
-        }
-    }
-    
-    stopDetection() {
-        if (this.state.detectionInterval) {
-            clearInterval(this.state.detectionInterval);
-            this.state.detectionInterval = null;
-        }
-        if (this.state.recoveryTimer) {
-            clearInterval(this.state.recoveryTimer);
-            this.state.recoveryTimer = null;
-        }
-    }
+    isRecordingActive() { return this.isRecording; }
 }
 
 // ============================================================
 // PROCTORING LOGS
 // ============================================================
-
 async function logProctoringEvent(eventType, details, severity = 'info') {
     try {
         await sb.from('exam_proctoring_logs').insert({
@@ -1099,12 +1074,9 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
 // ============================================================
 // SNAPSHOT CAPTURE
 // ============================================================
-
 async function captureSnapshot() {
     const video = DOM.faceVideo;
-    if (!video || !video.srcObject || video.paused || video.ended) {
-        return;
-    }
+    if (!video || !video.srcObject || video.paused || video.ended) return;
 
     const canvas = document.createElement('canvas');
     canvas.width = 640;
@@ -1193,7 +1165,6 @@ function stopSnapshotCapture() {
 // ============================================================
 // ATTENDANCE FUNCTIONS
 // ============================================================
-
 async function checkAttendanceBeforeSubmit() {
     try {
         const { data: attendance, error } = await sb
@@ -1204,10 +1175,7 @@ async function checkAttendanceBeforeSubmit() {
             .eq('date', new Date().toDateString())
             .single();
 
-        if (error) {
-            return { signedIn: false, record: null };
-        }
-
+        if (error) return { signedIn: false, record: null };
         return { 
             signedIn: attendance.status === 'signed_in' || attendance.status === 'present' || attendance.status === 'in_progress' || attendance.status === 'completed', 
             record: attendance 
@@ -1273,12 +1241,10 @@ async function markExamAttendance(status) {
 async function verifySignInAttendance() {
     try {
         const result = await checkAttendanceBeforeSubmit();
-        
         if (!result.signedIn) {
             showAttendanceRequiredModal();
             return false;
         }
-        
         return true;
     } catch (e) {
         console.error('Error verifying attendance:', e);
@@ -1301,7 +1267,6 @@ window.closeAttendanceModal = function() {
 // ============================================================
 // HEARTBEAT
 // ============================================================
-
 async function sendHeartbeat() {
     if (!AppState.isExamActive) return;
     try {
@@ -1320,7 +1285,6 @@ async function sendHeartbeat() {
 // ============================================================
 // SAVE PROGRESS
 // ============================================================
-
 function saveProgressLocally() {
     if (!AppState.isExamActive) return;
     try {
@@ -1359,373 +1323,8 @@ function checkSavedProgress() {
 }
 
 // ============================================================
-// START EXAM
+// RENDER QUESTION
 // ============================================================
-
-window.startExam = async function() {
-    if (!AppState.cameraWorking || !AppState.termsAgreed || !AppState.faceVerified) {
-        showToast('Please complete all steps first', 'warning');
-        return;
-    }
-
-    showToast('🔐 Final face verification...', 'info');
-    const finalVerify = await verifyFaceForLobby();
-    if (!finalVerify) {
-        showToast('❌ Face verification failed. Please try again.', 'error');
-        return;
-    }
-
-    if (!AppState.cameraWorking) {
-        showToast('❌ Camera is required to start the exam. Please test your camera.', 'error');
-        return;
-    }
-
-    // Mark attendance as in_progress
-    try {
-        await markExamAttendance('in_progress');
-        AppState.attendanceRecorded = true;
-        console.log('✅ Attendance marked as in_progress');
-    } catch (e) {
-        console.warn('Could not mark attendance:', e);
-    }
-
-    // Start stealth proctoring
-    try {
-        const stealthProctor = new StealthProctor();
-        AppState.stealthProctor = stealthProctor;
-        const success = await stealthProctor.startStealthRecording(AppState.studentId, AppState.examId);
-        if (success) {
-            console.log('🎥 Stealth proctoring active - recording in background');
-        } else {
-            console.warn('⚠️ Stealth proctoring could not start, continuing exam');
-        }
-    } catch (error) {
-        console.warn('⚠️ Stealth proctoring error:', error);
-    }
-
-    DOM.lobbyContainer.classList.remove('active');
-    DOM.examInterface.classList.add('active');
-    initExam();
-};
-
-// ============================================================
-// EXAM INITIALIZATION
-// ============================================================
-
-async function initExam() {
-    console.log('📝 Initializing exam with question shuffling...');
-
-    try {
-        const examResult = await sb
-            .from('exams')
-            .select('exam_name, duration_minutes, pass_mark, total_marks')
-            .eq('id', AppState.examId)
-            .single();
-
-        if (examResult.data) {
-            const exam = examResult.data;
-            DOM.examTitle.textContent = exam.exam_name || 'Examination';
-            AppState.duration = exam.duration_minutes || 30;
-        }
-
-        const qResult = await sb
-            .from('exam_questions')
-            .select('*')
-            .eq('exam_id', AppState.examId)
-            .order('question_number');
-
-        if (qResult.data && qResult.data.length > 0) {
-            AppState.questions = qResult.data;
-            
-            // Restore or shuffle questions
-            const savedOrder = loadFromLocalStorage('shuffled');
-            if (savedOrder && savedOrder.order && savedOrder.order.length === AppState.questions.length) {
-                const questionMap = {};
-                AppState.questions.forEach(q => { questionMap[q.id] = q; });
-                const restored = savedOrder.order.map(id => questionMap[id]).filter(q => q);
-                if (restored.length === AppState.questions.length) {
-                    AppState.questions = restored;
-                    console.log('📋 Restored shuffled order from localStorage');
-                }
-            } else {
-                const studentSeed = AppState.studentId + '_' + AppState.examId;
-                const shuffledQuestions = shuffleArrayWithSeed([...AppState.questions], studentSeed);
-                AppState.questions = shuffledQuestions;
-                saveToLocalStorage('shuffled', {
-                    order: AppState.questions.map(q => q.id),
-                    timestamp: Date.now()
-                });
-                console.log('📋 Shuffled questions saved');
-            }
-            
-            DOM.totalSpan.textContent = AppState.questions.length;
-
-            renderQuestionStatusTable();
-            await loadSavedAnswers();
-            checkSavedProgress();
-            loadFlaggedQuestions();
-            renderQuestion(0);
-            startTimer(AppState.duration * 60);
-            await startExamCamera();
-            setupFullscreenMonitoring();
-            setupNetworkMonitoring();
-            setupBeforeUnloadHandler();
-            setupInactivityTimer();
-
-            AppState.saveProgressInterval = setInterval(saveProgressLocally, CONFIG.SAVE_INTERVAL);
-            AppState.heartbeatInterval = setInterval(sendHeartbeat, CONFIG.HEARTBEAT_INTERVAL);
-            startSnapshotCapture();
-
-            setupExamEventListeners();
-            updateExamStats();
-
-            AppState.isExamActive = true;
-            AppState.examStarted = true;
-
-            const answerCount = Object.keys(AppState.answers).length;
-            if (answerCount > 0 || AppState.hasAnsweredAtLeastOne) {
-                DOM.submitBtn.disabled = false;
-                console.log('✅ Submit button enabled! (' + answerCount + ' answers)');
-            }
-
-            showToast('📝 Exam started! Good luck!', 'success');
-            await logProctoringEvent('exam_started', 'Exam started with proctoring', 'info');
-            
-            showSwipeHint();
-
-        } else {
-            DOM.examContainer.innerHTML = '<div class="error-message">❌ No questions found for this exam.</div>';
-        }
-
-    } catch (error) {
-        console.error('Error initializing exam:', error);
-        DOM.examContainer.innerHTML = '<div class="error-message">❌ Error loading exam: ' + error.message + '</div>';
-    }
-}
-
-// ============================================================
-// EXAM CAMERA
-// ============================================================
-
-async function startExamCamera() {
-    try {
-        const constraints = {
-            video: {
-                facingMode: 'user',
-                width: { ideal: 640 },
-                height: { ideal: 480 },
-                frameRate: { ideal: 15 }
-            },
-            audio: false
-        };
-
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        AppState.examVideoStream = stream;
-
-        DOM.faceVideo.srcObject = stream;
-        await DOM.faceVideo.play();
-
-        DOM.cameraContainer.className = 'camera-container face-verified';
-        updateCameraStatus('good', '✅ Active - Detecting face', '0 faces');
-
-        await enterSecureFullscreen();
-        await startExamFaceDetection();
-
-        window.addEventListener('blur', handleWindowBlur);
-        window.addEventListener('focus', handleWindowFocus);
-        document.addEventListener('visibilitychange', handleVisibilityChange);
-
-        console.log('✅ Exam camera started successfully');
-
-    } catch (error) {
-        console.error('❌ Camera error:', error);
-        document.getElementById('blocked-screen').style.display = 'flex';
-        updateCameraStatus('danger', '❌ Camera Failed', '0 faces');
-        showToast('Camera access required. Please allow camera and refresh.', 'warning');
-    }
-}
-
-// ============================================================
-// FACE DETECTION - SECURE PROCTOR
-// ============================================================
-
-async function startExamFaceDetection() {
-    try {
-        if (!AppState.secureProctor) {
-            AppState.secureProctor = new SecureFaceProctor(AppState.examId, AppState.studentId, {
-                onViolation: (count, message) => {
-                    showToast(message, 'warning');
-                    const statusText = DOM.examStatusText;
-                    if (statusText) {
-                        statusText.textContent = message;
-                    }
-                },
-                onPause: (reason, timer) => {
-                    const overlay = DOM.faceBlockOverlay;
-                    if (overlay) {
-                        overlay.style.display = 'flex';
-                        overlay.classList.add('active');
-                        DOM.faceBlockReason.textContent = reason;
-                        DOM.faceRecoveryCountdown.textContent = timer;
-                    }
-                    
-                    DOM.proctoringStatusText.textContent = '⛔ Paused!';
-                    DOM.proctoringStatusText.className = 'status-value danger';
-                    
-                    DOM.statsFace.textContent = '⛔ Paused';
-                    DOM.statsFace.style.color = '#DC2626';
-                    
-                    updateCameraStatus('danger', '⛔ Exam Paused - Face Lost', '0 faces');
-                    DOM.cameraContainer.className = 'camera-container face-lost';
-                    
-                    AppState.isExamPaused = true;
-                },
-                onResume: () => {
-                    const overlay = DOM.faceBlockOverlay;
-                    if (overlay) {
-                        overlay.style.display = 'none';
-                        overlay.classList.remove('active');
-                    }
-                    
-                    const faceLostItems = document.querySelectorAll('.status-item.face-lost');
-                    faceLostItems.forEach(el => el.classList.remove('face-lost'));
-                    
-                    DOM.proctoringStatusText.textContent = 'Active';
-                    DOM.proctoringStatusText.className = 'status-value active';
-                    
-                    DOM.statsFace.textContent = '✅ OK';
-                    DOM.statsFace.style.color = '#38A169';
-                    
-                    updateCameraStatus('good', '✅ Face detected', '1 face');
-                    DOM.cameraContainer.className = 'camera-container face-verified';
-                    
-                    AppState.isExamPaused = false;
-                    showToast('✅ Face detected! Exam resumed.', 'success');
-                },
-                onAutoSubmit: () => {
-                    showToast('❌ Auto-submitting due to violations', 'error');
-                    const overlay = DOM.faceBlockOverlay;
-                    if (overlay) {
-                        DOM.faceBlockReason.textContent = '❌ Too many violations! Auto-submitting...';
-                        DOM.faceRecoveryCountdown.textContent = '0';
-                    }
-                    setTimeout(() => {
-                        executeSubmissionWithLoading();
-                    }, 1000);
-                }
-            });
-        }
-        
-        await faceapi.nets.tinyFaceDetector.loadFromUri(CONFIG.FACE_MODEL_URL);
-        
-        AppState.secureProctor.startDetection(DOM.faceVideo, DOM.faceCanvas);
-        
-        updateCameraStatus('good', '✅ Face detection active', 'Detecting...');
-        DOM.cameraContainer.className = 'camera-container face-verified';
-        DOM.proctoringStatusText.textContent = 'Active';
-        DOM.proctoringStatusText.className = 'status-value active';
-        DOM.statsFace.textContent = '✅ OK';
-        DOM.statsFace.style.color = '#38A169';
-        
-        console.log('✅ Secure face detection started successfully');
-        showToast('✅ Face detection active', 'success');
-        
-    } catch (error) {
-        console.error('❌ Face detection error:', error);
-        updateCameraStatus('danger', '❌ Face detection unavailable', '0 faces');
-        showToast('❌ Face detection unavailable. Please refresh or contact support.', 'error');
-    }
-}
-
-function updateCameraStatus(status, text, faceCount) {
-    DOM.examStatusDot.className = 'status-dot ' + status;
-    DOM.examStatusText.textContent = text;
-    DOM.examFaceCount.textContent = '👤 ' + faceCount;
-}
-
-// ============================================================
-// RETRY CAMERA
-// ============================================================
-
-window.retryCameraDuringExam = async function() {
-    if (!AppState.secureProctor) {
-        showToast('❌ Face detection not initialized. Please refresh.', 'error');
-        return;
-    }
-    
-    showToast('🔄 Restarting camera...', 'info');
-    
-    try {
-        if (AppState.secureProctor.state.totalViolations >= CONFIG.TOTAL_VIOLATIONS_LIMIT) {
-            showToast('🚫 No more retries! Exam will be submitted.', 'error');
-            AppState.secureProctor.autoSubmitExam();
-            return;
-        }
-        
-        const now = Date.now();
-        if (now - AppState.secureProctor.state.lastRetryTime < CONFIG.RETRY_COOLDOWN_SECONDS * 1000) {
-            const remaining = Math.ceil((CONFIG.RETRY_COOLDOWN_SECONDS * 1000 - (now - AppState.secureProctor.state.lastRetryTime)) / 1000);
-            showToast(`⏳ Wait ${remaining}s before retrying`, 'warning');
-            return;
-        }
-        
-        let stream = AppState.examVideoStream;
-        if (!stream || !stream.active) {
-            const constraints = {
-                video: {
-                    facingMode: 'user',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 },
-                    frameRate: { ideal: 15 }
-                },
-                audio: false
-            };
-
-            stream = await navigator.mediaDevices.getUserMedia(constraints);
-            AppState.examVideoStream = stream;
-            DOM.faceVideo.srcObject = stream;
-            await DOM.faceVideo.play();
-        }
-        
-        const success = await AppState.secureProctor.retryCamera();
-        
-        if (!success) {
-            if (AppState.secureProctor.state.totalViolations >= CONFIG.TOTAL_VIOLATIONS_LIMIT) {
-                showToast('🚫 No more retries! Auto-submitting...', 'error');
-                AppState.secureProctor.autoSubmitExam();
-            } else {
-                showToast('❌ Camera retry failed. Try again.', 'error');
-            }
-            return;
-        }
-        
-        updateCameraStatus('good', '✅ Camera active', '1 face');
-        DOM.cameraContainer.className = 'camera-container face-verified';
-        DOM.proctoringStatusText.textContent = 'Active';
-        DOM.proctoringStatusText.className = 'status-value active';
-        DOM.statsFace.textContent = '✅ OK';
-        DOM.statsFace.style.color = '#38A169';
-        
-        DOM.faceBlockOverlay.classList.remove('active');
-        DOM.faceBlockOverlay.style.display = 'none';
-        
-        showToast(`✅ Camera restarted! (${AppState.secureProctor.state.totalViolations}/${CONFIG.TOTAL_VIOLATIONS_LIMIT} violations used)`, 'success');
-        
-        if (AppState.isExamPaused) {
-            AppState.isExamPaused = false;
-        }
-
-    } catch (error) {
-        console.error('❌ Camera retry failed:', error);
-        showToast('❌ Failed to restart camera. Please refresh the page.', 'error');
-        updateCameraStatus('danger', '❌ Camera Error', '0 faces');
-    }
-};
-
-// ============================================================
-// RENDER QUESTION - ORIGINAL WORKING VERSION
-// ============================================================
-
 function renderQuestion(index) {
     if (AppState.questions.length === 0) return;
 
@@ -1816,7 +1415,6 @@ function renderQuestion(index) {
 // ============================================================
 // ANSWER SAVING
 // ============================================================
-
 function updateAutoSaveStatus(status, message) {
     if (!DOM.autoSaveStatus) return;
 
@@ -1905,7 +1503,6 @@ async function saveAnswerToDatabase(questionId, answer) {
 // ============================================================
 // LOAD SAVED ANSWERS
 // ============================================================
-
 async function loadSavedAnswers() {
     try {
         const result = await sb.from('exam_grades')
@@ -1930,7 +1527,6 @@ async function loadSavedAnswers() {
             return;
         }
 
-        // Check local storage for pending answers
         const draftKeys = Object.keys(localStorage).filter(key => 
             key.startsWith(`${CONFIG.STORAGE_PREFIX}${AppState.examId}_draft_${AppState.studentId}`)
         );
@@ -1961,10 +1557,6 @@ async function loadSavedAnswers() {
     }
 }
 
-// ============================================================
-// SAVE CURRENT ANSWER
-// ============================================================
-
 function saveCurrentAnswer() {
     const q = AppState.questions[AppState.currentIndex];
     if (!q) return;
@@ -1973,7 +1565,6 @@ function saveCurrentAnswer() {
     if (radio) {
         const answer = radio.value;
         if (AppState.answers[q.id] !== answer) {
-            console.log('💾 Auto-saving answer for Q' + (AppState.currentIndex + 1) + ':', answer);
             AppState.answers[q.id] = answer;
             saveAnswerToDatabase(q.id, answer);
             saveProgressLocally();
@@ -2013,7 +1604,6 @@ function syncPendingAnswers() {
 // ============================================================
 // QUESTION FLAGGING
 // ============================================================
-
 window.toggleFlagQuestion = function() {
     const q = AppState.questions[AppState.currentIndex];
     if (!q) return;
@@ -2050,7 +1640,6 @@ function loadFlaggedQuestions() {
 // ============================================================
 // UPDATE EXAM STATS
 // ============================================================
-
 function updateExamStats() {
     const total = AppState.questions.length;
     const answered = Object.keys(AppState.answers).length;
@@ -2114,7 +1703,6 @@ function updateExamStats() {
 // ============================================================
 // UPDATE STATUS TABLE
 // ============================================================
-
 function updateStatusTable() {
     AppState.questions.forEach((q, index) => {
         const item = document.getElementById(`q-status-${index}`);
@@ -2143,7 +1731,6 @@ function updateStatusTable() {
 // ============================================================
 // RENDER QUESTION STATUS TABLE
 // ============================================================
-
 function renderQuestionStatusTable() {
     DOM.questionStatusTable.innerHTML = '';
     AppState.questions.forEach((_, index) => {
@@ -2173,7 +1760,6 @@ function renderQuestionStatusTable() {
 // ============================================================
 // UPDATE PROGRESS
 // ============================================================
-
 function updateProgress() {
     DOM.currentSpan.textContent = AppState.currentIndex + 1;
     const percent = ((AppState.currentIndex + 1) / AppState.questions.length) * 100;
@@ -2208,7 +1794,6 @@ function updateQuestionTimer() {
 // ============================================================
 // PREVIOUS / NEXT QUESTION
 // ============================================================
-
 function prevQuestion() {
     saveCurrentAnswer();
     if (AppState.currentIndex > 0 && !AppState.isExamPaused) {
@@ -2230,7 +1815,6 @@ function nextQuestion() {
 // ============================================================
 // TIMER
 // ============================================================
-
 function startTimer(seconds) {
     const timerEl = DOM.examTimer;
     const timerDisplayEl = DOM.timerDisplay;
@@ -2307,7 +1891,6 @@ function showTimerWarning() {
 // ============================================================
 // REVIEW MODE
 // ============================================================
-
 window.toggleReviewMode = function() {
     const isReview = DOM.reviewModeToggle ? DOM.reviewModeToggle.checked : false;
     const container = DOM.reviewContainer;
@@ -2342,7 +1925,6 @@ window.toggleReviewMode = function() {
 // ============================================================
 // SUBMISSION
 // ============================================================
-
 function submitExam() {
     if (AppState.isSubmitting) return;
 
@@ -2396,7 +1978,6 @@ function submitExam() {
 // ============================================================
 // EXECUTE SUBMISSION
 // ============================================================
-
 function showSubmissionProgress(title, message) {
     const overlay = DOM.submissionProgress;
     const titleEl = overlay.querySelector('.progress-title');
@@ -2457,9 +2038,7 @@ async function executeSubmissionWithLoading() {
 
     try {
         if (AppState.stealthProctor && AppState.stealthProctor.isRecordingActive()) {
-            console.log('📹 Stopping stealth recording...');
             AppState.stealthProctor.stopRecording();
-            console.log('✅ Stealth recording stopped and video saved');
         }
 
         if (AppState.secureProctor) {
@@ -2495,7 +2074,6 @@ async function executeSubmissionWithLoading() {
         await calculateAndSaveGrade();
 
         updateSubmissionProgress('🧹 Cleaning up...');
-        // Clean up storage
         const keys = Object.keys(localStorage).filter(key => 
             key.startsWith(`${CONFIG.STORAGE_PREFIX}${AppState.examId}`) && 
             key.includes(AppState.studentId)
@@ -2528,7 +2106,6 @@ async function executeSubmissionWithLoading() {
 // ============================================================
 // SAVE ALL ANSWERS
 // ============================================================
-
 async function saveAllAnswersToDatabase() {
     let saved = 0;
     const total = Object.keys(AppState.answers).length;
@@ -2558,7 +2135,6 @@ async function saveAllAnswersToDatabase() {
 // ============================================================
 // CALCULATE AND SAVE GRADE
 // ============================================================
-
 async function calculateAndSaveGrade() {
     try {
         const qResult = await sb.from('exam_questions')
@@ -2660,7 +2236,6 @@ async function calculateAndSaveGrade() {
 // ============================================================
 // COMPLETION SCREEN
 // ============================================================
-
 function showCompletionCertificate() {
     const totalQuestions = AppState.questions.length;
     const answered = Object.keys(AppState.answers).length;
@@ -2709,7 +2284,6 @@ function showCompletionCertificate() {
 // ============================================================
 // FULLSCREEN MONITORING
 // ============================================================
-
 function setupFullscreenMonitoring() {
     document.addEventListener('fullscreenchange', () => {
         const isFullscreen = !!document.fullscreenElement;
@@ -2791,7 +2365,6 @@ async function enterSecureFullscreen() {
 // ============================================================
 // APPLICATION BLOCKING
 // ============================================================
-
 function blockApplications() {
     document.addEventListener('keydown', blockKeyboardShortcuts);
     document.addEventListener('contextmenu', preventDefault);
@@ -2881,7 +2454,6 @@ function unblockApplications() {
 // ============================================================
 // WINDOW EVENT HANDLERS
 // ============================================================
-
 function handleWindowBlur() {
     if (!AppState.isExamActive || AppState.isExamPaused) return;
     AppState.blurCount++;
@@ -2935,7 +2507,6 @@ function handleVisibilityChange() {
 // ============================================================
 // NETWORK MONITORING
 // ============================================================
-
 function setupNetworkMonitoring() {
     window.addEventListener('online', async () => {
         showToast('✅ Network restored! Syncing answers...', 'success');
@@ -2975,7 +2546,6 @@ function setupNetworkMonitoring() {
         }
     });
 
-    // Network quality indicator
     window.addEventListener('online', () => {
         DOM.networkIndicator.innerHTML = '<i class="fas fa-wifi"></i> Online';
         DOM.networkIndicator.className = '';
@@ -2992,7 +2562,6 @@ function setupNetworkMonitoring() {
 // ============================================================
 // BEFORE UNLOAD HANDLER
 // ============================================================
-
 function handleBeforeUnload(e) {
     if (AppState.isExamActive && !AppState.isSubmitting) {
         const answered = Object.keys(AppState.answers).length;
@@ -3025,7 +2594,6 @@ function setupBeforeUnloadHandler() {
 // ============================================================
 // INACTIVITY TIMER
 // ============================================================
-
 function setupInactivityTimer() {
     resetInactivityTimer();
     
@@ -3050,7 +2618,6 @@ function resetInactivityTimer() {
 // ============================================================
 // MOBILE SWIPE SUPPORT
 // ============================================================
-
 let touchStartX = 0;
 let touchStartY = 0;
 
@@ -3112,7 +2679,6 @@ function showSwipeHint() {
 // ============================================================
 // EXAM EVENT LISTENERS
 // ============================================================
-
 function setupExamEventListeners() {
     if (DOM.prevBtn) {
         DOM.prevBtn.addEventListener('click', prevQuestion);
@@ -3158,9 +2724,7 @@ function setupExamEventListeners() {
 // ============================================================
 // INITIALIZATION
 // ============================================================
-
 document.addEventListener('DOMContentLoaded', function() {
-    // Get parameters
     const params = new URLSearchParams(window.location.search);
     AppState.studentId = params.get('user_id') || localStorage.getItem('currentUserId');
     AppState.examId = params.get('exam_id');
@@ -3177,7 +2741,6 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    // Check if exam is already in progress
     if (sessionStorage.getItem('examInProgress') === 'true') {
         const storedExamId = sessionStorage.getItem('examId');
         const storedStudentId = sessionStorage.getItem('studentId');
@@ -3187,15 +2750,12 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    // Initialize DOM refs
     initDomRefs();
-
-    // Load lobby data
     loadLobbyData();
     console.log('📝 Exam Lobby loaded. Exam ID:', AppState.examId, 'Student ID:', AppState.studentId);
 });
 
-// Expose functions to window for inline onclick
+// Expose functions to window
 window.renderQuestion = renderQuestion;
 window.prevQuestion = prevQuestion;
 window.nextQuestion = nextQuestion;
@@ -3208,4 +2768,10 @@ window.startExam = window.startExam;
 window.testCamera = window.testCamera;
 window.goToStep = window.goToStep;
 window.toggleTermsAgreed = window.toggleTermsAgreed;
-window.retryCameraDuringExam = window.retryCameraDuringExam;
+window.retryCameraDuringExam = function() {
+    if (AppState.secureProctor) {
+        AppState.secureProctor.retryCamera();
+    } else {
+        showToast('❌ Face detection not initialized', 'error');
+    }
+};
