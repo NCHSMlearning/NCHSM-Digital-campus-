@@ -5692,19 +5692,25 @@
             <input type="text" id="pm_search" placeholder="Search student..." onkeyup="filterPublishedMarks()" style="width: 100%; padding: 6px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
         </div>
         
-        <!-- Results Count -->
-        <span style="font-size: 12px; color: #94a3b8; white-space: nowrap;">
-            <i class="fas fa-info-circle"></i> <span id="pm_filter_count">0</span> results
-        </span>
         
-        <!-- Save Filter -->
-        <button onclick="saveFilterState()" style="background: none; border: none; color: #4C1D95; cursor: pointer; font-size: 12px;" title="Save current filters">
+    <!-- Results Count -->
+    <span style="font-size: 12px; color: #94a3b8; white-space: nowrap;">
+        <i class="fas fa-info-circle"></i> <span id="pm_filter_count">0</span> results
+    </span>
+    
+    <!-- Filter Actions -->
+    <div style="display: flex; gap: 4px;">
+        <button onclick="saveFilterState()" style="background: none; border: none; color: #4C1D95; cursor: pointer; font-size: 14px;" title="Save current filters">
             <i class="fas fa-save"></i>
         </button>
-        <button onclick="loadFilterState()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 12px;" title="Load saved filters">
+        <button onclick="loadFilterState()" style="background: none; border: none; color: #64748b; cursor: pointer; font-size: 14px;" title="Load saved filters">
             <i class="fas fa-undo"></i>
         </button>
+        <button onclick="resetFilters()" style="background: #dc2626; color: white; border: none; border-radius: 6px; padding: 4px 12px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'" title="Reset all filters to default">
+            <i class="fas fa-undo-alt"></i> Reset
+        </button>
     </div>
+</div>
 
     <!-- ============================================================ -->
     <!-- QUICK PUBLISH ACTIONS - BY INTAKE YEAR (2024 - 2030)         -->
