@@ -499,50 +499,52 @@ async function loadPublishedMarks() {
         await cacheUnitPrograms(marks);
         
         var processedMarks = [];
-        for (var i = 0; i < marks.length; i++) {
-            var mark = marks[i];
-            var program = PUBLISHED_STATE.unitProgramCache[mark.subject_name] || 'KRCHN';
-            
-            // ✅ Get retake info for THIS SPECIFIC UNIT
-            var retakeInfo = getStudentRetakeInfo(mark.admission_number, mark.subject_name);
-            var hasRetake = retakeInfo !== null && retakeInfo.count > 0;
-            
-            // ✅ Use retake score if available, otherwise use original
-            var finalScore = hasRetake && retakeInfo.score !== null ? retakeInfo.score : mark.final_score;
-            var grade = mark.grade || calculateGrade(finalScore, program);
-            var points = mark.points || calculatePoints(grade, program);
-            var status = getGradingStatus(finalScore, program);
-            var comment = getGradeComment(finalScore, program);
-            
-            processedMarks.push({
-                id: mark.id,
-                admission_number: mark.admission_number,
-                student_name: mark.student_name,
-                subject_name: mark.subject_name,
-                block: mark.block,
-                cat1_score: mark.cat1_score,
-                cat2_score: mark.cat2_score,
-                exam_score: mark.exam_score,
-                final_score: finalScore,
-                original_score: mark.final_score,
-                grade: grade,
-                points: points,
-                published: mark.published,
-                published_at: mark.published_at,
-                academic_year: mark.academic_year,
-                created_at: mark.created_at,
-                updated_at: mark.updated_at,
-                program: program,
-                status: status,
-                comment: comment,
-                hasRetake: hasRetake,
-                retakeCount: retakeInfo?.count || 0,
-                retakeScore: retakeInfo?.score || null,
-                retakeStatus: retakeInfo?.status || null,
-                retakeGrade: retakeInfo?.grade || null,
-                retakeHistory: retakeInfo?.history || []
-            });
-        }
+       for (var i = 0; i < marks.length; i++) {
+    var mark = marks[i];
+    var program = PUBLISHED_STATE.unitProgramCache[mark.subject_name] || 'KRCHN';
+    
+    // Get retake info for THIS SPECIFIC UNIT
+    var retakeInfo = getStudentRetakeInfo(mark.admission_number, mark.subject_name);
+    var hasRetake = retakeInfo !== null && retakeInfo.count > 0;
+    
+    // ✅ Use retake score if available, otherwise use original
+    var finalScore = hasRetake && retakeInfo.score !== null ? retakeInfo.score : mark.final_score;
+    
+    // ✅ ALWAYS recalculate grade based on finalScore (retake score if available)
+    var grade = calculateGrade(finalScore, program);
+    var points = calculatePoints(grade, program);
+    var status = getGradingStatus(finalScore, program);
+    var comment = getGradeComment(finalScore, program);
+    
+    processedMarks.push({
+        id: mark.id,
+        admission_number: mark.admission_number,
+        student_name: mark.student_name,
+        subject_name: mark.subject_name,
+        block: mark.block,
+        cat1_score: mark.cat1_score,
+        cat2_score: mark.cat2_score,
+        exam_score: mark.exam_score,
+        final_score: finalScore, // Retake score or original
+        original_score: mark.final_score,
+        grade: grade, // ✅ RECALCULATED based on retake score
+        points: points, // ✅ RECALCULATED based on retake score
+        published: mark.published,
+        published_at: mark.published_at,
+        academic_year: mark.academic_year,
+        created_at: mark.created_at,
+        updated_at: mark.updated_at,
+        program: program,
+        status: status,
+        comment: comment,
+        hasRetake: hasRetake,
+        retakeCount: retakeInfo?.count || 0,
+        retakeScore: retakeInfo?.score || null,
+        retakeStatus: retakeInfo?.status || null,
+        retakeGrade: retakeInfo?.grade || null,
+        retakeHistory: retakeInfo?.history || []
+    });
+}
         
         if (PUBLISHED_STATE.currentProgramFilter === 'KRCHN') {
             processedMarks = processedMarks.filter(function(m) { return m.program === 'KRCHN'; });
