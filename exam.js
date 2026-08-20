@@ -1,5 +1,5 @@
 // ============================================================
-// CONFIGURATION
+// CONFIGURATION - UPDATED SAFER VALUES
 // ============================================================
 const CONFIG = {
     SUPABASE_URL: 'https://lwhtjozfsmbyihenfunw.supabase.co',
@@ -7,18 +7,21 @@ const CONFIG = {
     FACE_MODEL_URL: 'https://justadudewhohacks.github.io/face-api.js/models',
     FACE_DETECTION_INTERVAL: 300,
     FACE_SCORE_THRESHOLD: 0.6,
-    MAX_BLUR_COUNT: 8,
-    MAX_TAB_SWITCHES: 3,
+    MAX_BLUR_COUNT: 15,                    // Increased from 10
+    MAX_TAB_SWITCHES: 5,                   // Increased from 3
     MAX_TIME_PER_QUESTION: 120,
-    CONSECUTIVE_FACE_LOST_LIMIT: 10,
-    TOTAL_VIOLATIONS_LIMIT: 3,
-    RECOVERY_TIMER_SECONDS: 15,
+    CONSECUTIVE_FACE_LOST_LIMIT: 10,       // Kept at 10
+    TOTAL_VIOLATIONS_LIMIT: 3,             // Kept at 3 (strict)
+    RECOVERY_TIMER_SECONDS: 30,            // Increased from 20
     RETRY_COOLDOWN_SECONDS: 10,
     STORAGE_PREFIX: 'exam_',
     SNAPSHOT_INTERVAL: 30000,
     HEARTBEAT_INTERVAL: 15000,
     SAVE_INTERVAL: 10000,
     INACTIVITY_TIMEOUT: 30 * 60 * 1000,
+    MULTIPLE_FACES_TIMEOUT: 30,            // New - 30 seconds for multiple faces warning
+    FULLSCREEN_EXIT_TIMEOUT: 10,           // Increased from 5 to 10
+    VIOLATION_COOLDOWN: 5000,              // New - 5 second cooldown between violations
 };
 
 // ============================================================
@@ -55,6 +58,7 @@ const AppState = {
     attendanceRecorded: false,
     blurCount: 0,
     tabSwitchCount: 0,
+    multipleFacesCount: 0,                 // New - track multiple faces count
     timerInterval: null,
     snapshotInterval: null,
     heartbeatInterval: null,
@@ -277,7 +281,6 @@ window.testCamera = async function() {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
         AppState.cameraStream = stream;
 
-        // Use same stream for both lobby and exam
         DOM.cameraVideo.srcObject = stream;
         DOM.faceVideo.srcObject = stream;
         
@@ -297,7 +300,6 @@ window.testCamera = async function() {
 
         await loadFaceDetectionModels();
 
-        // Fast face detection - 5 quick attempts
         let faceDetected = false;
         let attempts = 0;
         const maxAttempts = 5;
@@ -693,10 +695,7 @@ function updateCameraStatus(status, text, faceCount) {
 }
 
 // ============================================================
-// SECURE FACE PROCTOR CLASS
-// ============================================================
-// ============================================================
-// SECURE FACE PROCTOR CLASS - FIXED TIMER
+// SECURE FACE PROCTOR CLASS - COMPLETELY FIXED
 // ============================================================
 class SecureFaceProctor {
     constructor(examId, studentId, callbacks = {}) {
@@ -709,19 +708,22 @@ class SecureFaceProctor {
             RECOVERY_TIMER_SECONDS: CONFIG.RECOVERY_TIMER_SECONDS,
             RETRY_COOLDOWN_SECONDS: CONFIG.RETRY_COOLDOWN_SECONDS,
             DETECTION_INTERVAL: CONFIG.FACE_DETECTION_INTERVAL,
+            VIOLATION_COOLDOWN: CONFIG.VIOLATION_COOLDOWN,
         };
         this.state = {
             consecutiveLost: 0,
             totalViolations: 0,
             isPaused: false,
             isSubmitting: false,
+            recoveryTimerId: null,
             recoveryTimer: null,
-            recoveryTimerId: null,  // Add this to track timer ID
             detectionInterval: null,
             lastRetryTime: 0,
             faceStable: false,
             lastFaceCount: 0,
-            remainingTime: 0,  // Track remaining time
+            remainingTime: 0,
+            lastViolationTime: 0,           // Track last violation time
+            multipleFacesStartTime: 0,        // Track when multiple faces started
         };
         this.video = null;
         this.canvas = null;
@@ -771,21 +773,26 @@ class SecureFaceProctor {
     handleDetectionResult(faceCount) {
         if (this.state.isSubmitting) return;
         
+        // Face detected - good case
         if (faceCount === 1) {
             this.state.consecutiveLost = 0;
             this.state.faceStable = true;
+            this.state.multipleFacesStartTime = 0;
             
             // If exam is paused, resume immediately
             if (this.state.isPaused) {
                 this.resumeExam();
             }
             updateCameraStatus('good', '✅ Face detected', '1 face');
+            
+            // Hide multiple faces warning if visible
+            const warning = DOM.multipleFacesWarning;
+            if (warning) warning.classList.remove('active');
             return;
         }
         
-        // If exam is paused and face is lost again, don't increment more
+        // If exam is already paused, don't count more violations
         if (this.state.isPaused) {
-            // Still update the status but don't count more violations
             updateCameraStatus('warning', `⏳ Face still lost (${this.state.remainingTime || 0}s remaining)`, '0 faces');
             return;
         }
@@ -793,13 +800,30 @@ class SecureFaceProctor {
         this.state.consecutiveLost++;
         this.state.faceStable = false;
         
+        // Handle multiple faces
         if (faceCount > 1) {
             updateCameraStatus('warning', `⚠️ Multiple faces (${faceCount})`, `${faceCount} faces`);
             this.showMultipleFacesWarning(faceCount);
+            
+            // Only count as violation if multiple faces persist
+            if (this.state.multipleFacesStartTime === 0) {
+                this.state.multipleFacesStartTime = Date.now();
+            } else if (Date.now() - this.state.multipleFacesStartTime > CONFIG.MULTIPLE_FACES_TIMEOUT * 1000) {
+                // Multiple faces persisted for too long - count as violation
+                this.handleViolation();
+                this.state.multipleFacesStartTime = 0;
+            }
+            return;
         } else {
+            // No face detected
+            this.state.multipleFacesStartTime = 0;
+            const warning = DOM.multipleFacesWarning;
+            if (warning) warning.classList.remove('active');
+            
             updateCameraStatus('warning', `⚠️ Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
         }
         
+        // Check if consecutive lost limit reached
         if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) {
             this.handleViolation();
         }
@@ -808,13 +832,37 @@ class SecureFaceProctor {
     showMultipleFacesWarning(faceCount) {
         const warning = DOM.multipleFacesWarning;
         if (!warning) return;
+        
+        // Update warning content
+        const countdownEl = document.getElementById('multiple-faces-countdown');
+        const progressEl = document.getElementById('multiple-faces-progress');
+        
+        if (this.state.multipleFacesStartTime > 0) {
+            const elapsed = (Date.now() - this.state.multipleFacesStartTime) / 1000;
+            const remaining = Math.max(0, CONFIG.MULTIPLE_FACES_TIMEOUT - elapsed);
+            
+            if (countdownEl) countdownEl.textContent = Math.ceil(remaining);
+            if (progressEl) {
+                const pct = (elapsed / CONFIG.MULTIPLE_FACES_TIMEOUT) * 100;
+                progressEl.style.width = Math.min(100, pct) + '%';
+            }
+        }
+        
         warning.classList.add('active');
-        setTimeout(() => warning.classList.remove('active'), 5000);
     }
     
     handleViolation() {
-        // Don't process if already submitting or if total violations exceeded
+        // Check cooldown - prevent multiple violations in quick succession
+        const now = Date.now();
+        if (now - this.state.lastViolationTime < this.config.VIOLATION_COOLDOWN) {
+            console.log('⏳ Violation cooldown active, skipping...');
+            return;
+        }
+        
+        // Don't process if already submitting
         if (this.state.isSubmitting) return;
+        
+        // Check if total violations exceeded
         if (this.state.totalViolations >= this.config.TOTAL_VIOLATIONS_LIMIT) {
             this.autoSubmitExam();
             return;
@@ -822,12 +870,13 @@ class SecureFaceProctor {
         
         this.state.totalViolations++;
         this.state.consecutiveLost = 0;
+        this.state.lastViolationTime = now;
         
         console.log(`⚠️ Face violation ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`);
         
         // Calculate timer based on violation count
         let timerSeconds = this.config.RECOVERY_TIMER_SECONDS - (this.state.totalViolations - 1) * 5;
-        timerSeconds = Math.max(5, timerSeconds); // Minimum 5 seconds
+        timerSeconds = Math.max(5, timerSeconds);
         
         switch(this.state.totalViolations) {
             case 1:
@@ -927,6 +976,7 @@ class SecureFaceProctor {
         AppState.isExamPaused = false;
         this.state.consecutiveLost = 0;
         this.state.remainingTime = 0;
+        this.state.multipleFacesStartTime = 0;
         
         // Update UI
         if (DOM.faceRecoveryCountdown) {
@@ -934,16 +984,19 @@ class SecureFaceProctor {
             DOM.faceRecoveryCountdown.className = 'block-timer recovered';
         }
         
-        this.callbacks.onResume?.();
-        updateCameraStatus('good', '✅ Face detected', '1 face');
-        DOM.cameraContainer.className = 'camera-container face-verified';
-        
-        // Hide the overlay
+        // Hide overlays
         const overlay = DOM.faceBlockOverlay;
         if (overlay) {
             overlay.style.display = 'none';
             overlay.classList.remove('active');
         }
+        
+        const warning = DOM.multipleFacesWarning;
+        if (warning) warning.classList.remove('active');
+        
+        this.callbacks.onResume?.();
+        updateCameraStatus('good', '✅ Face detected', '1 face');
+        DOM.cameraContainer.className = 'camera-container face-verified';
         
         DOM.proctoringStatusText.textContent = 'Active';
         DOM.proctoringStatusText.className = 'status-value active';
@@ -966,9 +1019,8 @@ class SecureFaceProctor {
             return false;
         }
         
-        this.state.totalViolations++;
         this.state.lastRetryTime = now;
-        showToast(`🔄 Retry ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`, 'warning');
+        showToast('🔄 Restarting camera...', 'info');
         
         try {
             const stream = await navigator.mediaDevices.getUserMedia({
@@ -977,6 +1029,11 @@ class SecureFaceProctor {
             });
             
             if (this.video) {
+                // Stop old tracks
+                if (this.video.srcObject) {
+                    const oldTracks = this.video.srcObject.getTracks();
+                    oldTracks.forEach(t => t.stop());
+                }
                 this.video.srcObject = stream;
                 await this.video.play();
             }
@@ -1006,6 +1063,15 @@ class SecureFaceProctor {
             this.state.recoveryTimer = null;
         }
         
+        // Hide overlays
+        const overlay = DOM.faceBlockOverlay;
+        if (overlay) {
+            overlay.style.display = 'none';
+            overlay.classList.remove('active');
+        }
+        const warning = DOM.multipleFacesWarning;
+        if (warning) warning.classList.remove('active');
+        
         this.callbacks.onAutoSubmit?.();
     }
     
@@ -1024,8 +1090,9 @@ class SecureFaceProctor {
         }
     }
 }
+
 // ============================================================
-// STEALTH PROCTOR CLASS - FIXED
+// STEALTH PROCTOR CLASS
 // ============================================================
 class StealthProctor {
     constructor() {
@@ -1115,7 +1182,6 @@ class StealthProctor {
             const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
             const fileName = `videos/${studentId}/${examId}/${Date.now()}.webm`;
 
-            // Try to upload with error handling
             const { error } = await sb.storage
                 .from('proctoring')
                 .upload(fileName, blob, {
@@ -1126,7 +1192,6 @@ class StealthProctor {
 
             if (error) {
                 console.warn('Storage upload error:', error);
-                // If storage fails, just log the recording
                 this.uploadRetryCount++;
                 if (this.uploadRetryCount < 3) {
                     setTimeout(() => this.saveRecording(studentId, examId), 5000);
@@ -1150,7 +1215,6 @@ class StealthProctor {
 
     async sendHeartbeat(studentId, examId) {
         try {
-            // Use insert instead of upsert to avoid conflict issues
             await sb.from('exam_heartbeats').insert({
                 student_id: studentId,
                 exam_id: parseInt(examId),
@@ -1179,7 +1243,7 @@ class StealthProctor {
 }
 
 // ============================================================
-// PROCTORING LOGS - FIXED
+// PROCTORING LOGS
 // ============================================================
 async function logProctoringEvent(eventType, details, severity = 'info') {
     try {
@@ -1199,7 +1263,7 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
 }
 
 // ============================================================
-// SNAPSHOT CAPTURE - FIXED
+// SNAPSHOT CAPTURE
 // ============================================================
 async function captureSnapshot() {
     const video = DOM.faceVideo;
@@ -1253,9 +1317,7 @@ async function captureSnapshot() {
                 .getPublicUrl(fileName);
             snapshotUrl = urlData.publicUrl;
         }
-    } catch (uploadError) {
-        // Silently fail on snapshot upload
-    }
+    } catch (uploadError) {}
 
     try {
         await sb.from('exam_proctoring_logs').insert({
@@ -1274,9 +1336,7 @@ async function captureSnapshot() {
             device_info: navigator.userAgent,
             ip_address: await getIPAddress()
         });
-    } catch (e) {
-        // Silently fail
-    }
+    } catch (e) {}
 }
 
 function startSnapshotCapture() {
@@ -1396,12 +1456,11 @@ window.closeAttendanceModal = function() {
 };
 
 // ============================================================
-// HEARTBEAT - FIXED
+// HEARTBEAT
 // ============================================================
 async function sendHeartbeat() {
     if (!AppState.isExamActive) return;
     try {
-        // Use insert instead of upsert
         await sb.from('exam_heartbeats').insert({
             student_id: AppState.studentId,
             exam_id: parseInt(AppState.examId),
@@ -1411,9 +1470,7 @@ async function sendHeartbeat() {
             face_detected: !AppState.isExamPaused,
             timestamp: new Date().toISOString()
         });
-    } catch (e) {
-        // Silently fail
-    }
+    } catch (e) {}
 }
 
 // ============================================================
@@ -2155,7 +2212,18 @@ function updateSubmissionProgress(message) {
 }
 
 async function executeSubmissionWithLoading() {
-    if (AppState.isSubmitting) return;
+    // SAFETY CHECK - Prevent multiple submissions
+    if (AppState.isSubmitting) {
+        console.log('⚠️ Submission already in progress, skipping...');
+        return;
+    }
+    
+    // Check if exam is actually active
+    if (!AppState.isExamActive) {
+        console.log('⚠️ Exam not active, skipping submission...');
+        return;
+    }
+    
     AppState.isSubmitting = true;
 
     DOM.submitBtn.disabled = true;
@@ -2307,7 +2375,6 @@ async function calculateAndSaveGrade() {
             });
         }
 
-        // Handle unanswered questions
         questionsData.forEach((q) => {
             if (!AppState.answers[q.id]) {
                 answerRecords.push({
@@ -2324,13 +2391,11 @@ async function calculateAndSaveGrade() {
         const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
         const resultStatus = 'PENDING_REVIEW';
 
-        // Delete existing grades
         await sb.from('exam_grades')
             .delete()
             .eq('student_id', AppState.studentId)
             .eq('exam_id', parseInt(AppState.examId));
 
-        // Insert all answers in batches
         if (answerRecords.length > 0) {
             const BATCH_SIZE = 50;
             for (let i = 0; i < answerRecords.length; i += BATCH_SIZE) {
@@ -2339,7 +2404,6 @@ async function calculateAndSaveGrade() {
             }
         }
 
-        // Insert summary record
         await sb.from('exam_grades').insert({
             student_id: AppState.studentId,
             exam_id: parseInt(AppState.examId),
@@ -2419,7 +2483,7 @@ function showCompletionCertificate() {
 }
 
 // ============================================================
-// FULLSCREEN MONITORING
+// FULLSCREEN MONITORING - FIXED
 // ============================================================
 function setupFullscreenMonitoring() {
     document.addEventListener('fullscreenchange', () => {
@@ -2445,17 +2509,9 @@ function showFullscreenExitWarning() {
 
     const warningOverlay = DOM.fullscreenExitWarning;
     const countdownEl = DOM.exitCountdown;
-    let countdown = 5;
+    let countdown = CONFIG.FULLSCREEN_EXIT_TIMEOUT; // 10 seconds now
     countdownEl.textContent = countdown;
     warningOverlay.style.display = 'flex';
-
-    try {
-        const audio = new Audio(
-            'data:audio/wav;base64,UklGRlQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoAAACBhYqFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYaFhYWFhQ=='
-        );
-        audio.volume = 0.3;
-        audio.play().catch(() => {});
-    } catch (e) {}
 
     if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(() => {});
@@ -2479,7 +2535,8 @@ function showFullscreenExitWarning() {
             clearInterval(AppState.countdownInterval);
             warningOverlay.style.display = 'none';
             AppState.fullscreenWarningActive = false;
-            if (!AppState.isSubmitting) {
+            if (!AppState.isSubmitting && AppState.isExamActive) {
+                showToast('⚠️ Fullscreen exit detected! Auto-submitting...', 'error');
                 executeSubmissionWithLoading();
             }
         }
@@ -2589,7 +2646,7 @@ function unblockApplications() {
 }
 
 // ============================================================
-// WINDOW EVENT HANDLERS
+// WINDOW EVENT HANDLERS - FIXED
 // ============================================================
 function handleWindowBlur() {
     if (!AppState.isExamActive || AppState.isExamPaused) return;
@@ -2601,7 +2658,12 @@ function handleWindowBlur() {
 
     if (AppState.blurCount >= CONFIG.MAX_BLUR_COUNT) {
         logProctoringEvent('auto_submit', 'Auto-submitted due to multiple window blur violations', 'critical');
-        executeSubmissionWithLoading();
+        showToast('🚨 Multiple blur violations! Auto-submitting...', 'error');
+        setTimeout(() => {
+            if (!AppState.isSubmitting && AppState.isExamActive) {
+                executeSubmissionWithLoading();
+            }
+        }, 3000);
     }
 }
 
@@ -2621,6 +2683,7 @@ window.returnToExam = function() {
     }
     window.focus();
     AppState.blurCount = 0;
+    AppState.tabSwitchCount = 0;
 };
 
 function handleVisibilityChange() {
@@ -2628,13 +2691,17 @@ function handleVisibilityChange() {
         AppState.tabSwitchCount++;
         DOM.appBlockOverlay.style.display = 'flex';
         logProctoringEvent('tab_switch', 'Student switched tabs (' + AppState.tabSwitchCount + ')', 'warning');
-        showToast('⚠️ Tab switch detected! (' + AppState.tabSwitchCount + '/3)', 'warning');
+        showToast('⚠️ Tab switch detected! (' + AppState.tabSwitchCount + '/' + CONFIG.MAX_TAB_SWITCHES + ')', 'warning');
         captureSnapshot();
 
         if (AppState.tabSwitchCount >= CONFIG.MAX_TAB_SWITCHES) {
             showToast('🚨 Multiple tab switches detected! Auto-submitting...', 'error');
             logProctoringEvent('auto_submit', 'Auto-submitted due to excessive tab switches', 'critical');
-            setTimeout(executeSubmissionWithLoading, 3000);
+            setTimeout(() => {
+                if (!AppState.isSubmitting && AppState.isExamActive) {
+                    executeSubmissionWithLoading();
+                }
+            }, 3000);
         }
     } else if (!document.hidden && AppState.isExamActive) {
         DOM.appBlockOverlay.style.display = 'none';
@@ -2814,7 +2881,7 @@ function showSwipeHint() {
 }
 
 // ============================================================
-// EXAM EVENT LISTENERS - FIXED (removed startExamCamera reference)
+// EXAM EVENT LISTENERS
 // ============================================================
 function setupExamEventListeners() {
     if (DOM.prevBtn) {
