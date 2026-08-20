@@ -793,8 +793,8 @@ window.showTranscriptPreview = function(student, marks, year) {
 };
 
 // ============================================================
-// RENDER A SPECIFIC BLOCK - WITH PROGRESSION MESSAGE ONLY
-// YEAR OF STUDY shows Year Level (Year 1, Year 2, Year 3)
+// RENDER A SPECIFIC BLOCK - WITH SMALL SUBTLE MESSAGE
+// YEAR OF STUDY shows Academic Year Range (e.g., 2026/2027)
 // ============================================================
 
 function renderBlock(index) {
@@ -908,149 +908,93 @@ function renderBlock(index) {
     });
 
     // ============================================================
-    // 🎯 YEAR OF STUDY CALCULATION
-    // Introductory, Block 1 → Year 1
-    // Block 2, Block 3 → Year 2
-    // Block 4, Block 5, Final → Year 3
+    // 🎯 YEAR OF STUDY - ACADEMIC YEAR RANGE CALCULATION
     // ============================================================
     
-    let yearOfStudy = 'N/A';
+    // Get intake year from student or use the selected year
+    const intakeYear = parseInt(student.intake_year) || parseInt(year) || 2025;
     
     // Define block to year mapping for KRCHN
     const yearMapping = {
-        'Introductory': 'Year 1',
-        'Block 1': 'Year 1',
-        'Block 2': 'Year 2',
-        'Block 3': 'Year 2',
-        'Block 4': 'Year 3',
-        'Block 5': 'Year 3',
-        'Final': 'Year 3'
+        'Introductory': { year: 0, label: 'Year 1' },
+        'Block 1': { year: 0, label: 'Year 1' },
+        'Block 2': { year: 1, label: 'Year 2' },
+        'Block 3': { year: 1, label: 'Year 2' },
+        'Block 4': { year: 2, label: 'Year 3' },
+        'Block 5': { year: 2, label: 'Year 3' },
+        'Final': { year: 2, label: 'Year 3' }
     };
+    
+    let yearOfStudy = 'N/A';
+    let yearOffset = 0;
+    let yearLabel = 'Year 1';
     
     // Check if it's a KRCHN block
     if (yearMapping[blockName]) {
-        yearOfStudy = yearMapping[blockName];
+        yearOffset = yearMapping[blockName].year;
+        yearLabel = yearMapping[blockName].label;
+        const startYear = intakeYear + yearOffset;
+        const endYear = startYear + 1;
+        yearOfStudy = `${startYear}/${endYear}`;
     } else {
-        // For TVET or other programs, try to extract year from block name
+        // For TVET or other programs
         const yearMatch = blockName.match(/Year\s+(\d+)/i);
         if (yearMatch) {
-            yearOfStudy = `Year ${yearMatch[1]}`;
+            const yearNum = parseInt(yearMatch[1]);
+            yearOffset = yearNum - 1;
+            yearLabel = `Year ${yearNum}`;
+            const startYear = intakeYear + yearOffset;
+            const endYear = startYear + 1;
+            yearOfStudy = `${startYear}/${endYear}`;
         } else {
-            // Default fallback - try to extract number
+            // Default fallback
             const numMatch = blockName.match(/\d+/);
             if (numMatch) {
                 const num = parseInt(numMatch[0]);
-                if (num <= 1) yearOfStudy = 'Year 1';
-                else if (num <= 3) yearOfStudy = 'Year 2';
-                else yearOfStudy = 'Year 3';
+                if (num <= 1) { yearOffset = 0; yearLabel = 'Year 1'; }
+                else if (num <= 3) { yearOffset = 1; yearLabel = 'Year 2'; }
+                else { yearOffset = 2; yearLabel = 'Year 3'; }
+                const startYear = intakeYear + yearOffset;
+                const endYear = startYear + 1;
+                yearOfStudy = `${startYear}/${endYear}`;
+            } else {
+                yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
+                yearLabel = 'Year 1';
             }
         }
     }
 
     // ============================================================
-    // 🎯 PROGRESSION MESSAGE (NO BUTTONS - JUST A MESSAGE)
+    // 🎯 PROGRESSION MESSAGE - SMALL, SUBTLE TEXT ONLY
     // ============================================================
     const currentBlockIndex = index;
     const nextBlockIndex = currentBlockIndex + 1;
     const hasNextBlock = nextBlockIndex < blockNames.length;
     const nextBlockName = hasNextBlock ? blockNames[nextBlockIndex] : null;
     
-    // Determine progression message (MESSAGE ONLY, NO BUTTONS)
-    let progressionHtml = '';
+    // Determine progression message - SMALL TEXT ONLY
+    let progressionMessage = '';
+    let messageColor = '#94a3b8'; // default gray
     
     if (allPassed && hasNextBlock) {
-        // ✅ ALL PASSED - Show "Proceed to Next Block" message
-        const programTypeLabel = isTVET ? 'Term' : 'Block';
-        progressionHtml = `
-            <div style="
-                background: linear-gradient(135deg, #d1fae5, #a7f3d0);
-                border: 2px solid #059669;
-                border-radius: 8px;
-                padding: 12px 20px;
-                margin: 10px 0 14px 0;
-                text-align: center;
-            ">
-                <div style="font-weight: 700; font-size: 15px; color: #065f46;">
-                    🎯 Proceed to ${nextBlockName}
-                </div>
-                <div style="font-size: 12px; font-weight: 500; color: #047857; margin-top: 2px;">
-                    All ${blockTotal} units passed with ${blockPassRate}% success rate
-                </div>
-                <div style="font-size: 11px; color: #065f46; margin-top: 4px; border-top: 1px dashed #86efac; padding-top: 6px;">
-                    ${programTypeLabel} ${currentBlockIndex + 1} ✓ → ${programTypeLabel} ${nextBlockIndex + 1} · ${yearOfStudy}
-                </div>
-            </div>
-        `;
+        messageColor = '#059669';
+        progressionMessage = `✅ Passed — Proceed to ${nextBlockName} · ${yearLabel}`;
     } else if (allPassed && !hasNextBlock) {
-        // 🏆 ALL PASSED - Final block complete
-        progressionHtml = `
-            <div style="
-                background: linear-gradient(135deg, #ede9fe, #c4b5fd);
-                border: 2px solid #4C1D95;
-                border-radius: 8px;
-                padding: 12px 20px;
-                margin: 10px 0 14px 0;
-                text-align: center;
-            ">
-                <div style="font-weight: 700; font-size: 15px; color: #4C1D95;">
-                    🏆 CONGRATULATIONS! All blocks completed!
-                </div>
-                <div style="font-size: 12px; font-weight: 500; color: #5b21b6; margin-top: 2px;">
-                    All ${blockTotal} units passed with ${blockPassRate}% success rate
-                </div>
-                <div style="font-size: 11px; color: #5b21b6; margin-top: 4px; border-top: 1px dashed #c4b5fd; padding-top: 6px;">
-                    🎓 Program Complete — Ready for Graduation · ${yearOfStudy}
-                </div>
-            </div>
-        `;
+        messageColor = '#4C1D95';
+        progressionMessage = `🏆 All blocks completed — Ready for Graduation · ${yearLabel}`;
     } else if (hasFailed && blockPassed > 0) {
-        // ⚠️ SOME FAILED - Need to retake failed units
-        const failedList = blockMarks
+        // Get failed unit names
+        const failedNames = blockMarks
             .filter(m => (m.final_score || 0) < passMark)
             .map(m => m.subject_name)
             .join(', ');
-        progressionHtml = `
-            <div style="
-                background: linear-gradient(135deg, #fee2e2, #fca5a5);
-                border: 2px solid #dc2626;
-                border-radius: 8px;
-                padding: 12px 20px;
-                margin: 10px 0 14px 0;
-                text-align: center;
-            ">
-                <div style="font-weight: 700; font-size: 15px; color: #991b1b;">
-                    ⚠️ Retake Required — Cannot Proceed
-                </div>
-                <div style="font-size: 12px; font-weight: 500; color: #b91c1c; margin-top: 2px;">
-                    ${failedUnits} unit(s) failed: ${escapeHtml(failedList)}
-                </div>
-                <div style="font-size: 11px; color: #991b1b; margin-top: 4px; border-top: 1px dashed #fca5a5; padding-top: 6px;">
-                    Please consult Academic Registrar for retake scheduling · ${yearOfStudy}
-                </div>
-            </div>
-        `;
+        messageColor = '#dc2626';
+        progressionMessage = `⚠️ ${failedUnits} unit(s) failed: ${failedNames} — Retake required · ${yearLabel}`;
     } else if (blockPassed === 0 && blockTotal > 0) {
-        // ❌ ALL FAILED - Serious issue
-        progressionHtml = `
-            <div style="
-                background: linear-gradient(135deg, #fee2e2, #fca5a5);
-                border: 2px solid #dc2626;
-                border-radius: 8px;
-                padding: 12px 20px;
-                margin: 10px 0 14px 0;
-                text-align: center;
-            ">
-                <div style="font-weight: 700; font-size: 15px; color: #991b1b;">
-                    ❌ Academic Intervention Required
-                </div>
-                <div style="font-size: 12px; font-weight: 500; color: #b91c1c; margin-top: 2px;">
-                    No units passed in this block
-                </div>
-                <div style="font-size: 11px; color: #991b1b; margin-top: 4px; border-top: 1px dashed #fca5a5; padding-top: 6px;">
-                    Please contact Academic Registrar immediately · ${yearOfStudy}
-                </div>
-            </div>
-        `;
+        messageColor = '#dc2626';
+        progressionMessage = `❌ Academic intervention required — Contact Registrar · ${yearLabel}`;
+    } else {
+        progressionMessage = `⏳ Results pending · ${yearLabel}`;
     }
 
     // Build grading scale table
@@ -1068,7 +1012,7 @@ function renderBlock(index) {
         `;
     }
 
-    // Navigation buttons (keep these as they are - just for navigation)
+    // Navigation buttons
     const prevBlock = index > 0 ? blockNames[index - 1] : null;
     const nextBlock = index < blockNames.length - 1 ? blockNames[index + 1] : null;
     
@@ -1128,7 +1072,7 @@ function renderBlock(index) {
             </div>
             
             <!-- BLOCK HEADER -->
-            <div style="margin-bottom: 10px; padding: 6px 14px; background: #e0e7ff; border-radius: 4px; border-left: 4px solid #0A3D62;">
+            <div style="margin-bottom: 4px; padding: 6px 14px; background: #e0e7ff; border-radius: 4px; border-left: 4px solid #0A3D62;">
                 <span style="font-weight: 700; font-size: 14px; color: #0A3D62;">📚 ${escapeHtml(blockName)}</span>
                 <span style="font-size: 11px; color: #64748b; margin-left: 12px;">${blockTotal} units</span>
                 <span style="float: right; font-size: 11px; font-weight: 600; color: ${allPassed ? '#059669' : (hasFailed ? '#dc2626' : '#f59e0b')};">
@@ -1136,8 +1080,10 @@ function renderBlock(index) {
                 </span>
             </div>
             
-            <!-- 🎯 PROGRESSION MESSAGE (JUST A MESSAGE, NO BUTTONS) -->
-            ${progressionHtml}
+            <!-- 🎯 PROGRESSION MESSAGE - SMALL SUBTLE TEXT ONLY -->
+            <div style="text-align: center; padding: 2px 0 8px 0; font-size: 11px; color: ${messageColor}; font-weight: 500; border-bottom: 1px dashed #e5e7eb; margin-bottom: 10px;">
+                ${progressionMessage}
+            </div>
             
             <!-- MARKS TABLE - ALL BORDERS -->
             <div style="overflow-x: auto; margin-bottom: 16px;">
@@ -1224,7 +1170,7 @@ function renderBlock(index) {
                 <p style="font-size: 7px; color: #cbd5e1; margin-top: 4px;">Document ID: ${Date.now().toString(36).toUpperCase()} · Generated: ${now}</p>
             </div>
             
-            <!-- NAVIGATION BUTTONS (KEEP AS IS - FOR NAVIGATION ONLY) -->
+            <!-- NAVIGATION BUTTONS -->
             ${navHtml}
             
             <!-- ACTION BUTTONS -->
