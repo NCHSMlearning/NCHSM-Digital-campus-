@@ -793,7 +793,8 @@ window.showTranscriptPreview = function(student, marks, year) {
 };
 
 // ============================================================
-// RENDER A SPECIFIC BLOCK - WITH SMALL SUBTLE MESSAGE AT TOP
+// RENDER A SPECIFIC BLOCK - WITH SMALL SUBTLE MESSAGE
+// Message appears BEFORE grading scale (after table & GPA)
 // YEAR OF STUDY shows Academic Year Range (e.g., 2026/2027)
 // ============================================================
 
@@ -1071,11 +1072,6 @@ function renderBlock(index) {
                 </div>
             </div>
             
-            <!-- 🎯 PROGRESSION MESSAGE - AT TOP, BEFORE GRADING SCALE -->
-            <div style="text-align: center; padding: 4px 0 10px 0; font-size: 11px; color: ${messageColor}; font-weight: 500; border-bottom: 1px dashed #e5e7eb; margin-bottom: 12px;">
-                ${progressionMessage}
-            </div>
-            
             <!-- BLOCK HEADER -->
             <div style="margin-bottom: 10px; padding: 6px 14px; background: #e0e7ff; border-radius: 4px; border-left: 4px solid #0A3D62;">
                 <span style="font-weight: 700; font-size: 14px; color: #0A3D62;">📚 ${escapeHtml(blockName)}</span>
@@ -1121,6 +1117,11 @@ function renderBlock(index) {
                     <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL CREDITS</div>
                     <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalCredits}</div>
                 </div>
+            </div>
+            
+            <!-- 🎯 PROGRESSION MESSAGE - BEFORE GRADING SCALE -->
+            <div style="text-align: center; padding: 4px 0 10px 0; font-size: 11px; color: ${messageColor}; font-weight: 500; border-bottom: 1px dashed #e5e7eb; margin-bottom: 12px;">
+                ${progressionMessage}
             </div>
             
             <!-- GRADING SCALE -->
