@@ -1,5 +1,5 @@
 // ============================================================
-// NCHSM LECTURER ATTENDANCE MODULE
+// NCHSM LECTURER ATTENDANCE MODULE - WITH TVET SUPPORT
 // ============================================================
 // This module handles:
 // 1. Today's attendance display
@@ -10,7 +10,8 @@
 // 6. Attendance map view
 // 7. CSV export and print
 // 8. Search and filter functionality
-// 9. Single and Bulk Attendance Verification (NEW)
+// 9. Single and Bulk Attendance Verification
+// Supports both Nursing (KRCHN) and TVET programs
 // ============================================================
 
 const LecturerAttendance = {
@@ -25,6 +26,8 @@ const LecturerAttendance = {
     mapInstance: null,
     currentLocation: null,
     isProcessing: false,
+    isTVET: false,
+    currentProgram: 'KRCHN',
     stats: {
         total: 0,
         present: 0,
@@ -34,28 +37,123 @@ const LecturerAttendance = {
     },
 
     // ============================================================
+    // PROGRAM TYPE DETECTION
+    // ============================================================
+    getProgramType() {
+        return window.CURRENT_PROGRAM_TYPE || 'KRCHN';
+    },
+
+    isTVETProgram() {
+        return this.getProgramType() === 'TVET';
+    },
+
+    getProgramTypeLabel() {
+        return this.isTVETProgram() ? '🔧 TVET' : '🎓 Nursing';
+    },
+
+    getProgramEmoji() {
+        return this.isTVETProgram() ? '🔧' : '🎓';
+    },
+
+    getPassingThreshold() {
+        return this.isTVETProgram() ? 50 : 60;
+    },
+
+    getBlockDisplay(blockValue) {
+        if (!blockValue) return 'N/A';
+        const programType = this.getProgramType();
+        if (programType === 'TVET') {
+            const match = blockValue.match(/^Y(\d)T(\d)$/);
+            if (match) {
+                const year = parseInt(match[1]);
+                const term = parseInt(match[2]);
+                const termNames = ['', 'First', 'Second', 'Third'];
+                return `Year ${year} ${termNames[term] || term} Term`;
+            }
+            if (blockValue.includes('Term')) return blockValue;
+            if (blockValue === 'Introductory') return '🌟 Introductory Term';
+            return blockValue;
+        } else {
+            if (blockValue.startsWith('Block ')) return blockValue;
+            if (blockValue === 'Introductory') return '🌟 Introductory Block';
+            if (blockValue === 'Final') return '🏆 Final Block';
+            return `Block ${blockValue}`;
+        }
+    },
+
+    // ============================================================
     // INITIALIZATION
     // ============================================================
     async init() {
         console.log('📋 Initializing Lecturer Attendance Module...');
-        
+        this.currentProgram = this.getProgramType();
+        this.isTVET = this.isTVETProgram();
+        console.log(`📚 Program Type: ${this.getProgramTypeLabel()}`);
+
         try {
             await this.resolveLecturerId();
             await this.loadAssignedUnits();
             await this.loadAllAttendance();
             this.setupEventListeners();
             this.populateFilters();
-            
+            this.updateProgramBadge();
+
             console.log('✅ Lecturer Attendance Module initialized successfully');
-            
+            console.log(`📊 ${this.getProgramTypeLabel()} attendance tracking enabled`);
+
             setInterval(() => {
                 console.log('🔄 Auto-refreshing attendance...');
                 this.loadAllAttendance();
             }, 60000);
-            
+
         } catch (error) {
             console.error('❌ Failed to initialize attendance module:', error);
             this.showError('Failed to initialize: ' + error.message);
+        }
+    },
+
+    // ============================================================
+    // UPDATE PROGRAM BADGE
+    // ============================================================
+    updateProgramBadge() {
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
+        const threshold = this.getPassingThreshold();
+
+        // Update program display in attendance section
+        const programDisplay = document.getElementById('programDisplayName');
+        if (programDisplay) {
+            programDisplay.textContent = `${this.currentProgram} (${typeLabel})`;
+        }
+
+        const programTypeBadge = document.getElementById('programTypeBadge');
+        if (programTypeBadge) {
+            programTypeBadge.textContent = typeLabel;
+            programTypeBadge.style.background = this.isTVET ? 'rgba(139,92,246,0.3)' : 'rgba(76,29,149,0.3)';
+            programTypeBadge.style.color = this.isTVET ? '#7c3aed' : '#1e40af';
+        }
+
+        // Update block display
+        const blockDisplay = document.getElementById('currentBlockDisplay');
+        if (blockDisplay) {
+            const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
+            if (blocks.length > 0) {
+                const displayName = this.getBlockDisplay(blocks[0]);
+                blockDisplay.textContent = displayName;
+            }
+        }
+
+        // Update attendance rate badge with threshold
+        const rateBadge = document.getElementById('attendanceRateBadge');
+        if (rateBadge) {
+            const rate = this.stats.rate || 0;
+            rateBadge.textContent = `${rate}% (Pass: ≥${threshold}%)`;
+        }
+
+        // Update subtitle
+        const subtitle = document.querySelector('#attendance-content .subtitle');
+        if (subtitle) {
+            subtitle.textContent = `${emoji} ${typeLabel} - Track and manage student attendance`;
         }
     },
 
@@ -125,7 +223,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // LOAD ASSIGNED UNITS
+    // LOAD ASSIGNED UNITS - WITH TVET SUPPORT
     // ============================================================
     async loadAssignedUnits() {
         try {
@@ -142,11 +240,13 @@ const LecturerAttendance = {
             }
 
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
+            const program = this.currentProgram || profile.program || 'KRCHN';
 
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
                 .select('subject_name, subject_code, block, program, academic_year')
-                .eq('lecturer_id', String(lecturerId));
+                .eq('lecturer_id', String(lecturerId))
+                .eq('program', program);
 
             if (error) {
                 console.error('❌ Error loading assigned units:', error);
@@ -154,9 +254,10 @@ const LecturerAttendance = {
             }
 
             this.assignedUnits = assignments || [];
-            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units`);
+            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units (${this.getProgramTypeLabel()})`);
 
             this.populateUnitSelectors();
+            this.updateProgramBadge();
 
         } catch (error) {
             console.error('❌ Failed to load assigned units:', error);
@@ -164,21 +265,29 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // POPULATE UNIT SELECTORS
+    // POPULATE UNIT SELECTORS - WITH TVET SUPPORT
     // ============================================================
     populateUnitSelectors() {
         const unitSelect = document.getElementById('attUnit');
         if (!unitSelect) return;
 
         const units = this.assignedUnits;
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
 
         if (units && units.length > 0) {
-            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
-                units.map(u => 
-                    `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
-                ).join('');
+            unitSelect.innerHTML = `<option value="">-- ${emoji} Select Unit --</option>` +
+                units.map(u => {
+                    const blockDisplay = this.getBlockDisplay(u.block);
+                    return `<option value="${u.subject_name}">
+                        ${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}
+                        ${u.block ? ' (' + blockDisplay + ')' : ''}
+                        ${this.isTVET ? ' 🔧' : ''}
+                    </option>`;
+                }).join('');
+            console.log(`📚 Populated ${units.length} units in dropdown (${typeLabel})`);
         } else {
-            unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
+            unitSelect.innerHTML = `<option value="">-- No ${typeLabel} units assigned --</option>`;
         }
     },
 
@@ -187,7 +296,7 @@ const LecturerAttendance = {
     // ============================================================
     async loadAllAttendance() {
         console.log('📊 Loading all attendance data...');
-        
+
         try {
             await Promise.all([
                 this.loadTodayAttendance(),
@@ -195,7 +304,7 @@ const LecturerAttendance = {
                 this.loadAttendanceStats(),
                 this.loadProgramInfo()
             ]);
-            
+
             console.log('✅ All attendance data loaded');
         } catch (error) {
             console.error('❌ Failed to load attendance data:', error);
@@ -240,6 +349,7 @@ const LecturerAttendance = {
 
             this.renderTodayAttendance();
             this.updateStats(this.todayLogs);
+            this.updateProgramBadge();
 
         } catch (error) {
             console.error('❌ Failed to load today attendance:', error);
@@ -248,13 +358,15 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // RENDER TODAY'S ATTENDANCE - WITH VERIFY BUTTON
+    // RENDER TODAY'S ATTENDANCE - WITH TVET SUPPORT
     // ============================================================
     renderTodayAttendance() {
         const tbody = document.getElementById('attendanceTable');
         if (!tbody) return;
 
         const logs = this.todayLogs;
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
 
         const countEl = document.getElementById('todayLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
@@ -264,7 +376,7 @@ const LecturerAttendance = {
                 <tr>
                     <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
                         <i class="fas fa-calendar-day" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                        <p style="margin:0;">No student attendance records today.</p>
+                        <p style="margin:0;">No student attendance records today. (${typeLabel})</p>
                     </td>
                 </tr>
             `;
@@ -282,133 +394,133 @@ const LecturerAttendance = {
 
         tbody.innerHTML = logs.map((log, index) => {
             const hasLocation = log.latitude && log.longitude;
-            
-            // ✅ Check if verified properly
-            const isVerified = log.is_verified === true || 
-                              log.is_verified === 'true' || 
+
+            const isVerified = log.is_verified === true ||
+                              log.is_verified === 'true' ||
                               log.is_verified === 1 ||
                               log.attendance_status === 'Verified' ||
                               (log.attendance_status === 'Present' && log.verified_at !== null);
-            
-            // Determine display status
+
             let displayStatus = log.attendance_status || 'Pending';
             if (isVerified && displayStatus !== 'Absent') {
                 displayStatus = 'Verified ✓';
             }
-            
+
             const statusColor = statusColors[displayStatus] || '#6b7280';
-            
+
             const studentName = log.student_name || 'Unknown Student';
-            
+
             const regNumber = log.registration_number || log.student_id || 'N/A';
             const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
-            
-            const blockDisplay = log.block || 'N/A';
+
+            const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
             const programDisplay = log.program || 'N/A';
-            
+
             const checkInDate = log.check_in_time ? new Date(log.check_in_time) : null;
-            const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', { 
-                hour: '2-digit', 
-                minute: '2-digit' 
+            const timeStr = checkInDate ? checkInDate.toLocaleTimeString('en-GB', {
+                hour: '2-digit',
+                minute: '2-digit'
             }) : 'N/A';
 
             const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
+            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' :
                 (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
 
-            // ✅ Show verify button only if NOT verified and NOT lecturer check-in
-            const canVerify = !isLecturerCheckin && 
-                              log.session_type !== 'Lecturer Check-in' && 
+            const canVerify = !isLecturerCheckin &&
+                              log.session_type !== 'Lecturer Check-in' &&
                               log.role !== 'lecturer' &&
                               !isVerified;
 
-            // Show who verified if available
             const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
 
+            const isTVET = this.isTVET;
+
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
-                    onmouseover="this.style.background='${isVerified || isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}"
+                    onmouseover="this.style.background='${isVerified || isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'"
                     onmouseout="this.style.background='${isVerified || isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
-                    
+
                     <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
                         ${this.escapeHtml(studentName)}
                         ${isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">👨‍🏫</span>' : ''}
                         ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
+                        ${isTVET && !isLecturerCheckin ? ' <span style="font-size:9px;color:#8b5cf6;padding:1px 6px;border-radius:8px;">TVET</span>' : ''}
                     </td>
-                    
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
+
+                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;"
                         title="${this.escapeHtml(regNumber)}">
                         ${this.escapeHtml(displayReg)}
                     </td>
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
-                        <span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'}; 
-                                     color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'}; 
+                        <span style="background: ${programDisplay === 'KRCHN' ? '#dbeafe' : '#fef3c7'};
+                                     color: ${programDisplay === 'KRCHN' ? '#1e40af' : '#92400e'};
                                      padding: 2px 10px; border-radius: 12px; font-size: 11px;">
                             ${this.escapeHtml(programDisplay)}
                         </span>
                     </td>
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
                         ${this.escapeHtml(blockDisplay)}
+                        ${isTVET ? `<div style="font-size: 8px; color: #8b5cf6;">TVET Term</div>` : ''}
                     </td>
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
                         ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
                     </td>
-                    
+
                     <td style="padding: 10px 14px;">
-                        <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; 
-                                     color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; 
+                        <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'};
+                                     color: ${isLecturerCheckin ? '#065f46' : '#1e40af'};
                                      padding: 2px 10px; border-radius: 12px; font-size: 11px;">
                             ${this.escapeHtml(log.session_type || 'Class')}
                         </span>
                     </td>
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
                         ${timeStr}
                     </td>
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         ${this.escapeHtml(locationDisplay)}
                     </td>
-                    
+
                     <td style="padding: 10px 14px; text-align: center;">
                         <div>
-                            <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; 
-                                         color: ${isVerified ? '#10b981' : statusColor}; 
-                                         padding: 3px 12px; 
-                                         border-radius: 12px; 
-                                         font-size: 11px; 
+                            <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'};
+                                         color: ${isVerified ? '#10b981' : statusColor};
+                                         padding: 3px 12px;
+                                         border-radius: 12px;
+                                         font-size: 11px;
                                          font-weight: 600;
                                          display: inline-block;">
                                 ${isVerified ? '✅ Verified' : displayStatus}
                             </span>
-                            ${isVerified && verifiedByDisplay ? 
+                            ${isVerified && verifiedByDisplay ?
                                 `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
                         </div>
                     </td>
-                    
+
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ? 
-                                `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
+                            ${hasLocation && !isLecturerCheckin ?
+                                `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')"
                                         style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseover="this.style.transform='scale(1.05)'"
                                         onmouseout="this.style.transform='scale(1)'">
                                     <i class="fas fa-map-marker-alt" style="font-size:10px;"></i>
-                                </button>` : 
+                                </button>` :
                                 `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
                             }
-                            
-                            ${canVerify ? 
-                                `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" 
+
+                            ${canVerify ?
+                                `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')"
                                         data-verify-id="${log.id}"
                                         style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
-                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseover="this.style.transform='scale(1.05)'"
                                         onmouseout="this.style.transform='scale(1)'">
                                     <i class="fas fa-check" style="font-size:10px;"></i> Verify
-                                </button>` : 
+                                </button>` :
                                 `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px; font-weight: ${isVerified ? '600' : 'normal'};">
                                     ${isVerified ? '✅ Verified' : '—'}
                                 </span>`
@@ -421,33 +533,35 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // UPDATE STATS
+    // UPDATE STATS - WITH TVET THRESHOLD
     // ============================================================
     updateStats(logs) {
         if (!logs) logs = this.todayLogs || [];
-        
+
         const total = logs.length;
         const present = logs.filter(l => {
             const status = (l.attendance_status || '').toLowerCase();
             return status === 'present' || l.is_verified === true;
         }).length;
-        
+
         const absent = logs.filter(l => {
             const status = (l.attendance_status || '').toLowerCase();
             return status === 'absent';
         }).length;
-        
+
         const pending = logs.filter(l => {
             const status = (l.attendance_status || '').toLowerCase();
             return status === 'pending' || status === '' || l.attendance_status === null;
         }).length;
-        
+
         const rate = total > 0 ? Math.round((present / total) * 100) : 0;
-        
+
         this.stats = { total, present, absent, pending, rate };
-        
-        console.log(`📊 Stats: total=${total}, present=${present}, absent=${absent}, pending=${pending}, rate=${rate}%`);
-        
+        const threshold = this.getPassingThreshold();
+        const typeLabel = this.getProgramTypeLabel();
+
+        console.log(`📊 Stats: total=${total}, present=${present}, absent=${absent}, pending=${pending}, rate=${rate}% (${typeLabel})`);
+
         const elementMap = {
             'todayTotal': total,
             'todayPresent': present,
@@ -466,7 +580,7 @@ const LecturerAttendance = {
             'todayPendingDisplay': pending,
             'attendanceRateDisplay': rate + '%'
         };
-        
+
         let updatedCount = 0;
         for (const [id, value] of Object.entries(elementMap)) {
             const el = document.getElementById(id);
@@ -475,23 +589,23 @@ const LecturerAttendance = {
                 updatedCount++;
             }
         }
-        
+
         const progressBar = document.getElementById('attendanceProgressBar');
         if (progressBar) {
             progressBar.style.width = rate + '%';
             progressBar.setAttribute('aria-valuenow', rate);
-            progressBar.style.background = rate >= 80 ? '#10b981' : (rate >= 60 ? '#f59e0b' : '#ef4444');
+            progressBar.style.background = rate >= threshold ? '#10b981' : (rate >= threshold * 0.7 ? '#f59e0b' : '#ef4444');
         }
-        
+
         const rateBadge = document.getElementById('attendanceRateBadge');
         if (rateBadge) {
-            rateBadge.textContent = rate + '%';
-            rateBadge.style.background = rate >= 80 ? '#d1fae5' : (rate >= 60 ? '#fef3c7' : '#fee2e2');
-            rateBadge.style.color = rate >= 80 ? '#065f46' : (rate >= 60 ? '#92400e' : '#991b1b');
+            rateBadge.textContent = `${rate}% (Pass: ≥${threshold}%)`;
+            rateBadge.style.background = rate >= threshold ? '#d1fae5' : (rate >= threshold * 0.7 ? '#fef3c7' : '#fee2e2');
+            rateBadge.style.color = rate >= threshold ? '#065f46' : (rate >= threshold * 0.7 ? '#92400e' : '#991b1b');
         }
-        
+
         console.log(`✅ Stats updated (${updatedCount} elements)`);
-        
+
         return this.stats;
     },
 
@@ -513,7 +627,7 @@ const LecturerAttendance = {
             }
 
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
+            const program = this.currentProgram || profile?.program || profile?.department || 'KRCHN';
 
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
@@ -532,7 +646,7 @@ const LecturerAttendance = {
             }
 
             this.pastLogs = logs || [];
-            console.log(`📊 Loaded ${this.pastLogs.length} past attendance records`);
+            console.log(`📊 Loaded ${this.pastLogs.length} past attendance records (${this.getProgramTypeLabel()})`);
 
             this.renderPastAttendance();
 
@@ -543,13 +657,14 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // RENDER PAST ATTENDANCE - WITH VERIFY BUTTON
+    // RENDER PAST ATTENDANCE - WITH TVET SUPPORT
     // ============================================================
     renderPastAttendance() {
         const tbody = document.getElementById('pastAttendanceTable');
         if (!tbody) return;
 
         const logs = this.pastLogs;
+        const typeLabel = this.getProgramTypeLabel();
 
         const countEl = document.getElementById('pastLogCount');
         if (countEl) countEl.textContent = `${logs.length} records`;
@@ -559,7 +674,7 @@ const LecturerAttendance = {
                 <tr>
                     <td colspan="10" style="padding:40px;text-align:center;color:#94a3b8;">
                         <i class="fas fa-history" style="font-size:32px;display:block;margin-bottom:10px;color:#e2e8f0;"></i>
-                        <p style="margin:0;">No past attendance records found.</p>
+                        <p style="margin:0;">No past attendance records found. (${typeLabel})</p>
                     </td>
                 </tr>
             `;
@@ -577,117 +692,120 @@ const LecturerAttendance = {
 
         tbody.innerHTML = logs.map((log) => {
             const hasLocation = log.latitude && log.longitude;
-            
-            const isVerified = log.is_verified === true || 
-                              log.is_verified === 'true' || 
+
+            const isVerified = log.is_verified === true ||
+                              log.is_verified === 'true' ||
                               log.is_verified === 1 ||
                               log.attendance_status === 'Verified' ||
                               (log.attendance_status === 'Present' && log.verified_at !== null);
-            
+
             let displayStatus = log.attendance_status || 'Pending';
             if (isVerified && displayStatus !== 'Absent') {
                 displayStatus = 'Verified ✓';
             }
-            
+
             const statusColor = statusColors[displayStatus] || '#6b7280';
             const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
-            
+
             const studentName = log.student_name || 'Unknown Student';
-            
+
             const regNumber = log.registration_number || log.student_id || 'N/A';
             const displayReg = regNumber.length > 15 ? regNumber.substring(0, 15) + '...' : regNumber;
-            
-            const blockDisplay = log.block || 'N/A';
+
+            const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
             const isLecturerCheckin = log.session_type === 'Lecturer Check-in';
-            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' : 
+            const locationDisplay = isLecturerCheckin ? 'Lecturer Check-in' :
                 (log.location_address || log.location_friendly_name || log.location_name || 'N/A');
 
-            const canVerify = !isLecturerCheckin && 
-                              log.session_type !== 'Lecturer Check-in' && 
+            const canVerify = !isLecturerCheckin &&
+                              log.session_type !== 'Lecturer Check-in' &&
                               log.role !== 'lecturer' &&
                               !isVerified;
 
             const verifiedByDisplay = log.verified_by_name ? `by ${log.verified_by_name}` : '';
+            const isTVET = this.isTVET;
 
             return `
-                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}" 
-                    onmouseover="this.style.background='${isVerified || isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'" 
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${isVerified ? 'background: #f0fdf4;' : ''} ${isLecturerCheckin ? 'background: #f0fdf4;' : ''}"
+                    onmouseover="this.style.background='${isVerified || isLecturerCheckin ? '#dcfce7' : '#f8fafc'}'"
                     onmouseout="this.style.background='${isVerified || isLecturerCheckin ? '#f0fdf4' : 'transparent'}'">
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 12px;">
                         ${date.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                     </td>
-                    
+
                     <td style="padding: 10px 14px; font-weight: 500; color: #1e293b; font-size: 13px;">
                         ${this.escapeHtml(studentName)}
                         ${isVerified && !isLecturerCheckin ? ' <span style="font-size:10px;background:#10b981;color:white;padding:1px 8px;border-radius:10px;">✓</span>' : ''}
+                        ${isTVET && !isLecturerCheckin ? ' <span style="font-size:9px;color:#8b5cf6;padding:1px 6px;border-radius:8px;">TVET</span>' : ''}
                     </td>
-                    
-                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;" 
+
+                    <td style="padding: 10px 14px; font-weight: 600; color: #4C1D95; font-size: 12px;"
                         title="${this.escapeHtml(regNumber)}">
                         ${this.escapeHtml(displayReg)}
                     </td>
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
                         ${this.escapeHtml(blockDisplay)}
+                        ${isTVET ? `<div style="font-size: 8px; color: #8b5cf6;">TVET Term</div>` : ''}
                     </td>
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
                         ${this.escapeHtml(log.unit_name || log.target_name || 'General')}
                     </td>
-                    
+
                     <td style="padding: 10px 14px;">
-                        <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'}; 
-                                     color: ${isLecturerCheckin ? '#065f46' : '#1e40af'}; 
+                        <span style="background: ${isLecturerCheckin ? '#d1fae5' : '#dbeafe'};
+                                     color: ${isLecturerCheckin ? '#065f46' : '#1e40af'};
                                      padding: 2px 10px; border-radius: 12px; font-size: 11px;">
                             ${this.escapeHtml(log.session_type || 'Class')}
                         </span>
                     </td>
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 13px;">
                         ${date.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
                     </td>
-                    
+
                     <td style="padding: 10px 14px; color: #475569; font-size: 12px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
                         ${this.escapeHtml(locationDisplay)}
                     </td>
-                    
+
                     <td style="padding: 10px 14px; text-align: center;">
                         <div>
-                            <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'}; 
-                                         color: ${isVerified ? '#10b981' : statusColor}; 
-                                         padding: 3px 12px; 
-                                         border-radius: 12px; 
-                                         font-size: 11px; 
+                            <span style="background: ${isVerified ? '#10b98120' : statusColor + '20'};
+                                         color: ${isVerified ? '#10b981' : statusColor};
+                                         padding: 3px 12px;
+                                         border-radius: 12px;
+                                         font-size: 11px;
                                          font-weight: 600;
                                          display: inline-block;">
                                 ${isVerified ? '✅ Verified' : displayStatus}
                             </span>
-                            ${isVerified && verifiedByDisplay ? 
+                            ${isVerified && verifiedByDisplay ?
                                 `<span style="font-size: 9px; color: #64748b; display: block; margin-top: 2px;">${verifiedByDisplay}</span>` : ''}
                         </div>
                     </td>
-                    
+
                     <td style="padding: 10px 14px; text-align: center;">
                         <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                            ${hasLocation && !isLecturerCheckin ? 
-                                `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')" 
+                            ${hasLocation && !isLecturerCheckin ?
+                                `<button onclick="LecturerAttendance.viewAttendanceMap(${log.latitude}, ${log.longitude}, '${this.escapeHtml(studentName)}')"
                                         style="background: #4C1D95; color: white; border: none; padding: 4px 8px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseover="this.style.transform='scale(1.05)'"
                                         onmouseout="this.style.transform='scale(1)'">
                                     <i class="fas fa-map-marker-alt" style="font-size:10px;"></i>
-                                </button>` : 
+                                </button>` :
                                 `<span style="color: #94a3b8; font-size: 11px;">${isLecturerCheckin ? '✓' : 'No location'}</span>`
                             }
-                            
-                            ${canVerify ? 
-                                `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')" 
+
+                            ${canVerify ?
+                                `<button onclick="LecturerAttendance.verifyAttendance('${log.id}')"
                                         data-verify-id="${log.id}"
                                         style="background: #8b5cf6; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px; transition: all 0.2s;"
-                                        onmouseover="this.style.transform='scale(1.05)'" 
+                                        onmouseover="this.style.transform='scale(1.05)'"
                                         onmouseout="this.style.transform='scale(1)'">
                                     <i class="fas fa-check" style="font-size:10px;"></i> Verify
-                                </button>` : 
+                                </button>` :
                                 `<span style="color: ${isVerified ? '#10b981' : '#94a3b8'}; font-size: 11px; font-weight: ${isVerified ? '600' : 'normal'};">
                                     ${isVerified ? '✅ Verified' : '—'}
                                 </span>`
@@ -733,6 +851,9 @@ const LecturerAttendance = {
             const pending = total - present - absent;
             const rate = total > 0 ? Math.round((present / total) * 100) : 0;
 
+            const typeLabel = this.getProgramTypeLabel();
+            const threshold = this.getPassingThreshold();
+
             const cardMap = {
                 'totalStudentsCount': total,
                 'presentTodayCount': present,
@@ -746,7 +867,7 @@ const LecturerAttendance = {
                 if (el) el.textContent = value;
             }
 
-            console.log(`📊 Dashboard stats: total=${total}, present=${present}, absent=${absent}, pending=${pending}, rate=${rate}%`);
+            console.log(`📊 Dashboard stats: total=${total}, present=${present}, absent=${absent}, pending=${pending}, rate=${rate}% (${typeLabel}, Pass: ≥${threshold}%)`);
 
         } catch (error) {
             console.error('❌ Failed to load attendance stats:', error);
@@ -754,12 +875,12 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // LOAD PROGRAM INFO
+    // LOAD PROGRAM INFO - WITH TVET SUPPORT
     // ============================================================
     async loadProgramInfo() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department;
+            const program = this.currentProgram || profile?.program || profile?.department;
             if (!program) return;
 
             const supabase = window.lecturerDB?.supabase;
@@ -772,21 +893,29 @@ const LecturerAttendance = {
                 .eq('role', 'student');
 
             const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-            const currentBlock = blocks.length > 0 ? blocks[0] : 'N/A';
+            const currentBlock = blocks.length > 0 ? this.getBlockDisplay(blocks[0]) : 'N/A';
 
             const programDisplay = window.LecturerUtils?.getProgramDisplayName?.(program) || program;
-            const isTVET = program !== 'KRCHN';
+            const isTVET = this.isTVET;
+            const typeLabel = this.getProgramTypeLabel();
+            const emoji = this.getProgramEmoji();
 
             const displayMap = {
-                'programDisplayName': programDisplay,
-                'programTypeBadge': isTVET ? 'TVET' : 'Nursing',
+                'programDisplayName': `${emoji} ${programDisplay}`,
+                'programTypeBadge': typeLabel,
                 'currentBlockDisplay': currentBlock,
                 'studentCountDisplay': (studentCount || 0) + ' Students'
             };
 
             for (const [id, value] of Object.entries(displayMap)) {
                 const el = document.getElementById(id);
-                if (el) el.textContent = value;
+                if (el) {
+                    el.textContent = value;
+                    if (id === 'programTypeBadge') {
+                        el.style.background = isTVET ? 'rgba(139,92,246,0.3)' : 'rgba(76,29,149,0.3)';
+                        el.style.color = isTVET ? '#7c3aed' : '#1e40af';
+                    }
+                }
             }
 
         } catch (error) {
@@ -860,6 +989,7 @@ const LecturerAttendance = {
         }
 
         try {
+            const accentColor = this.isTVET ? '#8b5cf6' : '#4C1D95';
             this.mapInstance = L.map(container).setView([lat, lng], 16);
 
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -874,8 +1004,8 @@ const LecturerAttendance = {
 
             L.circle([lat, lng], {
                 radius: 50,
-                color: '#4C1D95',
-                fillColor: '#4C1D95',
+                color: accentColor,
+                fillColor: accentColor,
                 fillOpacity: 0.1,
                 weight: 2
             }).addTo(this.mapInstance);
@@ -937,7 +1067,7 @@ const LecturerAttendance = {
                 try {
                     const supabase = window.lecturerDB?.supabase;
                     const profile = window.lecturerDB?.getCurrentUserProfile();
-                    
+
                     const userId = profile?.user_id || this.lecturerUuid || this.lecturerAssignmentId;
                     const staffNumber = profile?.staff_id || profile?.staff_number || 'LECTURER';
                     const fullName = profile?.full_name || 'Lecturer';
@@ -952,7 +1082,7 @@ const LecturerAttendance = {
                     }
 
                     const today = new Date().toISOString().split('T')[0];
-                    
+
                     const { data: existing, error: checkError } = await supabase
                         .from('geo_attendance_logs')
                         .select('id')
@@ -978,6 +1108,9 @@ const LecturerAttendance = {
                         return;
                     }
 
+                    const program = this.currentProgram || profile?.program || profile?.department || 'KRCHN';
+                    const programType = this.getProgramTypeLabel();
+
                     const { error: insertError } = await supabase
                         .from('geo_attendance_logs')
                         .insert({
@@ -994,10 +1127,12 @@ const LecturerAttendance = {
                             is_verified: true,
                             target_name: 'Lecturer Check-in',
                             location_address: 'Lecturer Check-in',
-                            program: profile?.program || profile?.department || 'KRCHN',
+                            program: program,
                             block: profile?.block || 'Staff',
                             role: 'lecturer',
                             recorded_by_name: fullName,
+                            program_type: programType,
+                            is_tvet: this.isTVET,
                             created_at: new Date().toISOString()
                         });
 
@@ -1006,7 +1141,7 @@ const LecturerAttendance = {
                         throw new Error(insertError.message);
                     }
 
-                    this.showNotification('✅ Lecturer check-in logged successfully!', 'success');
+                    this.showNotification(`✅ ${this.getProgramTypeLabel()} lecturer check-in logged successfully!`, 'success');
                     if (statusEl) {
                         statusEl.textContent = '✅ Checked in successfully';
                         statusEl.style.color = '#10b981';
@@ -1053,7 +1188,7 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // MARK STUDENT ATTENDANCE (Manual)
+    // MARK STUDENT ATTENDANCE (Manual) - WITH TVET SUPPORT
     // ============================================================
     async markStudentAttendance(e) {
         if (e) e.preventDefault();
@@ -1131,6 +1266,8 @@ const LecturerAttendance = {
             }
 
             const checkInTime = time ? `${date}T${time}:00.000Z` : `${date}T12:00:00.000Z`;
+            const programType = this.getProgramTypeLabel();
+            const blockDisplay = student.block ? this.getBlockDisplay(student.block) : 'N/A';
 
             const { error: insertError } = await supabase
                 .from('geo_attendance_logs')
@@ -1146,12 +1283,15 @@ const LecturerAttendance = {
                     is_manual_entry: true,
                     location_friendly_name: location || 'Manual Entry',
                     location_address: `MANUAL: ${location || 'N/A'} (By ${profile.full_name || 'Lecturer'})`,
-                    program: student.program || profile.program || 'KRCHN',
+                    program: student.program || profile.program || this.currentProgram || 'KRCHN',
                     block: student.block || profile.block,
+                    block_display: blockDisplay,
                     intake_year: student.intake_year || profile.intake_year,
                     role: 'student',
                     recorded_by_id: profile.user_id,
                     recorded_by_name: profile.full_name || 'Lecturer',
+                    program_type: programType,
+                    is_tvet: this.isTVET,
                     created_at: new Date().toISOString()
                 });
 
@@ -1160,7 +1300,7 @@ const LecturerAttendance = {
                 throw new Error(insertError.message);
             }
 
-            this.showNotification(`✅ ${student.full_name || 'Student'} marked present!`, 'success');
+            this.showNotification(`✅ ${student.full_name || 'Student'} marked present! (${this.getProgramTypeLabel()})`, 'success');
 
             form.reset();
             const today = new Date();
@@ -1180,34 +1320,87 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // POPULATE FILTERS AND DROPDOWNS
+    // POPULATE FILTERS AND DROPDOWNS - WITH TVET SUPPORT
     // ============================================================
     populateFilters() {
         const today = new Date().toISOString().split('T')[0];
-        
+
         const filterDate = document.getElementById('filterDate');
         if (filterDate) filterDate.value = today;
-        
+
         const attDate = document.getElementById('attDate');
         if (attDate) attDate.value = today;
 
         this.populateStudentSelect();
+        this.populateBlockFilter();
+        this.updateFilterLabels();
     },
 
     // ============================================================
-    // POPULATE STUDENT SELECT
+    // POPULATE BLOCK FILTER - WITH TVET SUPPORT
+    // ============================================================
+    populateBlockFilter() {
+        const blockFilter = document.getElementById('filterBlock');
+        if (!blockFilter) return;
+
+        const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
+        const typeLabel = this.getProgramTypeLabel();
+
+        blockFilter.innerHTML = '<option value="All">All Blocks/Terms</option>';
+
+        if (blocks.length > 0) {
+            blocks.forEach(block => {
+                const displayName = this.getBlockDisplay(block);
+                const option = document.createElement('option');
+                option.value = block;
+                option.textContent = displayName;
+                blockFilter.appendChild(option);
+            });
+        }
+
+        // Update label
+        const label = document.getElementById('blockFilterLabel');
+        if (label) {
+            const blockType = this.isTVET ? 'Term' : 'Block';
+            label.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${blockType}`;
+        }
+    },
+
+    // ============================================================
+    // UPDATE FILTER LABELS - WITH TVET SUPPORT
+    // ============================================================
+    updateFilterLabels() {
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
+
+        // Update attendance filter count
+        const filterCount = document.getElementById('attendanceFilterCount');
+        if (filterCount) {
+            filterCount.textContent = `Showing all ${typeLabel} records`;
+        }
+
+        // Update date display
+        const dateDisplay = document.getElementById('attendanceDateDisplay');
+        if (dateDisplay) {
+            const today = new Date();
+            dateDisplay.textContent = `${today.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} (${typeLabel})`;
+        }
+    },
+
+    // ============================================================
+    // POPULATE STUDENT SELECT - WITH TVET SUPPORT
     // ============================================================
     async populateStudentSelect() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department;
+            const program = this.currentProgram || profile?.program || profile?.department;
             const supabase = window.lecturerDB?.supabase;
 
             if (!supabase || !program) return;
 
             const { data: students, error } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id')
+                .select('user_id, full_name, student_id, block')
                 .eq('program', program)
                 .eq('role', 'student')
                 .order('full_name', { ascending: true });
@@ -1219,11 +1412,17 @@ const LecturerAttendance = {
 
             const select = document.getElementById('attStudentId');
             if (select && students) {
-                select.innerHTML = '<option value="">-- Select Student --</option>' +
-                    students.map(s => 
-                        `<option value="${s.user_id}">${this.escapeHtml(s.full_name)} (${this.escapeHtml(s.student_id || 'N/A')})</option>`
-                    ).join('');
-                console.log(`👥 Loaded ${students.length} students`);
+                const typeLabel = this.getProgramTypeLabel();
+                select.innerHTML = `<option value="">-- Select ${typeLabel} Student --</option>`;
+                students.forEach(s => {
+                    const blockDisplay = s.block ? this.getBlockDisplay(s.block) : '';
+                    const option = document.createElement('option');
+                    option.value = s.user_id;
+                    const regDisplay = s.student_id || 'N/A';
+                    option.textContent = `${this.escapeHtml(s.full_name)} (${this.escapeHtml(regDisplay)})${blockDisplay ? ' - ' + blockDisplay : ''}`;
+                    select.appendChild(option);
+                });
+                console.log(`👥 Loaded ${students.length} ${typeLabel} students`);
             }
 
         } catch (error) {
@@ -1235,7 +1434,7 @@ const LecturerAttendance = {
     // FILTER FUNCTIONS
     // ============================================================
     applyFilters() {
-        console.log('🔍 Applying filters...');
+        console.log(`🔍 Applying ${this.getProgramTypeLabel()} filters...`);
         this.renderTodayAttendance();
         this.renderPastAttendance();
     },
@@ -1258,39 +1457,42 @@ const LecturerAttendance = {
         if (searchEl) searchEl.value = '';
 
         this.applyFilters();
-        this.showNotification('Filters reset!', 'info');
+        this.showNotification(`${this.getProgramTypeLabel()} filters reset!`, 'info');
     },
 
     // ============================================================
-    // EXPORT CSV
+    // EXPORT CSV - WITH TVET SUPPORT
     // ============================================================
     exportCSV() {
         const logs = this.todayLogs.filter(log => log.session_type !== 'Lecturer Check-in');
-        
+
         if (!logs || logs.length === 0) {
             this.showNotification('No data to export.', 'warning');
             return;
         }
 
-        const headers = ['Student Name', 'Reg No', 'Program', 'Block', 'Unit', 'Session Type', 'Date/Time', 'Location', 'Status', 'Verified', 'Verified By'];
+        const typeLabel = this.getProgramTypeLabel();
+        const headers = ['Student Name', 'Reg No', 'Program', 'Block', 'Unit', 'Session Type', 'Date/Time', 'Location', 'Status', 'Verified', 'Verified By', 'Program Type'];
         const rows = [headers.join(',')];
 
         logs.forEach(log => {
             const status = log.attendance_status || (log.is_verified ? 'Present' : 'Pending');
             const date = log.check_in_time ? new Date(log.check_in_time) : new Date();
+            const blockDisplay = log.block ? this.getBlockDisplay(log.block) : 'N/A';
 
             const row = [
                 `"${(log.student_name || 'Unknown')}"`,
                 `"${(log.registration_number || log.student_id || 'N/A')}"`,
                 `"${(log.program || 'N/A')}"`,
-                `"${(log.block || 'N/A')}"`,
+                `"${(blockDisplay)}"`,
                 `"${(log.unit_name || log.target_name || 'General')}"`,
                 `"${(log.session_type || 'Class')}"`,
                 `"${date.toLocaleString('en-GB')}"`,
                 `"${(log.location_address || log.location_friendly_name || log.location_name || 'N/A')}"`,
                 `"${status}"`,
                 `"${log.is_verified ? '✅ Verified' : '⏳ Pending'}"`,
-                `"${log.verified_by_name || 'N/A'}"`
+                `"${log.verified_by_name || 'N/A'}"`,
+                `"${typeLabel}"`
             ];
             rows.push(row.join(','));
         });
@@ -1300,13 +1502,13 @@ const LecturerAttendance = {
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `attendance_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `attendance_${typeLabel}_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
 
-        this.showNotification('✅ Attendance exported!', 'success');
+        this.showNotification(`✅ ${typeLabel} attendance exported!`, 'success');
     },
 
     // ============================================================
@@ -1321,7 +1523,7 @@ const LecturerAttendance = {
     // ============================================================
     showNotification(message, type = 'info') {
         console.log(`[${type}] ${message}`);
-        
+
         try {
             if (window.LecturerUI && typeof window.LecturerUI.showNotification === 'function') {
                 window.LecturerUI.showNotification(message, type);
@@ -1414,9 +1616,10 @@ const LecturerAttendance = {
     // REFRESH
     // ============================================================
     async refresh() {
-        console.log('🔄 Refreshing attendance...');
+        console.log(`🔄 Refreshing ${this.getProgramTypeLabel()} attendance...`);
         await this.loadAllAttendance();
-        this.showNotification('Attendance refreshed!', 'success');
+        this.updateProgramBadge();
+        this.showNotification(`${this.getProgramTypeLabel()} attendance refreshed!`, 'success');
     },
 
     // ============================================================
@@ -1457,7 +1660,6 @@ const LecturerAttendance = {
 
         this.isProcessing = true;
 
-        // Find and update the verify button
         const verifyBtn = document.querySelector(`[data-verify-id="${recordId}"]`);
         if (verifyBtn) {
             verifyBtn.disabled = true;
@@ -1474,8 +1676,8 @@ const LecturerAttendance = {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerName = profile?.full_name || 'Lecturer';
             const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
+            const typeLabel = this.getProgramTypeLabel();
 
-            // First, check if record exists and get current status
             const { data: record, error: fetchError } = await supabase
                 .from('geo_attendance_logs')
                 .select('id, attendance_status, is_verified, student_name, check_in_time')
@@ -1498,7 +1700,6 @@ const LecturerAttendance = {
                 return;
             }
 
-            // ✅ Set ALL verification fields
             const now = new Date().toISOString();
             const updateData = {
                 is_verified: true,
@@ -1507,18 +1708,20 @@ const LecturerAttendance = {
                 verified_by_name: lecturerName,
                 verified_at: now,
                 verification_source: 'Manual Verification',
+                program_type: typeLabel,
+                is_tvet: this.isTVET,
                 verification_checks: JSON.stringify({
                     verified_by: lecturerName,
                     verified_at: now,
                     method: 'Lecturer Verification',
                     record_id: recordId,
-                    student: record.student_name
+                    student: record.student_name,
+                    program_type: typeLabel
                 })
             };
 
-            console.log('📝 Verifying record:', { recordId, updateData });
+            console.log(`📝 Verifying ${typeLabel} record:`, { recordId, updateData });
 
-            // Update the record
             const { error: updateError } = await supabase
                 .from('geo_attendance_logs')
                 .update(updateData)
@@ -1528,10 +1731,8 @@ const LecturerAttendance = {
                 throw new Error('Failed to verify: ' + updateError.message);
             }
 
-            // Show success
-            this.showNotification(`✅ ${record.student_name || 'Attendance'} verified successfully!`, 'success');
+            this.showNotification(`✅ ${record.student_name || 'Attendance'} verified successfully! (${typeLabel})`, 'success');
 
-            // Update button
             if (verifyBtn) {
                 verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verified ✓';
                 verifyBtn.style.background = '#10b981';
@@ -1539,30 +1740,26 @@ const LecturerAttendance = {
                 verifyBtn.style.cursor = 'default';
             }
 
-            // ✅ FORCE COMPLETE REFRESH
             console.log('🔄 Force refreshing all attendance data...');
-            
-            // Clear cache
+
             this.todayLogs = [];
             this.pastLogs = [];
-            
-            // Load fresh data
+
             await this.loadTodayAttendance();
             await this.loadPastAttendance();
             await this.loadAttendanceStats();
-            
-            // Force re-render
+
             this.renderTodayAttendance();
             this.renderPastAttendance();
             this.updateStats(this.todayLogs);
+            this.updateProgramBadge();
 
             console.log('✅ Verification complete - UI should now show Verified');
 
         } catch (error) {
             console.error('❌ Verification error:', error);
             this.showNotification('Failed to verify: ' + error.message, 'error');
-            
-            // Reset button
+
             if (verifyBtn) {
                 verifyBtn.disabled = false;
                 verifyBtn.innerHTML = '<i class="fas fa-check"></i> Verify';
@@ -1574,17 +1771,16 @@ const LecturerAttendance = {
     },
 
     // ============================================================
-    // ✅ BULK VERIFY ATTENDANCE
+    // ✅ BULK VERIFY ATTENDANCE - WITH TVET SUPPORT
     // ============================================================
     async bulkVerifyAttendance(date = null) {
         const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
-        
+
         if (!targetDate) {
             this.showNotification('Please select a date to bulk verify', 'warning');
             return;
         }
 
-        // Confirm with user
         if (!confirm(`Are you sure you want to verify ALL unverified attendance records for ${targetDate}?`)) {
             return;
         }
@@ -1610,8 +1806,8 @@ const LecturerAttendance = {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerName = profile?.full_name || 'Lecturer';
             const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
+            const typeLabel = this.getProgramTypeLabel();
 
-            // Get all unverified records for the date
             const { data: records, error: fetchError } = await supabase
                 .from('geo_attendance_logs')
                 .select('id, student_name')
@@ -1634,7 +1830,6 @@ const LecturerAttendance = {
                 return;
             }
 
-            // ✅ Set ALL fields for bulk verification
             const now = new Date().toISOString();
             const updateData = {
                 is_verified: true,
@@ -1643,15 +1838,17 @@ const LecturerAttendance = {
                 verified_by_name: lecturerName,
                 verified_at: now,
                 verification_source: 'Bulk Verification',
+                program_type: typeLabel,
+                is_tvet: this.isTVET,
                 verification_checks: JSON.stringify({
                     verified_by: lecturerName,
                     verified_at: now,
                     method: 'Bulk Lecturer Verification',
-                    record_count: records.length
+                    record_count: records.length,
+                    program_type: typeLabel
                 })
             };
 
-            // Update all records
             const recordIds = records.map(r => r.id);
             const { error: updateError } = await supabase
                 .from('geo_attendance_logs')
@@ -1662,9 +1859,8 @@ const LecturerAttendance = {
                 throw new Error('Failed to bulk verify: ' + updateError.message);
             }
 
-            this.showNotification(`✅ ${records.length} records verified successfully!`, 'success');
+            this.showNotification(`✅ ${records.length} ${typeLabel} records verified successfully!`, 'success');
 
-            // Force refresh
             this.todayLogs = [];
             this.pastLogs = [];
             await this.loadTodayAttendance();
@@ -1673,6 +1869,7 @@ const LecturerAttendance = {
             this.renderTodayAttendance();
             this.renderPastAttendance();
             this.updateStats(this.todayLogs);
+            this.updateProgramBadge();
 
         } catch (error) {
             console.error('❌ Bulk verification error:', error);
@@ -1743,3 +1940,4 @@ window.openInGoogleMaps = () => {
 
 console.log('✅ LecturerAttendance module loaded');
 console.log('📋 Features: Today/Past attendance, Stats, Check-in, Map, Export, Print, Verify, Bulk Verify');
+console.log(`📊 TVET Support: Enabled (${LecturerAttendance.getProgramTypeLabel()})`);
