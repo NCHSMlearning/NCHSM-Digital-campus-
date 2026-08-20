@@ -3,6 +3,7 @@
  * NCHSM Lecturer Utilities
  * Dedicated utility functions for lecturer dashboard only
  * Does NOT affect student dashboard
+ * Supports both Nursing (KRCHN) and TVET programs
  */
 
 const LecturerUtils = {
@@ -105,7 +106,6 @@ const LecturerUtils = {
         const now = new Date();
         const year = now.getFullYear();
         const month = now.getMonth();
-        // If month is before July (6), we're in the first half of the year
         if (month < 6) {
             return `${year - 1}/${year}`;
         }
@@ -115,22 +115,22 @@ const LecturerUtils = {
     getCurrentSemester() {
         const now = new Date();
         const month = now.getMonth();
-        if (month < 6) return 2; // Jan-Jun = Semester 2
-        return 1; // Jul-Dec = Semester 1
+        if (month < 6) return 2;
+        return 1;
     },
     
     getAcademicYearStart(yearStr) {
         if (!yearStr) return null;
         const parts = yearStr.split('/');
         if (parts.length !== 2) return null;
-        return new Date(parseInt(parts[0]), 6, 1); // July 1st
+        return new Date(parseInt(parts[0]), 6, 1);
     },
     
     getAcademicYearEnd(yearStr) {
         if (!yearStr) return null;
         const parts = yearStr.split('/');
         if (parts.length !== 2) return null;
-        return new Date(parseInt(parts[1]), 5, 30); // June 30th
+        return new Date(parseInt(parts[1]), 5, 30);
     },
     
     isAcademicYearActive(yearStr) {
@@ -143,17 +143,270 @@ const LecturerUtils = {
     },
     
     getWeeksInSemester(semester = 1) {
-        // Standard academic semester has 14-16 weeks
         return semester === 1 ? 16 : 14;
     },
     
     // ==========================================
-    // Program Helpers
+    // 🆕 PROGRAM TYPE DETECTION
+    // ==========================================
+    
+    getProgramType(programCode) {
+        if (!programCode) return 'KRCHN';
+        const upper = String(programCode).toUpperCase().trim();
+        
+        // Nursing programs
+        if (upper === 'KRCHN') return 'KRCHN';
+        
+        // TVET Programs
+        const tvetPrograms = [
+            // Diplomas
+            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+            // Certificates
+            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+            // Artisan
+            'ACH', 'AAG', 'ASW',
+            // Other TVET
+            'CCA', 'PTE'
+        ];
+        
+        if (tvetPrograms.includes(upper)) return 'TVET';
+        
+        return 'KRCHN';
+    },
+    
+    getProgramLevel(programCode) {
+        if (!programCode) return 'DIPLOMA';
+        const upper = String(programCode).toUpperCase().trim();
+        
+        if (upper.startsWith('D')) return 'DIPLOMA';
+        if (upper.startsWith('C')) return 'CERTIFICATE';
+        if (upper.startsWith('A')) return 'ARTISAN';
+        
+        return 'DIPLOMA';
+    },
+    
+    isTVETProgram(programCode) {
+        return this.getProgramType(programCode) === 'TVET';
+    },
+    
+    isNursingProgram(programCode) {
+        return this.getProgramType(programCode) === 'KRCHN';
+    },
+    
+    // ==========================================
+    // 🆕 ACADEMIC BLOCKS/TERMS
+    // ==========================================
+    
+    getAcademicBlocks(programCode) {
+        const programType = this.getProgramType(programCode);
+        const programLevel = this.getProgramLevel(programCode);
+        let options = [];
+        
+        if (programType === 'KRCHN') {
+            // KRCHN Nursing Blocks
+            options = [
+                { value: 'Introductory', text: '🌟 Introductory Block' },
+                { value: 'Block 1', text: '📘 Block 1' },
+                { value: 'Block 2', text: '📗 Block 2' },
+                { value: 'Block 3', text: '📒 Block 3' },
+                { value: 'Block 4', text: '📙 Block 4' },
+                { value: 'Block 5', text: '📕 Block 5' },
+                { value: 'Block 6', text: '📚 Block 6' },
+                { value: 'Final', text: '🏆 Final Block' }
+            ];
+        } else if (programType === 'TVET') {
+            if (programLevel === 'DIPLOMA') {
+                // Diploma TVET: Year 1 Term 1 to Year 2 Term 3
+                options = [
+                    { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                    { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                    { value: 'Y1T3', text: '📒 Year 1 Term 3' },
+                    { value: 'Y2T1', text: '📙 Year 2 Term 1' },
+                    { value: 'Y2T2', text: '📕 Year 2 Term 2' },
+                    { value: 'Y2T3', text: '📚 Year 2 Term 3' }
+                ];
+            } else if (programLevel === 'CERTIFICATE') {
+                // Certificate TVET: Year 1 Term 1 to Term 3
+                options = [
+                    { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                    { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                    { value: 'Y1T3', text: '📒 Year 1 Term 3' }
+                ];
+            } else if (programLevel === 'ARTISAN') {
+                // Artisan TVET: Year 1 Term 1 to Term 2
+                options = [
+                    { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                    { value: 'Y1T2', text: '📗 Year 1 Term 2' }
+                ];
+            } else {
+                // Generic TVET
+                options = [
+                    { value: 'Introductory', text: '🌟 Introductory Term' },
+                    { value: 'Term1', text: '📘 Term 1' },
+                    { value: 'Term2', text: '📗 Term 2' },
+                    { value: 'Term3', text: '📒 Term 3' },
+                    { value: 'Term4', text: '📙 Term 4' },
+                    { value: 'Term5', text: '📕 Term 5' },
+                    { value: 'Term6', text: '📚 Term 6' },
+                    { value: 'Final', text: '🏆 Final Term' }
+                ];
+            }
+        }
+        
+        return options;
+    },
+    
+    getBlockDisplayName(blockValue, programCode = 'KRCHN') {
+        if (!blockValue) return 'Unknown Block';
+        const blocks = this.getAcademicBlocks(programCode);
+        const found = blocks.find(b => b.value === blockValue);
+        return found ? found.text : blockValue;
+    },
+    
+    getBlockShortName(blockValue) {
+        if (!blockValue) return 'N/A';
+        // Return the raw value for database storage
+        return blockValue;
+    },
+    
+    getBlocksAsArray(programCode = 'KRCHN') {
+        const blocks = this.getAcademicBlocks(programCode);
+        return blocks.map(b => b.value);
+    },
+    
+    getBlocksAsSelectOptions(programCode = 'KRCHN') {
+        const blocks = this.getAcademicBlocks(programCode);
+        return blocks;
+    },
+    
+    // ==========================================
+    // 🆕 GRADE CALCULATION - TVET vs NURSING
+    // ==========================================
+    
+    calculateGrade(score, programType = 'KRCHN') {
+        if (score === null || score === undefined || isNaN(score)) {
+            return { grade: '-', gradePoint: 0, status: 'N/A' };
+        }
+        
+        const numScore = parseFloat(score);
+        
+        if (programType === 'TVET') {
+            // ============ TVET GRADING ============
+            // A (80-100%) = 4.0
+            // B (65-79%) = 3.0
+            // C (50-64%) = 2.0
+            // E (0-49%) = 0.0
+            // PASS = 50%
+            
+            if (numScore >= 80) {
+                return { grade: 'A', gradePoint: 4.0, status: 'PASS' };
+            } else if (numScore >= 65) {
+                return { grade: 'B', gradePoint: 3.0, status: 'PASS' };
+            } else if (numScore >= 50) {
+                return { grade: 'C', gradePoint: 2.0, status: 'PASS' };
+            } else {
+                return { grade: 'E', gradePoint: 0.0, status: 'FAIL' };
+            }
+        } else {
+            // ============ KRCHN NURSING GRADING ============
+            // A (75-100%) = 4.0
+            // B (65-74%) = 3.0
+            // C (60-64%) = 2.0
+            // D (0-59%) = 0.0
+            // PASS = 60%
+            
+            if (numScore >= 75) {
+                return { grade: 'A', gradePoint: 4.0, status: 'PASS' };
+            } else if (numScore >= 65) {
+                return { grade: 'B', gradePoint: 3.0, status: 'PASS' };
+            } else if (numScore >= 60) {
+                return { grade: 'C', gradePoint: 2.0, status: 'PASS' };
+            } else {
+                return { grade: 'D', gradePoint: 0.0, status: 'FAIL' };
+            }
+        }
+    },
+    
+    // Simplified grade letter (for display)
+    calculateGradeLetter(score, programType = 'KRCHN') {
+        const result = this.calculateGrade(score, programType);
+        return result.grade;
+    },
+    
+    // Grade point (for GPA)
+    calculateGradePoint(score, programType = 'KRCHN') {
+        const result = this.calculateGrade(score, programType);
+        return result.gradePoint;
+    },
+    
+    // Get passing threshold for program
+    getPassingThreshold(programType = 'KRCHN') {
+        if (programType === 'TVET') return 50;
+        return 60; // Nursing
+    },
+    
+    // Get grade status (PASS/FAIL)
+    getGradeStatus(score, programType = 'KRCHN') {
+        const result = this.calculateGrade(score, programType);
+        return result.status;
+    },
+    
+    // Get color for grade
+    getGradeColor(score, programType = 'KRCHN') {
+        const result = this.calculateGrade(score, programType);
+        const grade = result.grade;
+        const colors = {
+            'A': '#10b981',
+            'B': '#3b82f6',
+            'C': '#f59e0b',
+            'D': '#ef4444',
+            'E': '#ef4444',
+            '-': '#94a3b8'
+        };
+        return colors[grade] || '#94a3b8';
+    },
+    
+    // Get grading system reference
+    getGradingSystem(programType = 'KRCHN') {
+        if (programType === 'TVET') {
+            return {
+                name: 'TVET Grading System',
+                grades: [
+                    { grade: 'A', range: '80-100%', points: 4.0, status: 'PASS' },
+                    { grade: 'B', range: '65-79%', points: 3.0, status: 'PASS' },
+                    { grade: 'C', range: '50-64%', points: 2.0, status: 'PASS' },
+                    { grade: 'E', range: '0-49%', points: 0.0, status: 'FAIL' }
+                ],
+                passingScore: 50,
+                color: '#8b5cf6',
+                icon: '🔧'
+            };
+        } else {
+            return {
+                name: 'Nursing Grading System',
+                grades: [
+                    { grade: 'A', range: '75-100%', points: 4.0, status: 'PASS' },
+                    { grade: 'B', range: '65-74%', points: 3.0, status: 'PASS' },
+                    { grade: 'C', range: '60-64%', points: 2.0, status: 'PASS' },
+                    { grade: 'D', range: '0-59%', points: 0.0, status: 'FAIL' }
+                ],
+                passingScore: 60,
+                color: '#4C1D95',
+                icon: '🎓'
+            };
+        }
+    },
+    
+    // ==========================================
+    // PROGRAM DISPLAY HELPERS
     // ==========================================
     
     getProgramDisplayName(programCode) {
         const names = {
+            // Nursing
             'KRCHN': 'KRCHN Nursing',
+            
+            // Diploma Programs
             'DPOTT': 'Diploma in Perioperative Theatre Technology',
             'DCH': 'Diploma in Community Health',
             'DHRIT': 'Diploma in Health Records and IT',
@@ -163,6 +416,8 @@ const LecturerUtils = {
             'DHSS': 'Diploma in Health Support Services',
             'DICT': 'Diploma in ICT',
             'DME': 'Diploma in Medical Engineering',
+            
+            // Certificate Programs
             'CPOTT': 'Certificate in Perioperative Theatre Technology',
             'CCH': 'Certificate in Community Health',
             'CHRIT': 'Certificate in Health Records and IT',
@@ -173,11 +428,15 @@ const LecturerUtils = {
             'CAG': 'Certificate in Agriculture',
             'CHSS': 'Certificate in Health Support Services',
             'CICT': 'Certificate in ICT',
+            
+            // Artisan Programs
             'ACH': 'Artisan in Community Health',
             'AAG': 'Artisan in Agriculture',
             'ASW': 'Artisan in Social Work',
+            
+            // Other
             'CCA': 'Certificate in Computer Applications',
-            'PTE': 'TVET/CDACC (PTE)'
+            'PTE': 'TVET/CDACC'
         };
         return names[programCode] || programCode;
     },
@@ -213,87 +472,17 @@ const LecturerUtils = {
         return short[programCode] || programCode;
     },
     
-    getAcademicBlocks(program) {
-        const structure = {
-            'KRCHN': ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'],
-            'TVET': ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
-        };
-        return structure[program] || structure['KRCHN'];
-    },
-    
-    getBlockDisplayName(block, program) {
-        if (!block) return 'Unknown Block';
-        const blocks = this.getAcademicBlocks(program);
-        const index = parseInt(block) - 1;
-        if (isNaN(index) || index < 0 || index >= blocks.length) {
-            return block;
+    getProgramTypeLabel(programCode) {
+        const type = this.getProgramType(programCode);
+        if (type === 'KRCHN') return '🎓 Nursing';
+        if (type === 'TVET') {
+            const level = this.getProgramLevel(programCode);
+            if (level === 'DIPLOMA') return '🔧 TVET Diploma';
+            if (level === 'CERTIFICATE') return '🔧 TVET Certificate';
+            if (level === 'ARTISAN') return '🔧 TVET Artisan';
+            return '🔧 TVET';
         }
-        return blocks[index];
-    },
-    
-    isTVETProgram(programCode) {
-        if (!programCode) return false;
-        const code = String(programCode).toUpperCase().trim();
-        const tvetCodes = [
-            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
-            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-            'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
-        ];
-        return tvetCodes.includes(code);
-    },
-    
-    getProgramType(programCode) {
-        if (!programCode) return 'KRCHN';
-        const code = String(programCode).toUpperCase().trim();
-        if (code === 'KRCHN') return 'KRCHN';
-        if (this.isTVETProgram(code)) return 'TVET';
-        return 'KRCHN';
-    },
-    
-    // ==========================================
-    // Grade Helpers
-    // ==========================================
-    
-    calculateGrade(score) {
-        if (!score && score !== 0) return '-';
-        if (score >= 80) return 'A';
-        if (score >= 75) return 'A-';
-        if (score >= 70) return 'B+';
-        if (score >= 65) return 'B';
-        if (score >= 60) return 'B-';
-        if (score >= 55) return 'C+';
-        if (score >= 50) return 'C';
-        if (score >= 45) return 'C-';
-        if (score >= 40) return 'D+';
-        if (score >= 35) return 'D';
-        return 'E';
-    },
-    
-    calculateGradePoint(score) {
-        const grade = this.calculateGrade(score);
-        const points = {
-            'A': 4.0, 'A-': 3.7, 'B+': 3.3, 'B': 3.0,
-            'B-': 2.7, 'C+': 2.3, 'C': 2.0, 'C-': 1.7,
-            'D+': 1.3, 'D': 1.0, 'E': 0.0
-        };
-        return points[grade] || 0;
-    },
-    
-    getGradeColor(score) {
-        if (!score && score !== 0) return '#6b7280';
-        if (score >= 80) return '#10b981';
-        if (score >= 70) return '#3b82f6';
-        if (score >= 60) return '#8b5cf6';
-        if (score >= 50) return '#f59e0b';
-        if (score >= 40) return '#f97316';
-        return '#ef4444';
-    },
-    
-    getGradeStatus(score, passThreshold = 60) {
-        if (!score && score !== 0) return 'PENDING';
-        if (score >= passThreshold) return 'PASS';
-        if (score > 0) return 'FAIL';
-        return 'PENDING';
+        return '📚 Unknown';
     },
     
     // ==========================================
@@ -301,7 +490,6 @@ const LecturerUtils = {
     // ==========================================
     
     getPortfolioCompletionStatus(stats) {
-        // stats: { totalCourses, schemesCompleted, lessonPlans, approved }
         const totalItems = (stats.totalCourses || 0) + (stats.schemesCompleted || 0) + (stats.lessonPlans || 0);
         const completedItems = stats.approved || 0;
         if (totalItems === 0) return 0;
@@ -597,7 +785,7 @@ const LecturerUtils = {
     },
     
     // ==========================================
-    // Notification Helpers (using existing showNotification)
+    // Notification Helpers
     // ==========================================
     
     notify(message, type = 'info') {
@@ -626,6 +814,22 @@ const LecturerUtils = {
 };
 
 // ============================================
+// 🆕 ADD GLOBAL FUNCTIONS FOR EASY ACCESS
+// ============================================
+
+// Make functions globally available
+window.getProgramType = (code) => LecturerUtils.getProgramType(code);
+window.getProgramLevel = (code) => LecturerUtils.getProgramLevel(code);
+window.isTVETProgram = (code) => LecturerUtils.isTVETProgram(code);
+window.isNursingProgram = (code) => LecturerUtils.isNursingProgram(code);
+window.getAcademicBlocks = (code) => LecturerUtils.getAcademicBlocks(code);
+window.calculateGrade = (score, type) => LecturerUtils.calculateGrade(score, type);
+window.getProgramDisplayName = (code) => LecturerUtils.getProgramDisplayName(code);
+window.getProgramTypeLabel = (code) => LecturerUtils.getProgramTypeLabel(code);
+window.getGradingSystem = (type) => LecturerUtils.getGradingSystem(type);
+window.getPassingThreshold = (type) => LecturerUtils.getPassingThreshold(type);
+
+// ============================================
 // EXPOSE TO GLOBAL SCOPE
 // ============================================
 
@@ -637,3 +841,6 @@ window.Utils = LecturerUtils;
 
 console.log('✅ LecturerUtils loaded successfully');
 console.log('📚 Available functions:', Object.keys(LecturerUtils).join(', '));
+console.log('📚 TVET/Nursing support enabled');
+console.log('🎓 Nursing: A(75%) B(65%) C(60%) D(0%)');
+console.log('🔧 TVET: A(80%) B(65%) C(50%) E(0%)');
