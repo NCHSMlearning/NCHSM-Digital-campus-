@@ -1,10 +1,4 @@
 // ============================================================
-// MARKS ENTRY SYSTEM - COMPLETE (NURSING + TVET SUPPORT)
-// WITH RETAKE/SUPPLEMENTARY EXAM SUPPORT
-// WITH AUTO-APPROVE ON SAVE
-// ============================================================
-
-// ============================================================
 // STATE
 // ============================================================
 
@@ -24,7 +18,126 @@ let me_studentManagerData = {
 };
 
 // ============================================================
-// RETAKE/SUPPLEMENTARY STATE
+// LOADING SCREEN FUNCTIONS - ADD THIS HERE
+// ============================================================
+
+function showLoadingScreen(message, title = 'Loading...') {
+    let overlay = document.getElementById('loadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 99999;
+            display: none; justify-content: center; align-items: center;
+            flex-direction: column; gap: 16px;
+        `;
+        overlay.innerHTML = `
+            <div style="background: white; padding: 30px 40px; border-radius: 16px; text-align: center; min-width: 200px;">
+                <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                <p id="loadingMessage" style="color: #1e293b; font-weight: 600; margin-top: 12px;">Loading...</p>
+                <div style="margin-top: 10px; background: #e5e7eb; border-radius: 8px; height: 6px; overflow: hidden; width: 100%;">
+                    <div id="loadingProgress" style="height: 100%; background: linear-gradient(90deg, #4C1D95, #7c3aed); width: 0%; transition: width 0.3s ease; border-radius: 8px;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #94a3b8;">
+                    <span id="step1Text">Initializing...</span>
+                    <span id="step2Text">Loading data...</span>
+                    <span id="step3Text">Processing...</span>
+                    <span id="step4Text">Rendering...</span>
+                </div>
+                <style>
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                </style>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    
+    overlay.style.display = 'flex';
+    const msgEl = document.getElementById('loadingMessage');
+    if (msgEl) msgEl.textContent = message || 'Loading...';
+    
+    const progressEl = document.getElementById('loadingProgress');
+    if (progressEl) progressEl.style.width = '0%';
+    
+    resetLoadingSteps();
+    console.log(`⏳ Loading: ${message}`);
+}
+
+function updateLoadingProgress(percent, step = null, stepText = null) {
+    const progressEl = document.getElementById('loadingProgress');
+    if (progressEl) {
+        progressEl.style.width = Math.min(percent, 100) + '%';
+    }
+    
+    if (step && stepText) {
+        updateLoadingStep(step, stepText);
+    }
+}
+
+function updateLoadingStep(step, text) {
+    const stepMap = {
+        1: { el: 'step1Text' },
+        2: { el: 'step2Text' },
+        3: { el: 'step3Text' },
+        4: { el: 'step4Text' }
+    };
+    
+    const s = stepMap[step];
+    if (!s) return;
+    
+    const textEl = document.getElementById(s.el);
+    if (textEl) {
+        textEl.textContent = text;
+        textEl.style.color = '#1e293b';
+        textEl.style.fontWeight = '600';
+    }
+    
+    for (let i = 1; i < step; i++) {
+        const prev = stepMap[i];
+        if (prev) {
+            const prevEl = document.getElementById(prev.el);
+            if (prevEl) {
+                prevEl.style.color = '#059669';
+                prevEl.style.fontWeight = '600';
+            }
+        }
+    }
+}
+
+function resetLoadingSteps() {
+    const steps = ['step1Text', 'step2Text', 'step3Text', 'step4Text'];
+    const texts = ['Initializing...', 'Loading data...', 'Processing...', 'Rendering...'];
+    steps.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = texts[index] || '...';
+            el.style.color = index === 0 ? '#1e293b' : '#94a3b8';
+            el.style.fontWeight = index === 0 ? '600' : '400';
+        }
+    });
+}
+
+function hideLoadingScreen() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    console.log('✅ Loading complete');
+}
+
+function showLoading(message) {
+    showLoadingScreen(message, 'Loading...');
+}
+
+function hideLoading() {
+    hideLoadingScreen();
+}
+
+// ============================================================
+// RETAKE/SUPPLEMENTARY STATE - THIS COMES AFTER
 // ============================================================
 
 let me_retakeData = {};
