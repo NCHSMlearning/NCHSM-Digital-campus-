@@ -21,7 +21,7 @@
 <body>
 
     <!-- ============================================================
-    LOBBY SECTION
+    LOBBY SECTION - ONE CAMERA TEST HERE
     ============================================================ -->
     <div class="lobby-container active" id="lobbyContainer">
         <!-- Lobby Header -->
@@ -99,7 +99,7 @@
             </button>
         </div>
 
-        <!-- STEP 2: CAMERA TEST -->
+        <!-- STEP 2: CAMERA TEST (ONLY CAMERA TEST) -->
         <div class="step-content" id="stepContent2">
             <div class="camera-preview" id="cameraPreview">
                 <video id="cameraVideo" autoplay muted playsinline></video>
@@ -210,7 +210,7 @@
     </div>
 
     <!-- ============================================================
-    EXAM INTERFACE - 3-COLUMN LAYOUT
+    EXAM INTERFACE - 3-COLUMN LAYOUT (NO CAMERA TEST BUTTONS)
     ============================================================ -->
     <div class="exam-interface" id="examInterface">
         <div class="page-wrapper">
@@ -228,6 +228,7 @@
                     <div class="timer-time" id="timer">00:00</div>
                 </div>
 
+                <!-- Camera Feed - DISPLAY ONLY, NO TEST BUTTONS -->
                 <div class="camera-container" id="cameraContainer">
                     <video id="face-video" autoplay muted playsinline></video>
                     <canvas id="face-canvas"></canvas>
@@ -240,11 +241,7 @@
                     </div>
                 </div>
 
-                <div class="camera-controls-panel">
-                    <button class="btn-retry-camera" onclick="window.retryCameraDuringExam()">
-                        <i class="fas fa-camera"></i> Retry Camera
-                    </button>
-                </div>
+                <!-- REMOVED: Camera retry button - camera was already tested in lobby -->
 
                 <div class="proctoring-status">
                     <span class="status-label">🛡️ Proctoring:</span>
@@ -411,7 +408,8 @@
         <div class="block-timer" id="face-recovery-countdown">30</div>
         <p class="block-sub">Exam will auto-submit if face is not detected</p>
         <p class="block-save-info"><i class="fas fa-info-circle"></i> Your answers are being saved</p>
-        <button class="btn-retry-camera-block" onclick="window.retryCameraDuringExam()">
+        <!-- Retry button only appears here as a recovery option, NOT as a test -->
+        <button class="btn-retry-camera-block" onclick="window.recoverCamera()">
             <i class="fas fa-camera"></i> Retry Camera
         </button>
         <div class="block-status">
