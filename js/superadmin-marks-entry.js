@@ -2819,11 +2819,11 @@ async function openMarksStudentManager() {
     `;
     
     try {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error('Database not available');
+        // ✅ Use sb directly (or window.sb)
+        if (!window.sb) throw new Error('Database not available');
         
-        // ✅ FIX: Load ALL students (NO BLOCK FILTER)
-        const { data: allStudents, error: studentError } = await supabase
+        // ✅ SUPER ADMIN: Load ALL students (NO BLOCK FILTER)
+        const { data: allStudents, error: studentError } = await window.sb
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, block, intake_year, program, status')
             .eq('role', 'student')
@@ -2835,7 +2835,7 @@ async function openMarksStudentManager() {
         if (studentError) throw studentError;
         
         // Get already enrolled students
-        const { data: enrolled, error: enrolledError } = await supabase
+        const { data: enrolled, error: enrolledError } = await window.sb
             .from('student_marks')
             .select('admission_number')
             .eq('block', block)
@@ -2941,8 +2941,8 @@ async function addSelectedStudentsToUnit() {
     updateLoadingProgress(10, 1, 'Processing...');
     
     try {
-        const supabase = getSupabase();
-        if (!supabase) throw new Error('Database not available');
+        // ✅ Use window.sb directly
+        if (!window.sb) throw new Error('Database not available');
         
         let addedCount = 0;
         let skippedCount = 0;
@@ -2955,7 +2955,7 @@ async function addSelectedStudentsToUnit() {
             const studentBlock = checkbox.dataset.block || block;
             
             // Check if already enrolled
-            const { data: existing, error: checkError } = await supabase
+            const { data: existing, error: checkError } = await window.sb
                 .from('student_marks')
                 .select('id')
                 .eq('admission_number', admission)
@@ -2974,7 +2974,7 @@ async function addSelectedStudentsToUnit() {
             }
             
             // Insert with unit block (store original block for reference)
-            const { error: insertError } = await supabase
+            const { error: insertError } = await window.sb
                 .from('student_marks')
                 .insert({
                     admission_number: admission,
