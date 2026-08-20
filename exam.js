@@ -695,6 +695,9 @@ function updateCameraStatus(status, text, faceCount) {
 // ============================================================
 // SECURE FACE PROCTOR CLASS
 // ============================================================
+// ============================================================
+// SECURE FACE PROCTOR CLASS - FIXED TIMER
+// ============================================================
 class SecureFaceProctor {
     constructor(examId, studentId, callbacks = {}) {
         this.examId = examId;
@@ -713,10 +716,12 @@ class SecureFaceProctor {
             isPaused: false,
             isSubmitting: false,
             recoveryTimer: null,
+            recoveryTimerId: null,  // Add this to track timer ID
             detectionInterval: null,
             lastRetryTime: 0,
             faceStable: false,
             lastFaceCount: 0,
+            remainingTime: 0,  // Track remaining time
         };
         this.video = null;
         this.canvas = null;
@@ -770,8 +775,18 @@ class SecureFaceProctor {
             this.state.consecutiveLost = 0;
             this.state.faceStable = true;
             
-            if (this.state.isPaused) this.resumeExam();
+            // If exam is paused, resume immediately
+            if (this.state.isPaused) {
+                this.resumeExam();
+            }
             updateCameraStatus('good', '✅ Face detected', '1 face');
+            return;
+        }
+        
+        // If exam is paused and face is lost again, don't increment more
+        if (this.state.isPaused) {
+            // Still update the status but don't count more violations
+            updateCameraStatus('warning', `⏳ Face still lost (${this.state.remainingTime || 0}s remaining)`, '0 faces');
             return;
         }
         
@@ -798,19 +813,30 @@ class SecureFaceProctor {
     }
     
     handleViolation() {
+        // Don't process if already submitting or if total violations exceeded
+        if (this.state.isSubmitting) return;
+        if (this.state.totalViolations >= this.config.TOTAL_VIOLATIONS_LIMIT) {
+            this.autoSubmitExam();
+            return;
+        }
+        
         this.state.totalViolations++;
         this.state.consecutiveLost = 0;
         
         console.log(`⚠️ Face violation ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`);
         
+        // Calculate timer based on violation count
+        let timerSeconds = this.config.RECOVERY_TIMER_SECONDS - (this.state.totalViolations - 1) * 5;
+        timerSeconds = Math.max(5, timerSeconds); // Minimum 5 seconds
+        
         switch(this.state.totalViolations) {
             case 1:
                 this.callbacks.onViolation?.(1, '⚠️ Face Lost! Please look at the camera.');
-                this.pauseExam(20);
+                this.pauseExam(timerSeconds);
                 break;
             case 2:
                 this.callbacks.onViolation?.(2, '🚨 FINAL WARNING! Face lost again.');
-                this.pauseExam(15);
+                this.pauseExam(timerSeconds);
                 break;
             case 3:
                 this.callbacks.onViolation?.(3, '❌ Too many violations! Exam submitted.');
@@ -820,40 +846,111 @@ class SecureFaceProctor {
     }
     
     pauseExam(seconds) {
+        // Clear any existing timer FIRST
+        if (this.state.recoveryTimerId) {
+            clearInterval(this.state.recoveryTimerId);
+            this.state.recoveryTimerId = null;
+        }
+        if (this.state.recoveryTimer) {
+            clearTimeout(this.state.recoveryTimer);
+            this.state.recoveryTimer = null;
+        }
+        
         this.state.isPaused = true;
         AppState.isExamPaused = true;
+        this.state.remainingTime = seconds;
         
-        let timer = Math.max(5, seconds - (this.state.totalViolations - 1) * 5);
-        this.callbacks.onPause?.(`Face not detected (${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT})`, timer);
+        this.callbacks.onPause?.(`Face not detected (${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT})`, seconds);
         
-        if (this.state.recoveryTimer) clearInterval(this.state.recoveryTimer);
+        // Update UI with initial timer
+        if (DOM.faceRecoveryCountdown) {
+            DOM.faceRecoveryCountdown.textContent = seconds;
+            DOM.faceRecoveryCountdown.className = 'block-timer';
+        }
         
-        let remaining = timer;
-        this.state.recoveryTimer = setInterval(() => {
+        // Start the countdown timer - SINGLE interval
+        let remaining = seconds;
+        this.state.recoveryTimerId = setInterval(() => {
             remaining--;
+            this.state.remainingTime = remaining;
+            
             if (DOM.faceRecoveryCountdown) {
                 DOM.faceRecoveryCountdown.textContent = remaining;
-                if (remaining <= 5) DOM.faceRecoveryCountdown.className = 'block-timer warning';
+                if (remaining <= 5) {
+                    DOM.faceRecoveryCountdown.className = 'block-timer warning';
+                } else {
+                    DOM.faceRecoveryCountdown.className = 'block-timer';
+                }
             }
+            
+            // Update status with remaining time
+            if (DOM.examStatusText) {
+                DOM.examStatusText.textContent = `⏳ Face lost - ${remaining}s to recover`;
+            }
+            
             if (remaining <= 0) {
-                clearInterval(this.state.recoveryTimer);
+                // Timer expired - clear and auto-submit
+                clearInterval(this.state.recoveryTimerId);
+                this.state.recoveryTimerId = null;
                 this.state.recoveryTimer = null;
                 this.autoSubmitExam();
             }
         }, 1000);
+        
+        // Safety timeout - if face is detected, this will be cleared by resumeExam
+        this.state.recoveryTimer = setTimeout(() => {
+            // If we get here, something went wrong with the interval
+            if (this.state.recoveryTimerId) {
+                clearInterval(this.state.recoveryTimerId);
+                this.state.recoveryTimerId = null;
+            }
+            if (this.state.isPaused) {
+                this.autoSubmitExam();
+            }
+        }, (seconds + 2) * 1000);
     }
     
     resumeExam() {
         if (!this.state.isPaused) return;
+        
+        // Clear ALL timers
+        if (this.state.recoveryTimerId) {
+            clearInterval(this.state.recoveryTimerId);
+            this.state.recoveryTimerId = null;
+        }
+        if (this.state.recoveryTimer) {
+            clearTimeout(this.state.recoveryTimer);
+            this.state.recoveryTimer = null;
+        }
+        
         this.state.isPaused = false;
         AppState.isExamPaused = false;
         this.state.consecutiveLost = 0;
-        if (this.state.recoveryTimer) {
-            clearInterval(this.state.recoveryTimer);
-            this.state.recoveryTimer = null;
+        this.state.remainingTime = 0;
+        
+        // Update UI
+        if (DOM.faceRecoveryCountdown) {
+            DOM.faceRecoveryCountdown.textContent = '✅';
+            DOM.faceRecoveryCountdown.className = 'block-timer recovered';
         }
+        
         this.callbacks.onResume?.();
         updateCameraStatus('good', '✅ Face detected', '1 face');
+        DOM.cameraContainer.className = 'camera-container face-verified';
+        
+        // Hide the overlay
+        const overlay = DOM.faceBlockOverlay;
+        if (overlay) {
+            overlay.style.display = 'none';
+            overlay.classList.remove('active');
+        }
+        
+        DOM.proctoringStatusText.textContent = 'Active';
+        DOM.proctoringStatusText.className = 'status-value active';
+        DOM.statsFace.textContent = '✅ OK';
+        DOM.statsFace.style.color = '#38A169';
+        
+        showToast('✅ Face detected! Exam resumed.', 'success');
     }
     
     async retryCamera() {
@@ -898,8 +995,17 @@ class SecureFaceProctor {
     autoSubmitExam() {
         if (this.state.isSubmitting) return;
         this.state.isSubmitting = true;
-        clearInterval(this.state.recoveryTimer);
-        this.state.recoveryTimer = null;
+        
+        // Clear ALL timers
+        if (this.state.recoveryTimerId) {
+            clearInterval(this.state.recoveryTimerId);
+            this.state.recoveryTimerId = null;
+        }
+        if (this.state.recoveryTimer) {
+            clearTimeout(this.state.recoveryTimer);
+            this.state.recoveryTimer = null;
+        }
+        
         this.callbacks.onAutoSubmit?.();
     }
     
@@ -908,13 +1014,16 @@ class SecureFaceProctor {
             clearInterval(this.state.detectionInterval);
             this.state.detectionInterval = null;
         }
+        if (this.state.recoveryTimerId) {
+            clearInterval(this.state.recoveryTimerId);
+            this.state.recoveryTimerId = null;
+        }
         if (this.state.recoveryTimer) {
-            clearInterval(this.state.recoveryTimer);
+            clearTimeout(this.state.recoveryTimer);
             this.state.recoveryTimer = null;
         }
     }
 }
-
 // ============================================================
 // STEALTH PROCTOR CLASS - FIXED
 // ============================================================
