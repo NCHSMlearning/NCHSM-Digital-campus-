@@ -1,33 +1,48 @@
 // ============================================================
-// PUBLISHED MARKS - SUPER ADMIN (TVET & KRCHN Nursing)
-// WITH RETAKE/SUPPLEMENTARY EXAM SUPPORT - PER UNIT FIXED
-// COMPLETE FIXED VERSION - All functions exposed globally
+// PUBLISHED MARKS - SMART VERSION (30 per page)
+// TVET & KRCHN Nursing with Retake Support
+// NO AUTO-PUBLISH - All actions require admin confirmation
+// FULLY UPDATED WITH INTAKE YEAR (2024-2030)
 // ============================================================
 
 console.log('📊 Published Marks module loading...');
 console.log('⭐ Retake/Supplementary Support: ENABLED (per unit)');
+console.log('🔒 NO AUTO-PUBLISH - All actions require confirmation');
+console.log('📅 Intake Years: 2024 - 2030');
 
-// Global state
+// ============================================================
+// STATE
+// ============================================================
+
 const PUBLISHED_STATE = {
     marks: [],
     filtered: [],
     currentPage: 1,
-    perPage: 20,
+    perPage: 30,  // 30 students per page
     user: null,
     userProgram: 'all',
     isLoading: false,
     currentProgramFilter: 'all',
     unitProgramCache: {},
     retakeData: [],
-    retakeMap: {}
+    retakeMap: {},
+    selectedStudents: new Set(),
+    filters: {
+        intakeYear: '2025',
+        block: 'all',
+        program: 'all',
+        status: 'all',
+        search: ''
+    },
+    publishHistory: []
 };
 
 // ============================================================
-// PROGRAM & UTILITY FUNCTIONS
+// UTILITY FUNCTIONS
 // ============================================================
 
 function getProgramDisplayName(programCode) {
-    const programMap = {
+    const map = {
         'KRCHN': 'KRCHN Nursing',
         'DPOTT': 'Diploma in Perioperative Theatre Technology',
         'DCH': 'Diploma in Community Health',
@@ -54,7 +69,7 @@ function getProgramDisplayName(programCode) {
         'CCA': 'Certificate in Computer Applications',
         'PTE': 'TVET/CDACC (PTE)'
     };
-    return programMap[programCode] || programCode || 'Unknown Program';
+    return map[programCode] || programCode || 'Unknown Program';
 }
 
 function getProgramType(programCode) {
@@ -62,6 +77,13 @@ function getProgramType(programCode) {
     var code = String(programCode).toUpperCase().trim();
     if (code === 'KRCHN') return 'KRCHN';
     return 'TVET';
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    var div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
 }
 
 function getGradeColor(grade) {
@@ -90,15 +112,22 @@ function getStatusColor(status) {
     return colors[status] || '#94a3b8';
 }
 
-function escapeHtml(str) {
-    if (!str) return '';
-    var div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
+function getCurrentDateTime() {
+    return new Date().toLocaleString('en-KE', {timeZone: 'Africa/Nairobi'});
+}
+
+function formatDate(dateStr) {
+    if (!dateStr) return 'Never';
+    try {
+        var d = new Date(dateStr);
+        return d.toLocaleString('en-KE', {timeZone: 'Africa/Nairobi'});
+    } catch(e) {
+        return dateStr;
+    }
 }
 
 // ============================================================
-// TVET GRADING SYSTEM
+// TVET GRADING
 // ============================================================
 
 function calculateTVETGrade(score) {
@@ -137,7 +166,7 @@ function getTVETStatus(score) {
 }
 
 // ============================================================
-// NURSING GRADING SYSTEM - FIXED (NO + or -)
+// NURSING GRADING - FIXED (NO + or -)
 // ============================================================
 
 function calculateNursingGrade(score) {
@@ -225,6 +254,208 @@ function calculateGPA(marks) {
 
 function isTVETProgram(program) {
     return getProgramType(program) === 'TVET';
+}
+
+// ============================================================
+// INTAKE YEAR FUNCTIONS
+// ============================================================
+
+function onIntakeYearChange() {
+    var intakeYear = document.getElementById('pm_intake_year')?.value || '2025';
+    console.log('📅 Intake Year changed to:', intakeYear);
+    
+    // Update display
+    var displayEls = ['pm_intake_year_display', 'pm_intake_year_display2', 'pm_intake_year_display3'];
+    displayEls.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el) el.textContent = intakeYear === 'all' ? 'All' : intakeYear;
+    });
+    
+    PUBLISHED_STATE.filters.intakeYear = intakeYear;
+    
+    // Update block filter based on intake year
+    populateBlockFilterByIntakeYear(intakeYear);
+    
+    // Apply filters
+    filterPublishedMarks();
+}
+
+function populateBlockFilterByIntakeYear(intakeYear) {
+    var blockFilter = document.getElementById('pm_block_filter');
+    if (!blockFilter) return;
+    
+    // Get blocks from marks filtered by intake year
+    var yearMarks = PUBLISHED_STATE.marks;
+    if (intakeYear !== 'all') {
+        yearMarks = yearMarks.filter(function(m) {
+            return m.academic_year === intakeYear;
+        });
+    }
+    
+    var uniqueBlocks = [];
+    var blockSet = {};
+    yearMarks.forEach(function(m) {
+        if (m.block && !blockSet[m.block]) {
+            blockSet[m.block] = true;
+            uniqueBlocks.push(m.block);
+        }
+    });
+    
+    // Add default blocks if empty
+    if (uniqueBlocks.length === 0) {
+        var defaultBlocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'];
+        defaultBlocks.forEach(function(b) { uniqueBlocks.push(b); });
+    }
+    
+    // Sort blocks
+    uniqueBlocks.sort(function(a, b) {
+        if (a === 'Introductory') return -1;
+        if (b === 'Introductory') return 1;
+        var aNum = parseInt(a.replace('Block ', ''));
+        var bNum = parseInt(b.replace('Block ', ''));
+        if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+        return a.localeCompare(b);
+    });
+    
+    // Rebuild dropdown
+    var currentValue = blockFilter.value;
+    blockFilter.innerHTML = '<option value="all">📦 All Blocks/Terms</option>';
+    uniqueBlocks.forEach(function(block) {
+        var option = document.createElement('option');
+        option.value = block;
+        option.textContent = block;
+        blockFilter.appendChild(option);
+    });
+    
+    if (currentValue && uniqueBlocks.indexOf(currentValue) !== -1) {
+        blockFilter.value = currentValue;
+    }
+    
+    // Update block display
+    var blockDisplay = document.getElementById('pm_block_display');
+    if (blockDisplay) {
+        blockDisplay.textContent = blockFilter.value === 'all' ? 'All' : blockFilter.value;
+    }
+}
+
+// ============================================================
+// FILTER BY PROGRAM TYPE
+// ============================================================
+
+function filterPublishedByProgram(programType) {
+    console.log('📊 Filtering by program:', programType);
+    
+    var btns = document.querySelectorAll('.program-filter-btn');
+    for (var i = 0; i < btns.length; i++) {
+        var btn = btns[i];
+        btn.classList.remove('active');
+        btn.style.background = '#e5e7eb';
+        btn.style.color = '#475569';
+    }
+    
+    var activeBtn = document.getElementById('pm_filter_' + programType);
+    if (activeBtn) {
+        activeBtn.classList.add('active');
+        activeBtn.style.background = '#4C1D95';
+        activeBtn.style.color = 'white';
+    }
+    
+    var labels = {
+        'all': 'All Programs',
+        'KRCHN': '🎓 KRCHN Nursing',
+        'TVET': '🔧 TVET Programs'
+    };
+    var labelEl = document.getElementById('pm_current_filter_label');
+    if (labelEl) labelEl.textContent = labels[programType] || 'All Programs';
+    
+    PUBLISHED_STATE.currentProgramFilter = programType;
+    
+    var programFilter = document.getElementById('pm_program_filter');
+    if (programFilter) {
+        programFilter.value = programType === 'all' ? 'all' : programType;
+    }
+    
+    updateGradingScaleDisplay();
+    filterPublishedMarks();
+}
+
+// ============================================================
+// UPDATE GRADING SCALE DISPLAY
+// ============================================================
+
+function updateGradingScaleDisplay() {
+    var programType = PUBLISHED_STATE.currentProgramFilter;
+    var tvetScale = document.getElementById('pm_tvet_scale');
+    var nursingScale = document.getElementById('pm_nursing_scale');
+    
+    if (tvetScale) tvetScale.style.display = (programType === 'all' || programType === 'TVET') ? 'inline-flex' : 'none';
+    if (nursingScale) nursingScale.style.display = (programType === 'all' || programType === 'KRCHN') ? 'inline-flex' : 'none';
+}
+
+// ============================================================
+// FILTER PUBLISHED MARKS
+// ============================================================
+
+function filterPublishedMarks() {
+    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
+    var blockFilter = document.getElementById('pm_block_filter')?.value || 'all';
+    var programFilter = document.getElementById('pm_program_filter')?.value || 'all';
+    var statusFilter = document.getElementById('pm_status_filter')?.value || 'all';
+    var searchTerm = document.getElementById('pm_search')?.value?.toLowerCase() || '';
+    
+    var filtered = PUBLISHED_STATE.marks.slice();
+    
+    // Apply program filter from quick buttons
+    if (PUBLISHED_STATE.currentProgramFilter === 'KRCHN') {
+        filtered = filtered.filter(function(m) { return m.program === 'KRCHN'; });
+    } else if (PUBLISHED_STATE.currentProgramFilter === 'TVET') {
+        filtered = filtered.filter(function(m) { return m.program !== 'KRCHN'; });
+    }
+    
+    // Intake Year filter
+    if (intakeYear !== 'all') {
+        filtered = filtered.filter(function(m) { 
+            return m.academic_year === intakeYear; 
+        });
+    }
+    
+    // Block filter
+    if (blockFilter !== 'all') {
+        filtered = filtered.filter(function(m) { 
+            return m.block === blockFilter; 
+        });
+    }
+    
+    // Program filter (from dropdown)
+    if (programFilter !== 'all' && PUBLISHED_STATE.currentProgramFilter === 'all') {
+        filtered = filtered.filter(function(m) { 
+            return m.program === programFilter; 
+        });
+    }
+    
+    // Status filter
+    if (statusFilter === 'published') {
+        filtered = filtered.filter(function(m) { return m.published === true; });
+    } else if (statusFilter === 'draft') {
+        filtered = filtered.filter(function(m) { return m.published !== true; });
+    }
+    
+    // Search
+    if (searchTerm) {
+        filtered = filtered.filter(function(m) {
+            return (m.student_name || '').toLowerCase().includes(searchTerm) ||
+                (m.admission_number || '').toLowerCase().includes(searchTerm) ||
+                (m.subject_name || '').toLowerCase().includes(searchTerm);
+        });
+    }
+    
+    PUBLISHED_STATE.filtered = filtered;
+    PUBLISHED_STATE.currentPage = 1;
+    
+    renderPublishedMarks();
+    updateProgramCounts(filtered);
+    updateGradingScaleDisplay();
+    updatePaginationInfo();
 }
 
 // ============================================================
@@ -436,7 +667,7 @@ async function getCurrentUser() {
 }
 
 // ============================================================
-// LOAD PUBLISHED MARKS - WITH PER UNIT RETAKE SUPPORT
+// LOAD PUBLISHED MARKS
 // ============================================================
 
 async function loadPublishedMarks() {
@@ -471,10 +702,10 @@ async function loadPublishedMarks() {
         try {
             var query = window.sb.from('student_marks').select('*');
             
-            // Apply filters
-            var yearFilter = document.getElementById('pm_year_filter')?.value;
-            if (yearFilter && yearFilter !== 'all') {
-                query = query.eq('academic_year', yearFilter);
+            // Apply filters from UI
+            var intakeYear = document.getElementById('pm_intake_year')?.value;
+            if (intakeYear && intakeYear !== 'all') {
+                query = query.eq('academic_year', intakeYear);
             }
             
             var blockFilter = document.getElementById('pm_block_filter')?.value;
@@ -518,14 +749,9 @@ async function loadPublishedMarks() {
             var mark = marks[i];
             var program = PUBLISHED_STATE.unitProgramCache[mark.subject_name] || 'KRCHN';
             
-            // Get retake info for THIS SPECIFIC UNIT
             var retakeInfo = getStudentRetakeInfo(mark.admission_number, mark.subject_name);
             var hasRetake = retakeInfo !== null && retakeInfo.count > 0;
-            
-            // Use retake score if available, otherwise use original
             var finalScore = hasRetake && retakeInfo.score !== null ? retakeInfo.score : mark.final_score;
-            
-            // ALWAYS recalculate grade based on finalScore (retake score if available)
             var grade = calculateGrade(finalScore, program);
             var points = calculatePoints(grade, program);
             var status = getGradingStatus(finalScore, program);
@@ -579,6 +805,9 @@ async function loadPublishedMarks() {
         updateProgramCounts(processedMarks);
         updateGradingScaleDisplay();
         populateStudentFilter(processedMarks);
+        updatePaginationInfo();
+        updateLastRefreshTime();
+        loadPublishHistory();
         
         PUBLISHED_STATE.isLoading = false;
         
@@ -591,6 +820,17 @@ async function loadPublishedMarks() {
         updateBadge([]);
         updateProgramCounts([]);
         PUBLISHED_STATE.isLoading = false;
+    }
+}
+
+// ============================================================
+// UPDATE LAST REFRESH TIME
+// ============================================================
+
+function updateLastRefreshTime() {
+    var el = document.getElementById('pm_last_refresh');
+    if (el) {
+        el.textContent = getCurrentDateTime();
     }
 }
 
@@ -687,65 +927,11 @@ function updateProgramCounts(marks) {
 }
 
 // ============================================================
-// UPDATE GRADING SCALE DISPLAY
-// ============================================================
-
-function updateGradingScaleDisplay() {
-    var programType = PUBLISHED_STATE.currentProgramFilter;
-    var tvetScale = document.getElementById('pm_tvet_scale');
-    var nursingScale = document.getElementById('pm_nursing_scale');
-    
-    if (tvetScale) tvetScale.style.display = (programType === 'all' || programType === 'TVET') ? 'inline-flex' : 'none';
-    if (nursingScale) nursingScale.style.display = (programType === 'all' || programType === 'KRCHN') ? 'inline-flex' : 'none';
-}
-
-// ============================================================
-// FILTER BY PROGRAM TYPE
-// ============================================================
-
-function filterPublishedByProgram(programType) {
-    console.log('📊 Filtering by program:', programType);
-    
-    var btns = document.querySelectorAll('.program-filter-btn');
-    for (var i = 0; i < btns.length; i++) {
-        var btn = btns[i];
-        btn.classList.remove('active');
-        btn.style.background = '#e5e7eb';
-        btn.style.color = '#475569';
-    }
-    
-    var activeBtn = document.getElementById('pm_filter_' + programType);
-    if (activeBtn) {
-        activeBtn.classList.add('active');
-        activeBtn.style.background = '#4C1D95';
-        activeBtn.style.color = 'white';
-    }
-    
-    var labels = {
-        'all': 'All Programs',
-        'KRCHN': '🎓 KRCHN Nursing',
-        'TVET': '🔧 TVET Programs'
-    };
-    var labelEl = document.getElementById('pm_current_filter_label');
-    if (labelEl) labelEl.textContent = labels[programType] || 'All Programs';
-    
-    PUBLISHED_STATE.currentProgramFilter = programType;
-    
-    var programFilter = document.getElementById('pm_program_filter');
-    if (programFilter) {
-        programFilter.value = programType === 'all' ? 'all' : programType;
-    }
-    
-    updateGradingScaleDisplay();
-    loadPublishedMarks();
-}
-
-// ============================================================
-// POPULATE FILTERS - WITH ACADEMIC YEAR
+// POPULATE FILTERS
 // ============================================================
 
 function populateFilters(marks) {
-    // 1. Subject filter
+    // Subject filter
     var subjectFilter = document.getElementById('pm_subject_filter');
     if (subjectFilter) {
         var currentValue = subjectFilter.value;
@@ -776,137 +962,16 @@ function populateFilters(marks) {
         }
     }
     
-    // 2. Academic Year filter
-    var yearFilter = document.getElementById('pm_year_filter');
-    if (yearFilter) {
-        var currentValue = yearFilter.value;
-        var uniqueYears = [];
-        var yearSet = {};
-        
-        for (var i = 0; i < marks.length; i++) {
-            var m = marks[i];
-            if (m.academic_year && !yearSet[m.academic_year]) {
-                yearSet[m.academic_year] = true;
-                uniqueYears.push(m.academic_year);
-            }
-        }
-        
-        // Add default years if empty
-        if (uniqueYears.length === 0) {
-            var currentYear = new Date().getFullYear();
-            for (var y = currentYear; y >= currentYear - 5; y--) {
-                uniqueYears.push(String(y));
-            }
-        }
-        
-        yearFilter.innerHTML = '<option value="all">📅 All Years</option>';
-        uniqueYears.sort().reverse();
-        for (var j = 0; j < uniqueYears.length; j++) {
-            var year = uniqueYears[j];
-            var option = document.createElement('option');
-            option.value = year;
-            option.textContent = year;
-            yearFilter.appendChild(option);
-        }
-        
-        if (currentValue && uniqueYears.indexOf(currentValue) !== -1) {
-            yearFilter.value = currentValue;
-        }
-    }
+    // Block filter - based on intake year
+    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
+    populateBlockFilterByIntakeYear(intakeYear);
     
-    // 3. Block filter - based on selected year
-    var blockFilter = document.getElementById('pm_block_filter');
-    if (blockFilter) {
-        var currentValue = blockFilter.value;
-        var selectedYear = document.getElementById('pm_year_filter')?.value || 'all';
-        var uniqueBlocks = [];
-        var blockSet = {};
-        
-        // Filter marks by selected year first
-        var yearMarks = marks;
-        if (selectedYear !== 'all') {
-            yearMarks = marks.filter(function(m) { 
-                return m.academic_year === selectedYear; 
-            });
-        }
-        
-        for (var i = 0; i < yearMarks.length; i++) {
-            var m = yearMarks[i];
-            if (m.block && !blockSet[m.block]) {
-                blockSet[m.block] = true;
-                uniqueBlocks.push(m.block);
-            }
-        }
-        
-        // Add default blocks if empty
-        if (uniqueBlocks.length === 0) {
-            var defaultBlocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'];
-            for (var j = 0; j < defaultBlocks.length; j++) {
-                uniqueBlocks.push(defaultBlocks[j]);
-            }
-        }
-        
-        // Sort blocks
-        uniqueBlocks.sort(function(a, b) {
-            if (a === 'Introductory') return -1;
-            if (b === 'Introductory') return 1;
-            var aNum = parseInt(a.replace('Block ', ''));
-            var bNum = parseInt(b.replace('Block ', ''));
-            if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
-            return a.localeCompare(b);
-        });
-        
-        blockFilter.innerHTML = '<option value="all">📦 All Blocks/Terms</option>';
-        for (var k = 0; k < uniqueBlocks.length; k++) {
-            var block = uniqueBlocks[k];
-            var option = document.createElement('option');
-            option.value = block;
-            option.textContent = block;
-            blockFilter.appendChild(option);
-        }
-        
-        if (currentValue && uniqueBlocks.indexOf(currentValue) !== -1) {
-            blockFilter.value = currentValue;
-        }
-    }
-    
-    // 4. Program filter
-    var programFilter = document.getElementById('pm_program_filter');
-    if (programFilter) {
-        var currentValue = programFilter.value;
-        var uniquePrograms = [];
-        var programSet = {};
-        
-        for (var i = 0; i < marks.length; i++) {
-            var m = marks[i];
-            if (m.program && !programSet[m.program]) {
-                programSet[m.program] = true;
-                uniquePrograms.push(m.program);
-            }
-        }
-        
-        if (uniquePrograms.length === 0) {
-            uniquePrograms = ['KRCHN', 'DPOTT', 'DCH', 'CPOTT'];
-        }
-        
-        programFilter.innerHTML = '<option value="all">All Programs</option>';
-        uniquePrograms.sort();
-        for (var j = 0; j < uniquePrograms.length; j++) {
-            var program = uniquePrograms[j];
-            var option = document.createElement('option');
-            option.value = program;
-            option.textContent = getProgramDisplayName(program);
-            programFilter.appendChild(option);
-        }
-        
-        if (currentValue && uniquePrograms.indexOf(currentValue) !== -1) {
-            programFilter.value = currentValue;
-        }
-    }
+    // Student filter
+    populateStudentFilter(marks);
 }
 
 // ============================================================
-// RENDER PUBLISHED MARKS - PER UNIT RETAKE
+// RENDER PUBLISHED MARKS - WITH PAGINATION (30 per page)
 // ============================================================
 
 function renderPublishedMarks() {
@@ -914,27 +979,29 @@ function renderPublishedMarks() {
     if (!container) return;
     
     var marks = PUBLISHED_STATE.filtered;
+    var currentPage = PUBLISHED_STATE.currentPage;
+    var perPage = PUBLISHED_STATE.perPage;
+    var totalItems = marks.length;
+    var totalPages = Math.ceil(totalItems / perPage);
     
-    var studentFilter = document.getElementById('pm_student_filter')?.value || 'all';
-    var displayMarks = marks.slice();
+    // Ensure current page is valid
+    if (currentPage < 1) currentPage = 1;
+    if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
     
-    if (studentFilter !== 'all') {
-        displayMarks = displayMarks.filter(function(m) {
-            return (m.admission_number || m.student_name || 'Unknown') === studentFilter;
-        });
-    }
+    var startIndex = (currentPage - 1) * perPage;
+    var endIndex = Math.min(startIndex + perPage, totalItems);
+    var pageMarks = marks.slice(startIndex, endIndex);
     
-    var subjectFilter = document.getElementById('pm_subject_filter')?.value || 'all';
-    if (subjectFilter !== 'all') {
-        displayMarks = displayMarks.filter(function(m) { return m.subject_name === subjectFilter; });
-    }
+    // Update pagination info
+    document.getElementById('pm_page_start').textContent = totalItems > 0 ? startIndex + 1 : 0;
+    document.getElementById('pm_page_end').textContent = endIndex;
+    document.getElementById('pm_total_items').textContent = totalItems;
+    document.getElementById('pm_page_info').textContent = 'Page ' + currentPage + ' of ' + (totalPages || 1);
     
-    var programFilter = document.getElementById('pm_program_filter')?.value || 'all';
-    if (programFilter !== 'all') {
-        displayMarks = displayMarks.filter(function(m) { return m.program === programFilter; });
-    }
+    document.getElementById('pm_prev_btn').disabled = currentPage <= 1;
+    document.getElementById('pm_next_btn').disabled = currentPage >= totalPages;
     
-    if (!displayMarks || displayMarks.length === 0) {
+    if (!pageMarks || pageMarks.length === 0) {
         var emptyHtml = '<div style="text-align: center; padding: 60px 20px;">';
         emptyHtml += '<i class="fas fa-share-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>';
         emptyHtml += '<h3 style="color: #1e293b;">' + (marks.length > 0 ? 'No marks match the current filter' : 'No marks found') + '</h3>';
@@ -947,12 +1014,13 @@ function renderPublishedMarks() {
         emptyHtml += '</div>';
         container.innerHTML = emptyHtml;
         document.getElementById('pm_filter_count').textContent = '0';
+        updatePaginationInfo();
         return;
     }
     
     var studentMap = {};
-    for (var i = 0; i < displayMarks.length; i++) {
-        var mark = displayMarks[i];
+    for (var i = 0; i < pageMarks.length; i++) {
+        var mark = pageMarks[i];
         var key = mark.admission_number || mark.student_name || 'Unknown';
         if (!studentMap[key]) {
             studentMap[key] = [];
@@ -964,21 +1032,24 @@ function renderPublishedMarks() {
     var totalStudents = studentKeys.length;
     
     var totalStudentsEl = document.getElementById('pm_total_students');
-    if (totalStudentsEl) totalStudentsEl.textContent = totalStudents;
+    if (totalStudentsEl) totalStudentsEl.textContent = totalItems > 0 ? '~' + Math.ceil(totalItems / 8) : 0;
     
     var html = 
         '<div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; padding: 0 4px;">' +
             '<div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: #64748b;">' +
-                '<span><i class="fas fa-users"></i> <strong>' + totalStudents + '</strong> students</span>' +
+                '<span><i class="fas fa-users"></i> <strong>' + totalItems + '</strong> marks</span>' +
+                '<span><i class="fas fa-user-graduate"></i> <strong>' + studentKeys.length + '</strong> students</span>' +
+                '<span><i class="fas fa-file-alt"></i> Showing <strong>' + pageMarks.length + '</strong> records</span>' +
             '</div>' +
             '<span style="font-size: 10px; color: #94a3b8;">' +
-                '<i class="fas fa-clock"></i> ' + new Date().toLocaleTimeString() +
+                '<i class="fas fa-clock"></i> ' + getCurrentDateTime() +
             '</span>' +
         '</div>' +
         '<div style="overflow-x: auto;">' +
             '<table style="width: 100%; border-collapse: collapse; font-size: 12px;">' +
                 '<thead style="background: #0A3D62; color: white;">' +
                     '<tr>' +
+                        '<th style="padding: 6px 10px; text-align: left; width: 30px;"><input type="checkbox" id="pm_select_all" onchange="toggleSelectAll()"></th>' +
                         '<th style="padding: 6px 10px; text-align: left;">#</th>' +
                         '<th style="padding: 6px 10px; text-align: left;">Student</th>' +
                         '<th style="padding: 6px 10px; text-align: left;">Admission</th>' +
@@ -993,6 +1064,7 @@ function renderPublishedMarks() {
                 '<tbody>';
     
     var index = 0;
+    var allChecked = true;
     for (var s = 0; s < studentKeys.length; s++) {
         var key = studentKeys[s];
         var studentMarks = studentMap[key];
@@ -1014,6 +1086,7 @@ function renderPublishedMarks() {
         var totalScore = 0;
         var allPublished = true;
         var totalPoints = 0;
+        var allDraft = true;
         
         for (var m = 0; m < studentMarks.length; m++) {
             var sm = studentMarks[m];
@@ -1023,12 +1096,15 @@ function renderPublishedMarks() {
             else if (sm.final_score > 0 && sm.final_score < threshold) failedUnits++;
             else pendingUnits++;
             if (sm.published !== true) allPublished = false;
+            if (sm.published === true) allDraft = false;
         }
         
         var avgScore = totalUnits > 0 ? (totalScore / totalUnits) : 0;
-        var publishStatus = allPublished ? '✅ All Published' : '📝 Draft';
-        var publishColor = allPublished ? '#10b981' : '#94a3b8';
+        var publishStatus = allPublished ? '✅ All Published' : (allDraft ? '📝 All Draft' : '📝 Mixed');
+        var publishColor = allPublished ? '#10b981' : (allDraft ? '#94a3b8' : '#f59e0b');
         var gpa = totalUnits > 0 ? (totalPoints / totalUnits) : 0;
+        var isSelected = PUBLISHED_STATE.selectedStudents.has(admissionNumber);
+        if (!isSelected) allChecked = false;
         
         index++;
         
@@ -1036,7 +1112,10 @@ function renderPublishedMarks() {
             '<tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; background: ' + (index % 2 === 0 ? '#fafafa' : 'transparent') + ';" ' +
                 'onmouseover="this.style.background=\'#f8fafc\'" ' +
                 'onmouseout="this.style.background=\'' + (index % 2 === 0 ? '#fafafa' : 'transparent') + '\'">' +
-                '<td style="padding: 6px 10px; text-align: center; color: #94a3b8;">' + index + '</td>' +
+                '<td style="padding: 6px 10px; text-align: center;">' +
+                    '<input type="checkbox" class="pm-student-checkbox" data-admission="' + escapeHtml(admissionNumber) + '" ' + (isSelected ? 'checked' : '') + ' onchange="toggleStudentSelection(this)">' +
+                '</td>' +
+                '<td style="padding: 6px 10px; text-align: center; color: #94a3b8;">' + (startIndex + index) + '</td>' +
                 '<td style="padding: 6px 10px; font-weight: 500;">' + escapeHtml(studentName) + studentRetakeBadge + '</td>' +
                 '<td style="padding: 6px 10px; font-size: 11px; color: #64748b;">' + escapeHtml(admissionNumber) + '</td>' +
                 '<td style="padding: 6px 10px;">' +
@@ -1063,14 +1142,14 @@ function renderPublishedMarks() {
                 'style="background: #dc2626; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; transition: all 0.2s;" ' +
                 'onmouseover="this.style.background=\'#b91c1c\'" ' +
                 'onmouseout="this.style.background=\'#dc2626\'">' +
-                '<i class="fas fa-lock"></i> Unpublish All' +
+                '<i class="fas fa-lock"></i> Unpublish' +
                 '</button>';
         } else {
             html += '<button onclick="publishStudentAllMarks(\'' + escapeHtml(admissionNumber) + '\')" ' +
                 'style="background: #10b981; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; transition: all 0.2s;" ' +
                 'onmouseover="this.style.background=\'#059669\'" ' +
                 'onmouseout="this.style.background=\'#10b981\'">' +
-                '<i class="fas fa-share-alt"></i> Publish All' +
+                '<i class="fas fa-share-alt"></i> Publish' +
                 '</button>';
         }
         
@@ -1091,11 +1170,240 @@ function renderPublishedMarks() {
         '</div>';
     
     container.innerHTML = html;
-    document.getElementById('pm_filter_count').textContent = displayMarks.length;
+    document.getElementById('pm_filter_count').textContent = pageMarks.length;
+    updatePaginationInfo();
+    updateSelectedCount();
+    
+    // Update select all checkbox
+    var selectAll = document.getElementById('pm_select_all');
+    if (selectAll) {
+        var checkboxes = document.querySelectorAll('.pm-student-checkbox');
+        var checked = document.querySelectorAll('.pm-student-checkbox:checked');
+        selectAll.checked = checkboxes.length > 0 && checkboxes.length === checked.length;
+        selectAll.indeterminate = checkboxes.length > 0 && checked.length > 0 && checkboxes.length !== checked.length;
+    }
 }
 
 // ============================================================
-// VIEW STUDENT MARKS DETAIL - PER UNIT RETAKE
+// SELECTION FUNCTIONS
+// ============================================================
+
+function toggleSelectAll() {
+    var selectAll = document.getElementById('pm_select_all');
+    var checkboxes = document.querySelectorAll('.pm-student-checkbox');
+    var isChecked = selectAll?.checked || false;
+    
+    checkboxes.forEach(function(cb) {
+        cb.checked = isChecked;
+        toggleStudentSelection(cb);
+    });
+}
+
+function toggleStudentSelection(checkbox) {
+    var admission = checkbox.dataset.admission;
+    if (checkbox.checked) {
+        PUBLISHED_STATE.selectedStudents.add(admission);
+    } else {
+        PUBLISHED_STATE.selectedStudents.delete(admission);
+    }
+    updateSelectedCount();
+}
+
+function selectAllStudents() {
+    document.querySelectorAll('.pm-student-checkbox').forEach(function(cb) {
+        cb.checked = true;
+        PUBLISHED_STATE.selectedStudents.add(cb.dataset.admission);
+    });
+    updateSelectedCount();
+}
+
+function deselectAllStudents() {
+    document.querySelectorAll('.pm-student-checkbox').forEach(function(cb) {
+        cb.checked = false;
+        PUBLISHED_STATE.selectedStudents.delete(cb.dataset.admission);
+    });
+    updateSelectedCount();
+}
+
+function selectPublishedStudents() {
+    var marks = PUBLISHED_STATE.filtered;
+    var publishedAdmissions = {};
+    marks.forEach(function(m) {
+        if (m.published === true) {
+            publishedAdmissions[m.admission_number] = true;
+        }
+    });
+    
+    document.querySelectorAll('.pm-student-checkbox').forEach(function(cb) {
+        var admission = cb.dataset.admission;
+        if (publishedAdmissions[admission]) {
+            cb.checked = true;
+            PUBLISHED_STATE.selectedStudents.add(admission);
+        } else {
+            cb.checked = false;
+            PUBLISHED_STATE.selectedStudents.delete(admission);
+        }
+    });
+    updateSelectedCount();
+}
+
+function selectDraftStudents() {
+    var marks = PUBLISHED_STATE.filtered;
+    var draftAdmissions = {};
+    marks.forEach(function(m) {
+        if (m.published !== true) {
+            draftAdmissions[m.admission_number] = true;
+        }
+    });
+    
+    document.querySelectorAll('.pm-student-checkbox').forEach(function(cb) {
+        var admission = cb.dataset.admission;
+        if (draftAdmissions[admission]) {
+            cb.checked = true;
+            PUBLISHED_STATE.selectedStudents.add(admission);
+        } else {
+            cb.checked = false;
+            PUBLISHED_STATE.selectedStudents.delete(admission);
+        }
+    });
+    updateSelectedCount();
+}
+
+function updateSelectedCount() {
+    var count = PUBLISHED_STATE.selectedStudents.size;
+    var el = document.getElementById('pm_selected_count');
+    if (el) el.textContent = count;
+    
+    var publishBtn = document.getElementById('batchPublishBtn');
+    var unpublishBtn = document.getElementById('batchUnpublishBtn');
+    
+    if (publishBtn) {
+        publishBtn.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+    if (unpublishBtn) {
+        unpublishBtn.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+}
+
+// ============================================================
+// PAGINATION FUNCTIONS
+// ============================================================
+
+function goToPage(direction) {
+    var totalItems = PUBLISHED_STATE.filtered.length;
+    var totalPages = Math.ceil(totalItems / PUBLISHED_STATE.perPage);
+    var currentPage = PUBLISHED_STATE.currentPage;
+    
+    if (direction === 'prev' && currentPage > 1) {
+        PUBLISHED_STATE.currentPage--;
+    } else if (direction === 'next' && currentPage < totalPages) {
+        PUBLISHED_STATE.currentPage++;
+    } else if (typeof direction === 'number') {
+        PUBLISHED_STATE.currentPage = Math.max(1, Math.min(direction, totalPages));
+    }
+    
+    renderPublishedMarks();
+    updatePaginationInfo();
+}
+
+function updatePaginationInfo() {
+    var totalItems = PUBLISHED_STATE.filtered.length;
+    var totalPages = Math.max(1, Math.ceil(totalItems / PUBLISHED_STATE.perPage));
+    var currentPage = PUBLISHED_STATE.currentPage;
+    
+    var startIndex = (currentPage - 1) * PUBLISHED_STATE.perPage;
+    var endIndex = Math.min(startIndex + PUBLISHED_STATE.perPage, totalItems);
+    
+    document.getElementById('pm_page_start').textContent = totalItems > 0 ? startIndex + 1 : 0;
+    document.getElementById('pm_page_end').textContent = endIndex;
+    document.getElementById('pm_total_items').textContent = totalItems;
+    document.getElementById('pm_page_info').textContent = 'Page ' + currentPage + ' of ' + totalPages;
+    
+    document.getElementById('pm_prev_btn').disabled = currentPage <= 1;
+    document.getElementById('pm_next_btn').disabled = currentPage >= totalPages;
+}
+
+// ============================================================
+// UPDATE STATS
+// ============================================================
+
+function updateStats(marks) {
+    var total = marks.length;
+    
+    var passed = 0;
+    var failed = 0;
+    var pending = 0;
+    var published = 0;
+    var unpublished = 0;
+    var totalScore = 0;
+    var totalPoints = 0;
+    var retakeCount = 0;
+    
+    for (var i = 0; i < marks.length; i++) {
+        var m = marks[i];
+        var isTVET = getProgramType(m.program) === 'TVET';
+        var threshold = isTVET ? 50 : 60;
+        
+        if (m.final_score >= threshold) passed++;
+        else if (m.final_score > 0 && m.final_score < threshold) failed++;
+        else pending++;
+        
+        if (m.published === true) published++;
+        else unpublished++;
+        
+        totalScore = totalScore + (m.final_score || 0);
+        totalPoints = totalPoints + (m.points || 0);
+        if (m.hasRetake) retakeCount++;
+    }
+    
+    var avg = total > 0 ? (totalScore / total) : 0;
+    var gpa = total > 0 ? (totalPoints / total) : 0;
+    
+    var elements = {
+        total: document.getElementById('pm_total_marks'),
+        students: document.getElementById('pm_total_students'),
+        passed: document.getElementById('pm_passed'),
+        failed: document.getElementById('pm_failed'),
+        pending: document.getElementById('pm_pending'),
+        avg: document.getElementById('pm_avg_score'),
+        published: document.getElementById('pm_published_count'),
+        unpublished: document.getElementById('pm_unpublished_count'),
+        attempted: document.getElementById('pm_units_attempted'),
+        unitsPassed: document.getElementById('pm_units_passed'),
+        unitsFailed: document.getElementById('pm_units_failed'),
+        overallGpa: document.getElementById('pm_overall_gpa'),
+        retakeCount: document.getElementById('pm_retake_count')
+    };
+    
+    if (elements.total) elements.total.textContent = total;
+    if (elements.students) elements.students.textContent = total;
+    if (elements.passed) elements.passed.textContent = passed;
+    if (elements.failed) elements.failed.textContent = failed;
+    if (elements.pending) elements.pending.textContent = pending;
+    if (elements.avg) elements.avg.textContent = avg.toFixed(1) + '%';
+    if (elements.published) elements.published.textContent = published;
+    if (elements.unpublished) elements.unpublished.textContent = unpublished;
+    if (elements.attempted) elements.attempted.textContent = total;
+    if (elements.unitsPassed) elements.unitsPassed.textContent = passed;
+    if (elements.unitsFailed) elements.unitsFailed.textContent = failed;
+    if (elements.overallGpa) elements.overallGpa.textContent = gpa.toFixed(2);
+    if (elements.retakeCount) elements.retakeCount.textContent = retakeCount;
+}
+
+function updateBadge(marks) {
+    var badge = document.getElementById('publishedMarksBadge');
+    if (badge) {
+        var count = 0;
+        for (var i = 0; i < marks.length; i++) {
+            if (marks[i].published === true) count++;
+        }
+        badge.textContent = count;
+        badge.style.display = 'inline-block';
+    }
+}
+
+// ============================================================
+// VIEW STUDENT MARKS DETAIL
 // ============================================================
 
 function viewStudentMarks(admissionNumber) {
@@ -1301,7 +1609,7 @@ function closeStudentMarksModal() {
 }
 
 // ============================================================
-// PUBLISH SINGLE UNIT
+// PUBLISH/UNPUBLISH FUNCTIONS
 // ============================================================
 
 async function publishSingleUnit(markId, subjectName, admissionNumber) {
@@ -1394,10 +1702,6 @@ async function publishSingleUnit(markId, subjectName, admissionNumber) {
     }
 }
 
-// ============================================================
-// UNPUBLISH SINGLE UNIT
-// ============================================================
-
 async function unpublishSingleUnit(markId, subjectName, admissionNumber) {
     if (!markId) {
         if (typeof window.showNotification === 'function') {
@@ -1438,10 +1742,6 @@ async function unpublishSingleUnit(markId, subjectName, admissionNumber) {
         if (typeof window.hideLoading === 'function') window.hideLoading();
     }
 }
-
-// ============================================================
-// PUBLISH ALL MARKS FOR A STUDENT
-// ============================================================
 
 async function publishStudentAllMarks(admissionNumber) {
     if (!admissionNumber) {
@@ -1532,10 +1832,6 @@ async function publishStudentAllMarks(admissionNumber) {
     }
 }
 
-// ============================================================
-// UNPUBLISH ALL MARKS FOR A STUDENT
-// ============================================================
-
 async function unpublishStudentAllMarks(admissionNumber) {
     if (!admissionNumber) {
         if (typeof window.showNotification === 'function') {
@@ -1580,168 +1876,208 @@ async function unpublishStudentAllMarks(admissionNumber) {
 }
 
 // ============================================================
-// FILTER FUNCTIONS
+// BATCH PUBLISH/UNPUBLISH
 // ============================================================
 
-function filterPublishedMarks() {
-    var yearFilter = document.getElementById('pm_year_filter')?.value || 'all';
-    var blockFilter = document.getElementById('pm_block_filter')?.value || 'all';
-    var programFilter = document.getElementById('pm_program_filter')?.value || 'all';
-    var subjectFilter = document.getElementById('pm_subject_filter')?.value || 'all';
-    var statusFilter = document.getElementById('pm_status_filter')?.value || 'all';
-    var studentFilter = document.getElementById('pm_student_filter')?.value || 'all';
-    var searchTerm = document.getElementById('pm_search')?.value?.toLowerCase() || '';
-    
-    var filtered = PUBLISHED_STATE.marks.slice();
-    
-    if (PUBLISHED_STATE.currentProgramFilter === 'KRCHN') {
-        filtered = filtered.filter(function(m) { return m.program === 'KRCHN'; });
-    } else if (PUBLISHED_STATE.currentProgramFilter === 'TVET') {
-        filtered = filtered.filter(function(m) { return m.program !== 'KRCHN'; });
-    }
-    
-    // Year filter
-    if (yearFilter !== 'all') {
-        filtered = filtered.filter(function(m) { 
-            return m.academic_year === yearFilter; 
-        });
-    }
-    
-    // Block filter
-    if (blockFilter !== 'all') {
-        filtered = filtered.filter(function(m) { 
-            return m.block === blockFilter; 
-        });
-    }
-    
-    if (studentFilter !== 'all') {
-        filtered = filtered.filter(function(m) {
-            return (m.admission_number || m.student_name || 'Unknown') === studentFilter;
-        });
-    }
-    
-    if (subjectFilter !== 'all') {
-        filtered = filtered.filter(function(m) { 
-            return m.subject_name === subjectFilter; 
-        });
-    }
-    
-    if (programFilter !== 'all' && PUBLISHED_STATE.currentProgramFilter === 'all') {
-        filtered = filtered.filter(function(m) { 
-            return m.program === programFilter; 
-        });
-    }
-    
-    if (statusFilter === 'published') {
-        filtered = filtered.filter(function(m) { return m.published === true; });
-    } else if (statusFilter === 'draft') {
-        filtered = filtered.filter(function(m) { return m.published !== true; });
-    }
-    
-    if (searchTerm) {
-        filtered = filtered.filter(function(m) {
-            return (m.subject_name || '').toLowerCase().includes(searchTerm) ||
-                (m.student_name || '').toLowerCase().includes(searchTerm) ||
-                (m.admission_number || '').toLowerCase().includes(searchTerm);
-        });
-    }
-    
-    PUBLISHED_STATE.filtered = filtered;
-    renderPublishedMarks();
-    updateProgramCounts(filtered);
-    updateGradingScaleDisplay();
-}
-
-// ============================================================
-// UPDATE STATS - WITH PUBLISHED & UNPUBLISHED
-// ============================================================
-
-function updateStats(marks) {
-    var total = marks.length;
-    
-    var passed = 0;
-    var failed = 0;
-    var pending = 0;
-    var published = 0;
-    var unpublished = 0;
-    var totalScore = 0;
-    var totalPoints = 0;
-    var retakeCount = 0;
-    
-    for (var i = 0; i < marks.length; i++) {
-        var m = marks[i];
-        var isTVET = getProgramType(m.program) === 'TVET';
-        var threshold = isTVET ? 50 : 60;
-        
-        if (m.final_score >= threshold) passed++;
-        else if (m.final_score > 0 && m.final_score < threshold) failed++;
-        else pending++;
-        
-        if (m.published === true) published++;
-        else unpublished++;
-        
-        totalScore = totalScore + (m.final_score || 0);
-        totalPoints = totalPoints + (m.points || 0);
-        if (m.hasRetake) retakeCount++;
-    }
-    
-    var avg = total > 0 ? (totalScore / total) : 0;
-    var gpa = total > 0 ? (totalPoints / total) : 0;
-    
-    var elements = {
-        total: document.getElementById('pm_total_marks'),
-        students: document.getElementById('pm_total_students'),
-        passed: document.getElementById('pm_passed'),
-        failed: document.getElementById('pm_failed'),
-        pending: document.getElementById('pm_pending'),
-        avg: document.getElementById('pm_avg_score'),
-        published: document.getElementById('pm_published_count'),
-        unpublished: document.getElementById('pm_unpublished_count'),
-        attempted: document.getElementById('pm_units_attempted'),
-        unitsPassed: document.getElementById('pm_units_passed'),
-        unitsFailed: document.getElementById('pm_units_failed'),
-        overallGpa: document.getElementById('pm_overall_gpa'),
-        retakeCount: document.getElementById('pm_retake_count')
-    };
-    
-    if (elements.total) elements.total.textContent = total;
-    if (elements.students) elements.students.textContent = total;
-    if (elements.passed) elements.passed.textContent = passed;
-    if (elements.failed) elements.failed.textContent = failed;
-    if (elements.pending) elements.pending.textContent = pending;
-    if (elements.avg) elements.avg.textContent = avg.toFixed(1) + '%';
-    if (elements.published) elements.published.textContent = published;
-    if (elements.unpublished) elements.unpublished.textContent = unpublished;
-    if (elements.attempted) elements.attempted.textContent = total;
-    if (elements.unitsPassed) elements.unitsPassed.textContent = passed;
-    if (elements.unitsFailed) elements.unitsFailed.textContent = failed;
-    if (elements.overallGpa) elements.overallGpa.textContent = gpa.toFixed(2);
-    if (elements.retakeCount) elements.retakeCount.textContent = retakeCount;
-    
-    var summarySection = document.getElementById('pm_summary_section');
-    if (summarySection) {
-        summarySection.style.display = total > 0 ? 'block' : 'none';
-    }
-}
-
-function updateBadge(marks) {
-    var badge = document.getElementById('publishedMarksBadge');
-    if (badge) {
-        var count = 0;
-        for (var i = 0; i < marks.length; i++) {
-            if (marks[i].published === true) count++;
+async function batchPublishSelected() {
+    var selected = Array.from(PUBLISHED_STATE.selectedStudents);
+    if (selected.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No students selected', 'warning');
         }
-        badge.textContent = count;
-        badge.style.display = 'inline-block';
+        return;
+    }
+    
+    if (!confirm('⚠️ Publish ALL marks for ' + selected.length + ' selected students?')) return;
+    
+    if (typeof window.showLoading === 'function') window.showLoading('Publishing selected students...');
+    
+    try {
+        var successCount = 0;
+        var errorCount = 0;
+        
+        for (var i = 0; i < selected.length; i++) {
+            var admission = selected[i];
+            try {
+                var result = await window.sb
+                    .from('student_marks')
+                    .update({
+                        published: true,
+                        published_at: new Date().toISOString(),
+                        published_by: window.currentUser?.id || null
+                    })
+                    .eq('admission_number', admission);
+                
+                if (!result.error) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+            } catch (e) {
+                errorCount++;
+                console.error('Error publishing:', admission, e);
+            }
+        }
+        
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+        
+        if (typeof window.showNotification === 'function') {
+            if (errorCount === 0) {
+                window.showNotification('✅ Published ' + successCount + ' students successfully!', 'success');
+            } else {
+                window.showNotification('⚠️ Published ' + successCount + ' students, ' + errorCount + ' errors', 'warning');
+            }
+        }
+        
+        PUBLISHED_STATE.selectedStudents = new Set();
+        await loadPublishedMarks();
+        
+    } catch (error) {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+        console.error('Error batch publishing:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('❌ Error: ' + error.message, 'error');
+        }
+    }
+}
+
+async function batchUnpublishSelected() {
+    var selected = Array.from(PUBLISHED_STATE.selectedStudents);
+    if (selected.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No students selected', 'warning');
+        }
+        return;
+    }
+    
+    if (!confirm('⚠️ Unpublish ALL marks for ' + selected.length + ' selected students?')) return;
+    
+    if (typeof window.showLoading === 'function') window.showLoading('Unpublishing selected students...');
+    
+    try {
+        var successCount = 0;
+        var errorCount = 0;
+        
+        for (var i = 0; i < selected.length; i++) {
+            var admission = selected[i];
+            try {
+                var result = await window.sb
+                    .from('student_marks')
+                    .update({
+                        published: false,
+                        published_at: null,
+                        published_by: null
+                    })
+                    .eq('admission_number', admission);
+                
+                if (!result.error) {
+                    successCount++;
+                } else {
+                    errorCount++;
+                }
+            } catch (e) {
+                errorCount++;
+                console.error('Error unpublishing:', admission, e);
+            }
+        }
+        
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+        
+        if (typeof window.showNotification === 'function') {
+            if (errorCount === 0) {
+                window.showNotification('🔒 Unpublished ' + successCount + ' students successfully!', 'info');
+            } else {
+                window.showNotification('⚠️ Unpublished ' + successCount + ' students, ' + errorCount + ' errors', 'warning');
+            }
+        }
+        
+        PUBLISHED_STATE.selectedStudents = new Set();
+        await loadPublishedMarks();
+        
+    } catch (error) {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+        console.error('Error batch unpublishing:', error);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('❌ Error: ' + error.message, 'error');
+        }
     }
 }
 
 // ============================================================
-// BULK PUBLISH FUNCTIONS
+// PUBLISH BY INTAKE YEAR
 // ============================================================
 
-async function publishAllFilteredMarks() {
-    var marks = PUBLISHED_STATE.filtered;
+async function publishAllByIntakeYear() {
+    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
+    if (intakeYear === 'all') {
+        if (!confirm('⚠️ Publish ALL marks for ALL intake years?')) return;
+    } else {
+        if (!confirm('⚠️ Publish ALL marks for ' + intakeYear + ' Intake?')) return;
+    }
+    
+    var marksToPublish = PUBLISHED_STATE.filtered;
+    if (intakeYear !== 'all') {
+        marksToPublish = marksToPublish.filter(function(m) {
+            return m.academic_year === intakeYear;
+        });
+    }
+    
+    await batchPublishMarks(marksToPublish);
+}
+
+async function publishByIntakeAndProgram(programType) {
+    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
+    var programLabel = programType === 'KRCHN' ? 'KRCHN' : 'TVET';
+    
+    if (intakeYear === 'all') {
+        if (!confirm('⚠️ Publish ALL ' + programLabel + ' marks for ALL intake years?')) return;
+    } else {
+        if (!confirm('⚠️ Publish ALL ' + programLabel + ' marks for ' + intakeYear + ' Intake?')) return;
+    }
+    
+    var marksToPublish = PUBLISHED_STATE.filtered.filter(function(m) {
+        if (programType === 'KRCHN') {
+            return m.program === 'KRCHN';
+        } else {
+            return m.program !== 'KRCHN';
+        }
+    });
+    
+    if (intakeYear !== 'all') {
+        marksToPublish = marksToPublish.filter(function(m) {
+            return m.academic_year === intakeYear;
+        });
+    }
+    
+    await batchPublishMarks(marksToPublish);
+}
+
+async function publishByBlock() {
+    var block = document.getElementById('pm_block_filter')?.value || 'all';
+    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
+    
+    if (block === 'all') {
+        if (!confirm('⚠️ Publish ALL marks for ALL blocks?')) return;
+    } else {
+        if (!confirm('⚠️ Publish ALL marks for Block: ' + block + '?')) return;
+    }
+    
+    var marksToPublish = PUBLISHED_STATE.filtered;
+    if (block !== 'all') {
+        marksToPublish = marksToPublish.filter(function(m) {
+            return m.block === block;
+        });
+    }
+    if (intakeYear !== 'all') {
+        marksToPublish = marksToPublish.filter(function(m) {
+            return m.academic_year === intakeYear;
+        });
+    }
+    
+    await batchPublishMarks(marksToPublish);
+}
+
+async function batchPublishMarks(marks) {
     if (!marks || marks.length === 0) {
         if (typeof window.showNotification === 'function') {
             window.showNotification('No marks to publish', 'warning');
@@ -1750,16 +2086,23 @@ async function publishAllFilteredMarks() {
     }
     
     var count = marks.length;
-    if (!confirm('⚠️ Publish ALL ' + count + ' marks in the current filtered list?')) return;
+    
+    if (typeof window.showLoading === 'function') window.showLoading('Publishing ' + count + ' marks...');
     
     try {
-        if (typeof window.showLoading === 'function') window.showLoading('Publishing marks...');
-        
         var successCount = 0;
         var publishedStudents = {};
+        var retakeCount = 0;
         
         for (var i = 0; i < marks.length; i++) {
             var mark = marks[i];
+            
+            // Check if this mark has a retake
+            var retakeInfo = getStudentRetakeInfo(mark.admission_number, mark.subject_name);
+            if (retakeInfo && retakeInfo.count > 0) {
+                retakeCount++;
+            }
+            
             var result = await window.sb
                 .from('student_marks')
                 .update({
@@ -1788,6 +2131,7 @@ async function publishAllFilteredMarks() {
             }
         }
         
+        // Send emails to students
         var studentKeys = Object.keys(publishedStudents);
         for (var j = 0; j < studentKeys.length; j++) {
             var key = studentKeys[j];
@@ -1816,20 +2160,44 @@ async function publishAllFilteredMarks() {
             }
         }
         
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+        
+        var retakeNote = retakeCount > 0 ? ' (' + retakeCount + ' retake unit' + (retakeCount > 1 ? 's' : '') + ')' : '';
         if (typeof window.showNotification === 'function') {
-            window.showNotification('✅ Published ' + successCount + ' marks', 'success');
+            window.showNotification('✅ Published ' + successCount + ' marks' + retakeNote, 'success');
         }
+        
+        // Add to publish history
+        addPublishHistory(successCount, marks.length, studentKeys.length);
         
         await loadPublishedMarks();
         
     } catch (error) {
-        console.error('Error publishing all marks:', error);
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+        console.error('Error publishing marks:', error);
         if (typeof window.showNotification === 'function') {
             window.showNotification('❌ Error: ' + error.message, 'error');
         }
-    } finally {
-        if (typeof window.hideLoading === 'function') window.hideLoading();
     }
+}
+
+// ============================================================
+// PUBLISH ALL FILTERED MARKS
+// ============================================================
+
+async function publishAllFilteredMarks() {
+    var marks = PUBLISHED_STATE.filtered;
+    if (!marks || marks.length === 0) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No marks to publish', 'warning');
+        }
+        return;
+    }
+    
+    var count = marks.length;
+    if (!confirm('⚠️ Publish ALL ' + count + ' marks in the current filtered list?')) return;
+    
+    await batchPublishMarks(marks);
 }
 
 async function unpublishAllFilteredMarks() {
@@ -1844,9 +2212,9 @@ async function unpublishAllFilteredMarks() {
     var count = marks.length;
     if (!confirm('⚠️ Unpublish ALL ' + count + ' marks in the current filtered list?')) return;
     
+    if (typeof window.showLoading === 'function') window.showLoading('Unpublishing marks...');
+    
     try {
-        if (typeof window.showLoading === 'function') window.showLoading('Unpublishing marks...');
-        
         var successCount = 0;
         for (var i = 0; i < marks.length; i++) {
             var mark = marks[i];
@@ -1862,6 +2230,8 @@ async function unpublishAllFilteredMarks() {
             if (!result.error) successCount++;
         }
         
+        if (typeof window.hideLoading === 'function') window.hideLoading();
+        
         if (typeof window.showNotification === 'function') {
             window.showNotification('🔒 Unpublished ' + successCount + ' marks', 'info');
         }
@@ -1869,12 +2239,276 @@ async function unpublishAllFilteredMarks() {
         await loadPublishedMarks();
         
     } catch (error) {
+        if (typeof window.hideLoading === 'function') window.hideLoading();
         console.error('Error unpublishing all marks:', error);
         if (typeof window.showNotification === 'function') {
             window.showNotification('❌ Error: ' + error.message, 'error');
         }
-    } finally {
-        if (typeof window.hideLoading === 'function') window.hideLoading();
+    }
+}
+
+// ============================================================
+// PUBLISH HISTORY
+// ============================================================
+
+function addPublishHistory(publishedCount, totalCount, studentCount) {
+    var history = {
+        id: Date.now(),
+        timestamp: new Date().toISOString(),
+        user: window.currentUser?.full_name || window.currentUser?.name || 'Super Admin',
+        publishedCount: publishedCount,
+        totalCount: totalCount,
+        studentCount: studentCount,
+        intakeYear: document.getElementById('pm_intake_year')?.value || 'all',
+        block: document.getElementById('pm_block_filter')?.value || 'all',
+        program: document.getElementById('pm_program_filter')?.value || 'all'
+    };
+    
+    PUBLISHED_STATE.publishHistory.unshift(history);
+    if (PUBLISHED_STATE.publishHistory.length > 20) {
+        PUBLISHED_STATE.publishHistory.pop();
+    }
+    
+    // Save to localStorage
+    try {
+        localStorage.setItem('pm_publish_history', JSON.stringify(PUBLISHED_STATE.publishHistory));
+    } catch(e) {}
+    
+    renderPublishHistory();
+}
+
+function loadPublishHistory() {
+    try {
+        var stored = localStorage.getItem('pm_publish_history');
+        if (stored) {
+            PUBLISHED_STATE.publishHistory = JSON.parse(stored);
+        }
+    } catch(e) {
+        PUBLISHED_STATE.publishHistory = [];
+    }
+    renderPublishHistory();
+}
+
+function renderPublishHistory() {
+    var container = document.getElementById('pm_publish_history');
+    if (!container) return;
+    
+    var history = PUBLISHED_STATE.publishHistory;
+    
+    if (!history || history.length === 0) {
+        container.innerHTML = '<span style="color: #94a3b8;">No publish activity recorded yet.</span>';
+        return;
+    }
+    
+    var html = '<div style="max-height: 100px; overflow-y: auto;">';
+    for (var i = 0; i < history.length && i < 10; i++) {
+        var h = history[i];
+        var time = formatDate(h.timestamp);
+        var user = h.user || 'System';
+        var detail = h.publishedCount + '/' + h.totalCount + ' marks';
+        if (h.intakeYear && h.intakeYear !== 'all') detail += ' (' + h.intakeYear + ')';
+        if (h.block && h.block !== 'all') detail += ' - ' + h.block;
+        html += '<div style="padding: 4px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px;">';
+        html += '<span style="color: #059669;">✅</span> ';
+        html += '<strong>' + user + '</strong> published ';
+        html += '<span style="color: #0A3D62; font-weight: 600;">' + detail + '</span>';
+        html += ' - <span style="color: #94a3b8; font-size: 10px;">' + time + '</span>';
+        html += '</div>';
+    }
+    html += '</div>';
+    container.innerHTML = html;
+}
+
+// ============================================================
+// FILTER STATE (Save/Load)
+// ============================================================
+
+function saveFilterState() {
+    var state = {
+        intakeYear: document.getElementById('pm_intake_year')?.value || 'all',
+        program: document.getElementById('pm_program_filter')?.value || 'all',
+        block: document.getElementById('pm_block_filter')?.value || 'all',
+        status: document.getElementById('pm_status_filter')?.value || 'all',
+        search: document.getElementById('pm_search')?.value || ''
+    };
+    
+    try {
+        localStorage.setItem('pm_filter_state', JSON.stringify(state));
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('✅ Filters saved!', 'success');
+        }
+    } catch(e) {
+        console.warn('Could not save filter state:', e);
+    }
+}
+
+function loadFilterState() {
+    try {
+        var stored = localStorage.getItem('pm_filter_state');
+        if (!stored) {
+            if (typeof window.showNotification === 'function') {
+                window.showNotification('No saved filters found', 'info');
+            }
+            return;
+        }
+        
+        var state = JSON.parse(stored);
+        
+        if (state.intakeYear) {
+            var el = document.getElementById('pm_intake_year');
+            if (el) el.value = state.intakeYear;
+        }
+        if (state.program) {
+            var el = document.getElementById('pm_program_filter');
+            if (el) el.value = state.program;
+        }
+        if (state.block) {
+            var el = document.getElementById('pm_block_filter');
+            if (el) el.value = state.block;
+        }
+        if (state.status) {
+            var el = document.getElementById('pm_status_filter');
+            if (el) el.value = state.status;
+        }
+        if (state.search) {
+            var el = document.getElementById('pm_search');
+            if (el) el.value = state.search;
+        }
+        
+        // Trigger reload with saved filters
+        onIntakeYearChange();
+        filterPublishedMarks();
+        
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('✅ Filters restored!', 'success');
+        }
+    } catch(e) {
+        console.warn('Could not load filter state:', e);
+    }
+}
+
+// ============================================================
+// EMAIL NOTIFICATION FUNCTION
+// ============================================================
+
+async function sendMarksPublishedEmail(studentEmail, studentName, program, block, marksCount, academicYear) {
+    try {
+        if (!studentEmail) {
+            console.warn('⚠️ No email address for student:', studentName);
+            return { success: false, error: 'No email address' };
+        }
+        
+        console.log('📧 Sending marks published email to:', studentEmail);
+        
+        var programType = getProgramType(program);
+        var programDisplay = getProgramDisplayName(program);
+        var blockLabel = programType === 'TVET' ? 'Term' : 'Block';
+        
+        var htmlContent = 
+'<!DOCTYPE html>' +
+'<html>' +
+'<head>' +
+'<meta charset="UTF-8">' +
+'<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
+'<title>Results Published - NCHSM</title>' +
+'<style>' +
+'body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; padding: 0; background: #f0f4f8; }' +
+'.container { max-width: 580px; margin: 0 auto; padding: 20px; }' +
+'.card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }' +
+'.header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px; text-align: center; color: white; }' +
+'.header h1 { margin: 0; font-size: 24px; }' +
+'.header p { margin: 4px 0 0; opacity: 0.8; }' +
+'.body { padding: 30px 35px; }' +
+'.greeting { background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #10b981; }' +
+'.greeting p { margin: 0; font-size: 16px; color: #0A3D62; }' +
+'.details { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px; }' +
+'.details h4 { margin: 0 0 12px 0; color: #1e293b; }' +
+'.details table { width: 100%; border-collapse: collapse; font-size: 14px; }' +
+'.details td { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }' +
+'.details .label { color: #64748B; font-weight: 500; }' +
+'.details .value { color: #0A3D62; font-weight: 600; text-align: right; }' +
+'.details tr:last-child td { border-bottom: none; }' +
+'.btn { display: inline-block; background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; }' +
+'.footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }' +
+'.help { background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B; margin-top: 16px; }' +
+'.help p { margin: 0; color: #78350F; font-size: 13px; }' +
+'.badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }' +
+'.badge-success { background: #D1FAE5; color: #065F46; }' +
+'@media (max-width: 480px) { .body { padding: 20px; } .header { padding: 20px; } .details td { display: block; text-align: left; } .details .value { text-align: left; margin-top: 2px; } }' +
+'</style>' +
+'</head>' +
+'<body>' +
+'<div class="container">' +
+'<div class="card">' +
+'<div class="header">' +
+'<h1>📊 Your Results Are Published!</h1>' +
+'<p>Nakuru College of Health Sciences and Management</p>' +
+'</div>' +
+'<div class="body">' +
+'<div class="greeting">' +
+'<p>👋 <strong>Dear ' + escapeHtml(studentName || 'Student') + '</strong></p>' +
+'<p style="margin: 8px 0 0; color: #1e293b;">' +
+'We are pleased to inform you that your academic results have been published.' +
+'You can now view your marks in the student portal.' +
+'</p>' +
+'</div>' +
+'<div class="details">' +
+'<h4>📋 Results Summary</h4>' +
+'<table>' +
+'<tr><td class="label">📚 Program</td><td class="value">' + escapeHtml(programDisplay || program || 'N/A') + '</td></tr>' +
+'<tr><td class="label">📌 ' + blockLabel + '</td><td class="value">' + escapeHtml(block || 'N/A') + '</td></tr>' +
+'<tr><td class="label">📅 Academic Year</td><td class="value">' + escapeHtml(academicYear || '2025/2026') + '</td></tr>' +
+'<tr><td class="label">📊 Total Units Published</td><td class="value"><span class="badge badge-success">' + marksCount + '</span></td></tr>' +
+'<tr><td class="label">📅 Published Date</td><td class="value">' + new Date().toLocaleDateString('en-KE', {timeZone: 'Africa/Nairobi', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'}) + '</td></tr>' +
+'</table>' +
+'</div>' +
+'<div style="text-align: center; margin: 20px 0;">' +
+'<a href="https://nchsm.co.ke/student.html#academic-reports" class="btn">' +
+'📊 View My Results' +
+'</a>' +
+'</div>' +
+'<div class="help">' +
+'<h5>💡 Need Help?</h5>' +
+'<p>📧 portal.nchsm@gmail.com<br>📞 0790969743 | 0702432987</p>' +
+'</div>' +
+'</div>' +
+'<div class="footer">' +
+'<p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>' +
+'<p style="font-size:0.75rem;">© ' + new Date().getFullYear() + ' Nakuru College of Health Sciences and Management</p>' +
+'<p style="font-size:0.7rem; color: #94a3b8; margin-top: 8px;">This is an automated message from NCHSM Exam System.</p>' +
+'</div>' +
+'</div>' +
+'</div>' +
+'</body>' +
+'</html>';
+
+        var response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: studentEmail,
+                subject: '📊 Your Results Have Been Published - ' + (academicYear || '2025/2026'),
+                html: htmlContent,
+                from: 'NCHSM Academic Office <admin@nchsm.co.ke>'
+            })
+        });
+
+        var data = await response.json();
+        
+        if (data.success) {
+            console.log('✅ Email sent to ' + studentEmail);
+            return { success: true, data: data };
+        } else {
+            console.error('❌ Email failed for ' + studentEmail + ':', data.error);
+            return { success: false, error: data.error || 'Email sending failed' };
+        }
+
+    } catch (error) {
+        console.error('❌ Notification error for ' + studentEmail + ':', error);
+        return { success: false, error: error.message };
     }
 }
 
@@ -2256,7 +2890,7 @@ function printPublishedMarks() {
 '</head>' +
 '<body>' +
 '<h1>📊 Published Marks Report</h1>' +
-'<div class="print-date">Generated: ' + new Date().toLocaleString() + '</div>' +
+'<div class="print-date">Generated: ' + getCurrentDateTime() + '</div>' +
 '<div class="header-info">' +
 '<p><strong>Total Marks:</strong> ' + marks.length + ' | <strong>Published:</strong> ' + marks.filter(function(m) { return m.published; }).length + '</p>' +
 '<p><strong>KRCHN:</strong> ' + marks.filter(function(m) { return m.program === 'KRCHN'; }).length + ' | <strong>TVET:</strong> ' + marks.filter(function(m) { return m.program !== 'KRCHN'; }).length + '</p>' +
@@ -2299,131 +2933,6 @@ function printPublishedMarks() {
 }
 
 // ============================================================
-// EMAIL NOTIFICATION FUNCTION
-// ============================================================
-
-async function sendMarksPublishedEmail(studentEmail, studentName, program, block, marksCount, academicYear) {
-    try {
-        if (!studentEmail) {
-            console.warn('⚠️ No email address for student:', studentName);
-            return { success: false, error: 'No email address' };
-        }
-        
-        console.log('📧 Sending marks published email to:', studentEmail);
-        
-        var programType = getProgramType(program);
-        var programDisplay = getProgramDisplayName(program);
-        var blockLabel = programType === 'TVET' ? 'Term' : 'Block';
-        
-        var htmlContent = 
-'<!DOCTYPE html>' +
-'<html>' +
-'<head>' +
-'<meta charset="UTF-8">' +
-'<meta name="viewport" content="width=device-width, initial-scale=1.0">' +
-'<title>Results Published - NCHSM</title>' +
-'<style>' +
-'body { font-family: "Segoe UI", Tahoma, sans-serif; margin: 0; padding: 0; background: #f0f4f8; }' +
-'.container { max-width: 580px; margin: 0 auto; padding: 20px; }' +
-'.card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }' +
-'.header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px; text-align: center; color: white; }' +
-'.header h1 { margin: 0; font-size: 24px; }' +
-'.header p { margin: 4px 0 0; opacity: 0.8; }' +
-'.body { padding: 30px 35px; }' +
-'.greeting { background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #10b981; }' +
-'.greeting p { margin: 0; font-size: 16px; color: #0A3D62; }' +
-'.details { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px; }' +
-'.details h4 { margin: 0 0 12px 0; color: #1e293b; }' +
-'.details table { width: 100%; border-collapse: collapse; font-size: 14px; }' +
-'.details td { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }' +
-'.details .label { color: #64748B; font-weight: 500; }' +
-'.details .value { color: #0A3D62; font-weight: 600; text-align: right; }' +
-'.details tr:last-child td { border-bottom: none; }' +
-'.btn { display: inline-block; background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; }' +
-'.footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }' +
-'.help { background: #fef3c7; border-radius: 12px; padding: 16px; border-left: 4px solid #F59E0B; margin-top: 16px; }' +
-'.help p { margin: 0; color: #78350F; font-size: 13px; }' +
-'.badge { display: inline-block; padding: 4px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; }' +
-'.badge-success { background: #D1FAE5; color: #065F46; }' +
-'@media (max-width: 480px) { .body { padding: 20px; } .header { padding: 20px; } .details td { display: block; text-align: left; } .details .value { text-align: left; margin-top: 2px; } }' +
-'</style>' +
-'</head>' +
-'<body>' +
-'<div class="container">' +
-'<div class="card">' +
-'<div class="header">' +
-'<h1>📊 Your Results Are Published!</h1>' +
-'<p>Nakuru College of Health Sciences and Management</p>' +
-'</div>' +
-'<div class="body">' +
-'<div class="greeting">' +
-'<p>👋 <strong>Dear ' + escapeHtml(studentName || 'Student') + '</strong></p>' +
-'<p style="margin: 8px 0 0; color: #1e293b;">' +
-'We are pleased to inform you that your academic results have been published.' +
-'You can now view your marks in the student portal.' +
-'</p>' +
-'</div>' +
-'<div class="details">' +
-'<h4>📋 Results Summary</h4>' +
-'<table>' +
-'<tr><td class="label">📚 Program</td><td class="value">' + escapeHtml(programDisplay || program || 'N/A') + '</td></tr>' +
-'<tr><td class="label">📌 ' + blockLabel + '</td><td class="value">' + escapeHtml(block || 'N/A') + '</td></tr>' +
-'<tr><td class="label">📅 Academic Year</td><td class="value">' + escapeHtml(academicYear || '2025/2026') + '</td></tr>' +
-'<tr><td class="label">📊 Total Units Published</td><td class="value"><span class="badge badge-success">' + marksCount + '</span></td></tr>' +
-'<tr><td class="label">📅 Published Date</td><td class="value">' + new Date().toLocaleDateString('en-KE', {timeZone: 'Africa/Nairobi', weekday: 'long', month: 'long', day: 'numeric', year: 'numeric'}) + '</td></tr>' +
-'</table>' +
-'</div>' +
-'<div style="text-align: center; margin: 20px 0;">' +
-'<a href="https://nchsm.co.ke/student.html#academic-reports" class="btn">' +
-'📊 View My Results' +
-'</a>' +
-'</div>' +
-'<div class="help">' +
-'<h5>💡 Need Help?</h5>' +
-'<p>📧 portal.nchsm@gmail.com<br>📞 0790969743 | 0702432987</p>' +
-'</div>' +
-'</div>' +
-'<div class="footer">' +
-'<p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>' +
-'<p style="font-size:0.75rem;">© ' + new Date().getFullYear() + ' Nakuru College of Health Sciences and Management</p>' +
-'<p style="font-size:0.7rem; color: #94a3b8; margin-top: 8px;">This is an automated message from NCHSM Exam System.</p>' +
-'</div>' +
-'</div>' +
-'</div>' +
-'</body>' +
-'</html>';
-
-        var response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                to: studentEmail,
-                subject: '📊 Your Results Have Been Published - ' + (academicYear || '2025/2026'),
-                html: htmlContent,
-                from: 'NCHSM Academic Office <admin@nchsm.co.ke>'
-            })
-        });
-
-        var data = await response.json();
-        
-        if (data.success) {
-            console.log('✅ Email sent to ' + studentEmail);
-            return { success: true, data: data };
-        } else {
-            console.error('❌ Email failed for ' + studentEmail + ':', data.error);
-            return { success: false, error: data.error || 'Email sending failed' };
-        }
-
-    } catch (error) {
-        console.error('❌ Notification error for ' + studentEmail + ':', error);
-        return { success: false, error: error.message };
-    }
-}
-
-// ============================================================
 // INITIALIZATION
 // ============================================================
 
@@ -2436,7 +2945,7 @@ async function initPublishedMarks() {
         return;
     }
     
-    var filterSelectors = ['pm_subject_filter', 'pm_program_filter', 'pm_block_filter', 'pm_status_filter', 'pm_student_filter', 'pm_year_filter'];
+    var filterSelectors = ['pm_subject_filter', 'pm_program_filter', 'pm_block_filter', 'pm_status_filter', 'pm_student_filter', 'pm_intake_year'];
     for (var i = 0; i < filterSelectors.length; i++) {
         var id = filterSelectors[i];
         var el = document.getElementById(id);
@@ -2444,6 +2953,13 @@ async function initPublishedMarks() {
             el.removeEventListener('change', filterPublishedMarks);
             el.addEventListener('change', filterPublishedMarks);
         }
+    }
+    
+    // Intake year change event
+    var intakeYearEl = document.getElementById('pm_intake_year');
+    if (intakeYearEl) {
+        intakeYearEl.removeEventListener('change', onIntakeYearChange);
+        intakeYearEl.addEventListener('change', onIntakeYearChange);
     }
     
     var searchInput = document.getElementById('pm_search');
@@ -2482,17 +2998,13 @@ async function initPublishedMarks() {
         assessmentSelect.addEventListener('change', updatePublishPreview);
     }
     
-    // Add retake count display element if missing
-    var retakeCountEl = document.getElementById('pm_retake_count');
-    if (!retakeCountEl) {
-        var statsEl = document.getElementById('pm_summary_section');
-        if (statsEl) {
-            var newRetakeEl = document.createElement('div');
-            newRetakeEl.className = 'stat-item';
-            newRetakeEl.innerHTML = '<span class="stat-label">⭐ Retakes</span><span class="stat-value" id="pm_retake_count">0</span>';
-            statsEl.appendChild(newRetakeEl);
-        }
+    // Set default intake year to 2025
+    if (intakeYearEl) {
+        intakeYearEl.value = '2025';
     }
+    
+    // Load saved filter state
+    loadFilterState();
     
     await loadPublishedMarks();
     
@@ -2502,10 +3014,11 @@ async function initPublishedMarks() {
     console.log('⭐ Retake Support: ENABLED (per unit)');
     console.log('📧 Email notifications enabled when publishing marks');
     console.log('📋 Per-unit publish/unpublish available in student view');
+    console.log('📅 Intake Years: 2024-2030');
 }
 
 // ============================================================
-// FORCE EXPOSE ALL FUNCTIONS GLOBALLY
+// EXPOSE FUNCTIONS GLOBALLY
 // ============================================================
 
 window.loadPublishedMarks = loadPublishedMarks;
@@ -2533,6 +3046,24 @@ window.loadPublishedRetakeData = loadPublishedRetakeData;
 window.getStudentRetakeInfo = getStudentRetakeInfo;
 window.getRetakeBadgeHtml = getRetakeBadgeHtml;
 window.getRetakeHistoryHtml = getRetakeHistoryHtml;
+window.onIntakeYearChange = onIntakeYearChange;
+window.publishAllByIntakeYear = publishAllByIntakeYear;
+window.publishByIntakeAndProgram = publishByIntakeAndProgram;
+window.publishByBlock = publishByBlock;
+window.batchPublishSelected = batchPublishSelected;
+window.batchUnpublishSelected = batchUnpublishSelected;
+window.selectAllStudents = selectAllStudents;
+window.deselectAllStudents = deselectAllStudents;
+window.selectPublishedStudents = selectPublishedStudents;
+window.selectDraftStudents = selectDraftStudents;
+window.toggleSelectAll = toggleSelectAll;
+window.toggleStudentSelection = toggleStudentSelection;
+window.updateSelectedCount = updateSelectedCount;
+window.goToPage = goToPage;
+window.saveFilterState = saveFilterState;
+window.loadFilterState = loadFilterState;
+window.loadPublishHistory = loadPublishHistory;
+window.publishAllByIntakeYear = publishAllByIntakeYear;
 
 console.log('✅ Published Marks functions exposed globally');
 console.log('📊 Available: loadPublishedMarks, filterPublishedMarks, publishStudentAllMarks, etc.');
@@ -2551,7 +3082,7 @@ if (document.readyState === 'loading') {
 console.log('✅ Published Marks module loaded successfully!');
 console.log('📊 Features:');
 console.log('   - ✅ TVET & KRCHN Nursing support');
-console.log('   - ✅ Student Group View');
+console.log('   - ✅ Student Group View (30 per page)');
 console.log('   - ✅ Per-unit publish/unpublish');
 console.log('   - ✅ Email notifications');
 console.log('   - ✅ Bulk publish/unpublish');
@@ -2559,4 +3090,9 @@ console.log('   - ✅ Export to CSV & Print');
 console.log('   - ✅ ⭐ Retake/Supplementary Support (PER UNIT)');
 console.log('   - ✅ Retake badges only on retaken units (⭐ R1, ⭐ R2)');
 console.log('   - ✅ Retake scores override original scores');
+console.log('   - ✅ Intake Year filter (2024-2030)');
+console.log('   - ✅ Smart filtering with cascade');
+console.log('   - ✅ Publish history tracking');
+console.log('   - ✅ Filter state save/load');
 console.log('   - ✅ All functions working!');
+console.log('   - 🔒 NO AUTO-PUBLISH - All actions require confirmation');
