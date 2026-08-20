@@ -1,9 +1,10 @@
 // ============================================
-// js/lecturer-dashboard.js - COMPLETE UPGRADED VERSION
+// js/lecturer-dashboard.js - COMPLETE UPGRADED VERSION WITH TVET SUPPORT
 // ============================================
 // NCHSM Lecturer Dashboard Module
 // Features: Metrics, Charts, Top Students, Alerts, Progress, Activity, 
 // Clinical Hours, Early Warning System, Attendance Deep Dive, Auto-refresh
+// Supports both Nursing (KRCHN) and TVET programs
 // ============================================
 
 const LecturerDashboard = {
@@ -56,47 +57,112 @@ const LecturerDashboard = {
     assignedStudents: [],
     isRefreshing: false,
     refreshInterval: null,
-    currentProgram: null, // ✅ Added to store current program
+    currentProgram: null,
+    isTVET: false, // ✅ Added TVET flag
     
     // ─── GET CURRENT PROGRAM ───
     getCurrentProgram() {
         try {
-            // 1. Try from profile
+            // 1. Try from window variable (set by lecturer-main.js)
+            if (window.CURRENT_PROGRAM) {
+                this.currentProgram = window.CURRENT_PROGRAM;
+                this.isTVET = window.IS_TVET || false;
+                localStorage.setItem('lecturerProgram', this.currentProgram);
+                localStorage.setItem('isTVET', JSON.stringify(this.isTVET));
+                return this.currentProgram;
+            }
+            
+            // 2. Try from profile
             const profile = window.lecturerDB?.getCurrentUserProfile();
             if (profile?.program) {
                 this.currentProgram = profile.program;
-                localStorage.setItem('lecturerProgram', profile.program);
-                return profile.program;
+                this.isTVET = this.currentProgram !== 'KRCHN';
+                localStorage.setItem('lecturerProgram', this.currentProgram);
+                localStorage.setItem('isTVET', JSON.stringify(this.isTVET));
+                return this.currentProgram;
             }
             
-            // 2. Try from department
+            // 3. Try from department
             if (profile?.department) {
                 this.currentProgram = profile.department;
-                localStorage.setItem('lecturerProgram', profile.department);
-                return profile.department;
+                this.isTVET = this.currentProgram !== 'KRCHN';
+                localStorage.setItem('lecturerProgram', this.currentProgram);
+                localStorage.setItem('isTVET', JSON.stringify(this.isTVET));
+                return this.currentProgram;
             }
             
-            // 3. Try from localStorage
+            // 4. Try from localStorage
             const stored = localStorage.getItem('lecturerProgram');
             if (stored) {
                 this.currentProgram = stored;
+                const storedTVET = localStorage.getItem('isTVET');
+                this.isTVET = storedTVET === 'true';
                 return stored;
-            }
-            
-            // 4. Try from window variable
-            if (window.lecturerProgram) {
-                this.currentProgram = window.lecturerProgram;
-                return window.lecturerProgram;
             }
             
             // 5. Final fallback
             console.warn('⚠️ No program found, using KRCHN as fallback');
             this.currentProgram = 'KRCHN';
+            this.isTVET = false;
             return 'KRCHN';
         } catch (e) {
             console.warn('⚠️ Error getting program:', e);
             this.currentProgram = 'KRCHN';
+            this.isTVET = false;
             return 'KRCHN';
+        }
+    },
+    
+    // ─── GET PASSING THRESHOLD ───
+    getPassingThreshold() {
+        return this.isTVET ? 50 : 60;
+    },
+    
+    // ─── GET GRADE FOR SCORE ───
+    getGrade(score) {
+        if (this.isTVET) {
+            // TVET Grading: A(80%) B(65%) C(50%) E(0%)
+            if (score >= 80) return { grade: 'A', points: 4.0, remarks: 'MASTERY', color: '#065f46' };
+            if (score >= 65) return { grade: 'B', points: 3.0, remarks: 'PROFICIENT', color: '#1e40af' };
+            if (score >= 50) return { grade: 'C', points: 2.0, remarks: 'COMPETENT', color: '#92400e' };
+            return { grade: 'E', points: 0.0, remarks: 'NOT YET COMPETENT', color: '#991b1b' };
+        } else {
+            // Nursing Grading: A(75%) B(65%) C(60%) D(0%)
+            if (score >= 75) return { grade: 'A', points: 4.0, remarks: 'Distinction', color: '#065f46' };
+            if (score >= 65) return { grade: 'B', points: 3.0, remarks: 'Credit', color: '#1e40af' };
+            if (score >= 60) return { grade: 'C', points: 2.0, remarks: 'Pass', color: '#92400e' };
+            return { grade: 'D', points: 0.0, remarks: 'Fail', color: '#991b1b' };
+        }
+    },
+    
+    // ─── GET GRADING REFERENCE ───
+    getGradingReference() {
+        if (this.isTVET) {
+            return {
+                name: 'TVET Competency-Based Grading',
+                icon: '🔧',
+                color: '#8b5cf6',
+                passingScore: 50,
+                grades: [
+                    { grade: 'A', range: '80-100%', points: 4.0, remarks: 'MASTERY' },
+                    { grade: 'B', range: '65-79%', points: 3.0, remarks: 'PROFICIENT' },
+                    { grade: 'C', range: '50-64%', points: 2.0, remarks: 'COMPETENT' },
+                    { grade: 'E', range: '0-49%', points: 0.0, remarks: 'NOT YET COMPETENT' }
+                ]
+            };
+        } else {
+            return {
+                name: 'Nursing Grading System',
+                icon: '🎓',
+                color: '#4C1D95',
+                passingScore: 60,
+                grades: [
+                    { grade: 'A', range: '75-100%', points: 4.0, remarks: 'Distinction' },
+                    { grade: 'B', range: '65-74%', points: 3.0, remarks: 'Credit' },
+                    { grade: 'C', range: '60-64%', points: 2.0, remarks: 'Pass' },
+                    { grade: 'D', range: '0-59%', points: 0.0, remarks: 'Fail' }
+                ]
+            };
         }
     },
     
@@ -104,7 +170,8 @@ const LecturerDashboard = {
     async init() {
         console.log('📊 Initializing Lecturer Dashboard...');
         const program = this.getCurrentProgram();
-        console.log(`📚 Current Program: ${program}`);
+        const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
+        console.log(`📚 Current Program: ${program} (${typeLabel})`);
         
         try {
             await this.resolveLecturerId();
@@ -126,46 +193,92 @@ const LecturerDashboard = {
             this.startAutoRefresh();
             this.updateLastUpdated();
             this.updateProgramBadge();
+            this.updateDashboardGradingInfo();
             console.log('✅ Lecturer Dashboard initialized');
             console.log(`📚 ${this.assignedUnits.length} assigned units`);
             console.log(`👨‍🎓 ${this.assignedStudents.length} assigned students`);
-            console.log(`🎯 Program: ${this.currentProgram}`);
+            console.log(`🎯 Program: ${this.currentProgram} (${typeLabel})`);
+            console.log(`📊 Grading: ${this.isTVET ? 'TVET (Pass: 50%)' : 'Nursing (Pass: 60%)'}`);
         } catch (error) {
             console.error('❌ Dashboard initialization error:', error);
+        }
+    },
+    
+    // ─── UPDATE DASHBOARD GRADING INFO ───
+    updateDashboardGradingInfo() {
+        const gradingInfo = document.getElementById('gradingSystemInfo');
+        if (gradingInfo) {
+            if (this.isTVET) {
+                gradingInfo.innerHTML = `
+                    <span style="background: #8b5cf6; color: white; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+                        🔧 TVET Grading: A(80%) B(65%) C(50%) E(0%)
+                    </span>
+                `;
+                gradingInfo.style.display = 'inline-block';
+            } else {
+                gradingInfo.innerHTML = `
+                    <span style="background: #4C1D95; color: white; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+                        🎓 Nursing Grading: A(75%) B(65%) C(60%) D(0%)
+                    </span>
+                `;
+                gradingInfo.style.display = 'inline-block';
+            }
+        }
+        
+        // Update passing threshold display
+        const thresholdDisplay = document.getElementById('passingThresholdDisplay');
+        if (thresholdDisplay) {
+            const threshold = this.getPassingThreshold();
+            thresholdDisplay.textContent = `Passing: ≥${threshold}%`;
         }
     },
     
     // ─── UPDATE PROGRAM BADGE ───
     updateProgramBadge() {
         const program = this.getCurrentProgram();
+        const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
+        const emoji = this.isTVET ? '🔧' : '🎓';
+        const displayText = `${emoji} ${program} (${typeLabel})`;
         
         // Update sidebar program badge
         const badge = document.getElementById('userProgramBadge');
         if (badge) {
-            badge.textContent = program;
+            badge.textContent = displayText;
+            badge.style.background = this.isTVET ? 'rgba(139,92,246,0.3)' : 'rgba(76,29,149,0.3)';
+            badge.style.border = this.isTVET ? '1px solid #8b5cf6' : '1px solid #4C1D95';
         }
         
         // Update program display in attendance section
         const programDisplay = document.getElementById('programDisplayName');
         if (programDisplay) {
-            programDisplay.textContent = program;
+            programDisplay.textContent = `${program} (${typeLabel})`;
         }
         
         // Update program subtitle
         const subtitle = document.getElementById('programSubtitle');
         if (subtitle) {
-            subtitle.textContent = `Program: ${program}`;
+            subtitle.textContent = `${emoji} Program: ${program} (${typeLabel})`;
         }
         
         // Update program badge in dashboard header
         const programBadge = document.querySelector('.program-badge');
         if (programBadge) {
-            programBadge.textContent = program;
+            programBadge.textContent = displayText;
+            programBadge.style.background = this.isTVET ? '#8b5cf6' : '#4C1D95';
+        }
+        
+        // Update program type badge in top banner
+        const programTypeBadge = document.getElementById('programTypeBadge');
+        if (programTypeBadge) {
+            programTypeBadge.textContent = typeLabel;
+            programTypeBadge.style.background = this.isTVET ? 'rgba(139,92,246,0.3)' : 'rgba(76,29,149,0.3)';
         }
         
         // Store for other parts of the app
         window.lecturerProgram = program;
+        window.IS_TVET = this.isTVET;
         localStorage.setItem('lecturerProgram', program);
+        localStorage.setItem('isTVET', JSON.stringify(this.isTVET));
     },
     
     // ─── RESOLVE LECTURER ID ───
@@ -239,6 +352,7 @@ const LecturerDashboard = {
             this.assignedUnits = programUnits.length > 0 ? programUnits : (assignments || []);
             
             console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for program ${program}`);
+            console.log(`📚 TVET Mode: ${this.isTVET}`);
             
         } catch (error) {
             console.error('Failed to load assigned units:', error);
@@ -252,7 +366,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const program = this.getCurrentProgram(); // ✅ FIXED
+            const program = this.getCurrentProgram();
             
             const unitNames = this.assignedUnits.map(u => u.subject_name);
             
@@ -286,7 +400,7 @@ const LecturerDashboard = {
                 .select('user_id, student_id, full_name, program, block, intake_year, email, phone, gender')
                 .in('user_id', studentIds)
                 .eq('role', 'student')
-                .eq('program', program); // ✅ FIXED: Filter by program
+                .eq('program', program);
             
             if (studentError) {
                 console.error('Error loading student profiles:', studentError);
@@ -322,7 +436,8 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const program = this.getCurrentProgram(); // ✅ FIXED
+            const program = this.getCurrentProgram();
+            const threshold = this.getPassingThreshold();
             
             this.metrics.totalStudents = this.assignedStudents.length || 0;
             this.metrics.totalCourses = this.assignedUnits.length || 0;
@@ -367,14 +482,14 @@ const LecturerDashboard = {
             
             this.metrics.unreadMessages = messages?.length || 0;
             
-            // Avg performance
+            // Avg performance - uses dynamic threshold
             const studentIds = this.assignedStudents.map(s => s.user_id);
             if (studentIds.length > 0) {
                 const { data: marks } = await supabase
                     .from('student_marks')
                     .select('final_score')
                     .in('student_id', studentIds)
-                    .eq('program', program); // ✅ FIXED: Filter by program
+                    .eq('program', program);
                 
                 const validScores = marks?.filter(m => m.final_score > 0) || [];
                 if (validScores.length > 0) {
@@ -420,9 +535,15 @@ const LecturerDashboard = {
         const avgStudentsPerUnit = totalUnits > 0 ? Math.round(totalStudents / totalUnits) : 0;
         const totalEnrollments = totalStudents * totalUnits;
         const programs = [...new Set(this.assignedStudents.map(s => s.program).filter(Boolean))];
+        const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
+        const emoji = this.isTVET ? '🔧' : '🎓';
         
         container.innerHTML = `
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; background: #f8fafc; border-radius: 12px; padding: 15px 20px; border: 1px solid #e5e7eb;">
+                <div style="text-align: center;">
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Program</div>
+                    <div style="font-size: 20px; font-weight: 700; color: ${this.isTVET ? '#7c3aed' : '#4C1D95'};">${emoji} ${typeLabel}</div>
+                </div>
                 <div style="text-align: center;">
                     <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Avg/Unit</div>
                     <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${avgStudentsPerUnit}</div>
@@ -436,12 +557,8 @@ const LecturerDashboard = {
                     <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalUnits}</div>
                 </div>
                 <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Programs</div>
-                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${programs.length}</div>
-                </div>
-                <div style="text-align: center;">
-                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Student Load</div>
-                    <div style="font-size: 20px; font-weight: 700; color: ${totalStudents > 50 ? '#10b981' : '#f59e0b'};">${totalStudents}</div>
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Passing</div>
+                    <div style="font-size: 20px; font-weight: 700; color: ${this.isTVET ? '#8b5cf6' : '#10b981'};">≥${this.getPassingThreshold()}%</div>
                 </div>
             </div>
         `;
@@ -453,7 +570,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const program = this.getCurrentProgram(); // ✅ FIXED
+            const program = this.getCurrentProgram();
             
             const today = new Date();
             const todayStr = today.toISOString().split('T')[0];
@@ -574,7 +691,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const program = this.getCurrentProgram(); // ✅ FIXED
+            const program = this.getCurrentProgram();
             
             const studentIds = this.assignedStudents.map(s => s.user_id);
             
@@ -684,6 +801,8 @@ const LecturerDashboard = {
             
             // Calculate risk scores
             const riskMap = {};
+            const threshold = this.getPassingThreshold();
+            
             studentIds.forEach(id => {
                 const student = this.assignedStudents.find(s => s.user_id === id);
                 const studentAttendance = attendance?.filter(a => a.student_id === id) || [];
@@ -707,13 +826,16 @@ const LecturerDashboard = {
                 riskScore += Math.max((100 - avgScore) * 0.3, 0);
                 riskScore += Math.max((100 - submissionRate) * 0.2, 0);
                 
+                const isPassing = avgScore >= threshold;
+                
                 riskMap[id] = {
                     name: student?.full_name || 'Unknown',
                     absences,
                     avgScore: Math.round(avgScore),
                     submissionRate: Math.round(submissionRate),
                     riskScore: Math.round(riskScore),
-                    riskLevel: riskScore > 50 ? 'high' : (riskScore > 25 ? 'medium' : 'low')
+                    riskLevel: riskScore > 50 ? 'high' : (riskScore > 25 ? 'medium' : 'low'),
+                    isPassing
                 };
             });
             
@@ -771,13 +893,14 @@ const LecturerDashboard = {
                 medium: { bg: '#fffbeb', border: '#f59e0b', text: '#d97706', label: '🟡 MEDIUM' }
             };
             const c = colors[s.riskLevel] || colors.medium;
+            const passingEmoji = s.isPassing ? '✅' : '❌';
             
             return `
                 <div style="display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: ${c.bg}; border-radius: 8px; margin-bottom: 6px; border-left: 3px solid ${c.border};">
                     <span style="font-weight: 600; color: ${c.text}; font-size: 11px;">${c.label}</span>
                     <span style="flex: 1; font-size: 13px; color: #1e293b; font-weight: 500;">${s.name}</span>
                     <span style="font-size: 12px; color: #64748b;">${s.absences} absences</span>
-                    <span style="font-size: 12px; font-weight: 600; color: ${s.avgScore >= 50 ? '#10b981' : '#ef4444'};">${s.avgScore}%</span>
+                    <span style="font-size: 12px; font-weight: 600; color: ${s.isPassing ? '#10b981' : '#ef4444'};">${s.avgScore}% ${passingEmoji}</span>
                 </div>
             `;
         }).join('');
@@ -787,6 +910,10 @@ const LecturerDashboard = {
     updateWelcomeBanner() {
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const program = this.getCurrentProgram();
+        const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
+        const emoji = this.isTVET ? '🔧' : '🎓';
+        const threshold = this.getPassingThreshold();
+        
         const welcomeHeader = document.getElementById('welcomeHeader');
         const welcomeBannerText = document.getElementById('welcomeBannerText');
         const studentCountDisplay = document.getElementById('studentCountDisplay');
@@ -802,7 +929,7 @@ const LecturerDashboard = {
             const atRisk = this.riskMetrics.high || 0;
             const riskMsg = atRisk > 0 ? `⚠️ ${atRisk} at-risk students need attention.` : '✅ All students on track!';
             welcomeBannerText.textContent = 
-                `Welcome back! You have ${totalUnits} assigned units with ${totalStudents} students. ${riskMsg}`;
+                `${emoji} Welcome back! You have ${totalUnits} assigned units with ${totalStudents} students. ${riskMsg} (${typeLabel} - Passing: ≥${threshold}%)`;
         }
         
         if (studentCountDisplay) {
@@ -830,7 +957,7 @@ const LecturerDashboard = {
         // Update program subtitle
         const subtitle = document.getElementById('programSubtitle');
         if (subtitle) {
-            subtitle.textContent = `Program: ${program}`;
+            subtitle.textContent = `${emoji} Program: ${program} (${typeLabel}) · Passing: ≥${threshold}%`;
         }
     },
     
@@ -844,6 +971,7 @@ const LecturerDashboard = {
             if (!supabase) return;
             
             const program = this.getCurrentProgram();
+            const threshold = this.getPassingThreshold();
             
             const unitNames = this.assignedUnits.map(u => u.subject_name);
             
@@ -866,12 +994,15 @@ const LecturerDashboard = {
                 const studentCount = validScores.length;
                 const totalStudents = this.assignedStudents.length || 0;
                 const completionRate = totalStudents > 0 ? Math.round((studentCount / totalStudents) * 100) : 0;
+                const passingCount = validScores.filter(s => s >= threshold).length;
+                const passRate = studentCount > 0 ? Math.round((passingCount / studentCount) * 100) : 0;
                 
-                return { unit, avgScore, studentCount, completionRate, totalStudents };
+                return { unit, avgScore, studentCount, completionRate, totalStudents, passRate };
             }));
             
             container.innerHTML = progressData.map(p => {
                 const color = p.avgScore >= 70 ? '#10b981' : (p.avgScore >= 50 ? '#f59e0b' : '#ef4444');
+                const passEmoji = p.passRate >= 80 ? '🌟' : (p.passRate >= 50 ? '📈' : '⚠️');
                 const statusLabel = p.avgScore >= 70 ? '✅ Excellent' : (p.avgScore >= 50 ? '⚡ Good' : '⚠️ Needs Improvement');
                 return `
                     <div style="margin-bottom: 14px; padding: 10px 12px; background: #f8fafc; border-radius: 10px; border: 1px solid #e5e7eb;">
@@ -888,6 +1019,7 @@ const LecturerDashboard = {
                             <span>📊 ${p.completionRate}% completion</span>
                             <span>📝 ${p.studentCount} submissions</span>
                             <span>👨‍🎓 ${p.totalStudents} enrolled</span>
+                            <span>${passEmoji} ${p.passRate}% passing</span>
                         </div>
                     </div>
                 `;
@@ -932,24 +1064,30 @@ const LecturerDashboard = {
                 return;
             }
             
+            const threshold = this.getPassingThreshold();
+            
             container.innerHTML = marks.map((m, i) => {
                 const medals = ['🥇', '🥈', '🥉'];
                 const medalColors = ['#fcd34d', '#d1d5db', '#fca5a5'];
                 const bgColors = ['#fef3c7', '#f3f4f6', '#fee2e2'];
                 const isTop3 = i < 3;
+                const gradeInfo = this.getGrade(m.final_score || 0);
+                const isPassing = (m.final_score || 0) >= threshold;
                 
                 return `
                     <div style="display: flex; align-items: center; gap: 12px; padding: 10px 0; border-bottom: 1px solid #f1f5f9;">
                         <span style="font-size: 20px;">${isTop3 ? medals[i] : (i + 1)}</span>
                         <div style="flex: 1;">
                             <div style="font-weight: 600; font-size: 14px; color: #1e293b;">${m.student_name || 'Unknown'}</div>
-                            <div style="font-size: 11px; color: #94a3b8;">${m.subject_name || 'General'}</div>
+                            <div style="font-size: 11px; color: #94a3b8;">${m.subject_name || 'General'} · Grade: ${gradeInfo.grade}</div>
                         </div>
                         <div style="text-align: right;">
-                            <span style="font-weight: 700; color: ${m.final_score >= 70 ? '#10b981' : m.final_score >= 50 ? '#f59e0b' : '#ef4444'}; font-size: 18px;">
+                            <span style="font-weight: 700; color: ${isPassing ? '#10b981' : '#ef4444'}; font-size: 18px;">
                                 ${m.final_score || 0}%
                             </span>
-                            <div style="font-size: 10px; color: #94a3b8;">${m.final_score >= 70 ? '🌟 Excellent' : m.final_score >= 50 ? '📈 Good' : '📉 Needs work'}</div>
+                            <div style="font-size: 10px; color: ${isPassing ? '#10b981' : '#ef4444'};">
+                                ${isPassing ? '✅ Passed' : '❌ Failed'} · ${gradeInfo.remarks}
+                            </div>
                         </div>
                     </div>
                 `;
@@ -1038,6 +1176,10 @@ const LecturerDashboard = {
             const container = document.getElementById('intelligentAlerts');
             if (!container) return;
             
+            const threshold = this.getPassingThreshold();
+            const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
+            const emoji = this.isTVET ? '🔧' : '🎓';
+            
             const alerts = [];
             
             // Check clinical hours
@@ -1054,7 +1196,7 @@ const LecturerDashboard = {
                 alerts.push({
                     type: 'warning',
                     icon: '⚠️',
-                    message: `${this.riskMetrics.high} students are at HIGH risk - immediate intervention recommended`
+                    message: `${this.riskMetrics.high} students are at HIGH risk - immediate intervention recommended (${typeLabel} passing: ≥${threshold}%)`
                 });
             }
             
@@ -1082,7 +1224,7 @@ const LecturerDashboard = {
                 alerts.push({
                     type: 'success',
                     icon: '✅',
-                    message: `${unitNames.length} units assigned - all courses are active`
+                    message: `${unitNames.length} units assigned - all courses are active (${typeLabel} grading)`
                 });
             }
             
@@ -1091,7 +1233,7 @@ const LecturerDashboard = {
                 alerts.push({
                     type: 'success',
                     icon: '🎉',
-                    message: 'All systems clear! Your dashboard is up to date.'
+                    message: `${emoji} All systems clear! Your ${typeLabel} dashboard is up to date.`
                 });
             }
             
@@ -1128,7 +1270,7 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const program = this.getCurrentProgram(); // ✅ FIXED
+            const program = this.getCurrentProgram();
             
             const activities = [];
             
@@ -1272,7 +1414,9 @@ const LecturerDashboard = {
             const supabase = window.lecturerDB?.supabase;
             if (!supabase) return;
             
-            const program = this.getCurrentProgram(); // ✅ FIXED
+            const program = this.getCurrentProgram();
+            const typeLabel = this.isTVET ? 'TVET' : 'Nursing';
+            const emoji = this.isTVET ? '🔧' : '🎓';
             
             // Get students in this program
             const { data: students } = await supabase
@@ -1297,7 +1441,7 @@ const LecturerDashboard = {
                         labels: ['Male', 'Female', 'Other'],
                         datasets: [{
                             data: [maleCount, femaleCount, otherCount],
-                            backgroundColor: ['#4C1D95', '#FDB913', '#94a3b8'],
+                            backgroundColor: this.isTVET ? ['#7c3aed', '#8b5cf6', '#a78bfa'] : ['#4C1D95', '#FDB913', '#94a3b8'],
                             borderWidth: 0
                         }]
                     },
@@ -1311,7 +1455,7 @@ const LecturerDashboard = {
                             },
                             title: {
                                 display: true,
-                                text: `Gender Distribution - ${program}`,
+                                text: `${emoji} Gender Distribution - ${program} (${typeLabel})`,
                                 font: { size: 14, weight: '700' },
                                 padding: { bottom: 10 },
                                 color: '#0F172A'
@@ -1357,14 +1501,16 @@ const LecturerDashboard = {
                     this.chartInstances.performance.destroy();
                 }
                 
-                const colors = ['#4C1D95', '#667eea', '#764ba2', '#8b5cf6', '#FDB913', '#10b981', '#ef4444', '#3b82f6'];
+                const colors = this.isTVET ? 
+                    ['#7c3aed', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'] :
+                    ['#4C1D95', '#667eea', '#764ba2', '#8b5cf6', '#FDB913'];
                 
                 this.chartInstances.performance = new Chart(ctx1, {
                     type: 'bar',
                     data: {
                         labels: subjectNames.length > 0 ? subjectNames : ['No Data'],
                         datasets: [{
-                            label: 'Average Score (%)',
+                            label: `Average Score (%) - ${typeLabel}`,
                             data: subjectAverages.length > 0 ? subjectAverages : [0],
                             backgroundColor: subjectNames.map((_, i) => colors[i % colors.length]),
                             borderRadius: 8
@@ -1377,7 +1523,7 @@ const LecturerDashboard = {
                             legend: { display: false },
                             title: {
                                 display: true,
-                                text: `Performance by Subject - ${program}`,
+                                text: `${emoji} Performance by Subject - ${program} (${typeLabel})`,
                                 font: { size: 14, weight: '700' },
                                 padding: { bottom: 10 },
                                 color: '#0F172A'
@@ -1429,14 +1575,14 @@ const LecturerDashboard = {
                     data: {
                         labels: weekDays,
                         datasets: [{
-                            label: 'Attendance',
+                            label: `Attendance - ${typeLabel}`,
                             data: attendanceData,
-                            borderColor: '#4C1D95',
-                            backgroundColor: 'rgba(76, 29, 149, 0.1)',
+                            borderColor: this.isTVET ? '#8b5cf6' : '#4C1D95',
+                            backgroundColor: this.isTVET ? 'rgba(139,92,246,0.1)' : 'rgba(76, 29, 149, 0.1)',
                             fill: true,
                             tension: 0.4,
-                            pointBackgroundColor: '#4C1D95',
-                            pointBorderColor: '#4C1D95',
+                            pointBackgroundColor: this.isTVET ? '#8b5cf6' : '#4C1D95',
+                            pointBorderColor: this.isTVET ? '#8b5cf6' : '#4C1D95',
                             pointRadius: 4
                         }]
                     },
@@ -1447,7 +1593,7 @@ const LecturerDashboard = {
                             legend: { display: false },
                             title: {
                                 display: true,
-                                text: `Attendance Trend - ${program}`,
+                                text: `${emoji} Attendance Trend - ${program} (${typeLabel})`,
                                 font: { size: 14, weight: '700' },
                                 padding: { bottom: 10 },
                                 color: '#0F172A'
@@ -1468,7 +1614,7 @@ const LecturerDashboard = {
                 console.log('✅ Attendance trend chart updated');
             }
             
-            console.log('✅ All charts updated for', program);
+            console.log(`✅ All charts updated for ${program} (${typeLabel})`);
             
         } catch (error) {
             console.error('❌ Error loading charts:', error);
@@ -1515,6 +1661,7 @@ const LecturerDashboard = {
             await this.loadCharts();
             this.updateLastUpdated();
             this.updateProgramBadge();
+            this.updateDashboardGradingInfo();
             
             if (window.LecturerUI) {
                 window.LecturerUI.showNotification('Dashboard refreshed successfully!', 'success');
@@ -1571,3 +1718,4 @@ console.log('   • Recent Activity Feed');
 console.log('   • Charts (Performance, Distribution, Trend)');
 console.log('   • Auto-refresh every 30 seconds');
 console.log('   • Keyboard shortcut: Ctrl+R to refresh');
+console.log('   • TVET/Nursing Support: ✅ Enabled');
