@@ -1408,10 +1408,13 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         const exam = parseFloat(m.exam) || 0;
         const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
         const gradeInfo = getMarksEntryGrade(total);
-        const isPassing = total >= passingThreshold; // ✅ CORRECT threshold
+        const isPassing = total >= passingThreshold;
         const displayTotal = total > 0 ? total : '--';
         const displayGrade = total > 0 ? gradeInfo.grade : '--';
         const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
+        
+        // ✅ FIX: Define retakeHistory from m
+        const retakeHistory = m.retakeHistory || [];
         
         // Retake info
         const hasRetake = m.hasRetake || false;
@@ -1503,12 +1506,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 <span style="color: #059669; font-size: 11px;">✅ Passed</span>
             `;
         }
-        
-        // ✅ Case 5: If PASSED with retake (passed after retake), show "✅ Passed (Retake)"
-        if (isPassing && hasRetake && isRetakePassing) {
-            // Already handled above - shows "✅ Passed" with retake badge
-        }
-        
+
         html += `<tr style="${rowStyle}">
             <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
@@ -1524,7 +1522,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                         (Retake: ${retakeScore}%)
                     </span>
                 ` : ''}
-                ${retakeHistory && retakeHistory.length > 0 ? `
+                ${retakeHistory.length > 0 ? `
                     <span style="display: block; font-size: 10px; color: #94a3b8; margin-top: 2px;">
                         <i class="fas fa-history"></i> ${retakeHistory.length} attempt(s)
                     </span>
