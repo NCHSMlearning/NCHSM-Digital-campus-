@@ -53,6 +53,8 @@ const AppState = {
     timerWarningShown: false,
     fullscreenWarningActive: false,
     attendanceRecorded: false,
+    blurCount: 0,
+    tabSwitchCount: 0,
     timerInterval: null,
     snapshotInterval: null,
     heartbeatInterval: null,
@@ -532,6 +534,7 @@ window.startExam = async function() {
         await DOM.faceVideo.play();
     }
     
+    await enterSecureFullscreen();
     initExam();
 };
 
@@ -621,6 +624,7 @@ async function startExamFaceDetection() {
                 onViolation: (count, message) => {
                     showToast(message, 'warning');
                     if (DOM.examStatusText) DOM.examStatusText.textContent = message;
+                    console.log(`⚠️ Face violation ${count}/3`);
                 },
                 onPause: (reason, timer) => {
                     const overlay = DOM.faceBlockOverlay;
@@ -912,7 +916,7 @@ class SecureFaceProctor {
 }
 
 // ============================================================
-// STEALTH PROCTOR CLASS
+// STEALTH PROCTOR CLASS - FIXED
 // ============================================================
 class StealthProctor {
     constructor() {
@@ -920,11 +924,11 @@ class StealthProctor {
         this.recordedChunks = [];
         this.isRecording = false;
         this.stream = null;
-        this.snapshotInterval = null;
         this.heartbeatInterval = null;
         this.hiddenVideo = null;
         this.recordingStartTime = null;
         this.videoUploaded = false;
+        this.uploadRetryCount = 0;
     }
 
     async startStealthRecording(studentId, examId) {
@@ -987,7 +991,6 @@ class StealthProctor {
                 this.sendHeartbeat(studentId, examId);
             }, 15000);
 
-            await logProctoringEvent('stealth_proctoring_started', 'Background recording started', 'info');
             return true;
 
         } catch (error) {
@@ -1003,30 +1006,43 @@ class StealthProctor {
             const blob = new Blob(this.recordedChunks, { type: 'video/webm' });
             const fileName = `videos/${studentId}/${examId}/${Date.now()}.webm`;
 
+            // Try to upload with error handling
             const { error } = await sb.storage
                 .from('proctoring')
                 .upload(fileName, blob, {
                     contentType: 'video/webm',
-                    cacheControl: '3600'
+                    cacheControl: '3600',
+                    upsert: false
                 });
 
-            if (error) throw error;
+            if (error) {
+                console.warn('Storage upload error:', error);
+                // If storage fails, just log the recording
+                this.uploadRetryCount++;
+                if (this.uploadRetryCount < 3) {
+                    setTimeout(() => this.saveRecording(studentId, examId), 5000);
+                }
+                return;
+            }
+
             this.videoUploaded = true;
+            this.uploadRetryCount = 0;
             console.log('✅ Video saved');
             this.recordedChunks = [];
 
         } catch (error) {
             console.error('❌ Error saving video:', error);
-            setTimeout(() => {
-                this.videoUploaded = false;
-                this.saveRecording(studentId, examId);
-            }, 5000);
+            this.uploadRetryCount++;
+            if (this.uploadRetryCount < 3) {
+                setTimeout(() => this.saveRecording(studentId, examId), 5000);
+            }
         }
     }
 
     async sendHeartbeat(studentId, examId) {
         try {
-            await sb.from('exam_heartbeats').upsert({
+            // Use insert instead of upsert to avoid conflict issues
+            await sb.from('exam_heartbeats').insert({
                 student_id: studentId,
                 exam_id: parseInt(examId),
                 current_question: AppState.currentIndex + 1 || 0,
@@ -1034,8 +1050,10 @@ class StealthProctor {
                 total_questions: AppState.questions.length || 0,
                 face_detected: true,
                 timestamp: new Date().toISOString()
-            }, { onConflict: 'student_id, exam_id' });
-        } catch (error) {}
+            });
+        } catch (error) {
+            // Silently fail - heartbeat is not critical
+        }
     }
 
     stopRecording() {
@@ -1052,7 +1070,7 @@ class StealthProctor {
 }
 
 // ============================================================
-// PROCTORING LOGS
+// PROCTORING LOGS - FIXED
 // ============================================================
 async function logProctoringEvent(eventType, details, severity = 'info') {
     try {
@@ -1072,19 +1090,19 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
 }
 
 // ============================================================
-// SNAPSHOT CAPTURE
+// SNAPSHOT CAPTURE - FIXED
 // ============================================================
 async function captureSnapshot() {
     const video = DOM.faceVideo;
     if (!video || !video.srcObject || video.paused || video.ended) return;
 
     const canvas = document.createElement('canvas');
-    canvas.width = 640;
-    canvas.height = 480;
+    canvas.width = 320;
+    canvas.height = 240;
     const ctx = canvas.getContext('2d');
-    ctx.drawImage(video, 0, 0, 640, 480);
+    ctx.drawImage(video, 0, 0, 320, 240);
 
-    const base64Image = canvas.toDataURL('image/jpeg', 0.8);
+    const base64Image = canvas.toDataURL('image/jpeg', 0.7);
 
     const currentQ = AppState.questions[AppState.currentIndex] || {};
     const currentQuestionNum = AppState.currentIndex + 1;
@@ -1110,42 +1128,46 @@ async function captureSnapshot() {
     try {
         const response = await fetch(base64Image);
         const blob = await response.blob();
-        const fileName = `${AppState.studentId}/${AppState.examId}/${Date.now()}.jpg`;
+        const fileName = `snapshots/${AppState.studentId}/${AppState.examId}/${Date.now()}.jpg`;
 
-        const uploadResult = await sb.storage
+        const { error } = await sb.storage
             .from('proctoring')
             .upload(fileName, blob, {
                 contentType: 'image/jpeg',
-                cacheControl: '3600'
+                cacheControl: '3600',
+                upsert: false
             });
 
-        if (!uploadResult.error) {
+        if (!error) {
             const urlData = sb.storage
                 .from('proctoring')
                 .getPublicUrl(fileName);
             snapshotUrl = urlData.publicUrl;
         }
-    } catch (uploadError) {}
+    } catch (uploadError) {
+        // Silently fail on snapshot upload
+    }
 
-    const logData = {
-        student_id: AppState.studentId,
-        exam_id: parseInt(AppState.examId),
-        student_name: studentName,
-        student_reg_number: studentReg,
-        exam_name: examName,
-        event_type: eventType,
-        details: details,
-        severity: eventType === 'multiple_faces_detected' ? 'critical' :
-            eventType === 'face_missing' ? 'warning' : 'info',
-        snapshot_url: snapshotUrl,
-        screenshot_data: snapshotUrl ? null : base64Image,
-        timestamp: new Date().toISOString(),
-        is_read: false,
-        device_info: navigator.userAgent,
-        ip_address: await getIPAddress()
-    };
-
-    await sb.from('exam_proctoring_logs').insert(logData);
+    try {
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: AppState.studentId,
+            exam_id: parseInt(AppState.examId),
+            student_name: studentName,
+            student_reg_number: studentReg,
+            exam_name: examName,
+            event_type: eventType,
+            details: details,
+            severity: eventType === 'multiple_faces_detected' ? 'critical' :
+                eventType === 'face_missing' ? 'warning' : 'info',
+            snapshot_url: snapshotUrl,
+            timestamp: new Date().toISOString(),
+            is_read: false,
+            device_info: navigator.userAgent,
+            ip_address: await getIPAddress()
+        });
+    } catch (e) {
+        // Silently fail
+    }
 }
 
 function startSnapshotCapture() {
@@ -1265,11 +1287,12 @@ window.closeAttendanceModal = function() {
 };
 
 // ============================================================
-// HEARTBEAT
+// HEARTBEAT - FIXED
 // ============================================================
 async function sendHeartbeat() {
     if (!AppState.isExamActive) return;
     try {
+        // Use insert instead of upsert
         await sb.from('exam_heartbeats').insert({
             student_id: AppState.studentId,
             exam_id: parseInt(AppState.examId),
@@ -1279,7 +1302,9 @@ async function sendHeartbeat() {
             face_detected: !AppState.isExamPaused,
             timestamp: new Date().toISOString()
         });
-    } catch (e) {}
+    } catch (e) {
+        // Silently fail
+    }
 }
 
 // ============================================================
@@ -2047,7 +2072,6 @@ async function executeSubmissionWithLoading() {
 
         updateSubmissionProgress('📸 Capturing final snapshot...');
         if (AppState.timerInterval) clearInterval(AppState.timerInterval);
-        if (AppState.examVideoStream) AppState.examVideoStream.getTracks().forEach(t => t.stop());
         if (AppState.countdownInterval) clearInterval(AppState.countdownInterval);
         if (AppState.heartbeatInterval) clearInterval(AppState.heartbeatInterval);
         if (AppState.saveProgressInterval) clearInterval(AppState.saveProgressInterval);
@@ -2174,6 +2198,7 @@ async function calculateAndSaveGrade() {
             });
         }
 
+        // Handle unanswered questions
         questionsData.forEach((q) => {
             if (!AppState.answers[q.id]) {
                 answerRecords.push({
@@ -2190,11 +2215,13 @@ async function calculateAndSaveGrade() {
         const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
         const resultStatus = 'PENDING_REVIEW';
 
+        // Delete existing grades
         await sb.from('exam_grades')
             .delete()
             .eq('student_id', AppState.studentId)
             .eq('exam_id', parseInt(AppState.examId));
 
+        // Insert all answers in batches
         if (answerRecords.length > 0) {
             const BATCH_SIZE = 50;
             for (let i = 0; i < answerRecords.length; i += BATCH_SIZE) {
@@ -2203,6 +2230,7 @@ async function calculateAndSaveGrade() {
             }
         }
 
+        // Insert summary record
         await sb.from('exam_grades').insert({
             student_id: AppState.studentId,
             exam_id: parseInt(AppState.examId),
@@ -2677,7 +2705,7 @@ function showSwipeHint() {
 }
 
 // ============================================================
-// EXAM EVENT LISTENERS
+// EXAM EVENT LISTENERS - FIXED (removed startExamCamera reference)
 // ============================================================
 function setupExamEventListeners() {
     if (DOM.prevBtn) {
@@ -2714,11 +2742,6 @@ function setupExamEventListeners() {
             e.preventDefault();
         }
     });
-
-    const allowCameraBtn = document.getElementById('allow-camera-btn');
-    if (allowCameraBtn) {
-        allowCameraBtn.addEventListener('click', startExamCamera);
-    }
 }
 
 // ============================================================
