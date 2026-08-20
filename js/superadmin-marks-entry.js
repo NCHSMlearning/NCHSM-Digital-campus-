@@ -1,10 +1,4 @@
 // ============================================================
-// MARKS ENTRY SYSTEM - COMPLETE (NURSING + TVET SUPPORT)
-// WITH RETAKE/SUPPLEMENTARY EXAM SUPPORT
-// WITH AUTO-APPROVE ON SAVE
-// ============================================================
-
-// ============================================================
 // STATE
 // ============================================================
 
@@ -24,7 +18,126 @@ let me_studentManagerData = {
 };
 
 // ============================================================
-// RETAKE/SUPPLEMENTARY STATE
+// LOADING SCREEN FUNCTIONS - ADD THIS HERE
+// ============================================================
+
+function showLoadingScreen(message, title = 'Loading...') {
+    let overlay = document.getElementById('loadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.style.cssText = `
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5); z-index: 99999;
+            display: none; justify-content: center; align-items: center;
+            flex-direction: column; gap: 16px;
+        `;
+        overlay.innerHTML = `
+            <div style="background: white; padding: 30px 40px; border-radius: 16px; text-align: center; min-width: 200px;">
+                <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
+                <p id="loadingMessage" style="color: #1e293b; font-weight: 600; margin-top: 12px;">Loading...</p>
+                <div style="margin-top: 10px; background: #e5e7eb; border-radius: 8px; height: 6px; overflow: hidden; width: 100%;">
+                    <div id="loadingProgress" style="height: 100%; background: linear-gradient(90deg, #4C1D95, #7c3aed); width: 0%; transition: width 0.3s ease; border-radius: 8px;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; margin-top: 8px; font-size: 11px; color: #94a3b8;">
+                    <span id="step1Text">Initializing...</span>
+                    <span id="step2Text">Loading data...</span>
+                    <span id="step3Text">Processing...</span>
+                    <span id="step4Text">Rendering...</span>
+                </div>
+                <style>
+                    @keyframes spin {
+                        to { transform: rotate(360deg); }
+                    }
+                </style>
+            </div>
+        `;
+        document.body.appendChild(overlay);
+    }
+    
+    overlay.style.display = 'flex';
+    const msgEl = document.getElementById('loadingMessage');
+    if (msgEl) msgEl.textContent = message || 'Loading...';
+    
+    const progressEl = document.getElementById('loadingProgress');
+    if (progressEl) progressEl.style.width = '0%';
+    
+    resetLoadingSteps();
+    console.log(`⏳ Loading: ${message}`);
+}
+
+function updateLoadingProgress(percent, step = null, stepText = null) {
+    const progressEl = document.getElementById('loadingProgress');
+    if (progressEl) {
+        progressEl.style.width = Math.min(percent, 100) + '%';
+    }
+    
+    if (step && stepText) {
+        updateLoadingStep(step, stepText);
+    }
+}
+
+function updateLoadingStep(step, text) {
+    const stepMap = {
+        1: { el: 'step1Text' },
+        2: { el: 'step2Text' },
+        3: { el: 'step3Text' },
+        4: { el: 'step4Text' }
+    };
+    
+    const s = stepMap[step];
+    if (!s) return;
+    
+    const textEl = document.getElementById(s.el);
+    if (textEl) {
+        textEl.textContent = text;
+        textEl.style.color = '#1e293b';
+        textEl.style.fontWeight = '600';
+    }
+    
+    for (let i = 1; i < step; i++) {
+        const prev = stepMap[i];
+        if (prev) {
+            const prevEl = document.getElementById(prev.el);
+            if (prevEl) {
+                prevEl.style.color = '#059669';
+                prevEl.style.fontWeight = '600';
+            }
+        }
+    }
+}
+
+function resetLoadingSteps() {
+    const steps = ['step1Text', 'step2Text', 'step3Text', 'step4Text'];
+    const texts = ['Initializing...', 'Loading data...', 'Processing...', 'Rendering...'];
+    steps.forEach((id, index) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.textContent = texts[index] || '...';
+            el.style.color = index === 0 ? '#1e293b' : '#94a3b8';
+            el.style.fontWeight = index === 0 ? '600' : '400';
+        }
+    });
+}
+
+function hideLoadingScreen() {
+    const overlay = document.getElementById('loadingOverlay');
+    if (overlay) {
+        overlay.style.display = 'none';
+    }
+    console.log('✅ Loading complete');
+}
+
+function showLoading(message) {
+    showLoadingScreen(message, 'Loading...');
+}
+
+function hideLoading() {
+    hideLoadingScreen();
+}
+
+// ============================================================
+// RETAKE/SUPPLEMENTARY STATE - THIS COMES AFTER
 // ============================================================
 
 let me_retakeData = {};
@@ -1056,7 +1169,11 @@ async function loadMEUnits() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY
+// LOAD MARKS ENTRY - WITH TVET SUPPORT AND RETAKE HISTORY FIX
+// ============================================================
+
+// ============================================================
+// LOAD MARKS ENTRY - FIXED FOR SUPER ADMIN (NO ASSIGNMENT CHECK)
 // ============================================================
 
 async function loadMarksEntry() {
@@ -1071,17 +1188,20 @@ async function loadMarksEntry() {
     
     const dynamicContent = document.getElementById('marksEntryDynamicContent');
     const placeholder = document.getElementById('marksEntryPlaceholder');
+    const container = document.getElementById('me_marks_container');
     
     if (!program || !block || !unit) {
         if (dynamicContent) dynamicContent.style.display = 'none';
         if (placeholder) placeholder.style.display = 'block';
-        document.getElementById('me_marks_container').innerHTML = `
-            <div style="text-align: center; padding: 60px 20px;">
-                <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
-                <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
-            </div>
-        `;
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 60px 20px;">
+                    <i class="fas fa-pen-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                    <h3 style="color: #1e293b;">Select Program, Block and Unit</h3>
+                    <p style="color: #94a3b8;">Choose from the dropdowns above to load marks</p>
+                </div>
+            `;
+        }
         return;
     }
     
@@ -1094,12 +1214,17 @@ async function loadMarksEntry() {
     me_currentYear = year;
     me_currentAssessmentType = assessmentType;
     
-    document.getElementById('me_marks_container').innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div class="loading-spinner"></div>
-            <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unitCode || unit}...</p>
-        </div>
-    `;
+    // ✅ SUPER ADMIN: No assignment check needed - has access to ALL units
+    // ✅ Just show loading and proceed
+    
+    if (container) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 40px;">
+                <div class="loading-spinner"></div>
+                <p style="color: #6b7280; margin-top: 10px;">Loading marks for ${unitCode || unit}...</p>
+            </div>
+        `;
+    }
     
     try {
         // Load retake data first
@@ -1117,16 +1242,18 @@ async function loadMarksEntry() {
         console.log(`📊 Found ${marks?.length || 0} enrolled students for ${unit}`);
         
         if (!marks || marks.length === 0) {
-            document.getElementById('me_marks_container').innerHTML = `
-                <div style="text-align: center; padding: 60px 20px;">
-                    <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
-                    <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
-                    <p style="color: #94a3b8;">Use "Manage Students" to add students to this unit</p>
-                    <button onclick="openMarksStudentManager()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                        <i class="fas fa-users"></i> Manage Students
-                    </button>
-                </div>
-            `;
+            if (container) {
+                container.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px;">
+                        <i class="fas fa-users" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>
+                        <h3 style="color: #1e293b;">No students enrolled in this unit</h3>
+                        <p style="color: #94a3b8;">Use "Manage Students" to add students to this unit</p>
+                        <button onclick="openMarksStudentManager()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                            <i class="fas fa-users"></i> Manage Students
+                        </button>
+                    </div>
+                `;
+            }
             updateMarksEntryStats([], assessmentType);
             return;
         }
@@ -1149,7 +1276,6 @@ async function loadMarksEntry() {
         
         const fullMarks = marks.map(m => {
             const admission = m.admission_number || '';
-            // Check for retake data
             const retakes = me_retakeData[admission] || [];
             const hasRetake = retakes.length > 0;
             const lastRetake = retakes[retakes.length - 1];
@@ -1168,7 +1294,6 @@ async function loadMarksEntry() {
                 id: m.id || null,
                 approval_status: m.approval_status || 'draft',
                 published: m.published || false,
-                // Retake fields
                 hasRetake: hasRetake,
                 retakeCount: retakes.length,
                 retakeScore: lastRetake?.exam_score || null,
@@ -1189,25 +1314,26 @@ async function loadMarksEntry() {
         
     } catch (error) {
         console.error('Error loading marks:', error);
-        document.getElementById('me_marks_container').innerHTML = `
-            <div style="text-align: center; padding: 40px;">
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
-                <h4 style="color: #991b1b;">Error loading marks</h4>
-                <p style="color: #64748b;">${error.message}</p>
-                <button onclick="loadMarksEntry()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    <i class="fas fa-sync-alt"></i> Retry
-                </button>
-            </div>
-        `;
+        if (container) {
+            container.innerHTML = `
+                <div style="text-align: center; padding: 40px;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                    <h4 style="color: #991b1b;">Error loading marks</h4>
+                    <p style="color: #64748b;">${error.message}</p>
+                    <button onclick="loadMarksEntry()" class="btn-action" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </div>
+            `;
+        }
         if (typeof showNotification === 'function') {
             showNotification('Error loading marks: ' + error.message, 'error');
         }
     }
 }
-
 // ============================================================
-// REPLACE the renderMarksEntryTable function in your super-admin-marks.js
-// with this updated version that includes Edit Retake button
+// RENDER MARKS ENTRY TABLE - COMPLETE FIXED VERSION
+// WITH CORRECT RETAKE BUTTON LOGIC
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType) {
@@ -1216,7 +1342,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
     
     const isTVET = isTVETProgram();
     const examMax = getExamMax();
-    const passingThreshold = getPassingThreshold();
+    const passingThreshold = getPassingThreshold(); // ✅ 60 for Nursing, 50 for TVET
     const programLabel = getProgramTypeLabel();
     const isAdmin = isUserAdmin();
     
@@ -1282,7 +1408,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         const exam = parseFloat(m.exam) || 0;
         const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
         const gradeInfo = getMarksEntryGrade(total);
-        const isPassing = total >= passingThreshold;
+        const isPassing = total >= passingThreshold; // ✅ CORRECT threshold
         const displayTotal = total > 0 ? total : '--';
         const displayGrade = total > 0 ? gradeInfo.grade : '--';
         const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
@@ -1292,10 +1418,9 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
         const retakeCount = m.retakeCount || 0;
         const retakeScore = m.retakeScore;
         const retakeStatus = m.retakeStatus;
-        const retakeHistory = m.retakeHistory || [];
         const isRetakePassing = retakeStatus === 'PASS';
         
-        // Determine if student needs retake (failed original)
+        // ✅ Determine if student needs retake (ONLY if FAILED)
         const needsRetake = total > 0 && !isPassing && retakeCount < MAX_RETAKES;
         const maxRetakesReached = total > 0 && !isPassing && retakeCount >= MAX_RETAKES;
         
@@ -1318,11 +1443,11 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>'
         }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>';
         
-        // ✅ Build retake actions
+        // ✅ BUILD RETAKE ACTIONS - CORRECT LOGIC
         let retakeActionsHtml = '';
         
+        // ✅ Case 1: Has retake - show status and Edit button
         if (hasRetake) {
-            // ✅ Show retake status
             retakeActionsHtml += `
                 <div style="font-size: 10px; margin-bottom: 4px;">
                     <span style="color: ${isRetakePassing ? '#059669' : '#dc2626'}; font-weight: 600;">
@@ -1334,16 +1459,26 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                 </div>
             `;
             
-            // ✅ ALWAYS show Edit button for retakes (even if max attempts reached)
+            // ✅ ALWAYS show Edit button for retakes
             retakeActionsHtml += `
                 <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
                         style="background: #3b82f6; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
                     <i class="fas fa-edit"></i> Edit Retake
                 </button>
             `;
+            
+            // ✅ If retake failed AND can add another retake
+            if (!isRetakePassing && retakeCount < MAX_RETAKES) {
+                retakeActionsHtml += `
+                    <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                            style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
+                        <i class="fas fa-sync-alt"></i> Add Retake
+                    </button>
+                `;
+            }
         }
         
-        // ✅ If student failed and hasn't reached max retakes, show "Add Retake" button
+        // ✅ Case 2: If student FAILED and hasn't reached max retakes, show "Add Retake"
         if (needsRetake) {
             retakeActionsHtml += `
                 <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
@@ -1353,7 +1488,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             `;
         }
         
-        // ✅ If max retakes reached and failed, show message + Edit button
+        // ✅ Case 3: If max retakes reached and failed, show message
         if (maxRetakesReached) {
             retakeActionsHtml += `
                 <span style="color: #dc2626; font-size: 8px; font-weight: 600; display: block; text-align: center; margin-top: 2px;">
@@ -1362,11 +1497,16 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             `;
         }
         
-        // ✅ If passed and no retake, show passed message
+        // ✅ Case 4: If PASSED and no retake, show "✅ Passed"
         if (isPassing && !hasRetake) {
             retakeActionsHtml = `
                 <span style="color: #059669; font-size: 11px;">✅ Passed</span>
             `;
+        }
+        
+        // ✅ Case 5: If PASSED with retake (passed after retake), show "✅ Passed (Retake)"
+        if (isPassing && hasRetake && isRetakePassing) {
+            // Already handled above - shows "✅ Passed" with retake badge
         }
         
         html += `<tr style="${rowStyle}">
@@ -1384,7 +1524,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
                         (Retake: ${retakeScore}%)
                     </span>
                 ` : ''}
-                ${retakeHistory.length > 0 ? `
+                ${retakeHistory && retakeHistory.length > 0 ? `
                     <span style="display: block; font-size: 10px; color: #94a3b8; margin-top: 2px;">
                         <i class="fas fa-history"></i> ${retakeHistory.length} attempt(s)
                     </span>
