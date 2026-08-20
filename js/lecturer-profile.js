@@ -3,6 +3,7 @@
  * NCHSM Lecturer Profile Module
  * Manages lecturer profile with inline editing, settings, and preferences
  * NO ADMIN APPROVAL - Settings are saved locally
+ * Supports both Nursing (KRCHN) and TVET programs
  */
 
 const LecturerProfile = {
@@ -22,9 +23,45 @@ const LecturerProfile = {
     },
     currentTab: 'notifications',
     isEditing: false,
+    isTVET: false,
+    currentProgram: 'KRCHN',
     
+    // ─── PROGRAM TYPE DETECTION ───
+    getProgramType() {
+        return window.CURRENT_PROGRAM_TYPE || 'KRCHN';
+    },
+    
+    isTVETProgram() {
+        return this.getProgramType() === 'TVET';
+    },
+    
+    getProgramTypeLabel() {
+        return this.isTVETProgram() ? '🔧 TVET' : '🎓 Nursing';
+    },
+    
+    getProgramEmoji() {
+        return this.isTVETProgram() ? '🔧' : '🎓';
+    },
+    
+    getGradingDisplay() {
+        if (this.isTVETProgram()) {
+            return 'A (80-100%) → 4.0 MASTERY | B (65-79%) → 3.0 PROFICIENT | C (50-64%) → 2.0 COMPETENT | E (0-49%) → 0.0 NOT YET COMPETENT';
+        } else {
+            return 'A (75-100%) → 4.0 | B (65-74%) → 3.0 | C (60-64%) → 2.0 | D (0-59%) → 0.0';
+        }
+    },
+    
+    getPassingThreshold() {
+        return this.isTVETProgram() ? 50 : 60;
+    },
+    
+    // ─── INIT ───
     async init() {
         console.log('👤 Initializing Lecturer Profile & Settings...');
+        this.currentProgram = this.getProgramType();
+        this.isTVET = this.isTVETProgram();
+        console.log(`📚 Program Type: ${this.getProgramTypeLabel()}`);
+        
         await this.loadProfile();
         this.loadSettings();
         this.renderProfile();
@@ -32,9 +69,49 @@ const LecturerProfile = {
         this.setupEventListeners();
         this.setupSettingsTabs();
         this.showReadOnly();
+        this.updateGradingInfo();
         console.log('✅ Lecturer Profile initialized');
     },
     
+    // ─── UPDATE GRADING INFO ───
+    updateGradingInfo() {
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
+        const threshold = this.getPassingThreshold();
+        const gradingDisplay = this.getGradingDisplay();
+        
+        // Update program badge in profile
+        const programBadge = document.querySelector('#profile-content .program-badge');
+        if (programBadge) {
+            programBadge.textContent = `${emoji} ${typeLabel}`;
+            programBadge.style.background = this.isTVET ? '#8b5cf6' : '#4C1D95';
+            programBadge.style.color = 'white';
+            programBadge.style.padding = '4px 12px';
+            programBadge.style.borderRadius = '20px';
+            programBadge.style.display = 'inline-block';
+            programBadge.style.fontSize = '12px';
+        }
+        
+        // Update grading info in profile
+        const gradingEl = document.getElementById('profileGradingInfo');
+        if (gradingEl) {
+            gradingEl.innerHTML = `
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; padding: 10px 16px; background: ${this.isTVET ? '#f5f3ff' : '#f0fdf4'}; border-radius: 8px; border: 1px solid ${this.isTVET ? '#ddd6fe' : '#bbf7d0'}; margin-top: 12px;">
+                    <span style="font-weight: 600; font-size: 12px; color: ${this.isTVET ? '#7c3aed' : '#065f46'};">
+                        ${emoji} ${typeLabel} Grading:
+                    </span>
+                    <span style="font-size: 11px; color: #475569;">
+                        ${gradingDisplay}
+                    </span>
+                    <span style="font-size: 10px; color: #94a3b8; margin-left: auto;">
+                        Passing: ≥${threshold}%
+                    </span>
+                </div>
+            `;
+        }
+    },
+    
+    // ─── LOAD PROFILE ───
     async loadProfile() {
         try {
             const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -44,9 +121,15 @@ const LecturerProfile = {
                 return;
             }
             
+            // Detect program type from profile
+            const program = profile.program || profile.department || 'KRCHN';
+            this.currentProgram = program;
+            this.isTVET = window.IS_TVET || program !== 'KRCHN';
+            
             this.profile = profile;
             this.renderProfile();
-            console.log('✅ Profile loaded');
+            this.updateGradingInfo();
+            console.log(`✅ Profile loaded (${this.getProgramTypeLabel()})`);
             
         } catch (error) {
             console.error('Failed to load profile:', error);
@@ -56,30 +139,39 @@ const LecturerProfile = {
     },
     
     getMockProfile() {
+        const isTVET = this.isTVETProgram();
+        const programType = this.getProgramTypeLabel();
+        
         return {
             user_id: 'mock-user-1',
             full_name: 'Dr. Jane Lecturer',
             email: 'jane.lecturer@nchsm.ac.ke',
             phone: '+254 700 123 456',
-            department: 'Nursing',
-            program: 'KRCHN',
+            department: isTVET ? 'TVET Department' : 'Nursing',
+            program: isTVET ? 'DPOTT' : 'KRCHN',
             role: 'Lecturer',
             staff_id: 'LEC-2025-001',
             join_date: '2024-01-15',
-            avatar_url: 'https://ui-avatars.com/api/?name=Jane+Lecturer&background=4C1D95&color=fff&size=120'
+            avatar_url: 'https://ui-avatars.com/api/?name=Jane+Lecturer&background=4C1D95&color=fff&size=120',
+            program_type: programType,
+            is_tvet: isTVET
         };
     },
     
+    // ─── RENDER PROFILE ───
     renderProfile() {
         const p = this.profile;
         if (!p) return;
+        
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
         
         // Avatar
         const avatar = document.getElementById('profileImg');
         if (avatar) {
             const name = p.full_name || 'Lecturer';
             const url = p.avatar_url || p.passport_url || 
-                `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=4C1D95&color=fff&size=120`;
+                `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=${this.isTVET ? '8b5cf6' : '4C1D95'}&color=fff&size=120`;
             avatar.src = url;
         }
         
@@ -88,7 +180,22 @@ const LecturerProfile = {
         if (nameEl) nameEl.textContent = p.full_name || 'N/A';
         
         const roleEl = document.getElementById('profileRoleDisplay');
-        if (roleEl) roleEl.textContent = p.role || 'Lecturer';
+        if (roleEl) {
+            roleEl.textContent = `${p.role || 'Lecturer'} • ${typeLabel}`;
+        }
+        
+        // Program type badge
+        const typeBadge = document.getElementById('profileTypeBadge');
+        if (typeBadge) {
+            typeBadge.textContent = `${emoji} ${typeLabel}`;
+            typeBadge.style.background = this.isTVET ? '#8b5cf6' : '#4C1D95';
+            typeBadge.style.color = 'white';
+            typeBadge.style.padding = '2px 12px';
+            typeBadge.style.borderRadius = '20px';
+            typeBadge.style.fontSize = '11px';
+            typeBadge.style.fontWeight = '600';
+            typeBadge.style.display = 'inline-block';
+        }
         
         // Details - Read-only fields
         const fields = {
@@ -102,7 +209,13 @@ const LecturerProfile = {
         
         Object.keys(fields).forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.textContent = fields[id];
+            if (el) {
+                el.textContent = fields[id];
+                // Add program type indicator for program field
+                if (id === 'profileProgramFocus') {
+                    el.textContent = `${fields[id]} (${typeLabel})`;
+                }
+            }
         });
         
         // Editable fields (for inline editing)
@@ -122,9 +235,9 @@ const LecturerProfile = {
         const settingsFields = {
             'settingsFullName': p.full_name || 'N/A',
             'settingsEmail': p.email || 'N/A',
-            'settingsProgram': p.program || p.department || 'N/A',
+            'settingsProgram': `${p.program || p.department || 'N/A'} (${typeLabel})`,
             'settingsStaffId': p.staff_id || p.employee_id || 'N/A',
-            'settingsRole': p.role || 'Lecturer'
+            'settingsRole': `${p.role || 'Lecturer'} • ${typeLabel}`
         };
         
         Object.keys(settingsFields).forEach(id => {
@@ -134,8 +247,17 @@ const LecturerProfile = {
         
         // Update stats
         this.updateStats();
+        
+        // Update program badge in sidebar
+        const programBadge = document.getElementById('userProgramBadge');
+        if (programBadge) {
+            programBadge.textContent = `${this.currentProgram} (${typeLabel})`;
+            programBadge.style.background = this.isTVET ? 'rgba(139,92,246,0.3)' : 'rgba(76,29,149,0.3)';
+            programBadge.style.border = this.isTVET ? '1px solid #8b5cf6' : '1px solid #4C1D95';
+        }
     },
     
+    // ─── UPDATE STATS ───
     updateStats() {
         // Get courses count
         const courses = window.LecturerCourses?.courses || [];
@@ -154,8 +276,16 @@ const LecturerProfile = {
             const yearsEl = document.getElementById('profileYearsCount');
             if (yearsEl) yearsEl.textContent = years || 0;
         }
+        
+        // Update program type stat
+        const typeEl = document.getElementById('profileProgramType');
+        if (typeEl) {
+            typeEl.textContent = this.getProgramTypeLabel();
+            typeEl.style.color = this.isTVET ? '#7c3aed' : '#4C1D95';
+        }
     },
     
+    // ─── LOAD SETTINGS ───
     loadSettings() {
         try {
             const savedSettings = localStorage.getItem('lecturerSettings');
@@ -168,8 +298,11 @@ const LecturerProfile = {
         }
     },
     
+    // ─── RENDER SETTINGS ───
     renderSettings() {
         const s = this.settings;
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
         
         // Notification checkboxes
         const emailCheck = document.getElementById('emailNotify');
@@ -225,8 +358,15 @@ const LecturerProfile = {
                 btn.style.transform = 'scale(1)';
             }
         });
+        
+        // Update settings header with program type
+        const settingsHeader = document.querySelector('#settings-content h2');
+        if (settingsHeader) {
+            settingsHeader.innerHTML = `<i class="fas fa-cog" style="color: #FDB913;"></i> ${emoji} ${typeLabel} Settings`;
+        }
     },
     
+    // ─── APPLY THEME ───
     applyTheme(theme) {
         if (theme === 'dark') {
             document.body.style.background = '#0f172a';
@@ -245,6 +385,7 @@ const LecturerProfile = {
         }
     },
     
+    // ─── APPLY ACCENT COLOR ───
     applyAccentColor(color) {
         document.documentElement.style.setProperty('--primary-color', color);
         
@@ -264,6 +405,7 @@ const LecturerProfile = {
         }
     },
     
+    // ─── DARKEN COLOR ───
     darkenColor(hex) {
         let r = parseInt(hex.slice(1, 3), 16);
         let g = parseInt(hex.slice(3, 5), 16);
@@ -276,6 +418,7 @@ const LecturerProfile = {
         return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
     },
     
+    // ─── SETUP SETTINGS TABS ───
     setupSettingsTabs() {
         const tabs = ['notifications', 'account', 'appearance'];
         tabs.forEach(tab => {
@@ -286,6 +429,7 @@ const LecturerProfile = {
         });
     },
     
+    // ─── SWITCH SETTINGS TAB ───
     switchSettingsTab(tab) {
         this.currentTab = tab;
         
@@ -297,7 +441,7 @@ const LecturerProfile = {
             if (btn) {
                 if (t === tab) {
                     btn.className = 'settings-tab active';
-                    btn.style.background = '#4C1D95';
+                    btn.style.background = this.isTVET ? '#8b5cf6' : '#4C1D95';
                     btn.style.color = 'white';
                 } else {
                     btn.className = 'settings-tab';
@@ -312,6 +456,7 @@ const LecturerProfile = {
         });
     },
     
+    // ─── SETUP EVENT LISTENERS ───
     setupEventListeners() {
         // Edit profile button (main page)
         const editBtn = document.getElementById('editProfileBtn');
@@ -368,6 +513,7 @@ const LecturerProfile = {
         }
     },
     
+    // ─── ENABLE EDITING ───
     enableEditing() {
         this.isEditing = true;
         
@@ -375,7 +521,7 @@ const LecturerProfile = {
         document.querySelectorAll('.profile-field').forEach(el => {
             el.readOnly = false;
             el.style.background = 'white';
-            el.style.borderColor = '#4C1D95';
+            el.style.borderColor = this.isTVET ? '#8b5cf6' : '#4C1D95';
         });
         
         // Show field hints
@@ -393,12 +539,16 @@ const LecturerProfile = {
         
         // Show save/cancel buttons
         const saveBtn = document.getElementById('saveProfileBtn');
-        if (saveBtn) saveBtn.style.display = 'inline-flex';
+        if (saveBtn) {
+            saveBtn.style.display = 'inline-flex';
+            saveBtn.style.background = this.isTVET ? '#8b5cf6' : '#10b981';
+        }
         
         const cancelBtn = document.getElementById('cancelEditBtn');
         if (cancelBtn) cancelBtn.style.display = 'inline-flex';
     },
     
+    // ─── SHOW READ ONLY ───
     showReadOnly() {
         this.isEditing = false;
         
@@ -430,6 +580,7 @@ const LecturerProfile = {
         if (cancelBtn) cancelBtn.style.display = 'none';
     },
     
+    // ─── CANCEL EDITING ───
     cancelEditing() {
         // Reset fields to original values
         const p = this.profile;
@@ -451,6 +602,7 @@ const LecturerProfile = {
         window.showNotification('Edit cancelled.', 'info');
     },
     
+    // ─── SAVE PROFILE ───
     async saveProfile() {
         const updates = {
             full_name: document.getElementById('editFullName')?.value?.trim(),
@@ -495,9 +647,10 @@ const LecturerProfile = {
             this.profile = { ...this.profile, ...updates };
             this.renderProfile();
             this.showReadOnly();
+            this.updateGradingInfo();
             
             window.hideLoading();
-            window.showNotification('✅ Profile updated successfully!', 'success');
+            window.showNotification(`✅ ${this.getProgramTypeLabel()} profile updated successfully!`, 'success');
             
         } catch (error) {
             window.hideLoading();
@@ -506,19 +659,18 @@ const LecturerProfile = {
         }
     },
     
+    // ─── CHANGE PASSWORD ───
     async changePassword() {
         const current = document.getElementById('currentPassword')?.value;
         const newPass = document.getElementById('newPassword')?.value;
         const confirm = document.getElementById('confirmPassword')?.value;
         const feedback = document.getElementById('passwordFeedback');
         
-        // Clear previous feedback
         if (feedback) {
             feedback.style.display = 'none';
             feedback.textContent = '';
         }
         
-        // Validate
         if (!current) {
             window.showNotification('Please enter your current password.', 'error');
             document.getElementById('currentPassword')?.focus();
@@ -549,7 +701,6 @@ const LecturerProfile = {
                 if (error) throw error;
             }
             
-            // Clear password fields
             document.getElementById('currentPassword').value = '';
             document.getElementById('newPassword').value = '';
             document.getElementById('confirmPassword').value = '';
@@ -564,23 +715,21 @@ const LecturerProfile = {
         }
     },
     
+    // ─── HANDLE PHOTO UPLOAD ───
     async handlePhotoUpload(event) {
         const file = event.target.files[0];
         if (!file) return;
         
-        // Validate file type
         if (!file.type.startsWith('image/')) {
             window.showNotification('Please select an image file.', 'error');
             return;
         }
         
-        // Validate file size (max 2MB)
         if (file.size > 2 * 1024 * 1024) {
             window.showNotification('Image must be less than 2MB.', 'error');
             return;
         }
         
-        // Preview
         const reader = new FileReader();
         reader.onload = (e) => {
             const img = document.getElementById('profileImg');
@@ -625,6 +774,7 @@ const LecturerProfile = {
         }
     },
     
+    // ─── SAVE SETTINGS ───
     async saveSettings(e) {
         if (e) e.preventDefault();
         
@@ -640,9 +790,10 @@ const LecturerProfile = {
         };
         
         this.saveSettingsToStorage();
-        window.showNotification('Settings saved successfully!', 'success');
+        window.showNotification(`${this.getProgramTypeLabel()} settings saved!`, 'success');
     },
     
+    // ─── SAVE APPEARANCE SETTINGS ───
     saveAppearanceSettings() {
         const themeSelect = document.getElementById('themeSelect');
         if (themeSelect) {
@@ -654,6 +805,7 @@ const LecturerProfile = {
         window.showNotification('Appearance settings saved!', 'success');
     },
     
+    // ─── CHANGE ACCENT COLOR ───
     changeAccentColor(color) {
         this.settings.accentColor = color;
         this.applyAccentColor(color);
@@ -661,6 +813,7 @@ const LecturerProfile = {
         this.renderSettings();
     },
     
+    // ─── SAVE SETTINGS TO STORAGE ───
     saveSettingsToStorage() {
         try {
             localStorage.setItem('lecturerSettings', JSON.stringify(this.settings));
@@ -669,6 +822,7 @@ const LecturerProfile = {
         }
     },
     
+    // ─── FORMAT DATE ───
     formatDate(dateString) {
         if (!dateString) return 'N/A';
         try {
@@ -683,6 +837,7 @@ const LecturerProfile = {
         }
     },
     
+    // ─── ESCAPE HTML ───
     escapeHtml(text) {
         if (!text) return '';
         const div = document.createElement('div');
@@ -690,12 +845,14 @@ const LecturerProfile = {
         return div.innerHTML;
     },
     
+    // ─── REFRESH ───
     async refresh() {
         await this.loadProfile();
         this.loadSettings();
         this.renderSettings();
         this.showReadOnly();
-        window.showNotification('Profile refreshed!', 'success');
+        this.updateGradingInfo();
+        window.showNotification(`${this.getProgramTypeLabel()} profile refreshed!`, 'success');
     }
 };
 
@@ -713,3 +870,4 @@ window.saveAppearanceSettings = () => LecturerProfile.saveAppearanceSettings();
 window.loadAccountSettings = () => LecturerProfile.loadProfile();
 
 console.log('✅ LecturerProfile module loaded');
+console.log('📋 Features: Profile management, Settings, TVET/Nursing support');
