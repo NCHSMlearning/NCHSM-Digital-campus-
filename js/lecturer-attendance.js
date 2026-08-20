@@ -1404,231 +1404,246 @@ const LecturerAttendance = {
     // ATTENDANCE APPROVAL FUNCTIONS - FIXED VERSION
     // ============================================================
 
-    /**
-     * Approve a single attendance record - FIXED with proper UI refresh
-     * @param {string|number} recordId - The ID of the attendance record to approve
-     */
-    async approveAttendance(recordId) {
-        if (!recordId) {
-            this.showNotification('Error: Record ID is required', 'error');
-            return;
+   // ============================================================
+// APPROVE ATTENDANCE - COMPLETE FIXED VERSION
+// ============================================================
+async approveAttendance(recordId) {
+    if (!recordId) {
+        this.showNotification('Error: Record ID is required', 'error');
+        return;
+    }
+
+    if (this.isProcessing) {
+        this.showNotification('Please wait, processing...', 'warning');
+        return;
+    }
+
+    this.isProcessing = true;
+
+    // Find and update the button
+    const approveBtn = document.querySelector(`[data-approve-id="${recordId}"]`);
+    if (approveBtn) {
+        approveBtn.disabled = true;
+        approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
+        approveBtn.style.background = '#8b5cf6';
+    }
+
+    try {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) {
+            throw new Error('Database not available');
         }
 
-        if (this.isProcessing) {
-            this.showNotification('Please wait, processing...', 'warning');
-            return;
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const lecturerName = profile?.full_name || 'Lecturer';
+        const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
+
+        // First, check if record exists
+        const { data: record, error: fetchError } = await supabase
+            .from('geo_attendance_logs')
+            .select('id, attendance_status, is_verified, student_name')
+            .eq('id', recordId)
+            .single();
+
+        if (fetchError) {
+            throw new Error('Record not found: ' + fetchError.message);
         }
 
-        this.isProcessing = true;
-
-        // Find and update the button
-        const approveBtn = document.querySelector(`[data-approve-id="${recordId}"]`);
-        if (approveBtn) {
-            approveBtn.disabled = true;
-            approveBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
-            approveBtn.style.background = '#8b5cf6';
-        }
-
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database not available');
-            }
-
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const lecturerName = profile?.full_name || 'Lecturer';
-            const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
-
-            // First, check if record exists and get current status
-            const { data: record, error: fetchError } = await supabase
-                .from('geo_attendance_logs')
-                .select('id, attendance_status, is_verified, student_name, check_in_time')
-                .eq('id', recordId)
-                .single();
-
-            if (fetchError) {
-                throw new Error('Record not found: ' + fetchError.message);
-            }
-
-            if (record.is_verified) {
-                this.showNotification(`⚠️ ${record.student_name || 'Student'} is already verified`, 'warning');
-                if (approveBtn) {
-                    approveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Approved ✓';
-                    approveBtn.style.background = '#10b981';
-                    approveBtn.disabled = true;
-                    approveBtn.style.cursor = 'default';
-                }
-                this.isProcessing = false;
-                return;
-            }
-
-            // Update the record
-            const updateData = {
-                is_verified: true,
-                attendance_status: 'Present',
-                verified_by: lecturerId,
-                verified_at: new Date().toISOString(),
-                verified_by_name: lecturerName
-            };
-
-            console.log('📝 Updating record:', { recordId, updateData });
-
-            const { error: updateError } = await supabase
-                .from('geo_attendance_logs')
-                .update(updateData)
-                .eq('id', recordId);
-
-            if (updateError) {
-                throw new Error('Failed to approve: ' + updateError.message);
-            }
-
-            // Show success
-            this.showNotification(`✅ ${record.student_name || 'Attendance'} approved successfully!`, 'success');
-
-            // Update button
+        if (record.is_verified) {
+            this.showNotification(`⚠️ ${record.student_name || 'Student'} is already verified`, 'warning');
             if (approveBtn) {
                 approveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Approved ✓';
                 approveBtn.style.background = '#10b981';
                 approveBtn.disabled = true;
-                approveBtn.style.cursor = 'default';
             }
-
-            // CRITICAL: Force refresh the data from database
-            console.log('🔄 Refreshing attendance data...');
-            
-            // Load fresh data from Supabase
-            await this.loadTodayAttendance();
-            await this.loadPastAttendance();
-            await this.loadAttendanceStats();
-            
-            // Force re-render with fresh data
-            console.log('📊 Re-rendering with fresh data...');
-            this.renderTodayAttendance();
-            this.renderPastAttendance();
-            this.updateStats(this.todayLogs);
-
-            console.log('✅ Approval complete and UI updated');
-
-        } catch (error) {
-            console.error('❌ Approval error:', error);
-            this.showNotification('Failed to approve: ' + error.message, 'error');
-            
-            // Reset button
-            if (approveBtn) {
-                approveBtn.disabled = false;
-                approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve';
-                approveBtn.style.background = '#8b5cf6';
-            }
-        } finally {
             this.isProcessing = false;
+            return;
         }
-    },
 
-    /**
-     * Bulk approve multiple attendance records - FIXED with proper UI refresh
-     * @param {string} date - Optional date filter for bulk approval
-     */
-    async bulkApproveAttendance(date = null) {
-        const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
+        // ✅ CRITICAL FIX: Set ALL verification fields
+        const now = new Date().toISOString();
+        const updateData = {
+            is_verified: true,
+            attendance_status: 'Present',
+            verified_by: lecturerId,           // ✅ MUST BE SET
+            verified_by_name: lecturerName,    // ✅ MUST BE SET
+            verified_at: now,                  // ✅ MUST BE SET
+            verification_source: 'Manual Approval',
+            verification_checks: JSON.stringify({
+                approved_by: lecturerName,
+                approved_at: now,
+                method: 'Lecturer Approval'
+            })
+        };
+
+        console.log('📝 Updating record with ALL fields:', { recordId, updateData });
+
+        // Update the record
+        const { error: updateError } = await supabase
+            .from('geo_attendance_logs')
+            .update(updateData)
+            .eq('id', recordId);
+
+        if (updateError) {
+            throw new Error('Failed to approve: ' + updateError.message);
+        }
+
+        // Show success
+        this.showNotification(`✅ ${record.student_name || 'Attendance'} approved successfully!`, 'success');
+
+        // Update button
+        if (approveBtn) {
+            approveBtn.innerHTML = '<i class="fas fa-check-circle"></i> Approved ✓';
+            approveBtn.style.background = '#10b981';
+            approveBtn.disabled = true;
+            approveBtn.style.cursor = 'default';
+        }
+
+        // ✅ FORCE COMPLETE REFRESH
+        console.log('🔄 Force refreshing all attendance data...');
         
-        if (!targetDate) {
-            this.showNotification('Please select a date to bulk approve', 'warning');
-            return;
+        // Clear cache
+        this.todayLogs = [];
+        this.pastLogs = [];
+        
+        // Load fresh data
+        await this.loadTodayAttendance();
+        await this.loadPastAttendance();
+        await this.loadAttendanceStats();
+        
+        // Force re-render
+        this.renderTodayAttendance();
+        this.renderPastAttendance();
+        this.updateStats(this.todayLogs);
+
+        console.log('✅ Approval complete - UI should now show Verified');
+
+    } catch (error) {
+        console.error('❌ Approval error:', error);
+        this.showNotification('Failed to approve: ' + error.message, 'error');
+        
+        // Reset button
+        if (approveBtn) {
+            approveBtn.disabled = false;
+            approveBtn.innerHTML = '<i class="fas fa-check"></i> Approve';
+            approveBtn.style.background = '#8b5cf6';
+        }
+    } finally {
+        this.isProcessing = false;
+    }
+},
+
+   // ============================================================
+// BULK APPROVE - COMPLETE FIXED VERSION
+// ============================================================
+async bulkApproveAttendance(date = null) {
+    const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
+    
+    if (!targetDate) {
+        this.showNotification('Please select a date to bulk approve', 'warning');
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to approve ALL unverified attendance records for ${targetDate}?`)) {
+        return;
+    }
+
+    if (this.isProcessing) {
+        this.showNotification('Please wait, processing...', 'warning');
+        return;
+    }
+
+    this.isProcessing = true;
+    const btn = document.querySelector('.btn-approve');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
+    }
+
+    try {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) {
+            throw new Error('Database not available');
         }
 
-        // Confirm with user
-        if (!confirm(`Are you sure you want to approve ALL unverified attendance records for ${targetDate}?`)) {
-            return;
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const lecturerName = profile?.full_name || 'Lecturer';
+        const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
+
+        // Get all unverified records for the date
+        const { data: records, error: fetchError } = await supabase
+            .from('geo_attendance_logs')
+            .select('id, student_name')
+            .eq('is_verified', false)
+            .neq('session_type', 'Lecturer Check-in')
+            .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
+            .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
+
+        if (fetchError) {
+            throw new Error('Failed to fetch records: ' + fetchError.message);
         }
 
-        if (this.isProcessing) {
-            this.showNotification('Please wait, processing...', 'warning');
-            return;
-        }
-
-        this.isProcessing = true;
-        const btn = document.querySelector('.btn-approve');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Approving...';
-        }
-
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database not available');
-            }
-
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const lecturerName = profile?.full_name || 'Lecturer';
-            const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
-
-            // Get all unverified records for the date
-            const { data: records, error: fetchError } = await supabase
-                .from('geo_attendance_logs')
-                .select('id, student_name')
-                .eq('is_verified', false)
-                .neq('session_type', 'Lecturer Check-in')
-                .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
-                .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
-
-            if (fetchError) {
-                throw new Error('Failed to fetch records: ' + fetchError.message);
-            }
-
-            if (!records || records.length === 0) {
-                this.showNotification(`No unverified records found for ${targetDate}`, 'info');
-                this.isProcessing = false;
-                if (btn) {
-                    btn.disabled = false;
-                    btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Approve';
-                }
-                return;
-            }
-
-            // Update all records
-            const recordIds = records.map(r => r.id);
-            const updateData = {
-                is_verified: true,
-                attendance_status: 'Present',
-                verified_by: lecturerId,
-                verified_at: new Date().toISOString(),
-                verified_by_name: lecturerName
-            };
-
-            const { error: updateError } = await supabase
-                .from('geo_attendance_logs')
-                .update(updateData)
-                .in('id', recordIds);
-
-            if (updateError) {
-                throw new Error('Failed to bulk approve: ' + updateError.message);
-            }
-
-            this.showNotification(`✅ ${records.length} records approved successfully!`, 'success');
-
-            // Refresh attendance data
-            await this.loadTodayAttendance();
-            await this.loadPastAttendance();
-            await this.loadAttendanceStats();
-            
-            // Force re-render
-            this.renderTodayAttendance();
-            this.renderPastAttendance();
-            this.updateStats(this.todayLogs);
-
-        } catch (error) {
-            console.error('❌ Bulk approval error:', error);
-            this.showNotification('Bulk approval failed: ' + error.message, 'error');
-        } finally {
+        if (!records || records.length === 0) {
+            this.showNotification(`No unverified records found for ${targetDate}`, 'info');
             this.isProcessing = false;
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Approve';
             }
+            return;
         }
-    },
 
+        // ✅ CRITICAL FIX: Set ALL fields
+        const now = new Date().toISOString();
+        const updateData = {
+            is_verified: true,
+            attendance_status: 'Present',
+            verified_by: lecturerId,
+            verified_by_name: lecturerName,
+            verified_at: now,
+            verification_source: 'Bulk Approval',
+            verification_checks: JSON.stringify({
+                approved_by: lecturerName,
+                approved_at: now,
+                method: 'Bulk Lecturer Approval',
+                record_count: records.length
+            })
+        };
+
+        // Update all records
+        const recordIds = records.map(r => r.id);
+        const { error: updateError } = await supabase
+            .from('geo_attendance_logs')
+            .update(updateData)
+            .in('id', recordIds);
+
+        if (updateError) {
+            throw new Error('Failed to bulk approve: ' + updateError.message);
+        }
+
+        this.showNotification(`✅ ${records.length} records approved successfully!`, 'success');
+
+        // Force refresh
+        this.todayLogs = [];
+        this.pastLogs = [];
+        await this.loadTodayAttendance();
+        await this.loadPastAttendance();
+        await this.loadAttendanceStats();
+        this.renderTodayAttendance();
+        this.renderPastAttendance();
+        this.updateStats(this.todayLogs);
+
+    } catch (error) {
+        console.error('❌ Bulk approval error:', error);
+        this.showNotification('Bulk approval failed: ' + error.message, 'error');
+    } finally {
+        this.isProcessing = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Approve';
+        }
+    }
+},
     /**
      * Check if a record can be approved (not already verified)
      * @param {Object} record - The attendance record
