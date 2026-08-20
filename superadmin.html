@@ -5852,10 +5852,11 @@
         </div>
     </div>
 </section>
-   <!-- ============================================ -->
+ <!-- ============================================ -->
 <!-- TRANSCRIPT GENERATOR - ENHANCED FAST ACCESS -->
 <!-- TVET & KRCHN - WITH OFFICIAL GRADE MAPPING -->
 <!-- CORRECTED TVET TERM STRUCTURE -->
+<!-- Academic Registrar & Director Signatures ONLY -->
 <!-- ============================================ -->
 <section id="transcript-generator" class="tab-content">
     <!-- Header -->
@@ -6103,9 +6104,15 @@
                 <h4 style="margin: 0; color: #0A3D62;">
                     <i class="fas fa-file-pdf" style="color: #4C1D95;"></i> Transcript Preview
                 </h4>
-                <button onclick="closeTranscriptPreview()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; transition: color 0.2s;" onmouseover="this.style.color='#1e293b'" onmouseout="this.style.color='#94a3b8'">
-                    <i class="fas fa-times"></i>
-                </button>
+                <div style="display: flex; gap: 10px;">
+                    <!-- NEW: Download Transcript Button -->
+                    <button onclick="downloadTranscript()" style="background: #0A3D62; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                        <i class="fas fa-download"></i> Download Transcript
+                    </button>
+                    <button onclick="closeTranscriptPreview()" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; transition: color 0.2s;" onmouseover="this.style.color='#1e293b'" onmouseout="this.style.color='#94a3b8'">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
             </div>
             <div id="transcriptPreviewContent"></div>
         </div>
