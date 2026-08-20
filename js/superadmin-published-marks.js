@@ -2,13 +2,13 @@
 // PUBLISHED MARKS - SMART VERSION (30 per page)
 // TVET & KRCHN Nursing with Retake Support
 // NO AUTO-PUBLISH - All actions require admin confirmation
-// FULLY UPDATED WITH INTAKE YEAR (2024-2030)
+// FULLY UPDATED WITH ACADEMIC YEAR (2023-2030)
 // ============================================================
 
 console.log('📊 Published Marks module loading...');
 console.log('⭐ Retake/Supplementary Support: ENABLED (per unit)');
 console.log('🔒 NO AUTO-PUBLISH - All actions require confirmation');
-console.log('📅 Intake Years: 2024 - 2030');
+console.log('📅 Academic Years: 2023 - 2030');
 
 // ============================================================
 // STATE
@@ -28,7 +28,7 @@ const PUBLISHED_STATE = {
     retakeMap: {},
     selectedStudents: new Set(),
     filters: {
-        intakeYear: '2025',
+        academicYear: '2025',
         block: 'all',
         program: 'all',
         status: 'all',
@@ -257,38 +257,38 @@ function isTVETProgram(program) {
 }
 
 // ============================================================
-// INTAKE YEAR FUNCTIONS
+// ACADEMIC YEAR FUNCTIONS
 // ============================================================
 
-function onIntakeYearChange() {
-    var intakeYear = document.getElementById('pm_intake_year')?.value || '2025';
-    console.log('📅 Intake Year changed to:', intakeYear);
+function onAcademicYearChange() {
+    var academicYear = document.getElementById('pm_academic_year')?.value || '2025';
+    console.log('📅 Academic Year changed to:', academicYear);
     
     // Update display
-    var displayEls = ['pm_intake_year_display', 'pm_intake_year_display2', 'pm_intake_year_display3'];
+    var displayEls = ['pm_academic_year_display', 'pm_academic_year_display2', 'pm_academic_year_display3'];
     displayEls.forEach(function(id) {
         var el = document.getElementById(id);
-        if (el) el.textContent = intakeYear === 'all' ? 'All' : intakeYear;
+        if (el) el.textContent = academicYear === 'all' ? 'All' : academicYear;
     });
     
-    PUBLISHED_STATE.filters.intakeYear = intakeYear;
+    PUBLISHED_STATE.filters.academicYear = academicYear;
     
-    // Update block filter based on intake year
-    populateBlockFilterByIntakeYear(intakeYear);
+    // Update block filter based on academic year
+    populateBlockFilterByAcademicYear(academicYear);
     
     // Apply filters
     filterPublishedMarks();
 }
 
-function populateBlockFilterByIntakeYear(intakeYear) {
+function populateBlockFilterByAcademicYear(academicYear) {
     var blockFilter = document.getElementById('pm_block_filter');
     if (!blockFilter) return;
     
-    // Get blocks from marks filtered by intake year
+    // Get blocks from marks filtered by academic year
     var yearMarks = PUBLISHED_STATE.marks;
-    if (intakeYear !== 'all') {
+    if (academicYear !== 'all') {
         yearMarks = yearMarks.filter(function(m) {
-            return m.academic_year === intakeYear;
+            return m.academic_year === academicYear;
         });
     }
     
@@ -391,6 +391,7 @@ function updateGradingScaleDisplay() {
     if (tvetScale) tvetScale.style.display = (programType === 'all' || programType === 'TVET') ? 'inline-flex' : 'none';
     if (nursingScale) nursingScale.style.display = (programType === 'all' || programType === 'KRCHN') ? 'inline-flex' : 'none';
 }
+
 // ============================================================
 // RESET FILTERS
 // ============================================================
@@ -398,9 +399,9 @@ function updateGradingScaleDisplay() {
 function resetFilters() {
     console.log('🔄 Resetting filters...');
     
-    // 1. Reset Intake Year to default (2025)
-    var intakeYear = document.getElementById('pm_intake_year');
-    if (intakeYear) intakeYear.value = '2025';
+    // 1. Reset Academic Year to default (2025)
+    var academicYear = document.getElementById('pm_academic_year');
+    if (academicYear) academicYear.value = '2025';
     
     // 2. Reset Program filter
     var programFilter = document.getElementById('pm_program_filter');
@@ -434,7 +435,7 @@ function resetFilters() {
     } catch(e) {}
     
     // 10. Apply filters and reload
-    onIntakeYearChange();
+    onAcademicYearChange();
     filterPublishedMarks();
     
     if (typeof window.showNotification === 'function') {
@@ -443,12 +444,13 @@ function resetFilters() {
     
     console.log('✅ Filters reset!');
 }
+
 // ============================================================
 // FILTER PUBLISHED MARKS
 // ============================================================
 
 function filterPublishedMarks() {
-    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
+    var academicYear = document.getElementById('pm_academic_year')?.value || 'all';
     var blockFilter = document.getElementById('pm_block_filter')?.value || 'all';
     var programFilter = document.getElementById('pm_program_filter')?.value || 'all';
     var statusFilter = document.getElementById('pm_status_filter')?.value || 'all';
@@ -463,10 +465,10 @@ function filterPublishedMarks() {
         filtered = filtered.filter(function(m) { return m.program !== 'KRCHN'; });
     }
     
-    // Intake Year filter
-    if (intakeYear !== 'all') {
+    // Academic Year filter
+    if (academicYear !== 'all') {
         filtered = filtered.filter(function(m) { 
-            return m.academic_year === intakeYear; 
+            return m.academic_year === academicYear; 
         });
     }
     
@@ -754,9 +756,9 @@ async function loadPublishedMarks() {
             var query = window.sb.from('student_marks').select('*');
             
             // Apply filters from UI
-            var intakeYear = document.getElementById('pm_intake_year')?.value;
-            if (intakeYear && intakeYear !== 'all') {
-                query = query.eq('academic_year', intakeYear);
+            var academicYear = document.getElementById('pm_academic_year')?.value;
+            if (academicYear && academicYear !== 'all') {
+                query = query.eq('academic_year', academicYear);
             }
             
             var blockFilter = document.getElementById('pm_block_filter')?.value;
@@ -1013,13 +1015,14 @@ function populateFilters(marks) {
         }
     }
     
-    // Block filter - based on intake year
-    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
-    populateBlockFilterByIntakeYear(intakeYear);
+    // Block filter - based on academic year
+    var academicYear = document.getElementById('pm_academic_year')?.value || 'all';
+    populateBlockFilterByAcademicYear(academicYear);
     
     // Student filter
     populateStudentFilter(marks);
 }
+
 // ============================================================
 // RENDER PUBLISHED MARKS - FIXED (Group ALL Marks First)
 // ============================================================
@@ -1239,6 +1242,7 @@ function renderPublishedMarks() {
         selectAll.indeterminate = checkboxes.length > 0 && checked.length > 0 && checkboxes.length !== checked.length;
     }
 }
+
 // ============================================================
 // SELECTION FUNCTIONS
 // ============================================================
@@ -2059,35 +2063,35 @@ async function batchUnpublishSelected() {
 }
 
 // ============================================================
-// PUBLISH BY INTAKE YEAR
+// PUBLISH BY ACADEMIC YEAR
 // ============================================================
 
-async function publishAllByIntakeYear() {
-    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
-    if (intakeYear === 'all') {
-        if (!confirm('⚠️ Publish ALL marks for ALL intake years?')) return;
+async function publishAllByAcademicYear() {
+    var academicYear = document.getElementById('pm_academic_year')?.value || 'all';
+    if (academicYear === 'all') {
+        if (!confirm('⚠️ Publish ALL marks for ALL academic years?')) return;
     } else {
-        if (!confirm('⚠️ Publish ALL marks for ' + intakeYear + ' Intake?')) return;
+        if (!confirm('⚠️ Publish ALL marks for ' + academicYear + '?')) return;
     }
     
     var marksToPublish = PUBLISHED_STATE.filtered;
-    if (intakeYear !== 'all') {
+    if (academicYear !== 'all') {
         marksToPublish = marksToPublish.filter(function(m) {
-            return m.academic_year === intakeYear;
+            return m.academic_year === academicYear;
         });
     }
     
     await batchPublishMarks(marksToPublish);
 }
 
-async function publishByIntakeAndProgram(programType) {
-    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
+async function publishByAcademicYearAndProgram(programType) {
+    var academicYear = document.getElementById('pm_academic_year')?.value || 'all';
     var programLabel = programType === 'KRCHN' ? 'KRCHN' : 'TVET';
     
-    if (intakeYear === 'all') {
-        if (!confirm('⚠️ Publish ALL ' + programLabel + ' marks for ALL intake years?')) return;
+    if (academicYear === 'all') {
+        if (!confirm('⚠️ Publish ALL ' + programLabel + ' marks for ALL academic years?')) return;
     } else {
-        if (!confirm('⚠️ Publish ALL ' + programLabel + ' marks for ' + intakeYear + ' Intake?')) return;
+        if (!confirm('⚠️ Publish ALL ' + programLabel + ' marks for ' + academicYear + '?')) return;
     }
     
     var marksToPublish = PUBLISHED_STATE.filtered.filter(function(m) {
@@ -2098,9 +2102,9 @@ async function publishByIntakeAndProgram(programType) {
         }
     });
     
-    if (intakeYear !== 'all') {
+    if (academicYear !== 'all') {
         marksToPublish = marksToPublish.filter(function(m) {
-            return m.academic_year === intakeYear;
+            return m.academic_year === academicYear;
         });
     }
     
@@ -2109,7 +2113,7 @@ async function publishByIntakeAndProgram(programType) {
 
 async function publishByBlock() {
     var block = document.getElementById('pm_block_filter')?.value || 'all';
-    var intakeYear = document.getElementById('pm_intake_year')?.value || 'all';
+    var academicYear = document.getElementById('pm_academic_year')?.value || 'all';
     
     if (block === 'all') {
         if (!confirm('⚠️ Publish ALL marks for ALL blocks?')) return;
@@ -2123,9 +2127,9 @@ async function publishByBlock() {
             return m.block === block;
         });
     }
-    if (intakeYear !== 'all') {
+    if (academicYear !== 'all') {
         marksToPublish = marksToPublish.filter(function(m) {
-            return m.academic_year === intakeYear;
+            return m.academic_year === academicYear;
         });
     }
     
@@ -2314,7 +2318,7 @@ function addPublishHistory(publishedCount, totalCount, studentCount) {
         publishedCount: publishedCount,
         totalCount: totalCount,
         studentCount: studentCount,
-        intakeYear: document.getElementById('pm_intake_year')?.value || 'all',
+        academicYear: document.getElementById('pm_academic_year')?.value || 'all',
         block: document.getElementById('pm_block_filter')?.value || 'all',
         program: document.getElementById('pm_program_filter')?.value || 'all'
     };
@@ -2361,7 +2365,7 @@ function renderPublishHistory() {
         var time = formatDate(h.timestamp);
         var user = h.user || 'System';
         var detail = h.publishedCount + '/' + h.totalCount + ' marks';
-        if (h.intakeYear && h.intakeYear !== 'all') detail += ' (' + h.intakeYear + ')';
+        if (h.academicYear && h.academicYear !== 'all') detail += ' (' + h.academicYear + ')';
         if (h.block && h.block !== 'all') detail += ' - ' + h.block;
         html += '<div style="padding: 4px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px;">';
         html += '<span style="color: #059669;">✅</span> ';
@@ -2380,7 +2384,7 @@ function renderPublishHistory() {
 
 function saveFilterState() {
     var state = {
-        intakeYear: document.getElementById('pm_intake_year')?.value || 'all',
+        academicYear: document.getElementById('pm_academic_year')?.value || 'all',
         program: document.getElementById('pm_program_filter')?.value || 'all',
         block: document.getElementById('pm_block_filter')?.value || 'all',
         status: document.getElementById('pm_status_filter')?.value || 'all',
@@ -2409,9 +2413,9 @@ function loadFilterState() {
         
         var state = JSON.parse(stored);
         
-        if (state.intakeYear) {
-            var el = document.getElementById('pm_intake_year');
-            if (el) el.value = state.intakeYear;
+        if (state.academicYear) {
+            var el = document.getElementById('pm_academic_year');
+            if (el) el.value = state.academicYear;
         }
         if (state.program) {
             var el = document.getElementById('pm_program_filter');
@@ -2431,7 +2435,7 @@ function loadFilterState() {
         }
         
         // Trigger reload with saved filters
-        onIntakeYearChange();
+        onAcademicYearChange();
         filterPublishedMarks();
         
         if (typeof window.showNotification === 'function') {
@@ -3000,7 +3004,7 @@ async function initPublishedMarks() {
         return;
     }
     
-    var filterSelectors = ['pm_subject_filter', 'pm_program_filter', 'pm_block_filter', 'pm_status_filter', 'pm_student_filter', 'pm_intake_year'];
+    var filterSelectors = ['pm_subject_filter', 'pm_program_filter', 'pm_block_filter', 'pm_status_filter', 'pm_student_filter', 'pm_academic_year'];
     for (var i = 0; i < filterSelectors.length; i++) {
         var id = filterSelectors[i];
         var el = document.getElementById(id);
@@ -3010,11 +3014,11 @@ async function initPublishedMarks() {
         }
     }
     
-    // Intake year change event
-    var intakeYearEl = document.getElementById('pm_intake_year');
-    if (intakeYearEl) {
-        intakeYearEl.removeEventListener('change', onIntakeYearChange);
-        intakeYearEl.addEventListener('change', onIntakeYearChange);
+    // Academic year change event
+    var academicYearEl = document.getElementById('pm_academic_year');
+    if (academicYearEl) {
+        academicYearEl.removeEventListener('change', onAcademicYearChange);
+        academicYearEl.addEventListener('change', onAcademicYearChange);
     }
     
     var searchInput = document.getElementById('pm_search');
@@ -3053,9 +3057,9 @@ async function initPublishedMarks() {
         assessmentSelect.addEventListener('change', updatePublishPreview);
     }
     
-    // Set default intake year to 2025
-    if (intakeYearEl) {
-        intakeYearEl.value = '2025';
+    // Set default academic year to 2025
+    if (academicYearEl) {
+        academicYearEl.value = '2025';
     }
     
     // Load saved filter state
@@ -3069,7 +3073,7 @@ async function initPublishedMarks() {
     console.log('⭐ Retake Support: ENABLED (per unit)');
     console.log('📧 Email notifications enabled when publishing marks');
     console.log('📋 Per-unit publish/unpublish available in student view');
-    console.log('📅 Intake Years: 2024-2030');
+    console.log('📅 Academic Years: 2023-2030');
 }
 
 // ============================================================
@@ -3101,9 +3105,9 @@ window.loadPublishedRetakeData = loadPublishedRetakeData;
 window.getStudentRetakeInfo = getStudentRetakeInfo;
 window.getRetakeBadgeHtml = getRetakeBadgeHtml;
 window.getRetakeHistoryHtml = getRetakeHistoryHtml;
-window.onIntakeYearChange = onIntakeYearChange;
-window.publishAllByIntakeYear = publishAllByIntakeYear;
-window.publishByIntakeAndProgram = publishByIntakeAndProgram;
+window.onAcademicYearChange = onAcademicYearChange;
+window.publishAllByAcademicYear = publishAllByAcademicYear;
+window.publishByAcademicYearAndProgram = publishByAcademicYearAndProgram;
 window.publishByBlock = publishByBlock;
 window.batchPublishSelected = batchPublishSelected;
 window.batchUnpublishSelected = batchUnpublishSelected;
@@ -3118,7 +3122,7 @@ window.goToPage = goToPage;
 window.saveFilterState = saveFilterState;
 window.loadFilterState = loadFilterState;
 window.loadPublishHistory = loadPublishHistory;
-window.publishAllByIntakeYear = publishAllByIntakeYear;
+window.resetFilters = resetFilters;
 
 console.log('✅ Published Marks functions exposed globally');
 console.log('📊 Available: loadPublishedMarks, filterPublishedMarks, publishStudentAllMarks, etc.');
@@ -3145,7 +3149,7 @@ console.log('   - ✅ Export to CSV & Print');
 console.log('   - ✅ ⭐ Retake/Supplementary Support (PER UNIT)');
 console.log('   - ✅ Retake badges only on retaken units (⭐ R1, ⭐ R2)');
 console.log('   - ✅ Retake scores override original scores');
-console.log('   - ✅ Intake Year filter (2024-2030)');
+console.log('   - ✅ Academic Year filter (2023-2030)');
 console.log('   - ✅ Smart filtering with cascade');
 console.log('   - ✅ Publish history tracking');
 console.log('   - ✅ Filter state save/load');
