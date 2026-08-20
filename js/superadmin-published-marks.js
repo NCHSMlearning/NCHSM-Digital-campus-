@@ -720,11 +720,7 @@ async function getCurrentUser() {
 }
 
 // ============================================================
-// LOAD PUBLISHED MARKS
-// ============================================================
-
-// ============================================================
-// LOAD PUBLISHED MARKS - FIXED (NO STUCK LOADING)
+// LOAD PUBLISHED MARKS - OPTIMIZED (LOAD ONCE, FILTER IN-MEMORY)
 // ============================================================
 
 async function loadPublishedMarks() {
@@ -732,6 +728,13 @@ async function loadPublishedMarks() {
     if (PUBLISHED_STATE.isLoading) {
         console.warn('⚠️ loadPublishedMarks was stuck - force resetting');
         PUBLISHED_STATE.isLoading = false;
+    }
+    
+    // ✅ OPTIMIZATION: If data already loaded, just filter and render
+    if (PUBLISHED_STATE.marks.length > 0) {
+        console.log('📊 Data already loaded (' + PUBLISHED_STATE.marks.length + ' marks), filtering in-memory...');
+        filterPublishedMarks();
+        return;
     }
     
     try {
@@ -761,32 +764,10 @@ async function loadPublishedMarks() {
         var marks = [];
         
         try {
+            // ✅ OPTIMIZATION: Load ALL data without filters (only once)
             var query = window.sb.from('student_marks').select('*');
-            
-            // Apply filters from UI
-            var academicYear = document.getElementById('pm_academic_year')?.value;
-            if (academicYear && academicYear !== 'all') {
-                query = query.eq('academic_year', academicYear);
-            }
-            
-            var blockFilter = document.getElementById('pm_block_filter')?.value;
-            if (blockFilter && blockFilter !== 'all') {
-                query = query.eq('block', blockFilter);
-            }
-            
-            var statusFilter = document.getElementById('pm_status_filter')?.value;
-            if (statusFilter === 'published') {
-                query = query.eq('published', true);
-            } else if (statusFilter === 'draft') {
-                query = query.eq('published', false);
-            }
-            
-            var programFilter = document.getElementById('pm_program_filter')?.value;
-            if (programFilter && programFilter !== 'all' && PUBLISHED_STATE.currentProgramFilter === 'all') {
-                query = query.eq('program', programFilter);
-            }
-            
             query = query.order('created_at', { ascending: false });
+            query = query.limit(3000); // Load more to be safe
             
             var result = await query;
             
@@ -795,7 +776,7 @@ async function loadPublishedMarks() {
                 marks = [];
             } else if (result.data) {
                 marks = result.data;
-                console.log('📊 Loaded ' + marks.length + ' marks from database');
+                console.log('📊 Loaded ' + marks.length + ' marks from database (once)');
             }
             
         } catch (e) {
@@ -848,29 +829,22 @@ async function loadPublishedMarks() {
             });
         }
         
-        if (PUBLISHED_STATE.currentProgramFilter === 'KRCHN') {
-            processedMarks = processedMarks.filter(function(m) { return m.program === 'KRCHN'; });
-        } else if (PUBLISHED_STATE.currentProgramFilter === 'TVET') {
-            processedMarks = processedMarks.filter(function(m) { return m.program !== 'KRCHN'; });
-        }
-        
+        // ✅ Store ALL marks (not filtered)
         PUBLISHED_STATE.marks = processedMarks;
-        PUBLISHED_STATE.filtered = processedMarks.slice();
         PUBLISHED_STATE.userProgram = user?.program || 'all';
         
         updateUserInfo(user);
         populateFilters(processedMarks);
-        renderPublishedMarks();
-        updateStats(processedMarks);
-        updateBadge(processedMarks);
-        updateProgramCounts(processedMarks);
-        updateGradingScaleDisplay();
         populateStudentFilter(processedMarks);
-        updatePaginationInfo();
         updateLastRefreshTime();
         loadPublishHistory();
         
+        // ✅ Apply filters and render (this will filter in-memory)
+        filterPublishedMarks();
+        
         PUBLISHED_STATE.isLoading = false;
+        
+        console.log('✅ Published Marks loaded and filtered!');
         
     } catch (error) {
         console.error('Error loading published marks:', error);
