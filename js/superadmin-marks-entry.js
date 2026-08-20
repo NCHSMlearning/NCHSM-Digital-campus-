@@ -365,26 +365,33 @@ function updateAssessmentTypeDisplay() {
 // ✅ NURSING CALCULATION - ORIGINAL WORKING FORMULA
 // ============================================================
 
+// ============================================================
+// ✅ NURSING CALCULATION - FIXED FOR exam_only
+// ============================================================
+
 function calculateNursingTotal(cat1, cat2, exam, type) {
     let total = 0;
     
     // Clamp values
     const c1 = Math.min(Math.max(cat1 || 0, 0), 30);
     const c2 = Math.min(Math.max(cat2 || 0, 0), 30);
-    const e = Math.min(Math.max(exam || 0, 0), 70);
+    let e = Math.min(Math.max(exam || 0, 0), 100); // ✅ FIX: Allow up to 100 for exam_only
     
     switch(type) {
         case 'full':
             // CAT1+CAT2 = 60% of total, Exam = 40% of total
+            // Exam should be out of 70 for full assessment
+            e = Math.min(e, 70); // Clamp to 70 for full mode
             total = Math.round(((c1 + c2) / 60 * 30 + e) * 10) / 10;
             break;
             
         case 'single_cat':
-            // CAT1 + Exam (both out of 100)
+            // CAT + Exam (both out of 100)
             total = Math.round((c1 + e) * 10) / 10;
             break;
             
         case 'exam_only':
+            // ✅ FIX: Exam is out of 100 (percentage-based)
             total = Math.round(e * 10) / 10;
             break;
             
@@ -399,6 +406,7 @@ function calculateNursingTotal(cat1, cat2, exam, type) {
             break;
             
         default:
+            e = Math.min(e, 70); // Clamp to 70 for default full mode
             total = Math.round(((c1 + c2) / 60 * 30 + e) * 10) / 10;
     }
     
