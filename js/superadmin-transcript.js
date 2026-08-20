@@ -1,6 +1,6 @@
 // ============================================================
 // SUPER ADMIN TRANSCRIPT GENERATOR - COMPLETE FINAL VERSION
-// WITH FIXED GRADING SCALE (TVET/NURSING) AND FULL TABLE BORDERS
+// WITH BLOCK NAVIGATION, DOWNLOAD, AND OFFICIAL SIGNATURES
 // ============================================================
 
 console.log('📄 Super Admin Transcript Generator Loading... (FINAL VERSION)');
@@ -17,6 +17,8 @@ window.transcriptData = {
     filteredStudents: [],
     programs: []
 };
+
+window._transcriptData = null;
 
 // ============================================================
 // UNIT CODE CACHE - MATCHES MARKS ENTRY SYSTEM
@@ -119,24 +121,21 @@ const TVET_TERMS_DIPLOMA = ['Year 1 Term 1', 'Year 1 Term 2', 'Year 1 Term 3', '
 const TVET_TERMS_ARTISAN = ['Year 1 Term 1', 'Year 1 Term 2', 'Year 1 Term 3'];
 
 // ============================================================
-// ✅ FIXED: HELPER FUNCTIONS - CORRECTLY DETECT NURSING VS TVET
+// HELPER FUNCTIONS - CORRECTLY DETECT NURSING VS TVET
 // ============================================================
 
 function getProgramType(programCode) {
     if (!programCode) return 'nursing';
     const code = String(programCode).toUpperCase().trim();
     
-    // ✅ KRCHN is Nursing
     if (code === 'KRCHN' || code === 'NURSING') {
         return 'nursing';
     }
     
-    // Check TVET programs
     if (TVET_PROGRAMS.diploma.includes(code)) return 'tvet_diploma';
     if (TVET_PROGRAMS.certificate.includes(code)) return 'tvet_certificate';
     if (TVET_PROGRAMS.artisan.includes(code)) return 'tvet_artisan';
     
-    // Default to nursing
     return 'nursing';
 }
 
@@ -144,7 +143,6 @@ function isTVETProgram(programCode) {
     if (!programCode) return false;
     const code = String(programCode).toUpperCase().trim();
     
-    // ✅ KRCHN is NOT TVET
     if (code === 'KRCHN' || code === 'NURSING') {
         return false;
     }
@@ -174,15 +172,12 @@ function getBlockOptions(programCode) {
 }
 
 function getGradingConfig(programCode) {
-    // ✅ If Nursing program, use Nursing grading
     if (isNursingProgram(programCode)) {
         return GRADE_CONFIG.nursing;
     }
-    // ✅ If TVET program, use TVET grading
     if (isTVETProgram(programCode)) {
         return GRADE_CONFIG.tvet;
     }
-    // Default to Nursing
     return GRADE_CONFIG.nursing;
 }
 
@@ -747,7 +742,8 @@ window.generateSelectedTranscripts = async function() {
 };
 
 // ============================================================
-// SHOW TRANSCRIPT PREVIEW - COMPLETE FIXED VERSION
+// SHOW TRANSCRIPT PREVIEW - WITH BLOCK NAVIGATION
+// Academic Registrar & Director signatures ONLY
 // ============================================================
 
 window.showTranscriptPreview = function(student, marks, year) {
@@ -757,16 +753,13 @@ window.showTranscriptPreview = function(student, marks, year) {
     if (!container || !content) return;
     
     const program = student.program || 'KRCHN';
-    
-    // ✅ CORRECTLY DETERMINE PROGRAM TYPE
     const isTVET = isTVETProgram(program);
     const isNursing = isNursingProgram(program);
     const config = getGradingConfig(program);
     const passMark = config.passMark;
     const gradingDisplay = config.display;
     const programType = isTVET ? 'TVET' : 'NURSING';
-    
-    console.log(`📊 Program: ${program}, isTVET: ${isTVET}, isNursing: ${isNursing}, Type: ${programType}`);
+    const blockLabel = isTVET ? 'Term' : 'Block';
     
     // Group marks by block/term
     const groupedMarks = {};
@@ -777,96 +770,128 @@ window.showTranscriptPreview = function(student, marks, year) {
     });
     const blockNames = Object.keys(groupedMarks).sort();
     
-    // Build marks table
-    let marksHtml = '';
+    // Store data globally for navigation
+    window._transcriptData = {
+        student: student,
+        marks: marks,
+        year: year,
+        groupedMarks: groupedMarks,
+        blockNames: blockNames,
+        currentBlockIndex: 0,
+        program: program,
+        isTVET: isTVET,
+        passMark: passMark,
+        gradingDisplay: gradingDisplay,
+        programType: programType,
+        blockLabel: blockLabel,
+        config: config
+    };
+
+    // Render the first block
+    renderBlock(0);
+    container.style.display = 'block';
+};
+
+// ============================================================
+// RENDER A SPECIFIC BLOCK
+// ============================================================
+
+function renderBlock(index) {
+    const content = document.getElementById('transcriptPreviewContent');
+    const data = window._transcriptData;
+    if (!content || !data) return;
+
+    const { 
+        student, marks, year, groupedMarks, blockNames, 
+        program, isTVET, passMark, gradingDisplay, programType, blockLabel, config
+    } = data;
+
+    // Update current index
+    data.currentBlockIndex = index;
+    const blockName = blockNames[index] || 'General';
+    const blockMarks = groupedMarks[blockName] || [];
+    
+    // Calculate block stats
+    let blockTotal = blockMarks.length;
+    let blockPassed = 0;
+    let blockPoints = 0;
+    let blockCredits = 0;
     let totalScore = 0;
     let scoredCount = 0;
     let totalPoints = 0;
     let totalCredits = 0;
     let totalUnits = marks.length;
     let passedUnits = 0;
-    let retakeUnits = 0;
-    
-    blockNames.forEach((block) => {
-        const blockMarks = groupedMarks[block];
-        const blockTotal = blockMarks.length;
-        let blockPassed = 0;
-        let blockPoints = 0;
-        let blockCredits = 0;
+
+    // Build marks table for this block
+    let marksHtml = '';
+    let retakeCount = 0;
+
+    blockMarks.forEach((m) => {
+        const score = m.final_score || 0;
+        const gradeInfo = calculateOfficialGrade(score, program);
+        const isPassing = score >= passMark;
+        const unitCode = getUnitCode(m.subject_name);
+        const credits = GRADE_CONFIG.creditHours;
+        const pointsEarned = gradeInfo.points * credits;
+        const hasRetake = m.retake_count > 0 || false;
+        
+        if (hasRetake) retakeCount++;
+        if (isPassing) {
+            blockPassed++;
+            passedUnits++;
+        }
+        
+        if (score > 0) {
+            totalScore += score;
+            scoredCount++;
+            totalPoints += pointsEarned;
+            totalCredits += credits;
+            blockPoints += pointsEarned;
+            blockCredits += credits;
+        }
+        
+        // Subtle retake indicator (star) - no summary at the bottom
+        const starIndicator = hasRetake ? `<span style="color: #94a3b8; font-size: 9px; margin-left: 4px; opacity: 0.5;" title="Retaken">☆</span>` : '';
         
         marksHtml += `
-            <tr style="background: #f0f4f8; border-bottom: 2px solid #0A3D62;">
-                <td colspan="5" style="padding: 8px 12px; font-weight: 700; color: #0A3D62; font-size: 12px; letter-spacing: 0.5px; border: 1px solid #0A3D62;">
-                    ${escapeHtml(block)}
+            <tr style="border-bottom: 1px solid #d1d5db;">
+                <td style="padding: 6px 12px; font-size: 11px; font-weight: 500; color: #1e293b; border: 1px solid #d1d5db;">
+                    ${escapeHtml(unitCode)}
                 </td>
-            </tr>
-        `;
-        
-        blockMarks.forEach((m, index) => {
-            const score = m.final_score || 0;
-            const gradeInfo = calculateOfficialGrade(score, program);
-            const isPassing = score >= passMark;
-            
-            const unitCode = getUnitCode(m.subject_name);
-            const credits = GRADE_CONFIG.creditHours;
-            const pointsEarned = gradeInfo.points * credits;
-            
-            const hasRetake = m.retake_count > 0 || false;
-            if (hasRetake) retakeUnits++;
-            if (isPassing) {
-                blockPassed++;
-                passedUnits++;
-            }
-            
-            if (score > 0) {
-                totalScore += score;
-                scoredCount++;
-                totalPoints += pointsEarned;
-                totalCredits += credits;
-                blockPoints += pointsEarned;
-                blockCredits += credits;
-            }
-            
-            const starIndicator = hasRetake ? `<span style="color: #94a3b8; font-size: 9px; margin-left: 4px; opacity: 0.5;" title="Retaken">☆</span>` : '';
-            
-            marksHtml += `
-                <tr style="border-bottom: 1px solid #d1d5db;">
-                    <td style="padding: 6px 12px; font-size: 11px; font-weight: 500; color: #1e293b; border: 1px solid #d1d5db;">
-                        ${escapeHtml(unitCode)}
-                    </td>
-                    <td style="padding: 6px 12px; font-size: 11px; color: #1e293b; border: 1px solid #d1d5db;">
-                        ${escapeHtml(m.subject_name || 'N/A')}
-                        ${starIndicator}
-                    </td>
-                    <td style="padding: 6px 12px; text-align: center; font-size: 11px; color: #1e293b; border: 1px solid #d1d5db;">
-                        ${credits}
-                    </td>
-                    <td style="padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 700; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
-                        ${gradeInfo.grade}
-                    </td>
-                    <td style="padding: 6px 12px; text-align: center; font-size: 11px; font-weight: 600; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
-                        ${pointsEarned.toFixed(1)}
-                    </td>
-                </tr>
-            `;
-        });
-        
-        const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
-        const blockGPA = blockCredits > 0 ? Math.round((blockPoints / blockCredits) * 100) / 100 : 0;
-        marksHtml += `
-            <tr style="background: #f8fafc; border-bottom: 2px solid #0A3D62;">
-                <td colspan="5" style="padding: 4px 12px; font-size: 9px; color: #64748b; text-align: right; border: 1px solid #d1d5db;">
-                    <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%) · GPA: ${blockGPA.toFixed(2)}
+                <td style="padding: 6px 12px; font-size: 11px; color: #1e293b; border: 1px solid #d1d5db;">
+                    ${escapeHtml(m.subject_name || 'N/A')}
+                    ${starIndicator}
+                </td>
+                <td style="padding: 6px 12px; text-align: center; font-size: 11px; color: #1e293b; border: 1px solid #d1d5db;">
+                    ${credits}
+                </td>
+                <td style="padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 700; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
+                    ${gradeInfo.grade}
+                </td>
+                <td style="padding: 6px 12px; text-align: center; font-size: 11px; font-weight: 600; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
+                    ${pointsEarned.toFixed(1)}
                 </td>
             </tr>
         `;
     });
+
+    // Block summary (NO retake summary)
+    const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
+    const blockGPA = blockCredits > 0 ? Math.round((blockPoints / blockCredits) * 100) / 100 : 0;
     
+    marksHtml += `
+        <tr style="background: #f8fafc; border-bottom: 2px solid #0A3D62;">
+            <td colspan="5" style="padding: 4px 12px; font-size: 9px; color: #64748b; text-align: right; border: 1px solid #d1d5db;">
+                <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%) · GPA: ${blockGPA.toFixed(2)}
+            </td>
+        </tr>
+    `;
+
     // Calculate overall stats
     const overallAvg = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
     const overallGradeInfo = calculateOfficialGrade(overallAvg, program);
     const gpa = totalCredits > 0 ? Math.round((totalPoints / totalCredits) * 100) / 100 : 0;
-    const blockLabel = isTVET ? 'Term' : 'Block';
     
     const now = new Date().toLocaleDateString('en-KE', {
         timeZone: 'Africa/Nairobi',
@@ -875,7 +900,7 @@ window.showTranscriptPreview = function(student, marks, year) {
         day: 'numeric',
         year: 'numeric'
     });
-    
+
     // Build grading scale table
     let gradingScaleHtml = '';
     const grades = config.grades;
@@ -890,8 +915,38 @@ window.showTranscriptPreview = function(student, marks, year) {
             </tr>
         `;
     }
+
+    // Navigation: determine previous and next block names
+    const prevBlock = index > 0 ? blockNames[index - 1] : null;
+    const nextBlock = index < blockNames.length - 1 ? blockNames[index + 1] : null;
     
-    // Build full official transcript HTML
+    // Build navigation HTML
+    let navHtml = '';
+    if (blockNames.length > 1) {
+        navHtml = `
+            <div style="display: flex; justify-content: center; gap: 15px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
+                ${prevBlock ? `
+                    <button onclick="window.navigateBlock(-1)" style="background: #0A3D62; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                        ⬅️ Previous: ${escapeHtml(prevBlock)}
+                    </button>
+                ` : ''}
+                <span style="color: #64748b; font-size: 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 20px;">
+                    ${index + 1} of ${blockNames.length}
+                </span>
+                ${nextBlock ? `
+                    <button onclick="window.navigateBlock(1)" style="background: #0A3D62; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                        Next: ${escapeHtml(nextBlock)} ▶️
+                    </button>
+                ` : `
+                    <button style="background: #059669; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: default; font-weight: 600; font-size: 12px;">
+                        ✅ Complete
+                    </button>
+                `}
+            </div>
+        `;
+    }
+
+    // Build full official transcript HTML for current block
     const html = `
         <div id="transcriptDocument" style="background: white; padding: 30px 35px; border: 2px solid #0A3D62; border-radius: 8px; box-shadow: 0 4px 20px rgba(10,61,98,0.12); font-family: 'Times New Roman', Times, serif; max-width: 850px; margin: 0 auto;">
             
@@ -919,6 +974,12 @@ window.showTranscriptPreview = function(student, marks, year) {
                     <div><span style="font-weight: 600; font-size: 11px; color: #475569;">PROGRAMME</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.program || 'N/A')}</span></div>
                     <div><span style="font-weight: 600; font-size: 11px; color: #475569;">YEAR OF STUDY</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.year_of_study || student.block || 'N/A')}</span></div>
                 </div>
+            </div>
+            
+            <!-- BLOCK HEADER -->
+            <div style="margin-bottom: 10px; padding: 6px 14px; background: #e0e7ff; border-radius: 4px; border-left: 4px solid #0A3D62;">
+                <span style="font-weight: 700; font-size: 14px; color: #0A3D62;">📚 ${escapeHtml(blockName)}</span>
+                <span style="font-size: 11px; color: #64748b; margin-left: 12px;">${blockTotal} units</span>
             </div>
             
             <!-- MARKS TABLE - ALL BORDERS -->
@@ -983,18 +1044,18 @@ window.showTranscriptPreview = function(student, marks, year) {
                 </table>
             </div>
             
-            <!-- SIGNATURES -->
+            <!-- SIGNATURES - Academic Registrar & Director ONLY -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
                 <div style="text-align: center;">
-                    <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">${escapeHtml(student.full_name || 'Student')}</div>
-                    <div style="border-bottom: 2px solid #1e293b; width: 140px; margin: 6px auto 2px auto;"></div>
-                    <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Student Signature</div>
-                    <div style="font-size: 8px; color: #94a3b8;">Date: ${now}</div>
+                    <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">_________________________</div>
+                    <div style="border-bottom: 2px solid #1e293b; width: 180px; margin: 6px auto 2px auto;"></div>
+                    <div style="font-size: 9px; color: #0A3D62; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Academic Registrar</div>
+                    <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
                 </div>
                 <div style="text-align: center;">
-                    <div style="font-weight: 600; font-size: 12px; color: #94a3b8;">_________________________</div>
-                    <div style="border-bottom: 2px solid #1e293b; width: 140px; margin: 6px auto 2px auto;"></div>
-                    <div style="font-size: 8px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Registrar (Academic Affairs)</div>
+                    <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">_________________________</div>
+                    <div style="border-bottom: 2px solid #1e293b; width: 180px; margin: 6px auto 2px auto;"></div>
+                    <div style="font-size: 9px; color: #0A3D62; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Director</div>
                     <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
                 </div>
             </div>
@@ -1006,10 +1067,16 @@ window.showTranscriptPreview = function(student, marks, year) {
                 <p style="font-size: 7px; color: #cbd5e1; margin-top: 4px;">Document ID: ${Date.now().toString(36).toUpperCase()} · Generated: ${now}</p>
             </div>
             
+            <!-- NAVIGATION BUTTONS -->
+            ${navHtml}
+            
             <!-- ACTION BUTTONS -->
             <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
                 <button onclick="window.printTranscriptDocument()" style="background: #0A3D62; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
                     <i class="fas fa-print"></i> Print / PDF
+                </button>
+                <button onclick="window.downloadTranscript()" style="background: #059669; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(5,150,105,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <i class="fas fa-download"></i> Download
                 </button>
                 <button onclick="window.closeTranscriptPreview()" style="background: #6b7280; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
                     <i class="fas fa-times"></i> Close
@@ -1019,13 +1086,133 @@ window.showTranscriptPreview = function(student, marks, year) {
     `;
     
     content.innerHTML = html;
-    container.style.display = 'block';
+};
+
+// ============================================================
+// NAVIGATE BLOCKS
+// ============================================================
+
+window.navigateBlock = function(direction) {
+    const data = window._transcriptData;
+    if (!data) return;
     
-    window._currentTranscript = {
-        student: student,
-        marks: marks,
-        year: year
-    };
+    const newIndex = data.currentBlockIndex + direction;
+    if (newIndex < 0 || newIndex >= data.blockNames.length) return;
+    
+    renderBlock(newIndex);
+};
+
+// ============================================================
+// DOWNLOAD TRANSCRIPT AS HTML
+// ============================================================
+
+window.downloadTranscript = function() {
+    const content = document.getElementById('transcriptPreviewContent');
+    if (!content) {
+        if (typeof window.showNotification === 'function') {
+            window.showNotification('No transcript to download. Please generate one first.', 'warning');
+        }
+        return;
+    }
+    
+    const data = window._transcriptData;
+    const studentName = data?.student?.full_name || 'Student';
+    const studentId = data?.student?.student_id || 'N/A';
+    const blockName = data?.blockNames?.[data.currentBlockIndex] || 'Transcript';
+    
+    // Get the transcript HTML and clean it
+    const doc = document.createElement('div');
+    doc.innerHTML = content.innerHTML;
+    
+    // Remove all button containers (navigation and action buttons)
+    const allDivs = doc.querySelectorAll('div');
+    allDivs.forEach(div => {
+        const hasButtons = div.querySelectorAll('button').length > 0;
+        if (hasButtons) {
+            const style = div.getAttribute('style') || '';
+            if (style.includes('display: flex') || style.includes('gap:')) {
+                div.remove();
+            }
+        }
+    });
+    
+    // Also remove any remaining button elements
+    doc.querySelectorAll('button').forEach(el => el.remove());
+    
+    const cleanHtml = doc.innerHTML;
+    
+    const now = new Date().toLocaleDateString('en-KE', {
+        timeZone: 'Africa/Nairobi',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric'
+    });
+    
+    const fullHtml = `<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Academic Transcript - ${studentName} (${studentId})</title>
+    <style>
+        @page {
+            size: A4 portrait;
+            margin: 10mm 12mm;
+        }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Times New Roman', Times, serif;
+            background: white;
+            padding: 20px;
+            margin: 0;
+            display: flex;
+            justify-content: center;
+        }
+        #transcriptContainer {
+            max-width: 850px;
+            width: 100%;
+            background: white;
+            padding: 20px;
+            border: 2px solid #0A3D62;
+            border-radius: 8px;
+        }
+        table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        th, td {
+            border: 1px solid #d1d5db;
+        }
+        @media print {
+            body { padding: 0; }
+            #transcriptContainer { border: none; border-radius: 0; padding: 10px; }
+        }
+    </style>
+</head>
+<body>
+    <div id="transcriptContainer">
+        ${cleanHtml}
+    </div>
+</body>
+</html>`;
+    
+    const blob = new Blob([fullHtml], { type: 'text/html;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Transcript_${studentName.replace(/\s+/g, '_')}_${studentId}_${now.replace(/\s+/g, '_')}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    if (typeof window.showNotification === 'function') {
+        window.showNotification(`✅ Transcript downloaded for ${studentName}`, 'success');
+    }
 };
 
 // ============================================================
@@ -1037,6 +1224,9 @@ window.printTranscriptDocument = function() {
     if (!content) return;
     
     const transcriptHtml = content.innerHTML;
+    const data = window._transcriptData;
+    const studentName = data?.student?.full_name || 'Student';
+    const blockName = data?.blockNames?.[data.currentBlockIndex] || 'Transcript';
     
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) {
@@ -1049,7 +1239,7 @@ window.printTranscriptDocument = function() {
         <html>
         <head>
             <meta charset="UTF-8">
-            <title>Academic Transcript - ${escapeHtml(window._currentTranscript?.student?.full_name || 'Student')}</title>
+            <title>Academic Transcript - ${escapeHtml(studentName)} - ${escapeHtml(blockName)}</title>
             <style>
                 @page {
                     size: A4 portrait;
@@ -1076,7 +1266,6 @@ window.printTranscriptDocument = function() {
                     body { padding: 0; margin: 0; }
                     #transcriptContent { padding: 10px; }
                     .no-print { display: none !important; }
-                    #transcriptContent .action-buttons { display: none !important; }
                 }
             </style>
         </head>
@@ -1106,6 +1295,7 @@ window.closeTranscriptPreview = function() {
     if (container) {
         container.style.display = 'none';
     }
+    window._transcriptData = null;
     window._currentTranscript = null;
 };
 
@@ -1233,6 +1423,8 @@ window.toggleTranscriptStudent = window.toggleTranscriptStudent;
 window.showTranscriptPreview = window.showTranscriptPreview;
 window.closeTranscriptPreview = window.closeTranscriptPreview;
 window.printTranscriptDocument = window.printTranscriptDocument;
+window.downloadTranscript = window.downloadTranscript;
+window.navigateBlock = window.navigateBlock;
 window.calculateOfficialGrade = calculateOfficialGrade;
 window.getProgramType = getProgramType;
 window.isTVETProgram = isTVETProgram;
@@ -1256,10 +1448,12 @@ console.log('   - School Logo');
 console.log('   - GPA for the year / Cumulative GPA');
 console.log('   - Credits Covered / Total Credits');
 console.log('   - Fixed Grading Scale (TVET/Nursing based on program)');
-console.log('   - Student & Registrar signatures');
+console.log('   - Academic Registrar & Director signatures (student removed)');
 console.log('   - Print / PDF export');
+console.log('   - Download HTML export');
 console.log('   - CSV export for bulk transcripts');
 console.log('   - ☆ Subtle retake indicator');
-console.log('   - Block/Term headers with summaries');
+console.log('   - Block/Term headers with summaries (NO retake summary)');
 console.log('   - All borders on tables');
 console.log('   - TVET + Nursing support');
+console.log('   - Block navigation (Previous/Next)');
