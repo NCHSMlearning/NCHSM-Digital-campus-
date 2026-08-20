@@ -481,6 +481,10 @@ async function loadRetakeData(block, unit, year) {
     }
 }
 
+// ============================================================
+// RECORD RETAKE EXAM - WITH AUTO-UNPUBLISH
+// ============================================================
+
 async function recordRetakeExam(admission, studentName, unit, block, program, year, examScore, remarks) {
     // Get current retake count
     const existingRetakes = me_retakeData[admission] || [];
@@ -517,36 +521,107 @@ async function recordRetakeExam(admission, studentName, unit, block, program, ye
     };
     
     try {
+        // Insert retake record
         const { error } = await sb
             .from('student_retakes')
             .insert(retakeData);
         
         if (error) throw error;
         
-        // Update main student_marks record with retake info
+        // ✅ STEP 1: Check if marks were published
+        const { data: existingMark, error: fetchError } = await sb
+            .from('student_marks')
+            .select('published, approval_status')
+            .eq('admission_number', admission)
+            .eq('subject_name', unit)
+            .eq('block', block)
+            .eq('academic_year', year)
+            .maybeSingle();
+        
+        if (fetchError) {
+            console.warn('Could not fetch existing mark status:', fetchError);
+        }
+        
+        // ✅ STEP 2: Build update data
+        const updateData = {
+            retake_count: attemptNumber,
+            retake_score: examScore,
+            retake_grade: gradeInfo.grade,
+            retake_status: isPassing ? 'PASS' : 'FAIL',
+            retake_date: new Date().toISOString(),
+            final_grade: isPassing ? gradeInfo.grade : null,
+            final_status: isPassing ? 'PASS' : 'FAIL',
+            updated_at: new Date().toISOString()
+        };
+        
+        // ✅ STEP 3: If marks were published, UNPUBLISH them
+        if (existingMark && existingMark.published === true) {
+            updateData.published = false;
+            updateData.published_at = null;
+            updateData.published_by = null;
+            updateData.unpublished_at = new Date().toISOString();
+            updateData.unpublished_reason = 'Retake recorded - needs re-publishing';
+            
+            // If approval_status was 'approved', reset to 'draft' for review
+            if (existingMark.approval_status === 'approved') {
+                updateData.approval_status = 'draft';
+            }
+            
+            console.log(`🔓 Unpublished marks for ${studentName} (${admission}) - retake recorded, needs re-publishing`);
+        }
+        
+        // ✅ STEP 4: Update student_marks
         const { error: updateError } = await sb
             .from('student_marks')
-            .update({
-                retake_count: attemptNumber,
-                retake_score: examScore,
-                retake_grade: gradeInfo.grade,
-                retake_status: isPassing ? 'PASS' : 'FAIL',
-                retake_date: new Date().toISOString(),
-                final_grade: isPassing ? gradeInfo.grade : null,
-                final_status: isPassing ? 'PASS' : 'FAIL',
-                updated_at: new Date().toISOString()
-            })
+            .update(updateData)
             .eq('admission_number', admission)
             .eq('subject_name', unit)
             .eq('block', block)
             .eq('academic_year', year);
         
-        if (updateError) console.warn('Could not update student_marks with retake info:', updateError);
+        if (updateError) {
+            console.warn('Could not update student_marks with retake info:', updateError);
+        }
         
-        // Refresh retake data
+        // ✅ STEP 5: Log the action
+        try {
+            const logData = {
+                block: block,
+                subject: unit,
+                academic_year: year,
+                action: existingMark && existingMark.published === true ? 'retake_unpublished' : 'retake_recorded',
+                action_by: window.currentUser?.id || null,
+                action_by_name: window.currentUser?.full_name || window.currentUser?.name || 'System',
+                admission: admission,
+                student_name: studentName,
+                retake_attempt: attemptNumber,
+                retake_score: examScore,
+                created_at: new Date().toISOString()
+            };
+            
+            if (existingMark && existingMark.published === true) {
+                logData.reason = `Retake recorded (attempt #${attemptNumber}) - marks auto-unpublished for re-review`;
+            } else {
+                logData.reason = `Retake recorded (attempt #${attemptNumber})`;
+            }
+            
+            await sb
+                .from('mark_approval_logs')
+                .insert(logData);
+        } catch (logError) {
+            console.warn('Could not save approval log:', logError);
+        }
+        
+        // ✅ STEP 6: Refresh retake data
         await loadRetakeData(block, unit, year);
         
-        showNotification(`✅ Retake recorded for ${studentName} (Attempt #${attemptNumber})`, 'success');
+        // ✅ STEP 7: Show notification
+        let message = `✅ Retake recorded for ${studentName} (Attempt #${attemptNumber})`;
+        if (existingMark && existingMark.published === true) {
+            message += ' 🔓 Marks auto-unpublished - please review and re-publish';
+        }
+        showNotification(message, 'success');
+        
         return true;
         
     } catch (error) {
@@ -555,7 +630,6 @@ async function recordRetakeExam(admission, studentName, unit, block, program, ye
         return false;
     }
 }
-
 function getRetakeBadge(retakeCount, isPassing) {
     if (retakeCount === 0) return '';
     
@@ -645,6 +719,10 @@ function closeRetakeModal() {
     document.getElementById('retakeModal').style.display = 'none';
 }
 
+// ============================================================
+// SAVE RETAKE EXAM - ENHANCED WITH AUTO-UNPUBLISH FEEDBACK
+// ============================================================
+
 async function saveRetakeExam() {
     const scoreInput = document.getElementById('retake_score');
     const remarksInput = document.getElementById('retake_remarks');
@@ -652,27 +730,97 @@ async function saveRetakeExam() {
     const examScore = parseFloat(scoreInput?.value);
     const remarks = remarksInput?.value || '';
     
+    // ✅ Validate score
     if (isNaN(examScore) || examScore < 0 || examScore > 100) {
         showNotification('⚠️ Please enter a valid score between 0 and 100', 'warning');
         return;
     }
     
+    // ✅ Validate student selected
     if (!me_currentRetakeStudent) {
         showNotification('⚠️ No student selected', 'error');
         return;
     }
     
-    const { admission, name } = me_currentRetakeStudent;
-    const unit = me_currentRetakeUnit;
-    const block = me_currentBlock;
-    const program = me_currentProgram;
-    const year = me_currentYear;
+    // ✅ Confirm before saving
+    const studentName = me_currentRetakeStudent.name;
+    const confirmMsg = `⚠️ Record retake for ${studentName}?\n\n` +
+        `Score: ${examScore}%\n` +
+        `Unit: ${me_currentRetakeUnit}\n` +
+        `Block: ${me_currentBlock}\n\n` +
+        `This will update the student's marks.`;
     
-    const success = await recordRetakeExam(admission, name, unit, block, program, year, examScore, remarks);
+    if (!confirm(confirmMsg)) {
+        return;
+    }
     
-    if (success) {
-        closeRetakeModal();
-        loadMarksEntry(); // Refresh the table
+    // ✅ Show loading
+    if (typeof showLoading === 'function') {
+        showLoading(`Recording retake for ${studentName}...`);
+    }
+    
+    try {
+        const { admission, name } = me_currentRetakeStudent;
+        const unit = me_currentRetakeUnit;
+        const block = me_currentBlock;
+        const program = me_currentProgram;
+        const year = me_currentYear;
+        
+        // ✅ Check if marks were published before recording retake
+        let wasPublished = false;
+        try {
+            const { data: existingMark } = await sb
+                .from('student_marks')
+                .select('published')
+                .eq('admission_number', admission)
+                .eq('subject_name', unit)
+                .eq('block', block)
+                .eq('academic_year', year)
+                .maybeSingle();
+            
+            wasPublished = existingMark?.published === true;
+        } catch (e) {
+            console.warn('Could not check publish status:', e);
+        }
+        
+        // ✅ Record the retake
+        const success = await recordRetakeExam(admission, name, unit, block, program, year, examScore, remarks);
+        
+        // ✅ Hide loading
+        if (typeof hideLoading === 'function') {
+            hideLoading();
+        }
+        
+        if (success) {
+            // ✅ Close modal
+            closeRetakeModal();
+            
+            // ✅ Show success message with auto-unpublish warning if applicable
+            if (wasPublished) {
+                showNotification(
+                    `✅ Retake recorded for ${name} (${examScore}%) 🔓 Marks were auto-unpublished. Please review and re-publish.`,
+                    'warning'
+                );
+            } else {
+                showNotification(
+                    `✅ Retake recorded for ${name} (${examScore}%)`,
+                    'success'
+                );
+            }
+            
+            // ✅ Refresh the marks table
+            setTimeout(() => {
+                loadMarksEntry();
+            }, 500);
+        }
+        
+    } catch (error) {
+        // ✅ Hide loading on error
+        if (typeof hideLoading === 'function') {
+            hideLoading();
+        }
+        console.error('❌ Error saving retake:', error);
+        showNotification('❌ Error saving retake: ' + error.message, 'error');
     }
 }
 
