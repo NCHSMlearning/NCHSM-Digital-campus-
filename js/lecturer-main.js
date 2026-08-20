@@ -3,9 +3,223 @@
  * NCHSM Lecturer Main Entry Point
  * Uses dedicated lecturer database
  * Handles both UUID and text ID formats
+ * Supports both Nursing (KRCHN) and TVET programs
  */
 
 console.log('🚀 Lecturer Main loading...');
+
+// ============================================================
+// PROGRAM TYPE DETECTION & HELPERS
+// ============================================================
+
+// Determine program type from code
+function getProgramType(programCode) {
+    if (!programCode) return 'KRCHN';
+    const upper = programCode.toUpperCase();
+    
+    // Nursing programs
+    if (upper === 'KRCHN') return 'KRCHN';
+    
+    // TVET Programs (Diploma, Certificate, Artisan)
+    const tvetPrograms = [
+        // Diplomas
+        'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+        // Certificates
+        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+        // Artisan
+        'ACH', 'AAG', 'ASW',
+        // Other TVET
+        'CCA', 'PTE'
+    ];
+    
+    if (tvetPrograms.includes(upper)) return 'TVET';
+    
+    return 'KRCHN'; // Default
+}
+
+// Get program level (DIPLOMA, CERTIFICATE, ARTISAN)
+function getProgramLevel(programCode) {
+    if (!programCode) return 'DIPLOMA';
+    const upper = programCode.toUpperCase();
+    
+    if (upper.startsWith('D')) return 'DIPLOMA';
+    if (upper.startsWith('C')) return 'CERTIFICATE';
+    if (upper.startsWith('A')) return 'ARTISAN';
+    
+    return 'DIPLOMA';
+}
+
+// Check if program is TVET
+function isTVETProgram(programCode) {
+    return getProgramType(programCode) === 'TVET';
+}
+
+// Check if program is Nursing
+function isNursingProgram(programCode) {
+    return getProgramType(programCode) === 'KRCHN';
+}
+
+// Get academic blocks/terms for a program
+function getAcademicBlocks(programCode) {
+    const programType = getProgramType(programCode);
+    const programLevel = getProgramLevel(programCode);
+    
+    let options = [];
+    
+    if (programType === 'KRCHN') {
+        // KRCHN Nursing Blocks
+        options = [
+            { value: 'Introductory', text: '🌟 Introductory Block' },
+            { value: 'Block 1', text: '📘 Block 1' },
+            { value: 'Block 2', text: '📗 Block 2' },
+            { value: 'Block 3', text: '📒 Block 3' },
+            { value: 'Block 4', text: '📙 Block 4' },
+            { value: 'Block 5', text: '📕 Block 5' },
+            { value: 'Block 6', text: '📚 Block 6' },
+            { value: 'Final', text: '🏆 Final Block' }
+        ];
+    } else if (programType === 'TVET') {
+        if (programLevel === 'DIPLOMA') {
+            options = [
+                { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                { value: 'Y1T3', text: '📒 Year 1 Term 3' },
+                { value: 'Y2T1', text: '📙 Year 2 Term 1' },
+                { value: 'Y2T2', text: '📕 Year 2 Term 2' },
+                { value: 'Y2T3', text: '📚 Year 2 Term 3' }
+            ];
+        } else if (programLevel === 'CERTIFICATE') {
+            options = [
+                { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                { value: 'Y1T2', text: '📗 Year 1 Term 2' },
+                { value: 'Y1T3', text: '📒 Year 1 Term 3' }
+            ];
+        } else if (programLevel === 'ARTISAN') {
+            options = [
+                { value: 'Y1T1', text: '📘 Year 1 Term 1' },
+                { value: 'Y1T2', text: '📗 Year 1 Term 2' }
+            ];
+        } else {
+            options = [
+                { value: 'Introductory', text: '🌟 Introductory Term' },
+                { value: 'Term1', text: '📘 Term 1' },
+                { value: 'Term2', text: '📗 Term 2' },
+                { value: 'Term3', text: '📒 Term 3' },
+                { value: 'Term4', text: '📙 Term 4' },
+                { value: 'Term5', text: '📕 Term 5' },
+                { value: 'Term6', text: '📚 Term 6' },
+                { value: 'Final', text: '🏆 Final Term' }
+            ];
+        }
+    }
+    
+    return options;
+}
+
+// Calculate grade based on program type
+function calculateGrade(score, programType = 'KRCHN') {
+    if (score === null || score === undefined || isNaN(score)) {
+        return { grade: '-', gradePoint: 0, status: 'N/A' };
+    }
+    
+    const numScore = parseFloat(score);
+    
+    if (programType === 'TVET') {
+        // TVET Grading: A(80-100%)=4, B(65-79%)=3, C(50-64%)=2, E(0-49%)=0
+        if (numScore >= 80) {
+            return { grade: 'A', gradePoint: 4.0, status: 'PASS' };
+        } else if (numScore >= 65) {
+            return { grade: 'B', gradePoint: 3.0, status: 'PASS' };
+        } else if (numScore >= 50) {
+            return { grade: 'C', gradePoint: 2.0, status: 'PASS' };
+        } else {
+            return { grade: 'E', gradePoint: 0.0, status: 'FAIL' };
+        }
+    } else {
+        // Nursing Grading: A(75-100%)=4, B(65-74%)=3, C(60-64%)=2, D(0-59%)=0
+        if (numScore >= 75) {
+            return { grade: 'A', gradePoint: 4.0, status: 'PASS' };
+        } else if (numScore >= 65) {
+            return { grade: 'B', gradePoint: 3.0, status: 'PASS' };
+        } else if (numScore >= 60) {
+            return { grade: 'C', gradePoint: 2.0, status: 'PASS' };
+        } else {
+            return { grade: 'D', gradePoint: 0.0, status: 'FAIL' };
+        }
+    }
+}
+
+// Get program display name
+function getProgramDisplayName(programCode) {
+    const names = {
+        // Nursing
+        'KRCHN': 'KRCHN Nursing',
+        
+        // Diploma Programs
+        'DPOTT': 'Diploma in Perioperative Theatre Technology',
+        'DCH': 'Diploma in Community Health',
+        'DHRIT': 'Diploma in Health Records and IT',
+        'DSL': 'Diploma in Science Lab',
+        'DSW': 'Diploma in Social Work',
+        'DCJS': 'Diploma in Criminal Justice',
+        'DHSS': 'Diploma in Health Support Services',
+        'DICT': 'Diploma in ICT',
+        'DME': 'Diploma in Medical Engineering',
+        
+        // Certificate Programs
+        'CPOTT': 'Certificate in Perioperative Theatre Technology',
+        'CCH': 'Certificate in Community Health',
+        'CHRIT': 'Certificate in Health Records and IT',
+        'CPC': 'Certificate in Patient Care',
+        'CSL': 'Certificate in Science Lab',
+        'CSW': 'Certificate in Social Work',
+        'CCJS': 'Certificate in Criminal Justice',
+        'CAG': 'Certificate in Agriculture',
+        'CHSS': 'Certificate in Health Support Services',
+        'CICT': 'Certificate in ICT',
+        
+        // Artisan Programs
+        'ACH': 'Artisan in Community Health',
+        'AAG': 'Artisan in Agriculture',
+        'ASW': 'Artisan in Social Work',
+        
+        // Other
+        'CCA': 'Certificate in Computer Applications',
+        'PTE': 'TVET/CDACC'
+    };
+    return names[programCode] || programCode;
+}
+
+// Get program type label
+function getProgramTypeLabel(programCode) {
+    const type = getProgramType(programCode);
+    if (type === 'KRCHN') return '🎓 Nursing';
+    if (type === 'TVET') {
+        const level = getProgramLevel(programCode);
+        if (level === 'DIPLOMA') return '🔧 TVET Diploma';
+        if (level === 'CERTIFICATE') return '🔧 TVET Certificate';
+        if (level === 'ARTISAN') return '🔧 TVET Artisan';
+        return '🔧 TVET';
+    }
+    return '📚 Unknown';
+}
+
+// ============================================================
+// MAKE FUNCTIONS GLOBALLY AVAILABLE
+// ============================================================
+
+window.getProgramType = getProgramType;
+window.getProgramLevel = getProgramLevel;
+window.isTVETProgram = isTVETProgram;
+window.isNursingProgram = isNursingProgram;
+window.getAcademicBlocks = getAcademicBlocks;
+window.calculateGrade = calculateGrade;
+window.getProgramDisplayName = getProgramDisplayName;
+window.getProgramTypeLabel = getProgramTypeLabel;
+
+// ============================================================
+// MAIN APPLICATION
+// ============================================================
 
 // Wait for DOM to load
 document.addEventListener('DOMContentLoaded', async function() {
@@ -28,27 +242,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                     hour: '2-digit', minute: '2-digit'
                 });
             },
-            getAcademicBlocks: function(program) {
-                const structure = {
-                    'KRCHN': ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'],
-                    'TVET': ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6', 'Final']
-                };
-                return structure[program] || structure['KRCHN'];
-            },
-            calculateGrade: function(score) {
-                if (!score && score !== 0) return '-';
-                if (score >= 80) return 'A';
-                if (score >= 75) return 'A-';
-                if (score >= 70) return 'B+';
-                if (score >= 65) return 'B';
-                if (score >= 60) return 'B-';
-                if (score >= 55) return 'C+';
-                if (score >= 50) return 'C';
-                if (score >= 45) return 'C-';
-                if (score >= 40) return 'D+';
-                if (score >= 35) return 'D';
-                return 'E';
-            },
+            getAcademicBlocks: getAcademicBlocks,
+            calculateGrade: calculateGrade,
             escapeHtml: function(str) {
                 if (!str) return '';
                 return String(str)
@@ -58,22 +253,9 @@ document.addEventListener('DOMContentLoaded', async function() {
                     .replace(/"/g, '&quot;')
                     .replace(/'/g, '&#39;');
             },
-            getProgramDisplayName: function(programCode) {
-                const names = {
-                    'KRCHN': 'KRCHN Nursing',
-                    'DPOTT': 'Diploma in Perioperative Theatre Technology',
-                    'DCH': 'Diploma in Community Health',
-                    'DHRIT': 'Diploma in Health Records and IT',
-                    'DSL': 'Diploma in Science Lab',
-                    'DSW': 'Diploma in Social Work',
-                    'DCJS': 'Diploma in Criminal Justice',
-                    'DHSS': 'Diploma in Health Support Services',
-                    'DICT': 'Diploma in ICT',
-                    'DME': 'Diploma in Medical Engineering'
-                };
-                return names[programCode] || programCode;
-            },
-            // ===== NEW: Portfolio helpers =====
+            getProgramDisplayName: getProgramDisplayName,
+            getProgramType: getProgramType,
+            isTVETProgram: isTVETProgram,
             getPortfolioCompletionStatus: function(stats) {
                 const totalItems = (stats.totalCourses || 0) + (stats.schemesCompleted || 0) + (stats.lessonPlans || 0);
                 const completedItems = stats.approved || 0;
@@ -181,46 +363,107 @@ document.addEventListener('DOMContentLoaded', async function() {
         }
         
         console.log('✅ Lecturer authenticated:', profile.full_name);
-        console.log('📚 Program:', profile.program || profile.department);
         
-        // 6. Update UI with lecturer info
+        // ==========================================
+        // DETECT PROGRAM TYPE
+        // ==========================================
+        
         const program = profile.program || profile.department || 'KRCHN';
-        const programDisplay = window.Utils?.getProgramDisplayName(program) || program;
+        const programType = getProgramType(program);
+        const programLevel = getProgramLevel(program);
+        const isTVET = programType === 'TVET';
+        const programDisplay = getProgramDisplayName(program);
+        const typeLabel = getProgramTypeLabel(program);
+        
+        console.log('📚 Program:', program);
+        console.log('📚 Program Type:', programType);
+        console.log('📚 Program Level:', programLevel);
+        console.log('📚 Is TVET:', isTVET);
+        
+        // ==========================================
+        // UPDATE UI WITH PROGRAM INFO
+        // ==========================================
         
         // Update welcome header
         const welcomeHeader = document.getElementById('welcomeHeader');
         if (welcomeHeader) welcomeHeader.textContent = profile.full_name || 'Lecturer';
         
-        // Update program subtitle
+        // Update program subtitle with type
         const programSubtitle = document.getElementById('programSubtitle');
         if (programSubtitle) {
-            programSubtitle.textContent = `Dashboard filtered for ${programDisplay}`;
+            const typeEmoji = isTVET ? '🔧' : '🎓';
+            programSubtitle.textContent = `${typeEmoji} Dashboard filtered for ${programDisplay} (${typeLabel})`;
         }
         
         // Update program badge
         const programBadge = document.getElementById('userProgramBadge');
-        if (programBadge) programBadge.textContent = programDisplay;
+        if (programBadge) {
+            const shortName = isTVET ? program : 'KRCHN';
+            const badgeText = isTVET ? `${shortName} (TVET)` : `${shortName} Nursing`;
+            programBadge.textContent = badgeText;
+            // Add TVET badge styling
+            if (isTVET) {
+                programBadge.style.background = 'rgba(139,92,246,0.3)';
+                programBadge.style.border = '1px solid #8b5cf6';
+            }
+        }
         
         // Update welcome banner
         const welcomeBanner = document.getElementById('welcomeBannerText');
         if (welcomeBanner) {
-            welcomeBanner.textContent = `Welcome to your Lecturer Dashboard for ${programDisplay}`;
+            const typeEmoji = isTVET ? '🔧' : '🎓';
+            welcomeBanner.textContent = `${typeEmoji} Welcome to your Lecturer Dashboard for ${programDisplay} (${typeLabel})`;
         }
         
+        // Show grading system info on dashboard
+        const gradingInfo = document.getElementById('gradingSystemInfo');
+        if (gradingInfo) {
+            if (isTVET) {
+                gradingInfo.innerHTML = `
+                    <span style="background: #8b5cf6; color: white; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+                        🔧 TVET Grading: A(80%) B(65%) C(50%) E(0%)
+                    </span>
+                `;
+            } else {
+                gradingInfo.innerHTML = `
+                    <span style="background: #4C1D95; color: white; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+                        🎓 Nursing Grading: A(75%) B(65%) C(60%) D(0%)
+                    </span>
+                `;
+            }
+        }
+        
+        // ==========================================
+        // STORE PROGRAM TYPE FOR OTHER MODULES
+        // ==========================================
+        
+        window.CURRENT_PROGRAM = program;
+        window.CURRENT_PROGRAM_TYPE = programType;
+        window.CURRENT_PROGRAM_LEVEL = programLevel;
+        window.IS_TVET = isTVET;
+        
+        // Store in localStorage for other modules
+        localStorage.setItem('currentProgram', program);
+        localStorage.setItem('currentProgramType', programType);
+        localStorage.setItem('isTVET', JSON.stringify(isTVET));
+        
+        // ==========================================
         // 7. Dispatch app ready event
+        // ==========================================
+        
         document.dispatchEvent(new CustomEvent('appReady'));
         
-        // 8. Check if we need to resolve lecturer ID for all modules
-        // This ensures all modules use the correct ID format
+        // ==========================================
+        // 8. Resolve lecturer ID for all modules
+        // ==========================================
+        
         const userId = profile.user_id;
         const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(userId));
         
-        // If not a UUID, we might need to find the correct text ID from staff_records
         if (!isUUID) {
             console.log('🔍 Non-UUID user ID detected:', userId);
             
             try {
-                // Try to find staff record with this ID
                 const { data: staff } = await window.lecturerDB.supabase
                     .from('staff_records')
                     .select('id, first_name, other_names')
@@ -229,10 +472,8 @@ document.addEventListener('DOMContentLoaded', async function() {
                 
                 if (staff) {
                     console.log('✅ Found staff record with ID:', staff.id);
-                    // Store the correct ID for modules to use
                     window.CORRECT_LECTURER_ID = staff.id;
                 } else {
-                    // Try to find by email
                     const { data: staffByEmail } = await window.lecturerDB.supabase
                         .from('staff_records')
                         .select('id, first_name, other_names')
@@ -253,8 +494,10 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         console.log('🔑 Lecturer ID for modules:', window.CORRECT_LECTURER_ID);
         
-        // 9. Initialize all modules with the correct ID
-        // Set the ID for each module if they support it
+        // ==========================================
+        // 9. Initialize modules with correct ID
+        // ==========================================
+        
         const modules = [
             'LecturerCourses',
             'LecturerMarks', 
@@ -276,9 +519,9 @@ document.addEventListener('DOMContentLoaded', async function() {
         // ==========================================
         // 10. Initialize Academic Portfolio
         // ==========================================
+        
         console.log('📁 Initializing Academic Portfolio...');
         if (window.AcademicPortfolio && typeof window.AcademicPortfolio.init === 'function') {
-            // Set the lecturer ID for Academic Portfolio
             if (window.AcademicPortfolio.lecturerId !== undefined) {
                 window.AcademicPortfolio.lecturerId = window.CORRECT_LECTURER_ID;
             }
@@ -286,7 +529,6 @@ document.addEventListener('DOMContentLoaded', async function() {
             console.log('✅ Academic Portfolio initialized');
         } else {
             console.warn('⚠️ AcademicPortfolio not found - module may not be loaded');
-            // Fallback: define it if missing
             if (typeof window.AcademicPortfolio === 'undefined') {
                 window.AcademicPortfolio = {
                     init: function() {
@@ -319,18 +561,126 @@ document.addEventListener('DOMContentLoaded', async function() {
             }
         }
         
-        // 11. Load initial tab from URL or storage
+        // ==========================================
+        // 11. Load initial tab
+        // ==========================================
+        
         const savedTab = localStorage.getItem('nchsm_current_tab') || 'dashboard';
         if (window.LecturerUI) {
             console.log('📂 Loading tab:', savedTab);
             window.LecturerUI.showTab(savedTab);
         }
         
+        // ==========================================
+        // 12. SHOW SUCCESS NOTIFICATION
+        // ==========================================
+        
+        setTimeout(function() {
+            let name = 'Lecturer';
+            try {
+                const profileData = localStorage.getItem('userProfile');
+                if (profileData) {
+                    const data = JSON.parse(profileData);
+                    name = data.full_name || data.name || 'Lecturer';
+                } else if (profile) {
+                    name = profile.full_name || profile.name || 'Lecturer';
+                }
+            } catch(e) {
+                name = 'Lecturer';
+            }
+            
+            const typeEmoji = isTVET ? '🔧' : '🎓';
+            const programName = isTVET ? `${program} (TVET)` : `${program} Nursing`;
+            
+            const message = `👋 Welcome back, ${name}! ${typeEmoji} ${programName} Dashboard loaded ✅`;
+            
+            // Use the UI notification system
+            if (window.LecturerUI && typeof window.LecturerUI.showNotification === 'function') {
+                window.LecturerUI.showNotification(message, 'success');
+            } else if (typeof window.showNotification === 'function') {
+                window.showNotification(message, 'success');
+            } else {
+                console.log(`✅ Dashboard loaded for ${name} (${programName})`);
+                
+                // Simple toast fallback
+                try {
+                    document.querySelectorAll('.dashboard-success-toast').forEach(el => el.remove());
+                    
+                    const toast = document.createElement('div');
+                    toast.className = 'dashboard-success-toast';
+                    toast.style.cssText = `
+                        position: fixed;
+                        top: 20px;
+                        right: 20px;
+                        background: ${isTVET ? '#8b5cf6' : '#10b981'};
+                        color: white;
+                        padding: 16px 24px;
+                        border-radius: 12px;
+                        font-weight: 500;
+                        z-index: 999999;
+                        box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+                        font-size: 14px;
+                        animation: slideIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+                        border-left: 4px solid rgba(255,255,255,0.3);
+                        max-width: 450px;
+                        display: flex;
+                        align-items: center;
+                        gap: 12px;
+                        font-family: 'Inter', system-ui, sans-serif;
+                    `;
+                    toast.innerHTML = `
+                        <span style="font-size: 20px;">${isTVET ? '🔧' : '👋'}</span>
+                        <span>Welcome back, <strong>${name}</strong>! <br><span style="font-size: 12px; opacity: 0.9;">${programName} Dashboard loaded ✅</span></span>
+                        <button onclick="this.parentElement.remove()" style="
+                            background: none;
+                            border: none;
+                            color: rgba(255,255,255,0.7);
+                            cursor: pointer;
+                            font-size: 16px;
+                            padding: 0 4px;
+                            margin-left: 4px;
+                            transition: color 0.2s;
+                        " onmouseover="this.style.color='white'" onmouseout="this.style.color='rgba(255,255,255,0.7)'">
+                            ✕
+                        </button>
+                    `;
+                    document.body.appendChild(toast);
+                    
+                    setTimeout(() => {
+                        if (toast.parentNode) {
+                            toast.style.animation = 'slideOut 0.3s ease forwards';
+                            setTimeout(() => toast.remove(), 300);
+                        }
+                    }, 5000);
+                    
+                    if (!document.getElementById('toastAnimations')) {
+                        const style = document.createElement('style');
+                        style.id = 'toastAnimations';
+                        style.textContent = `
+                            @keyframes slideIn {
+                                from { opacity: 0; transform: translateX(40px) scale(0.95); }
+                                to { opacity: 1; transform: translateX(0) scale(1); }
+                            }
+                            @keyframes slideOut {
+                                from { opacity: 1; transform: translateX(0) scale(1); }
+                                to { opacity: 0; transform: translateX(40px) scale(0.95); }
+                            }
+                        `;
+                        document.head.appendChild(style);
+                    }
+                } catch(e) {
+                    console.log('Could not create toast notification:', e);
+                }
+            }
+        }, 1500);
+        
         console.log('✅ Lecturer Portal started successfully!');
+        console.log(`📚 Program: ${program} (${programType})`);
+        console.log(`📚 Level: ${programLevel}`);
         
     } catch (error) {
         console.error('❌ Failed to start Lecturer Portal:', error);
-        // Show error on page
+        
         const errorDiv = document.createElement('div');
         errorDiv.style.cssText = `
             position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -353,7 +703,10 @@ document.addEventListener('DOMContentLoaded', async function() {
     }
 });
 
-// Export all modules
+// ============================================================
+// EXPORT ALL MODULES
+// ============================================================
+
 window.LecturerModules = {
     UI: window.LecturerUI,
     Profile: window.LecturerProfile,
@@ -368,8 +721,17 @@ window.LecturerModules = {
     Messages: window.LecturerMessages,
     Reports: window.LecturerReports,
     Calendar: window.LecturerCalendar,
-    // ===== NEW: Academic Portfolio =====
-    AcademicPortfolio: window.AcademicPortfolio
+    AcademicPortfolio: window.AcademicPortfolio,
+    // TVET/Nursing helpers
+    getProgramType: getProgramType,
+    getProgramLevel: getProgramLevel,
+    isTVETProgram: isTVETProgram,
+    isNursingProgram: isNursingProgram,
+    getAcademicBlocks: getAcademicBlocks,
+    calculateGrade: calculateGrade,
+    getProgramDisplayName: getProgramDisplayName,
+    getProgramTypeLabel: getProgramTypeLabel
 };
 
 console.log('✅ Lecturer main entry point loaded');
+console.log('✅ TVET/Nursing support enabled');
