@@ -216,6 +216,10 @@ function calculateGPA(marks) {
 // LOAD RETAKE DATA
 // ============================================================
 
+// ============================================================
+// LOAD RETAKE DATA - WITH AUTO-UNPUBLISH CHECK
+// ============================================================
+
 async function loadPublishedRetakeData() {
     try {
         const { data, error } = await window.sb
@@ -236,11 +240,75 @@ async function loadPublishedRetakeData() {
         
         PUBLISHED_STATE.retakeMap = retakeMap;
         console.log(`📊 Loaded ${data?.length || 0} retake records for published marks`);
+        
+        // ✅ Auto-unpublish marks that have retakes but are still published
+        await checkAndUnpublishMarksWithRetakes(data || []);
+        
         return retakeMap;
         
     } catch (error) {
         console.error('Error loading retake data:', error);
         return {};
+    }
+}
+
+// ============================================================
+// AUTO-UNPUBLISH MARKS WITH RETAKE RECORDS
+// ============================================================
+
+async function checkAndUnpublishMarksWithRetakes(retakes) {
+    if (!retakes || retakes.length === 0) return;
+    
+    let unpublishedCount = 0;
+    const retakeMap = {};
+    
+    // Group retakes by student and subject
+    retakes.forEach(retake => {
+        const key = `${retake.admission_number}_${retake.subject_name}`;
+        retakeMap[key] = true;
+    });
+    
+    // Get all marks that are published
+    const { data: publishedMarks, error } = await window.sb
+        .from('student_marks')
+        .select('id, admission_number, subject_name, published')
+        .eq('published', true);
+    
+    if (error) {
+        console.warn('Could not fetch published marks:', error);
+        return;
+    }
+    
+    if (!publishedMarks || publishedMarks.length === 0) return;
+    
+    // Check each published mark against retake map
+    for (const mark of publishedMarks) {
+        const key = `${mark.admission_number}_${mark.subject_name}`;
+        if (retakeMap[key]) {
+            // ✅ This mark has a retake record but is still published - UNPUBLISH IT
+            const { error: updateError } = await window.sb
+                .from('student_marks')
+                .update({
+                    published: false,
+                    published_at: null,
+                    published_by: null,
+                    unpublished_at: new Date().toISOString(),
+                    unpublished_reason: 'Retake recorded - auto-unpublished'
+                })
+                .eq('id', mark.id);
+            
+            if (!updateError) {
+                unpublishedCount++;
+                console.log(`🔓 Auto-unpublished ${mark.admission_number} - ${mark.subject_name} (has retake)`);
+            }
+        }
+    }
+    
+    if (unpublishedCount > 0) {
+        console.log(`🔓 Auto-unpublished ${unpublishedCount} marks with retake records`);
+        if (typeof window.showNotification === 'function') {
+            window.showNotification(`🔓 ${unpublishedCount} marks auto-unpublished (retake recorded)`, 'warning');
+        }
     }
 }
 
@@ -1255,12 +1323,33 @@ function closeStudentMarksModal() {
 // PUBLISH SINGLE UNIT
 // ============================================================
 
+// ============================================================
+// PUBLISH SINGLE UNIT - WITH RETAKE CHECK
+// ============================================================
+
 async function publishSingleUnit(markId, subjectName, admissionNumber) {
     if (!markId) {
         if (typeof window.showNotification === 'function') {
             window.showNotification('Invalid mark ID', 'error');
         }
         return;
+    }
+    
+    // ✅ Check if this student has retake for this unit
+    const { data: retakeExists } = await window.sb
+        .from('student_retakes')
+        .select('id, attempt_number, exam_score')
+        .eq('admission_number', admissionNumber)
+        .eq('subject_name', subjectName)
+        .limit(1)
+        .maybeSingle();
+    
+    if (retakeExists) {
+        // ✅ Confirm with admin that they want to publish marks that have retake
+        const confirmMsg = `⚠️ This student has a retake for "${subjectName}" (Attempt #${retakeExists.attempt_number}, Score: ${retakeExists.exam_score}%).\n\nPublishing will make the retake score visible to the student.\n\nContinue?`;
+        if (!confirm(confirmMsg)) {
+            return;
+        }
     }
     
     if (!confirm('✅ Publish "' + subjectName + '" for student ' + admissionNumber + '?')) return;
@@ -1328,7 +1417,6 @@ async function publishSingleUnit(markId, subjectName, admissionNumber) {
         if (typeof window.hideLoading === 'function') window.hideLoading();
     }
 }
-
 // ============================================================
 // UNPUBLISH SINGLE UNIT
 // ============================================================
@@ -1378,6 +1466,10 @@ async function unpublishSingleUnit(markId, subjectName, admissionNumber) {
 // PUBLISH ALL MARKS FOR A STUDENT
 // ============================================================
 
+// ============================================================
+// PUBLISH ALL MARKS - WITH RETAKE CHECK
+// ============================================================
+
 async function publishStudentAllMarks(admissionNumber) {
     if (!admissionNumber) {
         if (typeof window.showNotification === 'function') {
@@ -1386,7 +1478,21 @@ async function publishStudentAllMarks(admissionNumber) {
         return;
     }
     
-    if (!confirm('⚠️ Publish ALL marks for student ' + admissionNumber + '?')) return;
+    // ✅ Check if student has any retakes
+    const { data: retakes, error: retakeError } = await window.sb
+        .from('student_retakes')
+        .select('subject_name, attempt_number, exam_score')
+        .eq('admission_number', admissionNumber);
+    
+    let retakeMessage = '';
+    if (retakes && retakes.length > 0) {
+        const retakeList = retakes.map(r => 
+            `  • ${r.subject_name} (Attempt #${r.attempt_number}: ${r.exam_score}%)`
+        ).join('\n');
+        retakeMessage = `\n\n⚠️ STUDENT HAS RETAKE RECORDS:\n${retakeList}\n\nPublishing will make these retake scores visible.`;
+    }
+    
+    if (!confirm('⚠️ Publish ALL marks for student ' + admissionNumber + '?' + retakeMessage)) return;
     
     try {
         if (typeof window.showLoading === 'function') window.showLoading('Publishing marks...');
@@ -1437,7 +1543,8 @@ async function publishStudentAllMarks(admissionNumber) {
         }
         
         if (typeof window.showNotification === 'function') {
-            window.showNotification('✅ Published ' + count + ' marks for ' + admissionNumber, 'success');
+            const retakeNote = retakes && retakes.length > 0 ? ` (${retakes.length} retake unit${retakes.length > 1 ? 's' : ''})` : '';
+            window.showNotification('✅ Published ' + count + ' marks for ' + admissionNumber + retakeNote, 'success');
         }
         
         await loadPublishedMarks();
@@ -1451,7 +1558,6 @@ async function publishStudentAllMarks(admissionNumber) {
         if (typeof window.hideLoading === 'function') window.hideLoading();
     }
 }
-
 // ============================================================
 // UNPUBLISH ALL MARKS FOR A STUDENT
 // ============================================================
