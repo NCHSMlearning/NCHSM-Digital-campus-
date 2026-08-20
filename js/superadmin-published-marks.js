@@ -391,7 +391,58 @@ function updateGradingScaleDisplay() {
     if (tvetScale) tvetScale.style.display = (programType === 'all' || programType === 'TVET') ? 'inline-flex' : 'none';
     if (nursingScale) nursingScale.style.display = (programType === 'all' || programType === 'KRCHN') ? 'inline-flex' : 'none';
 }
+// ============================================================
+// RESET FILTERS
+// ============================================================
 
+function resetFilters() {
+    console.log('🔄 Resetting filters...');
+    
+    // 1. Reset Intake Year to default (2025)
+    var intakeYear = document.getElementById('pm_intake_year');
+    if (intakeYear) intakeYear.value = '2025';
+    
+    // 2. Reset Program filter
+    var programFilter = document.getElementById('pm_program_filter');
+    if (programFilter) programFilter.value = 'all';
+    
+    // 3. Reset Block filter
+    var blockFilter = document.getElementById('pm_block_filter');
+    if (blockFilter) blockFilter.value = 'all';
+    
+    // 4. Reset Status filter
+    var statusFilter = document.getElementById('pm_status_filter');
+    if (statusFilter) statusFilter.value = 'all';
+    
+    // 5. Reset Search
+    var searchInput = document.getElementById('pm_search');
+    if (searchInput) searchInput.value = '';
+    
+    // 6. Reset Program Quick Filter
+    filterPublishedByProgram('all');
+    
+    // 7. Reset selected students
+    PUBLISHED_STATE.selectedStudents = new Set();
+    updateSelectedCount();
+    
+    // 8. Reset current page to 1
+    PUBLISHED_STATE.currentPage = 1;
+    
+    // 9. Clear saved filter state
+    try {
+        localStorage.removeItem('pm_filter_state');
+    } catch(e) {}
+    
+    // 10. Apply filters and reload
+    onIntakeYearChange();
+    filterPublishedMarks();
+    
+    if (typeof window.showNotification === 'function') {
+        window.showNotification('🔄 Filters reset to default', 'info');
+    }
+    
+    console.log('✅ Filters reset!');
+}
 // ============================================================
 // FILTER PUBLISHED MARKS
 // ============================================================
