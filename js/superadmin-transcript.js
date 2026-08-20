@@ -119,22 +119,44 @@ const TVET_TERMS_DIPLOMA = ['Year 1 Term 1', 'Year 1 Term 2', 'Year 1 Term 3', '
 const TVET_TERMS_ARTISAN = ['Year 1 Term 1', 'Year 1 Term 2', 'Year 1 Term 3'];
 
 // ============================================================
-// HELPER FUNCTIONS
+// ✅ FIXED: HELPER FUNCTIONS - CORRECTLY DETECT NURSING VS TVET
 // ============================================================
 
 function getProgramType(programCode) {
     if (!programCode) return 'nursing';
     const code = String(programCode).toUpperCase().trim();
-    if (code === 'KRCHN') return 'nursing';
+    
+    // ✅ KRCHN is Nursing
+    if (code === 'KRCHN' || code === 'NURSING') {
+        return 'nursing';
+    }
+    
+    // Check TVET programs
     if (TVET_PROGRAMS.diploma.includes(code)) return 'tvet_diploma';
     if (TVET_PROGRAMS.certificate.includes(code)) return 'tvet_certificate';
     if (TVET_PROGRAMS.artisan.includes(code)) return 'tvet_artisan';
+    
+    // Default to nursing
     return 'nursing';
 }
 
 function isTVETProgram(programCode) {
+    if (!programCode) return false;
+    const code = String(programCode).toUpperCase().trim();
+    
+    // ✅ KRCHN is NOT TVET
+    if (code === 'KRCHN' || code === 'NURSING') {
+        return false;
+    }
+    
     const type = getProgramType(programCode);
     return type === 'tvet_diploma' || type === 'tvet_certificate' || type === 'tvet_artisan';
+}
+
+function isNursingProgram(programCode) {
+    if (!programCode) return true;
+    const code = String(programCode).toUpperCase().trim();
+    return code === 'KRCHN' || code === 'NURSING' || !isTVETProgram(programCode);
 }
 
 function getTVETTermStructure(programCode) {
@@ -146,13 +168,21 @@ function getTVETTermStructure(programCode) {
 }
 
 function getBlockOptions(programCode) {
-    if (programCode === 'KRCHN') return KRCHN_BLOCKS;
+    if (isNursingProgram(programCode)) return KRCHN_BLOCKS;
     if (isTVETProgram(programCode)) return getTVETTermStructure(programCode);
     return KRCHN_BLOCKS;
 }
 
 function getGradingConfig(programCode) {
-    if (isTVETProgram(programCode)) return GRADE_CONFIG.tvet;
+    // ✅ If Nursing program, use Nursing grading
+    if (isNursingProgram(programCode)) {
+        return GRADE_CONFIG.nursing;
+    }
+    // ✅ If TVET program, use TVET grading
+    if (isTVETProgram(programCode)) {
+        return GRADE_CONFIG.tvet;
+    }
+    // Default to Nursing
     return GRADE_CONFIG.nursing;
 }
 
@@ -161,7 +191,7 @@ function calculateOfficialGrade(score, programCode) {
     const grades = config.grades;
     
     if (score === null || score === undefined || score === 0) {
-        const defaultGrade = programCode === 'KRCHN' ? 'D' : 'E';
+        const defaultGrade = isNursingProgram(programCode) ? 'D' : 'E';
         return {
             grade: defaultGrade,
             points: 0.0,
@@ -183,7 +213,7 @@ function calculateOfficialGrade(score, programCode) {
         }
     }
     
-    const defaultGrade = programCode === 'KRCHN' ? 'D' : 'E';
+    const defaultGrade = isNursingProgram(programCode) ? 'D' : 'E';
     return {
         grade: defaultGrade,
         points: 0.0,
@@ -717,12 +747,7 @@ window.generateSelectedTranscripts = async function() {
 };
 
 // ============================================================
-// SHOW TRANSCRIPT PREVIEW - FINAL OFFICIAL VERSION
-// WITH FIXED GRADING SCALE AND FULL TABLE BORDERS
-// ============================================================
-
-// ============================================================
-// SHOW TRANSCRIPT PREVIEW - STATUS BLOCK REMOVED
+// SHOW TRANSCRIPT PREVIEW - COMPLETE FIXED VERSION
 // ============================================================
 
 window.showTranscriptPreview = function(student, marks, year) {
@@ -732,11 +757,16 @@ window.showTranscriptPreview = function(student, marks, year) {
     if (!container || !content) return;
     
     const program = student.program || 'KRCHN';
+    
+    // ✅ CORRECTLY DETERMINE PROGRAM TYPE
     const isTVET = isTVETProgram(program);
+    const isNursing = isNursingProgram(program);
     const config = getGradingConfig(program);
     const passMark = config.passMark;
     const gradingDisplay = config.display;
-    const programType = isTVET ? 'TVET' : 'Nursing';
+    const programType = isTVET ? 'TVET' : 'NURSING';
+    
+    console.log(`📊 Program: ${program}, isTVET: ${isTVET}, isNursing: ${isNursing}, Type: ${programType}`);
     
     // Group marks by block/term
     const groupedMarks = {};
@@ -861,7 +891,7 @@ window.showTranscriptPreview = function(student, marks, year) {
         `;
     }
     
-    // Build full official transcript HTML - STATUS BLOCK REMOVED
+    // Build full official transcript HTML
     const html = `
         <div id="transcriptDocument" style="background: white; padding: 30px 35px; border: 2px solid #0A3D62; border-radius: 8px; box-shadow: 0 4px 20px rgba(10,61,98,0.12); font-family: 'Times New Roman', Times, serif; max-width: 850px; margin: 0 auto;">
             
@@ -929,7 +959,7 @@ window.showTranscriptPreview = function(student, marks, year) {
                 </div>
             </div>
             
-            <!-- GRADING SCALE -->
+            <!-- GRADING SCALE - CORRECTLY SHOWS NURSING OR TVET -->
             <div style="margin-bottom: 14px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
                 <div style="font-weight: 600; color: #0A3D62; font-size: 10px; text-align: center; margin-bottom: 4px;">GRADING SCALE (${programType})</div>
                 <div style="text-align: center; font-size: 9px; color: #64748b; margin-bottom: 4px;">${gradingDisplay}</div>
@@ -1206,6 +1236,7 @@ window.printTranscriptDocument = window.printTranscriptDocument;
 window.calculateOfficialGrade = calculateOfficialGrade;
 window.getProgramType = getProgramType;
 window.isTVETProgram = isTVETProgram;
+window.isNursingProgram = isNursingProgram;
 window.getBlockOptions = getBlockOptions;
 window.getGradingConfig = getGradingConfig;
 window.calculateGPA = calculateGPA;
@@ -1219,6 +1250,7 @@ console.log('⭐ Retake indicator: ☆ (subtle star next to unit name)');
 console.log('📊 TVET: Certificate (3 Terms), Diploma (6 Terms)');
 console.log('📊 KRCHN: Blocks (Introductory, Block 1-6, Final)');
 console.log('📋 Unit codes fetched from database (matches Marks Entry)');
+console.log('✅ FIXED: Grading scale correctly detects Nursing vs TVET');
 console.log('📋 Features:');
 console.log('   - School Logo');
 console.log('   - GPA for the year / Cumulative GPA');
