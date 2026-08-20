@@ -723,8 +723,16 @@ async function getCurrentUser() {
 // LOAD PUBLISHED MARKS
 // ============================================================
 
+// ============================================================
+// LOAD PUBLISHED MARKS - FIXED (NO STUCK LOADING)
+// ============================================================
+
 async function loadPublishedMarks() {
-    if (PUBLISHED_STATE.isLoading) return;
+    // ✅ FIX: Force reset if stuck (safety mechanism)
+    if (PUBLISHED_STATE.isLoading) {
+        console.warn('⚠️ loadPublishedMarks was stuck - force resetting');
+        PUBLISHED_STATE.isLoading = false;
+    }
     
     try {
         PUBLISHED_STATE.isLoading = true;
@@ -875,7 +883,6 @@ async function loadPublishedMarks() {
         PUBLISHED_STATE.isLoading = false;
     }
 }
-
 // ============================================================
 // UPDATE LAST REFRESH TIME
 // ============================================================
@@ -2992,7 +2999,7 @@ function printPublishedMarks() {
 }
 
 // ============================================================
-// INITIALIZATION
+// INITIALIZATION - WITH SAFETY TIMEOUT
 // ============================================================
 
 async function initPublishedMarks() {
@@ -3062,10 +3069,24 @@ async function initPublishedMarks() {
         academicYearEl.value = '2025';
     }
     
+    // ✅ SAFETY TIMEOUT: Force reset loading state if stuck after 10 seconds
+    // This prevents the infinite spinner issue
+    var safetyTimeout = setTimeout(function() {
+        if (PUBLISHED_STATE.isLoading) {
+            console.warn('⚠️ Published Marks loading stuck - force resetting...');
+            PUBLISHED_STATE.isLoading = false;
+            // Retry loading
+            loadPublishedMarks();
+        }
+    }, 10000);
+    
     // Load saved filter state
     loadFilterState();
     
     await loadPublishedMarks();
+    
+    // ✅ Clear safety timeout if load completed successfully
+    clearTimeout(safetyTimeout);
     
     console.log('✅ Published Marks module initialized with Retake Support!');
     console.log('📊 TVET Grading: A (75-100%), B (65-74%), C (50-64%), FAIL (Below 50%)');
