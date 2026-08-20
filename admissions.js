@@ -1,10 +1,73 @@
-// ============================================================
-// ADMISSIONS.JS - Complete Application Logic (FULLY FIXED)
-// ============================================================
+// ================================================================
+// ADMISSIONS.JS - COMPLETE APPLICATION LOGIC
+// INCLUDES: Auth, OCR, PDF Support, Upload Protection, Full Workflow
+// ================================================================
 
-// ============================================================
+// ================================================================
+// UPLOAD LIMITS - PROTECTION CONSTANTS
+// ================================================================
+
+const UPLOAD_LIMITS = {
+    KCSE: {
+        maxSize: 10 * 1024 * 1024, // 10MB
+        maxSizeMB: 10,
+        allowedTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf'],
+        allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
+    },
+    ID: {
+        maxSize: 10 * 1024 * 1024, // 10MB
+        maxSizeMB: 10,
+        allowedTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf'],
+        allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
+    },
+    DOCUMENT: {
+        maxSize: 5 * 1024 * 1024, // 5MB
+        maxSizeMB: 5,
+        allowedTypes: ['image/jpeg', 'image/png', 'image/jpg', 'image/webp', 'application/pdf'],
+        allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp', '.pdf']
+    },
+    PASSPORT: {
+        maxSize: 4 * 1024 * 1024, // 4MB
+        maxSizeMB: 4,
+        allowedTypes: ['image/jpeg', 'image/png', 'image/jpg'],
+        allowedExtensions: ['.jpg', '.jpeg', '.png']
+    }
+};
+
+// ================================================================
+// VALIDATE FILE FUNCTION
+// ================================================================
+function validateFile(file, type) {
+    const limits = UPLOAD_LIMITS[type];
+    if (!limits) {
+        console.error('❌ Unknown file type:', type);
+        return { valid: false, message: 'Unknown file type' };
+    }
+
+    // Check size
+    if (file.size > limits.maxSize) {
+        const sizeInMB = (file.size / 1024 / 1024).toFixed(2);
+        return { 
+            valid: false, 
+            message: `File too large! ${sizeInMB}MB exceeds ${limits.maxSizeMB}MB limit.` 
+        };
+    }
+
+    // Check type
+    if (!limits.allowedTypes.includes(file.type)) {
+        const allowed = limits.allowedTypes.map(t => t.replace('image/', '').toUpperCase()).join(', ');
+        return { 
+            valid: false, 
+            message: `Invalid file type! Please upload ${allowed} files.` 
+        };
+    }
+
+    return { valid: true, message: 'OK' };
+}
+
+// ================================================================
 // SUPABASE CONFIGURATION
-// ============================================================
+// ================================================================
 
 // Get Supabase client safely
 function getSupabase() {
@@ -41,9 +104,9 @@ function getSupabase() {
 // Create global sb variable
 let sb = getSupabase();
 
-// ============================================================
+// ================================================================
 // STATE VARIABLES
-// ============================================================
+// ================================================================
 let currentUser = null;
 let currentStep = 1;
 let uploadedDocs = {};
@@ -56,14 +119,14 @@ let idDataExtracted = {};
 let applicationId = null;
 let emailCheckTimeout = null;
 
-// ✅ FIX: Only declare once - check if it already exists
+// Fix: Only declare once - check if it already exists
 if (typeof missingFieldsData === 'undefined') {
     var missingFieldsData = [];
 }
 
-// ============================================================
+// ================================================================
 // PROGRAM DATA
-// ============================================================
+// ================================================================
 const programCriteria = {
     'KRCHN': { minGrade: 'C+', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'C', 'Mathematics': 'D+', 'Biology': 'C' } },
     'DCHN': { minGrade: 'C', subjects: ['English', 'Mathematics', 'Biology'], minSubjectGrades: { 'English': 'C', 'Mathematics': 'D', 'Biology': 'C' } },
@@ -131,9 +194,9 @@ const programNames = {
     'PTE': 'TVET/CDACC PTE'
 };
 
-// ============================================================
+// ================================================================
 // ULTRA MODERN VALIDATION MODAL FUNCTIONS
-// ============================================================
+// ================================================================
 
 /**
  * Show the validation modal with detailed missing fields
@@ -167,7 +230,7 @@ function showValidationModal(title, subtitle, missingFields) {
         const msg = count === 1 ? 
             'required field needs your attention before you can proceed.' :
             'required fields need your attention before you can proceed.';
-        summaryEl.querySelector('div').innerHTML = `<strong>${count}</strong> ${msg}`;
+        summaryEl.innerHTML = `<strong>${count}</strong> ${msg}`;
     }
 
     // Update progress
@@ -323,9 +386,9 @@ function showValidation(msg) {
     showValidationModal('Validation Error', 'Please fix the following issues', missingFields);
 }
 
-// ============================================================
+// ================================================================
 // NAVIGATION FUNCTION (Page switching)
-// ============================================================
+// ================================================================
 function navigateTo(page) {
     // Hide all pages
     document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
@@ -365,9 +428,9 @@ function navigateTo(page) {
     }
 }
 
-// ============================================================
+// ================================================================
 // ENHANCED goToStep WITH MODERN VALIDATION
-// ============================================================
+// ================================================================
 
 function goToStep(step) {
     // Validate current step before moving
@@ -601,9 +664,9 @@ function validateStepWithModal(from, to) {
     return true;
 }
 
-// ============================================================
+// ================================================================
 // CHECK AUTH FOR REGISTER PAGE (Apply Now)
-// ============================================================
+// ================================================================
 async function checkAuthForRegisterPage() {
     console.log('🔍 checkAuthForRegisterPage() called');
     
@@ -675,9 +738,9 @@ async function checkAuthForRegisterPage() {
     }
 }
 
-// ============================================================
+// ================================================================
 // UPDATE PROGRAMS FUNCTION
-// ============================================================
+// ================================================================
 function updatePrograms() {
     const school = document.getElementById('school')?.value;
     const programSelect = document.getElementById('program');
@@ -743,9 +806,9 @@ function updatePrograms() {
     }
 }
 
-// ============================================================
+// ================================================================
 // TOGGLE STUDENT TYPE
-// ============================================================
+// ================================================================
 function toggleStudentType() {
     const selected = document.querySelector('input[name="studentType"]:checked');
     if (selected) {
@@ -753,9 +816,9 @@ function toggleStudentType() {
     }
 }
 
-// ============================================================
+// ================================================================
 // AUTH FUNCTIONS - HOME PAGE
-// ============================================================
+// ================================================================
 function switchAuthTab(tab) {
     const tabs = document.querySelectorAll('.auth-tabs .tab');
     const forms = document.querySelectorAll('.auth-form');
@@ -772,9 +835,9 @@ function switchAuthTab(tab) {
     document.getElementById('registerMessage').textContent = '';
 }
 
-// ============================================================
+// ================================================================
 // LOGIN USER - HOME PAGE
-// ============================================================
+// ================================================================
 async function loginUser() {
     const email = document.getElementById('loginEmail').value.trim();
     const password = document.getElementById('loginPassword').value;
@@ -833,9 +896,9 @@ async function loginUser() {
     }
 }
 
-// ============================================================
+// ================================================================
 // REGISTER USER - HOME PAGE (Auto-Login)
-// ============================================================
+// ================================================================
 async function registerUser() {
     const name = document.getElementById('regName').value.trim();
     const email = document.getElementById('regEmail').value.trim();
@@ -949,9 +1012,9 @@ async function registerUser() {
     }
 }
 
-// ============================================================
+// ================================================================
 // LOGOUT USER
-// ============================================================
+// ================================================================
 function logoutUser() {
     const supabaseClient = getSupabase();
     if (supabaseClient) {
@@ -963,9 +1026,9 @@ function logoutUser() {
     }
 }
 
-// ============================================================
+// ================================================================
 // CHECK AUTH - HOME PAGE
-// ============================================================
+// ================================================================
 async function checkAuth() {
     const supabaseClient = getSupabase();
     if (!supabaseClient) {
@@ -1011,9 +1074,9 @@ async function checkAuth() {
     }
 }
 
-// ============================================================
+// ================================================================
 // LOAD USER APPLICATION
-// ============================================================
+// ================================================================
 async function loadUserApplication(userId) {
     const supabaseClient = getSupabase();
     if (!supabaseClient) return;
@@ -1078,9 +1141,9 @@ async function loadUserApplication(userId) {
     }
 }
 
-// ============================================================
+// ================================================================
 // SAVE APPLICATION
-// ============================================================
+// ================================================================
 async function saveApplication(step) {
     const supabaseClient = getSupabase();
     if (!supabaseClient || !currentUser) return;
@@ -1134,9 +1197,9 @@ async function saveApplication(step) {
     }
 }
 
-// ============================================================
+// ================================================================
 // STUDENT TYPE
-// ============================================================
+// ================================================================
 function selectType(type) {
     studentType = type;
     document.querySelectorAll('.student-type-card').forEach(c => c.classList.remove('selected'));
@@ -1161,9 +1224,9 @@ function selectType(type) {
     updateDocumentStatus();
 }
 
-// ============================================================
+// ================================================================
 // PROGRAM FUNCTIONS
-// ============================================================
+// ================================================================
 function updateProgramDesc() {
     const select = document.getElementById('program');
     const desc = document.getElementById('programDesc');
@@ -1226,9 +1289,9 @@ function updateCriteria() {
     content.innerHTML = html;
 }
 
-// ============================================================
+// ================================================================
 // ENQUIRY HANDLER
-// ============================================================
+// ================================================================
 function handleEnquiry(event) {
     event.preventDefault();
     const name = document.getElementById('enquiryName')?.value.trim();
@@ -1258,14 +1321,25 @@ function handleEnquiry(event) {
     document.getElementById('enquiryMessage').value = '';
 }
 
-// ============================================================
-// OCR - KCSE DOCUMENT (FULLY WORKING)
-// ============================================================
+// ================================================================
+// OCR - KCSE DOCUMENT (FULLY WORKING WITH PROTECTION)
+// ================================================================
 async function handleKCSEDocument(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     console.log('📄 KCSE file selected:', file.name);
+    console.log('📊 File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+
+    // ============================================================
+    // 📏 FILE VALIDATION - PROTECTION
+    // ============================================================
+    const validation = validateFile(file, 'KCSE');
+    if (!validation.valid) {
+        alert(`❌ ${validation.message}`);
+        event.target.value = '';
+        return;
+    }
 
     const card = document.getElementById('doc_kcse');
     const statusEl = document.getElementById('doc_kcse_status');
@@ -1275,12 +1349,6 @@ async function handleKCSEDocument(event) {
     const overlay = document.getElementById('scanning_kcse');
     const dataContainer = document.getElementById('kcse_extracted_data');
     const validationResult = document.getElementById('kcse_validation_result');
-
-    if (file.size > 10 * 1024 * 1024) {
-        alert('❌ File too large. Max 10MB.');
-        event.target.value = '';
-        return;
-    }
 
     // --- SHOW SCANNING OVERLAY ---
     if (overlay) {
@@ -1319,6 +1387,7 @@ async function handleKCSEDocument(event) {
                 const context = canvas.getContext('2d');
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
                 imageUrl = canvas.toDataURL('image/png');
+                console.log('✅ PDF converted to image successfully');
             } catch (pdfError) {
                 console.warn('PDF conversion failed, trying as image:', pdfError);
             }
@@ -1613,6 +1682,7 @@ function parseKCSEData(text) {
     console.log('📊 Final extracted data:', data);
     return data;
 }
+
 function displayKCSEData(data) {
     const container = document.getElementById('kcse_extracted_data');
     if (!container) return;
@@ -1694,14 +1764,25 @@ function validateKCSEAgainstProgram(data) {
     updateSummary();
 }
 
-// ============================================================
-// OCR - ID DOCUMENT (FULLY WORKING)
-// ============================================================
+// ================================================================
+// OCR - ID DOCUMENT (FULLY WORKING WITH PROTECTION)
+// ================================================================
 async function handleIDDocument(event) {
     const file = event.target.files[0];
     if (!file) return;
 
     console.log('🪪 ID file selected:', file.name);
+    console.log('📊 File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+
+    // ============================================================
+    // 📏 FILE VALIDATION - PROTECTION
+    // ============================================================
+    const validation = validateFile(file, 'ID');
+    if (!validation.valid) {
+        alert(`❌ ${validation.message}`);
+        event.target.value = '';
+        return;
+    }
 
     const card = document.getElementById('doc_id');
     const statusEl = document.getElementById('doc_id_status');
@@ -1710,12 +1791,6 @@ async function handleIDDocument(event) {
     const resultBox = document.getElementById('ocr_id_result');
     const overlay = document.getElementById('scanning_id');
     const dataContainer = document.getElementById('id_extracted_data');
-
-    if (file.size > 10 * 1024 * 1024) {
-        alert('❌ File too large. Max 10MB.');
-        event.target.value = '';
-        return;
-    }
 
     // --- SHOW SCANNING OVERLAY ---
     if (overlay) {
@@ -1751,6 +1826,7 @@ async function handleIDDocument(event) {
                 const context = canvas.getContext('2d');
                 await page.render({ canvasContext: context, viewport: viewport }).promise;
                 imageUrl = canvas.toDataURL('image/png');
+                console.log('✅ PDF converted to image successfully');
             } catch (pdfError) {
                 console.warn('PDF conversion failed:', pdfError);
             }
@@ -1870,22 +1946,29 @@ function displayIDData(data) {
     `;
 }
 
-// ============================================================
-// GENERAL DOCUMENT UPLOAD
-// ============================================================
+// ================================================================
+// GENERAL DOCUMENT UPLOAD WITH PROTECTION
+// ================================================================
 function handleDocUpload(event, docKey) {
     const file = event.target.files[0];
     if (!file) return;
 
-    const card = document.getElementById(`doc_${docKey}`);
-    const statusEl = document.getElementById(`doc_${docKey}_status`);
-    const fnameEl = document.getElementById(`doc_${docKey}_filename`);
+    console.log(`📎 ${docKey} file selected:`, file.name);
+    console.log('📊 File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
 
-    if (file.size > 5 * 1024 * 1024) {
-        alert('❌ File too large. Max 5MB.');
+    // ============================================================
+    // 📏 FILE VALIDATION - PROTECTION
+    // ============================================================
+    const validation = validateFile(file, 'DOCUMENT');
+    if (!validation.valid) {
+        alert(`❌ ${validation.message}`);
         event.target.value = '';
         return;
     }
+
+    const card = document.getElementById(`doc_${docKey}`);
+    const statusEl = document.getElementById(`doc_${docKey}_status`);
+    const fnameEl = document.getElementById(`doc_${docKey}_filename`);
 
     uploadedDocs[docKey] = true;
     if (statusEl) {
@@ -1896,6 +1979,48 @@ function handleDocUpload(event, docKey) {
     if (fnameEl) fnameEl.textContent = file.name;
     if (card) card.classList.add('uploaded');
     updateSummary();
+    updateDocumentStatus();
+    saveApplication(currentStep);
+}
+
+// ================================================================
+// PASSPORT PHOTO UPLOAD WITH PROTECTION
+// ================================================================
+function handlePassportPhoto(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    console.log('📸 Passport photo selected:', file.name);
+    console.log('📊 File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+
+    // ============================================================
+    // 📏 FILE VALIDATION - PROTECTION
+    // ============================================================
+    const validation = validateFile(file, 'PASSPORT');
+    if (!validation.valid) {
+        alert(`❌ ${validation.message}`);
+        event.target.value = '';
+        return;
+    }
+
+    // Preview the photo
+    const preview = document.getElementById('photoPreview');
+    const fileName = document.getElementById('photoFileName');
+    const upload = document.getElementById('photoUpload');
+
+    if (preview) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            preview.innerHTML = `<img src="${e.target.result}" alt="Passport" />`;
+            preview.classList.add('has-image');
+            if (fileName) fileName.textContent = file.name;
+            if (upload) upload.classList.add('uploaded');
+        };
+        reader.readAsDataURL(file);
+    }
+
+    // Mark as uploaded
+    uploadedDocs['passport'] = true;
     updateDocumentStatus();
     saveApplication(currentStep);
 }
@@ -1937,9 +2062,9 @@ function removeDocument(docKey) {
     saveApplication(currentStep);
 }
 
-// ============================================================
+// ================================================================
 // UPDATE DOCUMENT STATUS IN STEP 4
-// ============================================================
+// ================================================================
 function updateDocumentStatus() {
     const docStatusMap = {
         'kcse': 'KCSE Certificate',
@@ -1972,9 +2097,9 @@ function updateDocumentStatus() {
     }
 }
 
-// ============================================================
+// ================================================================
 // DRAFT SAVE
-// ============================================================
+// ================================================================
 function saveDraft() {
     saveApplication(currentStep);
     const msg = document.getElementById('submitMessage');
@@ -1985,9 +2110,9 @@ function saveDraft() {
     }
 }
 
-// ============================================================
+// ================================================================
 // SUMMARY
-// ============================================================
+// ================================================================
 function updateSummary() {
     const name = document.getElementById('fullName')?.value || '—';
     const email = document.getElementById('email')?.value || '—';
@@ -2015,9 +2140,9 @@ function updateSummary() {
     });
 }
 
-// ============================================================
+// ================================================================
 // SUBMIT ADMISSION
-// ============================================================
+// ================================================================
 async function submitAdmission() {
     if (!document.getElementById('termsCheck')?.checked) {
         showValidationModal('Terms & Conditions', 'Please agree to the terms before submitting', [
@@ -2106,9 +2231,9 @@ async function submitAdmission() {
     }
 }
 
-// ============================================================
+// ================================================================
 // AUTH 2 FUNCTIONS (For Apply Now / Register Page)
-// ============================================================
+// ================================================================
 
 function switchAuthTab2(tab) {
     const container = document.getElementById('authContainer2');
@@ -2304,9 +2429,9 @@ async function registerUser2() {
     }
 }
 
-// ============================================================
+// ================================================================
 // CONDITIONAL FIELD TOGGLES
-// ============================================================
+// ================================================================
 
 function toggleSponsor() {
     const val = document.getElementById('sponsored')?.value;
@@ -2404,9 +2529,9 @@ function toggleEmployment() {
     }
 }
 
-// ============================================================
+// ================================================================
 // PHOTO PREVIEW
-// ============================================================
+// ================================================================
 
 function previewPhoto(event) {
     const file = event.target.files[0];
@@ -2434,9 +2559,9 @@ function previewPhoto(event) {
     reader.readAsDataURL(file);
 }
 
-// ============================================================
+// ================================================================
 // INITIALIZATION
-// ============================================================
+// ================================================================
 
 document.addEventListener('DOMContentLoaded', function() {
     const yearEl = document.getElementById('currentYear');
@@ -2724,9 +2849,9 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ NCHSM Admission System loaded with Ultra Modern Validation Modal');
 });
 
-// ============================================================
+// ================================================================
 // MAKE FUNCTIONS GLOBALLY AVAILABLE
-// ============================================================
+// ================================================================
 
 window.navigateTo = navigateTo;
 window.updatePrograms = updatePrograms;
@@ -2740,6 +2865,7 @@ window.selectType = selectType;
 window.handleKCSEDocument = handleKCSEDocument;
 window.handleIDDocument = handleIDDocument;
 window.handleDocUpload = handleDocUpload;
+window.handlePassportPhoto = handlePassportPhoto;
 window.removeDocument = removeDocument;
 window.saveDraft = saveDraft;
 window.submitAdmission = submitAdmission;
