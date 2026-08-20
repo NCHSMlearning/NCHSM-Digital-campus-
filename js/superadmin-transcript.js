@@ -793,12 +793,8 @@ window.showTranscriptPreview = function(student, marks, year) {
 };
 
 // ============================================================
-// RENDER A SPECIFIC BLOCK
-// ============================================================
-
-// ============================================================
 // RENDER A SPECIFIC BLOCK - WITH PROGRESSION MESSAGE ONLY
-// YEAR OF STUDY shows Academic Year (e.g., 2026/2027)
+// YEAR OF STUDY shows Year Level (Year 1, Year 2, Year 3)
 // ============================================================
 
 function renderBlock(index) {
@@ -912,59 +908,42 @@ function renderBlock(index) {
     });
 
     // ============================================================
-    // 🎯 ACADEMIC YEAR CALCULATION
-    // Based on student intake year and current block
+    // 🎯 YEAR OF STUDY CALCULATION
+    // Introductory, Block 1 → Year 1
+    // Block 2, Block 3 → Year 2
+    // Block 4, Block 5, Final → Year 3
     // ============================================================
     
-    // Get intake year from student or use the selected year
-    const intakeYear = parseInt(student.intake_year) || parseInt(year) || 2025;
+    let yearOfStudy = 'N/A';
     
-    // Define block to academic year mapping
-    // Block 0 (Introductory) -> intakeYear/intakeYear+1
-    // Block 1 -> intakeYear+1/intakeYear+2
-    // Block 2 -> intakeYear+2/intakeYear+3
-    // etc.
-    const blockMapping = {
-        'Introductory': 0,
-        'Block 1': 1,
-        'Block 2': 2,
-        'Block 3': 3,
-        'Block 4': 4,
-        'Block 5': 5,
-        'Block 6': 6,
-        'Final': 7
+    // Define block to year mapping for KRCHN
+    const yearMapping = {
+        'Introductory': 'Year 1',
+        'Block 1': 'Year 1',
+        'Block 2': 'Year 2',
+        'Block 3': 'Year 2',
+        'Block 4': 'Year 3',
+        'Block 5': 'Year 3',
+        'Final': 'Year 3'
     };
     
-    // Get block year offset
-    let blockOffset = blockMapping[blockName];
-    
-    // If block not found in mapping, try to extract number from block name
-    if (blockOffset === undefined) {
-        const match = blockName.match(/\d+/);
-        if (match) {
-            blockOffset = parseInt(match[0]);
+    // Check if it's a KRCHN block
+    if (yearMapping[blockName]) {
+        yearOfStudy = yearMapping[blockName];
+    } else {
+        // For TVET or other programs, try to extract year from block name
+        const yearMatch = blockName.match(/Year\s+(\d+)/i);
+        if (yearMatch) {
+            yearOfStudy = `Year ${yearMatch[1]}`;
         } else {
-            blockOffset = 0;
-        }
-    }
-    
-    // Calculate academic year
-    const startYear = intakeYear + blockOffset;
-    const endYear = startYear + 1;
-    const academicYear = `${startYear}/${endYear}`;
-    
-    // For TVET terms, use a different mapping
-    let displayYearOfStudy = academicYear;
-    if (isTVET) {
-        // TVET: Year 1 Term 1 -> intakeYear/intakeYear+1
-        // Year 1 Term 2 -> intakeYear/intakeYear+1
-        // Year 2 Term 1 -> intakeYear+1/intakeYear+2
-        const termMatch = blockName.match(/Year\s+(\d+)/);
-        if (termMatch) {
-            const yearNum = parseInt(termMatch[1]);
-            const startYearTVET = intakeYear + (yearNum - 1);
-            const endYearTVET = startYearTVET + 1;
-            displayYearOfStudy = `${startYearTVET}/${endYearTVET}`;
+            // Default fallback - try to extract number
+            const numMatch = blockName.match(/\d+/);
+            if (numMatch) {
+                const num = parseInt(numMatch[0]);
+                if (num <= 1) yearOfStudy = 'Year 1';
+                else if (num <= 3) yearOfStudy = 'Year 2';
+                else yearOfStudy = 'Year 3';
+            }
         }
     }
 
@@ -998,7 +977,7 @@ function renderBlock(index) {
                     All ${blockTotal} units passed with ${blockPassRate}% success rate
                 </div>
                 <div style="font-size: 11px; color: #065f46; margin-top: 4px; border-top: 1px dashed #86efac; padding-top: 6px;">
-                    ${programTypeLabel} ${currentBlockIndex + 1} ✓ → ${programTypeLabel} ${nextBlockIndex + 1} · Academic Year: ${academicYear}
+                    ${programTypeLabel} ${currentBlockIndex + 1} ✓ → ${programTypeLabel} ${nextBlockIndex + 1} · ${yearOfStudy}
                 </div>
             </div>
         `;
@@ -1020,7 +999,7 @@ function renderBlock(index) {
                     All ${blockTotal} units passed with ${blockPassRate}% success rate
                 </div>
                 <div style="font-size: 11px; color: #5b21b6; margin-top: 4px; border-top: 1px dashed #c4b5fd; padding-top: 6px;">
-                    🎓 Program Complete — Ready for Graduation · Academic Year: ${academicYear}
+                    🎓 Program Complete — Ready for Graduation · ${yearOfStudy}
                 </div>
             </div>
         `;
@@ -1046,7 +1025,7 @@ function renderBlock(index) {
                     ${failedUnits} unit(s) failed: ${escapeHtml(failedList)}
                 </div>
                 <div style="font-size: 11px; color: #991b1b; margin-top: 4px; border-top: 1px dashed #fca5a5; padding-top: 6px;">
-                    Please consult Academic Registrar for retake scheduling · Academic Year: ${academicYear}
+                    Please consult Academic Registrar for retake scheduling · ${yearOfStudy}
                 </div>
             </div>
         `;
@@ -1068,7 +1047,7 @@ function renderBlock(index) {
                     No units passed in this block
                 </div>
                 <div style="font-size: 11px; color: #991b1b; margin-top: 4px; border-top: 1px dashed #fca5a5; padding-top: 6px;">
-                    Please contact Academic Registrar immediately · Academic Year: ${academicYear}
+                    Please contact Academic Registrar immediately · ${yearOfStudy}
                 </div>
             </div>
         `;
@@ -1144,7 +1123,7 @@ function renderBlock(index) {
                     <div><span style="font-weight: 600; font-size: 11px; color: #475569;">NAME</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.full_name || 'Unknown')}</span></div>
                     <div><span style="font-weight: 600; font-size: 11px; color: #475569;">ADMISSION NUMBER</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.student_id || 'N/A')}</span></div>
                     <div><span style="font-weight: 600; font-size: 11px; color: #475569;">PROGRAMME</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.program || 'N/A')}</span></div>
-                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">YEAR OF STUDY</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(displayYearOfStudy)}</span></div>
+                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">YEAR OF STUDY</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(yearOfStudy)}</span></div>
                 </div>
             </div>
             
