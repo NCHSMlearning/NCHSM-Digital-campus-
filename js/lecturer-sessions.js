@@ -1,9 +1,10 @@
-// js/lecturer-sessions.js - COMPLETE WITH UNIT FILTERING
+// js/lecturer-sessions.js - COMPLETE WITH TVET SUPPORT
 /**
  * NCHSM Lecturer Sessions Module
  * Uses scheduled_sessions table with correct column names
  * Includes session open/close for student attendance sign-in
  * STRICT UNIT ASSIGNMENT FILTERING - Same as Resources and Marks
+ * Supports both Nursing (KRCHN) and TVET programs
  */
 
 const LecturerSessions = {
@@ -12,9 +13,75 @@ const LecturerSessions = {
     lecturerUuid: null,
     assignedUnits: [],
     isProcessing: false,
+    isTVET: false,
+    currentProgram: 'KRCHN',
     
+    // ============================================
+    // PROGRAM TYPE DETECTION
+    // ============================================
+    getProgramType() {
+        return window.CURRENT_PROGRAM_TYPE || 'KRCHN';
+    },
+    
+    isTVETProgram() {
+        return this.getProgramType() === 'TVET';
+    },
+    
+    getBlockDisplay(blockValue) {
+        if (!blockValue) return 'N/A';
+        
+        const programType = this.getProgramType();
+        if (programType === 'TVET') {
+            // TVET: Y1T1 → Year 1 Term 1
+            const match = blockValue.match(/^Y(\d)T(\d)$/);
+            if (match) {
+                const year = parseInt(match[1]);
+                const term = parseInt(match[2]);
+                const termNames = ['', 'First', 'Second', 'Third'];
+                return `Year ${year} ${termNames[term] || term} Term`;
+            }
+            if (blockValue.includes('Term')) return blockValue;
+            if (blockValue === 'Introductory') return '🌟 Introductory Term';
+            return blockValue;
+        } else {
+            // Nursing: Block 1, Block 2, etc.
+            if (blockValue.startsWith('Block ')) return blockValue;
+            if (blockValue === 'Introductory') return '🌟 Introductory Block';
+            if (blockValue === 'Final') return '🏆 Final Block';
+            return `Block ${blockValue}`;
+        }
+    },
+    
+    getBlockShortName(blockValue) {
+        if (!blockValue) return 'N/A';
+        const programType = this.getProgramType();
+        if (programType === 'TVET') {
+            return blockValue; // Keep Y1T1 format
+        } else {
+            if (blockValue.startsWith('Block ')) return blockValue;
+            if (blockValue === 'Introductory') return 'Introductory';
+            if (blockValue === 'Final') return 'Final';
+            return `Block ${blockValue}`;
+        }
+    },
+    
+    getProgramTypeLabel() {
+        return this.isTVETProgram() ? '🔧 TVET' : '🎓 Nursing';
+    },
+    
+    getProgramEmoji() {
+        return this.isTVETProgram() ? '🔧' : '🎓';
+    },
+    
+    // ============================================
+    // INITIALIZATION
+    // ============================================
     async init() {
         console.log('📅 Initializing Lecturer Sessions...');
+        this.currentProgram = this.getProgramType();
+        this.isTVET = this.isTVETProgram();
+        console.log(`📚 Program Type: ${this.getProgramTypeLabel()}`);
+        
         await this.resolveLecturerId();
         await this.loadAssignedUnits();
         await this.loadSessions();
@@ -47,7 +114,6 @@ const LecturerSessions = {
             console.log('🔍 Auth ID (UUID):', authId);
             console.log('🔍 Lecturer name:', fullName);
             
-            // Store UUID for sessions (created_by is UUID)
             this.lecturerUuid = authId;
             
             const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(String(authId));
@@ -102,124 +168,137 @@ const LecturerSessions = {
         }
     },
     
-   // ============================================================
-// LOAD ASSIGNED UNITS - GET ALL UNITS FOR THE LECTURER
-// ============================================================
-async loadAssignedUnits() {
-    try {
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase) {
-            console.warn('⚠️ Supabase not available');
-            return;
-        }
-        
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        if (!profile) {
-            console.warn('⚠️ No lecturer profile found');
-            return;
-        }
-        
-        const fullName = profile.full_name;
-        console.log('🔍 Loading assigned units for lecturer:', fullName);
-        
-        // ✅ Get ALL assignments for this lecturer by name (covers all IDs)
-        const { data: assignments, error } = await supabase
-            .from('lecturer_subject_assignments')
-            .select('subject_name, subject_code, block, program, academic_year, lecturer_id')
-            .ilike('lecturer_name', `%${fullName}%`);
-        
-        if (error) {
-            console.error('❌ Error loading assigned units:', error);
-            this.assignedUnits = [];
-            this.populateUnitDropdowns();
-            return;
-        }
-        
-        // ✅ Filter to only KRCHN program (or show all if needed)
-        const krchnUnits = assignments?.filter(u => u.program === 'KRCHN') || [];
-        const allUnits = assignments || [];
-        
-        // ✅ Use KRCHN units, but if none, use all
-        this.assignedUnits = krchnUnits.length > 0 ? krchnUnits : allUnits;
-        
-        console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for KRCHN:`);
-        console.log('📚 Units:', this.assignedUnits.map(u => `${u.subject_name} (${u.lecturer_id})`));
-        
-        // ✅ Store all lecturer IDs found for this lecturer
-        const lecturerIds = [...new Set(this.assignedUnits.map(u => u.lecturer_id))];
-        console.log('📚 Lecturer IDs found:', lecturerIds);
-        
-        // ✅ Set the primary lecturer ID (use the one with most units)
-        if (lecturerIds.length > 0) {
-            // Count units per lecturer
-            const counts = {};
-            this.assignedUnits.forEach(u => {
-                counts[u.lecturer_id] = (counts[u.lecturer_id] || 0) + 1;
-            });
-            // Find the lecturer with most units
-            let maxCount = 0;
-            let primaryId = lecturerIds[0];
-            for (const [id, count] of Object.entries(counts)) {
-                if (count > maxCount) {
-                    maxCount = count;
-                    primaryId = id;
-                }
+    // ============================================
+    // LOAD ASSIGNED UNITS - WITH TVET SUPPORT
+    // ============================================
+    async loadAssignedUnits() {
+        try {
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('⚠️ Supabase not available');
+                return;
             }
-            this.lecturerAssignmentId = primaryId;
-            console.log(`✅ Primary lecturer ID set to: ${primaryId} (${maxCount} units)`);
+            
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (!profile) {
+                console.warn('⚠️ No lecturer profile found');
+                return;
+            }
+            
+            const fullName = profile.full_name;
+            const program = this.currentProgram || profile.program || 'KRCHN';
+            
+            console.log(`🔍 Loading assigned units for lecturer: ${fullName} (${this.getProgramTypeLabel()})`);
+            
+            const { data: assignments, error } = await supabase
+                .from('lecturer_subject_assignments')
+                .select('subject_name, subject_code, block, program, academic_year, lecturer_id')
+                .ilike('lecturer_name', `%${fullName}%`);
+            
+            if (error) {
+                console.error('❌ Error loading assigned units:', error);
+                this.assignedUnits = [];
+                this.populateUnitDropdowns();
+                return;
+            }
+            
+            // Filter by current program
+            const programUnits = assignments?.filter(u => u.program === program) || [];
+            const allUnits = assignments || [];
+            
+            this.assignedUnits = programUnits.length > 0 ? programUnits : allUnits;
+            
+            console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for ${program}`);
+            console.log('📚 Units:', this.assignedUnits.map(u => 
+                `${u.subject_name} (${u.block}) - ${this.getBlockDisplay(u.block)}`
+            ));
+            
+            const lecturerIds = [...new Set(this.assignedUnits.map(u => u.lecturer_id))];
+            console.log('📚 Lecturer IDs found:', lecturerIds);
+            
+            if (lecturerIds.length > 0) {
+                const counts = {};
+                this.assignedUnits.forEach(u => {
+                    counts[u.lecturer_id] = (counts[u.lecturer_id] || 0) + 1;
+                });
+                let maxCount = 0;
+                let primaryId = lecturerIds[0];
+                for (const [id, count] of Object.entries(counts)) {
+                    if (count > maxCount) {
+                        maxCount = count;
+                        primaryId = id;
+                    }
+                }
+                this.lecturerAssignmentId = primaryId;
+                console.log(`✅ Primary lecturer ID set to: ${primaryId} (${maxCount} units)`);
+            }
+            
+            this.populateUnitDropdowns();
+            this.populateBlockDropdown();
+            
+        } catch (error) {
+            console.error('❌ Failed to load assigned units:', error);
+            this.assignedUnits = [];
+        }
+    },
+    
+    // ============================================
+    // POPULATE UNIT DROPDOWNS - WITH TVET BLOCKS
+    // ============================================
+    populateUnitDropdowns() {
+        const unitSelect = document.getElementById('sessionUnit');
+        if (!unitSelect) return;
+        
+        const units = this.assignedUnits;
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
+        
+        if (units && units.length > 0) {
+            unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
+                units.map(u => {
+                    const blockDisplay = this.getBlockDisplay(u.block);
+                    return `<option value="${u.subject_name}" data-block="${u.block || ''}">
+                        ${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name} 
+                        (${blockDisplay})
+                        ${this.isTVET ? ' 🔧' : ''}
+                    </option>`;
+                }).join('');
+            console.log(`📚 Populated ${units.length} assigned units in dropdown (${typeLabel})`);
+        } else {
+            unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
+            console.warn('⚠️ No assigned units to populate');
+        }
+    },
+    
+    // ============================================
+    // POPULATE BLOCK DROPDOWN - WITH TVET BLOCKS
+    // ============================================
+    populateBlockDropdown() {
+        const blockSelect = document.getElementById('sessionBlockTerm');
+        if (!blockSelect) return;
+        
+        const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
+        const typeLabel = this.getProgramTypeLabel();
+        
+        if (blocks.length > 0) {
+            blockSelect.innerHTML = '<option value="">-- Select Block --</option>' +
+                blocks.map(b => {
+                    const displayName = this.getBlockDisplay(b);
+                    return `<option value="${b}">${displayName}</option>`;
+                }).join('');
+            console.log(`📚 Populated ${blocks.length} blocks:`, blocks.map(b => this.getBlockDisplay(b)));
+        } else {
+            blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
         }
         
-        // ✅ Populate dropdowns
-        this.populateUnitDropdowns();
-        this.populateBlockDropdown();
-        
-    } catch (error) {
-        console.error('❌ Failed to load assigned units:', error);
-        this.assignedUnits = [];
-    }
-},
-   // ============================================================
-// POPULATE UNIT DROPDOWNS - SHOW ALL ASSIGNED UNITS
-// ============================================================
-populateUnitDropdowns() {
-    const unitSelect = document.getElementById('sessionUnit');
-    if (!unitSelect) return;
+        // Update block filter label
+        const label = document.getElementById('blockFilterLabel');
+        if (label) {
+            const blockType = this.isTVET ? 'Term' : 'Block';
+            label.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${blockType}`;
+        }
+    },
     
-    const units = this.assignedUnits;
-    
-    if (units && units.length > 0) {
-        // ✅ Show all assigned units with their block
-        unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
-            units.map(u => 
-                `<option value="${u.subject_name}" data-block="${u.block || ''}">
-                    ${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name} 
-                    ${u.block ? '(' + u.block + ')' : ''}
-                </option>`
-            ).join('');
-        console.log(`📚 Populated ${units.length} assigned units in dropdown`);
-    } else {
-        unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
-        console.warn('⚠️ No assigned units to populate');
-    }
-},
-    // ============================================================
-// POPULATE BLOCK DROPDOWN - SHOW ALL BLOCKS FROM ASSIGNED UNITS
-// ============================================================
-populateBlockDropdown() {
-    const blockSelect = document.getElementById('sessionBlockTerm');
-    if (!blockSelect) return;
-    
-    // ✅ Get unique blocks from ALL assigned units
-    const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-    
-    if (blocks.length > 0) {
-        blockSelect.innerHTML = '<option value="">-- Select Block --</option>' +
-            blocks.map(b => `<option value="${b}">${b}</option>`).join('');
-        console.log(`📚 Populated ${blocks.length} blocks:`, blocks);
-    } else {
-        blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
-    }
-},
     // ============================================
     // LOAD SESSIONS - ONLY THIS LECTURER'S SESSIONS
     // ============================================
@@ -239,7 +318,6 @@ populateBlockDropdown() {
                 return;
             }
             
-            // ✅ ONLY fetch sessions created by this lecturer
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
                 .select('*')
@@ -255,7 +333,7 @@ populateBlockDropdown() {
             this.renderSessions();
             this.updateStats();
             
-            console.log(`✅ Loaded ${this.sessions.length} sessions (only your sessions)`);
+            console.log(`✅ Loaded ${this.sessions.length} sessions (only your sessions) - ${this.getProgramTypeLabel()}`);
             
         } catch (error) {
             console.error('Failed to load sessions:', error);
@@ -265,148 +343,157 @@ populateBlockDropdown() {
         }
     },
     
-   // ============================================
-// RENDER SESSIONS - WITH UNIT DISPLAY
-// ============================================
-renderSessions() {
-    const tbody = document.getElementById('sessionsTable');
-    if (!tbody) return;
-    
-    const sessions = this.sessions;
-    
-    if (!sessions || sessions.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
-                    <i class="fas fa-calendar-plus" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
-                    <h3 style="color: #475569; margin: 0 0 8px 0;">No Sessions Scheduled</h3>
-                    <p style="margin: 0; font-size: 14px;">Schedule your first session using the form above.</p>
-                </td>
-            </tr>
-        `;
-        return;
-    }
-    
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    
-    const statusBadges = {
-        'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
-        'approved': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Approved</span>',
-        'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Rejected</span>',
-        'completed': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📌 Completed</span>',
-        'active': '<span style="background: #10b981; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🟢 Active</span>',
-        'closed': '<span style="background: #6b7280; color: #1e293b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🔒 Closed</span>',
-        'scheduled': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📅 Scheduled</span>'
-    };
-    
-    const sessionTypeLabels = {
-        'Class': '📚 Class',
-        'Clinical': '🏥 Clinical',
-        'Lab': '🔬 Lab',
-        'Tutorial': '📝 Tutorial',
-        'Exam': '📝 Exam'
-    };
-    
-    tbody.innerHTML = sessions.map(session => {
-        const sessionDate = session.session_date ? new Date(session.session_date) : null;
-        const isToday = sessionDate && sessionDate.toDateString() === today.toDateString();
-        const isPast = sessionDate && sessionDate < today;
-        const isActive = session.status === 'active' || session.is_active === true;
+    // ============================================
+    // RENDER SESSIONS - WITH TVET SUPPORT
+    // ============================================
+    renderSessions() {
+        const tbody = document.getElementById('sessionsTable');
+        if (!tbody) return;
         
-        const dateTime = session.session_date 
-            ? (this.formatDate(session.session_date)) + (session.session_time ? ' ' + session.session_time : '')
-            : 'N/A';
+        const sessions = this.sessions;
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
         
-        const status = session.approval_status || 'scheduled';
-        const statusBadge = statusBadges[status] || statusBadges.scheduled;
-        
-        const sessionType = session.session_type || 'Class';
-        const sessionTypeLabel = sessionTypeLabels[sessionType] || sessionType;
-        
-        // ✅ Display unit name (use unit_name, fallback to course_name)
-        const unitDisplay = session.unit_name || session.course_name || 'N/A';
-        
-        const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
-        const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
-        
-        // Session control buttons
-        let sessionControls = '';
-        if (sessionDate && sessionDate >= today) {
-            if (!isActive && status !== 'closed') {
-                sessionControls += `
-                    <button onclick="LecturerSessions.openSession('${session.id}')" 
-                            style="background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                            onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-                        <i class="fas fa-play"></i> Open
-                    </button>
-                `;
-            } else if (isActive) {
-                sessionControls += `
-                    <button onclick="LecturerSessions.closeSession('${session.id}')" 
-                            style="background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                            onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
-                        <i class="fas fa-stop"></i> Close
-                    </button>
-                `;
-            }
+        if (!sessions || sessions.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                        <i class="fas fa-calendar-plus" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
+                        <h3 style="color: #475569; margin: 0 0 8px 0;">No Sessions Scheduled</h3>
+                        <p style="margin: 0; font-size: 14px;">Schedule your first session using the form above. (${typeLabel})</p>
+                    </td>
+                </tr>
+            `;
+            return;
         }
         
-        const titleDisplay = session.session_title || session.title || 'N/A';
+        const today = new Date();
+        today.setHours(0, 0, 0, 0);
         
-        return `
-            <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle} ${rowClass}" 
-                onmouseover="this.style.background='${isActive ? '#bfdbfe' : (isToday ? '#bfdbfe' : '#f8fafc')}'" 
-                onmouseout="this.style.background='${isActive ? '#d1fae5' : (isToday ? '#dbeafe' : 'transparent')}'">
-                <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
-                    ${this.escapeHtml(titleDisplay)}
-                    ${isActive ? '<span style="font-size: 10px; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">🟢 OPEN</span>' : ''}
-                    ${isToday && !isActive ? '<span style="font-size: 10px; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">TODAY</span>' : ''}
-                    ${isPast && !isActive ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 8px;">(Past)</span>' : ''}
-                </td>
-                <td style="padding: 14px 18px; color: #475569;">
-                    ${dateTime}
-                </td>
-                <td style="padding: 14px 18px; color: #475569;">
-                    ${sessionTypeLabel}
-                </td>
-                <td style="padding: 14px 18px; color: #475569; font-weight: 500;">
-                    ${this.escapeHtml(unitDisplay)}
-                </td>
-                <td style="padding: 14px 18px; color: #475569;">
-                    ${this.escapeHtml(session.target_program || 'N/A')}/${this.escapeHtml(session.block_term || 'N/A')}
-                </td>
-                <td style="padding: 14px 18px; text-align: center;">
-                    ${statusBadge}
-                </td>
-                <td style="padding: 14px 18px; text-align: center;">
-                    <button onclick="LecturerSessions.viewAttendees('${session.id}')" 
-                            style="background: #4C1D95; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                            onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
-                        <i class="fas fa-users"></i> View
-                    </button>
-                </td>
-                <td style="padding: 14px 18px; text-align: center;">
-                    <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
-                        <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
-                                style="background: #2563eb; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
-                            <i class="fas fa-link"></i> Link
+        const statusBadges = {
+            'pending': '<span style="background: #fef3c7; color: #92400e; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">⏳ Pending</span>',
+            'approved': '<span style="background: #d1fae5; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">✅ Approved</span>',
+            'rejected': '<span style="background: #fee2e2; color: #991b1b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">❌ Rejected</span>',
+            'completed': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📌 Completed</span>',
+            'active': '<span style="background: #10b981; color: #065f46; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🟢 Active</span>',
+            'closed': '<span style="background: #6b7280; color: #1e293b; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">🔒 Closed</span>',
+            'scheduled': '<span style="background: #dbeafe; color: #1e40af; padding: 4px 12px; border-radius: 12px; font-size: 11px; font-weight: 500;">📅 Scheduled</span>'
+        };
+        
+        const sessionTypeLabels = {
+            'Class': '📚 Class',
+            'Clinical': '🏥 Clinical',
+            'Lab': '🔬 Lab',
+            'Tutorial': '📝 Tutorial',
+            'Exam': '📝 Exam'
+        };
+        
+        tbody.innerHTML = sessions.map(session => {
+            const sessionDate = session.session_date ? new Date(session.session_date) : null;
+            const isToday = sessionDate && sessionDate.toDateString() === today.toDateString();
+            const isPast = sessionDate && sessionDate < today;
+            const isActive = session.status === 'active' || session.is_active === true;
+            
+            const dateTime = session.session_date 
+                ? (this.formatDate(session.session_date)) + (session.session_time ? ' ' + session.session_time : '')
+                : 'N/A';
+            
+            const status = session.approval_status || 'scheduled';
+            const statusBadge = statusBadges[status] || statusBadges.scheduled;
+            
+            const sessionType = session.session_type || 'Class';
+            const sessionTypeLabel = sessionTypeLabels[sessionType] || sessionType;
+            
+            // ✅ Display unit name with block display
+            const unitDisplay = session.unit_name || session.course_name || 'N/A';
+            const blockDisplay = session.block_term ? this.getBlockDisplay(session.block_term) : 'N/A';
+            
+            const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
+            const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
+            
+            let sessionControls = '';
+            if (sessionDate && sessionDate >= today) {
+                if (!isActive && status !== 'closed') {
+                    sessionControls += `
+                        <button onclick="LecturerSessions.openSession('${session.id}')" 
+                                style="background: #10b981; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                            <i class="fas fa-play"></i> Open
                         </button>
-                        ${(status === 'pending' || status === 'scheduled') ? `
-                            <button onclick="LecturerSessions.cancelSession('${session.id}')" 
-                                    style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
-                                    onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
-                                <i class="fas fa-times"></i>
+                    `;
+                } else if (isActive) {
+                    sessionControls += `
+                        <button onclick="LecturerSessions.closeSession('${session.id}')" 
+                                style="background: #ef4444; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                onmouseover="this.style.background='#dc2626'" onmouseout="this.style.background='#ef4444'">
+                            <i class="fas fa-stop"></i> Close
+                        </button>
+                    `;
+                }
+            }
+            
+            const titleDisplay = session.session_title || session.title || 'N/A';
+            const isTVET = this.isTVET;
+            
+            return `
+                <tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; ${rowStyle} ${rowClass}" 
+                    onmouseover="this.style.background='${isActive ? '#bfdbfe' : (isToday ? '#bfdbfe' : '#f8fafc')}'" 
+                    onmouseout="this.style.background='${isActive ? '#d1fae5' : (isToday ? '#dbeafe' : 'transparent')}'">
+                    <td style="padding: 14px 18px; font-weight: 600; color: #1e293b;">
+                        ${this.escapeHtml(titleDisplay)}
+                        ${isTVET ? ' <span style="font-size: 9px; background: #8b5cf6; color: white; padding: 2px 8px; border-radius: 10px;">TVET</span>' : ''}
+                        ${isActive ? '<span style="font-size: 10px; background: #10b981; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">🟢 OPEN</span>' : ''}
+                        ${isToday && !isActive ? '<span style="font-size: 10px; background: #4C1D95; color: white; padding: 2px 8px; border-radius: 10px; margin-left: 8px;">TODAY</span>' : ''}
+                        ${isPast && !isActive ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 8px;">(Past)</span>' : ''}
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569;">
+                        ${dateTime}
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569;">
+                        ${sessionTypeLabel}
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569; font-weight: 500;">
+                        ${this.escapeHtml(unitDisplay)}
+                        ${session.unit_name ? `<div style="font-size: 10px; color: #94a3b8;">${blockDisplay}</div>` : ''}
+                    </td>
+                    <td style="padding: 14px 18px; color: #475569;">
+                        ${this.escapeHtml(session.target_program || 'N/A')}
+                        <div style="font-size: 10px; color: #94a3b8;">${blockDisplay}</div>
+                    </td>
+                    <td style="padding: 14px 18px; text-align: center;">
+                        ${statusBadge}
+                    </td>
+                    <td style="padding: 14px 18px; text-align: center;">
+                        <button onclick="LecturerSessions.viewAttendees('${session.id}')" 
+                                style="background: #4C1D95; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                onmouseover="this.style.background='#5b21b6'" onmouseout="this.style.background='#4C1D95'">
+                            <i class="fas fa-users"></i> View
+                        </button>
+                    </td>
+                    <td style="padding: 14px 18px; text-align: center;">
+                        <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                            <button onclick="LecturerSessions.generateAttendanceLink('${session.id}')" 
+                                    style="background: #2563eb; color: white; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                    onmouseover="this.style.background='#1d4ed8'" onmouseout="this.style.background='#2563eb'">
+                                <i class="fas fa-link"></i> Link
                             </button>
-                        ` : ''}
-                        ${sessionControls}
-                    </div>
-                </td>
-            </tr>
-        `;
-    }).join('');
-},
+                            ${(status === 'pending' || status === 'scheduled') ? `
+                                <button onclick="LecturerSessions.cancelSession('${session.id}')" 
+                                        style="background: #fee2e2; color: #dc2626; border: none; padding: 6px 10px; border-radius: 6px; cursor: pointer; font-size: 11px; display: inline-flex; align-items: center; gap: 3px;"
+                                        onmouseover="this.style.background='#fecaca'" onmouseout="this.style.background='#fee2e2'">
+                                    <i class="fas fa-times"></i>
+                                </button>
+                            ` : ''}
+                            ${sessionControls}
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+        const countDisplay = document.getElementById('sessionCountDisplay');
+        if (countDisplay) countDisplay.textContent = sessions.length;
+    },
     
     // ============================================
     // GENERATE ATTENDANCE LINK
@@ -441,7 +528,6 @@ renderSessions() {
             return;
         }
         
-        // ✅ Verify ownership
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only manage your own sessions.', 'warning');
@@ -468,7 +554,7 @@ renderSessions() {
                     opened_at: new Date().toISOString()
                 })
                 .eq('id', sessionId)
-                .eq('created_by', this.lecturerUuid); // ✅ Extra safety - only if owner
+                .eq('created_by', this.lecturerUuid);
             
             if (error) throw error;
             
@@ -497,7 +583,6 @@ renderSessions() {
             return;
         }
         
-        // ✅ Verify ownership
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only manage your own sessions.', 'warning');
@@ -524,7 +609,7 @@ renderSessions() {
                     closed_at: new Date().toISOString()
                 })
                 .eq('id', sessionId)
-                .eq('created_by', this.lecturerUuid); // ✅ Extra safety - only if owner
+                .eq('created_by', this.lecturerUuid);
             
             if (error) throw error;
             
@@ -549,7 +634,6 @@ renderSessions() {
             return;
         }
         
-        // ✅ Verify ownership
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only view attendees for your own sessions.', 'warning');
@@ -603,13 +687,11 @@ renderSessions() {
             }
             
             const profile = window.lecturerDB?.getCurrentUserProfile();
-            const program = profile?.program || profile?.department || 'KRCHN';
+            const program = this.currentProgram || profile?.program || profile?.department || 'KRCHN';
             const lecturerId = this.lecturerUuid || profile?.user_id;
-            const currentYear = new Date().getFullYear().toString();
             
             const today = new Date().toISOString().split('T')[0];
             
-            // ✅ Only fetch this lecturer's sessions
             const { data: sessions, error } = await supabase
                 .from('scheduled_sessions')
                 .select('*')
@@ -638,7 +720,7 @@ renderSessions() {
                     opened_at: new Date().toISOString()
                 })
                 .eq('id', session.id)
-                .eq('created_by', lecturerId); // ✅ Extra safety - only if owner
+                .eq('created_by', lecturerId);
             
             if (updateError) throw updateError;
             
@@ -674,7 +756,6 @@ renderSessions() {
                 return;
             }
             
-            // ✅ Only close sessions owned by this lecturer
             const { error } = await supabase
                 .from('scheduled_sessions')
                 .update({
@@ -712,7 +793,6 @@ renderSessions() {
             return;
         }
         
-        // ✅ Verify ownership
         const profile = window.lecturerDB?.getCurrentUserProfile();
         if (session.created_by !== this.lecturerUuid && session.created_by !== profile?.user_id) {
             window.showNotification('You can only cancel your own sessions.', 'warning');
@@ -737,7 +817,6 @@ renderSessions() {
                 throw new Error('Database connection not available');
             }
             
-            // ✅ Only delete if owner
             const { error } = await supabase
                 .from('scheduled_sessions')
                 .delete()
@@ -758,30 +837,42 @@ renderSessions() {
     },
     
     // ============================================
-    // POPULATE SESSION FORM - WITH ASSIGNED UNITS
+    // POPULATE SESSION FORM - WITH TVET SUPPORT
     // ============================================
     populateSessionForm() {
         const profile = window.lecturerDB?.getCurrentUserProfile();
-        const program = profile?.program || profile?.department;
+        const program = this.currentProgram || profile?.program || profile?.department;
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
         
+        // Program select
         const programSelect = document.getElementById('sessionProgram');
         if (programSelect && program) {
-            programSelect.innerHTML = `<option value="${program}">${program}</option>`;
+            programSelect.innerHTML = `<option value="${program}">${program} (${typeLabel})</option>`;
         }
         
-        // ✅ Populate blocks from assigned units (same as Resources)
+        // Block select with TVET display
         const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (blockSelect) {
             if (blocks.length > 0) {
                 blockSelect.innerHTML = '<option value="">-- Select Block --</option>' +
-                    blocks.map(b => `<option value="${b}">${b}</option>`).join('');
+                    blocks.map(b => {
+                        const displayName = this.getBlockDisplay(b);
+                        return `<option value="${b}">${displayName}</option>`;
+                    }).join('');
             } else {
                 blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
             }
         }
         
-        // ✅ Populate units from assigned units (same as Resources)
+        // Update block label
+        const blockLabel = document.getElementById('sessionBlockLabel');
+        if (blockLabel) {
+            blockLabel.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${this.isTVET ? 'Term' : 'Block'} *`;
+        }
+        
+        // Unit dropdown
         this.populateUnitDropdowns();
         
         // Session type
@@ -809,6 +900,12 @@ renderSessions() {
         if (timeInput) {
             timeInput.value = '09:00';
         }
+        
+        // Update form subtitle
+        const formSubtitle = document.querySelector('#addSessionForm .form-subtitle');
+        if (formSubtitle) {
+            formSubtitle.textContent = `${emoji} ${typeLabel} - Schedule sessions for your assigned units`;
+        }
     },
     
     // ============================================
@@ -817,7 +914,6 @@ renderSessions() {
     setupEventListeners() {
         const form = document.getElementById('addSessionForm');
         if (form) {
-            // Remove any existing listeners to prevent duplicates
             const newForm = form.cloneNode(true);
             form.parentNode.replaceChild(newForm, form);
             
@@ -827,7 +923,7 @@ renderSessions() {
             });
         }
         
-        // Block filter change - filter units by block (same as Resources)
+        // Block filter change - filter units by block
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (blockSelect) {
             blockSelect.addEventListener('change', () => {
@@ -837,9 +933,10 @@ renderSessions() {
                     const filtered = this.assignedUnits.filter(u => u.block === block || !block);
                     if (filtered.length > 0) {
                         unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
-                            filtered.map(u => 
-                                `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name}</option>`
-                            ).join('');
+                            filtered.map(u => {
+                                const blockDisplay = this.getBlockDisplay(u.block);
+                                return `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name} (${blockDisplay})</option>`;
+                            }).join('');
                     } else {
                         unitSelect.innerHTML = '<option value="">-- No units in this block --</option>';
                     }
@@ -849,13 +946,12 @@ renderSessions() {
     },
     
     // ============================================
-    // HANDLE ADD SESSION - Creates session for this lecturer
+    // HANDLE ADD SESSION - WITH TVET SUPPORT
     // ============================================
     async handleAddSession(e) {
         if (this.isProcessing) return;
         this.isProcessing = true;
         
-        // Prevent default if event exists
         if (e && typeof e.preventDefault === 'function') {
             e.preventDefault();
         }
@@ -894,32 +990,39 @@ renderSessions() {
             const profile = window.lecturerDB?.getCurrentUserProfile();
             const lecturerUuid = this.lecturerUuid || profile?.user_id;
             const supabase = window.lecturerDB?.supabase;
+            const typeLabel = this.getProgramTypeLabel();
             
             if (!supabase) {
                 throw new Error('Database connection not available');
             }
             
-          // In handleAddSession - add unit_name to the sessionData
-const sessionData = {
-    session_title: formData.title,
-    title: formData.title,
-    session_date: formData.date,
-    session_time: formData.time || '09:00:00',
-    target_program: formData.program,
-    program_type: formData.program,
-    block_term: formData.block,
-    session_type: formData.type,
-    location_name: formData.location || 'Lecture Hall',
-    created_by: lecturerUuid,
-    approval_status: 'pending',
-    status: 'scheduled',
-    is_active: false,
-    capacity: parseInt(formData.capacity) || 0,
-    intake_year: new Date().getFullYear().toString(),
-    unit_name: formData.unit,  // ✅ Store the unit name
-    created_at: new Date().toISOString()
-};
-            console.log('📤 Scheduling session:', sessionData);
+            // Get block display for the session
+            const blockDisplay = this.getBlockDisplay(formData.block);
+            
+            const sessionData = {
+                session_title: formData.title,
+                title: formData.title,
+                session_date: formData.date,
+                session_time: formData.time || '09:00:00',
+                target_program: formData.program,
+                program_type: formData.program,
+                block_term: formData.block,
+                block_display: blockDisplay,
+                session_type: formData.type,
+                location_name: formData.location || 'Lecture Hall',
+                created_by: lecturerUuid,
+                approval_status: 'pending',
+                status: 'scheduled',
+                is_active: false,
+                capacity: parseInt(formData.capacity) || 0,
+                intake_year: new Date().getFullYear().toString(),
+                unit_name: formData.unit,
+                is_tvet: this.isTVET,
+                program_type_label: typeLabel,
+                created_at: new Date().toISOString()
+            };
+            
+            console.log(`📤 Scheduling ${typeLabel} session:`, sessionData);
             
             const { data: result, error } = await supabase
                 .from('scheduled_sessions')
@@ -931,9 +1034,8 @@ const sessionData = {
                 throw new Error('Failed to schedule session: ' + error.message);
             }
             
-            window.showNotification('✅ Session scheduled successfully!', 'success');
+            window.showNotification(`✅ ${typeLabel} session scheduled successfully!`, 'success');
             
-            // Reset form
             const form = document.getElementById('addSessionForm');
             if (form) form.reset();
             this.populateSessionForm();
@@ -959,6 +1061,8 @@ const sessionData = {
         const total = sessions.length;
         const today = new Date();
         today.setHours(0, 0, 0, 0);
+        const typeLabel = this.getProgramTypeLabel();
+        const emoji = this.getProgramEmoji();
         
         const active = sessions.filter(s => s.status === 'active' || s.is_active === true).length;
         const upcoming = sessions.filter(s => {
@@ -982,6 +1086,9 @@ const sessionData = {
         const activeEl = document.getElementById('activeSessionsStat');
         if (activeEl) activeEl.textContent = active;
         
+        const todayEl = document.getElementById('todaySessionsStat');
+        if (todayEl) todayEl.textContent = todaySessions;
+        
         const upcomingEl = document.getElementById('upcomingSessionsStat');
         if (upcomingEl) upcomingEl.textContent = upcoming;
         
@@ -996,10 +1103,16 @@ const sessionData = {
         
         const countDisplay = document.getElementById('sessionCountDisplay');
         if (countDisplay) countDisplay.textContent = sessions.length;
+        
+        // Update title
+        const titleEl = document.querySelector('#sessions-content h3');
+        if (titleEl) {
+            titleEl.textContent = `${emoji} My Sessions (${typeLabel})`;
+        }
     },
     
     // ============================================
-    // EXPORT SESSIONS
+    // EXPORT SESSIONS - WITH TVET SUPPORT
     // ============================================
     exportSessions() {
         const sessions = this.sessions;
@@ -1008,31 +1121,38 @@ const sessionData = {
             return;
         }
         
-        const headers = ['Topic', 'Date', 'Time', 'Type', 'Program', 'Block', 'Unit', 'Status', 'Approval'];
-        const rows = sessions.map(s => [
-            s.session_title || s.title || 'N/A',
-            s.session_date || 'N/A',
-            s.session_time || 'N/A',
-            s.session_type || 'Class',
-            s.target_program || 'N/A',
-            s.block_term || 'N/A',
-            s.unit_name || 'N/A',
-            s.status || 'scheduled',
-            s.approval_status || 'pending'
-        ]);
+        const typeLabel = this.getProgramTypeLabel();
+        
+        const headers = ['Topic', 'Date', 'Time', 'Type', 'Program', 'Block', 'Unit', 'Block Display', 'Status', 'Approval', 'Program Type'];
+        const rows = sessions.map(s => {
+            const blockDisplay = s.block_term ? this.getBlockDisplay(s.block_term) : 'N/A';
+            return [
+                s.session_title || s.title || 'N/A',
+                s.session_date || 'N/A',
+                s.session_time || 'N/A',
+                s.session_type || 'Class',
+                s.target_program || 'N/A',
+                s.block_term || 'N/A',
+                s.unit_name || 'N/A',
+                blockDisplay,
+                s.status || 'scheduled',
+                s.approval_status || 'pending',
+                typeLabel
+            ];
+        });
         
         const csv = [headers, ...rows].map(row => row.join(',')).join('\n');
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = `sessions_${new Date().toISOString().split('T')[0]}.csv`;
+        a.download = `sessions_${typeLabel}_${new Date().toISOString().split('T')[0]}.csv`;
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
         URL.revokeObjectURL(url);
         
-        window.showNotification('✅ Sessions exported successfully!', 'success');
+        window.showNotification(`✅ ${typeLabel} sessions exported successfully!`, 'success');
     },
     
     // ============================================
@@ -1126,6 +1246,7 @@ window.openTodaySession = openTodaySession;
 window.closeAllSessions = closeAllSessions;
 window.exportSessions = exportSessions;
 
-console.log('✅ LecturerSessions module loaded - Complete with unit filtering');
+console.log('✅ LecturerSessions module loaded - Complete with TVET support');
 console.log('🔒 Lecturers can only see and manage their own sessions');
 console.log('📚 Unit filtering matches Resources and Marks modules');
+console.log('📊 TVET Support: Enabled (Year X Term Y format)');
