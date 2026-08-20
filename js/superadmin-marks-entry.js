@@ -2821,16 +2821,13 @@ async function openMarksStudentManager() {
     try {
         // ✅ Use sb directly (or window.sb)
         if (!window.sb) throw new Error('Database not available');
-        
-        // ✅ SUPER ADMIN: Load ALL students (NO BLOCK FILTER)
         const { data: allStudents, error: studentError } = await window.sb
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, block, intake_year, program, status')
-            .eq('role', 'student')
-            .eq('program', program)
-            .eq('status', 'active')
-            // ✅ REMOVED: .eq('block', block)  ← THIS IS THE FIX!
-            .order('full_name', { ascending: true });
+    .from('consolidated_user_profiles_table')
+    .select('student_id, full_name, block, intake_year, program, status')
+    .eq('role', 'student')
+    .eq('program', program)
+    // ✅ REMOVED: .eq('status', 'active')  ← THIS WAS HIDING 100+ STUDENTS!
+    .order('full_name', { ascending: true });
         
         if (studentError) throw studentError;
         
