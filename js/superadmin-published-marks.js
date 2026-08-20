@@ -137,7 +137,7 @@ function getTVETStatus(score) {
 }
 
 // ============================================================
-// NURSING GRADING SYSTEM
+// NURSING GRADING SYSTEM - FIXED (NO + or -)
 // ============================================================
 
 function calculateNursingGrade(score) {
@@ -172,14 +172,25 @@ function getNursingStatus(score) {
 // ============================================================
 
 function calculateGrade(score, program) {
+    if (score === null || score === undefined || score === 0) {
+        return isTVETProgram(program) ? 'FAIL' : 'D';
+    }
     var isTVET = getProgramType(program) === 'TVET';
     if (isTVET) {
-        return calculateTVETGrade(score);
+        if (score >= 75) return 'A';
+        if (score >= 65) return 'B';
+        if (score >= 50) return 'C';
+        return 'FAIL';
+    } else {
+        if (score >= 75) return 'A';
+        if (score >= 65) return 'B';
+        if (score >= 60) return 'C';
+        return 'D';
     }
-    return calculateNursingGrade(score);
 }
 
 function calculatePoints(grade, program) {
+    if (!grade) return 0;
     var isTVET = getProgramType(program) === 'TVET';
     if (isTVET) {
         return calculateTVETPoints(grade);
@@ -210,6 +221,10 @@ function calculateGPA(marks) {
         totalPoints = totalPoints + (marks[i].points || 0);
     }
     return marks.length > 0 ? (totalPoints / marks.length) : 0;
+}
+
+function isTVETProgram(program) {
+    return getProgramType(program) === 'TVET';
 }
 
 // ============================================================
@@ -456,7 +471,7 @@ async function loadPublishedMarks() {
         try {
             var query = window.sb.from('student_marks').select('*');
             
-            // ✅ Apply filters
+            // Apply filters
             var yearFilter = document.getElementById('pm_year_filter')?.value;
             if (yearFilter && yearFilter !== 'all') {
                 query = query.eq('academic_year', yearFilter);
@@ -499,52 +514,52 @@ async function loadPublishedMarks() {
         await cacheUnitPrograms(marks);
         
         var processedMarks = [];
-       for (var i = 0; i < marks.length; i++) {
-    var mark = marks[i];
-    var program = PUBLISHED_STATE.unitProgramCache[mark.subject_name] || 'KRCHN';
-    
-    // Get retake info for THIS SPECIFIC UNIT
-    var retakeInfo = getStudentRetakeInfo(mark.admission_number, mark.subject_name);
-    var hasRetake = retakeInfo !== null && retakeInfo.count > 0;
-    
-    // ✅ Use retake score if available, otherwise use original
-    var finalScore = hasRetake && retakeInfo.score !== null ? retakeInfo.score : mark.final_score;
-    
-    // ✅ ALWAYS recalculate grade based on finalScore (retake score if available)
-    var grade = calculateGrade(finalScore, program);
-    var points = calculatePoints(grade, program);
-    var status = getGradingStatus(finalScore, program);
-    var comment = getGradeComment(finalScore, program);
-    
-    processedMarks.push({
-        id: mark.id,
-        admission_number: mark.admission_number,
-        student_name: mark.student_name,
-        subject_name: mark.subject_name,
-        block: mark.block,
-        cat1_score: mark.cat1_score,
-        cat2_score: mark.cat2_score,
-        exam_score: mark.exam_score,
-        final_score: finalScore, // Retake score or original
-        original_score: mark.final_score,
-        grade: grade, // ✅ RECALCULATED based on retake score
-        points: points, // ✅ RECALCULATED based on retake score
-        published: mark.published,
-        published_at: mark.published_at,
-        academic_year: mark.academic_year,
-        created_at: mark.created_at,
-        updated_at: mark.updated_at,
-        program: program,
-        status: status,
-        comment: comment,
-        hasRetake: hasRetake,
-        retakeCount: retakeInfo?.count || 0,
-        retakeScore: retakeInfo?.score || null,
-        retakeStatus: retakeInfo?.status || null,
-        retakeGrade: retakeInfo?.grade || null,
-        retakeHistory: retakeInfo?.history || []
-    });
-}
+        for (var i = 0; i < marks.length; i++) {
+            var mark = marks[i];
+            var program = PUBLISHED_STATE.unitProgramCache[mark.subject_name] || 'KRCHN';
+            
+            // Get retake info for THIS SPECIFIC UNIT
+            var retakeInfo = getStudentRetakeInfo(mark.admission_number, mark.subject_name);
+            var hasRetake = retakeInfo !== null && retakeInfo.count > 0;
+            
+            // Use retake score if available, otherwise use original
+            var finalScore = hasRetake && retakeInfo.score !== null ? retakeInfo.score : mark.final_score;
+            
+            // ALWAYS recalculate grade based on finalScore (retake score if available)
+            var grade = calculateGrade(finalScore, program);
+            var points = calculatePoints(grade, program);
+            var status = getGradingStatus(finalScore, program);
+            var comment = getGradeComment(finalScore, program);
+            
+            processedMarks.push({
+                id: mark.id,
+                admission_number: mark.admission_number,
+                student_name: mark.student_name,
+                subject_name: mark.subject_name,
+                block: mark.block,
+                cat1_score: mark.cat1_score,
+                cat2_score: mark.cat2_score,
+                exam_score: mark.exam_score,
+                final_score: finalScore,
+                original_score: mark.final_score,
+                grade: grade,
+                points: points,
+                published: mark.published,
+                published_at: mark.published_at,
+                academic_year: mark.academic_year,
+                created_at: mark.created_at,
+                updated_at: mark.updated_at,
+                program: program,
+                status: status,
+                comment: comment,
+                hasRetake: hasRetake,
+                retakeCount: retakeInfo?.count || 0,
+                retakeScore: retakeInfo?.score || null,
+                retakeStatus: retakeInfo?.status || null,
+                retakeGrade: retakeInfo?.grade || null,
+                retakeHistory: retakeInfo?.history || []
+            });
+        }
         
         if (PUBLISHED_STATE.currentProgramFilter === 'KRCHN') {
             processedMarks = processedMarks.filter(function(m) { return m.program === 'KRCHN'; });
