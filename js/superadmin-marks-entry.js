@@ -3247,7 +3247,206 @@ function renderStudentManager(blockWarning = '') {
     updateEnrolledSelectedCount();
 }
 
+// ============================================================
+// ENROLLED STUDENT SELECTION FUNCTIONS
+// ============================================================
 
+function updateEnrolledSelectedCount() {
+    const checkboxes = document.querySelectorAll('.enrolled-checkbox:checked');
+    const count = checkboxes.length;
+    
+    const countEl = document.getElementById('enrolledSelectedCount');
+    if (countEl) countEl.textContent = count;
+    
+    const dropBtn = document.getElementById('dropEnrolledBtn');
+    const dropCount = document.getElementById('dropEnrolledCount');
+    
+    if (dropBtn) {
+        dropBtn.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+    if (dropCount) dropCount.textContent = count;
+}
+
+function selectAllEnrolledStudents() {
+    document.querySelectorAll('.enrolled-checkbox').forEach(cb => {
+        cb.checked = true;
+    });
+    updateEnrolledSelectedCount();
+}
+
+function deselectAllEnrolledStudents() {
+    document.querySelectorAll('.enrolled-checkbox').forEach(cb => {
+        cb.checked = false;
+    });
+    updateEnrolledSelectedCount();
+}
+
+async function dropSelectedEnrolledStudents() {
+    const checkboxes = document.querySelectorAll('.enrolled-checkbox:checked');
+    const selected = Array.from(checkboxes).map(cb => cb.dataset.admission);
+    
+    if (selected.length === 0) {
+        showNotification('No students selected', 'warning');
+        return;
+    }
+    
+    const unit = me_currentUnit || document.getElementById('me_subject_select')?.value;
+    const block = me_currentBlock || document.getElementById('me_block_select')?.value;
+    const year = me_currentYear || document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!unit || !block) {
+        showNotification('Please select a unit and block first', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ${selected.length} selected student(s) from "${unit}"?\n\nTheir marks will be permanently deleted.`)) {
+        return;
+    }
+    
+    showLoadingScreen(`Removing ${selected.length} students...`, 'Removing Students');
+    updateLoadingProgress(10, 1, 'Processing...');
+    
+    try {
+        if (!window.sb) throw new Error('Database not available');
+        
+        let removed = 0;
+        let errors = 0;
+        
+        updateLoadingProgress(30, 1, 'Removing records...');
+        
+        for (const admission of selected) {
+            const { error } = await window.sb
+                .from('student_marks')
+                .delete()
+                .eq('admission_number', admission)
+                .eq('block', block)
+                .eq('subject_name', unit)
+                .eq('academic_year', year);
+            
+            if (error) {
+                console.error('❌ Error removing:', admission, error);
+                errors++;
+            } else {
+                removed++;
+            }
+        }
+        
+        hideLoadingScreen();
+        
+        if (errors > 0) {
+            showNotification(`⚠️ Removed ${removed} students, ${errors} errors`, 'warning');
+        } else {
+            showNotification(`✅ ${removed} students removed from "${unit}"`, 'success');
+        }
+        
+        // Refresh the student manager
+        openMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        hideLoadingScreen();
+        console.error('❌ Error removing students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+async function dropSingleEnrolledStudent(admission) {
+    const unit = me_currentUnit || document.getElementById('me_subject_select')?.value;
+    const block = me_currentBlock || document.getElementById('me_block_select')?.value;
+    const year = me_currentYear || document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!unit || !block) {
+        showNotification('Please select a unit and block first', 'warning');
+        return;
+    }
+    
+    // Get student name
+    let studentName = 'this student';
+    try {
+        const { data: student } = await window.sb
+            .from('consolidated_user_profiles_table')
+            .select('full_name')
+            .eq('student_id', admission)
+            .single();
+        if (student) studentName = student.full_name;
+    } catch (e) {}
+    
+    if (!confirm(`⚠️ Remove "${studentName}" from "${unit}"?\n\nTheir marks will be permanently deleted.`)) {
+        return;
+    }
+    
+    showLoadingScreen(`Removing ${studentName}...`, 'Removing Student');
+    updateLoadingProgress(10, 1, 'Processing...');
+    
+    try {
+        if (!window.sb) throw new Error('Database not available');
+        
+        const { error } = await window.sb
+            .from('student_marks')
+            .delete()
+            .eq('admission_number', admission)
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        hideLoadingScreen();
+        showNotification(`✅ ${studentName} removed from "${unit}"`, 'success');
+        
+        // Refresh
+        openMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        hideLoadingScreen();
+        console.error('❌ Error removing student:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
+
+async function clearAllEnrolledStudents() {
+    const unit = me_currentUnit || document.getElementById('me_subject_select')?.value;
+    const block = me_currentBlock || document.getElementById('me_block_select')?.value;
+    const year = me_currentYear || document.getElementById('me_year_select')?.value || '2025';
+    
+    if (!unit || !block) {
+        showNotification('Please select a unit and block first', 'warning');
+        return;
+    }
+    
+    if (!confirm(`⚠️ Remove ALL students from "${unit}"?\n\nThis will delete ALL marks for this unit.`)) {
+        return;
+    }
+    
+    showLoadingScreen('Removing all students...', 'Clearing Unit');
+    updateLoadingProgress(10, 1, 'Processing...');
+    
+    try {
+        if (!window.sb) throw new Error('Database not available');
+        
+        const { error } = await window.sb
+            .from('student_marks')
+            .delete()
+            .eq('block', block)
+            .eq('subject_name', unit)
+            .eq('academic_year', year);
+        
+        if (error) throw error;
+        
+        hideLoadingScreen();
+        showNotification(`✅ All students removed from "${unit}"`, 'success');
+        
+        // Refresh
+        openMarksStudentManager();
+        loadMarksEntry();
+        
+    } catch (error) {
+        hideLoadingScreen();
+        console.error('❌ Error clearing students:', error);
+        showNotification('❌ Error: ' + error.message, 'error');
+    }
+}
 // ============================================================
 // INTAKE YEAR FILTER FUNCTIONS
 // ============================================================
