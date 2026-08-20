@@ -1,7 +1,9 @@
 // ============================================================
-// LECTURER MARKS MODULE - COMPLETE WITH RETAKE/SUPPLEMENTARY SUPPORT
+// LECTURER MARKS MODULE - COMPLETE WITH TVET SUPPORT
 // FIXED: Lecturers save as DRAFT, not APPROVED
 // FIXED: Lecturers can edit retake marks
+// FIXED: TVET Grading: A(80%) B(65%) C(50%) E(0%)
+// FIXED: Nursing Grading: A(75%) B(65%) C(60%) D(0%)
 // ============================================================
 
 // ============================================================
@@ -68,6 +70,111 @@ function isUserAdmin() {
     } catch (e) {
         return false;
     }
+}
+
+// ============================================================
+// GRADING FUNCTIONS - TVET SUPPORT
+// ============================================================
+
+function getProgramType() {
+    return window.CURRENT_PROGRAM_TYPE || 'KRCHN';
+}
+
+function isTVET() {
+    return getProgramType() === 'TVET';
+}
+
+function getPassingThreshold() {
+    return isTVET() ? 50 : 60;
+}
+
+function getMarksEntryGrade(score, programType = null) {
+    if (!programType) {
+        programType = getProgramType();
+    }
+    
+    if (programType === 'TVET') {
+        // 🔧 TVET Grading: 
+        // A (80-100%) = 4.0 MASTERY
+        // B (65-79%) = 3.0 PROFICIENT
+        // C (50-64%) = 2.0 COMPETENT
+        // E (0-49%) = 0.0 NOT YET COMPETENT
+        if (score >= 80) {
+            return { grade: 'A', rating: 'MASTERY', points: 4.0, color: '#065f46' };
+        } else if (score >= 65) {
+            return { grade: 'B', rating: 'PROFICIENT', points: 3.0, color: '#1e40af' };
+        } else if (score >= 50) {
+            return { grade: 'C', rating: 'COMPETENT', points: 2.0, color: '#92400e' };
+        } else {
+            return { grade: 'E', rating: 'NOT YET COMPETENT', points: 0.0, color: '#991b1b' };
+        }
+    } else {
+        // 🎓 Nursing Grading: A(75%) B(65%) C(60%) D(0%)
+        if (score >= 75) {
+            return { grade: 'A', rating: 'Distinction', points: 4.0, color: '#065f46' };
+        } else if (score >= 65) {
+            return { grade: 'B', rating: 'Credit', points: 3.0, color: '#1e40af' };
+        } else if (score >= 60) {
+            return { grade: 'C', rating: 'Pass', points: 2.0, color: '#92400e' };
+        } else {
+            return { grade: 'D', rating: 'Fail', points: 0.0, color: '#991b1b' };
+        }
+    }
+}
+
+function getGradingReference(programType = null) {
+    if (!programType) {
+        programType = getProgramType();
+    }
+    
+    if (programType === 'TVET') {
+        return {
+            name: 'TVET Competency-Based Grading',
+            icon: '🔧',
+            color: '#8b5cf6',
+            passingScore: 50,
+            grades: [
+                { grade: 'A', range: '80-100%', points: 4.0, remarks: 'MASTERY' },
+                { grade: 'B', range: '65-79%', points: 3.0, remarks: 'PROFICIENT' },
+                { grade: 'C', range: '50-64%', points: 2.0, remarks: 'COMPETENT' },
+                { grade: 'E', range: '0-49%', points: 0.0, remarks: 'NOT YET COMPETENT' }
+            ]
+        };
+    } else {
+        return {
+            name: 'Nursing Grading System',
+            icon: '🎓',
+            color: '#4C1D95',
+            passingScore: 60,
+            grades: [
+                { grade: 'A', range: '75-100%', points: 4.0, remarks: 'Distinction' },
+                { grade: 'B', range: '65-74%', points: 3.0, remarks: 'Credit' },
+                { grade: 'C', range: '60-64%', points: 2.0, remarks: 'Pass' },
+                { grade: 'D', range: '0-59%', points: 0.0, remarks: 'Fail' }
+            ]
+        };
+    }
+}
+
+function calculateMarksEntryTotal(cat1, cat2, exam, type) {
+    let total = 0;
+    if (type === 'full') {
+        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
+    } else if (type === 'single_cat') {
+        total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
+    } else if (type === 'exam_only') {
+        total = Math.round(Math.min(exam,100) * 10) / 10;
+    } else if (type === 'cats_only') {
+        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
+    } else if (type === 'cat_only') {
+        total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
+    }
+    return total;
+}
+
+function isPassing(total) {
+    const threshold = getPassingThreshold();
+    return total >= threshold;
 }
 
 // ============================================================
@@ -226,39 +333,15 @@ function showNotification(message, type) {
 }
 
 // ============================================================
-// GRADING FUNCTIONS
-// ============================================================
-
-function getMarksEntryGrade(score) {
-    if (score >= 75) return { grade: 'A', rating: 'Distinction', points: 4.0, color: '#065f46' };
-    else if (score >= 65) return { grade: 'B', rating: 'Credit', points: 3.0, color: '#1e40af' };
-    else if (score >= 60) return { grade: 'C', rating: 'Pass', points: 2.0, color: '#92400e' };
-    else return { grade: 'D', rating: 'Fail', points: 0.0, color: '#991b1b' };
-}
-
-function calculateMarksEntryTotal(cat1, cat2, exam, type) {
-    let total = 0;
-    if (type === 'full') {
-        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60 * 30 + Math.min(exam,70)) * 10) / 10;
-    } else if (type === 'single_cat') {
-        total = Math.round((Math.min(cat1,30) + Math.min(exam,70)) * 10) / 10;
-    } else if (type === 'exam_only') {
-        total = Math.round(Math.min(exam,100) * 10) / 10;
-    } else if (type === 'cats_only') {
-        total = Math.round(((Math.min(cat1,30) + Math.min(cat2,30)) / 60) * 100 * 10) / 10;
-    } else if (type === 'cat_only') {
-        total = Math.round((Math.min(cat1,30) / 30) * 100 * 10) / 10;
-    }
-    return total;
-}
-
-// ============================================================
 // RETAKE/SUPPLEMENTARY FUNCTIONS
 // ============================================================
 
 async function loadLecturerRetakeData(block, unit, year) {
     try {
-        const { data, error } = await sb
+        const supabase = getSupabase();
+        if (!supabase) return {};
+        
+        const { data, error } = await supabase
             .from('student_retakes')
             .select('*')
             .eq('block', block)
@@ -285,9 +368,18 @@ async function loadLecturerRetakeData(block, unit, year) {
     }
 }
 
-// ============================================================
-// RECORD LECTURER RETAKE EXAM - WITH AUTO-UNPUBLISH
-// ============================================================
+function getSupabase() {
+    if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
+        return window.db.supabase;
+    }
+    if (window.supabase && typeof window.supabase.from === 'function') {
+        return window.supabase;
+    }
+    if (window.sb && typeof window.sb.from === 'function') {
+        return window.sb;
+    }
+    return null;
+}
 
 async function recordLecturerRetakeExam(admission, studentName, unit, block, program, year, examScore, remarks) {
     const existingRetakes = lecturerRetakeData[admission] || [];
@@ -299,8 +391,16 @@ async function recordLecturerRetakeExam(admission, studentName, unit, block, pro
     }
     
     const total = Math.min(examScore, 100);
-    const gradeInfo = getMarksEntryGrade(total);
-    const isPassing = total >= 60;
+    const programType = getProgramType();
+    const gradeInfo = getMarksEntryGrade(total, programType);
+    const threshold = getPassingThreshold();
+    const isPassing = total >= threshold;
+    
+    const supabase = getSupabase();
+    if (!supabase) {
+        showNotification('❌ Database not available', 'error');
+        return false;
+    }
     
     const retakeData = {
         admission_number: admission,
@@ -320,8 +420,7 @@ async function recordLecturerRetakeExam(admission, studentName, unit, block, pro
     };
     
     try {
-        // ✅ Insert retake record
-        const { error } = await sb
+        const { error } = await supabase
             .from('student_retakes')
             .insert(retakeData);
         
@@ -331,8 +430,8 @@ async function recordLecturerRetakeExam(admission, studentName, unit, block, pro
             return false;
         }
         
-        // ✅ STEP 1: Check if marks were published
-        const { data: existingMark, error: fetchError } = await sb
+        // Check if marks were published
+        const { data: existingMark, error: fetchError } = await supabase
             .from('student_marks')
             .select('published, approval_status')
             .eq('admission_number', admission)
@@ -345,7 +444,6 @@ async function recordLecturerRetakeExam(admission, studentName, unit, block, pro
             console.warn('Could not fetch existing mark status:', fetchError);
         }
         
-        // ✅ STEP 2: Build update data
         const updateData = {
             retake_count: attemptNumber,
             retake_score: examScore,
@@ -357,7 +455,6 @@ async function recordLecturerRetakeExam(admission, studentName, unit, block, pro
             updated_at: new Date().toISOString()
         };
         
-        // ✅ STEP 3: If marks were published, UNPUBLISH them
         if (existingMark && existingMark.published === true) {
             updateData.published = false;
             updateData.published_at = null;
@@ -365,7 +462,6 @@ async function recordLecturerRetakeExam(admission, studentName, unit, block, pro
             updateData.unpublished_at = new Date().toISOString();
             updateData.unpublished_reason = 'Retake recorded - needs re-publishing';
             
-            // If approval_status was 'approved', reset to 'draft' for review
             if (existingMark.approval_status === 'approved') {
                 updateData.approval_status = 'draft';
             }
@@ -373,8 +469,7 @@ async function recordLecturerRetakeExam(admission, studentName, unit, block, pro
             console.log(`🔓 Unpublished marks for ${studentName} (${admission}) - retake recorded, needs re-publishing`);
         }
         
-        // ✅ STEP 4: Update student_marks
-        const { error: updateError } = await sb
+        const { error: updateError } = await supabase
             .from('student_marks')
             .update(updateData)
             .eq('admission_number', admission)
@@ -386,39 +481,8 @@ async function recordLecturerRetakeExam(admission, studentName, unit, block, pro
             console.warn('Could not update student_marks with retake info:', updateError);
         }
         
-        // ✅ STEP 5: Log the action
-        try {
-            const logData = {
-                block: block,
-                subject: unit,
-                academic_year: year,
-                action: existingMark && existingMark.published === true ? 'retake_unpublished' : 'retake_recorded',
-                action_by: me_currentLecturer?.profile?.id || null,
-                action_by_name: me_currentLecturer?.profile?.full_name || 'Lecturer',
-                admission: admission,
-                student_name: studentName,
-                retake_attempt: attemptNumber,
-                retake_score: examScore,
-                created_at: new Date().toISOString()
-            };
-            
-            if (existingMark && existingMark.published === true) {
-                logData.reason = `Retake recorded (attempt #${attemptNumber}) - marks auto-unpublished for re-review`;
-            } else {
-                logData.reason = `Retake recorded (attempt #${attemptNumber})`;
-            }
-            
-            await sb
-                .from('mark_approval_logs')
-                .insert(logData);
-        } catch (logError) {
-            console.warn('Could not save approval log:', logError);
-        }
-        
-        // ✅ STEP 6: Refresh retake data
         await loadLecturerRetakeData(block, unit, year);
         
-        // ✅ STEP 7: Show notification
         let message = `✅ Retake recorded for ${studentName} (Attempt #${attemptNumber})`;
         if (existingMark && existingMark.published === true) {
             message += ' 🔓 Marks auto-unpublished - please review and re-publish';
@@ -546,10 +610,6 @@ function closeLecturerRetakeModal() {
     if (modal) modal.style.display = 'none';
 }
 
-// ============================================================
-// SAVE LECTURER RETAKE EXAM - ENHANCED WITH AUTO-UNPUBLISH FEEDBACK
-// ============================================================
-
 async function saveLecturerRetakeExam() {
     const scoreInput = document.getElementById('lretake_score');
     const remarksInput = document.getElementById('lretake_remarks');
@@ -557,19 +617,16 @@ async function saveLecturerRetakeExam() {
     const examScore = parseFloat(scoreInput?.value);
     const remarks = remarksInput?.value || '';
     
-    // ✅ Validate score
     if (isNaN(examScore) || examScore < 0 || examScore > 100) {
         showNotification('⚠️ Please enter a valid score between 0 and 100', 'warning');
         return;
     }
     
-    // ✅ Validate student selected
     if (!lecturerCurrentRetakeStudent) {
         showNotification('⚠️ No student selected', 'error');
         return;
     }
     
-    // ✅ Confirm before saving
     const studentName = lecturerCurrentRetakeStudent.name;
     const confirmMsg = `⚠️ Record retake for ${studentName}?\n\n` +
         `Score: ${examScore}%\n` +
@@ -581,7 +638,6 @@ async function saveLecturerRetakeExam() {
         return;
     }
     
-    // ✅ Show loading
     if (typeof showLoading === 'function') {
         showLoading(`Recording retake for ${studentName}...`);
     }
@@ -593,36 +649,34 @@ async function saveLecturerRetakeExam() {
         const program = me_currentProgram;
         const year = me_currentYear;
         
-        // ✅ Check if marks were published before recording retake
         let wasPublished = false;
         try {
-            const { data: existingMark } = await sb
-                .from('student_marks')
-                .select('published')
-                .eq('admission_number', admission)
-                .eq('subject_name', unit)
-                .eq('block', block)
-                .eq('academic_year', year)
-                .maybeSingle();
-            
-            wasPublished = existingMark?.published === true;
+            const supabase = getSupabase();
+            if (supabase) {
+                const { data: existingMark } = await supabase
+                    .from('student_marks')
+                    .select('published')
+                    .eq('admission_number', admission)
+                    .eq('subject_name', unit)
+                    .eq('block', block)
+                    .eq('academic_year', year)
+                    .maybeSingle();
+                
+                wasPublished = existingMark?.published === true;
+            }
         } catch (e) {
             console.warn('Could not check publish status:', e);
         }
         
-        // ✅ Record the retake
         const success = await recordLecturerRetakeExam(admission, name, unit, block, program, year, examScore, remarks);
         
-        // ✅ Hide loading
         if (typeof hideLoading === 'function') {
             hideLoading();
         }
         
         if (success) {
-            // ✅ Close modal
             closeLecturerRetakeModal();
             
-            // ✅ Show success message with auto-unpublish warning if applicable
             if (wasPublished) {
                 showNotification(
                     `✅ Retake recorded for ${name} (${examScore}%) 🔓 Marks were auto-unpublished. Please review and re-publish.`,
@@ -635,14 +689,12 @@ async function saveLecturerRetakeExam() {
                 );
             }
             
-            // ✅ Refresh the marks table
             setTimeout(() => {
                 loadMarksEntry();
             }, 500);
         }
         
     } catch (error) {
-        // ✅ Hide loading on error
         if (typeof hideLoading === 'function') {
             hideLoading();
         }
@@ -650,6 +702,7 @@ async function saveLecturerRetakeExam() {
         showNotification('❌ Error saving retake: ' + error.message, 'error');
     }
 }
+
 // ============================================================
 // GET LECTURER ASSIGNED UNITS
 // ============================================================
@@ -658,7 +711,10 @@ async function getLecturerAssignedUnits(lecturerId, block = null) {
     console.log('📚 Getting assigned units for lecturer:', lecturerId);
     
     try {
-        let query = sb
+        const supabase = getSupabase();
+        if (!supabase) return [];
+        
+        let query = supabase
             .from('lecturer_subject_assignments')
             .select('subject_name, subject_code, block, program, academic_year')
             .eq('lecturer_id', String(lecturerId));
@@ -691,7 +747,10 @@ async function loadLecturerByEmail(email) {
     console.log('📧 Loading lecturer by email:', email);
     
     try {
-        const { data: profile, error: profileError } = await sb
+        const supabase = getSupabase();
+        if (!supabase) return null;
+        
+        const { data: profile, error: profileError } = await supabase
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('email', email)
@@ -706,7 +765,7 @@ async function loadLecturerByEmail(email) {
             return profile;
         }
         
-        const { data: staff, error: staffError } = await sb
+        const { data: staff, error: staffError } = await supabase
             .from('staff_records')
             .select('*')
             .eq('email', email)
@@ -740,6 +799,11 @@ async function detectLecturerProgram() {
     updateLoadingProgress(10, 1, 'Checking authentication...');
     
     try {
+        const supabase = getSupabase();
+        if (!supabase) {
+            throw new Error('Database not available');
+        }
+        
         let session = null;
         try {
             session = JSON.parse(localStorage.getItem('lecturerSession') || sessionStorage.getItem('lecturerSession') || '{}');
@@ -747,7 +811,7 @@ async function detectLecturerProgram() {
             console.warn('No session found');
         }
         
-        const { data: { user }, error: userError } = await sb.auth.getUser();
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (userError) {
             console.error('❌ Auth error:', userError);
             if (session && session.email) {
@@ -768,7 +832,7 @@ async function detectLecturerProgram() {
         let profile = null;
         let staff = null;
         
-        const { data: profileData, error: profileError } = await sb
+        const { data: profileData, error: profileError } = await supabase
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('email', userEmail)
@@ -779,7 +843,7 @@ async function detectLecturerProgram() {
             console.log('📋 Found profile:', profileData);
         }
         
-        const { data: staffData, error: staffError } = await sb
+        const { data: staffData, error: staffError } = await supabase
             .from('staff_records')
             .select('*')
             .eq('email', userEmail)
@@ -817,6 +881,11 @@ async function detectLecturerProgram() {
         
         console.log(`📊 Program detected: ${programCode} - ${programName}`);
         
+        // ✅ Store program type globally
+        window.CURRENT_PROGRAM = programCode;
+        window.CURRENT_PROGRAM_TYPE = isTVET ? 'TVET' : 'KRCHN';
+        window.IS_TVET = isTVET;
+        
         updateLoadingProgress(40, 2, 'Loading assigned units...');
         
         const programNameEl = document.getElementById('lecturerProgramName');
@@ -825,7 +894,8 @@ async function detectLecturerProgram() {
         const programSelect = document.getElementById('me_program_select');
         
         if (programNameEl) {
-            programNameEl.textContent = `${programName} - ${departmentName}`;
+            const typeEmoji = isTVET ? '🔧' : '🎓';
+            programNameEl.textContent = `${typeEmoji} ${programName} - ${departmentName}`;
         }
         
         if (programTypeEl) {
@@ -838,7 +908,6 @@ async function detectLecturerProgram() {
             me_assignedUnits = await getLecturerAssignedUnits(String(lecturerId));
             assignedCount = me_assignedUnits.length;
             console.log('📋 Assigned units:', assignedCount);
-            console.log('📋 Assigned units details:', me_assignedUnits);
         }
         
         if (unitCountEl) {
@@ -846,13 +915,17 @@ async function detectLecturerProgram() {
         }
         
         if (programSelect) {
-            programSelect.innerHTML = `<option value="${programCode}">${programName} (${programCode})</option>`;
+            const displayName = isTVET ? `${programCode} (TVET)` : `${programCode} Nursing`;
+            programSelect.innerHTML = `<option value="${programCode}">${displayName}</option>`;
             programSelect.value = programCode;
             programSelect.disabled = false;
         }
         
         me_currentLecturer = { profile, staff };
         me_currentProgram = programCode;
+        
+        // ✅ Update grading reference display
+        updateGradingReferenceDisplay();
         
         console.log('✅ Lecturer program detection complete');
         return staff || profile;
@@ -871,6 +944,35 @@ async function detectLecturerProgram() {
 }
 
 // ============================================================
+// UPDATE GRADING REFERENCE DISPLAY
+// ============================================================
+
+function updateGradingReferenceDisplay() {
+    const gradingRef = document.getElementById('gradingSystemDisplay');
+    const thresholdEl = document.getElementById('passingThresholdDisplay');
+    const gradingSystem = getGradingReference();
+    
+    if (gradingRef) {
+        const isTVET = gradingSystem.icon === '🔧';
+        let html = `${gradingSystem.icon} ${gradingSystem.name}: `;
+        html += gradingSystem.grades.map(g => 
+            `${g.grade} (${g.range}) → ${g.points} → ${g.remarks}`
+        ).join(' | ');
+        gradingRef.innerHTML = html;
+        gradingRef.style.background = isTVET ? '#f5f3ff' : '#d1fae5';
+        gradingRef.style.color = isTVET ? '#7c3aed' : '#065f46';
+        gradingRef.style.padding = '8px 16px';
+        gradingRef.style.borderRadius = '6px';
+        gradingRef.style.fontSize = '12px';
+        gradingRef.style.display = 'block';
+    }
+    
+    if (thresholdEl) {
+        thresholdEl.textContent = `Passing: ≥${gradingSystem.passingScore}%`;
+    }
+}
+
+// ============================================================
 // UPDATE LECTURER UI
 // ============================================================
 
@@ -883,9 +985,10 @@ function updateLecturerUI(data) {
     const programCode = data?.program || 'KRCHN';
     const programName = isTVET ? 'TVET' : 'KRCHN Nursing';
     const departmentName = data?.department || (isTVET ? 'TVET Department' : 'School of Nursing');
+    const typeEmoji = isTVET ? '🔧' : '🎓';
     
     if (programNameEl) {
-        programNameEl.textContent = `${programName} - ${departmentName}`;
+        programNameEl.textContent = `${typeEmoji} ${programName} - ${departmentName}`;
     }
     
     if (programTypeEl) {
@@ -893,10 +996,14 @@ function updateLecturerUI(data) {
     }
     
     if (programSelect) {
-        programSelect.innerHTML = `<option value="${programCode}">${programName} (${programCode})</option>`;
+        const displayName = isTVET ? `${programCode} (TVET)` : `${programCode} Nursing`;
+        programSelect.innerHTML = `<option value="${programCode}">${displayName}</option>`;
         programSelect.value = programCode;
         programSelect.disabled = false;
     }
+    
+    // Update grading reference
+    updateGradingReferenceDisplay();
 }
 
 // ============================================================
@@ -923,13 +1030,18 @@ async function loadMEBlocks() {
     }
     
     try {
+        const supabase = getSupabase();
+        if (!supabase) {
+            throw new Error('Database not available');
+        }
+        
         const assignedUnitNames = me_assignedUnits.map(u => u.subject_name).filter(Boolean);
         const assignedUnitCodes = me_assignedUnits.map(u => u.subject_code).filter(Boolean);
         
         console.log('📚 Assigned subject names:', assignedUnitNames);
         console.log('📚 Assigned subject codes:', assignedUnitCodes);
         
-        const { data: unitsInBlocks, error: unitsError } = await sb
+        const { data: unitsInBlocks, error: unitsError } = await supabase
             .from('units_catalog')
             .select('block, unit_name, unit_code')
             .eq('program', program)
@@ -957,7 +1069,8 @@ async function loadMEBlocks() {
                 blocks.forEach(block => {
                     const option = document.createElement('option');
                     option.value = block;
-                    option.textContent = block.replace(/_/g, ' ');
+                    const displayBlock = block.replace(/_/g, ' ');
+                    option.textContent = displayBlock;
                     blockSelect.appendChild(option);
                 });
                 console.log('📊 Loaded blocks with assigned units:', blocks.length);
@@ -1001,7 +1114,12 @@ async function loadMEUnits() {
     }
     
     try {
-        const { data: allUnits, error } = await sb
+        const supabase = getSupabase();
+        if (!supabase) {
+            throw new Error('Database not available');
+        }
+        
+        const { data: allUnits, error } = await supabase
             .from('units_catalog')
             .select('unit_code, unit_name, assessment_type, id')
             .eq('program', program)
@@ -1091,9 +1209,12 @@ async function loadMEUnits() {
 
 async function loadAdminColumnSettings(block, unit) {
     try {
+        const supabase = getSupabase();
+        if (!supabase) return;
+        
         const year = document.getElementById('me_year_select')?.value || '2025';
         
-        const { data, error } = await sb
+        const { data, error } = await supabase
             .from('column_settings')
             .select('*')
             .eq('block', block)
@@ -1155,7 +1276,7 @@ function getVisibleColumns() {
 }
 
 // ============================================================
-// LOAD MARKS ENTRY - WITH RETAKE SUPPORT
+// LOAD MARKS ENTRY - WITH TVET SUPPORT
 // ============================================================
 
 async function loadMarksEntry() {
@@ -1207,6 +1328,11 @@ async function loadMarksEntry() {
     me_currentYear = year;
     
     try {
+        const supabase = getSupabase();
+        if (!supabase) {
+            throw new Error('Database not available');
+        }
+        
         updateLoadingProgress(20, 1, 'Loading column settings...');
         await loadAdminColumnSettings(block, unit);
         
@@ -1214,7 +1340,7 @@ async function loadMarksEntry() {
         await loadLecturerRetakeData(block, unit, year);
         
         updateLoadingProgress(40, 2, 'Loading student marks...');
-        const { data: marks, error } = await sb
+        const { data: marks, error } = await supabase
             .from('student_marks')
             .select('*')
             .eq('block', block)
@@ -1242,7 +1368,7 @@ async function loadMarksEntry() {
         
         updateLoadingProgress(60, 3, 'Loading student details...');
         const admissions = marks.map(m => m.admission_number);
-        const { data: students, error: studentError } = await sb
+        const { data: students, error: studentError } = await supabase
             .from('consolidated_user_profiles_table')
             .select('student_id, full_name, block, intake_year, program')
             .eq('role', 'student')
@@ -1324,8 +1450,7 @@ async function loadMarksEntry() {
 }
 
 // ============================================================
-// RENDER MARKS ENTRY TABLE - WITH RETAKE EDIT SUPPORT
-// REPLACE the existing renderMarksEntryTable function with this
+// RENDER MARKS ENTRY TABLE - WITH TVET GRADING REFERENCE
 // ============================================================
 
 function renderMarksEntryTable(marks, unit, assessmentType) {
@@ -1345,16 +1470,30 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
     
     const visibleColumns = getVisibleColumns();
     const isAdmin = isUserAdmin();
+    const programType = getProgramType();
+    const isTVET = programType === 'TVET';
+    const threshold = getPassingThreshold();
+    const gradingSystem = getGradingReference(programType);
     
     const withScores = marks.filter(m => m.cat1 > 0 || m.cat2 > 0 || m.exam > 0);
     const passing = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1, m.cat2, m.exam, assessmentType);
-        return total >= 60;
+        return total >= threshold;
     });
     
     const pendingCount = marks.filter(m => m.approval_status === 'pending').length;
     const approvedCount = marks.filter(m => m.approval_status === 'approved').length;
     const withRetakes = marks.filter(m => m.hasRetake).length;
+    
+    // Build grading reference HTML
+    let gradingRefHtml = gradingSystem.grades.map(g => 
+        `<span style="background: ${g.grade === 'A' ? '#d1fae5' : g.grade === 'B' ? '#dbeafe' : g.grade === 'C' ? '#fef3c7' : '#fee2e2'}; 
+                      padding: 2px 10px; border-radius: 4px; font-weight: 700; 
+                      color: ${g.grade === 'A' ? '#065f46' : g.grade === 'B' ? '#1e40af' : g.grade === 'C' ? '#92400e' : '#991b1b'}; 
+                      font-size: 11px; border: 1px solid ${g.grade === 'A' ? '#a7f3d0' : g.grade === 'B' ? '#93c5fd' : g.grade === 'C' ? '#fcd34d' : '#fca5a5'};">
+            ${g.grade} (${g.range}) → ${g.points} → ${g.remarks}
+        </span>`
+    ).join(' ');
     
     let html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 16px;">
@@ -1362,8 +1501,8 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
                 <h3 style="margin: 0; color: #0f172a;">${unit}</h3>
                 <span style="font-size: 12px; color: #64748b;">${me_currentProgram} | ${me_currentBlock?.replace('_', ' ') || ''} | ${me_currentYear}</span>
                 <span style="font-size: 12px; color: #64748b; margin-left: 12px; background: #e0f2fe; padding: 2px 12px; border-radius: 40px;">👥 ${marks.length} students</span>
-                <span style="font-size: 12px; color: #059669; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
-                <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} passing</span>
+                <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">📊 ${withScores.length} with scores</span>
+                <span style="font-size: 12px; color: #10b981; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${passing.length} passing (≥${threshold}%)</span>
                 ${withRetakes > 0 ? `<span style="font-size: 12px; color: #f59e0b; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⭐ ${withRetakes} retakes</span>` : ''}
                 ${pendingCount > 0 ? `<span style="font-size: 12px; color: #d97706; margin-left: 12px; background: #fef3c7; padding: 2px 12px; border-radius: 40px;">⏳ ${pendingCount} pending</span>` : ''}
                 ${approvedCount > 0 ? `<span style="font-size: 12px; color: #065f46; margin-left: 12px; background: #d1fae5; padding: 2px 12px; border-radius: 40px;">✅ ${approvedCount} approved</span>` : ''}
@@ -1372,24 +1511,18 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             <div style="font-size: 12px; color: #6b7280; background: #f3f4f6; padding: 4px 14px; border-radius: 20px;">
                 <i class="fas fa-robot"></i> Auto: ${assessmentType.replace('_', ' ').toUpperCase()}
             </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button onclick="saveMarksEntry()" style="background: #059669; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-save"></i> Save All
-                </button>
-                ${!isAdmin ? `
-                <button onclick="submitMarksForApproval()" style="background: #4C1D95; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-paper-plane"></i> Submit
-                </button>
-                <button onclick="withdrawMarksFromApproval()" style="background: #d97706; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-undo"></i> Withdraw
-                </button>
-                ` : ''}
-                <button onclick="exportMarksEntry()" style="background: #2563eb; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-file-export"></i> Export
-                </button>
-                <button onclick="loadMarksEntry()" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-sync-alt"></i> Refresh
-                </button>
+        </div>
+        
+        <!-- Grading Reference -->
+        <div style="background: ${isTVET ? '#f5f3ff' : '#f0fdf4'}; border-radius: 8px; padding: 10px 14px; margin-bottom: 16px; border: 1px solid ${isTVET ? '#ddd6fe' : '#bbf7d0'};">
+            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                <span style="font-weight: 700; font-size: 12px; color: ${isTVET ? '#7c3aed' : '#065f46'};">
+                    ${gradingSystem.icon} ${gradingSystem.name}:
+                </span>
+                ${gradingRefHtml}
+                <span style="font-size: 10px; color: #94a3b8; margin-left: auto;">
+                    <i class="fas fa-info-circle"></i> Passing: ≥${gradingSystem.passingScore}%
+                </span>
             </div>
         </div>
         
@@ -1417,11 +1550,11 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
         const cat2 = parseFloat(m.cat2) || 0;
         const exam = parseFloat(m.exam) || 0;
         const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-        const gradeInfo = getMarksEntryGrade(total);
+        const gradeInfo = getMarksEntryGrade(total, programType);
         const displayTotal = total > 0 ? total : '--';
         const displayGrade = total > 0 ? gradeInfo.grade : '--';
         const displayPoints = total > 0 ? gradeInfo.points.toFixed(1) : '--';
-        const isPassing = total >= 60;
+        const isPassing = total >= threshold;
         
         const hasRetake = m.hasRetake || false;
         const retakeCount = m.retakeCount || 0;
@@ -1449,11 +1582,9 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>'
         }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 10px;border-radius:12px;font-size:11px;">📝 Draft</span>';
         
-        // ✅ Build retake actions - ALWAYS show Edit button if there's a retake
         let retakeActionsHtml = '';
         
         if (hasRetake) {
-            // ✅ Show retake status
             retakeActionsHtml += `
                 <div style="font-size: 10px; margin-bottom: 4px;">
                     <span style="color: ${isRetakePassing ? '#059669' : '#dc2626'}; font-weight: 600;">
@@ -1465,7 +1596,6 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
                 </div>
             `;
             
-            // ✅ ALWAYS show Edit button for retakes (even if max attempts reached)
             retakeActionsHtml += `
                 <button onclick="openLecturerRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
                         style="background: #3b82f6; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
@@ -1474,7 +1604,6 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             `;
         }
         
-        // ✅ If student failed and hasn't reached max retakes, show "Retake" button
         if (needsRetake) {
             retakeActionsHtml += `
                 <button onclick="openLecturerRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
@@ -1484,7 +1613,6 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             `;
         }
         
-        // ✅ If max retakes reached and failed, show message
         if (maxRetakesReached) {
             retakeActionsHtml += `
                 <span style="color: #dc2626; font-size: 8px; font-weight: 600; display: block; text-align: center; margin-top: 2px;">
@@ -1493,7 +1621,6 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
             `;
         }
         
-        // ✅ If passed and no retake, show passed message
         if (isPassing && !hasRetake) {
             retakeActionsHtml = `
                 <span style="color: #059669; font-size: 11px;">✅ Passed</span>
@@ -1574,6 +1701,9 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
                 <i class="fas fa-lock"></i> Auto-detected from admin settings
                 ${isAdmin ? ` | 👑 Admin: Auto-approve enabled` : ` | 📝 Lecturer: Draft mode`}
                 ${marks.filter(m => m.hasRetake).length > 0 ? ` | <i class="fas fa-edit" style="color: #3b82f6;"></i> Click Edit Retake to modify` : ''}
+                <span style="display: inline-block; margin-left: 8px; background: ${isTVET ? '#ede9fe' : '#d1fae5'}; padding: 2px 10px; border-radius: 12px; font-size: 9px; color: ${isTVET ? '#7c3aed' : '#065f46'};">
+                    ${isTVET ? '🔧 TVET' : '🎓 Nursing'} Grading
+                </span>
             </div>
         </div>
     `;
@@ -1584,6 +1714,7 @@ function renderMarksEntryTable(marks, unit, assessmentType) {
         createLecturerRetakeModal();
     }
 }
+
 // ============================================================
 // UPDATE MARKS ROW
 // ============================================================
@@ -1593,10 +1724,12 @@ function updateMarksEntryRow(index) {
     const cat2 = parseFloat(document.getElementById(`me_cat2_${index}`)?.value) || 0;
     const exam = parseFloat(document.getElementById(`me_exam_${index}`)?.value) || 0;
     const assessmentType = me_currentAssessmentType || 'full';
+    const programType = getProgramType();
+    const threshold = getPassingThreshold();
     
     const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-    const gradeInfo = getMarksEntryGrade(total);
-    const isPassing = total >= 60;
+    const gradeInfo = getMarksEntryGrade(total, programType);
+    const isPassing = total >= threshold;
     
     const totalEl = document.getElementById(`me_total_${index}`);
     if (totalEl) {
@@ -1631,6 +1764,8 @@ function updateMarksEntryStats(marks, assessmentType) {
     if (!marks) marks = [];
     if (!assessmentType) assessmentType = me_currentAssessmentType || 'full';
     
+    const threshold = getPassingThreshold();
+    
     console.log('📊 Updating stats for', marks.length, 'marks');
     
     const totalEnrolled = marks.length;
@@ -1652,12 +1787,12 @@ function updateMarksEntryStats(marks, assessmentType) {
     
     const passing = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1 || 0, m.cat2 || 0, m.exam || 0, assessmentType);
-        return total >= 60;
+        return total >= threshold;
     }).length;
     
     const atRisk = marks.filter(m => {
         const total = calculateMarksEntryTotal(m.cat1 || 0, m.cat2 || 0, m.exam || 0, assessmentType);
-        return total > 0 && total < 60;
+        return total > 0 && total < threshold;
     }).length;
     
     const statsMap = {
@@ -1873,11 +2008,9 @@ async function saveMarksEntry() {
         return;
     }
     
-    // ✅ Check if user is admin
     const isAdmin = isUserAdmin();
     const isLecturer = !isAdmin;
     
-    // ✅ Verify lecturer is assigned to this unit (if lecturer)
     if (isLecturer) {
         const isAssigned = me_assignedUnits.some(u => 
             u.subject_name === unit || u.subject_code === unit
@@ -1886,6 +2019,12 @@ async function saveMarksEntry() {
             showNotification('⛔ You are not assigned to this unit!', 'error');
             return;
         }
+    }
+    
+    const supabase = getSupabase();
+    if (!supabase) {
+        showNotification('❌ Database not available', 'error');
+        return;
     }
     
     const marksData = [];
@@ -1944,12 +2083,14 @@ async function saveMarksEntry() {
     const resetStudents = [];
     let processed = 0;
     const totalStudents = marksData.length;
+    const programType = getProgramType();
+    const threshold = getPassingThreshold();
     
     try {
         updateLoadingProgress(10, 1, 'Fetching existing marks...');
         
         const admissions = marksData.map(m => m.admission);
-        const { data: existingMarks, error: fetchError } = await sb
+        const { data: existingMarks, error: fetchError } = await supabase
             .from('student_marks')
             .select('id, admission_number, approval_status, cat1_score, cat2_score, exam_score, final_score, retake_score, retake_count, retake_status')
             .eq('block', block)
@@ -1980,9 +2121,10 @@ async function saveMarksEntry() {
             updateLoadingProgress(progress, 2, `Processing ${processedCount}/${totalStudents} students...`);
             
             const total = calculateMarksEntryTotal(mark.cat1, mark.cat2, mark.exam, assessmentType);
-            const gradeInfo = getMarksEntryGrade(total);
+            const gradeInfo = getMarksEntryGrade(total, programType);
+            const isPassing = total >= threshold;
             
-            let newApprovalStatus = 'draft'; // Default for lecturers
+            let newApprovalStatus = 'draft';
             let statusChanged = false;
             let resetReason = '';
             
@@ -1992,11 +2134,9 @@ async function saveMarksEntry() {
                 const oldExam = parseFloat(existing.exam_score) || 0;
                 const oldTotal = parseFloat(existing.final_score) || 0;
                 
-                // ✅ Check for retake changes too
                 const oldRetakeScore = parseFloat(existing.retake_score) || 0;
                 const oldRetakeCount = existing.retake_count || 0;
                 
-                // ✅ Check if ANY value changed (including retake)
                 const hasChanges = (
                     Math.abs(oldCat1 - mark.cat1) > 0.01 ||
                     Math.abs(oldCat2 - mark.cat2) > 0.01 ||
@@ -2007,11 +2147,9 @@ async function saveMarksEntry() {
                 console.log(`📝 ${mark.admission}: Old status: ${existing.approval_status}, Has changes: ${hasChanges}`);
                 
                 if (isAdmin) {
-                    // ✅ Admin: always approved
                     newApprovalStatus = 'approved';
                     console.log(`👑 Admin saving ${mark.admission} as APPROVED`);
                 } else if (hasChanges) {
-                    // ✅ Lecturer: reset to draft if ANY change was made
                     if (existing.approval_status === 'approved' || existing.approval_status === 'pending') {
                         newApprovalStatus = 'draft';
                         statusChanged = true;
@@ -2029,16 +2167,13 @@ async function saveMarksEntry() {
                         newApprovalStatus = 'draft';
                     }
                 } else {
-                    // ✅ No changes, keep existing status
                     newApprovalStatus = existing.approval_status;
                 }
             } else {
-                // ✅ New record: draft for lecturer, approved for admin
                 newApprovalStatus = isAdmin ? 'approved' : 'draft';
                 console.log(`🆕 New record ${mark.admission}: ${newApprovalStatus}`);
             }
             
-            // Build update/insert data
             const markData = {
                 student_name: mark.name || 'Unknown',
                 assessment_type: assessmentType,
@@ -2051,7 +2186,6 @@ async function saveMarksEntry() {
                 updated_at: new Date().toISOString()
             };
             
-            // ✅ If admin and approved, set approval details
             if (isAdmin && newApprovalStatus === 'approved') {
                 markData.approved_at = new Date().toISOString();
                 markData.approved_by = window.currentUser?.id || null;
@@ -2084,7 +2218,6 @@ async function saveMarksEntry() {
                     updated_at: new Date().toISOString()
                 };
                 
-                // ✅ If admin and approved, set approval details
                 if (isAdmin && newApprovalStatus === 'approved') {
                     insertData.approved_at = new Date().toISOString();
                     insertData.approved_by = window.currentUser?.id || null;
@@ -2096,13 +2229,12 @@ async function saveMarksEntry() {
         
         updateLoadingProgress(80, 3, 'Saving to database...');
         
-        // Bulk update
         if (updates.length > 0) {
             const batchSize = 50;
             for (let i = 0; i < updates.length; i += batchSize) {
                 const batch = updates.slice(i, i + batchSize);
                 const promises = batch.map(u => 
-                    sb
+                    supabase
                         .from('student_marks')
                         .update(u.data)
                         .eq('id', u.id)
@@ -2119,12 +2251,11 @@ async function saveMarksEntry() {
             }
         }
         
-        // Bulk insert
         if (inserts.length > 0) {
             const batchSize = 50;
             for (let i = 0; i < inserts.length; i += batchSize) {
                 const batch = inserts.slice(i, i + batchSize);
-                const { error } = await sb
+                const { error } = await supabase
                     .from('student_marks')
                     .insert(batch);
                 
@@ -2140,7 +2271,6 @@ async function saveMarksEntry() {
             }
         }
         
-        // Log status changes
         if (resetStudents.length > 0) {
             updateLoadingProgress(95, 4, 'Logging status changes...');
             
@@ -2163,7 +2293,7 @@ async function saveMarksEntry() {
                 const batchSize = 20;
                 for (let i = 0; i < logs.length; i += batchSize) {
                     const batch = logs.slice(i, i + batchSize);
-                    await sb
+                    await supabase
                         .from('mark_approval_logs')
                         .insert(batch);
                 }
@@ -2177,7 +2307,6 @@ async function saveMarksEntry() {
         await new Promise(resolve => setTimeout(resolve, 500));
         hideLoadingScreen();
         
-        // Show results
         let message = '';
         const parts = [];
         if (saved > 0) parts.push(`${saved} new`);
@@ -2195,9 +2324,8 @@ async function saveMarksEntry() {
             showNotification(message, 'error');
         }
         
-        // ✅ If lecturer saved as draft, ask if they want to submit
         if (isLecturer && (saved > 0 || updated > 0 || resetCount > 0)) {
-            const { data: draftCheck } = await sb
+            const { data: draftCheck } = await supabase
                 .from('student_marks')
                 .select('id')
                 .eq('block', block)
@@ -2220,7 +2348,6 @@ async function saveMarksEntry() {
             }
         }
         
-        // Refresh
         setTimeout(() => loadMarksEntry(), 500);
         
     } catch (error) {
@@ -2244,10 +2371,15 @@ async function submitMarksForApproval() {
         return;
     }
     
-    // ✅ Check if user is admin
     const isAdmin = isUserAdmin();
     if (isAdmin) {
         showNotification('👑 Admin: Marks are auto-approved. Use the Save button.', 'info');
+        return;
+    }
+    
+    const supabase = getSupabase();
+    if (!supabase) {
+        showNotification('❌ Database not available', 'error');
         return;
     }
     
@@ -2255,7 +2387,7 @@ async function submitMarksForApproval() {
     updateLoadingProgress(10, 1, 'Checking marks status...');
     
     try {
-        const { data: marks, error } = await sb
+        const { data: marks, error } = await supabase
             .from('student_marks')
             .select('id, approval_status, final_score, admission_number, student_name')
             .eq('block', block)
@@ -2321,7 +2453,7 @@ async function submitMarksForApproval() {
             const progress = 40 + (i / markIds.length) * 50;
             updateLoadingProgress(progress, 3, `Submitting ${Math.min(i + batch.length, markIds.length)}/${markIds.length} marks...`);
             
-            const { error: updateError } = await sb
+            const { error: updateError } = await supabase
                 .from('student_marks')
                 .update({
                     approval_status: 'pending',
@@ -2342,7 +2474,7 @@ async function submitMarksForApproval() {
             updateLoadingProgress(95, 4, 'Logging submission...');
             
             try {
-                await sb
+                await supabase
                     .from('mark_approval_logs')
                     .insert({
                         block: block,
@@ -2395,10 +2527,15 @@ async function withdrawMarksFromApproval() {
         return;
     }
     
-    // ✅ Check if user is admin
     const isAdmin = isUserAdmin();
     if (isAdmin) {
         showNotification('👑 Admin: No need to withdraw. Use Save to update marks.', 'info');
+        return;
+    }
+    
+    const supabase = getSupabase();
+    if (!supabase) {
+        showNotification('❌ Database not available', 'error');
         return;
     }
     
@@ -2406,7 +2543,7 @@ async function withdrawMarksFromApproval() {
     updateLoadingProgress(20, 1, 'Checking pending marks...');
     
     try {
-        const { data: pendingMarks, error } = await sb
+        const { data: pendingMarks, error } = await supabase
             .from('student_marks')
             .select('id, admission_number, student_name')
             .eq('block', block)
@@ -2443,7 +2580,7 @@ async function withdrawMarksFromApproval() {
             const progress = 30 + (i / ids.length) * 60;
             updateLoadingProgress(progress, 3, `Withdrawing ${Math.min(i + batch.length, ids.length)}/${ids.length} marks...`);
             
-            const { error: updateError } = await sb
+            const { error: updateError } = await supabase
                 .from('student_marks')
                 .update({
                     approval_status: 'draft',
@@ -2493,14 +2630,18 @@ function exportMarksEntry() {
     }
     
     const assessmentType = me_currentAssessmentType || 'full';
-    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating', 
+    const programType = getProgramType();
+    const threshold = getPassingThreshold();
+    
+    const headers = ['Admission', 'Name', 'CAT1', 'CAT2', 'Exam', 'Total', 'Grade', 'Points', 'Rating', 'Status',
                      'Has Retake', 'Retake Count', 'Retake Score', 'Retake Grade', 'Retake Status', 'Approval Status'];
     const rows = marks.map(m => {
         const cat1 = m.cat1 || 0;
         const cat2 = m.cat2 || 0;
         const exam = m.exam || 0;
         const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-        const gradeInfo = getMarksEntryGrade(total);
+        const gradeInfo = getMarksEntryGrade(total, programType);
+        const isPassing = total >= threshold;
         return [
             m.admission || '',
             m.name || '',
@@ -2511,6 +2652,7 @@ function exportMarksEntry() {
             total > 0 ? gradeInfo.grade : '',
             total > 0 ? gradeInfo.points : '',
             total > 0 ? gradeInfo.rating : '',
+            isPassing ? 'PASS' : (total > 0 ? 'FAIL' : 'N/A'),
             m.hasRetake ? 'Yes' : 'No',
             m.retakeCount || 0,
             m.retakeScore || '',
@@ -2621,6 +2763,11 @@ window.showLoadingScreen = showLoadingScreen;
 window.updateLoadingProgress = updateLoadingProgress;
 window.updateLoadingStep = updateLoadingStep;
 window.hideLoadingScreen = hideLoadingScreen;
+window.getProgramType = getProgramType;
+window.isTVET = isTVET;
+window.getPassingThreshold = getPassingThreshold;
+window.getGradingReference = getGradingReference;
+window.updateGradingReferenceDisplay = updateGradingReferenceDisplay;
 
 // Retake functions
 window.loadLecturerRetakeData = loadLecturerRetakeData;
@@ -2677,6 +2824,9 @@ document.addEventListener('DOMContentLoaded', function() {
             
             createLecturerRetakeModal();
             
+            // ✅ Update grading reference
+            updateGradingReferenceDisplay();
+            
             updateLoadingProgress(100, 4, '✅ Ready!');
             await new Promise(resolve => setTimeout(resolve, 500));
             hideLoadingScreen();
@@ -2687,6 +2837,7 @@ document.addEventListener('DOMContentLoaded', function() {
             console.log('⭐ Retake Support: Enabled (Max 2 attempts)');
             console.log('👑 Admin Mode:', isUserAdmin() ? 'Yes - Auto-approve enabled' : 'No - Lecturer mode');
             console.log('📝 Lecturer saves as DRAFT, Admin auto-approves');
+            console.log(`📊 Grading: ${isTVET() ? '🔧 TVET' : '🎓 Nursing'} (Passing: ≥${getPassingThreshold()}%)`);
             
         } catch (error) {
             console.error('❌ Error initializing:', error);
@@ -2708,3 +2859,5 @@ console.log('✅ Strict unit assignment filtering enabled!');
 console.log('🔒 Lecturers only see assigned units');
 console.log('💾 Marks are permanently saved to Supabase!');
 console.log('🔄 Loading screen integrated!');
+console.log('📊 TVET Grading: A(80%) B(65%) C(50%) E(0%)');
+console.log('🎓 Nursing Grading: A(75%) B(65%) C(60%) D(0%)');
