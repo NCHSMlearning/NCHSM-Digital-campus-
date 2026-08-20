@@ -2971,25 +2971,24 @@ async function addSelectedStudentsToUnit() {
             }
             
             // Insert with unit block (store original block for reference)
-            const { error: insertError } = await window.sb
-                .from('student_marks')
-                .insert({
-                    admission_number: admission,
-                    student_name: studentName,
-                    block: block,
-                    subject_name: unit,
-                    academic_year: year,
-                    program: program,
-                    cat1_score: 0,
-                    cat2_score: 0,
-                    exam_score: 0,
-                    final_score: 0,
-                    grade: '',
-                    assessment_type: 'full',
-                    approval_status: 'draft',
-                    published: false,
-                    student_original_block: studentBlock
-                });
+           const { error: insertError } = await window.sb
+    .from('student_marks')
+    .insert({
+        admission_number: admission,
+        student_name: studentName,
+        block: block,
+        subject_name: unit,
+        academic_year: year,
+        // ✅ REMOVED: program: program,
+        cat1_score: 0,
+        cat2_score: 0,
+        exam_score: 0,
+        final_score: 0,
+        grade: '',
+        assessment_type: 'full',
+        approval_status: 'draft',
+        published: false
+    });
             
             if (insertError) {
                 console.error('Error adding student:', insertError);
