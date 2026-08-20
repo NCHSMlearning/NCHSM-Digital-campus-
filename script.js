@@ -11200,12 +11200,11 @@ async function sendExamNotificationEmail(examData, recipients) {
     }) : 'TBD';
     
     const examTime = examData.exam_start_time || 'TBD';
-    const examLink = examData.online_link || examData.exam_link || '#';
-    const examTitle = examData.title || examData.exam_name || 'New Exam';
-    const examType = examData.exam_type || 'EXAM';
-    const examTypeLabel = getExamTypeLabel(examType);
-    
-    const emailHtml = `
+const examTitle = examData.title || examData.exam_name || 'New Exam';
+const examType = examData.exam_type || 'EXAM';
+const examTypeLabel = getExamTypeLabel(examType);
+
+const emailHtml = `
 <!DOCTYPE html>
 <html>
 <head>
@@ -11213,79 +11212,366 @@ async function sendExamNotificationEmail(examData, recipients) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>New Exam Posted</title>
     <style>
-        body { font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; padding: 0; background: #f0f4f8; }
-        .container { max-width: 580px; margin: 0 auto; padding: 20px; }
-        .card { background: white; border-radius: 20px; overflow: hidden; box-shadow: 0 10px 40px rgba(0,0,0,0.1); }
-        .header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px; text-align: center; color: white; }
-        .header h1 { margin: 0; font-size: 24px; }
-        .header p { margin: 4px 0 0; opacity: 0.8; }
-        .body { padding: 30px 35px; }
-        .greeting { background: #e8f4f8; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #10b981; }
-        .greeting p { margin: 0; font-size: 16px; color: #0A3D62; }
-        .details { background: #f8fafc; border-radius: 12px; padding: 16px; margin-bottom: 20px; }
-        .details h4 { margin: 0 0 12px 0; color: #1e293b; }
-        .details table { width: 100%; border-collapse: collapse; font-size: 14px; }
-        .details td { padding: 8px 0; border-bottom: 1px solid #e2e8f0; }
-        .details .label { color: #64748B; font-weight: 500; }
-        .details .value { color: #0A3D62; font-weight: 600; text-align: right; }
-        .details tr:last-child td { border-bottom: none; }
-        .btn { display: inline-block; background: #0A3D62; color: white; padding: 14px 28px; border-radius: 10px; text-decoration: none; font-weight: 600; font-size: 16px; }
-        .footer { background: #F8FAFC; padding: 20px; text-align: center; border-top: 1px solid #E2E8F0; font-size: 0.85rem; color: #64748B; }
+        /* ── Reset & Base ── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #f0f4f8 0%, #d9e2ec 100%);
+            margin: 0;
+            padding: 30px 20px;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            max-width: 600px;
+            width: 100%;
+            margin: 0 auto;
+        }
+
+        /* ── Card ── */
+        .card {
+            background: #ffffff;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(10, 61, 98, 0.15);
+            transition: transform 0.2s ease;
+        }
+
+        /* ── Header ── */
+        .header {
+            background: linear-gradient(135deg, #0A3D62, #1a5276, #2c6e91);
+            padding: 36px 40px 30px;
+            text-align: center;
+            color: #ffffff;
+            position: relative;
+        }
+        .header::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            right: 0;
+            height: 6px;
+            background: linear-gradient(90deg, #10b981, #34d399, #10b981);
+            border-radius: 0 0 24px 24px;
+        }
+        .header .icon {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 6px;
+        }
+        .header h1 {
+            margin: 0;
+            font-size: 26px;
+            font-weight: 700;
+            letter-spacing: -0.3px;
+        }
+        .header .subtitle {
+            margin: 6px 0 0;
+            font-size: 15px;
+            opacity: 0.85;
+            font-weight: 300;
+            letter-spacing: 0.3px;
+        }
+
+        /* ── Body ── */
+        .body {
+            padding: 32px 40px 28px;
+        }
+
+        /* ── Greeting ── */
+        .greeting {
+            background: #ecfdf5;
+            border-radius: 14px;
+            padding: 18px 20px;
+            margin-bottom: 24px;
+            border-left: 5px solid #10b981;
+        }
+        .greeting p {
+            margin: 0;
+            font-size: 15px;
+            color: #065f46;
+            line-height: 1.6;
+        }
+        .greeting strong {
+            color: #0A3D62;
+        }
+
+        /* ── Details Table ── */
+        .details {
+            background: #f8fafc;
+            border-radius: 14px;
+            padding: 20px 22px;
+            margin-bottom: 24px;
+            border: 1px solid #e9edf2;
+        }
+        .details h4 {
+            margin: 0 0 14px 0;
+            color: #0A3D62;
+            font-size: 16px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+        }
+        .details table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 14px;
+        }
+        .details td {
+            padding: 9px 0;
+            border-bottom: 1px solid #e9edf2;
+        }
+        .details tr:last-child td {
+            border-bottom: none;
+        }
+        .details .label {
+            color: #64748B;
+            font-weight: 500;
+            width: 45%;
+        }
+        .details .value {
+            color: #0A3D62;
+            font-weight: 600;
+            text-align: right;
+            width: 55%;
+        }
+
+        /* ── Portal Access Button ── */
+        .portal-section {
+            text-align: center;
+            margin: 28px 0 20px;
+            padding: 20px 16px;
+            background: linear-gradient(135deg, #f0f7ff, #e6f0fa);
+            border-radius: 16px;
+            border: 1px dashed #2c6e91;
+        }
+        .portal-section .portal-icon {
+            font-size: 32px;
+            display: block;
+            margin-bottom: 8px;
+        }
+        .portal-section p {
+            color: #1a5276;
+            font-size: 14px;
+            margin: 0 0 14px 0;
+            font-weight: 500;
+        }
+        .btn {
+            display: inline-block;
+            background: linear-gradient(135deg, #0A3D62, #1a5276);
+            color: #ffffff;
+            padding: 15px 38px;
+            border-radius: 12px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 16px;
+            letter-spacing: 0.5px;
+            transition: all 0.25s ease;
+            box-shadow: 0 4px 14px rgba(10, 61, 98, 0.3);
+        }
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(10, 61, 98, 0.4);
+            background: linear-gradient(135deg, #0d4a72, #1f618d);
+        }
+        .btn:active {
+            transform: translateY(0px);
+        }
+
+        /* ── Important Note ── */
+        .note {
+            background: #fffbeb;
+            border-radius: 14px;
+            padding: 14px 18px;
+            margin-top: 20px;
+            border-left: 5px solid #f59e0b;
+        }
+        .note p {
+            margin: 0;
+            font-size: 13px;
+            color: #78350F;
+            line-height: 1.6;
+        }
+        .note strong {
+            color: #92400e;
+        }
+
+        /* ── Divider ── */
+        .divider {
+            border: none;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, #d1d9e6, transparent);
+            margin: 24px 0 20px;
+        }
+
+        /* ── Footer ── */
+        .footer {
+            background: #f8fafc;
+            padding: 22px 30px 18px;
+            text-align: center;
+            border-top: 1px solid #e9edf2;
+        }
+        .footer .contact {
+            font-size: 14px;
+            color: #1a5276;
+            font-weight: 500;
+            margin-bottom: 6px;
+        }
+        .footer .contact span {
+            margin: 0 10px;
+            color: #94a3b8;
+        }
+        .footer .copyright {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 0;
+            letter-spacing: 0.3px;
+        }
+        .footer .copyright strong {
+            color: #64748B;
+            font-weight: 600;
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 520px) {
+            body { padding: 16px 12px; }
+            .header { padding: 26px 20px 22px; }
+            .header h1 { font-size: 20px; }
+            .body { padding: 22px 18px 18px; }
+            .details { padding: 16px; }
+            .details td { font-size: 13px; padding: 7px 0; }
+            .btn { padding: 13px 28px; font-size: 15px; }
+            .portal-section { padding: 16px 12px; }
+            .greeting { padding: 14px 16px; }
+            .footer { padding: 18px 16px; }
+            .footer .contact { font-size: 13px; }
+            .footer .contact span { margin: 0 6px; }
+        }
+
+        @media (max-width: 380px) {
+            .details .label { width: 40%; font-size: 12px; }
+            .details .value { width: 60%; font-size: 12px; }
+            .btn { padding: 11px 20px; font-size: 13px; width: 100%; }
+        }
     </style>
 </head>
 <body>
+
     <div class="container">
         <div class="card">
+
+            <!-- ─── HEADER ─── -->
             <div class="header">
-                <h1>📝 ${examTypeLabel} Posted!</h1>
-                <p>Nakuru College of Health Sciences and Management</p>
+                <span class="icon">📝</span>
+                <h1>${examTypeLabel} Posted!</h1>
+                <p class="subtitle">Nakuru College of Health Sciences and Management</p>
             </div>
-            
+
+            <!-- ─── BODY ─── -->
             <div class="body">
+
+                <!-- Greeting -->
                 <div class="greeting">
                     <p>👋 <strong>Dear Student,</strong></p>
-                    <p style="margin: 8px 0 0; color: #1e293b;">
+                    <p style="margin-top: 6px;">
                         A new exam has been posted for your program. Please review the details below.
                     </p>
                 </div>
-                
+
+                <!-- Exam Details -->
                 <div class="details">
                     <h4>📋 Exam Details</h4>
                     <table>
-                        <tr><td class="label">📝 Exam Title</td><td class="value"><strong>${escapeHtml(examTitle)}</strong></td></tr>
-                        <tr><td class="label">🎓 Program</td><td class="value">${escapeHtml(examData.target_program || examData.program_type || 'N/A')}</td></tr>
-                        <tr><td class="label">📚 Block/Term</td><td class="value">${escapeHtml(examData.block || 'N/A')}</td></tr>
-                        <tr><td class="label">📅 Date</td><td class="value">${examDate}</td></tr>
-                        <tr><td class="label">⏰ Time</td><td class="value">${examTime}</td></tr>
-                        <tr><td class="label">⏱️ Duration</td><td class="value">${examData.duration_minutes || 'N/A'} minutes</td></tr>
-                        <tr><td class="label">📊 Total Marks</td><td class="value">${examData.marks_out_of || examData.total_marks || 100}</td></tr>
-                        <tr><td class="label">✅ Pass Mark</td><td class="value">${examData.pass_mark || 50}%</td></tr>
-                        ${examLink && examLink !== '#' ? `<tr><td class="label">🔗 Exam Link</td><td class="value"><a href="${escapeHtml(examLink)}" target="_blank">Click Here</a></td></tr>` : ''}
+                        <tr>
+                            <td class="label">📝 Exam Title</td>
+                            <td class="value"><strong>${escapeHtml(examTitle)}</strong></td>
+                        </tr>
+                        <tr>
+                            <td class="label">🎓 Program</td>
+                            <td class="value">${escapeHtml(examData.target_program || examData.program_type || 'N/A')}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">📚 Block / Term</td>
+                            <td class="value">${escapeHtml(examData.block || 'N/A')}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">📅 Date</td>
+                            <td class="value">${examDate}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">⏰ Time</td>
+                            <td class="value">${examTime}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">⏱️ Duration</td>
+                            <td class="value">${examData.duration_minutes || 'N/A'} minutes</td>
+                        </tr>
+                        <tr>
+                            <td class="label">📊 Total Marks</td>
+                            <td class="value">${examData.marks_out_of || examData.total_marks || 100}</td>
+                        </tr>
+                        <tr>
+                            <td class="label">✅ Pass Mark</td>
+                            <td class="value">${examData.pass_mark || 50}%</td>
+                        </tr>
                     </table>
                 </div>
-                
-                ${examLink && examLink !== '#' ? `
-                <div style="text-align: center; margin: 20px 0;">
-                    <a href="${escapeHtml(examLink)}" target="_blank" class="btn">🚪 Take Exam</a>
-                </div>` : ''}
-                
-                <div style="background: #fef3c7; border-radius: 12px; padding: 12px 16px; border-left: 4px solid #f59e0b; margin-top: 16px;">
-                    <p style="margin: 0; font-size: 13px; color: #78350F;">
-                        <i class="fas fa-info-circle"></i> 
-                        <strong>Important:</strong> Please ensure you have a stable internet connection before starting the exam.
+
+                <!-- ─── PORTAL ACCESS (Replaces Exam Link) ─── -->
+                <div class="portal-section">
+                    <span class="portal-icon">🔑</span>
+                    <p><strong>Access Your Exam</strong><br>
+                    <span style="font-weight:400; color:#475569;">Log in to your student portal to take this exam</span></p>
+                    <a href="https://nchms.co.ke/student" target="_blank" class="btn">
+                        🚪 Access Student Portal
+                    </a>
+                </div>
+
+                <!-- Important Note -->
+                <div class="note">
+                    <p>
+                        <strong>💡 Important:</strong> 
+                        Please ensure you have a stable internet connection before starting your exam. 
+                        For any technical issues, contact support immediately.
                     </p>
                 </div>
+
+                <hr class="divider">
+
+                <!-- Quick Help -->
+                <div style="text-align:center; font-size:13px; color:#64748B; padding: 4px 0 2px;">
+                    <span>🕐 Exam available as per scheduled time</span>
+                    &nbsp;·&nbsp;
+                    <span>📌 Check portal for updates</span>
+                </div>
+
             </div>
-            
+
+            <!-- ─── FOOTER ─── -->
             <div class="footer">
-                <p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p>
-                <p style="font-size:0.75rem;">© ${new Date().getFullYear()} Nakuru College of Health Sciences and Management</p>
+                <p class="contact">
+                    📞 +254 790 969 743
+                    <span>|</span>
+                    📧 admin@nchsm.co.ke
+                </p>
+                <p class="copyright">
+                    &copy; ${new Date().getFullYear()} <strong>Nakuru College of Health Sciences and Management</strong>
+                    <br>
+                    <span style="font-size:11px; color:#b0bcca;">— Excellence in Health Education —</span>
+                </p>
             </div>
+
         </div>
     </div>
+
 </body>
 </html>`;
-    
     // Send emails
     let sentCount = 0;
     let failedCount = 0;
