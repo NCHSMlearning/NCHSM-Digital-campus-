@@ -1020,9 +1020,8 @@ function populateFilters(marks) {
     // Student filter
     populateStudentFilter(marks);
 }
-
 // ============================================================
-// RENDER PUBLISHED MARKS - WITH PAGINATION (30 per page)
+// RENDER PUBLISHED MARKS - FIXED (Group ALL Marks First)
 // ============================================================
 
 function renderPublishedMarks() {
@@ -1032,27 +1031,41 @@ function renderPublishedMarks() {
     var marks = PUBLISHED_STATE.filtered;
     var currentPage = PUBLISHED_STATE.currentPage;
     var perPage = PUBLISHED_STATE.perPage;
-    var totalItems = marks.length;
-    var totalPages = Math.ceil(totalItems / perPage);
     
-    // Ensure current page is valid
+    // ✅ STEP 1: Group ALL marks by student FIRST (not just current page)
+    var allStudentMap = {};
+    for (var i = 0; i < marks.length; i++) {
+        var mark = marks[i];
+        var key = mark.admission_number || mark.student_name || 'Unknown';
+        if (!allStudentMap[key]) {
+            allStudentMap[key] = [];
+        }
+        allStudentMap[key].push(mark);
+    }
+    
+    var studentKeys = Object.keys(allStudentMap);
+    var totalStudents = studentKeys.length;
+    
+    // ✅ STEP 2: Paginate STUDENTS (not marks)
+    var totalPages = Math.max(1, Math.ceil(totalStudents / perPage));
     if (currentPage < 1) currentPage = 1;
-    if (currentPage > totalPages && totalPages > 0) currentPage = totalPages;
+    if (currentPage > totalPages) currentPage = totalPages;
+    PUBLISHED_STATE.currentPage = currentPage;
     
     var startIndex = (currentPage - 1) * perPage;
-    var endIndex = Math.min(startIndex + perPage, totalItems);
-    var pageMarks = marks.slice(startIndex, endIndex);
+    var endIndex = Math.min(startIndex + perPage, totalStudents);
+    var pageStudentKeys = studentKeys.slice(startIndex, endIndex);
     
-    // Update pagination info
-    document.getElementById('pm_page_start').textContent = totalItems > 0 ? startIndex + 1 : 0;
+    // ✅ STEP 3: Update pagination info (STUDENT count, not marks count)
+    document.getElementById('pm_page_start').textContent = totalStudents > 0 ? startIndex + 1 : 0;
     document.getElementById('pm_page_end').textContent = endIndex;
-    document.getElementById('pm_total_items').textContent = totalItems;
-    document.getElementById('pm_page_info').textContent = 'Page ' + currentPage + ' of ' + (totalPages || 1);
+    document.getElementById('pm_total_items').textContent = totalStudents;
+    document.getElementById('pm_page_info').textContent = 'Page ' + currentPage + ' of ' + totalPages;
     
     document.getElementById('pm_prev_btn').disabled = currentPage <= 1;
     document.getElementById('pm_next_btn').disabled = currentPage >= totalPages;
     
-    if (!pageMarks || pageMarks.length === 0) {
+    if (studentKeys.length === 0) {
         var emptyHtml = '<div style="text-align: center; padding: 60px 20px;">';
         emptyHtml += '<i class="fas fa-share-alt" style="font-size: 48px; color: #94a3b8; margin-bottom: 16px; display: block;"></i>';
         emptyHtml += '<h3 style="color: #1e293b;">' + (marks.length > 0 ? 'No marks match the current filter' : 'No marks found') + '</h3>';
@@ -1069,28 +1082,16 @@ function renderPublishedMarks() {
         return;
     }
     
-    var studentMap = {};
-    for (var i = 0; i < pageMarks.length; i++) {
-        var mark = pageMarks[i];
-        var key = mark.admission_number || mark.student_name || 'Unknown';
-        if (!studentMap[key]) {
-            studentMap[key] = [];
-        }
-        studentMap[key].push(mark);
-    }
-    
-    var studentKeys = Object.keys(studentMap);
-    var totalStudents = studentKeys.length;
-    
+    // Update total students stat
     var totalStudentsEl = document.getElementById('pm_total_students');
-    if (totalStudentsEl) totalStudentsEl.textContent = totalItems > 0 ? '~' + Math.ceil(totalItems / 8) : 0;
+    if (totalStudentsEl) totalStudentsEl.textContent = totalStudents;
     
     var html = 
         '<div style="margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px; padding: 0 4px;">' +
             '<div style="display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: #64748b;">' +
-                '<span><i class="fas fa-users"></i> <strong>' + totalItems + '</strong> marks</span>' +
-                '<span><i class="fas fa-user-graduate"></i> <strong>' + studentKeys.length + '</strong> students</span>' +
-                '<span><i class="fas fa-file-alt"></i> Showing <strong>' + pageMarks.length + '</strong> records</span>' +
+                '<span><i class="fas fa-users"></i> <strong>' + totalStudents + '</strong> students</span>' +
+                '<span><i class="fas fa-file-alt"></i> <strong>' + marks.length + '</strong> marks</span>' +
+                '<span><i class="fas fa-user-graduate"></i> Showing <strong>' + pageStudentKeys.length + '</strong> students</span>' +
             '</div>' +
             '<span style="font-size: 10px; color: #94a3b8;">' +
                 '<i class="fas fa-clock"></i> ' + getCurrentDateTime() +
@@ -1116,9 +1117,11 @@ function renderPublishedMarks() {
     
     var index = 0;
     var allChecked = true;
-    for (var s = 0; s < studentKeys.length; s++) {
-        var key = studentKeys[s];
-        var studentMarks = studentMap[key];
+    
+    // ✅ Loop through students on this page (each has ALL their marks)
+    for (var s = 0; s < pageStudentKeys.length; s++) {
+        var key = pageStudentKeys[s];
+        var studentMarks = allStudentMap[key];
         var firstMark = studentMarks[0];
         var studentName = firstMark.student_name || 'Unknown';
         var admissionNumber = firstMark.admission_number || '-';
@@ -1130,6 +1133,7 @@ function renderPublishedMarks() {
         var studentHasRetake = studentMarks.some(function(m) { return m.hasRetake; });
         var studentRetakeBadge = studentHasRetake ? '<span style="display: inline-block; margin-left: 4px; background: #f59e0b; color: white; font-size: 7px; padding: 1px 6px; border-radius: 8px; font-weight: 700;">⭐</span>' : '';
         
+        // ✅ All units count is correct (all marks for this student)
         var totalUnits = studentMarks.length;
         var passedUnits = 0;
         var failedUnits = 0;
@@ -1158,6 +1162,7 @@ function renderPublishedMarks() {
         if (!isSelected) allChecked = false;
         
         index++;
+        var displayIndex = startIndex + index;
         
         html += 
             '<tr style="border-bottom: 1px solid #f1f5f9; transition: background 0.2s; background: ' + (index % 2 === 0 ? '#fafafa' : 'transparent') + ';" ' +
@@ -1166,7 +1171,7 @@ function renderPublishedMarks() {
                 '<td style="padding: 6px 10px; text-align: center;">' +
                     '<input type="checkbox" class="pm-student-checkbox" data-admission="' + escapeHtml(admissionNumber) + '" ' + (isSelected ? 'checked' : '') + ' onchange="toggleStudentSelection(this)">' +
                 '</td>' +
-                '<td style="padding: 6px 10px; text-align: center; color: #94a3b8;">' + (startIndex + index) + '</td>' +
+                '<td style="padding: 6px 10px; text-align: center; color: #94a3b8;">' + displayIndex + '</td>' +
                 '<td style="padding: 6px 10px; font-weight: 500;">' + escapeHtml(studentName) + studentRetakeBadge + '</td>' +
                 '<td style="padding: 6px 10px; font-size: 11px; color: #64748b;">' + escapeHtml(admissionNumber) + '</td>' +
                 '<td style="padding: 6px 10px;">' +
@@ -1221,7 +1226,7 @@ function renderPublishedMarks() {
         '</div>';
     
     container.innerHTML = html;
-    document.getElementById('pm_filter_count').textContent = pageMarks.length;
+    document.getElementById('pm_filter_count').textContent = marks.length;
     updatePaginationInfo();
     updateSelectedCount();
     
@@ -1234,7 +1239,6 @@ function renderPublishedMarks() {
         selectAll.indeterminate = checkboxes.length > 0 && checked.length > 0 && checkboxes.length !== checked.length;
     }
 }
-
 // ============================================================
 // SELECTION FUNCTIONS
 // ============================================================
