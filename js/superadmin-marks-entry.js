@@ -1446,59 +1446,59 @@ function renderMarksEntryTable(marks, unitCode, assessmentType) {
             'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>'
         }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>';
         
-        // ✅ BUILD RETAKE ACTIONS - CORRECT LOGIC
-        let retakeActionsHtml = '';
-        
-        // ✅ Case 1: Has retake - show status and Edit button
-        if (hasRetake) {
-            retakeActionsHtml += `
-                <div style="font-size: 10px; margin-bottom: 4px;">
-                    <span style="color: ${isRetakePassing ? '#059669' : '#dc2626'}; font-weight: 600;">
-                        ${isRetakePassing ? '✅ Passed' : '❌ Failed'} (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})
-                    </span>
-                    ${retakeScore !== null && retakeScore !== undefined ? `
-                        <span style="display: block; font-size: 9px; color: #64748b;">Score: ${retakeScore}%</span>
-                    ` : ''}
-                </div>
-            `;
-            
-            // ✅ ALWAYS show Edit button for retakes
-            retakeActionsHtml += `
-                <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
-                        style="background: #3b82f6; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
-                    <i class="fas fa-edit"></i> Edit Retake
-                </button>
-            `;
-            
-            // ✅ If retake failed AND can add another retake
-            if (!isRetakePassing && retakeCount < MAX_RETAKES) {
-                retakeActionsHtml += `
-                    <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
-                            style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
-                        <i class="fas fa-sync-alt"></i> Add Retake
-                    </button>
-                `;
-            }
-        }
-        
-        // ✅ Case 2: If student FAILED and hasn't reached max retakes, show "Add Retake"
-        if (needsRetake) {
-            retakeActionsHtml += `
-                <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
-                        style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
-                    <i class="fas fa-sync-alt"></i> Add Retake
-                </button>
-            `;
-        }
-        
-        // ✅ Case 3: If max retakes reached and failed, show message
-        if (maxRetakesReached) {
-            retakeActionsHtml += `
-                <span style="color: #dc2626; font-size: 8px; font-weight: 600; display: block; text-align: center; margin-top: 2px;">
-                    ⛔ Max retakes reached
-                </span>
-            `;
-        }
+        // ============================================================
+// ✅ SIMPLIFIED RETAKE ACTIONS - FIXED
+// ============================================================
+
+let retakeActionsHtml = '';
+
+// ✅ FIRST: Check if student PASSED
+if (isPassing) {
+    retakeActionsHtml = `
+        <span style="color: #059669; font-size: 11px; font-weight: 600;">✅ Passed</span>
+    `;
+} 
+// ✅ SECOND: Student has retake but still failing
+else if (hasRetake) {
+    retakeActionsHtml = `
+        <div style="font-size: 10px; margin-bottom: 4px;">
+            <span style="color: #dc2626; font-weight: 600;">
+                ❌ Failed (${retakeCount} attempt${retakeCount > 1 ? 's' : ''})
+            </span>
+            ${retakeScore !== null && retakeScore !== undefined ? `
+                <span style="display: block; font-size: 9px; color: #64748b;">Score: ${retakeScore}%</span>
+            ` : ''}
+        </div>
+        <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                style="background: #3b82f6; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
+            <i class="fas fa-edit"></i> Edit Retake
+        </button>
+    `;
+    
+    if (retakeCount < MAX_RETAKES) {
+        retakeActionsHtml += `
+            <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                    style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
+                <i class="fas fa-sync-alt"></i> Add Retake
+            </button>
+        `;
+    } else {
+        retakeActionsHtml += `
+            <span style="color: #dc2626; font-size: 8px; font-weight: 600; display: block; text-align: center; margin-top: 2px;">
+                ⛔ Max retakes reached
+            </span>
+        `;
+    }
+} 
+// ✅ THIRD: Student FAILED and NO retake yet
+else {
+    retakeActionsHtml = `
+        <button onclick="openRetakeModal('${m.admission}', '${m.name}', '${me_currentUnit}', '${me_currentBlock}')" 
+                style="background: #f59e0b; color: white; border: none; padding: 3px 10px; border-radius: 4px; cursor: pointer; font-size: 9px; font-weight: 600; width: 100%; margin-top: 2px;">
+            <i class="fas fa-sync-alt"></i> Add Retake
+        </button>
+    `;
+}
         
         // ✅ Case 4: If PASSED and no retake, show "✅ Passed"
         if (isPassing && !hasRetake) {
