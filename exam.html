@@ -15,7 +15,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- Styles -->
+    <!-- External Styles -->
     <link rel="stylesheet" href="exam.css">
 </head>
 <body>
@@ -241,8 +241,6 @@
                     </div>
                 </div>
 
-                <!-- REMOVED: Camera retry button - camera was already tested in lobby -->
-
                 <div class="proctoring-status">
                     <span class="status-label">🛡️ Proctoring:</span>
                     <span class="status-value active" id="proctoringStatusText">Active</span>
@@ -297,6 +295,7 @@
                     <span><kbd>→</kbd> Next</span>
                     <span><kbd>Ctrl+S</kbd> Save</span>
                     <span><kbd>F</kbd> Flag</span>
+                    <span><kbd>?</kbd> Help</span>
                     <span><kbd>Enter</kbd> Submit</span>
                 </div>
                 <div class="keyboard-hint" style="font-size:0.6rem;color:#94A3B8;text-align:center;margin-top:2px;">
@@ -395,7 +394,7 @@
         <h1>VIOLATION DETECTED!</h1>
         <p>You attempted to exit fullscreen mode.</p>
         <p>Your exam will be automatically submitted in:</p>
-        <div class="countdown-timer" id="exit-countdown">5</div>
+        <div class="countdown-timer" id="exit-countdown">10</div>
         <p class="block-sub">Please return to fullscreen mode immediately.</p>
     </div>
 
@@ -408,8 +407,7 @@
         <div class="block-timer" id="face-recovery-countdown">30</div>
         <p class="block-sub">Exam will auto-submit if face is not detected</p>
         <p class="block-save-info"><i class="fas fa-info-circle"></i> Your answers are being saved</p>
-        <!-- Retry button only appears here as a recovery option, NOT as a test -->
-        <button class="btn-retry-camera-block" onclick="window.recoverCamera()">
+        <button class="btn-retry-camera-block" onclick="window.retryCameraDuringExam()">
             <i class="fas fa-camera"></i> Retry Camera
         </button>
         <div class="block-status">
@@ -429,7 +427,7 @@
         <div class="warning-icon">🚨</div>
         <h3>Multiple Faces Detected!</h3>
         <p>Please ensure only you are in the camera frame.</p>
-        <p class="countdown-text">⏳ Auto-submit in <span id="multiple-faces-countdown">10</span> seconds...</p>
+        <p class="countdown-text">⏳ Auto-submit in <span id="multiple-faces-countdown">30</span> seconds...</p>
         <div class="progress-bar-warning">
             <div class="progress-fill-warning" id="multiple-faces-progress" style="width:100%;"></div>
         </div>
