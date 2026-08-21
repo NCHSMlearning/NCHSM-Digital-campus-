@@ -7,7 +7,7 @@ console.log('   🔧 isTVETProgram should have NO parameters');
 console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
 
 // ============================================================
-// ✅ SELF-HEALING - Force correct version (ADD THIS!)
+// ✅ SELF-HEALING - Force correct version (IMPROVED)
 // ============================================================
 (function() {
     console.log('🔄 Self-healing: Checking isTVETProgram...');
@@ -20,15 +20,24 @@ console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
     if (isWrong) {
         console.warn('⚠️ Old isTVETProgram detected! Overriding...');
         
-        // Override with correct version (NO parameters)
-        window.isTVETProgram = function() {
-            const program = window.me_currentProgram || document.getElementById('me_program_select')?.value || '';
-            return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+        // ✅ IMPROVED: Works with OR without parameter
+        window.isTVETProgram = function(program) {
+            // If a program is passed, check it directly (backward compatibility)
+            if (program !== undefined && program !== null && program !== '') {
+                return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+            }
+            // Otherwise use the global state
+            const currentProgram = window.me_currentProgram || 
+                                  document.getElementById('me_program_select')?.value || 
+                                  '';
+            return currentProgram !== 'KRCHN' && currentProgram !== 'nursing' && currentProgram !== 'Nursing' && currentProgram !== '';
         };
         
         console.log('✅ isTVETProgram overridden!');
         console.log('   Source:', window.isTVETProgram.toString());
-        console.log('   Test with CCA:', window.isTVETProgram());
+        console.log('   Test with no param:', window.isTVETProgram());
+        console.log('   Test with "CCA":', window.isTVETProgram('CCA'));
+        console.log('   Test with "KRCHN":', window.isTVETProgram('KRCHN'));
     } else {
         console.log('✅ isTVETProgram is already correct!');
     }
