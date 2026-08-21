@@ -1401,7 +1401,7 @@ async function addStaffToRecords(userId, email, password, fullName, staffId, dep
 
 // ============================================
 // ============================================
-// FORM SUBMISSION - SECURE VERSION WITH CSRF FIX
+// FORM SUBMISSION - SECURE VERSION WITH FIX
 // ============================================
 // ============================================
 
@@ -1414,7 +1414,6 @@ function ensureCSRFTokenForSubmit() {
         try {
             const parsed = JSON.parse(storedData);
             token = parsed.token;
-            // Check if expired
             const expires = parsed.expires || parsed.created + (30 * 60 * 1000);
             if (Date.now() > expires) {
                 token = null;
@@ -1424,7 +1423,6 @@ function ensureCSRFTokenForSubmit() {
         }
     }
     
-    // Generate new token if needed
     if (!token) {
         const array = new Uint8Array(32);
         crypto.getRandomValues(array);
@@ -1435,15 +1433,12 @@ function ensureCSRFTokenForSubmit() {
             expires: Date.now() + (30 * 60 * 1000)
         };
         sessionStorage.setItem('csrf_token', JSON.stringify(tokenData));
-        console.log('✅ New CSRF token generated for submit');
     }
     
-    // Set token in form
     const input = document.getElementById('csrf_token_input');
     if (input) {
         input.value = token;
     } else {
-        // Create input if missing
         const form = document.getElementById('register-form');
         if (form) {
             const newInput = document.createElement('input');
@@ -1458,14 +1453,12 @@ function ensureCSRFTokenForSubmit() {
     return token;
 }
 
-// Override verifyCSRFToken to be more robust
+// Override verifyCSRFToken
 window.verifyCSRFToken = function() {
     const storedData = sessionStorage.getItem('csrf_token');
     const submittedToken = document.getElementById('csrf_token_input')?.value;
     
-    // If no token in session, generate one
     if (!storedData) {
-        console.warn('⚠️ No CSRF token in session, generating new one');
         ensureCSRFTokenForSubmit();
         return true;
     }
@@ -1483,25 +1476,18 @@ window.verifyCSRFToken = function() {
         isValid = true;
     }
     
-    // If token expired, generate new one
     if (!isValid) {
-        console.warn('⚠️ CSRF token expired, generating new one');
         ensureCSRFTokenForSubmit();
         return true;
     }
     
-    // If no submitted token, set it
     if (!submittedToken) {
-        console.warn('⚠️ No CSRF token submitted, setting from session');
         const input = document.getElementById('csrf_token_input');
         if (input) input.value = storedToken;
         return true;
     }
     
-    // Verify match
     if (storedToken !== submittedToken) {
-        console.warn('⚠️ CSRF token mismatch, updating session');
-        // Update session with submitted token
         const tokenData = {
             token: submittedToken,
             created: Date.now(),
@@ -1511,16 +1497,12 @@ window.verifyCSRFToken = function() {
         return true;
     }
     
-    console.log('✅ CSRF token verified successfully');
-    
-    // Remove used token (prevent replay) but keep backup
     const backup = sessionStorage.getItem('csrf_token_backup');
     if (!backup) {
         sessionStorage.setItem('csrf_token_backup', storedToken);
     }
     sessionStorage.removeItem('csrf_token');
     
-    // Generate new token for next request
     setTimeout(() => {
         ensureCSRFTokenForSubmit();
     }, 100);
@@ -1528,7 +1510,9 @@ window.verifyCSRFToken = function() {
     return true;
 };
 
-// FORM SUBMIT HANDLER
+// ============================================
+// FORM SUBMISSION
+// ============================================
 document.getElementById('register-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -1541,16 +1525,14 @@ document.getElementById('register-form').addEventListener('submit', async functi
     document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
     
     try {
-        // 1. Ensure CSRF token exists BEFORE verification
+        // 1. Ensure CSRF token exists
         ensureCSRFTokenForSubmit();
         
-        // 2. CSRF Protection - with error handling
+        // 2. CSRF Protection
         try {
             verifyCSRFToken();
         } catch (csrfError) {
-            console.warn('⚠️ CSRF verification failed, retrying with new token:', csrfError.message);
             ensureCSRFTokenForSubmit();
-            // Try again
             verifyCSRFToken();
         }
         
@@ -1620,10 +1602,25 @@ document.getElementById('register-form').addEventListener('submit', async functi
         if (!gender) throw new Error('Please select your gender.');
         if (!role) throw new Error('Please select a role.');
         
-        // 11. Student-specific validation
+        // 11. Student-specific validation - FIXED
         if (role === 'student') {
-            if (!selectedStudentType) {
-                throw new Error('Please select whether you are a Continuing or New student.');
+            // Get student type from hidden input - THIS IS THE FIX
+            const studentTypeHidden = document.getElementById('student_type_hidden');
+            const studentType = studentTypeHidden ? studentTypeHidden.value : null;
+            
+            // Also check selectedStudentType variable
+            const finalStudentType = studentType || selectedStudentType;
+            
+            if (!finalStudentType) {
+                // Try to get from radio buttons
+                const selectedRadio = document.querySelector('input[name="student_type"]:checked');
+                if (selectedRadio) {
+                    selectedStudentType = selectedRadio.value;
+                } else {
+                    throw new Error('Please select whether you are a Continuing or New student.');
+                }
+            } else {
+                selectedStudentType = finalStudentType;
             }
             
             if (!student_id_number) {
@@ -1843,7 +1840,6 @@ document.getElementById('register-form').addEventListener('submit', async functi
         showSuccessAnimation(displayIntake);
         localStorage.removeItem('registration_draft');
         
-        // Re-enable button after success
         btn.disabled = false;
         document.getElementById('button-text').textContent = '✅ Create Account';
         
@@ -1855,7 +1851,6 @@ document.getElementById('register-form').addEventListener('submit', async functi
         document.getElementById('button-text').textContent = '✅ Create Account';
     }
 });
-
 // ============================================
 // ============================================
 // EVENT LISTENERS & INITIALIZATION
