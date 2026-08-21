@@ -1447,7 +1447,7 @@ async function loadMarksEntry() {
     }
 }
 // ============================================================
-// RENDER MARKS ENTRY TABLE - FULLY FIXED
+// RENDER MARKS ENTRY TABLE - COMPLETELY FIXED
 // ============================================================
 
 function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
@@ -1462,8 +1462,8 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
     }
     
     const isTVET = currentProgram !== 'KRCHN' && currentProgram !== 'nursing' && currentProgram !== 'Nursing';
-    const examMaxDisplay = isTVET ? 100 : 70;  // ✅ TVET = 100, Nursing = 70
-    const passingThreshold = isTVET ? 50 : 60;  // ✅ TVET = 50, Nursing = 60
+    const examMaxDisplay = isTVET ? 100 : 70;
+    const passingThreshold = isTVET ? 50 : 60;
     const programLabel = isTVET ? '📘 TVET' : '📕 NURSING';
     const isAdmin = isUserAdmin();
     
@@ -1522,10 +1522,13 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
                 </thead>
                 <tbody>`;
     
+    // ✅ BUILD ROWS INSIDE THE LOOP - total is DEFINED here!
     marks.forEach((m, i) => {
         const cat1 = parseFloat(m.cat1) || 0;
         const cat2 = parseFloat(m.cat2) || 0;
         const exam = parseFloat(m.exam) || 0;
+        
+        // ✅ total is DEFINED here
         const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
         const gradeInfo = getMarksEntryGrade(total);
         const isPassing = total >= passingThreshold;
@@ -1561,7 +1564,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
             'draft': '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>'
         }[m.approval_status] || '<span style="background:#e5e7eb;color:#6b7280;padding:2px 8px;border-radius:12px;font-size:10px;">📝 Draft</span>';
         
-        // ✅ RETAKE ACTIONS - FULLY FIXED (No duplicate condition)
+        // ✅ RETAKE ACTIONS
         let retakeActionsHtml = '';
 
         if (isPassing) {
@@ -1607,8 +1610,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
             `;
         }
 
-        // ✅ NO duplicate condition here - retakeActionsHtml is already correct!
-
+        // ✅ Build the row - total is DEFINED here
         html += `<tr style="${rowStyle}">
             <td style="padding: 8px 6px; text-align: center; font-size: 12px; color: #94a3b8;">${i + 1}</td>
             <td style="padding: 8px 8px; font-weight: 500; font-size: 12px;">${m.admission || 'N/A'}</td>
