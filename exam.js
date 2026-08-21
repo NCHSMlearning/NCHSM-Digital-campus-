@@ -1,5 +1,5 @@
 // ============================================================
-// CONFIGURATION - UPDATED SAFER VALUES
+// CONFIGURATION - COMPLETE WITH ALL SECURITY FEATURES
 // ============================================================
 const CONFIG = {
     SUPABASE_URL: 'https://lwhtjozfsmbyihenfunw.supabase.co',
@@ -7,21 +7,24 @@ const CONFIG = {
     FACE_MODEL_URL: 'https://justadudewhohacks.github.io/face-api.js/models',
     FACE_DETECTION_INTERVAL: 300,
     FACE_SCORE_THRESHOLD: 0.6,
-    MAX_BLUR_COUNT: 15,                    // Increased from 10
-    MAX_TAB_SWITCHES: 5,                   // Increased from 3
+    MAX_BLUR_COUNT: 15,
+    MAX_TAB_SWITCHES: 5,
     MAX_TIME_PER_QUESTION: 120,
-    CONSECUTIVE_FACE_LOST_LIMIT: 10,       // Kept at 10
-    TOTAL_VIOLATIONS_LIMIT: 3,             // Kept at 3 (strict)
-    RECOVERY_TIMER_SECONDS: 30,            // Increased from 20
+    CONSECUTIVE_FACE_LOST_LIMIT: 10,
+    TOTAL_VIOLATIONS_LIMIT: 3,
+    RECOVERY_TIMER_SECONDS: 30,
     RETRY_COOLDOWN_SECONDS: 10,
     STORAGE_PREFIX: 'exam_',
     SNAPSHOT_INTERVAL: 30000,
     HEARTBEAT_INTERVAL: 15000,
     SAVE_INTERVAL: 10000,
     INACTIVITY_TIMEOUT: 30 * 60 * 1000,
-    MULTIPLE_FACES_TIMEOUT: 30,            // New - 30 seconds for multiple faces warning
-    FULLSCREEN_EXIT_TIMEOUT: 10,           // Increased from 5 to 10
-    VIOLATION_COOLDOWN: 5000,              // New - 5 second cooldown between violations
+    MULTIPLE_FACES_TIMEOUT: 30,
+    FULLSCREEN_EXIT_TIMEOUT: 10,
+    VIOLATION_COOLDOWN: 5000,
+    EXAM_SESSION_KEY: 'exam_session',
+    MAX_SESSION_AGE: 5 * 60 * 1000,
+    CLEANUP_ON_COMPLETE: true,
 };
 
 // ============================================================
@@ -58,7 +61,7 @@ const AppState = {
     attendanceRecorded: false,
     blurCount: 0,
     tabSwitchCount: 0,
-    multipleFacesCount: 0,                 // New - track multiple faces count
+    multipleFacesCount: 0,
     timerInterval: null,
     snapshotInterval: null,
     heartbeatInterval: null,
@@ -71,6 +74,7 @@ const AppState = {
     questionTimes: {},
     secureProctor: null,
     stealthProctor: null,
+    networkQuality: 'unknown',
 };
 
 // ============================================================
@@ -193,7 +197,7 @@ function removeFromLocalStorage(key) {
     } catch (e) { return false; }
 }
 
-function showToast(message, type = 'info') {
+function showToast(message, type = 'info', duration = 3000) {
     const existing = document.querySelector('.toast');
     if (existing) existing.remove();
 
@@ -207,7 +211,7 @@ function showToast(message, type = 'info') {
         toast.style.opacity = '0';
         toast.style.transition = 'opacity 0.5s ease';
         setTimeout(() => toast.remove(), 500);
-    }, 3000);
+    }, duration);
 }
 
 function formatTime(seconds) {
@@ -224,6 +228,17 @@ async function getIPAddress() {
         const data = await response.json();
         return data.ip;
     } catch { return 'unknown'; }
+}
+
+function getDeviceInfo() {
+    return {
+        userAgent: navigator.userAgent,
+        platform: navigator.platform,
+        language: navigator.language,
+        screenResolution: `${window.screen.width}x${window.screen.height}`,
+        colorDepth: window.screen.colorDepth,
+        timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+    };
 }
 
 // ============================================================
@@ -256,6 +271,125 @@ async function fastDetectFace(videoElement) {
     } catch (error) {
         return null;
     }
+}
+
+// ============================================================
+// SESSION MANAGEMENT - NEW SECURITY FEATURE
+// ============================================================
+
+function saveExamSession() {
+    try {
+        sessionStorage.setItem(CONFIG.EXAM_SESSION_KEY, JSON.stringify({
+            examId: AppState.examId,
+            studentId: AppState.studentId,
+            examActive: AppState.isExamActive,
+            currentIndex: AppState.currentIndex,
+            answers: AppState.answers,
+            flaggedQuestions: AppState.flaggedQuestions,
+            timestamp: Date.now()
+        }));
+    } catch (e) {}
+}
+
+function recoverExamSession() {
+    try {
+        const data = sessionStorage.getItem(CONFIG.EXAM_SESSION_KEY);
+        if (data) {
+            const session = JSON.parse(data);
+            if (Date.now() - session.timestamp < CONFIG.MAX_SESSION_AGE) {
+                if (session.examId === AppState.examId && session.studentId === AppState.studentId) {
+                    if (session.answers) {
+                        AppState.answers = session.answers;
+                        AppState.flaggedQuestions = session.flaggedQuestions || {};
+                        AppState.currentIndex = session.currentIndex || 0;
+                        AppState.hasAnsweredAtLeastOne = Object.keys(AppState.answers).length > 0;
+                        return true;
+                    }
+                }
+            }
+        }
+    } catch (e) {}
+    return false;
+}
+
+// ============================================================
+// MULTIPLE DEVICE PROTECTION - NEW SECURITY FEATURE
+// ============================================================
+
+async function checkActiveSession() {
+    try {
+        const { data } = await sb
+            .from('exam_heartbeats')
+            .select('timestamp')
+            .eq('student_id', AppState.studentId)
+            .eq('exam_id', parseInt(AppState.examId))
+            .order('timestamp', { ascending: false })
+            .limit(1);
+            
+        if (data && data.length > 0) {
+            const lastHeartbeat = new Date(data[0].timestamp);
+            const now = new Date();
+            const diff = (now - lastHeartbeat) / 1000 / 60;
+            
+            if (diff < 2) {
+                showToast('⚠️ Exam already active on another device', 'warning', 5000);
+                return false;
+            }
+        }
+        return true;
+    } catch (e) {
+        return true;
+    }
+}
+
+// ============================================================
+// NETWORK QUALITY MONITORING - NEW SECURITY FEATURE
+// ============================================================
+
+function checkNetworkQuality() {
+    if ('connection' in navigator) {
+        const conn = navigator.connection;
+        if (conn) {
+            AppState.networkQuality = conn.effectiveType || 'unknown';
+            
+            if (conn.effectiveType === 'slow-2g' || conn.effectiveType === '2g') {
+                showToast('📶 Slow network detected. Answers saved locally.', 'warning', 4000);
+                return 'slow';
+            } else if (conn.effectiveType === '3g') {
+                showToast('📶 Medium network speed. Auto-save may be delayed.', 'info', 3000);
+                return 'medium';
+            }
+            return 'fast';
+        }
+    }
+    return 'unknown';
+}
+
+function setupNetworkQualityMonitoring() {
+    if ('connection' in navigator) {
+        const conn = navigator.connection;
+        if (conn) {
+            conn.addEventListener('change', () => {
+                checkNetworkQuality();
+            });
+        }
+    }
+}
+
+// ============================================================
+// KEYBOARD SHORTCUT HELP - NEW FEATURE
+// ============================================================
+
+function showKeyboardShortcuts() {
+    const shortcuts = `
+        ⌨️ Keyboard Shortcuts:
+        ← / → : Navigate questions
+        F : Flag/Unflag question
+        Ctrl+S : Save progress
+        Enter : Submit exam
+        ? : Show this help
+    `;
+    showToast(shortcuts, 'info', 5000);
 }
 
 // ============================================================
@@ -507,6 +641,13 @@ window.startExam = async function() {
         return;
     }
 
+    // Check for active session on another device
+    const sessionOk = await checkActiveSession();
+    if (!sessionOk) {
+        showToast('⚠️ You already have an active exam session on another device', 'error', 5000);
+        return;
+    }
+
     const detections = await fastDetectFace(DOM.cameraVideo);
     if (!detections || detections.length !== 1) {
         showToast('❌ Face verification failed. Please try again.', 'error');
@@ -537,6 +678,11 @@ window.startExam = async function() {
     }
     
     await enterSecureFullscreen();
+    
+    // Check network quality
+    checkNetworkQuality();
+    setupNetworkQualityMonitoring();
+    
     initExam();
 };
 
@@ -547,6 +693,12 @@ async function initExam() {
     console.log('📝 Initializing exam...');
 
     try {
+        // Try to recover session first
+        const recovered = recoverExamSession();
+        if (recovered) {
+            showToast('📂 Session restored! Continuing where you left off.', 'success');
+        }
+
         const examResult = await sb
             .from('exams')
             .select('exam_name, duration_minutes, pass_mark, total_marks')
@@ -600,6 +752,12 @@ async function initExam() {
                 DOM.submitBtn.disabled = false;
             }
 
+            // Save session
+            saveExamSession();
+            sessionStorage.setItem('examInProgress', 'true');
+            sessionStorage.setItem('examId', AppState.examId);
+            sessionStorage.setItem('studentId', AppState.studentId);
+
             showToast('📝 Exam started! Good luck!', 'success');
             await logProctoringEvent('exam_started', 'Exam started with proctoring', 'info');
             showSwipeHint();
@@ -627,6 +785,8 @@ async function startExamFaceDetection() {
                     showToast(message, 'warning');
                     if (DOM.examStatusText) DOM.examStatusText.textContent = message;
                     console.log(`⚠️ Face violation ${count}/3`);
+                    // Log violation
+                    logProctoringEvent('face_violation', `Violation ${count}/3: ${message}`, 'warning');
                 },
                 onPause: (reason, timer) => {
                     const overlay = DOM.faceBlockOverlay;
@@ -643,6 +803,7 @@ async function startExamFaceDetection() {
                     updateCameraStatus('danger', '⛔ Exam Paused - Face Lost', '0 faces');
                     DOM.cameraContainer.className = 'camera-container face-lost';
                     AppState.isExamPaused = true;
+                    logProctoringEvent('exam_paused', `Exam paused: ${reason}`, 'warning');
                 },
                 onResume: () => {
                     const overlay = DOM.faceBlockOverlay;
@@ -658,6 +819,7 @@ async function startExamFaceDetection() {
                     DOM.cameraContainer.className = 'camera-container face-verified';
                     AppState.isExamPaused = false;
                     showToast('✅ Face detected! Exam resumed.', 'success');
+                    logProctoringEvent('exam_resumed', 'Exam resumed after face detection', 'info');
                 },
                 onAutoSubmit: () => {
                     showToast('❌ Auto-submitting due to violations', 'error');
@@ -666,6 +828,7 @@ async function startExamFaceDetection() {
                         DOM.faceBlockReason.textContent = '❌ Too many violations! Auto-submitting...';
                         DOM.faceRecoveryCountdown.textContent = '0';
                     }
+                    logProctoringEvent('auto_submit', 'Auto-submitted due to face violations', 'critical');
                     setTimeout(() => executeSubmissionWithLoading(), 1000);
                 }
             });
@@ -685,6 +848,7 @@ async function startExamFaceDetection() {
     } catch (error) {
         console.error('Face detection error:', error);
         updateCameraStatus('danger', '❌ Face detection unavailable', '0 faces');
+        logProctoringEvent('face_detection_error', 'Face detection failed to start', 'critical');
     }
 }
 
@@ -695,7 +859,7 @@ function updateCameraStatus(status, text, faceCount) {
 }
 
 // ============================================================
-// SECURE FACE PROCTOR CLASS - COMPLETELY FIXED
+// SECURE FACE PROCTOR CLASS - COMPLETE
 // ============================================================
 class SecureFaceProctor {
     constructor(examId, studentId, callbacks = {}) {
@@ -722,8 +886,8 @@ class SecureFaceProctor {
             faceStable: false,
             lastFaceCount: 0,
             remainingTime: 0,
-            lastViolationTime: 0,           // Track last violation time
-            multipleFacesStartTime: 0,        // Track when multiple faces started
+            lastViolationTime: 0,
+            multipleFacesStartTime: 0,
         };
         this.video = null;
         this.canvas = null;
@@ -773,25 +937,21 @@ class SecureFaceProctor {
     handleDetectionResult(faceCount) {
         if (this.state.isSubmitting) return;
         
-        // Face detected - good case
         if (faceCount === 1) {
             this.state.consecutiveLost = 0;
             this.state.faceStable = true;
             this.state.multipleFacesStartTime = 0;
             
-            // If exam is paused, resume immediately
             if (this.state.isPaused) {
                 this.resumeExam();
             }
             updateCameraStatus('good', '✅ Face detected', '1 face');
             
-            // Hide multiple faces warning if visible
             const warning = DOM.multipleFacesWarning;
             if (warning) warning.classList.remove('active');
             return;
         }
         
-        // If exam is already paused, don't count more violations
         if (this.state.isPaused) {
             updateCameraStatus('warning', `⏳ Face still lost (${this.state.remainingTime || 0}s remaining)`, '0 faces');
             return;
@@ -800,22 +960,18 @@ class SecureFaceProctor {
         this.state.consecutiveLost++;
         this.state.faceStable = false;
         
-        // Handle multiple faces
         if (faceCount > 1) {
             updateCameraStatus('warning', `⚠️ Multiple faces (${faceCount})`, `${faceCount} faces`);
             this.showMultipleFacesWarning(faceCount);
             
-            // Only count as violation if multiple faces persist
             if (this.state.multipleFacesStartTime === 0) {
                 this.state.multipleFacesStartTime = Date.now();
             } else if (Date.now() - this.state.multipleFacesStartTime > CONFIG.MULTIPLE_FACES_TIMEOUT * 1000) {
-                // Multiple faces persisted for too long - count as violation
                 this.handleViolation();
                 this.state.multipleFacesStartTime = 0;
             }
             return;
         } else {
-            // No face detected
             this.state.multipleFacesStartTime = 0;
             const warning = DOM.multipleFacesWarning;
             if (warning) warning.classList.remove('active');
@@ -823,7 +979,6 @@ class SecureFaceProctor {
             updateCameraStatus('warning', `⚠️ Face lost (${this.state.consecutiveLost}/${this.config.CONSECUTIVE_LOST_LIMIT})`, '0 faces');
         }
         
-        // Check if consecutive lost limit reached
         if (this.state.consecutiveLost >= this.config.CONSECUTIVE_LOST_LIMIT) {
             this.handleViolation();
         }
@@ -833,7 +988,6 @@ class SecureFaceProctor {
         const warning = DOM.multipleFacesWarning;
         if (!warning) return;
         
-        // Update warning content
         const countdownEl = document.getElementById('multiple-faces-countdown');
         const progressEl = document.getElementById('multiple-faces-progress');
         
@@ -852,17 +1006,14 @@ class SecureFaceProctor {
     }
     
     handleViolation() {
-        // Check cooldown - prevent multiple violations in quick succession
         const now = Date.now();
         if (now - this.state.lastViolationTime < this.config.VIOLATION_COOLDOWN) {
             console.log('⏳ Violation cooldown active, skipping...');
             return;
         }
         
-        // Don't process if already submitting
         if (this.state.isSubmitting) return;
         
-        // Check if total violations exceeded
         if (this.state.totalViolations >= this.config.TOTAL_VIOLATIONS_LIMIT) {
             this.autoSubmitExam();
             return;
@@ -874,7 +1025,6 @@ class SecureFaceProctor {
         
         console.log(`⚠️ Face violation ${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT}`);
         
-        // Calculate timer based on violation count
         let timerSeconds = this.config.RECOVERY_TIMER_SECONDS - (this.state.totalViolations - 1) * 5;
         timerSeconds = Math.max(5, timerSeconds);
         
@@ -895,7 +1045,6 @@ class SecureFaceProctor {
     }
     
     pauseExam(seconds) {
-        // Clear any existing timer FIRST
         if (this.state.recoveryTimerId) {
             clearInterval(this.state.recoveryTimerId);
             this.state.recoveryTimerId = null;
@@ -911,13 +1060,11 @@ class SecureFaceProctor {
         
         this.callbacks.onPause?.(`Face not detected (${this.state.totalViolations}/${this.config.TOTAL_VIOLATIONS_LIMIT})`, seconds);
         
-        // Update UI with initial timer
         if (DOM.faceRecoveryCountdown) {
             DOM.faceRecoveryCountdown.textContent = seconds;
             DOM.faceRecoveryCountdown.className = 'block-timer';
         }
         
-        // Start the countdown timer - SINGLE interval
         let remaining = seconds;
         this.state.recoveryTimerId = setInterval(() => {
             remaining--;
@@ -932,13 +1079,11 @@ class SecureFaceProctor {
                 }
             }
             
-            // Update status with remaining time
             if (DOM.examStatusText) {
                 DOM.examStatusText.textContent = `⏳ Face lost - ${remaining}s to recover`;
             }
             
             if (remaining <= 0) {
-                // Timer expired - clear and auto-submit
                 clearInterval(this.state.recoveryTimerId);
                 this.state.recoveryTimerId = null;
                 this.state.recoveryTimer = null;
@@ -946,9 +1091,7 @@ class SecureFaceProctor {
             }
         }, 1000);
         
-        // Safety timeout - if face is detected, this will be cleared by resumeExam
         this.state.recoveryTimer = setTimeout(() => {
-            // If we get here, something went wrong with the interval
             if (this.state.recoveryTimerId) {
                 clearInterval(this.state.recoveryTimerId);
                 this.state.recoveryTimerId = null;
@@ -962,7 +1105,6 @@ class SecureFaceProctor {
     resumeExam() {
         if (!this.state.isPaused) return;
         
-        // Clear ALL timers
         if (this.state.recoveryTimerId) {
             clearInterval(this.state.recoveryTimerId);
             this.state.recoveryTimerId = null;
@@ -978,13 +1120,11 @@ class SecureFaceProctor {
         this.state.remainingTime = 0;
         this.state.multipleFacesStartTime = 0;
         
-        // Update UI
         if (DOM.faceRecoveryCountdown) {
             DOM.faceRecoveryCountdown.textContent = '✅';
             DOM.faceRecoveryCountdown.className = 'block-timer recovered';
         }
         
-        // Hide overlays
         const overlay = DOM.faceBlockOverlay;
         if (overlay) {
             overlay.style.display = 'none';
@@ -1029,7 +1169,6 @@ class SecureFaceProctor {
             });
             
             if (this.video) {
-                // Stop old tracks
                 if (this.video.srcObject) {
                     const oldTracks = this.video.srcObject.getTracks();
                     oldTracks.forEach(t => t.stop());
@@ -1053,7 +1192,6 @@ class SecureFaceProctor {
         if (this.state.isSubmitting) return;
         this.state.isSubmitting = true;
         
-        // Clear ALL timers
         if (this.state.recoveryTimerId) {
             clearInterval(this.state.recoveryTimerId);
             this.state.recoveryTimerId = null;
@@ -1063,7 +1201,6 @@ class SecureFaceProctor {
             this.state.recoveryTimer = null;
         }
         
-        // Hide overlays
         const overlay = DOM.faceBlockOverlay;
         if (overlay) {
             overlay.style.display = 'none';
@@ -1224,9 +1361,7 @@ class StealthProctor {
                 face_detected: true,
                 timestamp: new Date().toISOString()
             });
-        } catch (error) {
-            // Silently fail - heartbeat is not critical
-        }
+        } catch (error) {}
     }
 
     stopRecording() {
@@ -1485,6 +1620,7 @@ function saveProgressLocally() {
             flaggedQuestions: AppState.flaggedQuestions,
             timestamp: Date.now()
         });
+        saveExamSession();
     } catch (e) {}
 }
 
@@ -1644,7 +1780,8 @@ function saveAnswer(answer) {
 
     if (DOM.answerSaved) {
         DOM.answerSaved.style.display = 'block';
-        setTimeout(() => { DOM.answerSaved.style.display = 'none'; }, 1500);
+        DOM.answerSaved.textContent = '✅ Saved!';
+        setTimeout(() => { DOM.answerSaved.style.display = 'none'; }, 800);
     }
 
     saveAnswerToDatabase(q.id, answer);
@@ -1761,6 +1898,12 @@ function saveCurrentAnswer() {
             saveProgressLocally();
             updateStatusTable();
             updateExamStats();
+            
+            if (DOM.answerSaved) {
+                DOM.answerSaved.style.display = 'block';
+                DOM.answerSaved.textContent = '✅ Saved!';
+                setTimeout(() => { DOM.answerSaved.style.display = 'none'; }, 800);
+            }
         }
     }
 }
@@ -2015,6 +2158,15 @@ function startTimer(seconds) {
         const m = Math.floor(seconds / 60);
         const s = seconds % 60;
         timerEl.textContent = formatTime(seconds);
+        
+        // Update timer label with progress
+        const answered = Object.keys(AppState.answers).length;
+        const total = AppState.questions.length;
+        const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+        const timerLabel = timerDisplayEl.querySelector('.timer-label');
+        if (timerLabel) {
+            timerLabel.textContent = `⏱️ ${pct}% Complete`;
+        }
 
         if (seconds <= 60 && seconds > 0 && !AppState.timerWarningShown) {
             AppState.timerWarningShown = true;
@@ -2114,10 +2266,37 @@ window.toggleReviewMode = function() {
 };
 
 // ============================================================
+// SHOW SUBMISSION SUMMARY - NEW FEATURE
+// ============================================================
+function showSubmissionSummary() {
+    const total = AppState.questions.length;
+    const answered = Object.keys(AppState.answers).length;
+    const skipped = total - answered;
+    const flagged = Object.keys(AppState.flaggedQuestions).length;
+    
+    let summary = `📊 Exam Summary:\n✅ Answered: ${answered}/${total}`;
+    if (skipped > 0) {
+        summary += `\n⚠️ Skipped: ${skipped}`;
+    }
+    if (flagged > 0) {
+        summary += `\n🚩 Flagged: ${flagged}`;
+    }
+    summary += skipped > 0 ? '\n⚠️ You have unanswered questions!' : '\n🎯 All questions answered!';
+    
+    showToast(summary, skipped > 0 ? 'warning' : 'success', 5000);
+}
+
+// ============================================================
 // SUBMISSION
 // ============================================================
 function submitExam() {
-    if (AppState.isSubmitting) return;
+    if (AppState.isSubmitting) {
+        showToast('⏳ Submission already in progress...', 'warning');
+        return;
+    }
+
+    // Show summary before submission
+    showSubmissionSummary();
 
     verifySignInAttendance().then(canSubmit => {
         if (!canSubmit) return;
@@ -2211,14 +2390,31 @@ function updateSubmissionProgress(message) {
     }
 }
 
+function cleanupExamData() {
+    // Clear all session data
+    sessionStorage.removeItem(CONFIG.EXAM_SESSION_KEY);
+    sessionStorage.removeItem('examInProgress');
+    sessionStorage.removeItem('examId');
+    sessionStorage.removeItem('studentId');
+    
+    // Clear local storage for this exam
+    const keys = Object.keys(localStorage).filter(key => 
+        key.startsWith(`${CONFIG.STORAGE_PREFIX}${AppState.examId}`)
+    );
+    keys.forEach(key => localStorage.removeItem(key));
+    
+    // Reset AppState
+    AppState.isExamActive = false;
+    AppState.examStarted = false;
+    AppState.isSubmitting = false;
+}
+
 async function executeSubmissionWithLoading() {
-    // SAFETY CHECK - Prevent multiple submissions
     if (AppState.isSubmitting) {
         console.log('⚠️ Submission already in progress, skipping...');
         return;
     }
     
-    // Check if exam is actually active
     if (!AppState.isExamActive) {
         console.log('⚠️ Exam not active, skipping submission...');
         return;
@@ -2275,11 +2471,9 @@ async function executeSubmissionWithLoading() {
         await calculateAndSaveGrade();
 
         updateSubmissionProgress('🧹 Cleaning up...');
-        const keys = Object.keys(localStorage).filter(key => 
-            key.startsWith(`${CONFIG.STORAGE_PREFIX}${AppState.examId}`) && 
-            key.includes(AppState.studentId)
-        );
-        keys.forEach(key => localStorage.removeItem(key));
+        if (CONFIG.CLEANUP_ON_COMPLETE) {
+            cleanupExamData();
+        }
 
         updateSubmissionProgress('✅ Exam submitted successfully!');
         await new Promise(r => setTimeout(r, 1000));
@@ -2483,7 +2677,7 @@ function showCompletionCertificate() {
 }
 
 // ============================================================
-// FULLSCREEN MONITORING - FIXED
+// FULLSCREEN MONITORING
 // ============================================================
 function setupFullscreenMonitoring() {
     document.addEventListener('fullscreenchange', () => {
@@ -2509,7 +2703,7 @@ function showFullscreenExitWarning() {
 
     const warningOverlay = DOM.fullscreenExitWarning;
     const countdownEl = DOM.exitCountdown;
-    let countdown = CONFIG.FULLSCREEN_EXIT_TIMEOUT; // 10 seconds now
+    let countdown = CONFIG.FULLSCREEN_EXIT_TIMEOUT;
     countdownEl.textContent = countdown;
     warningOverlay.style.display = 'flex';
 
@@ -2537,6 +2731,7 @@ function showFullscreenExitWarning() {
             AppState.fullscreenWarningActive = false;
             if (!AppState.isSubmitting && AppState.isExamActive) {
                 showToast('⚠️ Fullscreen exit detected! Auto-submitting...', 'error');
+                logProctoringEvent('auto_submit', 'Auto-submitted due to fullscreen exit', 'critical');
                 executeSubmissionWithLoading();
             }
         }
@@ -2557,7 +2752,7 @@ async function enterSecureFullscreen() {
 }
 
 // ============================================================
-// APPLICATION BLOCKING
+// APPLICATION BLOCKING - COMPLETE
 // ============================================================
 function blockApplications() {
     document.addEventListener('keydown', blockKeyboardShortcuts);
@@ -2567,6 +2762,7 @@ function blockApplications() {
     document.addEventListener('cut', preventDefault);
     document.addEventListener('dragstart', preventDefault);
     document.addEventListener('drop', preventDefault);
+    document.addEventListener('selectstart', preventDefault);
 
     document.addEventListener('keyup', function(e) {
         if (e.key === 'PrintScreen') {
@@ -2584,54 +2780,80 @@ function preventDefault(e) {
 }
 
 function blockKeyboardShortcuts(e) {
+    // F12 - Developer Tools
     if (e.key === 'F12') {
         e.preventDefault();
         showToast('⚠️ Developer Tools are blocked!', 'warning');
         return false;
     }
+    // Ctrl+Shift+I - Dev Tools
     if (e.ctrlKey && e.shiftKey && (e.key === 'I' || e.key === 'i')) {
         e.preventDefault();
         return false;
     }
+    // Ctrl+Shift+J - Console
+    if (e.ctrlKey && e.shiftKey && (e.key === 'J' || e.key === 'j')) {
+        e.preventDefault();
+        return false;
+    }
+    // Alt+Tab - Task Switching
     if (e.altKey && e.key === 'Tab') {
         e.preventDefault();
         showToast('⚠️ Alt+Tab is blocked!', 'warning');
         return false;
     }
+    // Windows/Super Key
     if (e.key === 'Meta' || e.key === 'Windows') {
         e.preventDefault();
         return false;
     }
+    // Alt+F4 - Close Window
     if (e.altKey && e.key === 'F4') {
         e.preventDefault();
         return false;
     }
+    // Ctrl+W - Close Tab
     if (e.ctrlKey && e.key === 'w') {
         e.preventDefault();
         return false;
     }
+    // Ctrl+N/T - New Window/Tab
     if (e.ctrlKey && (e.key === 'n' || e.key === 't')) {
         e.preventDefault();
         return false;
     }
+    // Ctrl+Shift+Esc - Task Manager
     if (e.ctrlKey && e.shiftKey && e.key === 'Escape') {
         e.preventDefault();
         showToast('⚠️ Task Manager is blocked!', 'warning');
         return false;
     }
+    // Ctrl+C/V/X - Copy/Paste/Cut
     if (e.ctrlKey && (e.key === 'c' || e.key === 'C' || e.key === 'v' || e.key === 'V' || e.key === 'x' || e.key === 'X')) {
         e.preventDefault();
         return false;
     }
+    // Ctrl+S/P/U - Save/Print/View Source
     if (e.ctrlKey && (e.key === 's' || e.key === 'S' || e.key === 'p' || e.key === 'P' || e.key === 'u' || e.key === 'U')) {
         e.preventDefault();
         return false;
     }
+    // Ctrl+Plus/Minus - Zoom
+    if (e.ctrlKey && (e.key === '+' || e.key === '-' || e.key === '=')) {
+        e.preventDefault();
+        return false;
+    }
+    // F - Flag (only if not in input field)
     if (e.key === 'f' || e.key === 'F') {
         if (!e.target.matches('input, textarea, select')) {
             e.preventDefault();
             if (!AppState.isExamPaused) window.toggleFlagQuestion();
         }
+    }
+    // ? - Show Keyboard Shortcuts Help
+    if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+        e.preventDefault();
+        showKeyboardShortcuts();
     }
 }
 
@@ -2643,10 +2865,11 @@ function unblockApplications() {
     document.removeEventListener('cut', preventDefault);
     document.removeEventListener('dragstart', preventDefault);
     document.removeEventListener('drop', preventDefault);
+    document.removeEventListener('selectstart', preventDefault);
 }
 
 // ============================================================
-// WINDOW EVENT HANDLERS - FIXED
+// WINDOW EVENT HANDLERS
 // ============================================================
 function handleWindowBlur() {
     if (!AppState.isExamActive || AppState.isExamPaused) return;
@@ -2753,13 +2976,11 @@ function setupNetworkMonitoring() {
     window.addEventListener('online', () => {
         DOM.networkIndicator.innerHTML = '<i class="fas fa-wifi"></i> Online';
         DOM.networkIndicator.className = '';
-        showToast('✅ Network restored', 'success');
     });
 
     window.addEventListener('offline', () => {
         DOM.networkIndicator.innerHTML = '<i class="fas fa-wifi-slash"></i> Offline';
         DOM.networkIndicator.className = 'offline';
-        showToast('⚠️ You are offline. Answers will be saved locally.', 'warning');
     });
 }
 
@@ -2917,6 +3138,10 @@ function setupExamEventListeners() {
             submitExam();
             e.preventDefault();
         }
+        if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
+            e.preventDefault();
+            showKeyboardShortcuts();
+        }
     });
 }
 
@@ -2974,3 +3199,4 @@ window.retryCameraDuringExam = function() {
         showToast('❌ Face detection not initialized', 'error');
     }
 };
+window.showKeyboardShortcuts = showKeyboardShortcuts;
