@@ -701,58 +701,210 @@
 <script src="code-protection.js"></script>
 
 <!-- ============================================ -->
-<!-- INLINE FIX FOR STUDENT TYPE IN STEP 2 -->
+<!-- INLINE FIX WITH VALIDATION -->
 <!-- ============================================ -->
 <script>
-// This ensures student type works properly in Step 2
-document.addEventListener('DOMContentLoaded', function() {
-    // Set initial state - student is selected by default
-    const roleSelect = document.getElementById('role');
-    if (roleSelect && roleSelect.value === 'student') {
-        const studentFields = document.getElementById('student-fields');
-        if (studentFields) {
-            studentFields.style.display = 'block';
-            studentFields.classList.add('active');
+// Complete goToStep with validation
+window.goToStep = function(step) {
+    // VALIDATION: Check Step 1 before going to Step 2
+    if (step === 2) {
+        const errors = [];
+        
+        // Check Full Name
+        const fullName = document.getElementById('full_name');
+        if (!fullName.value.trim()) {
+            errors.push({ field: 'Full Name', message: 'Please enter your full name.' });
+            fullName.style.borderColor = '#DC2626';
+        } else {
+            fullName.style.borderColor = '#e2e8f0';
         }
-        const lecturerFields = document.getElementById('lecturer-fields');
-        if (lecturerFields) {
-            lecturerFields.style.display = 'none';
-            lecturerFields.classList.remove('active');
+        
+        // Check Email
+        const email = document.getElementById('email');
+        if (!email.value.trim()) {
+            errors.push({ field: 'Email Address', message: 'Please enter your email address.' });
+            email.style.borderColor = '#DC2626';
+        } else {
+            email.style.borderColor = '#e2e8f0';
+        }
+        
+        // Check Phone
+        const phone = document.getElementById('phone');
+        if (!phone.value.trim()) {
+            errors.push({ field: 'Phone Number', message: 'Please enter your phone number.' });
+            phone.style.borderColor = '#DC2626';
+        } else {
+            phone.style.borderColor = '#e2e8f0';
+        }
+        
+        // Check Date of Birth
+        const dob = document.getElementById('dob');
+        if (!dob.value) {
+            errors.push({ field: 'Date of Birth', message: 'Please select your date of birth.' });
+            dob.style.borderColor = '#DC2626';
+        } else {
+            dob.style.borderColor = '#e2e8f0';
+        }
+        
+        // Check Gender
+        const gender = document.getElementById('gender');
+        if (!gender.value) {
+            errors.push({ field: 'Gender', message: 'Please select your gender.' });
+            gender.style.borderColor = '#DC2626';
+        } else {
+            gender.style.borderColor = '#e2e8f0';
+        }
+        
+        if (errors.length > 0) {
+            // Show validation modal
+            const modal = document.getElementById('validationModal');
+            const errorList = document.getElementById('validationErrorList');
+            if (modal && errorList) {
+                errorList.innerHTML = '';
+                errors.forEach(error => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span class="error-icon">📝</span>
+                        <div>
+                            <span class="error-field">${error.field}:</span>
+                            <span>${error.message}</span>
+                        </div>
+                    `;
+                    errorList.appendChild(li);
+                });
+                modal.classList.add('show');
+            }
+            return;
         }
     }
     
-    // Handle role change
-    if (roleSelect) {
-        roleSelect.addEventListener('change', function() {
-            const isStudent = this.value === 'student';
-            const studentFields = document.getElementById('student-fields');
-            const lecturerFields = document.getElementById('lecturer-fields');
-            const studentDocs = document.getElementById('student-docs');
+    // VALIDATION: Check Step 2 before going to Step 3
+    if (step === 3) {
+        const errors = [];
+        const role = document.getElementById('role').value;
+        
+        if (role === 'student') {
+            // Check Student Type
+            const hiddenInput = document.getElementById('student_type_hidden');
+            if (!hiddenInput || !hiddenInput.value) {
+                errors.push({ field: 'Student Type', message: 'Please select whether you are a Continuing or New student.' });
+                document.getElementById('studentTypeError').style.display = 'block';
+            } else {
+                document.getElementById('studentTypeError').style.display = 'none';
+            }
             
+            // Check Student ID
+            const studentId = document.getElementById('student_id_number');
+            if (!studentId.value.trim()) {
+                errors.push({ field: 'Student ID', message: 'Please enter your Student ID or generate one.' });
+                studentId.style.borderColor = '#DC2626';
+            } else {
+                studentId.style.borderColor = '#e2e8f0';
+            }
+            
+            // Check Program
+            const program = document.getElementById('program_type');
+            if (!program.value) {
+                errors.push({ field: 'Program', message: 'Please select your program.' });
+                program.style.borderColor = '#DC2626';
+            } else {
+                program.style.borderColor = '#e2e8f0';
+            }
+        }
+        
+        if (role === 'lecturer') {
+            // Check Department
+            const department = document.getElementById('department');
+            if (!department.value) {
+                errors.push({ field: 'Department', message: 'Please select your department.' });
+                department.style.borderColor = '#DC2626';
+            } else {
+                department.style.borderColor = '#e2e8f0';
+            }
+        }
+        
+        if (errors.length > 0) {
+            const modal = document.getElementById('validationModal');
+            const errorList = document.getElementById('validationErrorList');
+            if (modal && errorList) {
+                errorList.innerHTML = '';
+                errors.forEach(error => {
+                    const li = document.createElement('li');
+                    li.innerHTML = `
+                        <span class="error-icon">📝</span>
+                        <div>
+                            <span class="error-field">${error.field}:</span>
+                            <span>${error.message}</span>
+                        </div>
+                    `;
+                    errorList.appendChild(li);
+                });
+                modal.classList.add('show');
+            }
+            return;
+        }
+    }
+    
+    // Hide all sections
+    document.querySelectorAll('.form-section').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Show target section
+    const targetSection = document.querySelector(`.form-section[data-section="${step}"]`);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+    
+    // Handle Step 2 - Show role-specific fields
+    if (step === 2) {
+        const role = document.getElementById('role').value;
+        const studentFields = document.getElementById('student-fields');
+        const lecturerFields = document.getElementById('lecturer-fields');
+        const studentDocs = document.getElementById('student-docs');
+        
+        if (role === 'student') {
             if (studentFields) {
-                studentFields.style.display = isStudent ? 'block' : 'none';
-                studentFields.classList.toggle('active', isStudent);
+                studentFields.style.display = 'block';
+                studentFields.classList.add('active');
             }
             if (lecturerFields) {
-                lecturerFields.style.display = isStudent ? 'none' : 'block';
-                lecturerFields.classList.toggle('active', !isStudent);
+                lecturerFields.style.display = 'none';
+                lecturerFields.classList.remove('active');
             }
             if (studentDocs) {
-                studentDocs.style.display = isStudent ? 'grid' : 'none';
+                studentDocs.style.display = 'grid';
             }
-            
-            // If student, ensure student type is selected
-            if (isStudent) {
-                const hiddenInput = document.getElementById('student_type_hidden');
-                if (hiddenInput && !hiddenInput.value) {
-                    selectStudentType('continuing');
-                }
+        } else if (role === 'lecturer') {
+            if (studentFields) {
+                studentFields.style.display = 'none';
+                studentFields.classList.remove('active');
             }
-        });
+            if (lecturerFields) {
+                lecturerFields.style.display = 'block';
+                lecturerFields.classList.add('active');
+            }
+            if (studentDocs) {
+                studentDocs.style.display = 'none';
+            }
+        }
     }
-});
+    
+    // Update progress
+    document.querySelectorAll('.progress-step').forEach(el => {
+        const stepNum = parseInt(el.dataset.step);
+        el.classList.remove('active', 'completed');
+        if (stepNum === step) {
+            el.classList.add('active');
+        } else if (stepNum < step) {
+            el.classList.add('completed');
+        }
+    });
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
 
-// Override selectStudentType to handle validation
+// selectStudentType function
 window.selectStudentType = function(type) {
     // Clear all selected states
     document.querySelectorAll('.student-type-card').forEach(card => {
@@ -959,68 +1111,6 @@ window.updateIntakePreview = function() {
     }
 };
 
-// Override goToStep to handle Step 2 properly
-const originalGoToStep = window.goToStep || function() {};
-window.goToStep = function(step) {
-    // Hide all sections
-    document.querySelectorAll('.form-section').forEach(section => {
-        section.style.display = 'none';
-    });
-    
-    // Show target section
-    const targetSection = document.querySelector(`.form-section[data-section="${step}"]`);
-    if (targetSection) {
-        targetSection.style.display = 'block';
-    }
-    
-    // Handle Step 2 - Show role-specific fields
-    if (step === 2) {
-        const role = document.getElementById('role').value;
-        const studentFields = document.getElementById('student-fields');
-        const lecturerFields = document.getElementById('lecturer-fields');
-        const studentDocs = document.getElementById('student-docs');
-        
-        if (role === 'student') {
-            if (studentFields) {
-                studentFields.style.display = 'block';
-                studentFields.classList.add('active');
-            }
-            if (lecturerFields) {
-                lecturerFields.style.display = 'none';
-                lecturerFields.classList.remove('active');
-            }
-            if (studentDocs) {
-                studentDocs.style.display = 'grid';
-            }
-        } else if (role === 'lecturer') {
-            if (studentFields) {
-                studentFields.style.display = 'none';
-                studentFields.classList.remove('active');
-            }
-            if (lecturerFields) {
-                lecturerFields.style.display = 'block';
-                lecturerFields.classList.add('active');
-            }
-            if (studentDocs) {
-                studentDocs.style.display = 'none';
-            }
-        }
-    }
-    
-    // Update progress
-    document.querySelectorAll('.progress-step').forEach(el => {
-        const stepNum = parseInt(el.dataset.step);
-        el.classList.remove('active', 'completed');
-        if (stepNum === step) {
-            el.classList.add('active');
-        } else if (stepNum < step) {
-            el.classList.add('completed');
-        }
-    });
-    
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-};
-
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     // Run updateIntakePreview
@@ -1054,12 +1144,42 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
+    // Role change
+    const roleSelect = document.getElementById('role');
+    if (roleSelect) {
+        roleSelect.addEventListener('change', function() {
+            const isStudent = this.value === 'student';
+            const studentFields = document.getElementById('student-fields');
+            const lecturerFields = document.getElementById('lecturer-fields');
+            const studentDocs = document.getElementById('student-docs');
+            
+            if (studentFields) {
+                studentFields.style.display = isStudent ? 'block' : 'none';
+                studentFields.classList.toggle('active', isStudent);
+            }
+            if (lecturerFields) {
+                lecturerFields.style.display = isStudent ? 'none' : 'block';
+                lecturerFields.classList.toggle('active', !isStudent);
+            }
+            if (studentDocs) {
+                studentDocs.style.display = isStudent ? 'grid' : 'none';
+            }
+            
+            if (isStudent) {
+                const hiddenInput = document.getElementById('student_type_hidden');
+                if (hiddenInput && !hiddenInput.value) {
+                    selectStudentType('continuing');
+                }
+            }
+        });
+    }
+    
     // Initialize feather icons
     if (typeof feather !== 'undefined') {
         feather.replace();
     }
     
-    console.log('✅ Registration form loaded with Step 2 student type selector');
+    console.log('✅ Registration form loaded with Step 2 student type selector and validation');
 });
 </script>
 
