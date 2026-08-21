@@ -206,7 +206,12 @@ const MAX_RETAKES = 2;
 console.log('📋 PROGRAM TYPE DETECTION - Loading...');
 
 function isTVETProgram() {
-    const program = me_currentProgram || document.getElementById('me_program_select')?.value || '';
+    // Try multiple sources for the program
+    const program = window.me_currentProgram || 
+                    me_currentProgram || 
+                    document.getElementById('me_program_select')?.value || 
+                    '';
+    
     return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
 }
 
@@ -215,7 +220,10 @@ console.log('✅ isTVETProgram() defined:');
 console.log('   Source:', isTVETProgram.toString());
 
 function isNursingProgram() {
-    const program = me_currentProgram || document.getElementById('me_program_select')?.value || '';
+    const program = window.me_currentProgram || 
+                    me_currentProgram || 
+                    document.getElementById('me_program_select')?.value || 
+                    '';
     return program === 'KRCHN' || program === 'nursing' || program === 'Nursing';
 }
 
@@ -234,7 +242,6 @@ function getPassingThreshold() {
 function getProgramTypeLabel() {
     return isNursingProgram() ? '📕 NURSING' : '📘 TVET';
 }
-
 // ============================================================
 // UPDATE PROGRAM DISPLAY - FIX FOR DROPDOWN
 // ============================================================
