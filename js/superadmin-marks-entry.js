@@ -517,22 +517,20 @@ function getNursingGrade(score) {
 // ============================================================
 
 function getTVETGrade(score) {
-    // ✅ Handle null/undefined/zero scores
     if (score === null || score === undefined || score === 0) {
         return { 
             grade: 'E', 
-            rating: 'NOT YET COMPETENT', 
+            rating: 'NOT YET COMPETENT',  // ✅ TVET rating
             points: 0.0,
             color: '#991b1b', 
             bgColor: '#fee2e2' 
         };
     }
     
-    // ✅ TVET Grading Scale (Competency-Based)
     if (score >= 80 && score <= 100) {
         return { 
             grade: 'A', 
-            rating: 'MASTERY', 
+            rating: 'MASTERY',  // ✅ TVET rating - NOT "Distinction"!
             points: 4.0,
             color: '#065f46', 
             bgColor: '#d1fae5' 
@@ -540,7 +538,7 @@ function getTVETGrade(score) {
     } else if (score >= 65 && score <= 79) {
         return { 
             grade: 'B', 
-            rating: 'PROFICIENT', 
+            rating: 'PROFICIENT',  // ✅ TVET rating - NOT "Credit"!
             points: 3.0,
             color: '#1e40af', 
             bgColor: '#dbeafe' 
@@ -548,22 +546,21 @@ function getTVETGrade(score) {
     } else if (score >= 50 && score <= 64) {
         return { 
             grade: 'C', 
-            rating: 'COMPETENT', 
+            rating: 'COMPETENT',  // ✅ TVET rating - NOT "Pass"!
             points: 2.0,
             color: '#92400e', 
             bgColor: '#fef3c7' 
         };
     } else if (score >= 0 && score <= 49) {
         return { 
-            grade: 'E',  // ✅ FIXED: E instead of FAIL
-            rating: 'NOT YET COMPETENT', 
+            grade: 'E', 
+            rating: 'NOT YET COMPETENT',  // ✅ TVET rating
             points: 0.0,
             color: '#991b1b', 
             bgColor: '#fee2e2' 
         };
     }
     
-    // Fallback
     return { 
         grade: 'E', 
         rating: 'NOT YET COMPETENT', 
@@ -612,15 +609,10 @@ function getNursingGrade(score) {
         };
     }
 }
-
-// ============================================================
-// ✅ UNIFIED GRADING - FIXED
-// ============================================================
-
 function getMarksEntryGrade(score) {
     // ✅ Check if TVET or Nursing
     if (isTVETProgram()) {
-        return getTVETGrade(score);
+        return getTVETGrade(score);  // ✅ This should be called
     } else {
         return getNursingGrade(score);
     }
