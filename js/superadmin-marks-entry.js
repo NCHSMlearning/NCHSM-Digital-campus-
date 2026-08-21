@@ -151,7 +151,7 @@ const MAX_RETAKES = 2;
 
 function isTVETProgram() {
     const program = me_currentProgram || document.getElementById('me_program_select')?.value || '';
-    return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing';
+    return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
 }
 
 function isNursingProgram() {
