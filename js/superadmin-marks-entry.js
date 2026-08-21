@@ -5077,3 +5077,63 @@ console.log('   - ✅ ⭐ RETAKE/SUPPLEMENTARY EXAM SUPPORT');
 console.log('   - ✅ Retake history tracking');
 console.log('   - ✅ Retake attempt limits (max 2)');
 console.log('   - ✅ Visual retake indicators on report cards');
+// ============================================================
+// ✅ FORCE OVERRIDE - Fight back against script.js
+// ============================================================
+
+// This runs AFTER everything else to ensure our version wins
+(function forceOverride() {
+    console.log('🛡️ FORCE OVERRIDE: Ensuring isTVETProgram is correct...');
+    
+    // Define the correct version
+    const correctIsTVET = function() {
+        const program = window.me_currentProgram || 
+                        me_currentProgram || 
+                        document.getElementById('me_program_select')?.value || 
+                        '';
+        return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+    };
+    
+    // Force override everything
+    window.isTVETProgram = correctIsTVET;
+    
+    // Also override the global reference if it exists
+    if (typeof isTVETProgram !== 'undefined') {
+        isTVETProgram = correctIsTVET;
+    }
+    
+    // Also override any other references
+    if (typeof window.__isTVETProgram !== 'undefined') {
+        window.__isTVETProgram = correctIsTVET;
+    }
+    
+    console.log('✅ isTVETProgram FORCE OVERRIDDEN!');
+    console.log('   Source:', correctIsTVET.toString());
+    console.log('   Test with CCA:', correctIsTVET());
+})();
+
+// Also run after a short delay to catch any late overrides
+setTimeout(function() {
+    console.log('🛡️ SECONDARY OVERRIDE: Double-checking isTVETProgram...');
+    
+    const correctIsTVET = function() {
+        const program = window.me_currentProgram || 
+                        me_currentProgram || 
+                        document.getElementById('me_program_select')?.value || 
+                        '';
+        return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+    };
+    
+    // Check if someone overwrote us
+    const currentSrc = (window.isTVETProgram || function(){}).toString();
+    if (currentSrc.includes('getProgramType(program)') || currentSrc.includes('function isTVETProgram(program)')) {
+        console.warn('⚠️ isTVETProgram was overwritten! Overriding again...');
+        window.isTVETProgram = correctIsTVET;
+        if (typeof isTVETProgram !== 'undefined') {
+            isTVETProgram = correctIsTVET;
+        }
+        console.log('✅ isTVETProgram restored!');
+    } else {
+        console.log('✅ isTVETProgram is still correct!');
+    }
+}, 500);
