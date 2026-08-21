@@ -2496,3 +2496,108 @@ label {
         font-size: 0.65rem;
     }
 }
+/* ============================================================
+   START EXAM BUTTON - BEAUTIFUL & PERMANENT
+   ============================================================ */
+
+/* Target all Start Exam buttons in the student portal */
+a[href*="exam.html"],
+a[href*="exam?"],
+.btn-start,
+.exam-action-btn,
+.btn-start-exam {
+    background: linear-gradient(135deg, #38A169, #2F855A) !important;
+    color: white !important;
+    padding: 10px 24px !important;
+    border-radius: 30px !important;
+    border: none !important;
+    font-weight: 600 !important;
+    font-size: 0.9rem !important;
+    box-shadow: 0 4px 15px rgba(56, 161, 105, 0.4) !important;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    text-decoration: none !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    cursor: pointer !important;
+    letter-spacing: 0.3px !important;
+}
+
+/* Hover effect */
+a[href*="exam.html"]:hover,
+a[href*="exam?"]:hover,
+.btn-start:hover,
+.exam-action-btn:hover,
+.btn-start-exam:hover {
+    transform: scale(1.05) !important;
+    box-shadow: 0 6px 30px rgba(56, 161, 105, 0.6) !important;
+    background: linear-gradient(135deg, #2F855A, #276749) !important;
+}
+
+/* Active/Click effect */
+a[href*="exam.html"]:active,
+a[href*="exam?"]:active,
+.btn-start:active,
+.exam-action-btn:active,
+.btn-start-exam:active {
+    transform: scale(0.95) !important;
+}
+
+/* Disabled state */
+a[href*="exam.html"].disabled,
+.btn-start.disabled,
+.exam-action-btn.disabled,
+.btn-start-exam:disabled {
+    background: linear-gradient(135deg, #94A3B8, #64748B) !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+    opacity: 0.6 !important;
+    transform: none !important;
+}
+
+/* Icon inside button */
+a[href*="exam.html"] i,
+.btn-start i,
+.exam-action-btn i,
+.btn-start-exam i {
+    font-size: 0.9rem !important;
+    transition: transform 0.3s ease !important;
+}
+
+a[href*="exam.html"]:hover i,
+.btn-start:hover i,
+.exam-action-btn:hover i,
+.btn-start-exam:hover i {
+    transform: rotate(-10deg) scale(1.1) !important;
+}
+
+/* Mobile responsive */
+@media (max-width: 768px) {
+    a[href*="exam.html"],
+    .btn-start,
+    .exam-action-btn,
+    .btn-start-exam {
+        padding: 8px 18px !important;
+        font-size: 0.8rem !important;
+        border-radius: 25px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    a[href*="exam.html"],
+    .btn-start,
+    .exam-action-btn,
+    .btn-start-exam {
+        padding: 6px 14px !important;
+        font-size: 0.7rem !important;
+        border-radius: 20px !important;
+        gap: 4px !important;
+    }
+    
+    a[href*="exam.html"] i,
+    .btn-start i,
+    .exam-action-btn i,
+    .btn-start-exam i {
+        font-size: 0.7rem !important;
+    }
+}
