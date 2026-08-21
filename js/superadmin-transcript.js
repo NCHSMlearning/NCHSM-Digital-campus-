@@ -797,6 +797,8 @@ window.showTranscriptPreview = function(student, marks, year) {
 // Message appears BEFORE grading scale (after table & GPA)
 // NO EMOJIS - Clean text only
 // CORRECT YEAR MAPPING FOR KRCHN AND TVET PROGRAMS
+// COMPLETE CONTACT INFORMATION - KIAMUNYI CAMPUS + WEBSITE
+// FIXED PROGRESSION MESSAGE - Shows correct next block
 // ============================================================
 
 function renderBlock(index) {
@@ -1031,35 +1033,43 @@ function renderBlock(index) {
     }
 
     // ============================================================
-    // 🎯 PROGRESSION MESSAGE - NO EMOJIS, CLEAN TEXT ONLY
+    // 🎯 PROGRESSION MESSAGE - FIXED: Shows correct next block
     // ============================================================
     const currentBlockIndex = index;
     const nextBlockIndex = currentBlockIndex + 1;
     const hasNextBlock = nextBlockIndex < blockNames.length;
     const nextBlockName = hasNextBlock ? blockNames[nextBlockIndex] : null;
     
-    // Determine progression message - NO EMOJIS
+    // Determine progression message
     let progressionMessage = '';
     let messageColor = '#94a3b8'; // default gray
     
     if (allPassed && hasNextBlock) {
+        // ✅ ALL PASSED - There's a next block
         messageColor = '#059669';
         progressionMessage = `Passed — Proceed to ${nextBlockName} · ${yearLabel}`;
     } else if (allPassed && !hasNextBlock) {
+        // 🏆 ALL PASSED - This is the FINAL block
         messageColor = '#4C1D95';
         progressionMessage = `All blocks completed — Ready for Graduation · ${yearLabel}`;
     } else if (hasFailed && blockPassed > 0) {
-        // Get failed unit names
+        // ⚠️ SOME FAILED - Need to retake
         const failedNames = blockMarks
-            .filter(m => (m.final_score || 0) < passMark)
+            .filter(m => (m.final_score || 0) < passMark && (m.final_score || 0) > 0)
             .map(m => m.subject_name)
             .join(', ');
         messageColor = '#dc2626';
-        progressionMessage = `${failedUnits} unit(s) failed: ${failedNames} — Retake required · ${yearLabel}`;
+        if (failedNames) {
+            progressionMessage = `${failedUnits} unit(s) failed: ${failedNames} — Retake required · ${yearLabel}`;
+        } else {
+            progressionMessage = `${failedUnits} unit(s) failed — Retake required · ${yearLabel}`;
+        }
     } else if (blockPassed === 0 && blockTotal > 0) {
+        // ❌ ALL FAILED
         messageColor = '#dc2626';
         progressionMessage = `Academic intervention required — Contact Registrar · ${yearLabel}`;
     } else {
+        // ⏳ PENDING
         progressionMessage = `Results pending · ${yearLabel}`;
     }
 
@@ -1123,7 +1133,11 @@ function renderBlock(index) {
                         <div style="font-size: 11px; color: #64748b; font-style: italic; margin-top: -2px;">AND MANAGEMENT (NCHSM)</div>
                     </div>
                 </div>
-                <div style="font-size: 11px; color: #64748b;">P.O. Box 12906 - 20100, Nakuru · Tel: 0790969743 · E-Mail: admin@nchsm.co.ke · Website: www.nchsm.co.ke</div>
+                <div style="font-size: 10px; color: #64748b; line-height: 1.5;">
+                    KIAMUNYI CAMPUS · P.O. Box 12906 - 20100, Nakuru<br>
+                    Tel: 0745 215 594 / 0703 345 771 · Email: info@nakurucollegeofhealth.ac.ke<br>
+                    Website: www.nchsm.co.ke
+                </div>
                 <div style="font-size: 16px; font-weight: 700; color: #0A3D62; letter-spacing: 2px; margin-top: 6px;">OFFICIAL ACADEMIC TRANSCRIPT</div>
             </div>
             
