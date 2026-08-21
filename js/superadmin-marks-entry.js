@@ -414,7 +414,7 @@ function calculateNursingTotal(cat1, cat2, exam, type) {
 }
 
 // ============================================================
-// ✅ TVET CALCULATION
+// ✅ TVET CALCULATION - FIXED (Total 160)
 // ============================================================
 
 function calculateTVETTotal(cat1, cat2, exam, type) {
@@ -423,41 +423,43 @@ function calculateTVETTotal(cat1, cat2, exam, type) {
     // Clamp values
     const c1 = Math.min(Math.max(cat1 || 0, 0), 30);
     const c2 = Math.min(Math.max(cat2 || 0, 0), 30);
-    const e = Math.min(Math.max(exam || 0, 0), 100);
+    const e = Math.min(Math.max(exam || 0, 0), 100);  // ✅ Exam max is 100 for TVET!
     
     switch(type) {
         case 'full':
-            // TVET: CAT1+CAT2+Exam = 160 total
-            total = Math.round(((c1 + c2 + e) / 160) * 100 * 10) / 10;
+            // ✅ TVET: CAT1+CAT2+Exam = 160 total
+            // Convert to percentage: (sum / 160) * 100
+            total = ((c1 + c2 + e) / 160) * 100;
             break;
             
         case 'single_cat':
-            // TVET: CAT+Exam = 130 total
-            total = Math.round(((c1 + e) / 130) * 100 * 10) / 10;
+            // ✅ TVET: CAT+Exam = 130 total (30 + 100)
+            total = ((c1 + e) / 130) * 100;
             break;
             
         case 'exam_only':
-            // TVET: Exam is out of 100
-            total = Math.round(e * 10) / 10;
+            // ✅ Exam only - out of 100
+            total = e;
             break;
             
         case 'cats_only':
-            // TVET: CAT1+CAT2 = 60 total
-            total = Math.round(((c1 + c2) / 60) * 100 * 10) / 10;
+            // ✅ CAT1+CAT2 only = 60 total
+            total = ((c1 + c2) / 60) * 100;
             break;
             
         case 'cat_only':
-            // TVET: CAT only = 30 total
-            total = Math.round((c1 / 30) * 100 * 10) / 10;
+            // ✅ CAT only = 30 total
+            total = (c1 / 30) * 100;
             break;
             
         default:
-            total = Math.round(((c1 + c2 + e) / 160) * 100 * 10) / 10;
+            // ✅ Default: full mode
+            total = ((c1 + c2 + e) / 160) * 100;
     }
     
-    return Math.min(total, 100);
+    // Round to 1 decimal place and cap at 100
+    return Math.min(Math.round(total * 10) / 10, 100);
 }
-
 // ============================================================
 // ✅ UNIFIED CALCULATION - Nursing + TVET
 // ============================================================
@@ -511,10 +513,22 @@ function getNursingGrade(score) {
 }
 
 // ============================================================
-// ✅ TVET COMPETENCY-BASED GRADING WITH POINTS
+// ✅ TVET COMPETENCY-BASED GRADING - FIXED
 // ============================================================
 
 function getTVETGrade(score) {
+    // ✅ Handle null/undefined/zero scores
+    if (score === null || score === undefined || score === 0) {
+        return { 
+            grade: 'E', 
+            rating: 'NOT YET COMPETENT', 
+            points: 0.0,
+            color: '#991b1b', 
+            bgColor: '#fee2e2' 
+        };
+    }
+    
+    // ✅ TVET Grading Scale (Competency-Based)
     if (score >= 80 && score <= 100) {
         return { 
             grade: 'A', 
@@ -541,16 +555,18 @@ function getTVETGrade(score) {
         };
     } else if (score >= 0 && score <= 49) {
         return { 
-            grade: 'E', 
+            grade: 'E',  // ✅ FIXED: E instead of FAIL
             rating: 'NOT YET COMPETENT', 
             points: 0.0,
             color: '#991b1b', 
             bgColor: '#fee2e2' 
         };
     }
+    
+    // Fallback
     return { 
-        grade: 'N/A', 
-        rating: 'PENDING', 
+        grade: 'E', 
+        rating: 'NOT YET COMPETENT', 
         points: 0.0,
         color: '#94a3b8', 
         bgColor: '#f1f5f9' 
@@ -558,10 +574,51 @@ function getTVETGrade(score) {
 }
 
 // ============================================================
-// ✅ UNIFIED GRADING - Nursing + TVET
+// ✅ NURSING GRADING - ORIGINAL (Unchanged)
+// ============================================================
+
+function getNursingGrade(score) {
+    if (score >= 75) {
+        return { 
+            grade: 'A', 
+            rating: 'Distinction', 
+            points: 4.0, 
+            color: '#065f46', 
+            bgColor: '#d1fae5' 
+        };
+    } else if (score >= 65) {
+        return { 
+            grade: 'B', 
+            rating: 'Credit', 
+            points: 3.0, 
+            color: '#1e40af', 
+            bgColor: '#dbeafe' 
+        };
+    } else if (score >= 60) {
+        return { 
+            grade: 'C', 
+            rating: 'Pass', 
+            points: 2.0, 
+            color: '#92400e', 
+            bgColor: '#fef3c7' 
+        };
+    } else {
+        return { 
+            grade: 'D', 
+            rating: 'Fail', 
+            points: 0.0, 
+            color: '#991b1b', 
+            bgColor: '#fee2e2' 
+        };
+    }
+}
+
+// ============================================================
+// ✅ UNIFIED GRADING - FIXED
 // ============================================================
 
 function getMarksEntryGrade(score) {
+    // ✅ Check if TVET or Nursing
     if (isTVETProgram()) {
         return getTVETGrade(score);
     } else {
@@ -569,6 +626,69 @@ function getMarksEntryGrade(score) {
     }
 }
 
+// ============================================================
+// ✅ ADD TVET GRADE HELPER FUNCTIONS
+// ============================================================
+
+function calculateTVETGrade(score) {
+    if (score === null || score === undefined || score === 0) return 'E';
+    if (score >= 80) return 'A';
+    if (score >= 65) return 'B';
+    if (score >= 50) return 'C';
+    return 'E';  // ✅ FIXED: E instead of FAIL
+}
+
+function calculateTVETPoints(grade) {
+    if (!grade) return 0;
+    var points = {
+        'A': 4.0,
+        'B': 3.0,
+        'C': 2.0,
+        'E': 0.0   // ✅ FIXED: E gets 0 points
+    };
+    return points[grade] || 0;
+}
+
+function getTVETStatus(score) {
+    if (score === null || score === undefined || score === 0) return 'NOT YET COMPETENT';
+    if (score >= 80) return 'MASTERY';
+    if (score >= 65) return 'PROFICIENT';
+    if (score >= 50) return 'COMPETENT';
+    return 'NOT YET COMPETENT';
+}
+
+function getTVETComment(score) {
+    if (score === null || score === undefined || score === 0) return 'FAIL';
+    if (score >= 80) return 'EXCELLENT';
+    if (score >= 65) return 'GOOD';
+    if (score >= 50) return 'SATISFACTORY';
+    return 'FAIL';
+}
+
+// ============================================================
+// ✅ CORRECT CALCULATE GRADE FUNCTION
+// ============================================================
+
+function calculateGrade(score, program) {
+    if (score === null || score === undefined || score === 0) {
+        // ✅ TVET gets E, Nursing gets D
+        return isTVETProgram() ? 'E' : 'D';
+    }
+    
+    if (isTVETProgram()) {
+        // ✅ TVET Grading
+        if (score >= 80) return 'A';
+        if (score >= 65) return 'B';
+        if (score >= 50) return 'C';
+        return 'E';  // ✅ FIXED: E for TVET below 50%
+    } else {
+        // ✅ Nursing Grading
+        if (score >= 75) return 'A';
+        if (score >= 65) return 'B';
+        if (score >= 60) return 'C';
+        return 'D';
+    }
+}
 // ============================================================
 // ✅ RETAKE/SUPPLEMENTARY FUNCTIONS
 // ============================================================
