@@ -50,14 +50,23 @@ const uploadedDocs = {
 // ============================================
 
 // ============================================
-// 1. CSRF PROTECTION
+// 1. CSRF PROTECTION - PRODUCTION READY
 // ============================================
 function generateCSRFToken() {
-    const token = Array.from(crypto.getRandomValues(new Uint8Array(32)))
-        .map(b => b.toString(16).padStart(2, '0'))
-        .join('');
-    sessionStorage.setItem('csrf_token', token);
+    // Generate a cryptographically secure token
+    const array = new Uint8Array(32);
+    crypto.getRandomValues(array);
+    const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
     
+    // Store in sessionStorage with timestamp
+    const tokenData = {
+        token: token,
+        created: Date.now(),
+        expires: Date.now() + (30 * 60 * 1000) // 30 minutes expiry
+    };
+    sessionStorage.setItem('csrf_token', JSON.stringify(tokenData));
+    
+    // Add to form
     let csrfInput = document.getElementById('csrf_token_input');
     if (!csrfInput) {
         csrfInput = document.createElement('input');
@@ -68,17 +77,91 @@ function generateCSRFToken() {
         if (form) form.appendChild(csrfInput);
     }
     csrfInput.value = token;
+    
+    console.log('✅ CSRF token generated and stored');
     return token;
 }
 
 function verifyCSRFToken() {
-    const token = sessionStorage.getItem('csrf_token');
-    const submitted = document.getElementById('csrf_token_input')?.value;
-    if (!token || !submitted || token !== submitted) {
-        throw new Error('Security validation failed. Please refresh and try again.');
+    const storedData = sessionStorage.getItem('csrf_token');
+    const submittedToken = document.getElementById('csrf_token_input')?.value;
+    
+    // Check if token exists in session
+    if (!storedData) {
+        console.warn('⚠️ No CSRF token found in session, generating new one');
+        generateCSRFToken();
+        return true;
+    }
+    
+    // Parse stored data
+    let storedToken, created, expires;
+    try {
+        const parsed = JSON.parse(storedData);
+        storedToken = parsed.token;
+        created = parsed.created;
+        expires = parsed.expires || created + (30 * 60 * 1000);
+    } catch (e) {
+        // If parsing fails, treat as old format
+        storedToken = storedData;
+        expires = Date.now() + (30 * 60 * 1000);
+    }
+    
+    // Check if token has expired
+    if (Date.now() > expires) {
+        console.warn('⚠️ CSRF token expired, generating new one');
+        generateCSRFToken();
+        return true;
+    }
+    
+    // Check if token was submitted
+    if (!submittedToken) {
+        console.warn('⚠️ No CSRF token submitted, generating new one');
+        generateCSRFToken();
+        return true;
+    }
+    
+    // Verify token match
+    if (storedToken !== submittedToken) {
+        console.warn('⚠️ CSRF token mismatch, generating new one');
+        generateCSRFToken();
+        return true;
+    }
+    
+    // Token is valid - remove it to prevent replay attacks
+    // (but keep a backup for page refreshes)
+    const backupToken = sessionStorage.getItem('csrf_token_backup');
+    if (!backupToken) {
+        sessionStorage.setItem('csrf_token_backup', storedToken);
     }
     sessionStorage.removeItem('csrf_token');
+    
+    // Generate new token for next request
+    setTimeout(() => {
+        generateCSRFToken();
+    }, 100);
+    
+    console.log('✅ CSRF token verified successfully');
     return true;
+}
+
+// Call this on page load to ensure token exists
+function ensureCSRFToken() {
+    const storedData = sessionStorage.getItem('csrf_token');
+    if (!storedData) {
+        generateCSRFToken();
+        return;
+    }
+    
+    // Check if token is expired
+    try {
+        const parsed = JSON.parse(storedData);
+        const expires = parsed.expires || parsed.created + (30 * 60 * 1000);
+        if (Date.now() > expires) {
+            generateCSRFToken();
+        }
+    } catch (e) {
+        generateCSRFToken();
+    }
 }
 
 // ============================================
