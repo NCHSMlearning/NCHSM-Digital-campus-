@@ -797,8 +797,7 @@ window.showTranscriptPreview = function(student, marks, year) {
 // Message appears BEFORE grading scale (after table & GPA)
 // NO EMOJIS - Clean text only
 // CORRECT YEAR MAPPING FOR KRCHN AND TVET PROGRAMS
-// COMPLETE CONTACT INFORMATION - KIAMUNYI CAMPUS + WEBSITE
-// FIXED PROGRESSION MESSAGE - Shows correct next block
+// CLEANER HEADER - One color, no extra tab title
 // ============================================================
 
 function renderBlock(index) {
@@ -913,34 +912,23 @@ function renderBlock(index) {
 
     // ============================================================
     // 🎯 YEAR OF STUDY - ACADEMIC YEAR RANGE CALCULATION
-    // KRCHN: Year 1 (Introductory, Block 1) → Year 2 (Block 2, Block 3) → Year 3 (Block 4, Block 5, Final)
-    // TVET Certificate: 1 Year (Year 1 Term 1, 2, 3)
-    // TVET Diploma: 2 Years (Year 1 Term 1, 2, 3 → Year 2 Term 1, 2, 3)
     // ============================================================
     
-    // Get intake year from student or use the selected year
     const intakeYear = parseInt(student.intake_year) || parseInt(year) || 2025;
     
-    // Define block to year mapping
     let yearOffset = 0;
     let yearLabel = 'Year 1';
     let yearOfStudy = 'N/A';
     
-    // Check program type and map accordingly
     const programCode = String(program).toUpperCase().trim();
     const isNursing = programCode === 'KRCHN' || programCode === 'NURSING';
     
-    // Get TVET program type
     const tvetType = getProgramType(programCode);
     const isTVETCert = tvetType === 'tvet_certificate';
     const isTVETDiploma = tvetType === 'tvet_diploma';
     const isTVETArtisan = tvetType === 'tvet_artisan';
     
     if (isNursing) {
-        // KRCHN Nursing: 3 Years
-        // Introductory, Block 1 → Year 1 (offset 0)
-        // Block 2, Block 3 → Year 2 (offset 1)
-        // Block 4, Block 5, Final → Year 3 (offset 2)
         const nursingMapping = {
             'Introductory': { year: 0, label: 'Year 1' },
             'Block 1': { year: 0, label: 'Year 1' },
@@ -958,7 +946,6 @@ function renderBlock(index) {
             const endYear = startYear + 1;
             yearOfStudy = `${startYear}/${endYear}`;
         } else {
-            // Fallback - try to extract number
             const numMatch = blockName.match(/\d+/);
             if (numMatch) {
                 const num = parseInt(numMatch[0]);
@@ -974,8 +961,6 @@ function renderBlock(index) {
             }
         }
     } else if (isTVETCert || isTVETArtisan) {
-        // TVET Certificate/Artisan: 1 Year
-        // Year 1 Term 1, Year 1 Term 2, Year 1 Term 3
         const yearMatch = blockName.match(/Year\s+(\d+)/i);
         if (yearMatch) {
             const yearNum = parseInt(yearMatch[1]);
@@ -985,13 +970,10 @@ function renderBlock(index) {
             const endYear = startYear + 1;
             yearOfStudy = `${startYear}/${endYear}`;
         } else {
-            // Default
             yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
             yearLabel = 'Year 1';
         }
     } else if (isTVETDiploma) {
-        // TVET Diploma: 2 Years
-        // Year 1 Term 1, 2, 3 → Year 2 Term 1, 2, 3
         const yearMatch = blockName.match(/Year\s+(\d+)/i);
         if (yearMatch) {
             const yearNum = parseInt(yearMatch[1]);
@@ -1001,12 +983,10 @@ function renderBlock(index) {
             const endYear = startYear + 1;
             yearOfStudy = `${startYear}/${endYear}`;
         } else {
-            // Default
             yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
             yearLabel = 'Year 1';
         }
     } else {
-        // Default fallback for other programs
         const yearMatch = blockName.match(/Year\s+(\d+)/i);
         if (yearMatch) {
             const yearNum = parseInt(yearMatch[1]);
@@ -1033,27 +1013,23 @@ function renderBlock(index) {
     }
 
     // ============================================================
-    // 🎯 PROGRESSION MESSAGE - FIXED: Shows correct next block
+    // 🎯 PROGRESSION MESSAGE
     // ============================================================
     const currentBlockIndex = index;
     const nextBlockIndex = currentBlockIndex + 1;
     const hasNextBlock = nextBlockIndex < blockNames.length;
     const nextBlockName = hasNextBlock ? blockNames[nextBlockIndex] : null;
     
-    // Determine progression message
     let progressionMessage = '';
-    let messageColor = '#94a3b8'; // default gray
+    let messageColor = '#94a3b8';
     
     if (allPassed && hasNextBlock) {
-        // ✅ ALL PASSED - There's a next block
         messageColor = '#059669';
         progressionMessage = `Passed — Proceed to ${nextBlockName} · ${yearLabel}`;
     } else if (allPassed && !hasNextBlock) {
-        // 🏆 ALL PASSED - This is the FINAL block
         messageColor = '#4C1D95';
         progressionMessage = `All blocks completed — Ready for Graduation · ${yearLabel}`;
     } else if (hasFailed && blockPassed > 0) {
-        // ⚠️ SOME FAILED - Need to retake
         const failedNames = blockMarks
             .filter(m => (m.final_score || 0) < passMark && (m.final_score || 0) > 0)
             .map(m => m.subject_name)
@@ -1065,11 +1041,9 @@ function renderBlock(index) {
             progressionMessage = `${failedUnits} unit(s) failed — Retake required · ${yearLabel}`;
         }
     } else if (blockPassed === 0 && blockTotal > 0) {
-        // ❌ ALL FAILED
         messageColor = '#dc2626';
         progressionMessage = `Academic intervention required — Contact Registrar · ${yearLabel}`;
     } else {
-        // ⏳ PENDING
         progressionMessage = `Results pending · ${yearLabel}`;
     }
 
@@ -1121,24 +1095,23 @@ function renderBlock(index) {
     const html = `
         <div id="transcriptDocument" style="background: white; padding: 30px 35px; border: 2px solid #0A3D62; border-radius: 8px; box-shadow: 0 4px 20px rgba(10,61,98,0.12); font-family: 'Times New Roman', Times, serif; max-width: 850px; margin: 0 auto;">
             
-            <!-- HEADER WITH LOGO -->
+            <!-- HEADER WITH LOGO - CLEAN AND ELEGANT -->
             <div style="text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 14px; margin-bottom: 18px;">
-                <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 2px;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 4px;">
                     <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
                          alt="NCHSM Logo" 
                          style="max-height: 55px; width: auto;"
                          onerror="this.style.display='none'">
                     <div>
                         <div style="font-size: 18px; font-weight: 700; color: #0A3D62; letter-spacing: 1px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
-                        <div style="font-size: 11px; color: #64748b; font-style: italic; margin-top: -2px;">AND MANAGEMENT (NCHSM)</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #0A3D62; letter-spacing: 0.5px;">AND MANAGEMENT (NCHSM)</div>
                     </div>
                 </div>
-                <div style="font-size: 10px; color: #64748b; line-height: 1.5;">
+                <div style="font-size: 10px; color: #64748b; line-height: 1.6; margin-top: 4px;">
                     KIAMUNYI CAMPUS · P.O. Box 12906 - 20100, Nakuru<br>
-                    Tel: 0745 215 594 / 0703 345 771 · Email: info@nakurucollegeofhealth.ac.ke<br>
-                    Website: www.nchsm.co.ke
+                    Tel: 0703 345 771 · Email: info@nakurucollegeofhealth.ac.ke · Website: www.nchsm.co.ke
                 </div>
-                <div style="font-size: 16px; font-weight: 700; color: #0A3D62; letter-spacing: 2px; margin-top: 6px;">OFFICIAL ACADEMIC TRANSCRIPT</div>
+                <div style="font-size: 15px; font-weight: 700; color: #0A3D62; letter-spacing: 2px; margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px;">OFFICIAL ACADEMIC TRANSCRIPT</div>
             </div>
             
             <!-- STUDENT INFO -->
