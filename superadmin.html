@@ -4665,7 +4665,7 @@
 </section>
 <!-- ============================================ -->
 <!-- MARKS ENTRY SYSTEM - SUPER ADMIN (FULLY FIXED) -->
-<!-- WITH TVET COMPETENCY-BASED GRADING -->
+<!-- WITH TVET COMPETENCY-BASED GRADING - LIGHT THEME -->
 <!-- ============================================ -->
 <section id="marks-entry" class="tab-content">
     <!-- Header -->
@@ -4679,11 +4679,9 @@
             </p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-            <!-- ✅ PUBLISH ALL BUTTON -->
             <button onclick="publishCurrentUnitMarks()" class="btn-action" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; box-shadow: 0 2px 8px rgba(253,185,19,0.3);">
                 <i class="fas fa-share-alt"></i> 📤 Publish All
             </button>
-            <!-- ✅ SELECT STUDENTS TO PUBLISH BUTTON -->
             <button onclick="openStudentPublishModal()" class="btn-action" style="background: #8b5cf6; color: white; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none; box-shadow: 0 2px 8px rgba(139,92,246,0.3);">
                 <i class="fas fa-user-check"></i> 👥 Select Students
             </button>
@@ -4698,42 +4696,39 @@
 
     <!-- Stats Cards -->
     <div class="cards" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 25px;">
-        <div class="card" style="border-top: 4px solid #059669;">
-            <h3 style="color: #059669; font-size: 12px;">Total Students</h3>
-            <p class="data" id="me_total_students" style="font-size: 28px; font-weight: 700; color: #059669;">0</p>
-            <p class="minor-data" style="font-size: 11px;">With marks</p>
+        <div class="card" style="border-top: 4px solid #059669; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #059669; font-size: 12px; margin: 0;">Total Students</h3>
+            <p class="data" id="me_total_students" style="font-size: 28px; font-weight: 700; color: #059669; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 11px; color: #94a3b8; margin: 0;">With marks</p>
         </div>
-        <div class="card" style="border-top: 4px solid #4C1D95;">
-            <h3 style="color: #4C1D95; font-size: 12px;">Total Units</h3>
-            <p class="data" id="me_total_subjects" style="font-size: 28px; font-weight: 700; color: #4C1D95;">0</p>
-            <p class="minor-data" style="font-size: 11px;">Active units</p>
+        <div class="card" style="border-top: 4px solid #4C1D95; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #4C1D95; font-size: 12px; margin: 0;">Total Units</h3>
+            <p class="data" id="me_total_subjects" style="font-size: 28px; font-weight: 700; color: #4C1D95; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 11px; color: #94a3b8; margin: 0;">Active units</p>
         </div>
-        <div class="card" style="border-top: 4px solid #FDB913;">
-            <h3 style="color: #d97706; font-size: 12px;">Pass Rate</h3>
-            <p class="data" id="me_pass_rate" style="font-size: 28px; font-weight: 700; color: #d97706;">0%</p>
-            <p class="minor-data" style="font-size: 11px;">Students passing</p>
+        <div class="card" style="border-top: 4px solid #FDB913; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #d97706; font-size: 12px; margin: 0;">Pass Rate</h3>
+            <p class="data" id="me_pass_rate" style="font-size: 28px; font-weight: 700; color: #d97706; margin: 4px 0;">0%</p>
+            <p class="minor-data" style="font-size: 11px; color: #94a3b8; margin: 0;">Students passing</p>
         </div>
-        <div class="card" style="border-top: 4px solid #8b5cf6;">
-            <h3 style="color: #6d28d9; font-size: 12px;">Class Average</h3>
-            <p class="data" id="me_class_avg" style="font-size: 28px; font-weight: 700; color: #6d28d9;">0%</p>
-            <p class="minor-data" style="font-size: 11px;">Overall performance</p>
+        <div class="card" style="border-top: 4px solid #8b5cf6; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #6d28d9; font-size: 12px; margin: 0;">Class Average</h3>
+            <p class="data" id="me_class_avg" style="font-size: 28px; font-weight: 700; color: #6d28d9; margin: 4px 0;">0%</p>
+            <p class="minor-data" style="font-size: 11px; color: #94a3b8; margin: 0;">Overall performance</p>
         </div>
-        <div class="card" style="border-top: 4px solid #ef4444;">
-            <h3 style="color: #dc2626; font-size: 12px;">At Risk</h3>
-            <p class="data" id="me_at_risk" style="font-size: 28px; font-weight: 700; color: #dc2626;">0</p>
-            <p class="minor-data" style="font-size: 11px;">Below pass mark</p>
+        <div class="card" style="border-top: 4px solid #ef4444; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #dc2626; font-size: 12px; margin: 0;">At Risk</h3>
+            <p class="data" id="me_at_risk" style="font-size: 28px; font-weight: 700; color: #dc2626; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 11px; color: #94a3b8; margin: 0;">Below pass mark</p>
         </div>
-        <!-- ✅ PUBLISHED COUNT CARD -->
-        <div class="card" style="border-top: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ecfdf5);">
-            <h3 style="color: #059669; font-size: 12px;">📤 Published</h3>
-            <p class="data" id="me_published_count" style="font-size: 28px; font-weight: 700; color: #059669;">0</p>
-            <p class="minor-data" style="font-size: 11px;">Marks visible to students</p>
+        <div class="card" style="border-top: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #059669; font-size: 12px; margin: 0;">📤 Published</h3>
+            <p class="data" id="me_published_count" style="font-size: 28px; font-weight: 700; color: #059669; margin: 4px 0;">0</p>
+            <p class="minor-data" style="font-size: 11px; color: #94a3b8; margin: 0;">Marks visible to students</p>
         </div>
     </div>
 
-    <!-- ============================================ -->
-    <!-- ✅ SELECTED PROGRAM DISPLAY - Shows current selection -->
-    <!-- ============================================ -->
+    <!-- Selected Program Display -->
     <div id="selectedProgramDisplay" style="background: linear-gradient(135deg, #f0fdf4, #ecfdf5); padding: 12px 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #86efac; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
         <div style="display: flex; align-items: center; gap: 12px;">
             <span style="font-weight: 700; color: #065f46; font-size: 14px;">
@@ -4837,37 +4832,44 @@
         </div>
     </div>
 
-    <!-- ✅ UPDATED: Grading System Reference - Shows BOTH TVET and Nursing -->
-    <div style="background: white; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
+    <!-- ============================================ -->
+    <!-- ✅ GRADING REFERENCE - LIGHT THEME (FIXED) -->
+    <!-- ============================================ -->
+    <div style="background: white; border-radius: 12px; padding: 12px 20px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
         <div style="display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
             <span style="font-weight: 700; color: #475569; font-size: 13px;">📊 Grading Systems:</span>
             
             <!-- TVET Competency-Based Grading -->
-            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: #f0fdf4; padding: 4px 12px; border-radius: 6px; border: 1px solid #86efac;">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: #f0fdf4; padding: 6px 14px; border-radius: 8px; border: 1px solid #86efac;">
                 <span style="font-size: 11px; font-weight: 700; color: #065f46;">🔧 TVET</span>
-                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A (80-100%) = 4</span>
-                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B (65-79%) = 3</span>
-                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C (50-64%) = 2</span>
-                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">E (0-49%) = 0</span>
+                <span style="background: #d1fae5; padding: 3px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A (80-100%) = 4.0</span>
+                <span style="background: #dbeafe; padding: 3px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B (65-79%) = 3.0</span>
+                <span style="background: #fef3c7; padding: 3px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C (50-64%) = 2.0</span>
+                <span style="background: #fee2e2; padding: 3px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">E (0-49%) = 0.0</span>
             </div>
             
             <!-- Nursing Academic Grading -->
-            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: #eff6ff; padding: 4px 12px; border-radius: 6px; border: 1px solid #93c5fd;">
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: #eff6ff; padding: 6px 14px; border-radius: 8px; border: 1px solid #93c5fd;">
                 <span style="font-size: 11px; font-weight: 700; color: #1e40af;">🎓 Nursing</span>
-                <span style="background: #d1fae5; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A (75-100%) = 4.0</span>
-                <span style="background: #dbeafe; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B (65-74%) = 3.0</span>
-                <span style="background: #fef3c7; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C (60-64%) = 2.0</span>
-                <span style="background: #fee2e2; padding: 2px 8px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">D (0-59%) = 0.0</span>
+                <span style="background: #d1fae5; padding: 3px 10px; border-radius: 4px; font-weight: 700; color: #065f46; font-size: 10px;">A (75-100%) = 4.0</span>
+                <span style="background: #dbeafe; padding: 3px 10px; border-radius: 4px; font-weight: 700; color: #1e40af; font-size: 10px;">B (65-74%) = 3.0</span>
+                <span style="background: #fef3c7; padding: 3px 10px; border-radius: 4px; font-weight: 700; color: #92400e; font-size: 10px;">C (60-64%) = 2.0</span>
+                <span style="background: #fee2e2; padding: 3px 10px; border-radius: 4px; font-weight: 700; color: #991b1b; font-size: 10px;">D (0-59%) = 0.0</span>
+            </div>
+            
+            <!-- Calculation Reference -->
+            <div style="display: flex; align-items: center; gap: 6px; flex-wrap: wrap; background: #fef3c7; padding: 6px 14px; border-radius: 8px; border: 1px solid #f59e0b;">
+                <span style="font-size: 10px; font-weight: 600; color: #92400e;">
+                    📐 CAT1=30 | CAT2=30 | Exam=70 (Nursing) / 100 (TVET)
+                </span>
+                <span style="font-size: 9px; color: #92400e; background: #fef3c7; padding: 2px 8px; border-radius: 4px; border: 1px solid #f59e0b;">
+                    Total: 130 (Nursing) / 160 (TVET)
+                </span>
             </div>
             
             <!-- Auto-Detected Display -->
-            <span id="assessmentTypeDisplay" style="font-size: 11px; color: #059669; background: #d1fae5; padding: 2px 12px; border-radius: 12px;">
+            <span style="font-size: 11px; color: #059669; background: #d1fae5; padding: 4px 14px; border-radius: 12px;">
                 <i class="fas fa-magic"></i> Auto: <span id="autoAssessmentTypeLabel">Full</span>
-            </span>
-            
-            <!-- Current Program Type Display -->
-            <span id="currentGradingType" style="font-size: 11px; color: #6b7280; background: #f3f4f6; padding: 2px 12px; border-radius: 12px; display: none;">
-                <i class="fas fa-info-circle"></i> <span id="currentGradingTypeLabel">TVET</span>
             </span>
         </div>
     </div>
@@ -4886,9 +4888,6 @@
     <!-- ============================================ -->
     <div id="marksEntryDynamicContent" style="display: none;">
         
-        <!-- ✅ Grading System Info - Dynamic (inserted by JS) -->
-        <div id="gradingSystemInfo" style="margin-bottom: 16px;"></div>
-        
         <!-- 1. LECTURER ASSIGNMENT MANAGEMENT -->
         <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
@@ -4904,7 +4903,6 @@
                     <button onclick="showLecturerAssignmentModal()" class="btn-action" style="background: #4C1D95; padding: 8px 20px; border: none; border-radius: 6px; color: white; cursor: pointer;">
                         <i class="fas fa-user-plus"></i> Assign Lecturer
                     </button>
-                    <!-- ✅ PUBLISH BUTTON IN ASSIGNMENT SECTION -->
                     <button onclick="openStudentPublishModal()" class="btn-action" style="background: #8b5cf6; color: white; padding: 8px 20px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-user-check"></i> Select Students
                     </button>
@@ -4959,7 +4957,6 @@
                     <button onclick="resetUnitColumns()" class="btn-action" style="background: #6b7280; padding: 8px 16px; border: none; border-radius: 6px; color: white; cursor: pointer;">
                         <i class="fas fa-undo"></i> Reset for This Unit
                     </button>
-                    <!-- ✅ PUBLISH BUTTON IN COLUMN SETTINGS -->
                     <button onclick="openStudentPublishModal()" class="btn-action" style="background: #8b5cf6; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-user-check"></i> Select Students
                     </button>
@@ -4981,333 +4978,6 @@
         </div>
     </div>
 </section>
-
-<!-- ============================================ -->
-<!-- STUDENT PUBLISH MODAL - Select students to publish -->
-<!-- ============================================ -->
-<div id="studentPublishModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99998; justify-content: center; align-items: center;">
-    <div style="background: white; border-radius: 16px; padding: 30px; max-width: 850px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); position: relative;">
-        
-        <!-- Close Button -->
-        <button onclick="closeStudentPublishModal()" style="position: absolute; top: 14px; right: 18px; background: none; border: none; font-size: 26px; color: #94a3b8; cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='#1e293b'" onmouseout="this.style.color='#94a3b8'">
-            <i class="fas fa-times"></i>
-        </button>
-        
-        <!-- Header -->
-        <div style="margin-bottom: 24px;">
-            <h2 style="color: #0A3D62; margin: 0 0 4px 0; font-weight: 700;">
-                <i class="fas fa-user-check" style="color: #8b5cf6;"></i> Select Students to Publish
-            </h2>
-            <p style="color: #64748b; margin: 0; font-size: 14px;">
-                <span id="sp_unit_display">Unit: Not selected</span> &nbsp;|&nbsp; 
-                <span id="sp_block_display">Block: Not selected</span>
-            </p>
-        </div>
-        
-        <!-- Body -->
-        <div style="margin-bottom: 20px;">
-            <!-- Quick Select Buttons -->
-            <div style="display: flex; gap: 10px; margin-bottom: 16px; flex-wrap: wrap; align-items: center;">
-                <button onclick="selectAllStudents()" class="btn-action" style="background: #4C1D95; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-check-double"></i> Select All
-                </button>
-                <button onclick="deselectAllStudents()" class="btn-action" style="background: #6b7280; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-times"></i> Deselect All
-                </button>
-                <button onclick="selectPassingStudents()" class="btn-action" style="background: #10b981; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-check-circle"></i> Select Passing
-                </button>
-                <button onclick="selectFailingStudents()" class="btn-action" style="background: #dc2626; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
-                    <i class="fas fa-exclamation-circle"></i> Select Failing
-                </button>
-                <span style="margin-left: auto; font-size: 13px; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 20px;">
-                    Selected: <strong id="sp_selected_count">0</strong> / <span id="sp_total_count">0</span>
-                </span>
-            </div>
-            
-            <!-- Search -->
-            <div style="margin-bottom: 16px;">
-                <input type="text" id="sp_search" placeholder="🔍 Search students by name or admission..." onkeyup="filterStudentPublishList()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
-            </div>
-            
-            <!-- Student List -->
-            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 8px;">
-                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-                    <thead style="background: #f8fafc; position: sticky; top: 0; z-index: 10; border-bottom: 2px solid #e5e7eb;">
-                        <tr>
-                            <th style="padding: 10px 12px; text-align: center; width: 40px;">
-                                <input type="checkbox" id="sp_select_all" onchange="toggleAllStudentCheckboxes()" style="width: 16px; height: 16px; cursor: pointer;">
-                            </th>
-                            <th style="padding: 10px 12px; text-align: left;">Student</th>
-                            <th style="padding: 10px 12px; text-align: left;">Admission</th>
-                            <th style="padding: 10px 12px; text-align: center;">Score</th>
-                            <th style="padding: 10px 12px; text-align: center;">Grade</th>
-                            <th style="padding: 10px 12px; text-align: center;">Status</th>
-                            <th style="padding: 10px 12px; text-align: center;">Published</th>
-                        </tr>
-                    </thead>
-                    <tbody id="sp_student_list">
-                        <tr><td colspan="7" style="padding: 40px; text-align: center; color: #94a3b8;">
-                            <div class="loading-spinner"></div>
-                            <p style="margin-top: 10px;">Loading students...</p>
-                        </td></tr>
-                    </tbody>
-                </table>
-            </div>
-            
-            <!-- Summary -->
-            <div style="margin-top: 16px; padding: 12px 16px; background: #f8fafc; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border: 1px solid #e5e7eb;">
-                <div>
-                    <span style="font-size: 13px; color: #64748b;">
-                        <i class="fas fa-info-circle"></i> 
-                        <span id="sp_publish_summary">0 students selected for publishing</span>
-                    </span>
-                </div>
-                <div style="display: flex; gap: 8px;">
-                    <span style="font-size: 12px; color: #059669; background: #d1fae5; padding: 2px 12px; border-radius: 12px;">
-                        ✅ <span id="sp_already_published">0</span> published
-                    </span>
-                    <span style="font-size: 12px; color: #f59e0b; background: #fef3c7; padding: 2px 12px; border-radius: 12px;">
-                        📝 <span id="sp_to_publish">0</span> to publish
-                    </span>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Footer Buttons -->
-        <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid #e2e8f0; padding-top: 20px;">
-            <button onclick="closeStudentPublishModal()" style="padding: 10px 24px; background: #e2e8f0; color: #475569; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#cbd5e1'" onmouseout="this.style.background='#e2e8f0'">
-                <i class="fas fa-times"></i> Cancel
-            </button>
-            <button onclick="publishSelectedStudents()" id="sp_publish_btn" style="padding: 10px 24px; background: #8b5cf6; color: white; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background 0.2s;" onmouseover="this.style.background='#7c3aed'" onmouseout="this.style.background='#8b5cf6'">
-                <i class="fas fa-share-alt"></i> Publish Selected (<span id="sp_publish_btn_count">0</span>)
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- LECTURER ASSIGNMENT MODAL -->
-<!-- ============================================ -->
-<div id="lecturerAssignmentModal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; justify-content: center; align-items: center;">
-    <div style="background: white; border-radius: 16px; padding: 30px; max-width: 600px; width: 95%; max-height: 90vh; overflow-y: auto;">
-        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
-            <h3 style="margin: 0; color: #1e293b;">
-                <i class="fas fa-user-tie" style="color: #4C1D95;"></i> Assign Lecturer to Unit
-            </h3>
-            <button onclick="closeLecturerAssignmentModal()" style="background: none; border: none; font-size: 24px; cursor: pointer; color: #94a3b8;">&times;</button>
-        </div>
-        
-        <div style="margin-bottom: 15px; padding: 10px 14px; background: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
-            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 3px;">
-                <i class="fas fa-tag"></i> Program
-            </label>
-            <input type="text" id="me_assign_program" class="form-control" readonly style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; font-weight: 600; color: #065f46;">
-        </div>
-        
-        <div style="margin-bottom: 15px;">
-            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                <i class="fas fa-user"></i> Select Lecturer <span style="color: #ef4444;">*</span>
-            </label>
-            <select id="me_lecturer_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
-                <option value="">-- Select Lecturer --</option>
-            </select>
-            <small style="color: #6b7280; font-size: 11px;">
-                <i class="fas fa-info-circle"></i> Showing staff for the selected program only
-            </small>
-        </div>
-        
-        <div style="margin-bottom: 15px;">
-            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                <i class="fas fa-book"></i> Unit <span style="color: #ef4444;">*</span>
-            </label>
-            <select id="me_assign_subject_select" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px;">
-                <option value="">-- Select Unit --</option>
-            </select>
-        </div>
-        
-        <div style="margin-bottom: 15px;">
-            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                <i class="fas fa-layer-group"></i> Block
-            </label>
-            <input type="text" id="me_assign_block" class="form-control" readonly style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f3f4f6; font-size: 14px;">
-        </div>
-        
-        <div style="margin-bottom: 20px;">
-            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
-                <i class="fas fa-calendar"></i> Academic Year
-            </label>
-            <input type="text" id="me_assign_year" class="form-control" readonly style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f3f4f6; font-size: 14px;">
-        </div>
-        
-        <div style="display: flex; gap: 10px; justify-content: flex-end;">
-            <button onclick="closeLecturerAssignmentModal()" class="btn-action" style="background: #6b7280; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer;">
-                Cancel
-            </button>
-            <button onclick="saveLecturerAssignment()" class="btn-action" style="background: #4C1D95; padding: 10px 24px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
-                <i class="fas fa-save"></i> Assign
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- MARKS STUDENT MANAGER MODAL -->
-<!-- ============================================ -->
-<div id="marksStudentManagerModal" class="modal" style="display: none;">
-    <div class="modal-content" style="max-width: 950px; width: 95%; max-height: 90vh; overflow-y: auto;">
-        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb;">
-            <h3 style="margin: 0; color: #1e293b;">
-                <i class="fas fa-users" style="color: #4C1D95;"></i> Manage Unit Students
-            </h3>
-            <span class="close" onclick="document.getElementById('marksStudentManagerModal').style.display='none'" style="cursor: pointer; font-size: 24px;">&times;</span>
-        </div>
-        <div class="modal-body" id="marksStudentManagerBody" style="padding: 20px;">
-            <div style="text-align: center; padding: 40px;">
-                <div class="loading-spinner"></div>
-                <p style="color: #6b7280; margin-top: 10px;">Loading...</p>
-            </div>
-        </div>
-        <div class="modal-actions" style="padding: 15px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 10px;">
-            <button onclick="document.getElementById('marksStudentManagerModal').style.display='none'" style="background: #6b7280; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer;">
-                Close
-            </button>
-        </div>
-    </div>
-</div>
-
-<!-- ============================================ -->
-<!-- LOADING OVERLAY -->
-<!-- ============================================ -->
-<div id="loadingOverlay" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 99999; justify-content: center; align-items: center; flex-direction: column; gap: 16px;">
-    <div style="background: white; padding: 30px 40px; border-radius: 16px; text-align: center; min-width: 200px;">
-        <div style="width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto;"></div>
-        <p id="loadingMessage" style="color: #1e293b; font-weight: 600; margin-top: 12px;">Loading...</p>
-    </div>
-    <style>
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
-        .loading-spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid #e2e8f0;
-            border-top-color: #4C1D95;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto;
-        }
-    </style>
-</div>
-
-<script>
-    // ============================================================
-    // UPDATE SELECTED PROGRAM DISPLAY
-    // ============================================================
-    
-    function updateSelectedProgramDisplay() {
-        const select = document.getElementById('me_program_select');
-        const selectedOption = select?.options[select?.selectedIndex];
-        const programValue = select?.value || '';
-        const programText = selectedOption?.text || 'None selected';
-        
-        // Update the name
-        const nameEl = document.getElementById('selectedProgramName');
-        if (nameEl) {
-            // Clean up the text (remove emojis and extra spaces for display)
-            let displayText = programText.replace(/[^\w\s\-\(\)\.]/g, '').trim();
-            if (!displayText || displayText === 'Select Program' || displayText === '-- Select Program --') {
-                displayText = 'None selected';
-            }
-            nameEl.textContent = displayText;
-            nameEl.style.color = programValue ? '#1e293b' : '#94a3b8';
-        }
-        
-        // Update the type badge
-        const typeEl = document.getElementById('selectedProgramType');
-        if (typeEl) {
-            if (programValue === 'KRCHN') {
-                typeEl.innerHTML = '<i class="fas fa-graduation-cap"></i> Nursing (Academic)';
-                typeEl.style.background = '#dbeafe';
-                typeEl.style.color = '#1e40af';
-                typeEl.style.border = '1px solid #93c5fd';
-            } else if (programValue && programValue !== '') {
-                typeEl.innerHTML = '<i class="fas fa-tools"></i> TVET (Competency-Based)';
-                typeEl.style.background = '#d1fae5';
-                typeEl.style.color = '#065f46';
-                typeEl.style.border = '1px solid #86efac';
-            } else {
-                typeEl.innerHTML = '<i class="fas fa-info-circle"></i> None Selected';
-                typeEl.style.background = '#f3f4f6';
-                typeEl.style.color = '#6b7280';
-                typeEl.style.border = '1px solid #e5e7eb';
-            }
-        }
-    }
-
-    // ============================================================
-    // ADDITIONAL: Function to update grading display based on program
-    // ============================================================
-    
-    function updateGradingDisplay(program) {
-        const config = getGradingConfig(program);
-        const programType = getProgramType(program);
-        
-        const gradingTypeEl = document.getElementById('currentGradingType');
-        const gradingTypeLabel = document.getElementById('currentGradingTypeLabel');
-        
-        if (gradingTypeEl && gradingTypeLabel) {
-            gradingTypeEl.style.display = 'inline-block';
-            if (programType === 'NURSING') {
-                gradingTypeLabel.textContent = '🎓 Nursing (Academic)';
-                gradingTypeEl.style.background = '#dbeafe';
-                gradingTypeEl.style.color = '#1e40af';
-            } else {
-                gradingTypeLabel.textContent = '🔧 TVET (Competency-Based)';
-                gradingTypeEl.style.background = '#d1fae5';
-                gradingTypeEl.style.color = '#065f46';
-            }
-        }
-    }
-    
-    // Override loadMarksEntry to update grading display
-    const originalLoadMarksEntry = window.loadMarksEntry;
-    window.loadMarksEntry = async function() {
-        await originalLoadMarksEntry();
-        const program = document.getElementById('me_program_select')?.value;
-        if (program) {
-            updateGradingDisplay(program);
-        }
-        updateSelectedProgramDisplay();
-    };
-    
-    // Override loadMEBlocks to update grading display
-    const originalLoadMEBlocks = window.loadMEBlocks;
-    window.loadMEBlocks = async function() {
-        await originalLoadMEBlocks();
-        const program = document.getElementById('me_program_select')?.value;
-        if (program) {
-            updateGradingDisplay(program);
-        }
-        updateSelectedProgramDisplay();
-    };
-    
-    // Initialize when page loads
-    document.addEventListener('DOMContentLoaded', function() {
-        setTimeout(function() {
-            updateSelectedProgramDisplay();
-            const program = document.getElementById('me_program_select')?.value;
-            if (program) {
-                updateGradingDisplay(program);
-            }
-        }, 200);
-    });
-    
-    console.log('✅ TVET Grading Display Updated in HTML!');
-    console.log('📋 TVET: E(0-49%) → C(50-64%) → B(65-79%) → A(80-100%) | Points: E=0, C=2, B=3, A=4');
-    console.log('📋 Nursing: D(0-59%) → C(60-64%) → B(65-74%) → A(75-100%) | Points: D=0.0, C=2.0, B=3.0, A=4.0');
-    console.log('✅ Selected Program Display initialized!');
-</script>
                                 <!-- ============================================ -->
 <!-- MARK ENTRY CONTROL PANEL - ADMIN -->
 <!-- ============================================ -->
