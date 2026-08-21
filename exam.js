@@ -5,26 +5,50 @@ const CONFIG = {
     SUPABASE_URL: 'https://lwhtjozfsmbyihenfunw.supabase.co',
     SUPABASE_ANON_KEY: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
     FACE_MODEL_URL: 'https://justadudewhohacks.github.io/face-api.js/models',
-    FACE_DETECTION_INTERVAL: 300,
-    FACE_SCORE_THRESHOLD: 0.6,
-    MAX_BLUR_COUNT: 15,
-    MAX_TAB_SWITCHES: 5,
-    MAX_TIME_PER_QUESTION: 120,
-    CONSECUTIVE_FACE_LOST_LIMIT: 10,
-    TOTAL_VIOLATIONS_LIMIT: 3,
-    RECOVERY_TIMER_SECONDS: 30,
-    RETRY_COOLDOWN_SECONDS: 10,
+    
+    // ============================================================
+    // 🔧 FACE DETECTION - MORE FORGIVING
+    // ============================================================
+    FACE_DETECTION_INTERVAL: 500,          // Was 300 - Check less frequently (less CPU, fewer false positives)
+    FACE_SCORE_THRESHOLD: 0.5,             // Was 0.6 - Easier face detection
+    
+    // ============================================================
+    // 🔧 VIOLATION LIMITS - INCREASED FOR BETTER UX
+    // ============================================================
+    MAX_BLUR_COUNT: 20,                    // Was 15 - More window blurs allowed
+    MAX_TAB_SWITCHES: 8,                   // Was 5 - More tab switches allowed
+    MAX_TIME_PER_QUESTION: 120,            // Same - 2 minutes per question
+    
+    // ============================================================
+    // 🔧 FACE LOSS - MORE TOLERANT
+    // ============================================================
+    CONSECUTIVE_FACE_LOST_LIMIT: 15,       // Was 10 - More consecutive losses allowed
+    TOTAL_VIOLATIONS_LIMIT: 5,             // Was 3 - More total violations before auto-submit
+    RECOVERY_TIMER_SECONDS: 45,            // Was 30 - More time to recover face
+    RETRY_COOLDOWN_SECONDS: 10,            // Same - 10 seconds between retries
+    
+    // ============================================================
+    // 🔧 STORAGE & INTERVALS
+    // ============================================================
     STORAGE_PREFIX: 'exam_',
-    SNAPSHOT_INTERVAL: 30000,
-    HEARTBEAT_INTERVAL: 15000,
-    SAVE_INTERVAL: 10000,
-    INACTIVITY_TIMEOUT: 30 * 60 * 1000,
-    MULTIPLE_FACES_TIMEOUT: 30,
-    FULLSCREEN_EXIT_TIMEOUT: 10,
-    VIOLATION_COOLDOWN: 5000,
+    SNAPSHOT_INTERVAL: 30000,              // Same - 30 seconds
+    HEARTBEAT_INTERVAL: 15000,             // Same - 15 seconds
+    SAVE_INTERVAL: 10000,                  // Same - 10 seconds
+    INACTIVITY_TIMEOUT: 30 * 60 * 1000,    // Same - 30 minutes
+    
+    // ============================================================
+    // 🔧 WARNINGS - MORE TIME TO RESPOND
+    // ============================================================
+    MULTIPLE_FACES_TIMEOUT: 45,            // Was 30 - More time to fix multiple faces
+    FULLSCREEN_EXIT_TIMEOUT: 15,           // Was 10 - More time to return to fullscreen
+    
+    // ============================================================
+    // 🔧 COOLDOWN & SESSION
+    // ============================================================
+    VIOLATION_COOLDOWN: 10000,             // Was 5000 - 10 seconds between violations (was 5)
     EXAM_SESSION_KEY: 'exam_session',
-    MAX_SESSION_AGE: 5 * 60 * 1000,
-    CLEANUP_ON_COMPLETE: true,
+    MAX_SESSION_AGE: 5 * 60 * 1000,        // Same - 5 minutes
+    CLEANUP_ON_COMPLETE: true,             // Same
 };
 
 // ============================================================
