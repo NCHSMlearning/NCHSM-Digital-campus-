@@ -796,6 +796,7 @@ window.showTranscriptPreview = function(student, marks, year) {
 // RENDER A SPECIFIC BLOCK - WITH SMALL SUBTLE MESSAGE
 // Message appears BEFORE grading scale (after table & GPA)
 // NO EMOJIS - Clean text only
+// CORRECT YEAR MAPPING FOR KRCHN AND TVET PROGRAMS
 // ============================================================
 
 function renderBlock(index) {
@@ -910,35 +911,69 @@ function renderBlock(index) {
 
     // ============================================================
     // 🎯 YEAR OF STUDY - ACADEMIC YEAR RANGE CALCULATION
+    // KRCHN: Year 1 (Introductory, Block 1) → Year 2 (Block 2, Block 3) → Year 3 (Block 4, Block 5, Final)
+    // TVET Certificate: 1 Year (Year 1 Term 1, 2, 3)
+    // TVET Diploma: 2 Years (Year 1 Term 1, 2, 3 → Year 2 Term 1, 2, 3)
     // ============================================================
     
     // Get intake year from student or use the selected year
     const intakeYear = parseInt(student.intake_year) || parseInt(year) || 2025;
     
-    // Define block to year mapping for KRCHN
-    const yearMapping = {
-        'Introductory': { year: 0, label: 'Year 1' },
-        'Block 1': { year: 0, label: 'Year 1' },
-        'Block 2': { year: 1, label: 'Year 2' },
-        'Block 3': { year: 1, label: 'Year 2' },
-        'Block 4': { year: 2, label: 'Year 3' },
-        'Block 5': { year: 2, label: 'Year 3' },
-        'Final': { year: 2, label: 'Year 3' }
-    };
-    
-    let yearOfStudy = 'N/A';
+    // Define block to year mapping
     let yearOffset = 0;
     let yearLabel = 'Year 1';
+    let yearOfStudy = 'N/A';
     
-    // Check if it's a KRCHN block
-    if (yearMapping[blockName]) {
-        yearOffset = yearMapping[blockName].year;
-        yearLabel = yearMapping[blockName].label;
-        const startYear = intakeYear + yearOffset;
-        const endYear = startYear + 1;
-        yearOfStudy = `${startYear}/${endYear}`;
-    } else {
-        // For TVET or other programs
+    // Check program type and map accordingly
+    const programCode = String(program).toUpperCase().trim();
+    const isNursing = programCode === 'KRCHN' || programCode === 'NURSING';
+    
+    // Get TVET program type
+    const tvetType = getProgramType(programCode);
+    const isTVETCert = tvetType === 'tvet_certificate';
+    const isTVETDiploma = tvetType === 'tvet_diploma';
+    const isTVETArtisan = tvetType === 'tvet_artisan';
+    
+    if (isNursing) {
+        // KRCHN Nursing: 3 Years
+        // Introductory, Block 1 → Year 1 (offset 0)
+        // Block 2, Block 3 → Year 2 (offset 1)
+        // Block 4, Block 5, Final → Year 3 (offset 2)
+        const nursingMapping = {
+            'Introductory': { year: 0, label: 'Year 1' },
+            'Block 1': { year: 0, label: 'Year 1' },
+            'Block 2': { year: 1, label: 'Year 2' },
+            'Block 3': { year: 1, label: 'Year 2' },
+            'Block 4': { year: 2, label: 'Year 3' },
+            'Block 5': { year: 2, label: 'Year 3' },
+            'Final': { year: 2, label: 'Year 3' }
+        };
+        
+        if (nursingMapping[blockName]) {
+            yearOffset = nursingMapping[blockName].year;
+            yearLabel = nursingMapping[blockName].label;
+            const startYear = intakeYear + yearOffset;
+            const endYear = startYear + 1;
+            yearOfStudy = `${startYear}/${endYear}`;
+        } else {
+            // Fallback - try to extract number
+            const numMatch = blockName.match(/\d+/);
+            if (numMatch) {
+                const num = parseInt(numMatch[0]);
+                if (num <= 1) { yearOffset = 0; yearLabel = 'Year 1'; }
+                else if (num <= 3) { yearOffset = 1; yearLabel = 'Year 2'; }
+                else { yearOffset = 2; yearLabel = 'Year 3'; }
+                const startYear = intakeYear + yearOffset;
+                const endYear = startYear + 1;
+                yearOfStudy = `${startYear}/${endYear}`;
+            } else {
+                yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
+                yearLabel = 'Year 1';
+            }
+        }
+    } else if (isTVETCert || isTVETArtisan) {
+        // TVET Certificate/Artisan: 1 Year
+        // Year 1 Term 1, Year 1 Term 2, Year 1 Term 3
         const yearMatch = blockName.match(/Year\s+(\d+)/i);
         if (yearMatch) {
             const yearNum = parseInt(yearMatch[1]);
@@ -948,7 +983,37 @@ function renderBlock(index) {
             const endYear = startYear + 1;
             yearOfStudy = `${startYear}/${endYear}`;
         } else {
-            // Default fallback
+            // Default
+            yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
+            yearLabel = 'Year 1';
+        }
+    } else if (isTVETDiploma) {
+        // TVET Diploma: 2 Years
+        // Year 1 Term 1, 2, 3 → Year 2 Term 1, 2, 3
+        const yearMatch = blockName.match(/Year\s+(\d+)/i);
+        if (yearMatch) {
+            const yearNum = parseInt(yearMatch[1]);
+            yearOffset = yearNum - 1;
+            yearLabel = `Year ${yearNum}`;
+            const startYear = intakeYear + yearOffset;
+            const endYear = startYear + 1;
+            yearOfStudy = `${startYear}/${endYear}`;
+        } else {
+            // Default
+            yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
+            yearLabel = 'Year 1';
+        }
+    } else {
+        // Default fallback for other programs
+        const yearMatch = blockName.match(/Year\s+(\d+)/i);
+        if (yearMatch) {
+            const yearNum = parseInt(yearMatch[1]);
+            yearOffset = yearNum - 1;
+            yearLabel = `Year ${yearNum}`;
+            const startYear = intakeYear + yearOffset;
+            const endYear = startYear + 1;
+            yearOfStudy = `${startYear}/${endYear}`;
+        } else {
             const numMatch = blockName.match(/\d+/);
             if (numMatch) {
                 const num = parseInt(numMatch[0]);
