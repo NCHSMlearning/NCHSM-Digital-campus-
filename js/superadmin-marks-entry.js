@@ -1696,7 +1696,7 @@ function renderMarksEntryTable(marks, unitCode, assessmentType, program) {
        // ============================================================
 // ✅ RETAKE ACTIONS - FIXED (No duplicate conditions)
 // ============================================================
-
+const isPassing = total >= passingThreshold;
 let retakeActionsHtml = '';
 
 // ✅ Check if student PASSED
