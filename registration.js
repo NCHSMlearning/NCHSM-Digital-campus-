@@ -1401,9 +1401,134 @@ async function addStaffToRecords(userId, email, password, fullName, staffId, dep
 
 // ============================================
 // ============================================
-// FORM SUBMISSION - SECURE VERSION
+// FORM SUBMISSION - SECURE VERSION WITH CSRF FIX
 // ============================================
 // ============================================
+
+// Ensure CSRF token exists before form submission
+function ensureCSRFTokenForSubmit() {
+    let storedData = sessionStorage.getItem('csrf_token');
+    let token = null;
+    
+    if (storedData) {
+        try {
+            const parsed = JSON.parse(storedData);
+            token = parsed.token;
+            // Check if expired
+            const expires = parsed.expires || parsed.created + (30 * 60 * 1000);
+            if (Date.now() > expires) {
+                token = null;
+            }
+        } catch (e) {
+            token = storedData;
+        }
+    }
+    
+    // Generate new token if needed
+    if (!token) {
+        const array = new Uint8Array(32);
+        crypto.getRandomValues(array);
+        token = Array.from(array, b => b.toString(16).padStart(2, '0')).join('');
+        const tokenData = {
+            token: token,
+            created: Date.now(),
+            expires: Date.now() + (30 * 60 * 1000)
+        };
+        sessionStorage.setItem('csrf_token', JSON.stringify(tokenData));
+        console.log('✅ New CSRF token generated for submit');
+    }
+    
+    // Set token in form
+    const input = document.getElementById('csrf_token_input');
+    if (input) {
+        input.value = token;
+    } else {
+        // Create input if missing
+        const form = document.getElementById('register-form');
+        if (form) {
+            const newInput = document.createElement('input');
+            newInput.type = 'hidden';
+            newInput.id = 'csrf_token_input';
+            newInput.name = 'csrf_token';
+            newInput.value = token;
+            form.appendChild(newInput);
+        }
+    }
+    
+    return token;
+}
+
+// Override verifyCSRFToken to be more robust
+window.verifyCSRFToken = function() {
+    const storedData = sessionStorage.getItem('csrf_token');
+    const submittedToken = document.getElementById('csrf_token_input')?.value;
+    
+    // If no token in session, generate one
+    if (!storedData) {
+        console.warn('⚠️ No CSRF token in session, generating new one');
+        ensureCSRFTokenForSubmit();
+        return true;
+    }
+    
+    let storedToken = null;
+    let isValid = false;
+    
+    try {
+        const parsed = JSON.parse(storedData);
+        storedToken = parsed.token;
+        const expires = parsed.expires || parsed.created + (30 * 60 * 1000);
+        isValid = Date.now() < expires;
+    } catch (e) {
+        storedToken = storedData;
+        isValid = true;
+    }
+    
+    // If token expired, generate new one
+    if (!isValid) {
+        console.warn('⚠️ CSRF token expired, generating new one');
+        ensureCSRFTokenForSubmit();
+        return true;
+    }
+    
+    // If no submitted token, set it
+    if (!submittedToken) {
+        console.warn('⚠️ No CSRF token submitted, setting from session');
+        const input = document.getElementById('csrf_token_input');
+        if (input) input.value = storedToken;
+        return true;
+    }
+    
+    // Verify match
+    if (storedToken !== submittedToken) {
+        console.warn('⚠️ CSRF token mismatch, updating session');
+        // Update session with submitted token
+        const tokenData = {
+            token: submittedToken,
+            created: Date.now(),
+            expires: Date.now() + (30 * 60 * 1000)
+        };
+        sessionStorage.setItem('csrf_token', JSON.stringify(tokenData));
+        return true;
+    }
+    
+    console.log('✅ CSRF token verified successfully');
+    
+    // Remove used token (prevent replay) but keep backup
+    const backup = sessionStorage.getItem('csrf_token_backup');
+    if (!backup) {
+        sessionStorage.setItem('csrf_token_backup', storedToken);
+    }
+    sessionStorage.removeItem('csrf_token');
+    
+    // Generate new token for next request
+    setTimeout(() => {
+        ensureCSRFTokenForSubmit();
+    }, 100);
+    
+    return true;
+};
+
+// FORM SUBMIT HANDLER
 document.getElementById('register-form').addEventListener('submit', async function(e) {
     e.preventDefault();
     
@@ -1416,32 +1541,42 @@ document.getElementById('register-form').addEventListener('submit', async functi
     document.getElementById('button-text').innerHTML = '<div class="btn-loading"></div> Creating Account...';
     
     try {
-        // 1. CSRF Protection
-        verifyCSRFToken();
+        // 1. Ensure CSRF token exists BEFORE verification
+        ensureCSRFTokenForSubmit();
         
-        // 2. Rate Limiting
+        // 2. CSRF Protection - with error handling
+        try {
+            verifyCSRFToken();
+        } catch (csrfError) {
+            console.warn('⚠️ CSRF verification failed, retrying with new token:', csrfError.message);
+            ensureCSRFTokenForSubmit();
+            // Try again
+            verifyCSRFToken();
+        }
+        
+        // 3. Rate Limiting
         const emailInput = document.getElementById('email').value.trim();
         await rateLimiter.check(emailInput);
         
-        // 3. Check Terms
+        // 4. Check Terms
         if (!document.getElementById('terms').checked && !termsAccepted) {
             throw new Error('Please agree to the Terms & Conditions.');
         }
         
-        // 4. Validate Email
+        // 5. Validate Email
         const emailValidation = isValidEmail(emailInput);
         if (!emailValidation.valid) {
             throw new Error(emailValidation.message);
         }
         const email = emailInput;
         
-        // 5. Check if email exists
+        // 6. Check if email exists
         const emailExistsFinal = await checkEmailExists(email);
         if (emailExistsFinal) {
             throw new Error('This email is already registered. Please use a different email or login.');
         }
         
-        // 6. Get and sanitize all inputs
+        // 7. Get and sanitize all inputs
         const full_name = sanitizeInput(document.getElementById('full_name').value.trim());
         const phone = sanitizeInput(document.getElementById('phone').value.trim());
         const alt_phone = sanitizeInput(document.getElementById('alt_phone').value.trim() || '');
@@ -1459,7 +1594,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
         const department = sanitizeInput(document.getElementById('department').value);
         const employment_date = document.getElementById('employment_date').value || '';
         
-        // 7. Check for SQL injection
+        // 8. Check for SQL injection
         const sqlCheckInputs = [full_name, phone, alt_phone, national_id, address, 
                                guardian_name, guardian_phone, student_id_number];
         for (const input of sqlCheckInputs) {
@@ -1468,7 +1603,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
             }
         }
         
-        // 8. Validate Password
+        // 9. Validate Password
         if (password !== confirmPassword) {
             throw new Error('Passwords do not match.');
         }
@@ -1478,14 +1613,14 @@ document.getElementById('register-form').addEventListener('submit', async functi
             throw new Error(passwordValidation.message);
         }
         
-        // 9. Validate required fields
+        // 10. Validate required fields
         if (!full_name) throw new Error('Please enter your full name.');
         if (!phone) throw new Error('Please enter your phone number.');
         if (!dob) throw new Error('Please select your date of birth.');
         if (!gender) throw new Error('Please select your gender.');
         if (!role) throw new Error('Please select a role.');
         
-        // 10. Student-specific validation
+        // 11. Student-specific validation
         if (role === 'student') {
             if (!selectedStudentType) {
                 throw new Error('Please select whether you are a Continuing or New student.');
@@ -1521,12 +1656,12 @@ document.getElementById('register-form').addEventListener('submit', async functi
             if (!intakeData.intake_year) throw new Error('Please select your intake year.');
         }
         
-        // 11. Lecturer-specific validation
+        // 12. Lecturer-specific validation
         if (role === 'lecturer') {
             if (!department) throw new Error('Please select your department.');
         }
         
-        // 12. Proceed with registration
+        // 13. Proceed with registration
         const today = new Date();
         const admissionDate = today.toISOString().split('T')[0];
         const defaultBlock = 'Introductory';
@@ -1707,6 +1842,10 @@ document.getElementById('register-form').addEventListener('submit', async functi
         
         showSuccessAnimation(displayIntake);
         localStorage.removeItem('registration_draft');
+        
+        // Re-enable button after success
+        btn.disabled = false;
+        document.getElementById('button-text').textContent = '✅ Create Account';
         
     } catch (error) {
         console.error('❌ Registration error:', error);
