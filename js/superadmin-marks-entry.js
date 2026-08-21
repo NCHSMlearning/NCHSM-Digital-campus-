@@ -1,3 +1,11 @@
+
+// ============================================================
+// ✅ FILE VERSION TRACKING
+// ============================================================
+console.log('📄 superadmin-marks-entry.js loaded');
+console.log('   📅 Version: 2025-08-21');
+console.log('   🔧 isTVETProgram should have NO parameters');
+console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
 // ============================================================
 // STATE
 // ============================================================
