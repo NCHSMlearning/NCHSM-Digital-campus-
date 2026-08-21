@@ -992,76 +992,456 @@ window.downloadTranscript = function() {
 };
 
 // ============================================================
-// PRINT TRANSCRIPT DOCUMENT
+// RENDER A SPECIFIC BLOCK - FINAL VERSION
+// A4 Ready - No outside text
+// Clean header with proper spacing
+// Contact: KIAMUNYI CAMPUS · P.O. Box 12906 - 20100, Nakuru
+// Tel: 0703 345 771 · Email: info@nakurucollegeofhealth.ac.ke · Website: www.nchsm.co.ke
 // ============================================================
 
-window.printTranscriptDocument = function() {
+function renderBlock(index) {
     const content = document.getElementById('transcriptPreviewContent');
-    if (!content) return;
-    
-    const transcriptHtml = content.innerHTML;
     const data = window._transcriptData;
-    const studentName = data?.student?.full_name || 'Student';
-    const blockName = data?.blockNames?.[data.currentBlockIndex] || 'Transcript';
-    
-    const printWindow = window.open('', '_blank', 'width=900,height=700');
-    if (!printWindow) {
-        alert('Please allow popups to print the transcript.');
-        return;
-    }
-    
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Academic Transcript - ${escapeHtml(studentName)} - ${escapeHtml(blockName)}</title>
-            <style>
-                @page {
-                    size: A4 portrait;
-                    margin: 10mm 12mm;
-                }
-                body {
-                    font-family: 'Times New Roman', Times, serif;
-                    background: white;
-                    padding: 0;
-                    margin: 0;
-                }
-                #transcriptContent {
-                    max-width: 850px;
-                    margin: 0 auto;
-                    padding: 20px;
-                }
-                #transcriptContent table {
-                    page-break-inside: avoid;
-                }
-                #transcriptContent tr {
-                    page-break-inside: avoid;
-                }
-                @media print {
-                    body { padding: 0; margin: 0; }
-                    #transcriptContent { padding: 10px; }
-                    .no-print { display: none !important; }
-                }
-            </style>
-        </head>
-        <body>
-            <div id="transcriptContent">
-                ${transcriptHtml}
-            </div>
-            <script>
-                window.onload = function() {
-                    setTimeout(function() {
-                        window.print();
-                    }, 500);
-                };
-            <\/script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
-};
+    if (!content || !data) return;
 
+    const { 
+        student, marks, year, groupedMarks, blockNames, 
+        program, isTVET, passMark, gradingDisplay, programType, blockLabel, config
+    } = data;
+
+    // Update current index
+    data.currentBlockIndex = index;
+    const blockName = blockNames[index] || 'General';
+    const blockMarks = groupedMarks[blockName] || [];
+    
+    // Calculate block stats
+    let blockTotal = blockMarks.length;
+    let blockPassed = 0;
+    let blockPoints = 0;
+    let blockCredits = 0;
+    let totalScore = 0;
+    let scoredCount = 0;
+    let totalPoints = 0;
+    let totalCredits = 0;
+    let totalUnits = marks.length;
+    let passedUnits = 0;
+    let failedUnits = 0;
+
+    // Build marks table for this block
+    let marksHtml = '';
+    let retakeCount = 0;
+
+    blockMarks.forEach((m) => {
+        const score = m.final_score || 0;
+        const gradeInfo = calculateOfficialGrade(score, program);
+        const isPassing = score >= passMark;
+        const unitCode = getUnitCode(m.subject_name);
+        const credits = GRADE_CONFIG.creditHours;
+        const pointsEarned = gradeInfo.points * credits;
+        const hasRetake = m.retake_count > 0 || false;
+        
+        if (hasRetake) retakeCount++;
+        if (isPassing) {
+            blockPassed++;
+            passedUnits++;
+        } else {
+            failedUnits++;
+        }
+        
+        if (score > 0) {
+            totalScore += score;
+            scoredCount++;
+            totalPoints += pointsEarned;
+            totalCredits += credits;
+            blockPoints += pointsEarned;
+            blockCredits += credits;
+        }
+        
+        // Subtle retake indicator (star)
+        const starIndicator = hasRetake ? `<span style="color: #94a3b8; font-size: 9px; margin-left: 4px; opacity: 0.5;" title="Retaken">☆</span>` : '';
+        
+        marksHtml += `
+            <tr style="border-bottom: 1px solid #d1d5db;">
+                <td style="padding: 6px 12px; font-size: 11px; font-weight: 500; color: #1e293b; border: 1px solid #d1d5db;">
+                    ${escapeHtml(unitCode)}
+                </td>
+                <td style="padding: 6px 12px; font-size: 11px; color: #1e293b; border: 1px solid #d1d5db;">
+                    ${escapeHtml(m.subject_name || 'N/A')}
+                    ${starIndicator}
+                </td>
+                <td style="padding: 6px 12px; text-align: center; font-size: 11px; color: #1e293b; border: 1px solid #d1d5db;">
+                    ${credits}
+                </td>
+                <td style="padding: 6px 12px; text-align: center; font-size: 13px; font-weight: 700; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
+                    ${gradeInfo.grade}
+                </td>
+                <td style="padding: 6px 12px; text-align: center; font-size: 11px; font-weight: 600; color: ${gradeInfo.color}; border: 1px solid #d1d5db;">
+                    ${pointsEarned.toFixed(1)}
+                </td>
+            </tr>
+        `;
+    });
+
+    // Block summary (NO retake summary)
+    const blockPassRate = blockTotal > 0 ? Math.round((blockPassed / blockTotal) * 100) : 0;
+    const blockGPA = blockCredits > 0 ? Math.round((blockPoints / blockCredits) * 100) / 100 : 0;
+    const allPassed = blockPassed === blockTotal && blockTotal > 0;
+    const hasFailed = failedUnits > 0;
+    
+    marksHtml += `
+        <tr style="background: #f8fafc; border-bottom: 2px solid #0A3D62;">
+            <td colspan="5" style="padding: 4px 12px; font-size: 9px; color: #64748b; text-align: right; border: 1px solid #d1d5db;">
+                <strong>Block Summary:</strong> ${blockPassed}/${blockTotal} passed (${blockPassRate}%) · GPA: ${blockGPA.toFixed(2)}
+            </td>
+        </tr>
+    `;
+
+    // Calculate overall stats
+    const overallAvg = scoredCount > 0 ? Math.round((totalScore / scoredCount) * 10) / 10 : 0;
+    const overallGradeInfo = calculateOfficialGrade(overallAvg, program);
+    const gpa = totalCredits > 0 ? Math.round((totalPoints / totalCredits) * 100) / 100 : 0;
+    
+    const now = new Date().toLocaleDateString('en-KE', {
+        timeZone: 'Africa/Nairobi',
+        weekday: 'long',
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric'
+    });
+
+    // ============================================================
+    // 🎯 YEAR OF STUDY - ACADEMIC YEAR RANGE CALCULATION
+    // ============================================================
+    
+    const intakeYear = parseInt(student.intake_year) || parseInt(year) || 2025;
+    
+    let yearOffset = 0;
+    let yearLabel = 'Year 1';
+    let yearOfStudy = 'N/A';
+    
+    const programCode = String(program).toUpperCase().trim();
+    const isNursing = programCode === 'KRCHN' || programCode === 'NURSING';
+    
+    const tvetType = getProgramType(programCode);
+    const isTVETCert = tvetType === 'tvet_certificate';
+    const isTVETDiploma = tvetType === 'tvet_diploma';
+    const isTVETArtisan = tvetType === 'tvet_artisan';
+    
+    if (isNursing) {
+        const nursingMapping = {
+            'Introductory': { year: 0, label: 'Year 1' },
+            'Block 1': { year: 0, label: 'Year 1' },
+            'Block 2': { year: 1, label: 'Year 2' },
+            'Block 3': { year: 1, label: 'Year 2' },
+            'Block 4': { year: 2, label: 'Year 3' },
+            'Block 5': { year: 2, label: 'Year 3' },
+            'Final': { year: 2, label: 'Year 3' }
+        };
+        
+        if (nursingMapping[blockName]) {
+            yearOffset = nursingMapping[blockName].year;
+            yearLabel = nursingMapping[blockName].label;
+            const startYear = intakeYear + yearOffset;
+            const endYear = startYear + 1;
+            yearOfStudy = `${startYear}/${endYear}`;
+        } else {
+            const numMatch = blockName.match(/\d+/);
+            if (numMatch) {
+                const num = parseInt(numMatch[0]);
+                if (num <= 1) { yearOffset = 0; yearLabel = 'Year 1'; }
+                else if (num <= 3) { yearOffset = 1; yearLabel = 'Year 2'; }
+                else { yearOffset = 2; yearLabel = 'Year 3'; }
+                const startYear = intakeYear + yearOffset;
+                const endYear = startYear + 1;
+                yearOfStudy = `${startYear}/${endYear}`;
+            } else {
+                yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
+                yearLabel = 'Year 1';
+            }
+        }
+    } else if (isTVETCert || isTVETArtisan) {
+        const yearMatch = blockName.match(/Year\s+(\d+)/i);
+        if (yearMatch) {
+            const yearNum = parseInt(yearMatch[1]);
+            yearOffset = yearNum - 1;
+            yearLabel = `Year ${yearNum}`;
+            const startYear = intakeYear + yearOffset;
+            const endYear = startYear + 1;
+            yearOfStudy = `${startYear}/${endYear}`;
+        } else {
+            yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
+            yearLabel = 'Year 1';
+        }
+    } else if (isTVETDiploma) {
+        const yearMatch = blockName.match(/Year\s+(\d+)/i);
+        if (yearMatch) {
+            const yearNum = parseInt(yearMatch[1]);
+            yearOffset = yearNum - 1;
+            yearLabel = `Year ${yearNum}`;
+            const startYear = intakeYear + yearOffset;
+            const endYear = startYear + 1;
+            yearOfStudy = `${startYear}/${endYear}`;
+        } else {
+            yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
+            yearLabel = 'Year 1';
+        }
+    } else {
+        const yearMatch = blockName.match(/Year\s+(\d+)/i);
+        if (yearMatch) {
+            const yearNum = parseInt(yearMatch[1]);
+            yearOffset = yearNum - 1;
+            yearLabel = `Year ${yearNum}`;
+            const startYear = intakeYear + yearOffset;
+            const endYear = startYear + 1;
+            yearOfStudy = `${startYear}/${endYear}`;
+        } else {
+            const numMatch = blockName.match(/\d+/);
+            if (numMatch) {
+                const num = parseInt(numMatch[0]);
+                if (num <= 1) { yearOffset = 0; yearLabel = 'Year 1'; }
+                else if (num <= 3) { yearOffset = 1; yearLabel = 'Year 2'; }
+                else { yearOffset = 2; yearLabel = 'Year 3'; }
+                const startYear = intakeYear + yearOffset;
+                const endYear = startYear + 1;
+                yearOfStudy = `${startYear}/${endYear}`;
+            } else {
+                yearOfStudy = `${intakeYear}/${intakeYear + 1}`;
+                yearLabel = 'Year 1';
+            }
+        }
+    }
+
+    // ============================================================
+    // 🎯 PROGRESSION MESSAGE
+    // ============================================================
+    const currentBlockIndex = index;
+    const nextBlockIndex = currentBlockIndex + 1;
+    const hasNextBlock = nextBlockIndex < blockNames.length;
+    const nextBlockName = hasNextBlock ? blockNames[nextBlockIndex] : null;
+    
+    let progressionMessage = '';
+    let messageColor = '#64748b';
+    
+    if (allPassed && hasNextBlock) {
+        messageColor = '#059669';
+        progressionMessage = `Passed — Proceed to ${nextBlockName} · ${yearLabel}`;
+    } else if (allPassed && !hasNextBlock) {
+        messageColor = '#4C1D95';
+        progressionMessage = `All blocks completed — Ready for Graduation · ${yearLabel}`;
+    } else if (hasFailed && blockPassed > 0) {
+        const failedNames = blockMarks
+            .filter(m => (m.final_score || 0) < passMark && (m.final_score || 0) > 0)
+            .map(m => m.subject_name)
+            .join(', ');
+        messageColor = '#dc2626';
+        if (failedNames) {
+            progressionMessage = `${failedUnits} unit(s) failed: ${failedNames} — Retake required · ${yearLabel}`;
+        } else {
+            progressionMessage = `${failedUnits} unit(s) failed — Retake required · ${yearLabel}`;
+        }
+    } else if (blockPassed === 0 && blockTotal > 0) {
+        messageColor = '#dc2626';
+        progressionMessage = `Academic intervention required — Contact Registrar · ${yearLabel}`;
+    } else {
+        progressionMessage = `Results pending · ${yearLabel}`;
+    }
+
+    // Build grading scale table
+    let gradingScaleHtml = '';
+    const grades = config.grades;
+    for (const [grade, gConfig] of Object.entries(grades)) {
+        const range = `${gConfig.min}-${gConfig.max === 100 ? '100' : gConfig.max}`;
+        gradingScaleHtml += `
+            <tr>
+                <td style="padding: 2px 8px; text-align: center; font-weight: 700; color: ${gConfig.color}; border: 1px solid #d1d5db;">${grade}</td>
+                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${range}%</td>
+                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.points.toFixed(1)}</td>
+                <td style="padding: 2px 8px; text-align: center; border: 1px solid #d1d5db;">${gConfig.label}</td>
+            </tr>
+        `;
+    }
+
+    // Navigation buttons
+    const prevBlock = index > 0 ? blockNames[index - 1] : null;
+    const nextBlock = index < blockNames.length - 1 ? blockNames[index + 1] : null;
+    
+    let navHtml = '';
+    if (blockNames.length > 1) {
+        navHtml = `
+            <div style="display: flex; justify-content: center; gap: 15px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
+                ${prevBlock ? `
+                    <button onclick="window.navigateBlock(-1)" style="background: #0A3D62; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                        Previous: ${escapeHtml(prevBlock)}
+                    </button>
+                ` : ''}
+                <span style="color: #64748b; font-size: 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 20px;">
+                    ${index + 1} of ${blockNames.length}
+                </span>
+                ${nextBlock ? `
+                    <button onclick="window.navigateBlock(1)" style="background: #0A3D62; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                        Next: ${escapeHtml(nextBlock)}
+                    </button>
+                ` : `
+                    <button style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: default; font-weight: 600; font-size: 12px;">
+                        Final Block
+                    </button>
+                `}
+            </div>
+        `;
+    }
+
+    // Build full official transcript HTML for current block
+    const html = `
+        <div id="transcriptDocument" style="background: white; padding: 30px 35px; border: 2px solid #0A3D62; border-radius: 8px; box-shadow: 0 4px 20px rgba(10,61,98,0.12); font-family: 'Times New Roman', Times, serif; max-width: 850px; margin: 0 auto;">
+            
+            <!-- HEADER WITH LOGO -->
+            <div style="text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 14px; margin-bottom: 18px;">
+                <div style="display: flex; align-items: center; justify-content: center; gap: 15px; margin-bottom: 4px;">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                         alt="NCHSM Logo" 
+                         style="max-height: 55px; width: auto;"
+                         onerror="this.style.display='none'">
+                    <div>
+                        <div style="font-size: 18px; font-weight: 700; color: #0A3D62; letter-spacing: 1px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
+                        <div style="font-size: 14px; font-weight: 600; color: #0A3D62; letter-spacing: 0.5px;">AND MANAGEMENT (NCHSM)</div>
+                    </div>
+                </div>
+                <div style="font-size: 10px; color: #64748b; line-height: 1.6; margin-top: 4px;">
+                    KIAMUNYI CAMPUS · P.O. Box 12906 - 20100, Nakuru<br>
+                    Tel: 0703 345 771 · Email: info@nakurucollegeofhealth.ac.ke · Website: www.nchsm.co.ke
+                </div>
+                <div style="font-size: 15px; font-weight: 700; color: #0A3D62; letter-spacing: 2px; margin-top: 8px; border-top: 1px solid #e5e7eb; padding-top: 8px;">OFFICIAL ACADEMIC TRANSCRIPT</div>
+            </div>
+            
+            <!-- STUDENT INFO -->
+            <div style="margin-bottom: 16px;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2px 30px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
+                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">NAME</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.full_name || 'Unknown')}</span></div>
+                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">ADMISSION NUMBER</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.student_id || 'N/A')}</span></div>
+                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">PROGRAMME</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(student.program || 'N/A')}</span></div>
+                    <div><span style="font-weight: 600; font-size: 11px; color: #475569;">YEAR OF STUDY</span><br><span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(yearOfStudy)}</span></div>
+                </div>
+            </div>
+            
+            <!-- BLOCK HEADER -->
+            <div style="margin-bottom: 10px; padding: 6px 14px; background: #e0e7ff; border-radius: 4px; border-left: 4px solid #0A3D62;">
+                <span style="font-weight: 700; font-size: 14px; color: #0A3D62;">${escapeHtml(blockName)}</span>
+                <span style="font-size: 11px; color: #64748b; margin-left: 12px;">${blockTotal} units</span>
+                <span style="float: right; font-size: 11px; font-weight: 600; color: ${allPassed ? '#059669' : (hasFailed ? '#dc2626' : '#f59e0b')};">
+                    ${allPassed ? 'COMPLETED' : (hasFailed ? 'RETAKE REQUIRED' : 'PENDING')}
+                </span>
+            </div>
+            
+            <!-- MARKS TABLE - ALL BORDERS -->
+            <div style="overflow-x: auto; margin-bottom: 16px;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 12px; border: 1px solid #0A3D62;">
+                    <thead>
+                        <tr style="background: #0A3D62; color: white;">
+                            <th style="padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62;">CODE</th>
+                            <th style="padding: 8px 12px; text-align: left; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62;">COURSE TITLE</th>
+                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">CREDIT</th>
+                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">GRADE</th>
+                            <th style="padding: 8px 12px; text-align: center; font-size: 11px; font-weight: 600; letter-spacing: 0.5px; border: 1px solid #0A3D62; width: 60px;">POINTS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${marksHtml}
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- GPA SUMMARY -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 8px; margin-bottom: 14px; padding: 10px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">GPA FOR THE YEAR</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${gpa.toFixed(2)}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">CUMULATIVE GPA</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${gpa.toFixed(2)}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">CREDITS COVERED</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalCredits}</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-size: 9px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">TOTAL CREDITS</div>
+                    <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${totalCredits}</div>
+                </div>
+            </div>
+            
+            <!-- PROGRESSION MESSAGE - BEFORE GRADING SCALE -->
+            <div style="text-align: center; padding: 4px 0 10px 0; font-size: 11px; color: ${messageColor}; font-weight: 500; border-bottom: 1px dashed #e5e7eb; margin-bottom: 12px;">
+                ${progressionMessage}
+            </div>
+            
+            <!-- GRADING SCALE -->
+            <div style="margin-bottom: 14px; padding: 8px 14px; background: #fafbfc; border-radius: 4px; border: 1px solid #e5e7eb;">
+                <div style="font-weight: 600; color: #0A3D62; font-size: 10px; text-align: center; margin-bottom: 4px;">GRADING SCALE (${programType})</div>
+                <div style="text-align: center; font-size: 9px; color: #64748b; margin-bottom: 4px;">${gradingDisplay}</div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 9px; border: 1px solid #0A3D62;">
+                    <thead>
+                        <tr style="background: #0A3D62; color: white;">
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">GRADE</th>
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">RANGE</th>
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">POINTS</th>
+                            <th style="padding: 2px 8px; text-align: center; font-size: 8px; border: 1px solid #0A3D62;">REMARKS</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${gradingScaleHtml}
+                        <tr>
+                            <td colspan="4" style="padding: 3px 8px; text-align: center; font-weight: 600; color: #0A3D62; font-size: 8px; border-top: 2px solid #0A3D62;">
+                                Min Pass: ${passMark}% · Credit Hours: ${GRADE_CONFIG.creditHours} per unit
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            
+            <!-- SIGNATURES - Academic Registrar & Director ONLY -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
+                <div style="text-align: center;">
+                    <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">_________________________</div>
+                    <div style="border-bottom: 2px solid #1e293b; width: 180px; margin: 6px auto 2px auto;"></div>
+                    <div style="font-size: 9px; color: #0A3D62; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">ACADEMIC REGISTRAR</div>
+                    <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
+                </div>
+                <div style="text-align: center;">
+                    <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">_________________________</div>
+                    <div style="border-bottom: 2px solid #1e293b; width: 180px; margin: 6px auto 2px auto;"></div>
+                    <div style="font-size: 9px; color: #0A3D62; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">DIRECTOR</div>
+                    <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
+                </div>
+            </div>
+            
+            <!-- FOOTER -->
+            <div style="text-align: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #94a3b8;">
+                <p style="font-style: italic;">This Transcript is issued without any alteration whatsoever, and is only valid with the College Seal.</p>
+                <p>Any queries relating to this document should be addressed to the Registrar (Academic Affairs).</p>
+                <p style="font-size: 7px; color: #cbd5e1; margin-top: 4px;">Document ID: ${Date.now().toString(36).toUpperCase()} · Generated: ${now}</p>
+            </div>
+            
+            <!-- NAVIGATION BUTTONS -->
+            ${navHtml}
+            
+            <!-- ACTION BUTTONS -->
+            <div style="display: flex; justify-content: center; gap: 10px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
+                <button onclick="window.printTranscriptDocument()" style="background: #0A3D62; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(10,61,98,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    Print / PDF
+                </button>
+                <button onclick="window.downloadTranscript()" style="background: #059669; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(5,150,105,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    Download
+                </button>
+                <button onclick="window.closeTranscriptPreview()" style="background: #6b7280; color: white; border: none; padding: 8px 24px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    
+    content.innerHTML = html;
+};
 // ============================================================
 // CLOSE TRANSCRIPT PREVIEW
 // ============================================================
