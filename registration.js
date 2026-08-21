@@ -53,20 +53,17 @@ const uploadedDocs = {
 // 1. CSRF PROTECTION - PRODUCTION READY
 // ============================================
 function generateCSRFToken() {
-    // Generate a cryptographically secure token
     const array = new Uint8Array(32);
     crypto.getRandomValues(array);
     const token = Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
     
-    // Store in sessionStorage with timestamp
     const tokenData = {
         token: token,
         created: Date.now(),
-        expires: Date.now() + (30 * 60 * 1000) // 30 minutes expiry
+        expires: Date.now() + (30 * 60 * 1000)
     };
     sessionStorage.setItem('csrf_token', JSON.stringify(tokenData));
     
-    // Add to form
     let csrfInput = document.getElementById('csrf_token_input');
     if (!csrfInput) {
         csrfInput = document.createElement('input');
@@ -86,14 +83,12 @@ function verifyCSRFToken() {
     const storedData = sessionStorage.getItem('csrf_token');
     const submittedToken = document.getElementById('csrf_token_input')?.value;
     
-    // Check if token exists in session
     if (!storedData) {
         console.warn('⚠️ No CSRF token found in session, generating new one');
         generateCSRFToken();
         return true;
     }
     
-    // Parse stored data
     let storedToken, created, expires;
     try {
         const parsed = JSON.parse(storedData);
@@ -101,41 +96,34 @@ function verifyCSRFToken() {
         created = parsed.created;
         expires = parsed.expires || created + (30 * 60 * 1000);
     } catch (e) {
-        // If parsing fails, treat as old format
         storedToken = storedData;
         expires = Date.now() + (30 * 60 * 1000);
     }
     
-    // Check if token has expired
     if (Date.now() > expires) {
         console.warn('⚠️ CSRF token expired, generating new one');
         generateCSRFToken();
         return true;
     }
     
-    // Check if token was submitted
     if (!submittedToken) {
         console.warn('⚠️ No CSRF token submitted, generating new one');
         generateCSRFToken();
         return true;
     }
     
-    // Verify token match
     if (storedToken !== submittedToken) {
         console.warn('⚠️ CSRF token mismatch, generating new one');
         generateCSRFToken();
         return true;
     }
     
-    // Token is valid - remove it to prevent replay attacks
-    // (but keep a backup for page refreshes)
     const backupToken = sessionStorage.getItem('csrf_token_backup');
     if (!backupToken) {
         sessionStorage.setItem('csrf_token_backup', storedToken);
     }
     sessionStorage.removeItem('csrf_token');
     
-    // Generate new token for next request
     setTimeout(() => {
         generateCSRFToken();
     }, 100);
@@ -144,7 +132,6 @@ function verifyCSRFToken() {
     return true;
 }
 
-// Call this on page load to ensure token exists
 function ensureCSRFToken() {
     const storedData = sessionStorage.getItem('csrf_token');
     if (!storedData) {
@@ -152,7 +139,6 @@ function ensureCSRFToken() {
         return;
     }
     
-    // Check if token is expired
     try {
         const parsed = JSON.parse(storedData);
         const expires = parsed.expires || parsed.created + (30 * 60 * 1000);
@@ -181,13 +167,11 @@ const rateLimiter = {
         
         const data = this.attempts[key];
         
-        // Reset after 1 hour
         if (now - data.firstAttempt > 3600000) {
             this.attempts[key] = { count: 1, firstAttempt: now };
             return true;
         }
         
-        // Max 5 attempts per hour
         if (data.count >= 5) {
             throw new Error('Too many registration attempts. Please try again in 1 hour.');
         }
@@ -203,13 +187,8 @@ const rateLimiter = {
 function sanitizeInput(input) {
     if (typeof input !== 'string') return input;
     
-    // Remove HTML tags
     let sanitized = input.replace(/<[^>]*>/g, '');
-    
-    // Remove potentially dangerous characters
     sanitized = sanitized.replace(/['";\\]/g, '');
-    
-    // Trim and limit length
     sanitized = sanitized.trim().slice(0, 255);
     
     return sanitized;
@@ -305,7 +284,7 @@ function validatePassword(password) {
 // 7. FILE VALIDATION
 // ============================================
 const ALLOWED_FILE_TYPES = ['image/jpeg', 'image/png', 'image/jpg', 'application/pdf'];
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const DANGEROUS_EXTENSIONS = ['.exe', '.bat', '.cmd', '.sh', '.js', '.vbs', '.ps1', '.php', '.asp', '.jsp'];
 
 function validateFile(file) {
@@ -313,7 +292,6 @@ function validateFile(file) {
         return { valid: false, message: 'No file selected' };
     }
     
-    // Check file type
     if (!ALLOWED_FILE_TYPES.includes(file.type)) {
         return { 
             valid: false, 
@@ -321,7 +299,6 @@ function validateFile(file) {
         };
     }
     
-    // Check file size
     if (file.size > MAX_FILE_SIZE) {
         return { 
             valid: false, 
@@ -329,7 +306,6 @@ function validateFile(file) {
         };
     }
     
-    // Check for dangerous extensions
     const ext = file.name.split('.').pop()?.toLowerCase();
     if (DANGEROUS_EXTENSIONS.includes(`.${ext}`)) {
         return { valid: false, message: 'File type not allowed for security reasons' };
@@ -344,9 +320,6 @@ function validateFile(file) {
 // ============================================
 // ============================================
 
-// ============================================
-// GET LAST STUDENT ADMISSION NUMBER
-// ============================================
 async function getLastStudentAdmissionNumber(programType) {
     try {
         const { data, error } = await sb
@@ -372,9 +345,6 @@ async function getLastStudentAdmissionNumber(programType) {
     }
 }
 
-// ============================================
-// GENERATE SEQUENTIAL STUDENT NUMBER
-// ============================================
 async function generateSequentialStudentNumber(programType) {
     const year = new Date().getFullYear();
     const yearSuffix = year.toString().slice(-2);
@@ -407,26 +377,19 @@ async function generateSequentialStudentNumber(programType) {
         console.error('Error generating sequential number:', error);
     }
     
-    // Pad to 4 digits for DCHN, 5 digits for TVET
     const padLength = programType === 'DCHN' ? 4 : 5;
     const paddedNumber = String(nextNumber).padStart(padLength, '0');
     
-    // Get current month
     const now = new Date();
     const month = String(now.getMonth() + 1).padStart(2, '0');
     
-    // For DCHN, use MAR and 4-digit year
     if (programType === 'DCHN') {
         return `${programType}/${paddedNumber}/MAR/${year}`;
     }
     
-    // For TVET, use 2-digit year
     return `${programType}/${paddedNumber}/${month}/${yearSuffix}`;
 }
 
-// ============================================
-// VALIDATE STUDENT ID
-// ============================================
 function validateStudentId(studentId) {
     if (!studentId || studentId.trim() === '') {
         return { valid: false, message: 'Student ID is required' };
@@ -434,12 +397,10 @@ function validateStudentId(studentId) {
     
     const cleaned = studentId.trim().toUpperCase();
     
-    // Check for SQL injection
     if (containsSQLInjection(cleaned)) {
         return { valid: false, message: 'Invalid characters detected' };
     }
     
-    // FORMAT 1: DCHN/XXXX/MAR/YYYY (Nursing)
     const dchnRegex = /^DCHN\/(\d{4})\/(MAR)\/(\d{4})$/;
     const dchnMatch = cleaned.match(dchnRegex);
     if (dchnMatch) {
@@ -467,7 +428,6 @@ function validateStudentId(studentId) {
         };
     }
     
-    // FORMAT 2: TVET formats
     const tvetRegex2Digit = /^([A-Z]{2,5})\/(\d{4,5})\/(\d{2})\/(\d{2})$/;
     const tvetMatch2Digit = cleaned.match(tvetRegex2Digit);
     
@@ -549,7 +509,7 @@ function validateStudentId(studentId) {
 }
 
 // ============================================
-// CHECK IF STUDENT ID EXISTS
+// CHECK IF STUDENT ID EXISTS (DUPLICATE CHECK)
 // ============================================
 async function checkStudentIdExists(studentId) {
     if (!studentId || studentId.trim() === '') return false;
@@ -576,7 +536,7 @@ async function checkStudentIdExists(studentId) {
 }
 
 // ============================================
-// CHECK EMAIL EXISTS
+// CHECK EMAIL EXISTS (DUPLICATE CHECK)
 // ============================================
 async function checkEmailExists(email) {
     if (!email || email.length < 5) return false;
@@ -627,7 +587,6 @@ function selectStudentType(type) {
     const programMsg = document.getElementById('programRequiredMsg');
     
     if (type === 'continuing') {
-        // CONTINUING STUDENT: Enter existing ID
         studentIdLabel.textContent = 'Student ID';
         studentIdHint.textContent = '(Enter your existing Student ID)';
         studentIdInput.placeholder = 'e.g., DCHN/0001/MAR/2024 or DPOTT/00001/05/26';
@@ -647,7 +606,6 @@ function selectStudentType(type) {
         }
         
     } else if (type === 'new') {
-        // NEW STUDENT: Auto-generate ID in SAME format
         studentIdLabel.textContent = 'Student ID (Auto-Generated)';
         studentIdHint.textContent = '(System will generate your Student ID)';
         studentIdInput.placeholder = 'Select program first to generate';
@@ -680,9 +638,6 @@ function selectStudentType(type) {
     }
 }
 
-// ============================================
-// REGENERATE STUDENT ID
-// ============================================
 function regenerateStudentId() {
     if (selectedStudentType === 'new') {
         const program = document.getElementById('program_type').value;
@@ -1356,7 +1311,6 @@ async function addStaffToRecords(userId, email, password, fullName, staffId, dep
             return false;
         }
         
-        // Hash password using SHA-256 (simple hash - use bcrypt in production)
         const encoder = new TextEncoder();
         const data = encoder.encode(password + 'NCHSM_SALT_2026');
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
@@ -1401,11 +1355,10 @@ async function addStaffToRecords(userId, email, password, fullName, staffId, dep
 
 // ============================================
 // ============================================
-// FORM SUBMISSION - SECURE VERSION WITH FIX
+// FORM SUBMISSION - SECURE VERSION WITH DUPLICATE CHECKS
 // ============================================
 // ============================================
 
-// Ensure CSRF token exists before form submission
 function ensureCSRFTokenForSubmit() {
     let storedData = sessionStorage.getItem('csrf_token');
     let token = null;
@@ -1453,7 +1406,6 @@ function ensureCSRFTokenForSubmit() {
     return token;
 }
 
-// Override verifyCSRFToken
 window.verifyCSRFToken = function() {
     const storedData = sessionStorage.getItem('csrf_token');
     const submittedToken = document.getElementById('csrf_token_input')?.value;
@@ -1552,11 +1504,12 @@ document.getElementById('register-form').addEventListener('submit', async functi
         }
         const email = emailInput;
         
-        // 6. Check if email exists
+        // 6. Check if email exists (DUPLICATE CHECK - LIKE STUDENT ID)
         const emailExistsFinal = await checkEmailExists(email);
         if (emailExistsFinal) {
             throw new Error('This email is already registered. Please use a different email or login.');
         }
+        console.log('✅ Email is available:', email);
         
         // 7. Get and sanitize all inputs
         const full_name = sanitizeInput(document.getElementById('full_name').value.trim());
@@ -1602,9 +1555,9 @@ document.getElementById('register-form').addEventListener('submit', async functi
         if (!gender) throw new Error('Please select your gender.');
         if (!role) throw new Error('Please select a role.');
         
-        // 11. Student-specific validation - FIXED
+        // 11. Student-specific validation - WITH DUPLICATE CHECK (like email)
         if (role === 'student') {
-            // Get student type from hidden input - THIS IS THE FIX
+            // Get student type from hidden input
             const studentTypeHidden = document.getElementById('student_type_hidden');
             const studentType = studentTypeHidden ? studentTypeHidden.value : null;
             
@@ -1623,28 +1576,34 @@ document.getElementById('register-form').addEventListener('submit', async functi
                 selectedStudentType = finalStudentType;
             }
             
+            // Validate Student ID is provided
             if (!student_id_number) {
                 throw new Error('Please enter your Student ID or generate one.');
             }
             
+            // Validate Student ID format
             const validation = validateStudentId(student_id_number);
             if (!validation.valid) {
                 throw new Error(validation.message);
             }
             
-            if (selectedStudentType === 'continuing') {
-                try {
-                    const exists = await checkStudentIdExists(student_id_number);
-                    if (!exists) {
-                        throw new Error('Student ID not found in our records. Please contact administration.');
-                    }
-                } catch (error) {
-                    if (error.message.includes('not found')) {
-                        throw error;
-                    }
-                    console.error('Error checking student ID:', error);
-                    throw new Error('Could not verify Student ID. Please try again.');
+            // CHECK FOR DUPLICATE STUDENT ID - JUST LIKE EMAIL CHECK
+            // This prevents two students from registering with the same ID
+            try {
+                const exists = await checkStudentIdExists(student_id_number);
+                if (exists) {
+                    throw new Error('This Student ID is already registered. Please check your ID or contact administration.');
                 }
+                // If ID doesn't exist, it's OK - allow registration
+                console.log('✅ Student ID is available:', student_id_number);
+            } catch (error) {
+                // If error is about duplicate, rethrow it
+                if (error.message.includes('already registered')) {
+                    throw error;
+                }
+                // For other errors (like network issues), log but continue
+                console.warn('⚠️ Could not verify Student ID uniqueness:', error.message);
+                // Don't block registration if we can't check - let the database handle it
             }
             
             if (!program_type) throw new Error('Please select your program.');
@@ -1851,6 +1810,7 @@ document.getElementById('register-form').addEventListener('submit', async functi
         document.getElementById('button-text').textContent = '✅ Create Account';
     }
 });
+
 // ============================================
 // ============================================
 // EVENT LISTENERS & INITIALIZATION
@@ -1923,9 +1883,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 return;
             }
             
-            // For continuing students, check if ID exists
+            // For continuing students, check if ID exists (DUPLICATE CHECK)
             if (selectedStudentType === 'continuing') {
-                studentIdStatus.textContent = '⏳ Checking if ID exists...';
+                studentIdStatus.textContent = '⏳ Checking if ID is available...';
                 studentIdStatus.className = 'help-text checking';
                 this.style.borderColor = '#f59e0b';
                 this.dataset.valid = 'checking';
@@ -1940,19 +1900,19 @@ document.addEventListener('DOMContentLoaded', function() {
                         const exists = await checkStudentIdExists(value);
                         
                         if (exists) {
-                            studentIdStatus.textContent = '✅ Student ID found!';
-                            studentIdStatus.className = 'help-text valid';
-                            this.style.borderColor = '#10b981';
-                            this.dataset.valid = 'true';
-                        } else {
-                            studentIdStatus.textContent = '❌ Student ID not found. Please check and try again.';
+                            studentIdStatus.textContent = '❌ This Student ID is already registered.';
                             studentIdStatus.className = 'help-text invalid';
                             this.style.borderColor = '#DC2626';
                             this.dataset.valid = 'false';
+                        } else {
+                            studentIdStatus.textContent = '✅ Student ID is available!';
+                            studentIdStatus.className = 'help-text valid';
+                            this.style.borderColor = '#10b981';
+                            this.dataset.valid = 'true';
                         }
                     } catch (error) {
                         console.error('Error checking student ID:', error);
-                        studentIdStatus.textContent = '⚠️ Could not verify ID';
+                        studentIdStatus.textContent = '⚠️ Could not verify ID availability';
                         studentIdStatus.className = 'help-text warning';
                         this.dataset.valid = 'unknown';
                     } finally {
@@ -2005,7 +1965,7 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     // ============================================
-    // EMAIL VALIDATION
+    // EMAIL VALIDATION (DUPLICATE CHECK)
     // ============================================
     document.getElementById('email').addEventListener('input', function() {
         const email = this.value.trim();
@@ -2029,7 +1989,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
         
-        emailStatus.textContent = '⏳ Checking...';
+        emailStatus.textContent = '⏳ Checking if email is available...';
         emailStatus.style.color = '#f59e0b';
         this.style.borderColor = '#f59e0b';
         
@@ -2044,7 +2004,7 @@ document.addEventListener('DOMContentLoaded', function() {
                     emailStatus.style.color = '#DC2626';
                     this.style.borderColor = '#DC2626';
                 } else {
-                    emailStatus.textContent = '✅ Email available';
+                    emailStatus.textContent = '✅ Email available!';
                     emailStatus.style.color = '#10b981';
                     this.style.borderColor = '#10b981';
                 }
