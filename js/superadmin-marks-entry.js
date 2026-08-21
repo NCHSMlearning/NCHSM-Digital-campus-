@@ -149,10 +149,17 @@ const MAX_RETAKES = 2;
 // PROGRAM TYPE DETECTION
 // ============================================================
 
+// ✅ LOG: Function definitions starting
+console.log('📋 PROGRAM TYPE DETECTION - Loading...');
+
 function isTVETProgram() {
     const program = me_currentProgram || document.getElementById('me_program_select')?.value || '';
     return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
 }
+
+// ✅ LOG: isTVETProgram() defined
+console.log('✅ isTVETProgram() defined:');
+console.log('   Source:', isTVETProgram.toString());
 
 function isNursingProgram() {
     const program = me_currentProgram || document.getElementById('me_program_select')?.value || '';
@@ -175,6 +182,28 @@ function getProgramTypeLabel() {
     return isNursingProgram() ? '📕 NURSING' : '📘 TVET';
 }
 
+// ✅ LOG: Test the functions
+console.log('📋 Testing TVET detection:');
+console.log('   me_currentProgram:', me_currentProgram);
+console.log('   isTVETProgram():', isTVETProgram());
+console.log('   getExamMax():', getExamMax());
+console.log('   getTotalMax():', getTotalMax());
+console.log('   getPassingThreshold():', getPassingThreshold());
+console.log('   getProgramTypeLabel():', getProgramTypeLabel());
+console.log('   ✅ Expected: isTVETProgram() = true, ExamMax = 100, TotalMax = 160, PassThreshold = 50, Label = 📘 TVET');
+
+// ✅ LOG: Check if function has parameters
+const src = isTVETProgram.toString();
+if (src.includes('function isTVETProgram(program)')) {
+    console.error('❌❌❌ OLD VERSION DETECTED! Takes a parameter!');
+    console.error('   Fix: Update file on GitHub and clear cache!');
+} else if (src.includes('function isTVETProgram()')) {
+    console.log('✅✅✅ CORRECT VERSION! No parameters!');
+} else {
+    console.warn('⚠️ Unknown version detected');
+}
+
+console.log('📋 PROGRAM TYPE DETECTION - Complete');
 // ============================================================
 // CHECK IF USER IS ADMIN
 // ============================================================
