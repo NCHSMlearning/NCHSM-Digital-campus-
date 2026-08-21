@@ -823,7 +823,55 @@ body {
     position: relative;
     overflow: hidden;
 }
+/* ============================================================
+   START EXAM BUTTON - SUCCESS STATE
+   ============================================================ */
+.btn-start-exam.success {
+    background: linear-gradient(135deg, #0A3D62, #1A5A8A) !important;
+    animation: successFlash 0.8s cubic-bezier(0.34, 1.56, 0.64, 1) !important;
+    box-shadow: 0 8px 40px rgba(10, 61, 98, 0.5) !important;
+    pointer-events: none;
+}
 
+@keyframes successFlash {
+    0% { transform: scale(1); }
+    30% { transform: scale(1.05); }
+    60% { transform: scale(0.98); }
+    100% { transform: scale(1); }
+}
+
+.btn-start-exam.success .btn-icon {
+    animation: checkmarkPop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+}
+
+@keyframes checkmarkPop {
+    0% { transform: scale(0) rotate(-90deg); opacity: 0; }
+    50% { transform: scale(1.5) rotate(0deg); opacity: 1; }
+    100% { transform: scale(1) rotate(0deg); opacity: 1; }
+}
+
+.btn-start-exam.success .fa-arrow-right {
+    display: none !important;
+}
+
+/* Loading state */
+.btn-start-exam.loading {
+    pointer-events: none;
+    opacity: 0.8;
+}
+
+.btn-start-exam.loading .btn-text::after {
+    content: '...';
+    animation: dots 1.5s steps(4, end) infinite;
+}
+
+@keyframes dots {
+    0% { content: ''; }
+    25% { content: '.'; }
+    50% { content: '..'; }
+    75% { content: '...'; }
+    100% { content: ''; }
+}
 .btn-start-exam::before {
     content: '';
     position: absolute;
