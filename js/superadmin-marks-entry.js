@@ -1,4 +1,3 @@
-
 // ============================================================
 // ✅ FILE VERSION TRACKING
 // ============================================================
@@ -6,6 +5,43 @@ console.log('📄 superadmin-marks-entry.js loaded');
 console.log('   📅 Version: 2025-08-21');
 console.log('   🔧 isTVETProgram should have NO parameters');
 console.log('   🎯 Expected: isTVETProgram() returns true for CCA');
+
+// ============================================================
+// ✅ SELF-HEALING - Force correct version (ADD THIS!)
+// ============================================================
+(function() {
+    console.log('🔄 Self-healing: Checking isTVETProgram...');
+    
+    // Check if the current version is wrong (takes parameter)
+    const currentSrc = (window.isTVETProgram || function(){}).toString();
+    const isWrong = currentSrc.includes('function isTVETProgram(program)') || 
+                    currentSrc.includes('getProgramType(program)');
+    
+    if (isWrong) {
+        console.warn('⚠️ Old isTVETProgram detected! Overriding...');
+        
+        // Override with correct version (NO parameters)
+        window.isTVETProgram = function() {
+            const program = window.me_currentProgram || document.getElementById('me_program_select')?.value || '';
+            return program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+        };
+        
+        console.log('✅ isTVETProgram overridden!');
+        console.log('   Source:', window.isTVETProgram.toString());
+        console.log('   Test with CCA:', window.isTVETProgram());
+    } else {
+        console.log('✅ isTVETProgram is already correct!');
+    }
+    
+    // Ensure me_currentProgram is set from dropdown
+    if (!window.me_currentProgram) {
+        const select = document.getElementById('me_program_select');
+        if (select && select.value) {
+            window.me_currentProgram = select.value;
+            console.log('📋 me_currentProgram set to:', window.me_currentProgram);
+        }
+    }
+})();
 // ============================================================
 // STATE
 // ============================================================
