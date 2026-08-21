@@ -190,6 +190,45 @@ function getProgramTypeLabel() {
     return isNursingProgram() ? '📕 NURSING' : '📘 TVET';
 }
 
+// ============================================================
+// UPDATE PROGRAM DISPLAY - FIX FOR DROPDOWN
+// ============================================================
+
+function updateSelectedProgramDisplay() {
+    const select = document.getElementById('me_program_select');
+    if (!select) {
+        console.warn('⚠️ me_program_select not found');
+        return;
+    }
+    
+    const program = select.value;
+    const programText = select.options[select.selectedIndex]?.text || program || 'None selected';
+    
+    // Set the global variable
+    me_currentProgram = program;
+    
+    console.log('📋 Program selected:', program, '→', programText);
+    console.log('📋 isTVETProgram():', isTVETProgram());
+    console.log('📋 getExamMax():', getExamMax());
+    console.log('📋 getTotalMax():', getTotalMax());
+    console.log('📋 getPassingThreshold():', getPassingThreshold());
+    
+    // Update the display if element exists
+    const displayEl = document.getElementById('selectedProgramDisplay');
+    if (displayEl) {
+        displayEl.textContent = programText;
+    }
+    
+    // Refresh marks if a unit is already selected
+    const unitSelect = document.getElementById('me_subject_select');
+    if (unitSelect && unitSelect.value) {
+        loadMarksEntry();
+    }
+}
+
+// Make it globally available
+window.updateSelectedProgramDisplay = updateSelectedProgramDisplay;
+
 // ✅ LOG: Test the functions
 console.log('📋 Testing TVET detection:');
 console.log('   me_currentProgram:', me_currentProgram);
@@ -212,6 +251,7 @@ if (src.includes('function isTVETProgram(program)')) {
 }
 
 console.log('📋 PROGRAM TYPE DETECTION - Complete');
+
 // ============================================================
 // CHECK IF USER IS ADMIN
 // ============================================================
