@@ -249,8 +249,8 @@ function updateSelectedProgramDisplay() {
     const program = select.value;
     const programText = select.options[select.selectedIndex]?.text || program || 'None selected';
     
-    // Set the global variable
-    me_currentProgram = program;
+    // ✅ CRITICAL: Set the global variable
+    window.me_currentProgram = program;
     
     console.log('📋 Program selected:', program, '→', programText);
     console.log('📋 isTVETProgram():', isTVETProgram());
@@ -259,9 +259,30 @@ function updateSelectedProgramDisplay() {
     console.log('📋 getPassingThreshold():', getPassingThreshold());
     
     // Update the display if element exists
-    const displayEl = document.getElementById('selectedProgramDisplay');
+    const displayEl = document.getElementById('selectedProgramName');
     if (displayEl) {
         displayEl.textContent = programText;
+    }
+    
+    // Update the program type badge
+    const typeEl = document.getElementById('selectedProgramType');
+    if (typeEl) {
+        if (isTVETProgram()) {
+            typeEl.innerHTML = '<i class="fas fa-tools"></i> TVET Program';
+            typeEl.style.background = '#fef3c7';
+            typeEl.style.color = '#92400e';
+            typeEl.style.border = '1px solid #f59e0b';
+        } else if (program === 'KRCHN') {
+            typeEl.innerHTML = '<i class="fas fa-graduation-cap"></i> Nursing Program';
+            typeEl.style.background = '#dbeafe';
+            typeEl.style.color = '#1e40af';
+            typeEl.style.border = '1px solid #93c5fd';
+        } else {
+            typeEl.innerHTML = '<i class="fas fa-info-circle"></i> None Selected';
+            typeEl.style.background = '#f1f5f9';
+            typeEl.style.color = '#64748b';
+            typeEl.style.border = '1px solid #e2e8f0';
+        }
     }
     
     // Refresh marks if a unit is already selected
@@ -273,30 +294,6 @@ function updateSelectedProgramDisplay() {
 
 // Make it globally available
 window.updateSelectedProgramDisplay = updateSelectedProgramDisplay;
-
-// ✅ LOG: Test the functions
-console.log('📋 Testing TVET detection:');
-console.log('   me_currentProgram:', me_currentProgram);
-console.log('   isTVETProgram():', isTVETProgram());
-console.log('   getExamMax():', getExamMax());
-console.log('   getTotalMax():', getTotalMax());
-console.log('   getPassingThreshold():', getPassingThreshold());
-console.log('   getProgramTypeLabel():', getProgramTypeLabel());
-console.log('   ✅ Expected: isTVETProgram() = true, ExamMax = 100, TotalMax = 160, PassThreshold = 50, Label = 📘 TVET');
-
-// ✅ LOG: Check if function has parameters
-const src = isTVETProgram.toString();
-if (src.includes('function isTVETProgram(program)')) {
-    console.error('❌❌❌ OLD VERSION DETECTED! Takes a parameter!');
-    console.error('   Fix: Update file on GitHub and clear cache!');
-} else if (src.includes('function isTVETProgram()')) {
-    console.log('✅✅✅ CORRECT VERSION! No parameters!');
-} else {
-    console.warn('⚠️ Unknown version detected');
-}
-
-console.log('📋 PROGRAM TYPE DETECTION - Complete');
-
 // ============================================================
 // CHECK IF USER IS ADMIN
 // ============================================================
