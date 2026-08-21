@@ -2662,6 +2662,10 @@ async function removeLecturerAssignment(lecturerId, unit, block) {
 
 window.removeLecturerAssignment = removeLecturerAssignment;
 
+// ============================================================
+// ✅ SHOW LECTURER ASSIGNMENT MODAL - WITH SEARCH
+// ============================================================
+
 async function showLecturerAssignmentModal() {
     const block = document.getElementById('me_block_select')?.value;
     const program = document.getElementById('me_program_select')?.value;
@@ -2676,36 +2680,55 @@ async function showLecturerAssignmentModal() {
         return;
     }
     
-    document.getElementById('me_assign_block').value = block.replace(/_/g, ' ');
-    document.getElementById('me_assign_year').value = year;
-    document.getElementById('me_assign_program').value = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET';
+    const blockEl = document.getElementById('me_assign_block');
+    const yearEl = document.getElementById('me_assign_year');
+    const programEl = document.getElementById('me_assign_program');
+    const programDisplayEl = document.getElementById('me_assign_program_display');
+    
+    if (blockEl) blockEl.value = block.replace(/_/g, ' ');
+    if (yearEl) yearEl.value = year;
+    if (programEl) programEl.value = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET';
+    if (programDisplayEl) programDisplayEl.value = program === 'KRCHN' ? '🎓 KRCHN Nursing' : '🔧 TVET';
     
     const lecturerSelect = document.getElementById('me_lecturer_select');
+    const searchInput = document.getElementById('me_lecturer_search');
+    
+    // Store all lecturers globally for filtering
+    window._allLecturers = [];
+    
     if (lecturerSelect) {
         lecturerSelect.innerHTML = '<option value="">Loading lecturers...</option>';
         
         try {
-            const { data: lecturers, error } = await sb
+            // ✅ SUPER ADMIN: Show ALL lecturers
+            let { data: lecturers, error } = await sb
                 .from('staff_records')
                 .select('*')
-                .eq('program', program)
                 .in('status', ['active', 'approved'])
                 .order('first_name', { ascending: true });
             
             if (error) throw error;
             
+            // Store for search
+            window._allLecturers = lecturers || [];
+            
             if (lecturerSelect) {
                 if (!lecturers || lecturers.length === 0) {
-                    lecturerSelect.innerHTML = '<option value="">No lecturers found for this program</option>';
+                    lecturerSelect.innerHTML = '<option value="">No lecturers found in system</option>';
                 } else {
                     lecturerSelect.innerHTML = '<option value="">-- Select Lecturer --</option>';
                     lecturers.forEach(l => {
                         const option = document.createElement('option');
                         option.value = l.id;
                         const fullName = l.other_names ? `${l.first_name} ${l.other_names}` : l.first_name;
-                        option.textContent = `${fullName} (${l.email || 'no email'})`;
+                        const prog = l.program || 'N/A';
+                        option.textContent = `${fullName} (${l.email || 'no email'}) - ${prog}`;
+                        option.dataset.name = fullName.toLowerCase();
+                        option.dataset.email = (l.email || '').toLowerCase();
+                        option.dataset.program = prog.toLowerCase();
                         lecturerSelect.appendChild(option);
                     });
+                    console.log(`✅ Loaded ${lecturers.length} lecturers`);
                 }
             }
             
@@ -2720,6 +2743,7 @@ async function showLecturerAssignmentModal() {
         }
     }
     
+    // Load units
     const assignUnitSelect = document.getElementById('me_assign_subject_select');
     if (assignUnitSelect) {
         assignUnitSelect.innerHTML = '<option value="">Loading units...</option>';
@@ -2751,9 +2775,49 @@ async function showLecturerAssignmentModal() {
         }
     }
     
-    document.getElementById('lecturerAssignmentModal').style.display = 'flex';
+    const modal = document.getElementById('lecturerAssignmentModal');
+    if (modal) modal.style.display = 'flex';
 }
 
+// ============================================================
+// ✅ FILTER LECTURERS BY SEARCH
+// ============================================================
+
+function filterLecturers() {
+    const searchInput = document.getElementById('me_lecturer_search');
+    const lecturerSelect = document.getElementById('me_lecturer_select');
+    const searchTerm = searchInput?.value?.toLowerCase() || '';
+    
+    if (!lecturerSelect) return;
+    
+    const options = lecturerSelect.querySelectorAll('option');
+    let hasVisible = false;
+    
+    options.forEach(opt => {
+        // Skip the first "Select Lecturer" option
+        if (opt.value === '') {
+            opt.style.display = '';
+            return;
+        }
+        
+        const name = opt.dataset.name || '';
+        const email = opt.dataset.email || '';
+        const program = opt.dataset.program || '';
+        
+        if (name.includes(searchTerm) || email.includes(searchTerm) || program.includes(searchTerm)) {
+            opt.style.display = '';
+            hasVisible = true;
+        } else {
+            opt.style.display = 'none';
+        }
+    });
+    
+    // Show "No results" message if needed
+    const noResultMsg = document.getElementById('me_lecturer_no_result');
+    if (noResultMsg) {
+        noResultMsg.style.display = (searchTerm && !hasVisible) ? 'block' : 'none';
+    }
+}
 window.showLecturerAssignmentModal = showLecturerAssignmentModal;
 
 function closeLecturerAssignmentModal() {
