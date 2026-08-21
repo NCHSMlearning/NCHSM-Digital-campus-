@@ -17,37 +17,6 @@
     
     <!-- CSS -->
     <link rel="stylesheet" href="registration.css">
-    
-    <style>
-        /* Additional inline styles for student type selector */
-        .student-type-card.selected {
-            border-color: #0A3D62 !important;
-            background: #e8f4f8 !important;
-            box-shadow: 0 0 0 3px rgba(10, 61, 98, 0.15) !important;
-        }
-        .student-type-card {
-            cursor: pointer;
-            transition: all 0.3s ease;
-        }
-        .student-type-card input[type="radio"] {
-            display: none;
-        }
-        .student-type-card .type-icon {
-            font-size: 28px;
-            display: block;
-            margin-bottom: 6px;
-        }
-        .student-type-card .type-name {
-            font-weight: 600;
-            font-size: 0.85rem;
-            color: #1e293b;
-        }
-        .student-type-card .type-desc {
-            font-size: 0.7rem;
-            color: #64748B;
-            margin-top: 4px;
-        }
-    </style>
 </head>
 <body>
 
@@ -179,7 +148,7 @@
 
             <!-- STUDENT FIELDS -->
             <div id="student-fields" class="role-fields">
-                <!-- Student Type Selection -->
+                <!-- Student Type Selection - FIXED with hidden input -->
                 <div class="form-group">
                     <label><i data-feather="users"></i> Student Type <span style="color:red;">*</span></label>
                     <div class="student-type-selector" id="studentTypeSelector">
@@ -196,9 +165,9 @@
                             <div class="type-desc">New admission - Generate registration number</div>
                         </div>
                     </div>
-                    <!-- HIDDEN INPUT FOR VALIDATION - FIXED -->
+                    <!-- HIDDEN INPUT FOR VALIDATION - THIS IS THE FIX -->
                     <input type="hidden" id="student_type_hidden" name="student_type" value="">
-                    <div id="studentTypeError" style="color: #ef4444; font-size: 0.75rem; margin-top: 4px; display: none;">
+                    <div id="studentTypeError" style="color: #DC2626; font-size: 0.75rem; margin-top: 6px; display: none;">
                         ⚠️ Please select whether you are a Continuing or New student.
                     </div>
                 </div>
@@ -723,12 +692,22 @@
     </div>
 </div>
 
-<!-- JavaScript - INLINE FIX -->
+<!-- JavaScript -->
+<script src="registration.js"></script>
+<script src="code-protection.js"></script>
+
+<!-- ============================================ -->
+<!-- INLINE FIX FOR STUDENT TYPE VALIDATION -->
+<!-- ============================================ -->
 <script>
-// =============================================
-// STUDENT TYPE SELECTION - FIXED
-// =============================================
-function selectStudentType(type) {
+// Override the selectStudentType function to also set hidden input
+const originalSelectStudentType = window.selectStudentType || function() {};
+window.selectStudentType = function(type) {
+    // Call original if it exists
+    if (typeof originalSelectStudentType === 'function') {
+        originalSelectStudentType(type);
+    }
+    
     // Clear all selected states
     document.querySelectorAll('.student-type-card').forEach(card => {
         card.classList.remove('selected');
@@ -744,232 +723,151 @@ function selectStudentType(type) {
         }
     }
     
-    // Set hidden input value for validation
-    document.getElementById('student_type_hidden').value = type;
+    // Set hidden input value for validation - THIS IS THE KEY FIX
+    const hiddenInput = document.getElementById('student_type_hidden');
+    if (hiddenInput) {
+        hiddenInput.value = type;
+    }
     
     // Hide error message if shown
     const errorEl = document.getElementById('studentTypeError');
-    if (errorEl) errorEl.style.display = 'none';
+    if (errorEl) {
+        errorEl.style.display = 'none';
+    }
     
     // Update student ID field based on selection
-    updateStudentIdField(type);
-}
+    updateStudentIdFields(type);
+};
 
-function updateStudentIdField(type) {
+function updateStudentIdFields(type) {
     const idInput = document.getElementById('student_id_number');
     const idLabel = document.getElementById('studentIdLabel');
     const idHint = document.getElementById('studentIdHint');
     const regDisplay = document.getElementById('regNumberDisplay');
-    const programRequiredMsg = document.getElementById('programRequiredMsg');
+    const programMsg = document.getElementById('programRequiredMsg');
     
     if (type === 'continuing') {
-        idLabel.textContent = 'Student ID / Registration Number';
-        idHint.textContent = '(Enter your existing Student ID)';
-        idInput.placeholder = 'e.g., KRCHN/0032/MAR/2024 or DPOTT/00001/05/26';
-        idInput.value = '';
+        if (idLabel) idLabel.textContent = 'Student ID / Registration Number';
+        if (idHint) idHint.textContent = '(Enter your existing Student ID)';
+        if (idInput) {
+            idInput.placeholder = 'e.g., KRCHN/0032/MAR/2024 or DPOTT/00001/05/26';
+            idInput.value = '';
+            idInput.disabled = false;
+        }
         if (regDisplay) regDisplay.style.display = 'none';
-        if (programRequiredMsg) programRequiredMsg.classList.remove('show');
+        if (programMsg) programMsg.classList.remove('show');
     } else if (type === 'new') {
-        idLabel.textContent = 'New Registration Number';
-        idHint.textContent = '(Will be auto-generated)';
-        idInput.placeholder = 'Auto-generated based on program selection';
-        idInput.value = '';
+        if (idLabel) idLabel.textContent = 'New Registration Number';
+        if (idHint) idHint.textContent = '(Will be auto-generated)';
+        if (idInput) {
+            idInput.placeholder = 'Auto-generated based on program selection';
+            idInput.value = '';
+            idInput.disabled = true;
+        }
         if (regDisplay) regDisplay.style.display = 'block';
-        // Generate initial registration number
-        regenerateStudentId();
+        // Generate initial registration number if program is selected
+        const program = document.getElementById('program_type').value;
+        if (program && program !== '') {
+            if (programMsg) programMsg.classList.remove('show');
+            // Generate a sample number
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+            const monthName = monthNames[now.getMonth()];
+            
+            let regNumber = '';
+            if (program === 'KRCHN' || program === 'DCHN') {
+                const randomNum = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+                regNumber = `${program}/${randomNum}/${monthName}/${year}`;
+            } else {
+                const randomNum = String(Math.floor(Math.random() * 99999) + 1).padStart(5, '0');
+                regNumber = `${program}/${randomNum}/${month}/${String(year).slice(-2)}`;
+            }
+            
+            const genDisplay = document.getElementById('generatedRegNumber');
+            if (genDisplay) genDisplay.textContent = regNumber;
+            if (idInput) {
+                idInput.value = regNumber;
+                idInput.dataset.generated = 'true';
+            }
+        } else {
+            if (programMsg) programMsg.classList.add('show');
+        }
     }
 }
 
-// =============================================
-// REGISTRATION NUMBER GENERATION
-// =============================================
-function regenerateStudentId() {
-    const programSelect = document.getElementById('program_type');
-    const program = programSelect ? programSelect.value : '';
-    
-    if (!program) {
-        const msg = document.getElementById('programRequiredMsg');
-        if (msg) msg.classList.add('show');
-        return;
-    }
-    
-    const msg = document.getElementById('programRequiredMsg');
-    if (msg) msg.classList.remove('show');
-    
-    // Get current year
-    const now = new Date();
-    const year = now.getFullYear();
-    const month = String(now.getMonth() + 1).padStart(2, '0');
-    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-    const monthName = monthNames[now.getMonth()];
-    
-    // Generate a random number
-    const randomNum = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
-    
-    // Generate registration number based on program
-    let regNumber = '';
-    if (program === 'KRCHN' || program === 'DCHN') {
-        regNumber = `${program}/${randomNum}/${monthName}/${year}`;
-    } else {
-        // TVET programs - use 5 digits
-        const randomNum5 = String(Math.floor(Math.random() * 99999) + 1).padStart(5, '0');
-        regNumber = `${program}/${randomNum5}/${month}/${String(year).slice(-2)}`;
-    }
-    
-    // Update display
-    const regDisplay = document.getElementById('generatedRegNumber');
-    if (regDisplay) regDisplay.textContent = regNumber;
-    
-    // Update hidden input
-    const idInput = document.getElementById('student_id_number');
-    if (idInput) idInput.value = regNumber;
-}
-
-// =============================================
-// STEP NAVIGATION
-// =============================================
-let currentStep = 1;
-
-function goToStep(step) {
-    // Validate current step before proceeding
-    if (step > currentStep) {
-        if (!validateStep(currentStep)) {
+// Fix the goToStep validation to check hidden input
+const originalGoToStep = window.goToStep || function() {};
+window.goToStep = function(step) {
+    if (step === 2) {
+        // Check student type hidden input
+        const hiddenInput = document.getElementById('student_type_hidden');
+        if (hiddenInput && !hiddenInput.value) {
+            const errorEl = document.getElementById('studentTypeError');
+            if (errorEl) errorEl.style.display = 'block';
+            
+            // Show validation modal
+            const modal = document.getElementById('validationModal');
+            const errorList = document.getElementById('validationErrorList');
+            if (modal && errorList) {
+                errorList.innerHTML = `
+                    <li>
+                        <span class="error-icon">📋</span>
+                        <div>
+                            <span class="error-field">Student Type:</span>
+                            <span>Please select whether you are a Continuing or New student.</span>
+                        </div>
+                    </li>
+                `;
+                modal.classList.add('show');
+            }
             return;
         }
     }
     
-    // Hide all sections
-    document.querySelectorAll('.form-section').forEach(section => {
-        section.style.display = 'none';
-    });
-    
-    // Show target section
-    const targetSection = document.querySelector(`.form-section[data-section="${step}"]`);
-    if (targetSection) targetSection.style.display = 'block';
-    
-    // Update progress
-    document.querySelectorAll('.progress-step').forEach(el => {
-        const stepNum = parseInt(el.dataset.step);
-        el.classList.remove('active', 'completed');
-        if (stepNum === step) {
-            el.classList.add('active');
-        } else if (stepNum < step) {
-            el.classList.add('completed');
-        }
-    });
-    
-    currentStep = step;
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
-
-function validateStep(step) {
-    const errors = [];
-    
-    if (step === 1) {
-        // Validate Step 1 fields
-        const email = document.getElementById('email');
-        const phone = document.getElementById('phone');
-        const dob = document.getElementById('dob');
-        const gender = document.getElementById('gender');
-        const fullName = document.getElementById('full_name');
-        
-        if (!fullName.value.trim()) {
-            errors.push({ field: 'full_name', message: 'Full Name is required.' });
-        }
-        
-        if (!email.value.trim()) {
-            errors.push({ field: 'email', message: 'Email Address is required.' });
-        } else if (!isValidEmail(email.value)) {
-            errors.push({ field: 'email', message: 'Please enter a valid email address.' });
-        }
-        
-        if (!phone.value.trim()) {
-            errors.push({ field: 'phone', message: 'Phone Number is required.' });
-        }
-        
-        if (!dob.value) {
-            errors.push({ field: 'dob', message: 'Date of Birth is required.' });
-        }
-        
-        if (!gender.value) {
-            errors.push({ field: 'gender', message: 'Gender is required.' });
-        }
+    // Call original
+    if (typeof originalGoToStep === 'function') {
+        originalGoToStep(step);
     }
-    
-    if (step === 2) {
-        // Validate Step 2 - STUDENT TYPE (FIXED)
-        const studentType = document.getElementById('student_type_hidden');
-        if (studentType && !studentType.value) {
-            errors.push({ field: 'student_type', message: 'Please select whether you are a Continuing or New student.' });
-        }
-        
-        // Validate Program
-        const program = document.getElementById('program_type');
-        if (program && !program.value) {
-            errors.push({ field: 'program', message: 'Please select your program.' });
-        }
-        
-        // Validate Student ID
-        const studentId = document.getElementById('student_id_number');
-        if (studentId && !studentId.value.trim()) {
-            errors.push({ field: 'student_id', message: 'Student ID / Registration Number is required.' });
-        }
-    }
-    
-    if (errors.length > 0) {
-        showValidationModal(errors);
-        return false;
-    }
-    
-    return true;
-}
+};
 
-function isValidEmail(email) {
-    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
-
-// =============================================
-// VALIDATION MODAL
-// =============================================
-function showValidationModal(errors) {
-    const modal = document.getElementById('validationModal');
-    const errorList = document.getElementById('validationErrorList');
-    
-    if (!modal || !errorList) return;
-    
-    errorList.innerHTML = '';
-    errors.forEach(error => {
-        const li = document.createElement('li');
-        li.innerHTML = `<span class="error-icon">📝</span> ${error.message}`;
-        errorList.appendChild(li);
-    });
-    
-    modal.classList.add('active');
-}
-
+// Close modal functions
 function closeValidationModal() {
     const modal = document.getElementById('validationModal');
-    if (modal) modal.classList.remove('active');
+    if (modal) modal.classList.remove('show');
 }
 
-// =============================================
-// PLACEHOLDER FUNCTIONS (to prevent errors)
-// =============================================
+function openTermsModal(e) {
+    if (e) e.preventDefault();
+    const modal = document.getElementById('termsModal');
+    if (modal) modal.classList.add('show');
+}
+
+function closeTermsModal() {
+    const modal = document.getElementById('termsModal');
+    if (modal) modal.classList.remove('show');
+}
+
+function acceptTerms() {
+    const checkbox = document.getElementById('terms');
+    if (checkbox) checkbox.checked = true;
+    closeTermsModal();
+}
+
+// Placeholder functions for external JS
 function handlePhotoUpload(event) {
     const file = event.target.files[0];
     if (!file) return;
-    
     const preview = document.getElementById('photoPreview');
     const status = document.getElementById('photoStatus');
-    
     if (preview) {
         const reader = new FileReader();
         reader.onload = function(e) {
-            preview.innerHTML = `<img src="${e.target.result}" alt="Profile Photo">`;
+            preview.innerHTML = `<img src="${e.target.result}" alt="Profile Photo" style="width:100%;height:100%;object-fit:cover;">`;
         };
         reader.readAsDataURL(file);
     }
-    
     if (status) {
         status.textContent = `📸 ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
     }
@@ -978,11 +876,9 @@ function handlePhotoUpload(event) {
 function handleDocumentUpload(event, docType) {
     const file = event.target.files[0];
     if (!file) return;
-    
     const statusEl = document.getElementById(`doc_${docType}_status`);
     const filenameEl = document.getElementById(`doc_${docType}_filename`);
     const cardEl = document.getElementById(`doc_${docType}`);
-    
     if (statusEl) statusEl.textContent = '✅ Uploaded';
     if (filenameEl) filenameEl.textContent = file.name;
     if (cardEl) cardEl.classList.add('uploaded');
@@ -993,28 +889,10 @@ function removeDocument(docType) {
     const filenameEl = document.getElementById(`doc_${docType}_filename`);
     const cardEl = document.getElementById(`doc_${docType}`);
     const inputEl = document.getElementById(`doc_${docType}_input`);
-    
     if (statusEl) statusEl.textContent = 'Not uploaded';
     if (filenameEl) filenameEl.textContent = '';
     if (cardEl) cardEl.classList.remove('uploaded');
     if (inputEl) inputEl.value = '';
-}
-
-function openTermsModal(e) {
-    if (e) e.preventDefault();
-    const modal = document.getElementById('termsModal');
-    if (modal) modal.classList.add('active');
-}
-
-function closeTermsModal() {
-    const modal = document.getElementById('termsModal');
-    if (modal) modal.classList.remove('active');
-}
-
-function acceptTerms() {
-    const checkbox = document.getElementById('terms');
-    if (checkbox) checkbox.checked = true;
-    closeTermsModal();
 }
 
 function saveDraft() {
@@ -1025,63 +903,79 @@ function loadDraft() {
     alert('Draft loaded successfully!');
 }
 
-// =============================================
-// FORM SUBMIT
-// =============================================
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('register-form');
-    if (form) {
-        form.addEventListener('submit', function(e) {
-            e.preventDefault();
-            
-            // Validate all steps
-            if (!validateStep(1)) return;
-            if (!validateStep(2)) return;
-            
-            // Show success
-            document.getElementById('successOverlay').classList.add('active');
-            
-            // Countdown
-            let count = 5;
-            const countdownEl = document.getElementById('successCountdown');
-            const interval = setInterval(() => {
-                count--;
-                if (countdownEl) countdownEl.textContent = count;
-                if (count <= 0) {
-                    clearInterval(interval);
-                    window.location.href = 'login.html';
-                }
-            }, 1000);
-        });
+function regenerateStudentId() {
+    const program = document.getElementById('program_type').value;
+    if (!program) {
+        document.getElementById('programRequiredMsg').classList.add('show');
+        return;
     }
-});
-
-// =============================================
-// PROGRAM DESCRIPTION
-// =============================================
-document.addEventListener('DOMContentLoaded', function() {
-    const programSelect = document.getElementById('program_type');
-    const descEl = document.getElementById('programDescription');
+    document.getElementById('programRequiredMsg').classList.remove('show');
     
-    if (programSelect && descEl) {
-        programSelect.addEventListener('change', function() {
-            const selected = this.options[this.selectedIndex];
-            const desc = selected ? selected.getAttribute('data-desc') : '';
-            if (desc) {
-                descEl.textContent = '📌 ' + desc;
-            } else {
-                descEl.textContent = 'Select a program above to see details';
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const monthNames = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+    const monthName = monthNames[now.getMonth()];
+    
+    let regNumber = '';
+    if (program === 'KRCHN' || program === 'DCHN') {
+        const randomNum = String(Math.floor(Math.random() * 9999) + 1).padStart(4, '0');
+        regNumber = `${program}/${randomNum}/${monthName}/${year}`;
+    } else {
+        const randomNum = String(Math.floor(Math.random() * 99999) + 1).padStart(5, '0');
+        regNumber = `${program}/${randomNum}/${month}/${String(year).slice(-2)}`;
+    }
+    
+    const genDisplay = document.getElementById('generatedRegNumber');
+    if (genDisplay) genDisplay.textContent = regNumber;
+    
+    const idInput = document.getElementById('student_id_number');
+    if (idInput) {
+        idInput.value = regNumber;
+        idInput.dataset.generated = 'true';
+    }
+}
+
+// Initialize role change
+document.addEventListener('DOMContentLoaded', function() {
+    const roleSelect = document.getElementById('role');
+    if (roleSelect) {
+        roleSelect.addEventListener('change', function() {
+            const isStudent = this.value === 'student';
+            const isLecturer = this.value === 'lecturer';
+            const studentFields = document.getElementById('student-fields');
+            const lecturerFields = document.getElementById('lecturer-fields');
+            const studentDocs = document.getElementById('student-docs');
+            
+            if (studentFields) {
+                studentFields.style.display = isStudent ? 'block' : 'none';
+                studentFields.classList.toggle('active', isStudent);
+            }
+            if (lecturerFields) {
+                lecturerFields.style.display = isLecturer ? 'block' : 'none';
+                lecturerFields.classList.toggle('active', isLecturer);
+            }
+            if (studentDocs) {
+                studentDocs.style.display = isStudent ? 'grid' : 'none';
+            }
+            
+            // If student, auto-select continuing if not selected
+            if (isStudent) {
+                const hiddenInput = document.getElementById('student_type_hidden');
+                if (hiddenInput && !hiddenInput.value) {
+                    selectStudentType('continuing');
+                }
             }
         });
     }
-});
-
-// Initialize feather icons
-document.addEventListener('DOMContentLoaded', function() {
+    
+    // Initialize feather icons
     if (typeof feather !== 'undefined') {
         feather.replace();
     }
 });
+
+console.log('✅ Student Type selection fixed with hidden input validation');
 </script>
 
 </body>
