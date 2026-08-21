@@ -15,7 +15,7 @@
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
-    <!-- CSS -->
+    <!-- External CSS -->
     <link rel="stylesheet" href="registration.css">
 </head>
 <body>
@@ -62,7 +62,7 @@
                 <label><i data-feather="user"></i> Register As</label>
                 <select id="role" name="role" required>
                     <option value="">-- Select Your Role --</option>
-                    <option value="student">Student</option>
+                    <option value="student" selected>Student</option>
                     <option value="lecturer">Lecturer</option>
                 </select>
             </div>
@@ -147,26 +147,28 @@
         <div class="form-section" data-section="2" style="display: none;">
 
             <!-- STUDENT FIELDS -->
-            <div id="student-fields" class="role-fields">
+            <div id="student-fields" class="role-fields" style="display: block;">
                 <!-- Student Type Selection -->
                 <div class="form-group">
                     <label><i data-feather="users"></i> Student Type <span style="color:red;">*</span></label>
                     <div class="student-type-selector" id="studentTypeSelector">
-                        <div class="student-type-card" data-type="continuing" onclick="selectStudentType('continuing')">
-                            <input type="radio" name="student_type" value="continuing" id="student_type_continuing">
+                        <div class="student-type-card selected" data-type="continuing" onclick="selectStudentType('continuing')">
+                            <input type="radio" name="student_type" value="continuing" id="student_type_continuing" checked>
                             <span class="type-icon">🔄</span>
                             <div class="type-name">Continuing Student</div>
                             <div class="type-desc">Already has a student ID/Reg number</div>
+                            <span class="check-mark">✓</span>
                         </div>
                         <div class="student-type-card" data-type="new" onclick="selectStudentType('new')">
                             <input type="radio" name="student_type" value="new" id="student_type_new">
                             <span class="type-icon">✨</span>
                             <div class="type-name">New Student</div>
                             <div class="type-desc">New admission - Generate registration number</div>
+                            <span class="check-mark">✓</span>
                         </div>
                     </div>
                     <!-- HIDDEN INPUT FOR VALIDATION -->
-                    <input type="hidden" id="student_type_hidden" name="student_type" value="">
+                    <input type="hidden" id="student_type_hidden" name="student_type" value="continuing">
                     <div id="studentTypeError" style="color: #DC2626; font-size: 0.75rem; margin-top: 6px; display: none;">
                         ⚠️ Please select whether you are a Continuing or New student.
                     </div>
@@ -413,7 +415,7 @@
             </div>
 
             <!-- LECTURER FIELDS -->
-            <div id="lecturer-fields" class="role-fields">
+            <div id="lecturer-fields" class="role-fields" style="display: none;">
                 <div style="background:#e8f4f8;padding:12px 16px;border-radius:12px;margin-bottom:16px;border-left:4px solid #0A3D62;">
                     <p style="font-size:0.8rem;color:#0A3D62;margin:0;font-weight:500;">
                         🆔 <strong>Staff ID will be auto-generated</strong> after registration (e.g., NCHSMNUR-001, NCHSMTVT-001)
@@ -489,7 +491,7 @@
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 0.5rem;">
-                <button type="button" onclick="goToStep(1)" style="flex: 1; background: #6b7280;">
+                <button type="button" onclick="goToStep(1)" style="flex: 1; background: #6b7280; color: white; border: none; border-radius: 10px; padding: 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
                     ← Back
                 </button>
                 <button type="button" class="btn-success" onclick="goToStep(3)" style="flex: 1;">
@@ -541,7 +543,7 @@
             </div>
 
             <div style="display: flex; gap: 10px; margin-top: 0.5rem;">
-                <button type="button" onclick="goToStep(2)" style="flex: 1; background: #6b7280;">
+                <button type="button" onclick="goToStep(2)" style="flex: 1; background: #6b7280; color: white; border: none; border-radius: 10px; padding: 12px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
                     ← Back
                 </button>
                 <button type="button" class="btn-success" onclick="goToStep(4)" style="flex: 1;">
@@ -593,11 +595,11 @@
                 </button>
             </div>
 
-            <button type="submit" id="register-btn">
+            <button type="submit" id="register-btn" style="width:100%; padding: 14px; background: #0A3D62; color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
                 <span id="button-text">✅ Create Account</span>
             </button>
             
-            <button type="button" onclick="goToStep(3)" style="margin-top: 0.5rem; background: #6b7280;">
+            <button type="button" onclick="goToStep(3)" style="margin-top: 0.5rem; width:100%; padding: 12px; background: #6b7280; color: white; border: none; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
                 ← Back to Documents
             </button>
 
@@ -692,15 +694,65 @@
     </div>
 </div>
 
-<!-- JavaScript -->
+<!-- ============================================ -->
+<!-- JAVASCRIPT - registration.js -->
+<!-- ============================================ -->
 <script src="registration.js"></script>
 <script src="code-protection.js"></script>
 
 <!-- ============================================ -->
-<!-- INLINE FIX FOR STUDENT TYPE VALIDATION -->
+<!-- INLINE FIX FOR STUDENT TYPE IN STEP 2 -->
 <!-- ============================================ -->
 <script>
-// Override selectStudentType to set hidden input
+// This ensures student type works properly in Step 2
+document.addEventListener('DOMContentLoaded', function() {
+    // Set initial state - student is selected by default
+    const roleSelect = document.getElementById('role');
+    if (roleSelect && roleSelect.value === 'student') {
+        const studentFields = document.getElementById('student-fields');
+        if (studentFields) {
+            studentFields.style.display = 'block';
+            studentFields.classList.add('active');
+        }
+        const lecturerFields = document.getElementById('lecturer-fields');
+        if (lecturerFields) {
+            lecturerFields.style.display = 'none';
+            lecturerFields.classList.remove('active');
+        }
+    }
+    
+    // Handle role change
+    if (roleSelect) {
+        roleSelect.addEventListener('change', function() {
+            const isStudent = this.value === 'student';
+            const studentFields = document.getElementById('student-fields');
+            const lecturerFields = document.getElementById('lecturer-fields');
+            const studentDocs = document.getElementById('student-docs');
+            
+            if (studentFields) {
+                studentFields.style.display = isStudent ? 'block' : 'none';
+                studentFields.classList.toggle('active', isStudent);
+            }
+            if (lecturerFields) {
+                lecturerFields.style.display = isStudent ? 'none' : 'block';
+                lecturerFields.classList.toggle('active', !isStudent);
+            }
+            if (studentDocs) {
+                studentDocs.style.display = isStudent ? 'grid' : 'none';
+            }
+            
+            // If student, ensure student type is selected
+            if (isStudent) {
+                const hiddenInput = document.getElementById('student_type_hidden');
+                if (hiddenInput && !hiddenInput.value) {
+                    selectStudentType('continuing');
+                }
+            }
+        });
+    }
+});
+
+// Override selectStudentType to handle validation
 window.selectStudentType = function(type) {
     // Clear all selected states
     document.querySelectorAll('.student-type-card').forEach(card => {
@@ -717,19 +769,19 @@ window.selectStudentType = function(type) {
         }
     }
     
-    // Set hidden input value for validation
+    // Set hidden input value
     const hiddenInput = document.getElementById('student_type_hidden');
     if (hiddenInput) {
         hiddenInput.value = type;
     }
     
-    // Hide error message
+    // Hide error
     const errorEl = document.getElementById('studentTypeError');
     if (errorEl) {
         errorEl.style.display = 'none';
     }
     
-    // Update student ID fields
+    // Update fields based on type
     const idInput = document.getElementById('student_id_number');
     const idLabel = document.getElementById('studentIdLabel');
     const idHint = document.getElementById('studentIdHint');
@@ -755,7 +807,6 @@ window.selectStudentType = function(type) {
             idInput.disabled = true;
         }
         if (regDisplay) regDisplay.style.display = 'block';
-        // Generate if program selected
         const program = document.getElementById('program_type')?.value;
         if (program && program !== '') {
             if (programMsg) programMsg.classList.remove('show');
@@ -766,7 +817,7 @@ window.selectStudentType = function(type) {
     }
 };
 
-// Regenerate student ID function
+// Regenerate student ID
 window.regenerateStudentId = function() {
     const program = document.getElementById('program_type')?.value;
     if (!program) {
@@ -800,38 +851,6 @@ window.regenerateStudentId = function() {
     if (idInput) {
         idInput.value = regNumber;
         idInput.dataset.generated = 'true';
-    }
-};
-
-// Fix goToStep validation
-const originalGoToStep = window.goToStep || function() {};
-window.goToStep = function(step) {
-    if (step === 2) {
-        const hiddenInput = document.getElementById('student_type_hidden');
-        if (hiddenInput && !hiddenInput.value) {
-            const errorEl = document.getElementById('studentTypeError');
-            if (errorEl) errorEl.style.display = 'block';
-            
-            const modal = document.getElementById('validationModal');
-            const errorList = document.getElementById('validationErrorList');
-            if (modal && errorList) {
-                errorList.innerHTML = `
-                    <li>
-                        <span class="error-icon">📋</span>
-                        <div>
-                            <span class="error-field">Student Type:</span>
-                            <span>Please select whether you are a Continuing or New student.</span>
-                        </div>
-                    </li>
-                `;
-                modal.classList.add('show');
-            }
-            return;
-        }
-    }
-    
-    if (typeof originalGoToStep === 'function') {
-        originalGoToStep(step);
     }
 };
 
@@ -906,7 +925,7 @@ function loadDraft() {
     alert('Draft loaded successfully!');
 }
 
-// Fix updateIntakePreview
+// Update intake preview
 window.updateIntakePreview = function() {
     const program = document.getElementById('program_type')?.value || '';
     const isNursing = program === 'KRCHN' || program === 'DCHN';
@@ -940,6 +959,68 @@ window.updateIntakePreview = function() {
     }
 };
 
+// Override goToStep to handle Step 2 properly
+const originalGoToStep = window.goToStep || function() {};
+window.goToStep = function(step) {
+    // Hide all sections
+    document.querySelectorAll('.form-section').forEach(section => {
+        section.style.display = 'none';
+    });
+    
+    // Show target section
+    const targetSection = document.querySelector(`.form-section[data-section="${step}"]`);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+    
+    // Handle Step 2 - Show role-specific fields
+    if (step === 2) {
+        const role = document.getElementById('role').value;
+        const studentFields = document.getElementById('student-fields');
+        const lecturerFields = document.getElementById('lecturer-fields');
+        const studentDocs = document.getElementById('student-docs');
+        
+        if (role === 'student') {
+            if (studentFields) {
+                studentFields.style.display = 'block';
+                studentFields.classList.add('active');
+            }
+            if (lecturerFields) {
+                lecturerFields.style.display = 'none';
+                lecturerFields.classList.remove('active');
+            }
+            if (studentDocs) {
+                studentDocs.style.display = 'grid';
+            }
+        } else if (role === 'lecturer') {
+            if (studentFields) {
+                studentFields.style.display = 'none';
+                studentFields.classList.remove('active');
+            }
+            if (lecturerFields) {
+                lecturerFields.style.display = 'block';
+                lecturerFields.classList.add('active');
+            }
+            if (studentDocs) {
+                studentDocs.style.display = 'none';
+            }
+        }
+    }
+    
+    // Update progress
+    document.querySelectorAll('.progress-step').forEach(el => {
+        const stepNum = parseInt(el.dataset.step);
+        el.classList.remove('active', 'completed');
+        if (stepNum === step) {
+            el.classList.add('active');
+        } else if (stepNum < step) {
+            el.classList.add('completed');
+        }
+    });
+    
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
 // Initialize
 document.addEventListener('DOMContentLoaded', function() {
     // Run updateIntakePreview
@@ -949,7 +1030,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }, 100);
     
-    // Set up event listeners
+    // Set up event listeners for intake
     const krchnYear = document.getElementById('krchn_intake_year');
     if (krchnYear) krchnYear.addEventListener('change', window.updateIntakePreview);
     
@@ -973,44 +1054,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
     
-    // Role toggle
-    const roleSelect = document.getElementById('role');
-    if (roleSelect) {
-        roleSelect.addEventListener('change', function() {
-            const isStudent = this.value === 'student';
-            const isLecturer = this.value === 'lecturer';
-            const studentFields = document.getElementById('student-fields');
-            const lecturerFields = document.getElementById('lecturer-fields');
-            const studentDocs = document.getElementById('student-docs');
-            
-            if (studentFields) {
-                studentFields.style.display = isStudent ? 'block' : 'none';
-                studentFields.classList.toggle('active', isStudent);
-            }
-            if (lecturerFields) {
-                lecturerFields.style.display = isLecturer ? 'block' : 'none';
-                lecturerFields.classList.toggle('active', isLecturer);
-            }
-            if (studentDocs) {
-                studentDocs.style.display = isStudent ? 'grid' : 'none';
-            }
-            
-            if (isStudent) {
-                const hiddenInput = document.getElementById('student_type_hidden');
-                if (hiddenInput && !hiddenInput.value) {
-                    selectStudentType('continuing');
-                }
-            }
-        });
-    }
-    
     // Initialize feather icons
     if (typeof feather !== 'undefined') {
         feather.replace();
     }
+    
+    console.log('✅ Registration form loaded with Step 2 student type selector');
 });
-
-console.log('✅ All fixes applied - Student Type validation working');
 </script>
 
 </body>
