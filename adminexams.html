@@ -13,12 +13,12 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-    <!-- Main CSS -->
+    <!-- ✅ EXTERNAL CSS - Keep your existing -->
     <link rel="stylesheet" href="css/admindashboard.css" />
 
     <style>
         /* ============================================================
-           ULTRA MODERN VARIABLES
+           ULTRA MODERN OVERRIDES - WORKS WITH admindashboard.css
            ============================================================ */
         :root {
             --primary: #0A3D62;
@@ -32,6 +32,8 @@
             --warning: #F59E0B;
             --info: #3B82F6;
             --purple: #8B5CF6;
+            --pink: #EC4899;
+            --indigo: #6366F1;
             --radius: 16px;
             --radius-sm: 10px;
             --radius-xs: 8px;
@@ -41,9 +43,7 @@
             --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        /* ============================================================
-           RESET
-           ============================================================ */
+        /* --- Reset --- */
         * {
             margin: 0;
             padding: 0;
@@ -51,7 +51,7 @@
         }
 
         body {
-            font-family: 'Inter', -apple-system, sans-serif;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
             background: #f0f4f8;
             background-image:
                 radial-gradient(ellipse at 10% 20%, rgba(10, 61, 98, 0.03) 0%, transparent 50%),
@@ -62,36 +62,58 @@
         }
 
         /* ============================================================
-           SIDEBAR - ULTRA MODERN WITH GLASSMORPHISM
+           SIDEBAR - ULTRA MODERN GLASSMORPHISM + SCROLLABLE
            ============================================================ */
         .sidebar {
             position: fixed;
             top: 16px;
             left: 16px;
-            width: 260px;
+            width: 270px;
             height: calc(100vh - 32px);
             background: rgba(10, 61, 98, 0.88);
             backdrop-filter: blur(20px);
             -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 1px solid rgba(255, 255, 255, 0.08);
             border-radius: var(--radius);
-            box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.05);
-            overflow-y: auto;
+            box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.04);
             z-index: 1000;
             transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
+            overflow: hidden;
         }
 
-        .sidebar::-webkit-scrollbar {
-            width: 3px;
+        /* ✅ SCROLLABLE SIDEBAR MENU AREA */
+        .sidebar-scroll {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 0 6px 8px 6px;
+            scroll-behavior: smooth;
         }
-        .sidebar::-webkit-scrollbar-thumb {
+
+        /* ✅ Custom scrollbar for sidebar */
+        .sidebar-scroll::-webkit-scrollbar {
+            width: 4px;
+        }
+        .sidebar-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        .sidebar-scroll::-webkit-scrollbar-thumb {
             background: rgba(255, 255, 255, 0.15);
             border-radius: 10px;
         }
+        .sidebar-scroll::-webkit-scrollbar-thumb:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
 
-        /* --- Brand --- */
+        /* Firefox scrollbar */
+        .sidebar-scroll {
+            scrollbar-width: thin;
+            scrollbar-color: rgba(255, 255, 255, 0.15) transparent;
+        }
+
+        /* --- Brand (fixed at top) --- */
         .sidebar-brand {
             padding: 24px 20px 18px;
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -99,6 +121,11 @@
             align-items: center;
             gap: 12px;
             flex-shrink: 0;
+            background: rgba(10, 61, 98, 0.95);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            top: 0;
+            z-index: 5;
         }
 
         .sidebar-brand .logo-icon {
@@ -127,18 +154,18 @@
             color: var(--accent);
         }
         .sidebar-brand .brand-text small {
-            color: rgba(255, 255, 255, 0.35);
+            color: rgba(255, 255, 255, 0.3);
             font-size: 0.5rem;
             font-weight: 500;
             letter-spacing: 0.8px;
             text-transform: uppercase;
         }
 
-        /* --- Menu Categories --- */
+        /* --- Menu (scrollable area) --- */
         .sidebar-menu {
             list-style: none;
-            padding: 12px 10px;
-            flex: 1;
+            padding: 8px 4px 8px 4px;
+            margin: 0;
         }
 
         .sidebar-menu .menu-label {
@@ -146,8 +173,13 @@
             font-size: 0.55rem;
             text-transform: uppercase;
             letter-spacing: 1.2px;
-            padding: 14px 14px 6px;
+            padding: 12px 14px 6px;
             font-weight: 700;
+            position: sticky;
+            top: 0;
+            background: rgba(10, 61, 98, 0.9);
+            backdrop-filter: blur(8px);
+            z-index: 2;
         }
 
         .sidebar-menu li a {
@@ -162,6 +194,8 @@
             font-size: 0.82rem;
             font-weight: 500;
             position: relative;
+            cursor: pointer;
+            white-space: nowrap;
         }
 
         .sidebar-menu li a i {
@@ -169,6 +203,7 @@
             text-align: center;
             font-size: 0.9rem;
             transition: var(--transition);
+            flex-shrink: 0;
         }
 
         .sidebar-menu li a:hover {
@@ -204,13 +239,29 @@
             font-size: 0.55rem;
             font-weight: 600;
             border: 1px solid rgba(239, 68, 68, 0.08);
+            flex-shrink: 0;
+        }
+        .badge-sidebar.success {
+            background: rgba(16, 185, 129, 0.15);
+            color: #6EE7B7;
+            border-color: rgba(16, 185, 129, 0.08);
+        }
+        .badge-sidebar.warning {
+            background: rgba(245, 158, 11, 0.15);
+            color: #FCD34D;
+            border-color: rgba(245, 158, 11, 0.08);
         }
 
-        /* --- User Card --- */
+        /* --- User Card (fixed at bottom) --- */
         .sidebar-footer {
             padding: 14px 16px;
             border-top: 1px solid rgba(255, 255, 255, 0.06);
             flex-shrink: 0;
+            background: rgba(10, 61, 98, 0.95);
+            backdrop-filter: blur(10px);
+            position: sticky;
+            bottom: 0;
+            z-index: 5;
         }
 
         .sidebar-footer .user-card {
@@ -242,6 +293,10 @@
             flex-shrink: 0;
         }
 
+        .sidebar-footer .user-card .info {
+            flex: 1;
+            min-width: 0;
+        }
         .sidebar-footer .user-card .info .name {
             color: white;
             font-size: 0.8rem;
@@ -289,12 +344,15 @@
             backdrop-filter: blur(6px);
             z-index: 999;
         }
+        .sidebar-overlay.active {
+            display: block;
+        }
 
         /* ============================================================
            MAIN CONTENT
            ============================================================ */
         .main-content {
-            margin-left: 292px;
+            margin-left: 302px;
             padding: 24px 32px 40px;
             min-height: 100vh;
             width: 100%;
@@ -436,7 +494,7 @@
         }
 
         /* ============================================================
-           SECTION CONTAINER - Each section displays independently
+           SECTION CONTAINER
            ============================================================ */
         .section-container {
             display: none;
@@ -459,7 +517,7 @@
         }
 
         /* ============================================================
-           STATS GRID - Only shows on Dashboard tab
+           STATS GRID
            ============================================================ */
         .stats-grid {
             display: grid;
@@ -516,6 +574,14 @@
             background: #FEE2E2;
             color: #991B1B;
         }
+        .stat-card .icon.indigo {
+            background: #E0E7FF;
+            color: #3730A3;
+        }
+        .stat-card .icon.pink {
+            background: #FCE7F3;
+            color: #9D174D;
+        }
 
         .stat-card .info .number {
             font-size: 1.4rem;
@@ -539,6 +605,7 @@
             box-shadow: var(--shadow);
             border: 1px solid rgba(255, 255, 255, 0.5);
             overflow: hidden;
+            margin-bottom: 24px;
         }
 
         .table-header {
@@ -634,6 +701,15 @@
             box-shadow: 0 4px 12px rgba(10, 61, 98, 0.25);
         }
 
+        .btn-info {
+            background: var(--info);
+            color: white;
+        }
+        .btn-info:hover {
+            background: #2563EB;
+            transform: translateY(-1px);
+        }
+
         .btn-sm {
             padding: 4px 10px;
             font-size: 0.65rem;
@@ -707,6 +783,25 @@
             background: #FEE2E2;
             color: #991B1B;
         }
+        .status-badge.critical {
+            background: #FEE2E2;
+            color: #991B1B;
+            animation: pulse-alert 1.5s infinite;
+        }
+        .status-badge.warning {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+
+        @keyframes pulse-alert {
+            0%,
+            100% {
+                opacity: 1;
+            }
+            50% {
+                opacity: 0.5;
+            }
+        }
 
         /* ============================================================
            LOADING
@@ -770,11 +865,540 @@
             font-size: 2.5rem;
             color: #CBD5E1;
             margin-bottom: 10px;
+            display: block;
         }
         .empty-state h3 {
             color: #475569;
             font-weight: 600;
             font-size: 1rem;
+        }
+        .empty-state p {
+            font-size: 0.85rem;
+        }
+
+        /* ============================================================
+           ATTENDANCE SPECIFIC
+           ============================================================ */
+        .attendance-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            padding: 15px 20px;
+            background: rgba(0, 0, 0, 0.01);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .attendance-stat-card {
+            background: white;
+            border-radius: var(--radius-sm);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: var(--shadow-sm);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .attendance-stat-card .stat-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+        }
+
+        .attendance-stat-card .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .attendance-stat-card .stat-label {
+            font-size: 0.7rem;
+            color: #94A3B8;
+            font-weight: 500;
+        }
+        .attendance-stat-card .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #0A3D62;
+        }
+        .attendance-stat-card.present .stat-value {
+            color: #38A169;
+        }
+        .attendance-stat-card.absent .stat-value {
+            color: #DC2626;
+        }
+        .attendance-stat-card.in-progress .stat-value {
+            color: #F59E0B;
+        }
+        .attendance-stat-card.completed .stat-value {
+            color: #0A3D62;
+        }
+        .attendance-stat-card.live .stat-value {
+            color: #3B82F6;
+        }
+
+        .attendance-filters {
+            padding: 12px 20px;
+            background: rgba(0, 0, 0, 0.01);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .attendance-filters select,
+        .attendance-filters input {
+            padding: 8px 12px;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            background: white;
+            min-width: 140px;
+        }
+        .attendance-filters select:focus,
+        .attendance-filters input:focus {
+            outline: none;
+            border-color: #0A3D62;
+        }
+        .attendance-filters label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .attendance-summary-bar {
+            padding: 10px 20px;
+            background: #F0FDF4;
+            border-bottom: 1px solid #D1FAE5;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .attendance-summary-bar .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #475569;
+        }
+
+        .attendance-summary-bar .summary-item .num {
+            font-weight: 700;
+            color: #0A3D62;
+        }
+        .attendance-summary-bar .summary-item .num.present {
+            color: #38A169;
+        }
+        .attendance-summary-bar .summary-item .num.absent {
+            color: #DC2626;
+        }
+        .attendance-summary-bar .summary-item .num.in-progress {
+            color: #F59E0B;
+        }
+        .attendance-summary-bar .summary-item .num.live {
+            color: #3B82F6;
+        }
+
+        .progress-bar-attendance {
+            height: 6px;
+            background: #E2E8F0;
+            border-radius: 3px;
+            overflow: hidden;
+            flex: 1;
+            min-width: 100px;
+        }
+
+        .progress-bar-attendance .progress-fill-attendance {
+            height: 100%;
+            background: linear-gradient(90deg, #38A169, #0A3D62);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+
+        .attendance-table-wrap {
+            overflow-x: auto;
+            padding: 0 20px 20px;
+        }
+
+        .attendance-table-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+
+        .attendance-table-wrap th {
+            background: rgba(0, 0, 0, 0.02);
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid rgba(0, 0, 0, 0.04);
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+
+        .attendance-table-wrap td {
+            padding: 8px 12px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            vertical-align: middle;
+        }
+
+        .attendance-table-wrap tbody tr:hover {
+            background: rgba(0, 0, 0, 0.01);
+        }
+
+        .attendance-empty {
+            text-align: center;
+            padding: 40px;
+            color: #94A3B8;
+        }
+        .attendance-empty i {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+
+        .status-badge-attendance {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .status-badge-attendance.present {
+            background: #D1FAE5;
+            color: #064E3B;
+        }
+        .status-badge-attendance.absent {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+        .status-badge-attendance.in-progress {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        .status-badge-attendance.signed-in {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+        .status-badge-attendance.completed {
+            background: #D1FAE5;
+            color: #064E3B;
+        }
+
+        /* ============================================================
+           LIVE VIDEO
+           ============================================================ */
+        .live-video-container {
+            width: 200px;
+            height: 140px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .live-video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #1a1a2e;
+        }
+
+        .live-badge {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #4ADE80;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.55rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .live-badge .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #4ADE80;
+            border-radius: 50%;
+            animation: pulse-dot 1s infinite;
+        }
+
+        @keyframes pulse-dot {
+            0%,
+            100% {
+                opacity: 1;
+                transform: scale(1);
+            }
+            50% {
+                opacity: 0.5;
+                transform: scale(0.8);
+            }
+        }
+
+        .video-controls {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            right: 4px;
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+
+        .video-controls button {
+            padding: 2px 8px;
+            background: rgba(0, 0, 0, 0.6);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.55rem;
+            cursor: pointer;
+        }
+
+        .video-controls button:hover {
+            background: rgba(0, 0, 0, 0.8);
+        }
+
+        .video-placeholder {
+            width: 200px;
+            height: 140px;
+            background: #F8FAFC;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 6px;
+            border: 2px dashed #E2E8F0;
+        }
+
+        .video-placeholder i {
+            font-size: 2rem;
+            color: #94A3B8;
+        }
+        .video-placeholder span {
+            font-size: 0.6rem;
+            color: #94A3B8;
+        }
+
+        /* ============================================================
+           LIVE FEED CARDS
+           ============================================================ */
+        .live-feed-card {
+            background: white;
+            border-radius: var(--radius);
+            overflow: hidden;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(0, 0, 0, 0.04);
+            transition: var(--transition);
+        }
+
+        .live-feed-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .live-feed-card.violation {
+            border-color: #DC2626;
+            box-shadow: 0 0 20px rgba(220, 38, 38, 0.1);
+        }
+
+        .live-feed-card.warning {
+            border-color: #F59E0B;
+            box-shadow: 0 0 20px rgba(245, 158, 11, 0.1);
+        }
+
+        .live-feed-card .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .live-feed-card .student-info {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .live-feed-card .student-info .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 0.7rem;
+            flex-shrink: 0;
+        }
+
+        .live-feed-card .student-info .name {
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #0A3D62;
+        }
+
+        .live-feed-card .student-info .details {
+            font-size: 0.65rem;
+            color: #94A3B8;
+        }
+
+        .live-feed-card .card-body {
+            position: relative;
+            background: #1a1a2e;
+            min-height: 200px;
+        }
+
+        .live-feed-card .card-body img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+
+        .live-feed-card .no-camera {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 200px;
+            color: white;
+            flex-direction: column;
+            gap: 12px;
+            background: #1a1a2e;
+        }
+
+        .live-feed-card .no-camera i {
+            font-size: 3rem;
+            opacity: 0.5;
+        }
+
+        .live-feed-card .no-camera p {
+            font-size: 0.9rem;
+            opacity: 0.7;
+        }
+
+        .live-feed-card .progress-bar-container {
+            padding: 12px 16px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .live-feed-card .progress-track {
+            height: 4px;
+            background: #E2E8F0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .live-feed-card .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+        }
+
+        .live-feed-card .progress-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.65rem;
+            color: #94A3B8;
+            margin-top: 4px;
+        }
+
+        .live-feed-card .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px 16px;
+            background: rgba(0, 0, 0, 0.01);
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+
+        .live-feed-card .card-footer .info-item {
+            font-size: 0.7rem;
+            color: #64748B;
+        }
+
+        .live-feed-card .card-footer .info-item i {
+            margin-right: 4px;
+        }
+
+        .live-feed-card .actions {
+            display: flex;
+            gap: 6px;
+        }
+
+        .live-feed-card .btn-view-cam {
+            padding: 4px 12px;
+            background: var(--primary-gradient);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.65rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .live-feed-card .btn-view-cam:hover {
+            transform: scale(1.05);
+        }
+
+        .live-feed-card .btn-alert {
+            padding: 4px 8px;
+            background: rgba(220, 38, 38, 0.1);
+            color: #DC2626;
+            border: 1px solid rgba(220, 38, 38, 0.2);
+            border-radius: 6px;
+            font-size: 0.8rem;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .live-feed-card .btn-alert:hover {
+            background: rgba(220, 38, 38, 0.2);
+        }
+
+        .overlay-badge {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+        }
+
+        .overlay-badge.camera-on {
+            background: rgba(16, 185, 129, 0.9);
+            color: white;
+        }
+
+        .overlay-badge.camera-off {
+            background: rgba(239, 68, 68, 0.9);
+            color: white;
+        }
+
+        .overlay-badge.violation {
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+            animation: pulse-alert 1.5s infinite;
         }
 
         /* ============================================================
@@ -791,12 +1415,12 @@
 
         @media (max-width: 768px) {
             .sidebar {
-                transform: translateX(-280px);
+                transform: translateX(-290px);
                 top: 0;
                 left: 0;
                 height: 100vh;
                 border-radius: 0;
-                width: 280px;
+                width: 290px;
             }
             .sidebar.open {
                 transform: translateX(0);
@@ -842,6 +1466,44 @@
                 width: 100%;
                 flex-wrap: wrap;
             }
+            .attendance-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                padding: 10px;
+            }
+            .attendance-stat-card {
+                padding: 8px 12px;
+            }
+            .attendance-stat-card .stat-value {
+                font-size: 1rem;
+            }
+            .live-video-container {
+                width: 140px;
+                height: 100px;
+            }
+            .video-placeholder {
+                width: 140px;
+                height: 100px;
+            }
+            .attendance-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .attendance-filters select,
+            .attendance-filters input {
+                width: 100%;
+                min-width: unset;
+            }
+            .attendance-summary-bar {
+                gap: 8px;
+                font-size: 0.7rem;
+            }
+            .live-feed-card .card-body img {
+                height: 150px;
+            }
+            .live-feed-card .no-camera {
+                height: 150px;
+            }
         }
 
         @media (max-width: 480px) {
@@ -862,6 +1524,17 @@
             .admin-profile .admin-name {
                 font-size: 0.65rem;
             }
+            .attendance-stats-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .live-feed-card .card-footer {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .live-feed-card .actions {
+                width: 100%;
+                justify-content: flex-start;
+            }
         }
     </style>
 </head>
@@ -873,11 +1546,11 @@
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
     <!-- ============================================================
-    SIDEBAR - ULTRA MODERN
+    SIDEBAR - ULTRA MODERN + SCROLLABLE
     ============================================================ -->
     <aside class="sidebar" id="sidebar">
 
-        <!-- Brand -->
+        <!-- Brand (fixed) -->
         <div class="sidebar-brand">
             <div class="logo-icon"><i class="fas fa-graduation-cap"></i></div>
             <div class="brand-text">
@@ -886,66 +1559,114 @@
             </div>
         </div>
 
-        <!-- Menu -->
-        <ul class="sidebar-menu">
-            <!-- Dashboard -->
-            <li class="menu-label">Main</li>
-            <li>
-                <a class="active" data-tab="dashboard" onclick="switchTab('dashboard')">
-                    <i class="fas fa-th-large"></i> Dashboard
-                </a>
-            </li>
+        <!-- Scrollable Menu Area -->
+        <div class="sidebar-scroll">
 
-            <!-- Students -->
-            <li class="menu-label">Students</li>
-            <li>
-                <a data-tab="students" onclick="switchTab('students')">
-                    <i class="fas fa-graduation-cap"></i> Results
-                </a>
-            </li>
-            <li>
-                <a data-tab="allStudents" onclick="switchTab('allStudents')">
-                    <i class="fas fa-users"></i> All Students
-                </a>
-            </li>
+            <ul class="sidebar-menu">
 
-            <!-- Exams -->
-            <li class="menu-label">Exams</li>
-            <li>
-                <a data-tab="exams" onclick="switchTab('exams')">
-                    <i class="fas fa-file-alt"></i> Management
-                </a>
-            </li>
-            <li>
-                <a data-tab="attendance" onclick="switchTab('attendance')">
-                    <i class="fas fa-clipboard-check"></i> Attendance
-                    <span class="badge-sidebar" id="attendanceBadge">0</span>
-                </a>
-            </li>
+                <!-- ===== DASHBOARD ===== -->
+                <li class="menu-label">Dashboard</li>
+                <li>
+                    <a class="active" data-tab="students" onclick="switchTab('students')">
+                        <i class="fas fa-graduation-cap"></i> Students Results
+                    </a>
+                </li>
+                <li>
+                    <a data-tab="overview" onclick="switchTab('overview')">
+                        <i class="fas fa-chart-pie"></i> Overview
+                    </a>
+                </li>
 
-            <!-- Monitoring -->
-            <li class="menu-label">Monitoring</li>
-            <li>
-                <a data-tab="liveStudents" onclick="switchTab('liveStudents')">
-                    <i class="fas fa-eye"></i> Live Students
-                    <span class="badge-sidebar" id="liveBadge">0</span>
-                </a>
-            </li>
-            <li>
-                <a data-tab="livefeed" onclick="switchTab('livefeed')">
-                    <i class="fas fa-video"></i> Live Feed
-                    <span class="badge-sidebar" id="liveFeedBadge">0</span>
-                </a>
-            </li>
-            <li>
-                <a data-tab="proctoring" onclick="switchTab('proctoring')">
-                    <i class="fas fa-exclamation-triangle"></i> Alerts
-                    <span class="badge-sidebar" id="sidebarAlertCount">0</span>
-                </a>
-            </li>
-        </ul>
+                <!-- ===== STUDENTS ===== -->
+                <li class="menu-label">Students</li>
+                <li>
+                    <a data-tab="allStudents" onclick="switchTab('allStudents')">
+                        <i class="fas fa-users"></i> All Students
+                        <span class="badge-sidebar" id="allStudentsBadge">0</span>
+                    </a>
+                </li>
+                <li>
+                    <a data-tab="enrollments" onclick="switchTab('enrollments')">
+                        <i class="fas fa-user-plus"></i> Enrollments
+                    </a>
+                </li>
 
-        <!-- Footer -->
+                <!-- ===== EXAMS ===== -->
+                <li class="menu-label">Exams</li>
+                <li>
+                    <a data-tab="exams" onclick="switchTab('exams')">
+                        <i class="fas fa-file-alt"></i> Exam Management
+                    </a>
+                </li>
+                <li>
+                    <a data-tab="createExam" onclick="switchTab('createExam')">
+                        <i class="fas fa-plus-circle"></i> Create Exam
+                    </a>
+                </li>
+                <li>
+                    <a data-tab="attendance" onclick="switchTab('attendance')">
+                        <i class="fas fa-clipboard-check"></i> Attendance
+                        <span class="badge-sidebar" id="attendanceBadge">0</span>
+                    </a>
+                </li>
+
+                <!-- ===== MONITORING ===== -->
+                <li class="menu-label">Monitoring</li>
+                <li>
+                    <a data-tab="liveStudents" onclick="switchTab('liveStudents')">
+                        <i class="fas fa-eye"></i> Live Students
+                        <span class="badge-sidebar success" id="liveBadge">0</span>
+                    </a>
+                </li>
+                <li>
+                    <a data-tab="livefeed" onclick="switchTab('livefeed')">
+                        <i class="fas fa-video"></i> Live Feed
+                        <span class="badge-sidebar" id="liveFeedBadge">0</span>
+                    </a>
+                </li>
+                <li>
+                    <a data-tab="proctoring" onclick="switchTab('proctoring')">
+                        <i class="fas fa-exclamation-triangle"></i> Proctoring Alerts
+                        <span class="badge-sidebar" id="sidebarAlertCount">0</span>
+                    </a>
+                </li>
+
+                <!-- ===== REPORTS ===== -->
+                <li class="menu-label">Reports</li>
+                <li>
+                    <a data-tab="reports" onclick="switchTab('reports')">
+                        <i class="fas fa-chart-bar"></i> Analytics
+                    </a>
+                </li>
+                <li>
+                    <a data-tab="logs" onclick="switchTab('logs')">
+                        <i class="fas fa-history"></i> Activity Logs
+                    </a>
+                </li>
+
+                <!-- ===== SETTINGS ===== -->
+                <li class="menu-label">Settings</li>
+                <li>
+                    <a data-tab="settings" onclick="switchTab('settings')">
+                        <i class="fas fa-cog"></i> System Settings
+                    </a>
+                </li>
+                <li>
+                    <a data-tab="profile" onclick="switchTab('profile')">
+                        <i class="fas fa-user-cog"></i> Profile
+                    </a>
+                </li>
+                <li>
+                    <a data-tab="security" onclick="switchTab('security')">
+                        <i class="fas fa-shield-alt"></i> Security
+                    </a>
+                </li>
+
+            </ul>
+
+        </div>
+
+        <!-- Footer (fixed) -->
         <div class="sidebar-footer">
             <div class="user-card">
                 <div class="avatar" id="adminInitial">A</div>
@@ -968,8 +1689,8 @@
         <!-- Top Header -->
         <header class="top-header">
             <div class="page-title">
-                <h1 id="pageTitle"><i class="fas fa-th-large"></i> Dashboard</h1>
-                <p id="pageSubtitle">Overview of your exam system</p>
+                <h1 id="pageTitle"><i class="fas fa-graduation-cap"></i> Students Results</h1>
+                <p id="pageSubtitle">View and manage student exam results</p>
             </div>
             <div class="header-actions">
                 <button class="mobile-toggle" onclick="toggleSidebar()">
@@ -982,7 +1703,7 @@
                         <div class="admin-email" id="adminEmailTop">admin@nchsm.ac.ke</div>
                     </div>
                 </div>
-                <div class="notification-bell">
+                <div class="notification-bell" id="notificationBell">
                     <i class="fas fa-bell"></i>
                     <span class="notification-count" id="notificationCount">0</span>
                 </div>
@@ -990,102 +1711,33 @@
         </header>
 
         <!-- ============================================================
-        SECTION: DASHBOARD (Stats + Overview)
-        ============================================================ -->
-        <div class="section-container active" id="section-dashboard">
-            <!-- Stats Grid -->
-            <div class="stats-grid" id="statsGrid">
-                <div class="stat-card">
-                    <div class="icon blue"><i class="fas fa-file-alt"></i></div>
-                    <div class="info">
-                        <div class="number" id="totalExams">0</div>
-                        <div class="label">Total Exams</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="icon green"><i class="fas fa-check-circle"></i></div>
-                    <div class="info">
-                        <div class="number" id="activeExams">0</div>
-                        <div class="label">Active Exams</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="icon yellow"><i class="fas fa-clock"></i></div>
-                    <div class="info">
-                        <div class="number" id="pendingExams">0</div>
-                        <div class="label">Pending Grading</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="icon purple"><i class="fas fa-users"></i></div>
-                    <div class="info">
-                        <div class="number" id="totalStudents">0</div>
-                        <div class="label">Total Students</div>
-                    </div>
-                </div>
-                <div class="stat-card">
-                    <div class="icon red"><i class="fas fa-exclamation-triangle"></i></div>
-                    <div class="info">
-                        <div class="number" id="alertCount">0</div>
-                        <div class="label">Proctoring Alerts</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Quick Actions -->
-            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:24px;">
-                <button class="btn btn-primary" onclick="openCreateExamModal()">
-                    <i class="fas fa-plus-circle"></i> Create Exam
-                </button>
-                <button class="btn btn-success" onclick="openAssignExamModal()">
-                    <i class="fas fa-tasks"></i> Assign Exam
-                </button>
-                <button class="btn btn-warning" onclick="openReleaseModal()">
-                    <i class="fas fa-share-alt"></i> Release Results
-                </button>
-                <button class="btn btn-secondary" onclick="refreshLiveStudents()">
-                    <i class="fas fa-sync"></i> Refresh Live
-                </button>
-            </div>
-
-            <!-- Recent Activity -->
-            <div class="table-container">
-                <div class="table-header">
-                    <h2><i class="fas fa-clock"></i> Recent Activity</h2>
-                </div>
-                <div class="table-wrap">
-                    <table>
-                        <thead>
-                            <tr>
-                                <th>Student</th>
-                                <th>Exam</th>
-                                <th>Action</th>
-                                <th>Time</th>
-                            </tr>
-                        </thead>
-                        <tbody id="recentActivityBody">
-                            <tr>
-                                <td colspan="4" class="empty-state">
-                                    <i class="fas fa-clock"></i>
-                                    <h3>No recent activity</h3>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- ============================================================
         SECTION: STUDENTS RESULTS
         ============================================================ -->
-        <div class="section-container" id="section-students">
-            <div class="table-container">
+        <div class="section-container active" id="section-students">
+            <!-- Stats Grid -->
+            <div class="stats-grid" id="statsContainer">
+                <!-- Rendered by admindashboard.js -->
+            </div>
+
+            <!-- Filters -->
+            <div class="filters-container" id="filtersContainer"></div>
+
+            <!-- Table -->
+            <div class="table-container" id="studentsTableContainer">
                 <div class="table-header">
                     <h2><i class="fas fa-chart-line"></i> Students with Exam Results</h2>
                     <div class="table-actions">
+                        <button class="btn btn-reset-student" onclick="openResetByEmailModal()">
+                            <i class="fas fa-envelope"></i> Reset by Email
+                        </button>
+                        <button class="btn btn-success" onclick="exportMarksOnly()">
+                            <i class="fas fa-file-csv"></i> Export Marks
+                        </button>
                         <button class="btn btn-secondary" onclick="exportToExcel('students')">
-                            <i class="fas fa-file-excel"></i> Export
+                            <i class="fas fa-file-excel"></i> Export Excel
+                        </button>
+                        <button class="btn btn-warning" onclick="printTable('students')">
+                            <i class="fas fa-print"></i> Print
                         </button>
                         <button class="btn btn-release" onclick="openReleaseModal()">
                             <i class="fas fa-share-alt"></i> Release Results
@@ -1099,7 +1751,7 @@
                     <table id="studentsTable">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>Student ID</th>
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Program</th>
@@ -1119,14 +1771,121 @@
         </div>
 
         <!-- ============================================================
+        SECTION: OVERVIEW
+        ============================================================ -->
+        <div class="section-container" id="section-overview">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="icon blue"><i class="fas fa-users"></i></div>
+                    <div class="info">
+                        <div class="number" id="totalStudents">0</div>
+                        <div class="label">Total Students</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon green"><i class="fas fa-check-circle"></i></div>
+                    <div class="info">
+                        <div class="number" id="passedStudents">0</div>
+                        <div class="label">Passed</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon red"><i class="fas fa-times-circle"></i></div>
+                    <div class="info">
+                        <div class="number" id="failedStudents">0</div>
+                        <div class="label">Failed</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon yellow"><i class="fas fa-clock"></i></div>
+                    <div class="info">
+                        <div class="number" id="pendingStudents">0</div>
+                        <div class="label">Pending</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon purple"><i class="fas fa-file-alt"></i></div>
+                    <div class="info">
+                        <div class="number" id="totalExams">0</div>
+                        <div class="label">Total Exams</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon indigo"><i class="fas fa-eye"></i></div>
+                    <div class="info">
+                        <div class="number" id="liveStudentsCount">0</div>
+                        <div class="label">Live Students</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(300px,1fr)); gap:20px;">
+                <div class="table-container">
+                    <div class="table-header">
+                        <h2><i class="fas fa-chart-bar"></i> Performance Summary</h2>
+                    </div>
+                    <div style="padding:20px;">
+                        <div style="margin-bottom:12px;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+                                <span>Pass Rate</span>
+                                <span><strong id="passRate">0%</strong></span>
+                            </div>
+                            <div style="height:8px; background:#E2E8F0; border-radius:4px; overflow:hidden; margin-top:4px;">
+                                <div id="passRateBar" style="height:100%; background:linear-gradient(90deg,#38A169,#0A3D62); width:0%; border-radius:4px; transition:width 0.8s ease;"></div>
+                            </div>
+                        </div>
+                        <div style="margin-bottom:12px;">
+                            <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+                                <span>Completion Rate</span>
+                                <span><strong id="completionRate">0%</strong></span>
+                            </div>
+                            <div style="height:8px; background:#E2E8F0; border-radius:4px; overflow:hidden; margin-top:4px;">
+                                <div id="completionRateBar" style="height:100%; background:linear-gradient(90deg,#3B82F6,#6366F1); width:0%; border-radius:4px; transition:width 0.8s ease;"></div>
+                            </div>
+                        </div>
+                        <div>
+                            <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+                                <span>Attendance Rate</span>
+                                <span><strong id="attendanceRate">0%</strong></span>
+                            </div>
+                            <div style="height:8px; background:#E2E8F0; border-radius:4px; overflow:hidden; margin-top:4px;">
+                                <div id="attendanceRateBar" style="height:100%; background:linear-gradient(90deg,#F59E0B,#FDB913); width:0%; border-radius:4px; transition:width 0.8s ease;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="table-container">
+                    <div class="table-header">
+                        <h2><i class="fas fa-bolt"></i> Quick Actions</h2>
+                    </div>
+                    <div style="padding:20px; display:flex; flex-direction:column; gap:10px;">
+                        <button class="btn btn-primary" onclick="openCreateExamModal()" style="width:100%; justify-content:center; padding:12px;">
+                            <i class="fas fa-plus-circle"></i> Create New Exam
+                        </button>
+                        <button class="btn btn-success" onclick="openAssignExamModal()" style="width:100%; justify-content:center; padding:12px;">
+                            <i class="fas fa-tasks"></i> Assign Exam to Student
+                        </button>
+                        <button class="btn btn-warning" onclick="openReleaseModal()" style="width:100%; justify-content:center; padding:12px;">
+                            <i class="fas fa-share-alt"></i> Release Results
+                        </button>
+                        <button class="btn btn-info" onclick="refreshLiveStudents()" style="width:100%; justify-content:center; padding:12px;">
+                            <i class="fas fa-sync"></i> Refresh Live Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
         SECTION: ALL STUDENTS
         ============================================================ -->
         <div class="section-container" id="section-allStudents">
-            <div class="table-container">
+            <div class="table-container" id="allStudentsTableContainer">
                 <div class="table-header">
                     <h2><i class="fas fa-address-book"></i> All Registered Students</h2>
                     <div class="table-actions">
-                        <button class="btn btn-success" onclick="openAssignExamModal()">
+                        <button class="btn btn-info" onclick="openAssignExamModal()">
                             <i class="fas fa-plus"></i> Assign Exam
                         </button>
                         <button class="btn btn-secondary" onclick="exportToExcel('allStudents')">
@@ -1141,7 +1900,7 @@
                     <table id="allStudentsTable">
                         <thead>
                             <tr>
-                                <th>ID</th>
+                                <th>Student ID</th>
                                 <th>Name</th>
                                 <th>Email</th>
                                 <th>Program</th>
@@ -1158,13 +1917,45 @@
         </div>
 
         <!-- ============================================================
+        SECTION: ENROLLMENTS
+        ============================================================ -->
+        <div class="section-container" id="section-enrollments">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2><i class="fas fa-user-plus"></i> Student Enrollments</h2>
+                    <div class="table-actions">
+                        <button class="btn btn-primary" onclick="alert('Enroll student modal')">
+                            <i class="fas fa-plus"></i> Enroll Student
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportToExcel('enrollments')">
+                            <i class="fas fa-file-excel"></i> Export
+                        </button>
+                    </div>
+                </div>
+                <div class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading enrollments...
+                </div>
+                <div class="empty-state">
+                    <i class="fas fa-user-plus"></i>
+                    <h3>No enrollments yet</h3>
+                    <p>Click "Enroll Student" to add new students</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
         SECTION: EXAM MANAGEMENT
         ============================================================ -->
         <div class="section-container" id="section-exams">
-            <div class="table-container">
+            <div class="table-container" id="examsTableContainer">
                 <div class="table-header">
                     <h2><i class="fas fa-list"></i> Exam Management</h2>
                     <div class="table-actions">
+                        <div class="exam-status-toggle">
+                            <button class="status-toggle-btn active" onclick="filterExamsByStatus('all')">All</button>
+                            <button class="status-toggle-btn" onclick="filterExamsByStatus('active')">Active</button>
+                            <button class="status-toggle-btn" onclick="filterExamsByStatus('completed')">Completed</button>
+                        </div>
                         <button class="btn btn-primary" onclick="openCreateExamModal()">
                             <i class="fas fa-plus-circle"></i> Create Exam
                         </button>
@@ -1187,6 +1978,9 @@
                                 <th>Duration</th>
                                 <th>Students</th>
                                 <th>Status</th>
+                                <th>Timer Status</th>
+                                <th>Time Remaining</th>
+                                <th>Published</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
@@ -1198,15 +1992,69 @@
         </div>
 
         <!-- ============================================================
+        SECTION: CREATE EXAM
+        ============================================================ -->
+        <div class="section-container" id="section-createExam">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2><i class="fas fa-plus-circle"></i> Create New Exam</h2>
+                </div>
+                <div style="padding:24px;">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                        <div class="form-group">
+                            <label style="font-weight:600; font-size:0.8rem; color:#0A3D62;">Exam Name *</label>
+                            <input type="text" id="examName" placeholder="e.g., OSCE Final Exam" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:8px; font-family:'Inter',sans-serif;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight:600; font-size:0.8rem; color:#0A3D62;">Exam Type *</label>
+                            <select id="examType" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:8px; font-family:'Inter',sans-serif;">
+                                <option value="EXAM">Final Exam (70 marks)</option>
+                                <option value="CAT_1">CAT 1 (30 marks)</option>
+                                <option value="CAT_2">CAT 2 (30 marks)</option>
+                                <option value="CAT">CAT (30 marks)</option>
+                                <option value="QUIZ">Quiz</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:16px; margin-top:16px;">
+                        <div class="form-group">
+                            <label style="font-weight:600; font-size:0.8rem; color:#0A3D62;">Duration (minutes)</label>
+                            <input type="number" id="examDuration" value="30" min="1" max="180" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:8px; font-family:'Inter',sans-serif;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight:600; font-size:0.8rem; color:#0A3D62;">Total Marks</label>
+                            <input type="number" id="examTotalMarks" value="100" min="1" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:8px; font-family:'Inter',sans-serif;">
+                        </div>
+                        <div class="form-group">
+                            <label style="font-weight:600; font-size:0.8rem; color:#0A3D62;">Pass Mark</label>
+                            <input type="number" id="examPassMark" value="60" min="1" max="100" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:8px; font-family:'Inter',sans-serif;">
+                        </div>
+                    </div>
+                    <div class="form-group" style="margin-top:16px;">
+                        <label style="font-weight:600; font-size:0.8rem; color:#0A3D62;">Exam Link / URL *</label>
+                        <input type="url" id="examLink" placeholder="https://your-exam-platform.com/exam" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:8px; font-family:'Inter',sans-serif;">
+                    </div>
+                    <div style="display:flex; gap:10px; margin-top:20px; justify-content:flex-end;">
+                        <button class="btn btn-secondary" onclick="switchTab('exams')">Cancel</button>
+                        <button class="btn btn-primary" onclick="saveExam()"><i class="fas fa-save"></i> Create Exam</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ============================================================
         SECTION: ATTENDANCE
         ============================================================ -->
         <div class="section-container" id="section-attendance">
-            <div class="table-container">
+            <div class="table-container" id="attendanceTableContainer">
                 <div class="table-header">
-                    <h2><i class="fas fa-clipboard-check"></i> Exam Attendance Sheet</h2>
+                    <h2><i class="fas fa-clipboard-check"></i> 📋 Exam Attendance Sheet</h2>
                     <div class="table-actions">
                         <button class="btn btn-success" onclick="refreshAttendance()">
                             <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn btn-danger" onclick="viewAllLiveVideos()">
+                            <i class="fas fa-video"></i> View All Live
                         </button>
                         <button class="btn btn-secondary" onclick="exportAttendanceCSV()">
                             <i class="fas fa-file-csv"></i> Export CSV
@@ -1214,49 +2062,139 @@
                         <button class="btn btn-primary" onclick="exportAttendanceExcel()">
                             <i class="fas fa-file-excel"></i> Export Excel
                         </button>
+                        <button class="btn btn-warning" onclick="printAttendance()">
+                            <i class="fas fa-print"></i> Print
+                        </button>
                     </div>
                 </div>
 
                 <!-- Attendance Stats -->
-                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px; padding:14px 20px; background:rgba(0,0,0,0.01); border-bottom:1px solid rgba(0,0,0,0.04);">
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:1.2rem;">✅</span>
-                        <div><div style="font-weight:700;font-size:1.1rem;" id="attStatPresent">0</div><div style="font-size:0.6rem;color:#94A3B8;">Present</div></div>
+                <div class="attendance-stats-grid" id="attendanceStatsGrid">
+                    <div class="attendance-stat-card present">
+                        <div class="stat-icon" style="background:#D1FAE5;">✅</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Present</span>
+                            <span class="stat-value" id="attStatPresent">0</span>
+                        </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:1.2rem;">⏳</span>
-                        <div><div style="font-weight:700;font-size:1.1rem;" id="attStatInProgress">0</div><div style="font-size:0.6rem;color:#94A3B8;">In Progress</div></div>
+                    <div class="attendance-stat-card in-progress">
+                        <div class="stat-icon" style="background:#FEF3C7;">⏳</div>
+                        <div class="stat-info">
+                            <span class="stat-label">In Progress</span>
+                            <span class="stat-value" id="attStatInProgress">0</span>
+                        </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:1.2rem;">📋</span>
-                        <div><div style="font-weight:700;font-size:1.1rem;" id="attStatSignedIn">0</div><div style="font-size:0.6rem;color:#94A3B8;">Signed In</div></div>
+                    <div class="attendance-stat-card completed">
+                        <div class="stat-icon" style="background:#DBEAFE;">📋</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Signed In</span>
+                            <span class="stat-value" id="attStatSignedIn">0</span>
+                        </div>
                     </div>
-                    <div style="display:flex; align-items:center; gap:10px;">
-                        <span style="font-size:1.2rem;">❌</span>
-                        <div><div style="font-weight:700;font-size:1.1rem;" id="attStatAbsent">0</div><div style="font-size:0.6rem;color:#94A3B8;">Absent</div></div>
+                    <div class="attendance-stat-card absent">
+                        <div class="stat-icon" style="background:#FEE2E2;">❌</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Absent</span>
+                            <span class="stat-value" id="attStatAbsent">0</span>
+                        </div>
+                    </div>
+                    <div class="attendance-stat-card" style="background:#F0FDF4; border-color:#38A169;">
+                        <div class="stat-icon" style="background:#D1FAE5;">📊</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Attendance Rate</span>
+                            <span class="stat-value" id="attStatRate" style="color:#38A169;">0%</span>
+                        </div>
+                    </div>
+                    <div class="attendance-stat-card live">
+                        <div class="stat-icon" style="background:#DBEAFE;">📹</div>
+                        <div class="stat-info">
+                            <span class="stat-label">Live Video</span>
+                            <span class="stat-value" id="attStatLive">0</span>
+                        </div>
                     </div>
                 </div>
 
-                <div id="attendanceLoading" class="loading">
-                    <i class="fas fa-spinner fa-spin"></i> Loading attendance...
+                <!-- Filters -->
+                <div class="attendance-filters">
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label>Exam:</label>
+                        <select id="attendanceExamFilter" onchange="loadAttendanceSheet()">
+                            <option value="">All Exams</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label>Date:</label>
+                        <input type="date" id="attendanceDateFilter" onchange="loadAttendanceSheet()">
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center;">
+                        <label>Status:</label>
+                        <select id="attendanceStatusFilter" onchange="loadAttendanceSheet()">
+                            <option value="">All</option>
+                            <option value="present">✅ Present</option>
+                            <option value="in_progress">⏳ In Progress</option>
+                            <option value="signed_in">📋 Signed In</option>
+                            <option value="absent">❌ Absent</option>
+                            <option value="completed">✅ Completed</option>
+                        </select>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
+                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:0.8rem;">
+                            <input type="checkbox" id="showOnlyLive" onchange="loadAttendanceSheet()">
+                            <i class="fas fa-video" style="color:#3B82F6;"></i> Live Only
+                        </label>
+                        <button class="btn btn-sm btn-info" onclick="loadAttendanceSheet()" style="padding:6px 16px;">
+                            <i class="fas fa-search"></i> Apply
+                        </button>
+                        <button class="btn btn-sm btn-danger" onclick="clearAttendanceFilters()" style="padding:6px 16px;">
+                            <i class="fas fa-times"></i> Clear
+                        </button>
+                    </div>
                 </div>
-                <div class="table-wrap" id="attendanceTableWrap" style="display:none;">
-                    <table id="attendanceTable">
+
+                <!-- Summary Bar -->
+                <div class="attendance-summary-bar" id="attendanceSummaryBar" style="display:none;">
+                    <span class="summary-item">📊 Total: <span class="num" id="attTotalStudents">0</span></span>
+                    <span class="summary-item">✅ Present: <span class="num present" id="attSummaryPresent">0</span></span>
+                    <span class="summary-item">⏳ In Progress: <span class="num in-progress" id="attSummaryInProgress">0</span></span>
+                    <span class="summary-item">❌ Absent: <span class="num absent" id="attSummaryAbsent">0</span></span>
+                    <span class="summary-item">📹 Live: <span class="num live" id="attSummaryLive">0</span></span>
+                    <div class="progress-bar-attendance">
+                        <div class="progress-fill-attendance" id="attendanceProgressBar" style="width:0%;"></div>
+                    </div>
+                    <span class="summary-item" style="font-weight:700; color:#0A3D62;">
+                        <span id="attSummaryRate">0%</span> attendance
+                    </span>
+                </div>
+
+                <!-- Attendance Table -->
+                <div class="attendance-table-wrap">
+                    <div id="attendanceLoading" class="loading" style="padding:40px;">
+                        <i class="fas fa-spinner fa-spin"></i> Loading attendance data...
+                    </div>
+                    <table id="attendanceTable" style="display:none; width:100%;">
                         <thead>
                             <tr>
-                                <th>#</th>
+                                <th style="width:40px;">#</th>
                                 <th>Student Name</th>
                                 <th>Registration</th>
                                 <th>Exam</th>
                                 <th>Status</th>
                                 <th>Sign In</th>
-                                <th>Actions</th>
+                                <th style="width:220px;">📹 Live Feed</th>
+                                <th style="width:100px;">Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="attendanceBody"></tbody>
+                        <tbody id="attendanceBody">
+                            <tr>
+                                <td colspan="8" class="attendance-empty">
+                                    <i class="fas fa-clipboard-list"></i>
+                                    No attendance records found
+                                </td>
+                            </tr>
+                        </tbody>
                     </table>
+                    <div class="pagination" id="attendancePagination"></div>
                 </div>
-                <div class="pagination" id="attendancePagination"></div>
             </div>
         </div>
 
@@ -1264,12 +2202,16 @@
         SECTION: LIVE STUDENTS
         ============================================================ -->
         <div class="section-container" id="section-liveStudents">
-            <div class="table-container">
+            <div class="table-container" id="liveStudentsTableContainer">
                 <div class="table-header">
                     <h2><i class="fas fa-eye"></i> 🟢 Students Currently Taking Exams</h2>
                     <div class="table-actions">
                         <button class="btn btn-success" onclick="refreshLiveStudents()">
                             <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn btn-warning" onclick="toggleAutoRefresh()">
+                            <i class="fas fa-play" id="autoRefreshIcon"></i>
+                            <span id="autoRefreshText">Auto-Refresh: ON</span>
                         </button>
                         <button class="btn btn-secondary" onclick="exportLiveStudents()">
                             <i class="fas fa-file-excel"></i> Export
@@ -1279,19 +2221,20 @@
                 <div id="liveStudentsLoading" class="loading">
                     <i class="fas fa-spinner fa-spin"></i> Scanning for active students...
                 </div>
-                <div id="liveStudentsStats" style="display:none; padding:10px 20px; background:#D1FAE5; border-bottom:1px solid #A7F3D0;">
+                <div id="liveStudentsStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5;">
                     <span id="liveCountDisplay">0</span> students currently taking exams
                 </div>
                 <div class="table-wrap" id="liveStudentsTableWrap" style="display:none;">
                     <table id="liveStudentsTable">
                         <thead>
                             <tr>
-                                <th>Status</th>
-                                <th>ID</th>
+                                <th>🟢 Status</th>
+                                <th>Student ID</th>
                                 <th>Name</th>
                                 <th>Exam</th>
                                 <th>Progress</th>
-                                <th>Time Left</th>
+                                <th>Time Remaining</th>
+                                <th>Camera</th>
                                 <th>Last Activity</th>
                                 <th>Actions</th>
                             </tr>
@@ -1307,251 +2250,524 @@
         SECTION: LIVE FEED
         ============================================================ -->
         <div class="section-container" id="section-livefeed">
-            <div class="table-container">
+            <div class="table-container" id="livefeedTableContainer">
                 <div class="table-header">
                     <h2><i class="fas fa-video"></i> 📹 Live Camera Feed</h2>
                     <div class="table-actions">
+                        <div class="view-toggle">
+                            <button class="view-toggle-btn active" onclick="setLiveFeedView('live')" id="liveViewBtn">
+                                <i class="fas fa-broadcast"></i> Live
+                            </button>
+                            <button class="view-toggle-btn" onclick="setLiveFeedView('past')" id="pastViewBtn">
+                                <i class="fas fa-history"></i> Past
+                            </button>
+                        </div>
                         <button class="btn btn-success" onclick="refreshLiveFeed()">
                             <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn btn-warning" onclick="toggleLiveFeedAutoRefresh()">
+                            <i class="fas fa-play" id="liveFeedAutoIcon"></i>
+                            <span id="liveFeedAutoText">Auto: ON</span>
                         </button>
                         <button class="btn btn-secondary" onclick="exportLiveFeed()">
                             <i class="fas fa-file-excel"></i> Export
                         </button>
                     </div>
                 </div>
-                <div id="liveFeedLoading" class="loading">
-                    <i class="fas fa-spinner fa-spin"></i> Loading camera feeds...
+
+                <div style="padding: 12px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                    <div style="flex: 1; min-width: 200px; display: flex; gap: 8px; align-items: center;">
+                        <i class="fas fa-search" style="color: #94A3B8;"></i>
+                        <input type="text" id="liveFeedSearch" placeholder="Search by name or reg number..."
+                        style="flex:1; padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.85rem; min-width: 150px;"
+                        oninput="filterLiveFeed()">
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Exam:</label>
+                        <select id="liveFeedExamFilter" onchange="filterLiveFeed()"
+                        style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 150px;">
+                        <option value="">All Exams</option>
+                    </select>
                 </div>
-                <div id="liveFeedGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:16px; padding:20px;">
-                    <!-- Dynamic video cards -->
-                </div>
-                <div class="pagination" id="liveFeedPagination"></div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Status:</label>
+                    <select id="liveFeedStatusFilter" onchange="filterLiveFeed()"
+                    style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;">
+                    <option value="">All</option>
+                    <option value="active">🟢 Active</option>
+                    <option value="violation">🚨 Violation</option>
+                    <option value="warning">⚠️ Warning</option>
+                    <option value="no-camera">📷 No Camera</option>
+                </select>
             </div>
+            <button class="btn btn-danger" onclick="clearLiveFeedFilters()" style="padding: 6px 14px; font-size: 0.75rem;">
+                <i class="fas fa-times"></i> Clear
+            </button>
         </div>
 
-        <!-- ============================================================
-        SECTION: PROCTORING ALERTS
-        ============================================================ -->
-        <div class="section-container" id="section-proctoring">
-            <div class="table-container">
-                <div class="table-header">
-                    <h2><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</h2>
-                    <div class="table-actions">
-                        <button class="btn btn-danger" onclick="clearAllAlerts()">
-                            <i class="fas fa-trash"></i> Clear All
-                        </button>
-                        <button class="btn btn-secondary" onclick="exportToExcel('proctoring')">
-                            <i class="fas fa-file-excel"></i> Export Logs
-                        </button>
+        <div id="liveFeedLoading" class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading camera feeds...
+        </div>
+
+        <div id="liveFeedStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5; flex-wrap:wrap; gap:12px;">
+            <span><strong id="liveFeedCount">0</strong> students <span id="liveFeedViewLabel">active</span></span>
+            <span>🟢 <strong id="liveFeedWithCamera">0</strong> with camera</span>
+            <span>🔴 <strong id="liveFeedNoCamera">0</strong> no camera</span>
+            <span>🚨 <strong id="liveFeedViolations">0</strong> violations</span>
+            <span style="margin-left:auto; font-size:0.8rem; color:#64748B;">
+                <i class="fas fa-sync"></i> Auto-refresh: <span id="liveFeedRefreshStatus">active</span>
+            </span>
+        </div>
+
+        <div id="liveFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; padding:20px;">
+        </div>
+
+        <div class="pagination" id="liveFeedPagination"></div>
+    </div>
+</div>
+
+<!-- ============================================================
+SECTION: PROCTORING ALERTS
+============================================================ -->
+<div class="section-container" id="section-proctoring">
+    <div class="table-container" id="proctoringTableContainer">
+        <div class="table-header">
+            <h2><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</h2>
+            <div class="table-actions">
+                <button class="btn btn-danger" onclick="clearAllAlerts()">
+                    <i class="fas fa-trash"></i> Clear All
+                </button>
+                <button class="btn btn-secondary" onclick="exportToExcel('proctoring')">
+                    <i class="fas fa-file-excel"></i> Export Logs
+                </button>
+            </div>
+        </div>
+        <div id="proctoringLoading" class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading proctoring alerts...
+        </div>
+        <div class="table-wrap" id="proctoringTableWrap" style="display:none;">
+            <table id="proctoringTable">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>Student ID</th>
+                        <th>Student Name</th>
+                        <th>Exam</th>
+                        <th>Alert Type</th>
+                        <th>Details</th>
+                        <th>Severity</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="proctoringBody"></tbody>
+            </table>
+        </div>
+        <div class="pagination" id="proctoringPagination"></div>
+    </div>
+</div>
+
+<!-- ============================================================
+SECTION: REPORTS
+============================================================ -->
+<div class="section-container" id="section-reports">
+    <div class="table-container">
+        <div class="table-header">
+            <h2><i class="fas fa-chart-bar"></i> Analytics & Reports</h2>
+            <div class="table-actions">
+                <button class="btn btn-success" onclick="alert('Generate Report')">
+                    <i class="fas fa-file-pdf"></i> Generate PDF
+                </button>
+                <button class="btn btn-secondary" onclick="alert('Export Report')">
+                    <i class="fas fa-file-excel"></i> Export
+                </button>
+            </div>
+        </div>
+        <div style="padding:40px; text-align:center; color:#94A3B8;">
+            <i class="fas fa-chart-line" style="font-size:3rem; display:block; margin-bottom:12px;"></i>
+            <h3 style="color:#475569;">Reports Dashboard</h3>
+            <p>Generate comprehensive reports and analytics</p>
+            <div style="display:flex; gap:12px; justify-content:center; margin-top:20px; flex-wrap:wrap;">
+                <button class="btn btn-primary" onclick="alert('Student Performance Report')">
+                    <i class="fas fa-user-graduate"></i> Student Performance
+                </button>
+                <button class="btn btn-success" onclick="alert('Exam Analytics Report')">
+                    <i class="fas fa-file-alt"></i> Exam Analytics
+                </button>
+                <button class="btn btn-warning" onclick="alert('Attendance Report')">
+                    <i class="fas fa-clipboard-check"></i> Attendance Report
+                </button>
+                <button class="btn btn-info" onclick="alert('Proctoring Report')">
+                    <i class="fas fa-shield-alt"></i> Proctoring Report
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+SECTION: LOGS
+============================================================ -->
+<div class="section-container" id="section-logs">
+    <div class="table-container">
+        <div class="table-header">
+            <h2><i class="fas fa-history"></i> Activity Logs</h2>
+            <div class="table-actions">
+                <button class="btn btn-secondary" onclick="alert('Export Logs')">
+                    <i class="fas fa-file-excel"></i> Export Logs
+                </button>
+                <button class="btn btn-danger" onclick="alert('Clear Logs')">
+                    <i class="fas fa-trash"></i> Clear Logs
+                </button>
+            </div>
+        </div>
+        <div class="loading">
+            <i class="fas fa-spinner fa-spin"></i> Loading activity logs...
+        </div>
+        <div class="empty-state">
+            <i class="fas fa-history"></i>
+            <h3>No logs available</h3>
+            <p>System activity will appear here</p>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+SECTION: SETTINGS
+============================================================ -->
+<div class="section-container" id="section-settings">
+    <div class="table-container">
+        <div class="table-header">
+            <h2><i class="fas fa-cog"></i> System Settings</h2>
+        </div>
+        <div style="padding:24px;">
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:20px;">
+                <div style="background:#F8FAFC; padding:16px; border-radius:12px;">
+                    <h4 style="color:#0A3D62; margin-bottom:8px;"><i class="fas fa-globe"></i> General</h4>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #E2E8F0;">
+                        <span style="font-size:0.85rem;">System Name</span>
+                        <span style="font-size:0.85rem; font-weight:600;">NCHSM Exam System</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #E2E8F0;">
+                        <span style="font-size:0.85rem;">Version</span>
+                        <span style="font-size:0.85rem; font-weight:600;">v5.1</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0;">
+                        <span style="font-size:0.85rem;">Timezone</span>
+                        <span style="font-size:0.85rem; font-weight:600;">Africa/Nairobi</span>
                     </div>
                 </div>
-                <div id="proctoringLoading" class="loading">
-                    <i class="fas fa-spinner fa-spin"></i> Loading alerts...
+                <div style="background:#F8FAFC; padding:16px; border-radius:12px;">
+                    <h4 style="color:#0A3D62; margin-bottom:8px;"><i class="fas fa-shield-alt"></i> Security</h4>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #E2E8F0;">
+                        <span style="font-size:0.85rem;">2FA Status</span>
+                        <span style="font-size:0.85rem; font-weight:600; color:#38A169;">✅ Enabled</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid #E2E8F0;">
+                        <span style="font-size:0.85rem;">Session Timeout</span>
+                        <span style="font-size:0.85rem; font-weight:600;">24 hours</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0;">
+                        <span style="font-size:0.85rem;">SSL</span>
+                        <span style="font-size:0.85rem; font-weight:600; color:#38A169;">🔒 Secure</span>
+                    </div>
                 </div>
-                <div class="table-wrap" id="proctoringTableWrap" style="display:none;">
-                    <table id="proctoringTable">
-                        <thead>
-                            <tr>
-                                <th>Time</th>
-                                <th>Student ID</th>
-                                <th>Student Name</th>
-                                <th>Exam</th>
-                                <th>Alert Type</th>
-                                <th>Severity</th>
-                                <th>Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="proctoringBody"></tbody>
-                    </table>
-                </div>
-                <div class="pagination" id="proctoringPagination"></div>
+            </div>
+            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+                <button class="btn btn-primary" onclick="alert('Settings saved!')">
+                    <i class="fas fa-save"></i> Save Settings
+                </button>
             </div>
         </div>
+    </div>
+</div>
 
-    </main>
+<!-- ============================================================
+SECTION: PROFILE
+============================================================ -->
+<div class="section-container" id="section-profile">
+    <div class="table-container">
+        <div class="table-header">
+            <h2><i class="fas fa-user-cog"></i> Profile</h2>
+        </div>
+        <div style="padding:24px;">
+            <div style="display:flex; align-items:center; gap:20px; margin-bottom:20px;">
+                <div style="width:80px; height:80px; border-radius:50%; background:var(--primary-gradient); display:flex; align-items:center; justify-content:center; font-size:2rem; color:white; font-weight:700;" id="profileAvatar">A</div>
+                <div>
+                    <h3 id="profileName" style="color:#0A3D62;">Admin User</h3>
+                    <p id="profileEmail" style="color:#64748B;">admin@nchsm.ac.ke</p>
+                    <span class="status-badge active">Active</span>
+                </div>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:16px;">
+                <div class="form-group">
+                    <label style="font-weight:600; font-size:0.8rem; color:#0A3D62;">Full Name</label>
+                    <input type="text" value="Admin User" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:8px; font-family:'Inter',sans-serif;">
+                </div>
+                <div class="form-group">
+                    <label style="font-weight:600; font-size:0.8rem; color:#0A3D62;">Email</label>
+                    <input type="email" value="admin@nchsm.ac.ke" style="width:100%; padding:10px 14px; border:2px solid #E2E8F0; border-radius:8px; font-family:'Inter',sans-serif;">
+                </div>
+            </div>
+            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end;">
+                <button class="btn btn-primary" onclick="alert('Profile updated!')">
+                    <i class="fas fa-save"></i> Update Profile
+                </button>
+                <button class="btn btn-warning" onclick="alert('Change password modal')">
+                    <i class="fas fa-key"></i> Change Password
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <!-- ============================================================
-    JAVASCRIPT
-    ============================================================ -->
-    <script src="js/admindashboard.js">
-    </script>
+<!-- ============================================================
+SECTION: SECURITY
+============================================================ -->
+<div class="section-container" id="section-security">
+    <div class="table-container">
+        <div class="table-header">
+            <h2><i class="fas fa-shield-alt"></i> Security Settings</h2>
+        </div>
+        <div style="padding:24px;">
+            <div style="display:grid; gap:16px;">
+                <div style="background:#F8FAFC; padding:16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h4 style="color:#0A3D62;">Two-Factor Authentication</h4>
+                        <p style="color:#64748B; font-size:0.85rem;">Add an extra layer of security to your account</p>
+                    </div>
+                    <button class="btn btn-success" onclick="alert('Enable 2FA modal')">
+                        <i class="fas fa-shield-alt"></i> Enable
+                    </button>
+                </div>
+                <div style="background:#F8FAFC; padding:16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h4 style="color:#0A3D62;">Session Management</h4>
+                        <p style="color:#64748B; font-size:0.85rem;">View and manage active sessions</p>
+                    </div>
+                    <button class="btn btn-info" onclick="alert('Session management modal')">
+                        <i class="fas fa-desktop"></i> Manage Sessions
+                    </button>
+                </div>
+                <div style="background:#F8FAFC; padding:16px; border-radius:12px; display:flex; justify-content:space-between; align-items:center;">
+                    <div>
+                        <h4 style="color:#0A3D62;">Login History</h4>
+                        <p style="color:#64748B; font-size:0.85rem;">View your recent login activity</p>
+                    </div>
+                    <button class="btn btn-secondary" onclick="alert('Login history modal')">
+                        <i class="fas fa-history"></i> View History
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
-    <script>
-        // ============================================================
-        // SIDEBAR TOGGLE
-        // ============================================================
-        function toggleSidebar() {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            sidebar.classList.toggle('open');
-            overlay.classList.toggle('active');
+</main>
+
+<!-- ============================================================
+MAIN JAVASCRIPT - Uses your existing admindashboard.js
+============================================================ -->
+<script src="js/admindashboard.js">
+</script>
+
+<!-- ============================================================
+FALLBACK FUNCTIONS - Only if admindashboard.js doesn't load
+============================================================ -->
+<script>
+    // These are fallback functions if admindashboard.js is missing
+    // They will be overridden by the main JS file
+
+    function toggleSidebar() {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        sidebar.classList.toggle('open');
+        overlay.classList.toggle('active');
+    }
+
+    function switchTab(tab) {
+        // Update sidebar active state
+        document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
+        const activeLink = document.querySelector(`.sidebar-menu a[data-tab="${tab}"]`);
+        if (activeLink) activeLink.classList.add('active');
+
+        // Hide all sections
+        document.querySelectorAll('.section-container').forEach(el => el.classList.remove('active'));
+
+        // Show selected section
+        const targetSection = document.getElementById(`section-${tab}`);
+        if (targetSection) {
+            targetSection.classList.add('active');
         }
 
-        // ============================================================
-        // TAB SWITCHING - Each section displays independently
-        // ============================================================
-        function switchTab(tab) {
-            // Update sidebar active state
-            document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
-            const activeLink = document.querySelector(`.sidebar-menu a[data-tab="${tab}"]`);
-            if (activeLink) activeLink.classList.add('active');
+        // Update page title
+        const titles = {
+            'students': ['Students Results', 'View and manage student exam results'],
+            'overview': ['Overview', 'Dashboard overview and statistics'],
+            'allStudents': ['All Students', 'View all registered students'],
+            'enrollments': ['Enrollments', 'Student enrollment management'],
+            'exams': ['Exam Management', 'Create and manage exams'],
+            'createExam': ['Create Exam', 'Create a new exam'],
+            'attendance': ['Attendance Sheet', 'Exam attendance tracking'],
+            'liveStudents': ['Live Students', 'Students currently taking exams'],
+            'livefeed': ['Live Feed', 'Real-time camera feeds'],
+            'proctoring': ['Proctoring Alerts', 'Live proctoring alerts'],
+            'reports': ['Analytics & Reports', 'Generate reports and analytics'],
+            'logs': ['Activity Logs', 'System activity logs'],
+            'settings': ['System Settings', 'Configure system settings'],
+            'profile': ['Profile', 'Manage your profile'],
+            'security': ['Security', 'Security settings']
+        };
 
-            // Hide all sections
-            document.querySelectorAll('.section-container').forEach(el => el.classList.remove('active'));
+        const icons = {
+            'students': 'graduation-cap',
+            'overview': 'chart-pie',
+            'allStudents': 'users',
+            'enrollments': 'user-plus',
+            'exams': 'file-alt',
+            'createExam': 'plus-circle',
+            'attendance': 'clipboard-check',
+            'liveStudents': 'eye',
+            'livefeed': 'video',
+            'proctoring': 'exclamation-triangle',
+            'reports': 'chart-bar',
+            'logs': 'history',
+            'settings': 'cog',
+            'profile': 'user-cog',
+            'security': 'shield-alt'
+        };
 
-            // Show selected section
-            const targetSection = document.getElementById(`section-${tab}`);
-            if (targetSection) {
-                targetSection.classList.add('active');
-            }
-
-            // Update page title
-            const titles = {
-                'dashboard': ['Dashboard', 'Overview of your exam system'],
-                'students': ['Students Results', 'View and manage student exam results'],
-                'allStudents': ['All Students', 'View all registered students'],
-                'exams': ['Exam Management', 'Create and manage exams'],
-                'attendance': ['Attendance Sheet', 'Exam attendance tracking'],
-                'liveStudents': ['Live Students', 'Students currently taking exams'],
-                'livefeed': ['Live Feed', 'Real-time camera feeds'],
-                'proctoring': ['Proctoring Alerts', 'Live proctoring alerts']
-            };
-
-            const icons = {
-                'dashboard': 'th-large',
-                'students': 'graduation-cap',
-                'allStudents': 'users',
-                'exams': 'file-alt',
-                'attendance': 'clipboard-check',
-                'liveStudents': 'eye',
-                'livefeed': 'video',
-                'proctoring': 'exclamation-triangle'
-            };
-
-            const [title, subtitle] = titles[tab] || ['Dashboard', 'Overview'];
-            document.getElementById('pageTitle').innerHTML =
-                `<i class="fas fa-${icons[tab] || 'th-large'}"></i> ${title}`;
-            document.getElementById('pageSubtitle').textContent = subtitle;
-
-            // Close sidebar on mobile
-            if (window.innerWidth <= 768) {
-                document.getElementById('sidebar').classList.remove('open');
-                document.getElementById('sidebarOverlay').classList.remove('active');
-            }
-
-            // Load data for the tab
-            if (typeof window[`load${tab.charAt(0).toUpperCase() + tab.slice(1)}Data`] === 'function') {
-                window[`load${tab.charAt(0).toUpperCase() + tab.slice(1)}Data`]();
-            }
+        const [title, subtitle] = titles[tab] || ['Dashboard', 'Overview'];
+        const pageTitle = document.getElementById('pageTitle');
+        const pageSubtitle = document.getElementById('pageSubtitle');
+        if (pageTitle) {
+            pageTitle.innerHTML = `<i class="fas fa-${icons[tab] || 'th-large'}"></i> ${title}`;
         }
+        if (pageSubtitle) pageSubtitle.textContent = subtitle;
 
-        // ============================================================
-        // LOGOUT
-        // ============================================================
-        function logout() {
-            localStorage.removeItem('userProfile');
-            window.location.href = 'login.html';
+        // Close sidebar on mobile
+        if (window.innerWidth <= 768) {
+            document.getElementById('sidebar').classList.remove('open');
+            document.getElementById('sidebarOverlay').classList.remove('active');
         }
+    }
 
-        // ============================================================
-        // PLACEHOLDER FUNCTIONS
-        // ============================================================
-        function exportToExcel(type) { alert('📊 Export ' + type + ' to Excel'); }
+    function logout() {
+        localStorage.removeItem('adminSession');
+        localStorage.removeItem('userProfile');
+        window.location.href = 'login.html';
+    }
 
-        function openReleaseModal() { alert('📤 Release Results modal'); }
+    // Placeholder functions
+    function exportToExcel(type) { alert('📊 Export ' + type + ' to Excel'); }
 
-        function openCreateExamModal() { alert('📝 Create Exam modal'); }
+    function openReleaseModal() { alert('📤 Release Results modal'); }
 
-        function openAssignExamModal() { alert('📋 Assign Exam modal'); }
+    function openCreateExamModal() { alert('📝 Create Exam modal'); }
 
-        function refreshLiveStudents() { alert('🔄 Refreshing live students...'); }
+    function openAssignExamModal() { alert('📋 Assign Exam modal'); }
 
-        function refreshLiveFeed() { alert('🔄 Refreshing live feed...'); }
+    function refreshLiveStudents() { alert('🔄 Refreshing live students...'); }
 
-        function clearAllAlerts() {
-            if (confirm('Clear all alerts?')) alert('✅ All alerts cleared!');
+    function refreshLiveFeed() { alert('🔄 Refreshing live feed...'); }
+
+    function clearAllAlerts() {
+        if (confirm('Are you sure you want to clear all alerts?')) {
+            alert('✅ All alerts cleared!');
         }
+    }
 
-        function refreshAttendance() { alert('🔄 Refreshing attendance...'); }
+    function refreshAttendance() { alert('🔄 Refreshing attendance...'); }
 
-        function exportLiveStudents() { alert('📊 Exporting live students...'); }
+    function exportLiveStudents() { alert('📊 Exporting live students...'); }
 
-        function exportLiveFeed() { alert('📊 Exporting live feed...'); }
+    function exportLiveFeed() { alert('📊 Exporting live feed...'); }
 
-        function exportAttendanceCSV() { alert('📊 Exporting attendance as CSV...'); }
+    function exportAttendanceCSV() { alert('📊 Exporting attendance as CSV...'); }
 
-        function exportAttendanceExcel() { alert('📊 Exporting attendance as Excel...'); }
+    function exportAttendanceExcel() { alert('📊 Exporting attendance as Excel...'); }
 
-        // ============================================================
-        // SAMPLE DATA
-        // ============================================================
-        function loadSampleData() {
-            document.getElementById('totalExams').textContent = '24';
-            document.getElementById('activeExams').textContent = '8';
-            document.getElementById('pendingExams').textContent = '12';
-            document.getElementById('totalStudents').textContent = '156';
-            document.getElementById('alertCount').textContent = '3';
+    function printTable(type) { alert('🖨️ Printing ' + type + ' table...'); }
 
-            // Sample students
-            const students = [
-                { id: 'S001', name: 'John Mwangi', email: 'john@example.com', program: 'Clinical Medicine',
-                    exam: 'OSCE Final', score: 68, pct: 85, status: 'Passed', released: 'Yes' },
-                { id: 'S002', name: 'Sarah Wanjiru', email: 'sarah@example.com', program: 'Nursing', exam: 'CAT 2',
-                    score: 22, pct: 73, status: 'Passed', released: 'No' },
-                { id: 'S003', name: 'David Ochieng', email: 'david@example.com', program: 'Pharmacy', exam: 'Final Exam',
-                    score: 45, pct: 64, status: 'Passed', released: 'Yes' },
-                { id: 'S004', name: 'Faith Akinyi', email: 'faith@example.com', program: 'Clinical Medicine',
-                    exam: 'OSCE Final', score: 32, pct: 40, status: 'Failed', released: 'No' },
-                { id: 'S005', name: 'Peter Kamau', email: 'peter@example.com', program: 'Nursing', exam: 'CAT 1',
-                    score: 26, pct: 87, status: 'Passed', released: 'Yes' },
-            ];
+    function exportMarksOnly() { alert('📊 Exporting marks only...'); }
 
-            const tbody = document.getElementById('studentsBody');
-            tbody.innerHTML = students.map(s => `
-                    <tr>
-                        <td><strong>${s.id}</strong></td>
-                        <td>${s.name}</td>
-                        <td>${s.email}</td>
-                        <td>${s.program}</td>
-                        <td>${s.exam}</td>
-                        <td>${s.score}</td>
-                        <td>${s.pct}%</td>
-                        <td><span class="status-badge ${s.status === 'Passed' ? 'passed' : 'failed'}">${s.status}</span></td>
-                        <td><span class="status-badge ${s.released === 'Yes' ? 'active' : 'pending'}">${s.released}</span></td>
-                        <td>
-                            <button class="btn btn-sm btn-primary" onclick="alert('View ${s.id}')">View</button>
-                            <button class="btn btn-sm btn-warning" onclick="alert('Edit ${s.id}')">Edit</button>
-                        </td>
-                    </tr>
-                `).join('');
+    function openResetByEmailModal() { alert('📧 Reset by email modal...'); }
 
-            document.getElementById('studentsLoading').style.display = 'none';
-            document.getElementById('studentsTableWrap').style.display = 'block';
-        }
+    function filterLiveFeed() { /* handled by admindashboard.js */ }
 
-        // ============================================================
-        // INIT
-        // ============================================================
-        document.addEventListener('DOMContentLoaded', function() {
-            // Set admin name from session
-            const session = localStorage.getItem('userProfile');
-            if (session) {
-                try {
-                    const data = JSON.parse(session);
-                    const name = data.name || data.full_name || 'Admin';
-                    const initial = name.charAt(0).toUpperCase();
-                    document.querySelectorAll('.admin-avatar, #adminInitial').forEach(el => el.textContent = initial);
-                    document.querySelectorAll('.admin-name, #adminName').forEach(el => el.textContent = name);
-                    document.getElementById('adminRole').textContent = data.role === 'lecturer' ? 'Lecturer' :
-                        'Administrator';
-                } catch (e) {}
-            }
+    function setLiveFeedView(view) { /* handled by admindashboard.js */ }
 
-            loadSampleData();
-            console.log('✅ Ultra Modern Dashboard loaded');
-            console.log('📁 Each section displays independently');
-            console.log('🎨 Glassmorphism sidebar with organized categories');
-        });
-    </script>
+    function toggleAutoRefresh() { /* handled by admindashboard.js */ }
+
+    function toggleLiveFeedAutoRefresh() { /* handled by admindashboard.js */ }
+
+    function clearLiveFeedFilters() { /* handled by admindashboard.js */ }
+
+    function filterExamsByStatus(status) { /* handled by admindashboard.js */ }
+
+    function loadReleasePreview() { /* handled by admindashboard.js */ }
+
+    function selectAllStudents(select) { /* handled by admindashboard.js */ }
+
+    function confirmReleaseResults() { /* handled by admindashboard.js */ }
+
+    function closeModal() { /* handled by admindashboard.js */ }
+
+    function closeExamModal() { /* handled by admindashboard.js */ }
+
+    function closeAssignExamModal() { /* handled by admindashboard.js */ }
+
+    function closeReleaseModal() { /* handled by admindashboard.js */ }
+
+    function closeResetModal() { /* handled by admindashboard.js */ }
+
+    function closeResetByEmailModal() { /* handled by admindashboard.js */ }
+
+    function closeCameraModal() { /* handled by admindashboard.js */ }
+
+    function closeTimerModal() { /* handled by admindashboard.js */ }
+
+    function confirmAssignExam() { /* handled by admindashboard.js */ }
+
+    function confirmResetExam() { /* handled by admindashboard.js */ }
+
+    function confirmResetByEmail() { /* handled by admindashboard.js */ }
+
+    function captureSnapshot() { /* handled by admindashboard.js */ }
+
+    function refreshCameraFeed() { /* handled by admindashboard.js */ }
+
+    function toggleAutoRefreshCamera() { /* handled by admindashboard.js */ }
+
+    function requestCameraSnapshot() { /* handled by admindashboard.js */ }
+
+    function clearAllSnapshots() { /* handled by admindashboard.js */ }
+
+    function addTimeToStudent() { /* handled by admindashboard.js */ }
+
+    function resetStudentTimerComplete() { /* handled by admindashboard.js */ }
+
+    function loadAttendanceSheet() { /* handled by admindashboard.js */ }
+
+   
+    function clearAttendanceFilters() { /* handled by admindashboard.js */ }
+
+    function viewAllLiveVideos() { /* handled by admindashboard.js */ }
+
+    function printAttendance() { /* handled by admindashboard.js */ }
+
+    function updateTotalMarksHint() { /* handled by admindashboard.js */ }
+
+    function viewStudentProgress() { /* handled by admindashboard.js */ }
+
+    function openTimerModal() { /* handled by admindashboard.js */ }
+
+    function resetSingleStudent() { /* handled by admindashboard.js */ }
+
+    function viewStudentRecordings() { /* handled by admindashboard.js */ }
+
+    console.log('✅ Dashboard loaded - using admindashboard.js');
+    console.log('📁 If functions are not working, make sure js/admindashboard.js exists');
+</script>
+
 </body>
 </html>
