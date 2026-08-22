@@ -1,715 +1,1212 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NCHSM Admin Dashboard - Complete Exam Management</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>NCHSM · Ultra Modern Dashboard</title>
+
     <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js">
+    </script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
     <!-- Main CSS -->
-    <link rel="stylesheet" href="css/admindashboard.css">
-    
+    <link rel="stylesheet" href="css/admindashboard.css" />
+
     <style>
         /* ============================================================
-        ATTENDANCE SHEET STYLES
-        ============================================================ */
-        .attendance-stats-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-            gap: 12px;
-            padding: 15px 20px;
-            background: #F8FAFC;
-            border-bottom: 1px solid #E2E8F0;
+           ULTRA MODERN VARIABLES
+           ============================================================ */
+        :root {
+            --primary: #0A3D62;
+            --primary-light: #1a5a7a;
+            --primary-dark: #052538;
+            --primary-gradient: linear-gradient(135deg, #0A3D62 0%, #1a5a7a 50%, #2d7a9e 100%);
+            --accent: #FDB913;
+            --accent-gradient: linear-gradient(135deg, #FDB913, #f59e0b);
+            --success: #10B981;
+            --danger: #EF4444;
+            --warning: #F59E0B;
+            --info: #3B82F6;
+            --purple: #8B5CF6;
+            --radius: 16px;
+            --radius-sm: 10px;
+            --radius-xs: 8px;
+            --shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+            --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.08);
+            --shadow-xl: 0 20px 60px rgba(0, 0, 0, 0.1);
+            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
-        .attendance-stat-card {
-            background: white;
-            border-radius: 12px;
-            padding: 12px 16px;
+
+        /* ============================================================
+           RESET
+           ============================================================ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: #f0f4f8;
+            background-image:
+                radial-gradient(ellipse at 10% 20%, rgba(10, 61, 98, 0.03) 0%, transparent 50%),
+                radial-gradient(ellipse at 90% 80%, rgba(253, 185, 19, 0.03) 0%, transparent 50%);
+            min-height: 100vh;
             display: flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
-            border: 1px solid #E2E8F0;
+            color: #1a1a2e;
         }
-        .attendance-stat-card .stat-icon {
-            font-size: 1.5rem;
-            width: 40px;
-            height: 40px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            border-radius: 10px;
-            background: #EFF6FF;
-        }
-        .attendance-stat-card .stat-info {
+
+        /* ============================================================
+           SIDEBAR - ULTRA MODERN WITH GLASSMORPHISM
+           ============================================================ */
+        .sidebar {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            width: 260px;
+            height: calc(100vh - 32px);
+            background: rgba(10, 61, 98, 0.88);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow-xl), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             display: flex;
             flex-direction: column;
         }
-        .attendance-stat-card .stat-label {
-            font-size: 0.7rem;
-            color: #94A3B8;
-            font-weight: 500;
+
+        .sidebar::-webkit-scrollbar {
+            width: 3px;
         }
-        .attendance-stat-card .stat-value {
-            font-size: 1.3rem;
-            font-weight: 700;
-            color: #0A3D62;
+        .sidebar::-webkit-scrollbar-thumb {
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 10px;
         }
-        .attendance-stat-card.present .stat-value { color: #38A169; }
-        .attendance-stat-card.absent .stat-value { color: #DC2626; }
-        .attendance-stat-card.in-progress .stat-value { color: #F59E0B; }
-        .attendance-stat-card.completed .stat-value { color: #0A3D62; }
-        .attendance-stat-card.live .stat-value { color: #3B82F6; }
-        
-        .status-badge-attendance {
-            display: inline-block;
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 0.7rem;
-            font-weight: 600;
-        }
-        .status-badge-attendance.present { background: #D1FAE5; color: #064E3B; }
-        .status-badge-attendance.absent { background: #FEE2E2; color: #991B1B; }
-        .status-badge-attendance.in-progress { background: #FEF3C7; color: #92400E; }
-        .status-badge-attendance.signed-in { background: #DBEAFE; color: #1E40AF; }
-        .status-badge-attendance.completed { background: #D1FAE5; color: #064E3B; }
-        
-        .attendance-filters {
-            padding: 12px 20px;
-            background: #F8FAFC;
-            border-bottom: 1px solid #E2E8F0;
+
+        /* --- Brand --- */
+        .sidebar-brand {
+            padding: 24px 20px 18px;
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             display: flex;
+            align-items: center;
             gap: 12px;
-            flex-wrap: wrap;
-            align-items: center;
+            flex-shrink: 0;
         }
-        .attendance-filters select,
-        .attendance-filters input {
-            padding: 8px 12px;
-            border: 2px solid #E2E8F0;
-            border-radius: 8px;
-            font-size: 0.8rem;
-            background: white;
-            min-width: 140px;
-        }
-        .attendance-filters select:focus,
-        .attendance-filters input:focus {
-            outline: none;
-            border-color: #0A3D62;
-        }
-        .attendance-filters label {
-            font-size: 0.8rem;
-            font-weight: 600;
-            color: #475569;
-        }
-        
-        .attendance-summary-bar {
-            padding: 10px 20px;
-            background: #F0FDF4;
-            border-bottom: 1px solid #D1FAE5;
-            display: flex;
-            gap: 16px;
-            flex-wrap: wrap;
-            align-items: center;
-        }
-        .attendance-summary-bar .summary-item {
+
+        .sidebar-brand .logo-icon {
+            width: 42px;
+            height: 42px;
+            background: var(--accent-gradient);
+            border-radius: var(--radius-xs);
             display: flex;
             align-items: center;
-            gap: 4px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            color: #475569;
-        }
-        .attendance-summary-bar .summary-item .num {
-            font-weight: 700;
+            justify-content: center;
+            font-size: 1.2rem;
             color: #0A3D62;
+            font-weight: 800;
+            flex-shrink: 0;
+            box-shadow: 0 4px 12px rgba(253, 185, 19, 0.25);
         }
-        .attendance-summary-bar .summary-item .num.present { color: #38A169; }
-        .attendance-summary-bar .summary-item .num.absent { color: #DC2626; }
-        .attendance-summary-bar .summary-item .num.in-progress { color: #F59E0B; }
-        .attendance-summary-bar .summary-item .num.live { color: #3B82F6; }
-        
-        .progress-bar-attendance {
-            height: 6px;
-            background: #E2E8F0;
-            border-radius: 3px;
-            overflow: hidden;
+
+        .sidebar-brand .brand-text h2 {
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 800;
+            letter-spacing: -0.5px;
+            line-height: 1.2;
+        }
+        .sidebar-brand .brand-text h2 span {
+            color: var(--accent);
+        }
+        .sidebar-brand .brand-text small {
+            color: rgba(255, 255, 255, 0.35);
+            font-size: 0.5rem;
+            font-weight: 500;
+            letter-spacing: 0.8px;
+            text-transform: uppercase;
+        }
+
+        /* --- Menu Categories --- */
+        .sidebar-menu {
+            list-style: none;
+            padding: 12px 10px;
             flex: 1;
-            min-width: 100px;
         }
-        .progress-bar-attendance .progress-fill-attendance {
-            height: 100%;
-            background: linear-gradient(90deg, #38A169, #0A3D62);
-            border-radius: 3px;
-            transition: width 0.5s ease;
+
+        .sidebar-menu .menu-label {
+            color: rgba(255, 255, 255, 0.2);
+            font-size: 0.55rem;
+            text-transform: uppercase;
+            letter-spacing: 1.2px;
+            padding: 14px 14px 6px;
+            font-weight: 700;
         }
-        
-        .attendance-table-wrap {
-            overflow-x: auto;
-            padding: 0 20px 20px;
-        }
-        .attendance-table-wrap table {
-            width: 100%;
-            border-collapse: collapse;
+
+        .sidebar-menu li a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 9px 14px;
+            color: rgba(255, 255, 255, 0.5);
+            text-decoration: none;
+            border-radius: var(--radius-xs);
+            transition: var(--transition);
             font-size: 0.82rem;
-        }
-        .attendance-table-wrap th {
-            background: #F8FAFC;
-            padding: 10px 12px;
-            text-align: left;
-            font-weight: 600;
-            color: #475569;
-            border-bottom: 2px solid #E2E8F0;
-            position: sticky;
-            top: 0;
-            z-index: 10;
-            white-space: nowrap;
-        }
-        .attendance-table-wrap td {
-            padding: 8px 12px;
-            border-bottom: 1px solid #F1F5F9;
-            vertical-align: middle;
-        }
-        .attendance-table-wrap tbody tr:hover {
-            background: #F8FAFC;
-        }
-        
-        .btn-sm {
-            padding: 3px 10px;
-            font-size: 0.65rem;
-            border-radius: 6px;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s;
-        }
-        .btn-sm:hover {
-            transform: scale(1.05);
-        }
-        .btn-sm.btn-info { background: #DBEAFE; color: #1E40AF; }
-        .btn-sm.btn-primary { background: #0A3D62; color: white; }
-        .btn-sm.btn-success { background: #D1FAE5; color: #064E3B; }
-        .btn-sm.btn-danger { background: #FEE2E2; color: #991B1B; }
-        .btn-sm.btn-warning { background: #FEF3C7; color: #92400E; }
-        
-        .attendance-empty {
-            text-align: center;
-            padding: 40px;
-            color: #94A3B8;
-        }
-        .attendance-empty i {
-            font-size: 3rem;
-            display: block;
-            margin-bottom: 10px;
-        }
-        
-        /* Live video cell */
-        .live-video-container {
-            width: 200px;
-            height: 140px;
-            background: #1a1a2e;
-            border-radius: 8px;
-            overflow: hidden;
+            font-weight: 500;
             position: relative;
         }
-        .live-video-container video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            background: #1a1a2e;
+
+        .sidebar-menu li a i {
+            width: 18px;
+            text-align: center;
+            font-size: 0.9rem;
+            transition: var(--transition);
         }
-        .live-badge {
-            position: absolute;
-            top: 4px;
-            left: 4px;
-            background: rgba(0,0,0,0.7);
-            color: #4ADE80;
-            padding: 2px 8px;
-            border-radius: 4px;
-            font-size: 0.55rem;
-            display: flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .live-badge .dot {
-            display: inline-block;
-            width: 6px;
-            height: 6px;
-            background: #4ADE80;
-            border-radius: 50%;
-            animation: pulse-dot 1s infinite;
-        }
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.5; transform: scale(0.8); }
-        }
-        .video-controls {
-            position: absolute;
-            bottom: 4px;
-            left: 4px;
-            right: 4px;
-            display: flex;
-            gap: 4px;
-            justify-content: center;
-        }
-        .video-controls button {
-            padding: 2px 8px;
-            background: rgba(0,0,0,0.6);
+
+        .sidebar-menu li a:hover {
+            background: rgba(255, 255, 255, 0.06);
             color: white;
-            border: none;
-            border-radius: 4px;
+            transform: translateX(3px);
+        }
+
+        .sidebar-menu li a.active {
+            background: rgba(253, 185, 19, 0.1);
+            color: var(--accent);
+        }
+
+        .sidebar-menu li a.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 20px;
+            background: var(--accent-gradient);
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 16px rgba(253, 185, 19, 0.2);
+        }
+
+        .badge-sidebar {
+            margin-left: auto;
+            background: rgba(239, 68, 68, 0.15);
+            color: #FCA5A5;
+            padding: 1px 10px;
+            border-radius: 20px;
             font-size: 0.55rem;
-            cursor: pointer;
+            font-weight: 600;
+            border: 1px solid rgba(239, 68, 68, 0.08);
         }
-        .video-controls button:hover {
-            background: rgba(0,0,0,0.8);
+
+        /* --- User Card --- */
+        .sidebar-footer {
+            padding: 14px 16px;
+            border-top: 1px solid rgba(255, 255, 255, 0.06);
+            flex-shrink: 0;
         }
-        .video-placeholder {
-            width: 200px;
-            height: 140px;
-            background: #F8FAFC;
-            border-radius: 8px;
+
+        .sidebar-footer .user-card {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 8px 12px;
+            background: rgba(255, 255, 255, 0.04);
+            border-radius: var(--radius-xs);
+            margin-bottom: 8px;
+            transition: var(--transition);
+        }
+
+        .sidebar-footer .user-card:hover {
+            background: rgba(255, 255, 255, 0.07);
+        }
+
+        .sidebar-footer .user-card .avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent-gradient);
             display: flex;
             align-items: center;
             justify-content: center;
-            flex-direction: column;
-            gap: 6px;
-            border: 2px dashed #E2E8F0;
+            font-weight: 700;
+            color: #0A3D62;
+            font-size: 0.8rem;
+            flex-shrink: 0;
         }
-        .video-placeholder i {
-            font-size: 2rem;
-            color: #94A3B8;
+
+        .sidebar-footer .user-card .info .name {
+            color: white;
+            font-size: 0.8rem;
+            font-weight: 600;
         }
-        .video-placeholder span {
+        .sidebar-footer .user-card .info .role {
+            color: rgba(255, 255, 255, 0.3);
             font-size: 0.6rem;
-            color: #94A3B8;
         }
-        
-        /* Full video modal */
-        .full-video-modal {
+
+        .logout-btn-sidebar {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            width: 100%;
+            padding: 8px 14px;
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.03);
+            border-radius: var(--radius-xs);
+            color: rgba(255, 255, 255, 0.4);
+            font-family: 'Inter', sans-serif;
+            font-size: 0.75rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .logout-btn-sidebar:hover {
+            background: rgba(239, 68, 68, 0.12);
+            color: #FCA5A5;
+            border-color: rgba(239, 68, 68, 0.08);
+        }
+
+        /* ============================================================
+           SIDEBAR OVERLAY
+           ============================================================ */
+        .sidebar-overlay {
+            display: none;
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: rgba(0,0,0,0.95);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            z-index: 10001;
-            padding: 20px;
+            background: rgba(0, 0, 0, 0.3);
+            backdrop-filter: blur(6px);
+            z-index: 999;
         }
-        .full-video-modal .video-wrapper {
-            background: #1a1a2e;
-            border-radius: 16px;
-            max-width: 900px;
+
+        /* ============================================================
+           MAIN CONTENT
+           ============================================================ */
+        .main-content {
+            margin-left: 292px;
+            padding: 24px 32px 40px;
+            min-height: 100vh;
             width: 100%;
-            max-height: 90vh;
-            overflow: hidden;
-            position: relative;
+            flex: 1;
         }
-        .full-video-modal .video-wrapper video {
-            width: 100%;
-            max-height: 70vh;
-            background: #1a1a2e;
-        }
-        .full-video-modal .close-btn {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: rgba(0,0,0,0.7);
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            font-size: 1.5rem;
-            cursor: pointer;
-            z-index: 10;
-        }
-        .full-video-modal .close-btn:hover {
-            background: rgba(0,0,0,0.9);
-        }
-        .full-video-modal .video-info {
-            padding: 12px 20px;
-            background: rgba(0,0,0,0.5);
+
+        /* ============================================================
+           TOP HEADER
+           ============================================================ */
+        .top-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            padding: 16px 24px;
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(12px);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            margin-bottom: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+        }
+
+        .page-title h1 {
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: #0A3D62;
+            letter-spacing: -0.3px;
+        }
+        .page-title h1 i {
+            background: var(--primary-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-right: 8px;
+        }
+        .page-title p {
+            font-size: 0.75rem;
+            color: #94A3B8;
+            margin-top: 2px;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .mobile-toggle {
+            display: none;
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            border-radius: var(--radius-xs);
+            width: 38px;
+            height: 38px;
+            font-size: 1.1rem;
+            color: #0A3D62;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .mobile-toggle:hover {
+            background: white;
+            box-shadow: var(--shadow);
+        }
+
+        .admin-profile {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 4px 14px 4px 4px;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            border-radius: 50px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        .admin-profile .admin-avatar {
+            width: 34px;
+            height: 34px;
+            border-radius: 50%;
+            background: var(--primary-gradient);
             color: white;
-        }
-        .full-video-modal .video-info h3 {
-            margin: 0;
-            font-size: 1rem;
-        }
-        .full-video-modal .video-info p {
-            margin: 2px 0 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
             font-size: 0.8rem;
+        }
+
+        .admin-profile .admin-name {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #1a1a2e;
+        }
+        .admin-profile .admin-email {
+            font-size: 0.6rem;
             color: #94A3B8;
         }
-        .full-video-modal .video-info .status-live {
-            color: #4ADE80;
+
+        .notification-bell {
+            position: relative;
+            cursor: pointer;
+            padding: 6px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            width: 38px;
+            height: 38px;
             display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: var(--transition);
+        }
+
+        .notification-bell:hover {
+            background: white;
+            box-shadow: var(--shadow);
+        }
+
+        .notification-bell i {
+            font-size: 1rem;
+            color: #64748B;
+        }
+
+        .notification-count {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            background: var(--danger);
+            color: white;
+            border-radius: 50%;
+            width: 18px;
+            height: 18px;
+            font-size: 0.5rem;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* ============================================================
+           SECTION CONTAINER - Each section displays independently
+           ============================================================ */
+        .section-container {
+            display: none;
+            animation: fadeIn 0.4s ease;
+        }
+
+        .section-container.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* ============================================================
+           STATS GRID - Only shows on Dashboard tab
+           ============================================================ */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-card {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: var(--radius);
+            padding: 18px 20px;
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: var(--transition);
+        }
+
+        .stat-card:hover {
+            transform: translateY(-2px);
+            box-shadow: var(--shadow-lg);
+        }
+
+        .stat-card .icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            flex-shrink: 0;
+        }
+        .stat-card .icon.blue {
+            background: #DBEAFE;
+            color: #1E40AF;
+        }
+        .stat-card .icon.green {
+            background: #D1FAE5;
+            color: #065F46;
+        }
+        .stat-card .icon.yellow {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        .stat-card .icon.purple {
+            background: #EDE9FE;
+            color: #5B21B6;
+        }
+        .stat-card .icon.red {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        .stat-card .info .number {
+            font-size: 1.4rem;
+            font-weight: 700;
+            color: #0A3D62;
+            line-height: 1.2;
+        }
+        .stat-card .info .label {
+            font-size: 0.7rem;
+            color: #94A3B8;
+            font-weight: 500;
+        }
+
+        /* ============================================================
+           TABLE CONTAINER
+           ============================================================ */
+        .table-container {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            overflow: hidden;
+        }
+
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 14px 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            flex-wrap: wrap;
+            gap: 10px;
+        }
+
+        .table-header h2 {
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: #0A3D62;
+        }
+        .table-header h2 i {
+            margin-right: 8px;
+            color: var(--primary);
+        }
+
+        .table-actions {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: var(--radius-xs);
+            font-weight: 600;
+            font-size: 0.7rem;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Inter', sans-serif;
+            display: inline-flex;
             align-items: center;
             gap: 6px;
         }
-        .full-video-modal .video-info .status-live .dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #4ADE80;
-            border-radius: 50%;
-            animation: pulse-dot 1s infinite;
+
+        .btn-primary {
+            background: var(--primary-gradient);
+            color: white;
         }
-        
-        /* Responsive */
-        @media (max-width: 768px) {
-            .attendance-stats-grid {
+        .btn-primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(10, 61, 98, 0.25);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+        .btn-success:hover {
+            background: #059669;
+            transform: translateY(-1px);
+        }
+
+        .btn-warning {
+            background: var(--warning);
+            color: white;
+        }
+        .btn-warning:hover {
+            background: #D97706;
+            transform: translateY(-1px);
+        }
+
+        .btn-danger {
+            background: var(--danger);
+            color: white;
+        }
+        .btn-danger:hover {
+            background: #DC2626;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(0, 0, 0, 0.05);
+            color: #475569;
+        }
+        .btn-secondary:hover {
+            background: rgba(0, 0, 0, 0.08);
+        }
+
+        .btn-release {
+            background: var(--primary-gradient);
+            color: white;
+        }
+        .btn-release:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(10, 61, 98, 0.25);
+        }
+
+        .btn-sm {
+            padding: 4px 10px;
+            font-size: 0.65rem;
+            border-radius: 6px;
+        }
+
+        /* ============================================================
+           TABLE
+           ============================================================ */
+        .table-wrap {
+            overflow-x: auto;
+        }
+
+        .table-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.8rem;
+        }
+
+        .table-wrap th {
+            background: rgba(0, 0, 0, 0.02);
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 1.5px solid rgba(0, 0, 0, 0.04);
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            white-space: nowrap;
+        }
+
+        .table-wrap td {
+            padding: 10px 14px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+            vertical-align: middle;
+            color: #1a1a2e;
+        }
+
+        .table-wrap tbody tr:hover {
+            background: rgba(0, 0, 0, 0.01);
+        }
+
+        /* ============================================================
+           STATUS BADGES
+           ============================================================ */
+        .status-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 0.6rem;
+            font-weight: 600;
+        }
+        .status-badge.active {
+            background: #D1FAE5;
+            color: #064E3B;
+        }
+        .status-badge.pending {
+            background: #FEF3C7;
+            color: #92400E;
+        }
+        .status-badge.completed {
+            background: #E2E8F0;
+            color: #475569;
+        }
+        .status-badge.passed {
+            background: #D1FAE5;
+            color: #064E3B;
+        }
+        .status-badge.failed {
+            background: #FEE2E2;
+            color: #991B1B;
+        }
+
+        /* ============================================================
+           LOADING
+           ============================================================ */
+        .loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            color: #94A3B8;
+            gap: 10px;
+            font-size: 0.85rem;
+        }
+        .loading i {
+            font-size: 1.2rem;
+        }
+
+        /* ============================================================
+           PAGINATION
+           ============================================================ */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 4px;
+            padding: 12px 16px;
+            border-top: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .pagination button {
+            padding: 4px 12px;
+            border: 1px solid rgba(0, 0, 0, 0.06);
+            border-radius: var(--radius-xs);
+            background: transparent;
+            color: #475569;
+            font-size: 0.7rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: var(--transition);
+            font-family: 'Inter', sans-serif;
+        }
+
+        .pagination button:hover {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        .pagination button.active {
+            background: var(--primary-gradient);
+            color: white;
+            border-color: transparent;
+        }
+
+        /* ============================================================
+           EMPTY STATE
+           ============================================================ */
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #94A3B8;
+        }
+        .empty-state i {
+            font-size: 2.5rem;
+            color: #CBD5E1;
+            margin-bottom: 10px;
+        }
+        .empty-state h3 {
+            color: #475569;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .main-content {
+                padding: 16px 20px;
+            }
+            .stats-grid {
                 grid-template-columns: repeat(2, 1fr);
-                gap: 8px;
-                padding: 10px;
             }
-            .attendance-stat-card {
-                padding: 8px 12px;
+        }
+
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-280px);
+                top: 0;
+                left: 0;
+                height: 100vh;
+                border-radius: 0;
+                width: 280px;
             }
-            .attendance-stat-card .stat-value {
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .sidebar-overlay.active {
+                display: block;
+            }
+            .main-content {
+                margin-left: 0;
+                padding: 12px 16px;
+            }
+            .mobile-toggle {
+                display: block;
+            }
+            .top-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 10px;
+                padding: 14px 16px;
+            }
+            .header-actions {
+                width: 100%;
+                justify-content: space-between;
+            }
+            .admin-profile .admin-email {
+                display: none;
+            }
+            .stats-grid {
+                grid-template-columns: 1fr 1fr;
+                gap: 10px;
+            }
+            .stat-card {
+                padding: 14px 16px;
+            }
+            .stat-card .info .number {
+                font-size: 1.1rem;
+            }
+            .table-header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            .table-actions {
+                width: 100%;
+                flex-wrap: wrap;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+            .stat-card .icon {
+                width: 36px;
+                height: 36px;
+                font-size: 0.9rem;
+            }
+            .page-title h1 {
                 font-size: 1rem;
             }
-            .live-video-container {
-                width: 140px;
-                height: 100px;
+            .admin-profile {
+                padding: 2px 10px 2px 2px;
             }
-            .video-placeholder {
-                width: 140px;
-                height: 100px;
-            }
-            .attendance-filters {
-                flex-direction: column;
-                align-items: stretch;
-            }
-            .attendance-filters select,
-            .attendance-filters input {
-                width: 100%;
-                min-width: unset;
-            }
-            .attendance-summary-bar {
-                gap: 8px;
-                font-size: 0.7rem;
+            .admin-profile .admin-name {
+                font-size: 0.65rem;
             }
         }
     </style>
 </head>
 <body>
 
-    <!-- ========== SIDEBAR OVERLAY ========== -->
+    <!-- ============================================================
+    SIDEBAR OVERLAY
+    ============================================================ -->
     <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
-    <!-- ========== SIDEBAR ========== -->
-    <div class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Logo">
-            <h2>NCHSM <span>Exam</span></h2>
-            <small>Proctoring Center</small>
-        </div>
-        <ul class="sidebar-menu">
-            <li><a class="active" data-tab="students" onclick="switchTab('students')"><i class="fas fa-graduation-cap"></i> Students Results</a></li>
-            <li><a data-tab="allStudents" onclick="switchTab('allStudents')"><i class="fas fa-users"></i> All Students</a></li>
-            <li><a data-tab="livefeed" onclick="switchTab('livefeed')"><i class="fas fa-video"></i> Live Feed <span class="badge-sidebar" id="liveFeedBadge">0</span></a></li>
-            <li><a data-tab="liveStudents" onclick="switchTab('liveStudents')"><i class="fas fa-eye"></i> Live Students <span class="badge-sidebar" id="liveBadge">0</span></a></li>
-            <li><a data-tab="exams" onclick="switchTab('exams')"><i class="fas fa-file-alt"></i> Exam Management</a></li>
-            <li><a data-tab="proctoring" onclick="switchTab('proctoring')"><i class="fas fa-video"></i> Proctoring Alerts <span class="badge-sidebar" id="sidebarAlertCount">0</span></a></li>
-            <!-- ✅ NEW: Attendance Sheet Tab -->
-            <li><a data-tab="attendance" onclick="switchTab('attendance')"><i class="fas fa-clipboard-check"></i> Attendance Sheet <span class="badge-sidebar" id="attendanceBadge">0</span></a></li>
-        </ul>
-        <div class="sidebar-footer">
-            <button class="logout-btn-sidebar" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
-        </div>
-    </div>
+    <!-- ============================================================
+    SIDEBAR - ULTRA MODERN
+    ============================================================ -->
+    <aside class="sidebar" id="sidebar">
 
-    <!-- ========== MAIN CONTENT ========== -->
-    <div class="main-content">
+        <!-- Brand -->
+        <div class="sidebar-brand">
+            <div class="logo-icon"><i class="fas fa-graduation-cap"></i></div>
+            <div class="brand-text">
+                <h2>NCHSM <span>Exam</span></h2>
+                <small>Proctoring Center</small>
+            </div>
+        </div>
+
+        <!-- Menu -->
+        <ul class="sidebar-menu">
+            <!-- Dashboard -->
+            <li class="menu-label">Main</li>
+            <li>
+                <a class="active" data-tab="dashboard" onclick="switchTab('dashboard')">
+                    <i class="fas fa-th-large"></i> Dashboard
+                </a>
+            </li>
+
+            <!-- Students -->
+            <li class="menu-label">Students</li>
+            <li>
+                <a data-tab="students" onclick="switchTab('students')">
+                    <i class="fas fa-graduation-cap"></i> Results
+                </a>
+            </li>
+            <li>
+                <a data-tab="allStudents" onclick="switchTab('allStudents')">
+                    <i class="fas fa-users"></i> All Students
+                </a>
+            </li>
+
+            <!-- Exams -->
+            <li class="menu-label">Exams</li>
+            <li>
+                <a data-tab="exams" onclick="switchTab('exams')">
+                    <i class="fas fa-file-alt"></i> Management
+                </a>
+            </li>
+            <li>
+                <a data-tab="attendance" onclick="switchTab('attendance')">
+                    <i class="fas fa-clipboard-check"></i> Attendance
+                    <span class="badge-sidebar" id="attendanceBadge">0</span>
+                </a>
+            </li>
+
+            <!-- Monitoring -->
+            <li class="menu-label">Monitoring</li>
+            <li>
+                <a data-tab="liveStudents" onclick="switchTab('liveStudents')">
+                    <i class="fas fa-eye"></i> Live Students
+                    <span class="badge-sidebar" id="liveBadge">0</span>
+                </a>
+            </li>
+            <li>
+                <a data-tab="livefeed" onclick="switchTab('livefeed')">
+                    <i class="fas fa-video"></i> Live Feed
+                    <span class="badge-sidebar" id="liveFeedBadge">0</span>
+                </a>
+            </li>
+            <li>
+                <a data-tab="proctoring" onclick="switchTab('proctoring')">
+                    <i class="fas fa-exclamation-triangle"></i> Alerts
+                    <span class="badge-sidebar" id="sidebarAlertCount">0</span>
+                </a>
+            </li>
+        </ul>
+
+        <!-- Footer -->
+        <div class="sidebar-footer">
+            <div class="user-card">
+                <div class="avatar" id="adminInitial">A</div>
+                <div class="info">
+                    <div class="name" id="adminName">Admin</div>
+                    <div class="role" id="adminRole">Administrator</div>
+                </div>
+            </div>
+            <button class="logout-btn-sidebar" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
+        </div>
+    </aside>
+
+    <!-- ============================================================
+    MAIN CONTENT
+    ============================================================ -->
+    <main class="main-content">
+
         <!-- Top Header -->
-        <div class="top-header">
+        <header class="top-header">
             <div class="page-title">
-                <h1 id="pageTitle"><i class="fas fa-graduation-cap"></i> Students Results</h1>
-                <p id="pageSubtitle">View and manage student exam results</p>
+                <h1 id="pageTitle"><i class="fas fa-th-large"></i> Dashboard</h1>
+                <p id="pageSubtitle">Overview of your exam system</p>
             </div>
             <div class="header-actions">
-                <button class="mobile-toggle" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <button class="mobile-toggle" onclick="toggleSidebar()">
+                    <i class="fas fa-bars"></i>
+                </button>
                 <div class="admin-profile">
-                    <div class="admin-avatar" id="adminInitial">A</div>
+                    <div class="admin-avatar" id="adminAvatar">A</div>
                     <div>
-                        <div class="admin-name" id="adminName">Admin</div>
-                        <div class="admin-email" id="adminEmail">admin@nchsm.ac.ke</div>
+                        <div class="admin-name" id="adminNameTop">Admin</div>
+                        <div class="admin-email" id="adminEmailTop">admin@nchsm.ac.ke</div>
                     </div>
                 </div>
-                <div class="notification-bell" id="notificationBell">
+                <div class="notification-bell">
                     <i class="fas fa-bell"></i>
                     <span class="notification-count" id="notificationCount">0</span>
-                    <div class="notification-panel" id="notificationPanel">
-                        <div class="notification-header"><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</div>
-                        <div class="notification-list" id="notificationList">Loading alerts...</div>
+                </div>
+            </div>
+        </header>
+
+        <!-- ============================================================
+        SECTION: DASHBOARD (Stats + Overview)
+        ============================================================ -->
+        <div class="section-container active" id="section-dashboard">
+            <!-- Stats Grid -->
+            <div class="stats-grid" id="statsGrid">
+                <div class="stat-card">
+                    <div class="icon blue"><i class="fas fa-file-alt"></i></div>
+                    <div class="info">
+                        <div class="number" id="totalExams">0</div>
+                        <div class="label">Total Exams</div>
                     </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon green"><i class="fas fa-check-circle"></i></div>
+                    <div class="info">
+                        <div class="number" id="activeExams">0</div>
+                        <div class="label">Active Exams</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon yellow"><i class="fas fa-clock"></i></div>
+                    <div class="info">
+                        <div class="number" id="pendingExams">0</div>
+                        <div class="label">Pending Grading</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon purple"><i class="fas fa-users"></i></div>
+                    <div class="info">
+                        <div class="number" id="totalStudents">0</div>
+                        <div class="label">Total Students</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="icon red"><i class="fas fa-exclamation-triangle"></i></div>
+                    <div class="info">
+                        <div class="number" id="alertCount">0</div>
+                        <div class="label">Proctoring Alerts</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Quick Actions -->
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:24px;">
+                <button class="btn btn-primary" onclick="openCreateExamModal()">
+                    <i class="fas fa-plus-circle"></i> Create Exam
+                </button>
+                <button class="btn btn-success" onclick="openAssignExamModal()">
+                    <i class="fas fa-tasks"></i> Assign Exam
+                </button>
+                <button class="btn btn-warning" onclick="openReleaseModal()">
+                    <i class="fas fa-share-alt"></i> Release Results
+                </button>
+                <button class="btn btn-secondary" onclick="refreshLiveStudents()">
+                    <i class="fas fa-sync"></i> Refresh Live
+                </button>
+            </div>
+
+            <!-- Recent Activity -->
+            <div class="table-container">
+                <div class="table-header">
+                    <h2><i class="fas fa-clock"></i> Recent Activity</h2>
+                </div>
+                <div class="table-wrap">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Student</th>
+                                <th>Exam</th>
+                                <th>Action</th>
+                                <th>Time</th>
+                            </tr>
+                        </thead>
+                        <tbody id="recentActivityBody">
+                            <tr>
+                                <td colspan="4" class="empty-state">
+                                    <i class="fas fa-clock"></i>
+                                    <h3>No recent activity</h3>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
                 </div>
             </div>
         </div>
 
-        <!-- Stats -->
-        <div class="stats-container" id="statsContainer"></div>
-
-        <!-- Filters -->
-        <div class="filters-container" id="filtersContainer"></div>
-
-        <!-- Tables -->
-        <div class="tables-container">
-            <!-- Students Results Table -->
-            <div class="table-container" id="studentsTableContainer">
+        <!-- ============================================================
+        SECTION: STUDENTS RESULTS
+        ============================================================ -->
+        <div class="section-container" id="section-students">
+            <div class="table-container">
                 <div class="table-header">
                     <h2><i class="fas fa-chart-line"></i> Students with Exam Results</h2>
                     <div class="table-actions">
-                        <button class="btn btn-reset-student" onclick="openResetByEmailModal()"><i class="fas fa-envelope"></i> Reset by Email</button>
-                        <button class="btn btn-success" onclick="exportMarksOnly()"><i class="fas fa-file-csv"></i> Export Marks</button>
-                        <button class="btn btn-secondary" onclick="exportToExcel('students')"><i class="fas fa-file-excel"></i> Export Excel</button>
-                        <button class="btn btn-warning" onclick="printTable('students')"><i class="fas fa-print"></i> Print</button>
-                        <button class="btn btn-release" onclick="openReleaseModal()"><i class="fas fa-share-alt"></i> Release Results</button>
+                        <button class="btn btn-secondary" onclick="exportToExcel('students')">
+                            <i class="fas fa-file-excel"></i> Export
+                        </button>
+                        <button class="btn btn-release" onclick="openReleaseModal()">
+                            <i class="fas fa-share-alt"></i> Release Results
+                        </button>
                     </div>
                 </div>
-                <div id="studentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading student data...</div>
-                <table id="studentsTable" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th>Student ID</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Program</th>
-                            <th>Exam</th>
-                            <th>Score</th>
-                            <th>%</th>
-                            <th>Status</th>
-                            <th>Released</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="studentsBody"></tbody>
-                </table>
+                <div id="studentsLoading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading student data...
+                </div>
+                <div class="table-wrap" id="studentsTableWrap" style="display:none;">
+                    <table id="studentsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Program</th>
+                                <th>Exam</th>
+                                <th>Score</th>
+                                <th>%</th>
+                                <th>Status</th>
+                                <th>Released</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsBody"></tbody>
+                    </table>
+                </div>
                 <div class="pagination" id="studentsPagination"></div>
             </div>
+        </div>
 
-            <!-- All Students Table -->
-            <div class="table-container" id="allStudentsTableContainer" style="display:none;">
+        <!-- ============================================================
+        SECTION: ALL STUDENTS
+        ============================================================ -->
+        <div class="section-container" id="section-allStudents">
+            <div class="table-container">
                 <div class="table-header">
                     <h2><i class="fas fa-address-book"></i> All Registered Students</h2>
                     <div class="table-actions">
-                        <button class="btn btn-info" onclick="openAssignExamModal()"><i class="fas fa-plus"></i> Assign Exam</button>
-                        <button class="btn btn-secondary" onclick="exportToExcel('allStudents')"><i class="fas fa-file-excel"></i> Export</button>
-                    </div>
-                </div>
-                <div id="allStudentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading students...</div>
-                <table id="allStudentsTable" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th>Student ID</th>
-                            <th>Name</th>
-                            <th>Email</th>
-                            <th>Program</th>
-                            <th>Block</th>
-                            <th>Exams Taken</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="allStudentsBody"></tbody>
-                </table>
-                <div class="pagination" id="allStudentsPagination"></div>
-            </div>
-
-            <!-- Live Students Table -->
-            <div class="table-container" id="liveStudentsTableContainer" style="display:none;">
-                <div class="table-header">
-                    <h2><i class="fas fa-eye"></i> 🟢 Students Currently Taking Exams</h2>
-                    <div class="table-actions">
-                        <button class="btn btn-success" onclick="refreshLiveStudents()"><i class="fas fa-sync"></i> Refresh</button>
-                        <button class="btn btn-warning" onclick="toggleAutoRefresh()"><i class="fas fa-play" id="autoRefreshIcon"></i> <span id="autoRefreshText">Auto-Refresh: ON</span></button>
-                        <button class="btn btn-secondary" onclick="exportLiveStudents()"><i class="fas fa-file-excel"></i> Export</button>
-                    </div>
-                </div>
-                <div id="liveStudentsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Scanning for active students...</div>
-                <div id="liveStudentsStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5;">
-                    <span id="liveCountDisplay">0</span> students currently taking exams
-                </div>
-                <table id="liveStudentsTable" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th>🟢 Status</th>
-                            <th>Student ID</th>
-                            <th>Name</th>
-                            <th>Exam</th>
-                            <th>Progress</th>
-                            <th>Time Remaining</th>
-                            <th>Camera</th>
-                            <th>Last Activity</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="liveStudentsBody"></tbody>
-                </table>
-                <div class="pagination" id="liveStudentsPagination"></div>
-            </div>
-
-            <!-- Live Feed Table -->
-            <div class="table-container" id="livefeedTableContainer" style="display:none;">
-                <div class="table-header">
-                    <h2><i class="fas fa-video"></i> 📹 Live Camera Feed</h2>
-                    <div class="table-actions">
-                        <div class="view-toggle">
-                            <button class="view-toggle-btn active" onclick="setLiveFeedView('live')" id="liveViewBtn">
-                                <i class="fas fa-broadcast"></i> Live
-                            </button>
-                            <button class="view-toggle-btn" onclick="setLiveFeedView('past')" id="pastViewBtn">
-                                <i class="fas fa-history"></i> Past
-                            </button>
-                        </div>
-                        <button class="btn btn-success" onclick="refreshLiveFeed()">
-                            <i class="fas fa-sync"></i> Refresh
+                        <button class="btn btn-success" onclick="openAssignExamModal()">
+                            <i class="fas fa-plus"></i> Assign Exam
                         </button>
-                        <button class="btn btn-warning" onclick="toggleLiveFeedAutoRefresh()">
-                            <i class="fas fa-play" id="liveFeedAutoIcon"></i> 
-                            <span id="liveFeedAutoText">Auto: ON</span>
-                        </button>
-                        <button class="btn btn-secondary" onclick="exportLiveFeed()">
+                        <button class="btn btn-secondary" onclick="exportToExcel('allStudents')">
                             <i class="fas fa-file-excel"></i> Export
                         </button>
                     </div>
                 </div>
-                
-                <div style="padding: 12px 20px; background: #F8FAFC; border-bottom: 1px solid #E2E8F0; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-                    <div style="flex: 1; min-width: 200px; display: flex; gap: 8px; align-items: center;">
-                        <i class="fas fa-search" style="color: #94A3B8;"></i>
-                        <input type="text" id="liveFeedSearch" placeholder="Search by name or reg number..." 
-                               style="flex:1; padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.85rem; min-width: 150px;"
-                               oninput="filterLiveFeed()">
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Exam:</label>
-                        <select id="liveFeedExamFilter" onchange="filterLiveFeed()" 
-                                style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 150px;">
-                            <option value="">All Exams</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <label style="font-size: 0.8rem; font-weight: 600; color: #475569;">Status:</label>
-                        <select id="liveFeedStatusFilter" onchange="filterLiveFeed()" 
-                                style="padding: 8px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;">
-                            <option value="">All</option>
-                            <option value="active">🟢 Active</option>
-                            <option value="violation">🚨 Violation</option>
-                            <option value="warning">⚠️ Warning</option>
-                            <option value="no-camera">📷 No Camera</option>
-                        </select>
-                    </div>
-                    <button class="btn btn-danger" onclick="clearLiveFeedFilters()" style="padding: 6px 14px; font-size: 0.75rem;">
-                        <i class="fas fa-times"></i> Clear
-                    </button>
+                <div id="allStudentsLoading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading students...
                 </div>
-                
-                <div id="liveFeedLoading" class="loading">
-                    <i class="fas fa-spinner fa-spin"></i> Loading camera feeds...
+                <div class="table-wrap" id="allStudentsTableWrap" style="display:none;">
+                    <table id="allStudentsTable">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Program</th>
+                                <th>Block</th>
+                                <th>Exams Taken</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="allStudentsBody"></tbody>
+                    </table>
                 </div>
-                
-                <div id="liveFeedStats" style="display:none; padding:12px 20px; background:#F0FDF4; border-bottom:1px solid #D1FAE5; flex-wrap:wrap; gap:12px;">
-                    <span><strong id="liveFeedCount">0</strong> students <span id="liveFeedViewLabel">active</span></span>
-                    <span>🟢 <strong id="liveFeedWithCamera">0</strong> with camera</span>
-                    <span>🔴 <strong id="liveFeedNoCamera">0</strong> no camera</span>
-                    <span>🚨 <strong id="liveFeedViolations">0</strong> violations</span>
-                    <span style="margin-left:auto; font-size:0.8rem; color:#64748B;">
-                        <i class="fas fa-sync"></i> Auto-refresh: <span id="liveFeedRefreshStatus">active</span>
-                    </span>
-                </div>
-                
-                <div id="liveFeedGrid" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap:20px; padding:20px;">
-                </div>
-                
-                <div class="pagination" id="liveFeedPagination"></div>
+                <div class="pagination" id="allStudentsPagination"></div>
             </div>
+        </div>
 
-            <!-- Exams Table -->
-            <div class="table-container" id="examsTableContainer" style="display:none;">
+        <!-- ============================================================
+        SECTION: EXAM MANAGEMENT
+        ============================================================ -->
+        <div class="section-container" id="section-exams">
+            <div class="table-container">
                 <div class="table-header">
                     <h2><i class="fas fa-list"></i> Exam Management</h2>
                     <div class="table-actions">
-                        <div class="exam-status-toggle">
-                            <button class="status-toggle-btn active" onclick="filterExamsByStatus('all')">All</button>
-                            <button class="status-toggle-btn" onclick="filterExamsByStatus('active')">Active</button>
-                            <button class="status-toggle-btn" onclick="filterExamsByStatus('completed')">Completed</button>
-                        </div>
-                        <button class="btn btn-primary" onclick="openCreateExamModal()"><i class="fas fa-plus-circle"></i> Create Exam</button>
-                        <button class="btn btn-secondary" onclick="exportToExcel('exams')"><i class="fas fa-file-excel"></i> Export</button>
+                        <button class="btn btn-primary" onclick="openCreateExamModal()">
+                            <i class="fas fa-plus-circle"></i> Create Exam
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportToExcel('exams')">
+                            <i class="fas fa-file-excel"></i> Export
+                        </button>
                     </div>
                 </div>
-                <div id="examsLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading exams...</div>
-                <table id="examsTable" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th>Exam Name</th>
-                            <th>Type</th>
-                            <th>Course</th>
-                            <th>Total</th>
-                            <th>Duration</th>
-                            <th>Students</th>
-                            <th>Status</th>
-                            <th>Timer Status</th>
-                            <th>Time Remaining</th>
-                            <th>Published</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="examsBody"></tbody>
-                </table>
+                <div id="examsLoading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading exams...
+                </div>
+                <div class="table-wrap" id="examsTableWrap" style="display:none;">
+                    <table id="examsTable">
+                        <thead>
+                            <tr>
+                                <th>Exam Name</th>
+                                <th>Type</th>
+                                <th>Course</th>
+                                <th>Total</th>
+                                <th>Duration</th>
+                                <th>Students</th>
+                                <th>Status</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="examsBody"></tbody>
+                    </table>
+                </div>
                 <div class="pagination" id="examsPagination"></div>
             </div>
+        </div>
 
-            <!-- Proctoring Table -->
-            <div class="table-container" id="proctoringTableContainer" style="display:none;">
+        <!-- ============================================================
+        SECTION: ATTENDANCE
+        ============================================================ -->
+        <div class="section-container" id="section-attendance">
+            <div class="table-container">
                 <div class="table-header">
-                    <h2><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</h2>
-                    <div class="table-actions">
-                        <button class="btn btn-danger" onclick="clearAllAlerts()"><i class="fas fa-trash"></i> Clear All</button>
-                        <button class="btn btn-secondary" onclick="exportToExcel('proctoring')"><i class="fas fa-file-excel"></i> Export Logs</button>
-                    </div>
-                </div>
-                <div id="proctoringLoading" class="loading"><i class="fas fa-spinner fa-spin"></i> Loading proctoring alerts...</div>
-                <table id="proctoringTable" style="display:none;">
-                    <thead>
-                        <tr>
-                            <th>Time</th>
-                            <th>Student ID</th>
-                            <th>Student Name</th>
-                            <th>Exam</th>
-                            <th>Alert Type</th>
-                            <th>Details</th>
-                            <th>Severity</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="proctoringBody"></tbody>
-                </table>
-                <div class="pagination" id="proctoringPagination"></div>
-            </div>
-
-            <!-- ============================================================
-            ✅ ATTENDANCE SHEET TABLE
-            ============================================================ -->
-            <div class="table-container" id="attendanceTableContainer" style="display:none;">
-                <div class="table-header">
-                    <h2><i class="fas fa-clipboard-check"></i> 📋 Exam Attendance Sheet</h2>
+                    <h2><i class="fas fa-clipboard-check"></i> Exam Attendance Sheet</h2>
                     <div class="table-actions">
                         <button class="btn btn-success" onclick="refreshAttendance()">
                             <i class="fas fa-sync"></i> Refresh
-                        </button>
-                        <button class="btn btn-danger" onclick="viewAllLiveVideos()">
-                            <i class="fas fa-video"></i> View All Live
                         </button>
                         <button class="btn btn-secondary" onclick="exportAttendanceCSV()">
                             <i class="fas fa-file-csv"></i> Export CSV
@@ -717,447 +1214,344 @@
                         <button class="btn btn-primary" onclick="exportAttendanceExcel()">
                             <i class="fas fa-file-excel"></i> Export Excel
                         </button>
-                        <button class="btn btn-warning" onclick="printAttendance()">
-                            <i class="fas fa-print"></i> Print
-                        </button>
                     </div>
                 </div>
-                
+
                 <!-- Attendance Stats -->
-                <div class="attendance-stats-grid" id="attendanceStatsGrid">
-                    <div class="attendance-stat-card present">
-                        <div class="stat-icon" style="background:#D1FAE5;">✅</div>
-                        <div class="stat-info">
-                            <span class="stat-label">Present</span>
-                            <span class="stat-value" id="attStatPresent">0</span>
-                        </div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px,1fr)); gap:10px; padding:14px 20px; background:rgba(0,0,0,0.01); border-bottom:1px solid rgba(0,0,0,0.04);">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.2rem;">✅</span>
+                        <div><div style="font-weight:700;font-size:1.1rem;" id="attStatPresent">0</div><div style="font-size:0.6rem;color:#94A3B8;">Present</div></div>
                     </div>
-                    <div class="attendance-stat-card in-progress">
-                        <div class="stat-icon" style="background:#FEF3C7;">⏳</div>
-                        <div class="stat-info">
-                            <span class="stat-label">In Progress</span>
-                            <span class="stat-value" id="attStatInProgress">0</span>
-                        </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.2rem;">⏳</span>
+                        <div><div style="font-weight:700;font-size:1.1rem;" id="attStatInProgress">0</div><div style="font-size:0.6rem;color:#94A3B8;">In Progress</div></div>
                     </div>
-                    <div class="attendance-stat-card completed">
-                        <div class="stat-icon" style="background:#DBEAFE;">📋</div>
-                        <div class="stat-info">
-                            <span class="stat-label">Signed In</span>
-                            <span class="stat-value" id="attStatSignedIn">0</span>
-                        </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.2rem;">📋</span>
+                        <div><div style="font-weight:700;font-size:1.1rem;" id="attStatSignedIn">0</div><div style="font-size:0.6rem;color:#94A3B8;">Signed In</div></div>
                     </div>
-                    <div class="attendance-stat-card absent">
-                        <div class="stat-icon" style="background:#FEE2E2;">❌</div>
-                        <div class="stat-info">
-                            <span class="stat-label">Absent</span>
-                            <span class="stat-value" id="attStatAbsent">0</span>
-                        </div>
-                    </div>
-                    <div class="attendance-stat-card" style="background:#F0FDF4; border-color:#38A169;">
-                        <div class="stat-icon" style="background:#D1FAE5;">📊</div>
-                        <div class="stat-info">
-                            <span class="stat-label">Attendance Rate</span>
-                            <span class="stat-value" id="attStatRate" style="color:#38A169;">0%</span>
-                        </div>
-                    </div>
-                    <div class="attendance-stat-card live">
-                        <div class="stat-icon" style="background:#DBEAFE;">📹</div>
-                        <div class="stat-info">
-                            <span class="stat-label">Live Video</span>
-                            <span class="stat-value" id="attStatLive">0</span>
-                        </div>
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <span style="font-size:1.2rem;">❌</span>
+                        <div><div style="font-weight:700;font-size:1.1rem;" id="attStatAbsent">0</div><div style="font-size:0.6rem;color:#94A3B8;">Absent</div></div>
                     </div>
                 </div>
 
-                <!-- Filters -->
-                <div class="attendance-filters">
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <label>Exam:</label>
-                        <select id="attendanceExamFilter" onchange="loadAttendanceSheet()">
-                            <option value="">All Exams</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <label>Date:</label>
-                        <input type="date" id="attendanceDateFilter" onchange="loadAttendanceSheet()">
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <label>Status:</label>
-                        <select id="attendanceStatusFilter" onchange="loadAttendanceSheet()">
-                            <option value="">All</option>
-                            <option value="present">✅ Present</option>
-                            <option value="in_progress">⏳ In Progress</option>
-                            <option value="signed_in">📋 Signed In</option>
-                            <option value="absent">❌ Absent</option>
-                            <option value="completed">✅ Completed</option>
-                        </select>
-                    </div>
-                    <div style="display: flex; gap: 8px; align-items: center; margin-left: auto;">
-                        <label style="display:flex; align-items:center; gap:4px; cursor:pointer; font-size:0.8rem;">
-                            <input type="checkbox" id="showOnlyLive" onchange="loadAttendanceSheet()">
-                            <i class="fas fa-video" style="color:#3B82F6;"></i> Live Only
-                        </label>
-                        <button class="btn btn-sm btn-info" onclick="loadAttendanceSheet()" style="padding:6px 16px;">
-                            <i class="fas fa-search"></i> Apply
-                        </button>
-                        <button class="btn btn-sm btn-danger" onclick="clearAttendanceFilters()" style="padding:6px 16px;">
-                            <i class="fas fa-times"></i> Clear
-                        </button>
-                    </div>
+                <div id="attendanceLoading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading attendance...
                 </div>
-
-                <!-- Summary Bar -->
-                <div class="attendance-summary-bar" id="attendanceSummaryBar" style="display:none;">
-                    <span class="summary-item">📊 Total: <span class="num" id="attTotalStudents">0</span></span>
-                    <span class="summary-item">✅ Present: <span class="num present" id="attSummaryPresent">0</span></span>
-                    <span class="summary-item">⏳ In Progress: <span class="num in-progress" id="attSummaryInProgress">0</span></span>
-                    <span class="summary-item">❌ Absent: <span class="num absent" id="attSummaryAbsent">0</span></span>
-                    <span class="summary-item">📹 Live: <span class="num live" id="attSummaryLive">0</span></span>
-                    <div class="progress-bar-attendance">
-                        <div class="progress-fill-attendance" id="attendanceProgressBar" style="width:0%;"></div>
-                    </div>
-                    <span class="summary-item" style="font-weight:700; color:#0A3D62;">
-                        <span id="attSummaryRate">0%</span> attendance
-                    </span>
-                </div>
-
-                <!-- Attendance Table -->
-                <div class="attendance-table-wrap">
-                    <div id="attendanceLoading" class="loading" style="padding:40px;">
-                        <i class="fas fa-spinner fa-spin"></i> Loading attendance data...
-                    </div>
-                    <table id="attendanceTable" style="display:none; width:100%;">
+                <div class="table-wrap" id="attendanceTableWrap" style="display:none;">
+                    <table id="attendanceTable">
                         <thead>
                             <tr>
-                                <th style="width:40px;">#</th>
+                                <th>#</th>
                                 <th>Student Name</th>
                                 <th>Registration</th>
                                 <th>Exam</th>
                                 <th>Status</th>
                                 <th>Sign In</th>
-                                <th style="width:220px;">📹 Live Feed</th>
-                                <th style="width:100px;">Actions</th>
+                                <th>Actions</th>
                             </tr>
                         </thead>
-                        <tbody id="attendanceBody">
-                            <tr>
-                                <td colspan="8" class="attendance-empty">
-                                    <i class="fas fa-clipboard-list"></i>
-                                    No attendance records found
-                                </td>
-                            </tr>
-                        </tbody>
+                        <tbody id="attendanceBody"></tbody>
                     </table>
-                    <div class="pagination" id="attendancePagination"></div>
                 </div>
+                <div class="pagination" id="attendancePagination"></div>
             </div>
         </div>
-    </div>
 
-    <!-- ========== MODALS ========== -->
-    <!-- (Keep all your existing modals here - studentModal, examModal, etc.) -->
-    
-    <!-- Student Modal -->
-    <div id="studentModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeModal()">&times;</span>
-            <h2 id="modalTitle">Details</h2>
-            <div id="modalContent"></div>
-        </div>
-    </div>
-
-    <!-- Exam Modal -->
-    <div id="examModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeExamModal()">&times;</span>
-            <h2 id="examModalTitle"><i class="fas fa-plus-circle"></i> Create New Exam</h2>
-            <form id="examForm">
-                <div class="form-group">
-                    <label>Exam Name *</label>
-                    <input type="text" id="examName" required placeholder="e.g., OSCE Final Exam">
-                </div>
-                <div class="form-group">
-                    <label>Exam Type *</label>
-                    <select id="examType" required onchange="updateTotalMarksHint()">
-                        <option value="EXAM">Final Exam (70 marks)</option>
-                        <option value="CAT_1">CAT 1 (30 marks)</option>
-                        <option value="CAT_2">CAT 2 (30 marks)</option>
-                        <option value="CAT">CAT (30 marks)</option>
-                        <option value="QUIZ">Quiz</option>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Course/Subject</label>
-                    <input type="text" id="examCourse" placeholder="e.g., Clinical Medicine">
-                </div>
-                <div class="form-group">
-                    <label>Duration (minutes) *</label>
-                    <input type="number" id="examDuration" required value="30" min="1" max="180">
-                </div>
-                <div class="form-group">
-                    <label>Total Marks</label>
-                    <input type="number" id="examTotalMarks" value="100" min="1">
-                    <small style="display:block; color:#64748B; margin-top:4px;" id="totalMarksHint">📊 For CAT exams: 30 marks | For Final Exam: 70 marks</small>
-                </div>
-                <div class="form-group">
-                    <label>Exam Link / URL *</label>
-                    <input type="url" id="examLink" required placeholder="https://your-exam-platform.com/exam">
-                </div>
-                <div class="form-group">
-                    <label>Program (leave empty for all)</label>
-                    <input type="text" id="examProgram" placeholder="e.g., Nursing, Clinical Medicine">
-                </div>
-                <div class="form-group">
-                    <label>Block/Term</label>
-                    <input type="text" id="examBlock" placeholder="e.g., Block 1, Semester 1">
-                </div>
-                <div class="form-group">
-                    <label>Intake Year</label>
-                    <input type="text" id="examIntakeYear" placeholder="e.g., 2024">
-                </div>
-                <div class="form-group">
-                    <label>Pass Mark (60% of total marks)</label>
-                    <input type="number" id="examPassMark" value="60" min="1" max="100">
-                    <small style="display:block; color:#64748B; margin-top:4px;">✅ Default: 60% of total marks</small>
-                </div>
-                <input type="hidden" id="editingExamId" value="">
-                <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                    <button type="button" class="btn btn-danger" onclick="closeExamModal()">Cancel</button>
-                    <button type="submit" class="btn btn-primary"><i class="fas fa-save"></i> Save Exam</button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Assign Exam Modal -->
-    <div id="assignExamModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeAssignExamModal()">&times;</span>
-            <h2><i class="fas fa-tasks"></i> Assign Exam to Student</h2>
-            <div class="form-group">
-                <label>Select Student *</label>
-                <select id="assignStudentSelect" style="width:100%; padding:12px; border-radius:12px;"></select>
-            </div>
-            <div class="form-group">
-                <label>Select Exam *</label>
-                <select id="assignExamSelect" style="width:100%; padding:12px; border-radius:12px;"></select>
-            </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                <button class="btn btn-danger" onclick="closeAssignExamModal()">Cancel</button>
-                <button class="btn btn-primary" onclick="confirmAssignExam()"><i class="fas fa-check"></i> Assign Exam</button>
-            </div>
-        </div>
-    </div>
-
- <!-- Release Modal -->
-<div id="releaseModal" class="modal">
-    <div class="modal-content" style="max-width: 1200px;">
-        <span class="close-modal" onclick="closeReleaseModal()">&times;</span>
-        <h2><i class="fas fa-share-alt"></i> Release Results</h2>
-        
-        <!-- Email Notification Toggle - SINGLE TOGGLE FOR ALL -->
-        <div style="background: #EFF6FF; padding: 16px; border-radius: 12px; margin: 16px 0; border-left: 4px solid #3B82F6;">
-            <div style="display: flex; align-items: center; gap: 16px; flex-wrap: wrap;">
-                <label style="display: flex; align-items: center; gap: 10px; cursor: pointer; font-weight: 500;">
-                    <input type="checkbox" id="sendEmailOnRelease" checked style="width: 18px; height: 18px;">
-                    <span><i class="fas fa-envelope"></i> Send email notifications to ALL selected students</span>
-                </label>
-                <span style="font-size: 0.85rem; color: #64748B;">
-                    <i class="fas fa-info-circle"></i> Students will be directed to the portal for detailed review
-                </span>
-            </div>
-        </div>
-        
-        <div class="filters-grid">
-            <div class="filter-group">
-                <label>Select Exam:</label>
-                <select id="releaseExamFilter" style="width:100%;" onchange="loadReleasePreview()">
-                    <option value="">-- Select Exam --</option>
-                </select>
-            </div>
-        </div>
-        
-        <div id="releasePreview" style="display:none;">
-            <!-- Selection Controls -->
-            <div class="release-actions" style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center; padding: 12px 0; border-bottom: 1px solid #E2E8F0; margin-bottom: 12px;">
-                <button class="btn btn-secondary" onclick="selectAllStudents(true)" style="padding: 6px 16px;">
-                    <i class="fas fa-check-double"></i> Select All
-                </button>
-                <button class="btn btn-warning" onclick="selectAllStudents(false)" style="padding: 6px 16px;">
-                    <i class="fas fa-times"></i> Deselect All
-                </button>
-                <span style="margin-left: auto; font-weight: 600; color: #0A3D62;">
-                    <span id="selectedCount">0</span> / <span id="totalStudentsCount">0</span> selected
-                </span>
-            </div>
-            
-            <!-- Summary Stats -->
-            <div id="releaseSummary" style="padding: 8px 0 12px;"></div>
-            
-            <!-- Student List -->
-            <div style="max-height: 400px; overflow-y: auto; border: 1px solid #E2E8F0; border-radius: 8px;">
-                <table class="preview-table" style="width:100%;">
-                    <thead>
-                        <tr style="background: #F8FAFC; position: sticky; top: 0; z-index: 10;">
-                            <!-- Individual student checkboxes still appear in the table body -->
-                            <th style="width:40px; padding: 10px 8px;">Select</th>
-                            <th style="padding: 10px 8px;">Student ID</th>
-                            <th style="padding: 10px 8px;">Name</th>
-                            <th style="padding: 10px 8px;">Score</th>
-                            <th style="padding: 10px 8px;">%</th>
-                            <th style="padding: 10px 8px;">Status</th>
-                            <th style="padding: 10px 8px;">Released</th>
-                            <th style="padding: 10px 8px; min-width:100px;">Action</th>
-                        </tr>
-                    </thead>
-                    <tbody id="releasePreviewBody"></tbody>
-                </table>
-            </div>
-            
-            <!-- Release Button -->
-            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end; padding-top: 16px; border-top: 1px solid #E2E8F0;">
-                <button class="btn btn-danger" onclick="closeReleaseModal()" style="padding: 10px 24px;">
-                    <i class="fas fa-times"></i> Cancel
-                </button>
-                <button class="btn btn-release" id="confirmReleaseBtn" onclick="confirmReleaseResults()" style="padding: 10px 32px; font-size: 1rem;">
-                    <i class="fas fa-share-alt"></i> Release Selected Results
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
-    <!-- Reset Exam Modal -->
-    <div id="resetExamModal" class="modal">
-        <div class="modal-content">
-            <span class="close-modal" onclick="closeResetModal()">&times;</span>
-            <h2><i class="fas fa-trash-alt"></i> Reset Exam</h2>
-            <p>Are you sure you want to reset all student answers for this exam? This action cannot be undone.</p>
-            <div style="margin-top:20px; display:flex; gap:10px; justify-content:flex-end;">
-                <button class="btn btn-danger" onclick="closeResetModal()">Cancel</button>
-                <button class="btn btn-warning" id="confirmResetBtn" onclick="confirmResetExam()">Reset Exam</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Reset By Email Modal -->
-    <div id="resetByEmailModal" class="modal">
-        <div class="modal-content" style="max-width: 550px;">
-            <span class="close-modal" onclick="closeResetByEmailModal()">&times;</span>
-            <h2><i class="fas fa-envelope"></i> Reset Student by Email</h2>
-            <div style="margin: 20px 0;">
-                <div class="form-group">
-                    <label>Student Email Address *</label>
-                    <input type="email" id="resetEmailInput" placeholder="e.g., student@example.com" style="width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #E2E8F0;">
-                    <small style="color: #64748B; display: block; margin-top: 5px;">Enter the student's registered email address</small>
-                </div>
-                <div class="form-group">
-                    <label>Select Exam (Optional - leave empty to reset ALL exams)</label>
-                    <select id="resetExamSelect" style="width: 100%; padding: 12px; border-radius: 12px; border: 2px solid #E2E8F0;">
-                        <option value="">-- ALL EXAMS (Reset everything) --</option>
-                    </select>
-                    <small style="color: #64748B; display: block; margin-top: 5px;">Select a specific exam or leave empty to reset all exams for this student</small>
-                </div>
-                <div id="resetStudentInfo" style="display: none;" class="reset-info-card"></div>
-                <div id="resetErrorInfo" style="display: none;" class="reset-error-card"></div>
-            </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px;">
-                <button class="btn btn-danger" onclick="closeResetByEmailModal()">Cancel</button>
-                <button class="btn btn-warning" id="confirmResetByEmailBtn" onclick="confirmResetByEmail()" disabled>Reset Student</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Camera Modal -->
-    <div id="cameraModal" class="modal">
-        <div class="modal-content" style="max-width: 950px;">
-            <span class="close-modal" onclick="closeCameraModal()">&times;</span>
-            <h2 id="cameraModalTitle"><i class="fas fa-video"></i> Live Camera Feed</h2>
-            <div style="background:#F8FAFC; padding:12px 16px; border-radius:12px; margin:12px 0; display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px;">
-                <div><strong>👤 Student:</strong> <span id="cameraStudentName">Loading...</span></div>
-                <div><strong>📝 Exam:</strong> <span id="cameraExamName">Loading...</span></div>
-                <div><strong>🟢 Status:</strong> <span id="cameraStatus" class="status-active">Active</span></div>
-            </div>
-            <div style="background:#000; border-radius:12px; overflow:hidden; min-height:400px; position:relative;">
-                <div id="cameraLoading" style="display:flex; align-items:center; justify-content:center; height:400px; color:white; flex-direction:column; gap:16px; background:#1a1a2e;">
-                    <i class="fas fa-spinner fa-spin fa-3x"></i>
-                    <p>Loading camera feed...</p>
-                </div>
-                <img id="cameraFeed" src="" alt="Camera Feed" style="width:100%; display:none; max-height:600px; object-fit:contain; background:#000;">
-                <div id="cameraOverlay" style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(0,0,0,0.8)); padding:20px; display:none; color:white;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px;">
-                        <span><i class="fas fa-clock"></i> <span id="cameraTimestamp">--</span></span>
-                        <span><i class="fas fa-wifi"></i> <span id="cameraSignal">Live</span></span>
-                        <span><i class="fas fa-camera"></i> <span id="cameraFPS">--</span></span>
+        <!-- ============================================================
+        SECTION: LIVE STUDENTS
+        ============================================================ -->
+        <div class="section-container" id="section-liveStudents">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2><i class="fas fa-eye"></i> 🟢 Students Currently Taking Exams</h2>
+                    <div class="table-actions">
+                        <button class="btn btn-success" onclick="refreshLiveStudents()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportLiveStudents()">
+                            <i class="fas fa-file-excel"></i> Export
+                        </button>
                     </div>
                 </div>
-                <div style="position:absolute; bottom:80px; left:50%; transform:translateX(-50%); display:flex; gap:12px; z-index:10; flex-wrap:wrap; justify-content:center;">
-                    <button class="btn btn-success" onclick="captureSnapshot()" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-camera"></i> Capture</button>
-                    <button class="btn btn-primary" onclick="refreshCameraFeed()" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-sync"></i> Refresh</button>
-                    <button class="btn btn-warning" onclick="toggleAutoRefreshCamera()" id="cameraRefreshBtn" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-play"></i> Auto: ON</button>
-                    <button class="btn btn-danger" onclick="requestCameraSnapshot()" style="padding:10px 20px; font-size:0.8rem;"><i class="fas fa-camera-retro"></i> Request</button>
+                <div id="liveStudentsLoading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Scanning for active students...
                 </div>
-            </div>
-            <div id="snapshotGallery" style="margin-top:16px; display:none; background:#F8FAFC; border-radius:12px; padding:16px;">
-                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                    <h4 style="margin:0;">
-                        <i class="fas fa-images"></i> Recent Snapshots 
-                        <span class="snapshot-count" id="snapshotCount" style="background:#E2E8F0; padding:2px 10px; border-radius:20px; font-size:0.75rem; font-weight:600; color:#475569; margin-left:8px;">0</span>
-                    </h4>
-                    <button class="btn btn-danger btn-sm" onclick="clearAllSnapshots()" style="padding:4px 12px; font-size:0.7rem; background:#DC2626; color:white; border:none; border-radius:6px; cursor:pointer;">
-                        <i class="fas fa-trash"></i> Clear All
-                    </button>
+                <div id="liveStudentsStats" style="display:none; padding:10px 20px; background:#D1FAE5; border-bottom:1px solid #A7F3D0;">
+                    <span id="liveCountDisplay">0</span> students currently taking exams
                 </div>
-                <div id="snapshotList" style="display:flex; gap:12px; overflow-x:auto; padding:8px 4px; min-height:100px; flex-wrap:nowrap; scroll-behavior:smooth;"></div>
-                <div id="snapshotEmpty" style="display:flex; align-items:center; justify-content:center; padding:20px; color:#94A3B8; flex-direction:column; gap:8px;">
-                    <i class="fas fa-camera-slash fa-2x"></i>
-                    <p style="margin:0;">No snapshots captured yet</p>
-                    <p style="margin:0; font-size:0.8rem;">Click "Capture" to take a snapshot</p>
+                <div class="table-wrap" id="liveStudentsTableWrap" style="display:none;">
+                    <table id="liveStudentsTable">
+                        <thead>
+                            <tr>
+                                <th>Status</th>
+                                <th>ID</th>
+                                <th>Name</th>
+                                <th>Exam</th>
+                                <th>Progress</th>
+                                <th>Time Left</th>
+                                <th>Last Activity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="liveStudentsBody"></tbody>
+                    </table>
                 </div>
-            </div>
-            <div style="margin-top:16px; max-height:150px; overflow-y:auto; background:#F8FAFC; border-radius:12px; padding:12px;">
-                <h4 style="margin-bottom:8px; font-size:0.9rem;"><i class="fas fa-exclamation-triangle"></i> Recent Alerts</h4>
-                <div id="cameraAlertsList" style="font-size:0.8rem;"></div>
-            </div>
-            <div style="margin-top:16px; display:flex; gap:10px; justify-content:flex-end; border-top:1px solid #E2E8F0; padding-top:16px;">
-                <button class="btn btn-danger" onclick="closeCameraModal()">Close</button>
+                <div class="pagination" id="liveStudentsPagination"></div>
             </div>
         </div>
-    </div>
 
-    <!-- Timer Modal -->
-    <div id="timerModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <span class="close-modal" onclick="closeTimerModal()">&times;</span>
-            <h2><i class="fas fa-clock"></i> Timer Management</h2>
-            <div style="margin: 20px 0;">
-                <div id="timerStudentInfo" style="background: #F8FAFC; padding: 12px 16px; border-radius: 12px; margin-bottom: 20px;">
-                    <p><strong>👤 Student:</strong> <span id="timerStudentName">Loading...</span></p>
-                    <p><strong>📝 Exam:</strong> <span id="timerExamName">Loading...</span></p>
-                    <p><strong>⏱️ Current Status:</strong> <span id="timerCurrentStatus">Loading...</span></p>
-                </div>
-                <div style="background: #EFF6FF; padding: 16px; border-radius: 12px; margin-bottom: 16px; border-left: 4px solid #3B82F6;">
-                    <h3 style="color: #1E40AF; margin-bottom: 10px;"><i class="fas fa-plus-circle"></i> Add Time</h3>
-                    <div style="display: flex; gap: 12px; align-items: center; flex-wrap: wrap;">
-                        <input type="number" id="timerMinutesToAdd" value="10" min="1" max="60" style="width: 100px; padding: 10px; border: 2px solid #E2E8F0; border-radius: 10px; font-size: 1rem; text-align: center;">
-                        <span style="font-weight: 600;">minutes</span>
-                        <button class="btn btn-primary" onclick="addTimeToStudent()" style="padding: 10px 24px;"><i class="fas fa-plus"></i> Add Time</button>
+        <!-- ============================================================
+        SECTION: LIVE FEED
+        ============================================================ -->
+        <div class="section-container" id="section-livefeed">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2><i class="fas fa-video"></i> 📹 Live Camera Feed</h2>
+                    <div class="table-actions">
+                        <button class="btn btn-success" onclick="refreshLiveFeed()">
+                            <i class="fas fa-sync"></i> Refresh
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportLiveFeed()">
+                            <i class="fas fa-file-excel"></i> Export
+                        </button>
                     </div>
-                    <small style="color: #64748B; display: block; margin-top: 6px;">Enter minutes (1-60) to add to the student's remaining time</small>
                 </div>
-                <div style="background: #FEF2F2; padding: 16px; border-radius: 12px; border-left: 4px solid #DC2626;">
-                    <h3 style="color: #DC2626; margin-bottom: 10px;"><i class="fas fa-trash-alt"></i> Reset Timer</h3>
-                    <p style="color: #64748B; font-size: 0.85rem; margin-bottom: 10px;">This will clear all timer records for this student. The student will need to refresh their exam page.</p>
-                    <button class="btn btn-danger" onclick="resetStudentTimerComplete()" style="padding: 10px 24px;"><i class="fas fa-undo"></i> Reset Timer Completely</button>
+                <div id="liveFeedLoading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading camera feeds...
                 </div>
-            </div>
-            <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; border-top: 1px solid #E2E8F0; padding-top: 20px;">
-                <button class="btn btn-danger" onclick="closeTimerModal()">Close</button>
+                <div id="liveFeedGrid" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(300px,1fr)); gap:16px; padding:20px;">
+                    <!-- Dynamic video cards -->
+                </div>
+                <div class="pagination" id="liveFeedPagination"></div>
             </div>
         </div>
-    </div>
 
-    <!-- Main JavaScript -->
-    <script src="js/admindashboard.js"></script>
+        <!-- ============================================================
+        SECTION: PROCTORING ALERTS
+        ============================================================ -->
+        <div class="section-container" id="section-proctoring">
+            <div class="table-container">
+                <div class="table-header">
+                    <h2><i class="fas fa-exclamation-triangle"></i> Live Proctoring Alerts</h2>
+                    <div class="table-actions">
+                        <button class="btn btn-danger" onclick="clearAllAlerts()">
+                            <i class="fas fa-trash"></i> Clear All
+                        </button>
+                        <button class="btn btn-secondary" onclick="exportToExcel('proctoring')">
+                            <i class="fas fa-file-excel"></i> Export Logs
+                        </button>
+                    </div>
+                </div>
+                <div id="proctoringLoading" class="loading">
+                    <i class="fas fa-spinner fa-spin"></i> Loading alerts...
+                </div>
+                <div class="table-wrap" id="proctoringTableWrap" style="display:none;">
+                    <table id="proctoringTable">
+                        <thead>
+                            <tr>
+                                <th>Time</th>
+                                <th>Student ID</th>
+                                <th>Student Name</th>
+                                <th>Exam</th>
+                                <th>Alert Type</th>
+                                <th>Severity</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="proctoringBody"></tbody>
+                    </table>
+                </div>
+                <div class="pagination" id="proctoringPagination"></div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- ============================================================
+    JAVASCRIPT
+    ============================================================ -->
+    <script src="js/admindashboard.js">
+    </script>
+
+    <script>
+        // ============================================================
+        // SIDEBAR TOGGLE
+        // ============================================================
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
+        // ============================================================
+        // TAB SWITCHING - Each section displays independently
+        // ============================================================
+        function switchTab(tab) {
+            // Update sidebar active state
+            document.querySelectorAll('.sidebar-menu a').forEach(el => el.classList.remove('active'));
+            const activeLink = document.querySelector(`.sidebar-menu a[data-tab="${tab}"]`);
+            if (activeLink) activeLink.classList.add('active');
+
+            // Hide all sections
+            document.querySelectorAll('.section-container').forEach(el => el.classList.remove('active'));
+
+            // Show selected section
+            const targetSection = document.getElementById(`section-${tab}`);
+            if (targetSection) {
+                targetSection.classList.add('active');
+            }
+
+            // Update page title
+            const titles = {
+                'dashboard': ['Dashboard', 'Overview of your exam system'],
+                'students': ['Students Results', 'View and manage student exam results'],
+                'allStudents': ['All Students', 'View all registered students'],
+                'exams': ['Exam Management', 'Create and manage exams'],
+                'attendance': ['Attendance Sheet', 'Exam attendance tracking'],
+                'liveStudents': ['Live Students', 'Students currently taking exams'],
+                'livefeed': ['Live Feed', 'Real-time camera feeds'],
+                'proctoring': ['Proctoring Alerts', 'Live proctoring alerts']
+            };
+
+            const icons = {
+                'dashboard': 'th-large',
+                'students': 'graduation-cap',
+                'allStudents': 'users',
+                'exams': 'file-alt',
+                'attendance': 'clipboard-check',
+                'liveStudents': 'eye',
+                'livefeed': 'video',
+                'proctoring': 'exclamation-triangle'
+            };
+
+            const [title, subtitle] = titles[tab] || ['Dashboard', 'Overview'];
+            document.getElementById('pageTitle').innerHTML =
+                `<i class="fas fa-${icons[tab] || 'th-large'}"></i> ${title}`;
+            document.getElementById('pageSubtitle').textContent = subtitle;
+
+            // Close sidebar on mobile
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('sidebarOverlay').classList.remove('active');
+            }
+
+            // Load data for the tab
+            if (typeof window[`load${tab.charAt(0).toUpperCase() + tab.slice(1)}Data`] === 'function') {
+                window[`load${tab.charAt(0).toUpperCase() + tab.slice(1)}Data`]();
+            }
+        }
+
+        // ============================================================
+        // LOGOUT
+        // ============================================================
+        function logout() {
+            localStorage.removeItem('userProfile');
+            window.location.href = 'login.html';
+        }
+
+        // ============================================================
+        // PLACEHOLDER FUNCTIONS
+        // ============================================================
+        function exportToExcel(type) { alert('📊 Export ' + type + ' to Excel'); }
+
+        function openReleaseModal() { alert('📤 Release Results modal'); }
+
+        function openCreateExamModal() { alert('📝 Create Exam modal'); }
+
+        function openAssignExamModal() { alert('📋 Assign Exam modal'); }
+
+        function refreshLiveStudents() { alert('🔄 Refreshing live students...'); }
+
+        function refreshLiveFeed() { alert('🔄 Refreshing live feed...'); }
+
+        function clearAllAlerts() {
+            if (confirm('Clear all alerts?')) alert('✅ All alerts cleared!');
+        }
+
+        function refreshAttendance() { alert('🔄 Refreshing attendance...'); }
+
+        function exportLiveStudents() { alert('📊 Exporting live students...'); }
+
+        function exportLiveFeed() { alert('📊 Exporting live feed...'); }
+
+        function exportAttendanceCSV() { alert('📊 Exporting attendance as CSV...'); }
+
+        function exportAttendanceExcel() { alert('📊 Exporting attendance as Excel...'); }
+
+        // ============================================================
+        // SAMPLE DATA
+        // ============================================================
+        function loadSampleData() {
+            document.getElementById('totalExams').textContent = '24';
+            document.getElementById('activeExams').textContent = '8';
+            document.getElementById('pendingExams').textContent = '12';
+            document.getElementById('totalStudents').textContent = '156';
+            document.getElementById('alertCount').textContent = '3';
+
+            // Sample students
+            const students = [
+                { id: 'S001', name: 'John Mwangi', email: 'john@example.com', program: 'Clinical Medicine',
+                    exam: 'OSCE Final', score: 68, pct: 85, status: 'Passed', released: 'Yes' },
+                { id: 'S002', name: 'Sarah Wanjiru', email: 'sarah@example.com', program: 'Nursing', exam: 'CAT 2',
+                    score: 22, pct: 73, status: 'Passed', released: 'No' },
+                { id: 'S003', name: 'David Ochieng', email: 'david@example.com', program: 'Pharmacy', exam: 'Final Exam',
+                    score: 45, pct: 64, status: 'Passed', released: 'Yes' },
+                { id: 'S004', name: 'Faith Akinyi', email: 'faith@example.com', program: 'Clinical Medicine',
+                    exam: 'OSCE Final', score: 32, pct: 40, status: 'Failed', released: 'No' },
+                { id: 'S005', name: 'Peter Kamau', email: 'peter@example.com', program: 'Nursing', exam: 'CAT 1',
+                    score: 26, pct: 87, status: 'Passed', released: 'Yes' },
+            ];
+
+            const tbody = document.getElementById('studentsBody');
+            tbody.innerHTML = students.map(s => `
+                    <tr>
+                        <td><strong>${s.id}</strong></td>
+                        <td>${s.name}</td>
+                        <td>${s.email}</td>
+                        <td>${s.program}</td>
+                        <td>${s.exam}</td>
+                        <td>${s.score}</td>
+                        <td>${s.pct}%</td>
+                        <td><span class="status-badge ${s.status === 'Passed' ? 'passed' : 'failed'}">${s.status}</span></td>
+                        <td><span class="status-badge ${s.released === 'Yes' ? 'active' : 'pending'}">${s.released}</span></td>
+                        <td>
+                            <button class="btn btn-sm btn-primary" onclick="alert('View ${s.id}')">View</button>
+                            <button class="btn btn-sm btn-warning" onclick="alert('Edit ${s.id}')">Edit</button>
+                        </td>
+                    </tr>
+                `).join('');
+
+            document.getElementById('studentsLoading').style.display = 'none';
+            document.getElementById('studentsTableWrap').style.display = 'block';
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            // Set admin name from session
+            const session = localStorage.getItem('userProfile');
+            if (session) {
+                try {
+                    const data = JSON.parse(session);
+                    const name = data.name || data.full_name || 'Admin';
+                    const initial = name.charAt(0).toUpperCase();
+                    document.querySelectorAll('.admin-avatar, #adminInitial').forEach(el => el.textContent = initial);
+                    document.querySelectorAll('.admin-name, #adminName').forEach(el => el.textContent = name);
+                    document.getElementById('adminRole').textContent = data.role === 'lecturer' ? 'Lecturer' :
+                        'Administrator';
+                } catch (e) {}
+            }
+
+            loadSampleData();
+            console.log('✅ Ultra Modern Dashboard loaded');
+            console.log('📁 Each section displays independently');
+            console.log('🎨 Glassmorphism sidebar with organized categories');
+        });
+    </script>
 </body>
 </html>
