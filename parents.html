@@ -6,291 +6,1330 @@
     <title>NCHSM · Parents Portal</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <link rel="stylesheet" href="parents.css" />
-</head>
-<body>
-    <div class="portal-container">
-
-        <!-- ===== HEADER ===== -->
-        <header class="header">
-            <div>
-                <h1><i class="fas fa-user-friends"></i> Parents Portal</h1>
-                <div class="header-sub"><i class="fas fa-graduation-cap"></i> Monitor your child's academic progress at NCHSM</div>
-            </div>
-            <div class="header-actions">
-                <span class="badge-online" id="connectionStatus"><i class="fas fa-circle"></i> Connecting...</span>
-                <span class="badge-online" id="liveClock"><i class="fas fa-clock"></i> Loading...</span>
-                <button class="btn-outline-light" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh</button>
-                <button class="btn-outline-light" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
-            </div>
-        </header>
-
-        <!-- ===== STUDENT SELECTOR ===== -->
-        <div class="selector-card">
-            <label for="studentSelector"><i class="fas fa-child"></i> Select Student</label>
-            <select id="studentSelector">
-                <option value="">Loading students...</option>
-            </select>
-            <button class="btn-primary" id="loadStudentBtn"><i class="fas fa-eye"></i> View Progress</button>
-        </div>
-
-        <!-- ===== STUDENT PROFILE ===== -->
-        <div class="profile-banner" id="studentProfile">
-            <div><span class="label">Student Name</span><span class="value" id="studentNameDisplay">—</span></div>
-            <div><span class="label">Admission</span><span class="value" id="studentIdDisplay">—</span></div>
-            <div><span class="label">Program</span><span class="value" id="studentProgramDisplay">—</span></div>
-            <div><span class="label">Current Block</span><span class="value" id="studentBlockDisplay">—</span></div>
-            <div><span class="label">Overall GPA</span><span class="value gpa" id="studentGpaDisplay">—</span></div>
-        </div>
-
-        <!-- ===== STATS ROW ===== -->
-        <div class="stats-grid" id="statsGrid">
-            <div class="stat-card"><div class="label"><i class="fas fa-check-circle"></i> Attendance</div><div class="value" id="attendanceRate">—</div><div class="sub" id="attendanceSub">—</div></div>
-            <div class="stat-card green"><div class="label"><i class="fas fa-star"></i> Units Done</div><div class="value" id="unitsCompleted">—</div><div class="sub" id="unitsSub">—</div></div>
-            <div class="stat-card gold"><div class="label"><i class="fas fa-trophy"></i> Current GPA</div><div class="value" id="gpaDisplay">—</div><div class="sub" id="gpaSub">—</div></div>
-            <div class="stat-card purple"><div class="label"><i class="fas fa-calendar-check"></i> Upcoming Exams</div><div class="value" id="upcomingExams">—</div><div class="sub" id="examSub">—</div></div>
-            <div class="stat-card red"><div class="label"><i class="fas fa-exclamation-triangle"></i> Pending Tasks</div><div class="value" id="pendingTasks">—</div><div class="sub" id="taskSub">—</div></div>
-        </div>
-
-        <!-- ===== TABS: Academic Reports ===== -->
-        <div class="tabs-container">
-            <div class="tabs-header">
-                <button class="tab-btn active" data-tab="grades" onclick="switchTab('grades')">
-                    <i class="fas fa-chart-bar"></i> Grades & Marks
-                </button>
-                <button class="tab-btn" data-tab="performance" onclick="switchTab('performance')">
-                    <i class="fas fa-chart-line"></i> Performance Overview
-                </button>
-                <button class="tab-btn" data-tab="transcript" onclick="switchTab('transcript')">
-                    <i class="fas fa-file-alt"></i> Transcript
-                </button>
-                <button class="tab-btn" data-tab="attendance" onclick="switchTab('attendance')">
-                    <i class="fas fa-calendar-check"></i> Attendance
-                </button>
-                <button class="tab-btn" data-tab="finance" onclick="switchTab('finance')">
-                    <i class="fas fa-coins"></i> Finance
-                </button>
-            </div>
-
-            <!-- ===== TAB 1: GRADES & MARKS ===== -->
-            <div id="tab-grades" class="tab-content active">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-book-open"></i> Unit Performance</h3>
-                        <div>
-                            <span class="status-badge pass">Pass</span>
-                            <span class="status-badge fail">Fail</span>
-                            <span class="status-badge pending">Pending</span>
-                            <span class="status-badge distinction">Distinction</span>
-                            <span class="status-badge credit">Credit</span>
-                        </div>
-                    </div>
-                    <div class="card-body table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Code</th>
-                                    <th>Unit</th>
-                                    <th>Cr</th>
-                                    <th>CAT1</th>
-                                    <th>CAT2</th>
-                                    <th>Final</th>
-                                    <th>Total</th>
-                                    <th>Grade</th>
-                                    <th>Status</th>
-                                    <th>Retake</th>
-                                </tr>
-                            </thead>
-                            <tbody id="unitGradesTable">
-                                <tr><td colspan="10" class="text-center text-muted">Loading grades...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Summary Stats -->
-                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
-                    <div class="stat-card" style="border-top-color: #10b981;">
-                        <div class="label">Passed</div>
-                        <div class="value" id="passedCount">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #dc2626;">
-                        <div class="label">Failed</div>
-                        <div class="value" id="failedCount">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #f59e0b;">
-                        <div class="label">Retakes</div>
-                        <div class="value" id="retakeCount">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #8B5CF6;">
-                        <div class="label">Avg Score</div>
-                        <div class="value" id="avgScore">0%</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ===== TAB 2: PERFORMANCE OVERVIEW ===== -->
-            <div id="tab-performance" class="tab-content">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-chart-line"></i> Performance Trend</h3>
-                        <span style="font-size:0.8rem;color:#94a3b8;">CATs & Exam scores</span>
-                    </div>
-                    <div class="card-body"><div style="height:280px;"><canvas id="performanceChart"></canvas></div></div>
-                </div>
-
-                <div class="card">
-                    <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Grade Distribution</h3></div>
-                    <div class="card-body"><div style="height:200px;"><canvas id="gradeDistributionChart"></canvas></div></div>
-                </div>
-
-                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
-                    <div class="stat-card" style="border-top-color: #059669;">
-                        <div class="label">Distinction (≥85%)</div>
-                        <div class="value" id="distinctionCount">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #3B82F6;">
-                        <div class="label">Credit (75-84%)</div>
-                        <div class="value" id="creditCount">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #FDB913;">
-                        <div class="label">Pass (60-74%)</div>
-                        <div class="value" id="passCount">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #dc2626;">
-                        <div class="label">Fail (&lt;60%)</div>
-                        <div class="value" id="failCount">0</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ===== TAB 3: TRANSCRIPT ===== -->
-            <div id="tab-transcript" class="tab-content">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-file-alt"></i> Academic Transcript</h3>
-                        <button onclick="exportTranscriptPDF()" class="btn-primary" style="padding:6px 16px;font-size:0.8rem;">
-                            <i class="fas fa-download"></i> Download PDF
-                        </button>
-                    </div>
-                    <div class="card-body table-wrap" id="transcriptContainer">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Year/Semester</th>
-                                    <th>Unit Code</th>
-                                    <th>Unit Name</th>
-                                    <th>Credits</th>
-                                    <th>Grade</th>
-                                    <th>Points</th>
-                                    <th>Status</th>
-                                </tr>
-                            </thead>
-                            <tbody id="transcriptTable">
-                                <tr><td colspan="7" class="text-center text-muted">Loading transcript...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
-                    <div class="stat-card" style="border-top-color: #0A3D62;">
-                        <div class="label">Total Credits</div>
-                        <div class="value" id="totalCredits">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #059669;">
-                        <div class="label">Credits Earned</div>
-                        <div class="value" id="creditsEarned">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #FDB913;">
-                        <div class="label">Cumulative GPA</div>
-                        <div class="value" id="cumulativeGPA">0.00</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ===== TAB 4: ATTENDANCE ===== -->
-            <div id="tab-attendance" class="tab-content">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-calendar-check"></i> Attendance History</h3>
-                        <span style="font-size:0.8rem;color:#94a3b8;">Last 30 days</span>
-                    </div>
-                    <div class="card-body table-wrap">
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>Date</th>
-                                    <th>Type</th>
-                                    <th>Status</th>
-                                    <th>Location</th>
-                                    <th>Verified</th>
-                                </tr>
-                            </thead>
-                            <tbody id="attendanceTable">
-                                <tr><td colspan="5" class="text-center text-muted">Loading attendance...</td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
-                    <div class="stat-card" style="border-top-color: #10b981;">
-                        <div class="label">Present</div>
-                        <div class="value" id="presentCount">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #dc2626;">
-                        <div class="label">Absent</div>
-                        <div class="value" id="absentCount">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #f59e0b;">
-                        <div class="label">Pending</div>
-                        <div class="value" id="pendingAttendance">0</div>
-                    </div>
-                    <div class="stat-card" style="border-top-color: #8B5CF6;">
-                        <div class="label">Attendance Rate</div>
-                        <div class="value" id="attendanceRateDisplay">0%</div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ===== TAB 5: FINANCE ===== -->
-            <div id="tab-finance" class="tab-content">
-                <div class="card">
-                    <div class="card-header">
-                        <h3><i class="fas fa-coins"></i> Financial Summary</h3>
-                        <span style="font-size:0.8rem;color:#94a3b8;">Current period</span>
-                    </div>
-                    <div class="card-body">
-                        <div class="finance-grid">
-                            <div><span class="label">Total Fees Due</span><span class="value" id="financeDue" style="color:#0A3D62;">—</span></div>
-                            <div><span class="label">Amount Paid</span><span class="value" id="financePaid" style="color:#10b981;">—</span></div>
-                            <div><span class="label">Outstanding</span><span class="value" id="financeOutstanding" style="color:#dc2626;">—</span></div>
-                            <div><span class="label">Status</span><span class="value" id="financeStatus" style="color:#f59e0b;font-size:1.1rem;">—</span></div>
-                        </div>
-                        <div style="margin-top:14px;">
-                            <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#64748b;">
-                                <span>Payment progress</span>
-                                <span id="financeProgressText">0%</span>
-                            </div>
-                            <div class="progress-bar">
-                                <div class="fill" id="financeProgressFill" style="width:0%;"></div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- ===== FOOTER ===== -->
-        <footer class="footer">
-            <div>© 2026 Nakuru College of Health Sciences and Management · <span style="background:#f1f5f9;padding:2px 10px;border-radius:20px;font-size:0.7rem;">Parents Portal v1.0</span></div>
-            <div><a href="#">Privacy</a> · <a href="#">Support</a></div>
-        </footer>
-    </div>
-
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="parents.js"></script>
+    <style>
+        /* ===== LOGIN STYLES ===== */
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
+            color: #0F172A;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        /* Login Container */
+        .login-container {
+            display: flex;
+            width: 100%;
+            max-width: 900px;
+            background: white;
+            border-radius: 24px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.15);
+            margin: 20px;
+        }
+        .login-left {
+            flex: 1;
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            padding: 50px 40px;
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 400px;
+        }
+        .login-left h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+        .login-left h1 i { color: #FDB913; }
+        .login-left p { opacity: 0.8; font-size: 0.95rem; line-height: 1.6; }
+        .login-left .features {
+            margin-top: 30px;
+            list-style: none;
+        }
+        .login-left .features li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 0.9rem;
+            opacity: 0.9;
+        }
+        .login-left .features li i { color: #FDB913; width: 20px; }
+        
+        .login-right {
+            flex: 1;
+            padding: 50px 40px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+        .login-right h2 {
+            color: #0A3D62;
+            font-size: 1.5rem;
+            margin-bottom: 6px;
+        }
+        .login-right .subtitle {
+            color: #94a3b8;
+            font-size: 0.9rem;
+            margin-bottom: 30px;
+        }
+        .login-right .form-group {
+            margin-bottom: 18px;
+        }
+        .login-right label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.85rem;
+            color: #475569;
+            margin-bottom: 4px;
+        }
+        .login-right input {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 10px;
+            font-size: 1rem;
+            transition: 0.2s;
+            font-family: inherit;
+        }
+        .login-right input:focus {
+            border-color: #4C1D95;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+        }
+        .login-right .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #4C1D95, #6d28d9);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .login-right .btn-login:hover { transform: translateY(-2px); box-shadow: 0 4px 20px rgba(76,29,149,0.3); }
+        .login-right .btn-login:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
+        .login-right .error-msg {
+            color: #dc2626;
+            font-size: 0.85rem;
+            margin-top: 10px;
+            display: none;
+        }
+        .login-right .footer-text {
+            text-align: center;
+            margin-top: 20px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        .login-right .footer-text a { color: #4C1D95; text-decoration: none; font-weight: 600; }
+        
+        /* ===== DASHBOARD STYLES ===== */
+        .portal-container { max-width: 1400px; margin: 0 auto; display: none; }
+        
+        .header {
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            border-radius: 20px;
+            padding: 24px 28px;
+            margin-bottom: 28px;
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 8px 25px rgba(10,61,98,0.25);
+        }
+        .header h1 {
+            color: #fff;
+            font-weight: 700;
+            font-size: 1.7rem;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .header h1 i { color: #FDB913; }
+        .header-sub {
+            color: rgba(255,255,255,0.85);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+        .header-actions {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 12px;
+        }
+        .badge-online {
+            background: rgba(255,255,255,0.12);
+            color: #fff;
+            padding: 6px 16px;
+            border-radius: 40px;
+            font-size: 0.8rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid rgba(255,255,255,0.15);
+        }
+        .badge-online i { font-size: 0.65rem; }
+        .badge-online .online { color: #34d399; }
+        .badge-online .offline { color: #ef4444; }
+        .btn-outline-light {
+            background: transparent;
+            border: 1px solid rgba(255,255,255,0.3);
+            color: #fff;
+            padding: 8px 18px;
+            border-radius: 40px;
+            font-weight: 500;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .btn-outline-light:hover {
+            background: rgba(255,255,255,0.12);
+            border-color: #FDB913;
+        }
+        
+        .selector-card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 18px 24px;
+            margin-bottom: 24px;
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #e5e7eb;
+        }
+        .selector-card label {
+            font-weight: 600;
+            color: #1e293b;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.95rem;
+        }
+        .selector-card select {
+            flex: 2 1 220px;
+            padding: 10px 16px;
+            border-radius: 12px;
+            border: 1px solid #e2e8f0;
+            background: #f8fafc;
+            font-weight: 500;
+            font-size: 0.95rem;
+            color: #0F172A;
+            outline: none;
+            transition: 0.2s;
+        }
+        .selector-card select:focus {
+            border-color: #4C1D95;
+            box-shadow: 0 0 0 3px rgba(76,29,149,0.15);
+        }
+        .btn-primary {
+            background: #4C1D95;
+            border: none;
+            color: #fff;
+            padding: 10px 28px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.9rem;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            transition: 0.2s;
+        }
+        .btn-primary:hover { background: #3B1578; transform: translateY(-1px); }
+        
+        .profile-banner {
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            border-radius: 16px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+            color: #fff;
+            box-shadow: 0 4px 20px rgba(10,61,98,0.2);
+        }
+        .profile-banner .label {
+            font-size: 0.65rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            opacity: 0.7;
+        }
+        .profile-banner .value {
+            font-size: 1.1rem;
+            font-weight: 600;
+            margin-top: 2px;
+        }
+        .profile-banner .gpa { color: #FDB913; font-size: 1.4rem; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+        .stat-card {
+            background: #fff;
+            border-radius: 14px;
+            padding: 16px 18px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            border-top: 4px solid #4C1D95;
+        }
+        .stat-card .label {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #94a3b8;
+            font-weight: 600;
+        }
+        .stat-card .value {
+            font-size: 1.6rem;
+            font-weight: 700;
+            color: #0A3D62;
+            margin-top: 2px;
+        }
+        .stat-card .sub {
+            font-size: 0.7rem;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
+        .stat-card.green { border-top-color: #10b981; }
+        .stat-card.gold { border-top-color: #FDB913; }
+        .stat-card.purple { border-top-color: #8B5CF6; }
+        .stat-card.red { border-top-color: #dc2626; }
+        
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .card-header {
+            padding: 14px 20px;
+            background: #f8fafc;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .card-header h3 {
+            font-size: 0.95rem;
+            color: #0A3D62;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin: 0;
+        }
+        .card-header h3 i { color: #4C1D95; }
+        .card-body { padding: 16px 20px; }
+        .table-wrap { padding: 0; overflow-x: auto; }
+        .table-wrap table { width: 100%; border-collapse: collapse; font-size: 0.85rem; }
+        .table-wrap th {
+            background: #f8fafc;
+            padding: 10px 14px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            border-bottom: 2px solid #e5e7eb;
+        }
+        .table-wrap td {
+            padding: 10px 14px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .table-wrap tr:last-child td { border-bottom: none; }
+        .table-wrap tr:hover { background: #f8fafc; }
+        
+        .status-badge {
+            padding: 3px 12px;
+            border-radius: 40px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            display: inline-block;
+            margin: 0 2px;
+        }
+        .status-badge.pass { background: #d1fae5; color: #065f46; }
+        .status-badge.fail { background: #fee2e2; color: #991b1b; }
+        .status-badge.pending { background: #fef3c7; color: #92400e; }
+        .status-badge.distinction { background: #d1fae5; color: #065f46; }
+        .status-badge.credit { background: #dbeafe; color: #1e40af; }
+        
+        .finance-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+            gap: 16px;
+        }
+        .finance-grid .label {
+            display: block;
+            font-size: 0.7rem;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .finance-grid .value {
+            font-size: 1.2rem;
+            font-weight: 700;
+            margin-top: 2px;
+        }
+        .progress-bar {
+            height: 6px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 0.6s ease;
+            background: linear-gradient(90deg, #4C1D95, #7c3aed);
+        }
+        
+        .tabs-header {
+            display: flex;
+            gap: 6px;
+            margin-bottom: 20px;
+            background: white;
+            padding: 8px 12px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            flex-wrap: wrap;
+        }
+        .tab-btn {
+            padding: 10px 20px;
+            border: none;
+            background: transparent;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            font-size: 0.85rem;
+            color: #6b7280;
+            transition: 0.2s;
+        }
+        .tab-btn:hover { background: #f1f5f9; }
+        .tab-btn.active { background: #4C1D95; color: white; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .footer {
+            margin-top: 30px;
+            padding: 20px 0;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: #94a3b8;
+        }
+        .footer a { color: #94a3b8; text-decoration: none; transition: 0.2s; }
+        .footer a:hover { color: #4C1D95; }
+        
+        .text-center { text-align: center; }
+        .text-muted { color: #94a3b8; }
+        
+        @media (max-width: 768px) {
+            .login-container { flex-direction: column; margin: 10px; }
+            .login-left { padding: 30px 25px; min-height: auto; }
+            .login-right { padding: 30px 25px; }
+            body { padding: 10px; }
+            .header { padding: 18px 20px; flex-direction: column; align-items: flex-start; }
+            .header-actions { margin-top: 10px; width: 100%; justify-content: flex-start; flex-wrap: wrap; }
+            .selector-card { flex-direction: column; align-items: stretch; }
+            .selector-card select { flex: unset; }
+            .btn-primary { justify-content: center; }
+            .profile-banner { grid-template-columns: 1fr 1fr; gap: 12px; }
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .finance-grid { grid-template-columns: 1fr 1fr; }
+            .tabs-header { overflow-x: auto; flex-wrap: nowrap; }
+            .tab-btn { font-size: 0.75rem; padding: 8px 14px; white-space: nowrap; }
+        }
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr; }
+            .profile-banner { grid-template-columns: 1fr; }
+            .finance-grid { grid-template-columns: 1fr; }
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        @keyframes slideUp { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:translateY(0); } }
+    </style>
+</head>
+<body>
+
+<!-- ============================================================ -->
+<!-- LOGIN VIEW -->
+<!-- ============================================================ -->
+<div id="loginView" class="login-container">
+    <div class="login-left">
+        <h1><i class="fas fa-user-friends"></i> Parents Portal</h1>
+        <p>Monitor your child's academic progress at Nakuru College of Health Sciences and Management in real-time.</p>
+        <ul class="features">
+            <li><i class="fas fa-chart-line"></i> View grades and performance</li>
+            <li><i class="fas fa-calendar-check"></i> Track attendance</li>
+            <li><i class="fas fa-coins"></i> Monitor fee payments</li>
+            <li><i class="fas fa-file-alt"></i> Access academic reports</li>
+        </ul>
+    </div>
+    <div class="login-right">
+        <h2>Welcome Back</h2>
+        <p class="subtitle">Sign in to view your child's progress</p>
+        
+        <form id="loginForm" onsubmit="handleLogin(event)">
+            <div class="form-group">
+                <label for="loginEmail"><i class="fas fa-envelope"></i> Email Address</label>
+                <input type="email" id="loginEmail" placeholder="parent@email.com" required />
+            </div>
+            <div class="form-group">
+                <label for="loginPassword"><i class="fas fa-lock"></i> Password</label>
+                <input type="password" id="loginPassword" placeholder="Enter your password" required />
+            </div>
+            <button type="submit" class="btn-login" id="loginBtn">
+                <i class="fas fa-sign-in-alt"></i> Sign In
+            </button>
+            <div class="error-msg" id="loginError"></div>
+        </form>
+        <div class="footer-text">
+            <a href="#" onclick="alert('Contact the college administration to register as a parent.')">Need an account?</a>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================ -->
+<!-- DASHBOARD VIEW -->
+<!-- ============================================================ -->
+<div id="dashboardView" class="portal-container">
+
+    <!-- HEADER -->
+    <header class="header">
+        <div>
+            <h1><i class="fas fa-user-friends"></i> Parents Portal</h1>
+            <div class="header-sub"><i class="fas fa-graduation-cap"></i> Monitor your child's academic progress at NCHSM</div>
+        </div>
+        <div class="header-actions">
+            <span class="badge-online" id="connectionStatus"><i class="fas fa-circle online"></i> Online</span>
+            <span class="badge-online" id="liveClock"><i class="fas fa-clock"></i> Loading...</span>
+            <button class="btn-outline-light" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh</button>
+            <button class="btn-outline-light" onclick="handleLogout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+        </div>
+    </header>
+
+    <!-- STUDENT SELECTOR -->
+    <div class="selector-card">
+        <label for="studentSelector"><i class="fas fa-child"></i> Select Student</label>
+        <select id="studentSelector">
+            <option value="">Loading students...</option>
+        </select>
+        <button class="btn-primary" id="loadStudentBtn"><i class="fas fa-eye"></i> View Progress</button>
+    </div>
+
+    <!-- STUDENT PROFILE -->
+    <div class="profile-banner" id="studentProfile">
+        <div><span class="label">Student Name</span><span class="value" id="studentNameDisplay">—</span></div>
+        <div><span class="label">Admission</span><span class="value" id="studentIdDisplay">—</span></div>
+        <div><span class="label">Program</span><span class="value" id="studentProgramDisplay">—</span></div>
+        <div><span class="label">Current Block</span><span class="value" id="studentBlockDisplay">—</span></div>
+        <div><span class="label">Overall GPA</span><span class="value gpa" id="studentGpaDisplay">—</span></div>
+    </div>
+
+    <!-- STATS ROW -->
+    <div class="stats-grid" id="statsGrid">
+        <div class="stat-card"><div class="label"><i class="fas fa-check-circle"></i> Attendance</div><div class="value" id="attendanceRate">—</div><div class="sub" id="attendanceSub">—</div></div>
+        <div class="stat-card green"><div class="label"><i class="fas fa-star"></i> Units Done</div><div class="value" id="unitsCompleted">—</div><div class="sub" id="unitsSub">—</div></div>
+        <div class="stat-card gold"><div class="label"><i class="fas fa-trophy"></i> Current GPA</div><div class="value" id="gpaDisplay">—</div><div class="sub" id="gpaSub">—</div></div>
+        <div class="stat-card purple"><div class="label"><i class="fas fa-calendar-check"></i> Upcoming Exams</div><div class="value" id="upcomingExams">—</div><div class="sub" id="examSub">—</div></div>
+        <div class="stat-card red"><div class="label"><i class="fas fa-exclamation-triangle"></i> Pending Tasks</div><div class="value" id="pendingTasks">—</div><div class="sub" id="taskSub">—</div></div>
+    </div>
+
+    <!-- TABS -->
+    <div class="tabs-container">
+        <div class="tabs-header">
+            <button class="tab-btn active" data-tab="grades" onclick="switchTab('grades')">
+                <i class="fas fa-chart-bar"></i> Grades
+            </button>
+            <button class="tab-btn" data-tab="performance" onclick="switchTab('performance')">
+                <i class="fas fa-chart-line"></i> Performance
+            </button>
+            <button class="tab-btn" data-tab="transcript" onclick="switchTab('transcript')">
+                <i class="fas fa-file-alt"></i> Transcript
+            </button>
+            <button class="tab-btn" data-tab="attendance" onclick="switchTab('attendance')">
+                <i class="fas fa-calendar-check"></i> Attendance
+            </button>
+            <button class="tab-btn" data-tab="finance" onclick="switchTab('finance')">
+                <i class="fas fa-coins"></i> Finance
+            </button>
+        </div>
+
+        <!-- TAB: GRADES -->
+        <div id="tab-grades" class="tab-content active">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-book-open"></i> Unit Performance</h3>
+                    <div>
+                        <span class="status-badge pass">Pass</span>
+                        <span class="status-badge fail">Fail</span>
+                        <span class="status-badge pending">Pending</span>
+                    </div>
+                </div>
+                <div class="card-body table-wrap">
+                    <table>
+                        <thead><tr><th>Code</th><th>Unit</th><th>Cr</th><th>CAT1</th><th>CAT2</th><th>Final</th><th>Total</th><th>Grade</th><th>Status</th></tr></thead>
+                        <tbody id="unitGradesTable"><tr><td colspan="9" class="text-center text-muted">Loading grades...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                <div class="stat-card" style="border-top-color: #10b981;"><div class="label">Passed</div><div class="value" id="passedCount">0</div></div>
+                <div class="stat-card" style="border-top-color: #dc2626;"><div class="label">Failed</div><div class="value" id="failedCount">0</div></div>
+                <div class="stat-card" style="border-top-color: #8B5CF6;"><div class="label">Avg Score</div><div class="value" id="avgScore">0%</div></div>
+            </div>
+        </div>
+
+        <!-- TAB: PERFORMANCE -->
+        <div id="tab-performance" class="tab-content">
+            <div class="card">
+                <div class="card-header"><h3><i class="fas fa-chart-line"></i> Performance Trend</h3></div>
+                <div class="card-body"><div style="height:260px;"><canvas id="performanceChart"></canvas></div></div>
+            </div>
+            <div class="card">
+                <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Grade Distribution</h3></div>
+                <div class="card-body"><div style="height:200px;"><canvas id="gradeDistributionChart"></canvas></div></div>
+            </div>
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                <div class="stat-card" style="border-top-color: #059669;"><div class="label">Distinction</div><div class="value" id="distinctionCount">0</div></div>
+                <div class="stat-card" style="border-top-color: #3B82F6;"><div class="label">Credit</div><div class="value" id="creditCount">0</div></div>
+                <div class="stat-card" style="border-top-color: #FDB913;"><div class="label">Pass</div><div class="value" id="passCount">0</div></div>
+                <div class="stat-card" style="border-top-color: #dc2626;"><div class="label">Fail</div><div class="value" id="failCount">0</div></div>
+            </div>
+        </div>
+
+        <!-- TAB: TRANSCRIPT -->
+        <div id="tab-transcript" class="tab-content">
+            <div class="card">
+                <div class="card-header">
+                    <h3><i class="fas fa-file-alt"></i> Academic Transcript</h3>
+                    <button onclick="exportTranscriptPDF()" class="btn-primary" style="padding:6px 16px;font-size:0.8rem;">
+                        <i class="fas fa-download"></i> Download PDF
+                    </button>
+                </div>
+                <div class="card-body table-wrap" id="transcriptContainer">
+                    <table>
+                        <thead><tr><th>Year</th><th>Unit Code</th><th>Unit Name</th><th>Credits</th><th>Grade</th><th>Points</th><th>Status</th></tr></thead>
+                        <tbody id="transcriptTable"><tr><td colspan="7" class="text-center text-muted">Loading transcript...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));">
+                <div class="stat-card" style="border-top-color: #0A3D62;"><div class="label">Total Credits</div><div class="value" id="totalCredits">0</div></div>
+                <div class="stat-card" style="border-top-color: #059669;"><div class="label">Credits Earned</div><div class="value" id="creditsEarned">0</div></div>
+                <div class="stat-card" style="border-top-color: #FDB913;"><div class="label">Cumulative GPA</div><div class="value" id="cumulativeGPA">0.00</div></div>
+            </div>
+        </div>
+
+        <!-- TAB: ATTENDANCE -->
+        <div id="tab-attendance" class="tab-content">
+            <div class="card">
+                <div class="card-header"><h3><i class="fas fa-calendar-check"></i> Attendance History</h3></div>
+                <div class="card-body table-wrap">
+                    <table>
+                        <thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Location</th><th>Verified</th></tr></thead>
+                        <tbody id="attendanceTable"><tr><td colspan="5" class="text-center text-muted">Loading attendance...</td></tr></tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                <div class="stat-card" style="border-top-color: #10b981;"><div class="label">Present</div><div class="value" id="presentCount">0</div></div>
+                <div class="stat-card" style="border-top-color: #dc2626;"><div class="label">Absent</div><div class="value" id="absentCount">0</div></div>
+                <div class="stat-card" style="border-top-color: #8B5CF6;"><div class="label">Rate</div><div class="value" id="attendanceRateDisplay">0%</div></div>
+            </div>
+        </div>
+
+        <!-- TAB: FINANCE -->
+        <div id="tab-finance" class="tab-content">
+            <div class="card">
+                <div class="card-header"><h3><i class="fas fa-coins"></i> Financial Summary</h3></div>
+                <div class="card-body">
+                    <div class="finance-grid">
+                        <div><span class="label">Total Fees Due</span><span class="value" id="financeDue" style="color:#0A3D62;">—</span></div>
+                        <div><span class="label">Amount Paid</span><span class="value" id="financePaid" style="color:#10b981;">—</span></div>
+                        <div><span class="label">Outstanding</span><span class="value" id="financeOutstanding" style="color:#dc2626;">—</span></div>
+                        <div><span class="label">Status</span><span class="value" id="financeStatus" style="color:#f59e0b;">—</span></div>
+                    </div>
+                    <div style="margin-top:14px;">
+                        <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#64748b;">
+                            <span>Payment progress</span>
+                            <span id="financeProgressText">0%</span>
+                        </div>
+                        <div class="progress-bar"><div class="fill" id="financeProgressFill" style="width:0%;"></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- FOOTER -->
+    <footer class="footer">
+        <div>© 2026 Nakuru College of Health Sciences and Management · <span style="background:#f1f5f9;padding:2px 10px;border-radius:20px;font-size:0.7rem;">Parents Portal v1.0</span></div>
+        <div><a href="#">Privacy</a> · <a href="#">Support</a></div>
+    </footer>
+</div>
+
+<!-- ============================================================ -->
+<!-- JAVASCRIPT -->
+<!-- ============================================================ -->
+<script>
+// ============================================================
+// SUPABASE CONFIGURATION
+// ============================================================
+const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ============================================================
+// STATE
+// ============================================================
+let currentStudentId = null;
+let performanceChart = null;
+let gradeDistributionChart = null;
+let allStudents = [];
+
+// ============================================================
+// DOM REFS
+// ============================================================
+const $ = id => document.getElementById(id);
+
+// ============================================================
+// LOGIN HANDLER
+// ============================================================
+async function handleLogin(e) {
+    e.preventDefault();
+    const email = $('loginEmail').value.trim();
+    const password = $('loginPassword').value;
+    const errorEl = $('loginError');
+    const btn = $('loginBtn');
+    
+    errorEl.style.display = 'none';
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Signing in...';
+    
+    try {
+        const { data, error } = await supabase.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
+        
+        if (error) throw error;
+        
+        // Check if user has parent role
+        const { data: profile, error: profileError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('role')
+            .eq('user_id', data.user.id)
+            .single();
+        
+        if (profileError || profile.role !== 'parent') {
+            await supabase.auth.signOut();
+            throw new Error('You do not have parent access. Please contact the college administration.');
+        }
+        
+        // Login successful - show dashboard
+        $('loginView').style.display = 'none';
+        $('dashboardView').style.display = 'block';
+        document.body.style.background = '#f1f5f9';
+        document.body.style.padding = '20px';
+        
+        // Load student data
+        await loadStudentList();
+        updateClock();
+        
+    } catch (err) {
+        errorEl.textContent = err.message || 'Invalid email or password. Please try again.';
+        errorEl.style.display = 'block';
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
+    }
+}
+
+// ============================================================
+// LOGOUT HANDLER
+// ============================================================
+async function handleLogout() {
+    await supabase.auth.signOut();
+    $('loginView').style.display = 'flex';
+    $('dashboardView').style.display = 'none';
+    document.body.style.background = '#f1f5f9';
+    document.body.style.padding = '0';
+}
+
+// ============================================================
+// LOAD STUDENTS LINKED TO THIS PARENT
+// ============================================================
+async function loadStudentList() {
+    try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        
+        const { data: students, error } = await supabase
+            .from('student_parents')
+            .select(`
+                student_id,
+                students:student_id (
+                    user_id,
+                    full_name,
+                    student_id as admission_number,
+                    program,
+                    current_block,
+                    intake_year,
+                    email,
+                    gpa
+                )
+            `)
+            .eq('parent_id', user.id)
+            .eq('status', 'active');
+
+        if (error) throw error;
+        
+        if (!students || students.length === 0) {
+            $('studentSelector').innerHTML = `<option value="">No students linked</option>`;
+            return;
+        }
+
+        allStudents = students.map(sp => sp.students).filter(s => s);
+        
+        $('studentSelector').innerHTML = allStudents.map(s => 
+            `<option value="${s.user_id}">👤 ${s.full_name} (${s.program} · ${s.current_block || 'N/A'})</option>`
+        ).join('');
+
+        if (allStudents.length > 0) {
+            currentStudentId = allStudents[0].user_id;
+            loadStudentData(currentStudentId);
+        }
+        
+    } catch (err) {
+        console.error('Failed to load students:', err);
+        $('studentSelector').innerHTML = `<option value="">Error loading students</option>`;
+        showToast('Error loading students', 'error');
+    }
+}
+
+// ============================================================
+// LOAD STUDENT DATA
+// ============================================================
+async function loadStudentData(studentId) {
+    if (!studentId) return;
+    currentStudentId = studentId;
+    showLoading(true);
+
+    try {
+        const { data: profile, error: profileError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('user_id', studentId)
+            .single();
+
+        if (profileError) throw profileError;
+
+        const { data: grades, error: gradesError } = await supabase
+            .from('exam_grades')
+            .select(`
+                *,
+                exams:exam_id (
+                    title,
+                    exam_name,
+                    exam_type,
+                    block,
+                    marks_out_of,
+                    pass_mark,
+                    subject_name,
+                    unit_code
+                )
+            `)
+            .eq('student_id', studentId)
+            .order('graded_at', { ascending: false });
+
+        if (gradesError) throw gradesError;
+
+        const { data: attendance, error: attError } = await supabase
+            .from('geo_attendance_logs')
+            .select('*')
+            .eq('student_id', studentId)
+            .order('check_in_time', { ascending: false })
+            .limit(50);
+
+        if (attError) throw attError;
+
+        const { data: finance, error: finError } = await supabase
+            .from('student_finance')
+            .select('*')
+            .eq('student_id', studentId)
+            .eq('status', 'active')
+            .order('created_at', { ascending: false })
+            .limit(1);
+
+        if (finError) throw finError;
+
+        const today = new Date().toISOString();
+        const { data: upcomingExams, error: examError } = await supabase
+            .from('exams')
+            .select('*')
+            .eq('target_program', profile.program)
+            .eq('status', 'published')
+            .gte('exam_date', today)
+            .order('exam_date', { ascending: true });
+
+        if (examError) throw examError;
+
+        const { data: registrations, error: regError } = await supabase
+            .from('student_unit_registrations')
+            .select('*')
+            .eq('student_id', studentId);
+
+        if (regError) throw regError;
+
+        renderProfile(profile);
+        renderStats(profile, grades, registrations, upcomingExams);
+        renderGradesTable(grades);
+        renderAttendanceTable(attendance);
+        renderFinance(finance ? finance[0] : null);
+        renderTranscript(grades, profile);
+        updateCharts(grades);
+        updateGradeDistribution(grades);
+        updateTranscriptStats(grades);
+
+    } catch (err) {
+        console.error('Error loading student data:', err);
+        showToast('Error loading student data: ' + err.message, 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// ============================================================
+// RENDER FUNCTIONS
+// ============================================================
+function renderProfile(profile) {
+    if (!profile) return;
+    $('studentNameDisplay').textContent = profile.full_name || '—';
+    $('studentIdDisplay').textContent = profile.student_id || '—';
+    $('studentProgramDisplay').textContent = profile.program || '—';
+    $('studentBlockDisplay').textContent = profile.current_block || '—';
+    $('studentGpaDisplay').textContent = profile.gpa ? profile.gpa.toFixed(2) : '—';
+}
+
+function renderStats(profile, grades, registrations, upcomingExams) {
+    const total = profile.total_sessions || 0;
+    const present = profile.present_sessions || 0;
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+    $('attendanceRate').textContent = total > 0 ? rate + '%' : '—';
+    $('attendanceSub').textContent = total > 0 ? `${present} / ${total} sessions` : 'No data';
+
+    const completed = registrations ? registrations.filter(r => r.status === 'approved' || r.status === 'completed').length : 0;
+    const totalUnits = registrations ? registrations.length : 0;
+    $('unitsCompleted').textContent = totalUnits > 0 ? completed : '—';
+    $('unitsSub').textContent = totalUnits > 0 ? `of ${totalUnits} total` : 'No data';
+
+    const gpa = profile.gpa || 0;
+    $('gpaDisplay').textContent = gpa > 0 ? gpa.toFixed(2) : '—';
+    $('gpaSub').textContent = gpa > 0 ? (gpa >= 3.5 ? '📈 Excellent' : gpa >= 2.5 ? '✅ Good' : '📊 Needs Improvement') : '—';
+
+    const upcoming = upcomingExams ? upcomingExams.length : 0;
+    $('upcomingExams').textContent = upcoming > 0 ? upcoming : '0';
+    $('examSub').textContent = upcoming > 0 ? `Next: ${upcomingExams[0]?.exam_date || 'TBD'}` : 'No upcoming exams';
+
+    const pending = registrations ? registrations.filter(r => r.status === 'pending').length : 0;
+    $('pendingTasks').textContent = pending;
+    $('taskSub').textContent = pending > 0 ? `${pending} pending approvals` : 'All caught up';
+}
+
+function renderGradesTable(grades) {
+    const tbody = $('unitGradesTable');
+    if (!grades || grades.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" class="text-center text-muted">No grades available</td></tr>`;
+        return;
+    }
+
+    let passed = 0, failed = 0;
+    let totalScore = 0;
+
+    tbody.innerHTML = grades.map(g => {
+        const exam = g.exams || {};
+        const total = g.total_score || g.exam_score || 0;
+        const isPassing = total >= 60;
+        const gradeLetter = g.grade || (isPassing ? (total >= 85 ? 'A' : total >= 75 ? 'B' : 'C') : 'D');
+        const status = g.result_status || (isPassing ? 'Pass' : 'Fail');
+        if (isPassing) passed++; else failed++;
+        totalScore += total;
+
+        const statusClass = status === 'Pass' || status === 'Approved' ? 'pass' : 
+                           status === 'Fail' || status === 'Rejected' ? 'fail' : 'pending';
+
+        return `
+            <tr>
+                <td><strong>${exam.unit_code || g.subject_name || '-'}</strong></td>
+                <td>${exam.title || exam.exam_name || g.subject_name || '-'}</td>
+                <td>${exam.marks_out_of || 100}</td>
+                <td>${g.cat_1_score || '-'}</td>
+                <td>${g.cat_2_score || '-'}</td>
+                <td>${g.exam_score || '-'}</td>
+                <td><strong>${total > 0 ? total + '%' : '-'}</strong></td>
+                <td><strong>${gradeLetter}</strong></td>
+                <td><span class="status-badge ${statusClass}">${status}</span></td>
+            </tr>
+        `;
+    }).join('');
+
+    const avg = grades.length > 0 ? Math.round(totalScore / grades.length) : 0;
+    $('passedCount').textContent = passed;
+    $('failedCount').textContent = failed;
+    $('avgScore').textContent = avg + '%';
+}
+
+function renderAttendanceTable(attendance) {
+    const tbody = $('attendanceTable');
+    if (!attendance || attendance.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center text-muted">No attendance records</td></tr>`;
+        return;
+    }
+
+    let present = 0, absent = 0;
+
+    tbody.innerHTML = attendance.slice(0, 30).map(a => {
+        const status = a.is_verified ? 'Present' : (a.status || 'Pending');
+        if (status === 'Present') present++; else absent++;
+        const statusClass = status === 'Present' ? 'pass' : status === 'Absent' ? 'fail' : 'pending';
+        return `
+            <tr>
+                <td>${a.check_in_time ? new Date(a.check_in_time).toLocaleDateString() : '-'}</td>
+                <td>${a.session_type || '-'}</td>
+                <td><span class="status-badge ${statusClass}">${status}</span></td>
+                <td>${a.location_name || a.target_name || '-'}</td>
+                <td>${a.is_verified ? '✅ Yes' : '❌ No'}</td>
+            </tr>
+        `;
+    }).join('');
+
+    const total = present + absent;
+    const rate = total > 0 ? Math.round((present / total) * 100) : 0;
+    $('presentCount').textContent = present;
+    $('absentCount').textContent = absent;
+    $('attendanceRateDisplay').textContent = rate + '%';
+}
+
+function renderFinance(finance) {
+    if (!finance) {
+        ['financeDue', 'financePaid', 'financeOutstanding', 'financeStatus'].forEach(id => $(id).textContent = '—');
+        $('financeProgressText').textContent = '0%';
+        $('financeProgressFill').style.width = '0%';
+        return;
+    }
+    const due = finance.total_fees || 0;
+    const paid = finance.amount_paid || 0;
+    const outstanding = due - paid;
+    const pct = due > 0 ? Math.round((paid / due) * 100) : 0;
+
+    $('financeDue').textContent = `KES ${due.toLocaleString()}`;
+    $('financePaid').textContent = `KES ${paid.toLocaleString()}`;
+    $('financeOutstanding').textContent = `KES ${outstanding.toLocaleString()}`;
+    $('financeStatus').textContent = outstanding <= 0 ? '✅ Paid in Full' : '⏳ Partial';
+    $('financeProgressText').textContent = pct + '%';
+    $('financeProgressFill').style.width = pct + '%';
+}
+
+function renderTranscript(grades, profile) {
+    const tbody = $('transcriptTable');
+    if (!grades || grades.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No transcript data available</td></tr>`;
+        return;
+    }
+
+    tbody.innerHTML = grades.map(g => {
+        const exam = g.exams || {};
+        const total = g.total_score || g.exam_score || 0;
+        const isPassing = total >= 60;
+        const gradeLetter = g.grade || (isPassing ? (total >= 85 ? 'A' : total >= 75 ? 'B' : 'C') : 'D');
+        const points = isPassing ? (total >= 85 ? 4 : total >= 75 ? 3 : 2) : 0;
+        const credits = exam.marks_out_of || 3;
+
+        return `
+            <tr>
+                <td>${profile?.intake_year || 'N/A'}</td>
+                <td>${exam.unit_code || g.subject_name || '-'}</td>
+                <td>${exam.title || exam.exam_name || '-'}</td>
+                <td>${credits}</td>
+                <td><strong>${gradeLetter}</strong></td>
+                <td>${points}</td>
+                <td><span class="status-badge ${isPassing ? 'pass' : 'fail'}">${isPassing ? 'Pass' : 'Fail'}</span></td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function updateTranscriptStats(grades) {
+    if (!grades || grades.length === 0) {
+        $('totalCredits').textContent = '0';
+        $('creditsEarned').textContent = '0';
+        $('cumulativeGPA').textContent = '0.00';
+        return;
+    }
+
+    let totalCredits = 0;
+    let earnedCredits = 0;
+    let totalPoints = 0;
+
+    grades.forEach(g => {
+        const exam = g.exams || {};
+        const total = g.total_score || g.exam_score || 0;
+        const isPassing = total >= 60;
+        const credits = exam.marks_out_of || 3;
+        const points = isPassing ? (total >= 85 ? 4 : total >= 75 ? 3 : 2) : 0;
+
+        totalCredits += credits;
+        if (isPassing) {
+            earnedCredits += credits;
+            totalPoints += points * credits;
+        }
+    });
+
+    const gpa = earnedCredits > 0 ? (totalPoints / earnedCredits) : 0;
+    $('totalCredits').textContent = totalCredits;
+    $('creditsEarned').textContent = earnedCredits;
+    $('cumulativeGPA').textContent = gpa.toFixed(2);
+}
+
+// ============================================================
+// CHARTS
+// ============================================================
+function updateCharts(grades) {
+    const ctx = document.getElementById('performanceChart')?.getContext('2d');
+    if (!ctx) return;
+    if (performanceChart) performanceChart.destroy();
+
+    if (!grades || grades.length === 0) {
+        performanceChart = new Chart(ctx, {
+            type: 'bar',
+            data: { labels: ['No Data'], datasets: [{ label: 'No scores', data: [0], backgroundColor: '#e5e7eb' }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+        return;
+    }
+
+    const sorted = [...grades].reverse();
+    const labels = sorted.map(g => g.exams?.unit_code || g.subject_name || 'Unit');
+    const cat1 = sorted.map(g => g.cat_1_score || 0);
+    const cat2 = sorted.map(g => g.cat_2_score || 0);
+    const exam = sorted.map(g => g.exam_score || 0);
+    const total = sorted.map(g => g.total_score || g.exam_score || 0);
+
+    performanceChart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [
+                { label: 'CAT 1', data: cat1, backgroundColor: 'rgba(59,130,246,0.7)', borderRadius: 4 },
+                { label: 'CAT 2', data: cat2, backgroundColor: 'rgba(16,185,129,0.7)', borderRadius: 4 },
+                { label: 'Final', data: exam, backgroundColor: 'rgba(253,185,19,0.7)', borderRadius: 4 },
+                { label: 'Total', data: total, type: 'line', borderColor: '#4C1D95', backgroundColor: 'rgba(76,29,149,0.1)', borderWidth: 2, pointRadius: 4, tension: 0.3, fill: true }
+            ]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { position: 'top', labels: { font: { size: 10 }, boxWidth: 12, padding: 10 } }
+            },
+            scales: {
+                y: { beginAtZero: true, max: 100, ticks: { font: { size: 9 }, callback: v => v + '%' } },
+                x: { ticks: { font: { size: 9 } } }
+            }
+        }
+    });
+}
+
+function updateGradeDistribution(grades) {
+    const ctx = document.getElementById('gradeDistributionChart')?.getContext('2d');
+    if (!ctx) return;
+    if (gradeDistributionChart) gradeDistributionChart.destroy();
+
+    if (!grades || grades.length === 0) {
+        gradeDistributionChart = new Chart(ctx, {
+            type: 'pie',
+            data: { labels: ['No Data'], datasets: [{ data: [1], backgroundColor: ['#e5e7eb'] }] },
+            options: { responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }
+        });
+        return;
+    }
+
+    let distinction = 0, credit = 0, pass = 0, fail = 0;
+    grades.forEach(g => {
+        const total = g.total_score || g.exam_score || 0;
+        if (total >= 85) distinction++;
+        else if (total >= 75) credit++;
+        else if (total >= 60) pass++;
+        else fail++;
+    });
+
+    $('distinctionCount').textContent = distinction;
+    $('creditCount').textContent = credit;
+    $('passCount').textContent = pass;
+    $('failCount').textContent = fail;
+
+    gradeDistributionChart = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: [`Distinction ${distinction}`, `Credit ${credit}`, `Pass ${pass}`, `Fail ${fail}`],
+            datasets: [{ data: [distinction, credit, pass, fail], backgroundColor: ['#059669', '#3B82F6', '#FDB913', '#dc2626'] }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: { legend: { position: 'bottom', labels: { padding: 10, usePointStyle: true } } }
+        }
+    });
+}
+
+// ============================================================
+// TAB SWITCHING
+// ============================================================
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(el => el.classList.remove('active'));
+    const target = document.getElementById(`tab-${tabName}`);
+    if (target) target.classList.add('active');
+    const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`);
+    if (btn) btn.classList.add('active');
+}
+
+// ============================================================
+// EXPORT TRANSCRIPT PDF
+// ============================================================
+function exportTranscriptPDF() {
+    const content = document.getElementById('transcriptContainer');
+    if (!content) return;
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html><head><title>Transcript</title>
+        <style>
+            body { font-family: 'Inter', sans-serif; padding: 40px; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th { background: #0A3D62; color: white; padding: 10px; text-align: left; }
+            td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; }
+            h2 { color: #0A3D62; }
+            .header { text-align: center; margin-bottom: 30px; }
+        </style>
+        </head><body>
+        <div class="header">
+            <h2>Nakuru College of Health Sciences and Management</h2>
+            <p>Academic Transcript</p>
+            <p><strong>Student:</strong> ${$('studentNameDisplay').textContent}</p>
+            <p><strong>Program:</strong> ${$('studentProgramDisplay').textContent}</p>
+        </div>
+        ${content.innerHTML}
+        <p style="margin-top: 30px; font-size: 12px; color: #94a3b8;">Generated on ${new Date().toLocaleString()}</p>
+        </body></html>
+    `);
+    printWindow.document.close();
+    setTimeout(() => printWindow.print(), 500);
+}
+
+// ============================================================
+// CLOCK
+// ============================================================
+function updateClock() {
+    const now = new Date();
+    const el = $('liveClock');
+    if (el) el.innerHTML = `<i class="fas fa-clock"></i> ${now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit', hour12: true })}`;
+}
+setInterval(updateClock, 1000);
+
+// ============================================================
+// LOADING / TOAST
+// ============================================================
+function showLoading(show) {
+    let overlay = document.getElementById('loadingOverlay');
+    if (!overlay) {
+        overlay = document.createElement('div');
+        overlay.id = 'loadingOverlay';
+        overlay.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;flex-direction:column;';
+        overlay.innerHTML = '<div style="width:40px;height:40px;border:4px solid #fff;border-top-color:#FDB913;border-radius:50%;animation:spin 0.8s linear infinite;"></div><p style="color:#fff;margin-top:16px;font-weight:500;">Loading...</p>';
+        document.body.appendChild(overlay);
+    }
+    overlay.style.display = show ? 'flex' : 'none';
+}
+
+function showToast(message, type = 'info') {
+    const colors = { success: '#10b981', error: '#ef4444', warning: '#f59e0b', info: '#3b82f6' };
+    const toast = document.createElement('div');
+    toast.style.cssText = `
+        position:fixed;bottom:30px;right:30px;padding:12px 20px;border-radius:10px;
+        background:${colors[type] || '#3b82f6'};color:white;font-weight:500;
+        z-index:10000;box-shadow:0 4px 12px rgba(0,0,0,0.15);max-width:400px;
+        animation:slideUp 0.3s ease;
+    `;
+    toast.textContent = message;
+    document.body.appendChild(toast);
+    setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+// ============================================================
+// EVENT LISTENERS
+// ============================================================
+document.getElementById('loadStudentBtn')?.addEventListener('click', () => {
+    const selected = document.getElementById('studentSelector').value;
+    if (selected) loadStudentData(selected);
+});
+
+document.getElementById('studentSelector')?.addEventListener('change', function() {
+    loadStudentData(this.value);
+});
+
+// Check for existing session
+document.addEventListener('DOMContentLoaded', async function() {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session) {
+        // Check if user is parent
+        const { data: profile } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('role')
+            .eq('user_id', session.user.id)
+            .single();
+        
+        if (profile && profile.role === 'parent') {
+            document.getElementById('loginView').style.display = 'none';
+            document.getElementById('dashboardView').style.display = 'block';
+            document.body.style.background = '#f1f5f9';
+            document.body.style.padding = '20px';
+            await loadStudentList();
+            updateClock();
+            return;
+        }
+    }
+    // Show login
+    document.getElementById('loginView').style.display = 'flex';
+    document.getElementById('dashboardView').style.display = 'none';
+    document.body.style.padding = '0';
+});
+</script>
 </body>
 </html>
