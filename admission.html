@@ -384,53 +384,89 @@
             </div>
         </div>
 
-        <!-- ============================================================ -->
-        <!-- PAGE: REGISTER / DASHBOARD -->
-        <!-- ============================================================ -->
-        <div class="page-content" id="page-register">
+   <!-- ============================================================ -->
+<!-- PAGE: REGISTER / DASHBOARD -->
+<!-- ============================================================ -->
+<div class="page-content" id="page-register">
 
-            <!-- Auth Container 2 (shown when not logged in) -->
-            <div id="authContainer2">
-                <div class="auth-wrapper">
-                    <div class="auth-header">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" />
-                        <h2>NCHSM <span>Portal</span></h2>
-                        <p>Create an account to start your application</p>
-                    </div>
-                    <div class="auth-tabs">
-                        <button class="tab" data-tab="login2" onclick="switchAuthTab2('login2')"><i class="fas fa-sign-in-alt"></i> Sign In</button>
-                        <button class="tab active" data-tab="register2" onclick="switchAuthTab2('register2')"><i class="fas fa-user-plus"></i> Create Account</button>
-                    </div>
-                    <div class="auth-form" id="loginForm2">
-                        <div class="form-group"><label>Email Address <span class="required">*</span></label><input type="email" id="loginEmail2" placeholder="your@email.com" /></div>
-                        <div class="form-group"><label>Password <span class="required">*</span></label><input type="password" id="loginPassword2" placeholder="Enter your password" /></div>
-                        <button class="btn btn-primary" onclick="loginUser2()" id="loginBtn2" style="width:100%;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
-                        <div id="loginMessage2" class="auth-message"></div>
-                        <div class="auth-footer"><i class="fas fa-shield-alt"></i> Secured by NCHSM ICT</div>
-                    </div>
-                    <div class="auth-form active" id="registerForm2">
-                        <div class="form-group"><label>Full Name <span class="required">*</span></label><input type="text" id="regName2" placeholder="John Mwangi" /></div>
-                        <div class="form-group"><label>Email Address <span class="required">*</span></label><input type="email" id="regEmail2" placeholder="your@email.com" /><div id="regEmailStatus2" class="help-text"></div></div>
-                        <div class="form-group"><label>Phone Number <span class="required">*</span></label><input type="tel" id="regPhone2" placeholder="07XXXXXXXX" /></div>
-                        <div class="form-group">
-                            <label>Password <span class="required">*</span></label>
-                            <input type="password" id="regPassword2" placeholder="Min 8 characters" />
-                            <div class="password-strength">
-                                <div class="strength-bar"><div class="bar" id="strengthBar2"></div></div>
-                                <div class="strength-text" id="strengthText2">Enter a password</div>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label>Confirm Password <span class="required">*</span></label>
-                            <input type="password" id="regConfirmPassword2" placeholder="Confirm your password" />
-                            <div id="passwordMatch2" class="password-match"></div>
-                        </div>
-                        <button class="btn btn-primary" onclick="registerUser2()" id="registerBtn2" style="width:100%;"><i class="fas fa-user-plus"></i> Create Account</button>
-                        <div id="registerMessage2" class="auth-message"></div>
-                        <div class="auth-footer"><i class="fas fa-check-circle" style="color:var(--primary);"></i> By registering you accept our terms</div>
+    <!-- Auth Container 2 (shown when not logged in) -->
+    <div id="authContainer2">
+        <div class="auth-wrapper">
+            <div class="auth-header">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" />
+                <h2>NCHSM <span>Portal</span></h2>
+                <p>Create an account to start your application</p>
+            </div>
+            <div class="auth-tabs">
+                <button class="tab" data-tab="login2" onclick="switchAuthTab2('login2')"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+                <button class="tab active" data-tab="register2" onclick="switchAuthTab2('register2')"><i class="fas fa-user-plus"></i> Create Account</button>
+            </div>
+            <div class="auth-form" id="loginForm2">
+                <div class="form-group"><label>Email Address <span class="required">*</span></label><input type="email" id="loginEmail2" placeholder="your@email.com" /></div>
+                <div class="form-group"><label>Password <span class="required">*</span></label><input type="password" id="loginPassword2" placeholder="Enter your password" /></div>
+                <button class="btn btn-primary" onclick="loginUser2()" id="loginBtn2" style="width:100%;"><i class="fas fa-sign-in-alt"></i> Sign In</button>
+                <div id="loginMessage2" class="auth-message"></div>
+                <div class="auth-footer"><i class="fas fa-shield-alt"></i> Secured by NCHSM ICT</div>
+            </div>
+            <div class="auth-form active" id="registerForm2">
+                <div class="form-group"><label>Full Name <span class="required">*</span></label><input type="text" id="regName2" placeholder="John Mwangi" /></div>
+                <div class="form-group"><label>Email Address <span class="required">*</span></label><input type="email" id="regEmail2" placeholder="your@email.com" /><div id="regEmailStatus2" class="help-text"></div></div>
+                <div class="form-group"><label>Phone Number <span class="required">*</span></label><input type="tel" id="regPhone2" placeholder="07XXXXXXXX" /></div>
+                <div class="form-group">
+                    <label>Password <span class="required">*</span></label>
+                    <input type="password" id="regPassword2" placeholder="Min 8 characters" />
+                    <div class="password-strength">
+                        <div class="strength-bar"><div class="bar" id="strengthBar2"></div></div>
+                        <div class="strength-text" id="strengthText2">Enter a password</div>
                     </div>
                 </div>
+                <div class="form-group">
+                    <label>Confirm Password <span class="required">*</span></label>
+                    <input type="password" id="regConfirmPassword2" placeholder="Confirm your password" />
+                    <div id="passwordMatch2" class="password-match"></div>
+                </div>
+                <button class="btn btn-primary" onclick="registerUser2()" id="registerBtn2" style="width:100%;"><i class="fas fa-user-plus"></i> Create Account</button>
+                <div id="registerMessage2" class="auth-message"></div>
+                <div class="auth-footer"><i class="fas fa-check-circle" style="color:var(--primary);"></i> By registering you accept our terms</div>
             </div>
+        </div>
+    </div>
+
+    <!-- Dashboard App (shown when logged in) - DIRECT CHILD -->
+    <div id="admissionApp" style="display:none;">
+        <div class="dashboard-header">
+            <div class="user-info">
+                <div class="avatar" id="dashAvatar">U</div>
+                <div class="user-details">
+                    <h2 id="dashName">Welcome, User!</h2>
+                    <p id="dashEmail">user@email.com</p>
+                </div>
+            </div>
+            <div class="header-right">
+                <div class="app-no"><span>Application No:</span> <strong id="dashAppNo">ADM-2026-001</strong></div>
+                <span class="status-badge" id="dashStatus"><i class="fas fa-clock"></i> Draft</span>
+                <button class="btn btn-secondary btn-sm" onclick="logoutUser()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </div>
+
+        <div class="app-steps">
+            <div class="step-item active" data-step="1" onclick="goToStep(1)">
+                <span class="step-num">1</span>
+                <span class="step-name">Profile</span>
+            </div>
+            <div class="step-item" data-step="2" onclick="goToStep(2)">
+                <span class="step-num">2</span>
+                <span class="step-name">Program</span>
+            </div>
+            <div class="step-item" data-step="3" onclick="goToStep(3)">
+                <span class="step-num">3</span>
+                <span class="step-name">Documents</span>
+            </div>
+            <div class="step-item" data-step="4" onclick="goToStep(4)">
+                <span class="step-num">4</span>
+                <span class="step-name">Submit</span>
+            </div>
+        </div>
 
             <!-- Dashboard App (shown when logged in) -->
             <div id="admissionApp" style="display:none;">
