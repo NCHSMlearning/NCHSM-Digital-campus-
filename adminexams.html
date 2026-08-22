@@ -13,11 +13,392 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
 
-    <!-- ============================================================
-    ONLY ONE CSS FILE – admindashboard.css (contains ALL styles)
-    ============================================================ -->
+    <!-- CSS -->
     <link rel="stylesheet" href="css/admindashboard.css" />
 
+    <!-- Attendance Sheet Styles (kept intact) -->
+    <style>
+        .attendance-stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            padding: 15px 20px;
+            background: #F8FAFC;
+            border-bottom: 1px solid #E2E8F0;
+        }
+        .attendance-stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+            border: 1px solid #E2E8F0;
+        }
+        .attendance-stat-card .stat-icon {
+            font-size: 1.5rem;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            background: #EFF6FF;
+        }
+        .attendance-stat-card .stat-info {
+            display: flex;
+            flex-direction: column;
+        }
+        .attendance-stat-card .stat-label {
+            font-size: 0.7rem;
+            color: #94A3B8;
+            font-weight: 500;
+        }
+        .attendance-stat-card .stat-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #0A3D62;
+        }
+        .attendance-stat-card.present .stat-value { color: #38A169; }
+        .attendance-stat-card.absent .stat-value { color: #DC2626; }
+        .attendance-stat-card.in-progress .stat-value { color: #F59E0B; }
+        .attendance-stat-card.completed .stat-value { color: #0A3D62; }
+        .attendance-stat-card.live .stat-value { color: #3B82F6; }
+        
+        .status-badge-attendance {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+        .status-badge-attendance.present { background: #D1FAE5; color: #064E3B; }
+        .status-badge-attendance.absent { background: #FEE2E2; color: #991B1B; }
+        .status-badge-attendance.in-progress { background: #FEF3C7; color: #92400E; }
+        .status-badge-attendance.signed-in { background: #DBEAFE; color: #1E40AF; }
+        .status-badge-attendance.completed { background: #D1FAE5; color: #064E3B; }
+        
+        .attendance-filters {
+            padding: 12px 20px;
+            background: #F8FAFC;
+            border-bottom: 1px solid #E2E8F0;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .attendance-filters select,
+        .attendance-filters input {
+            padding: 8px 12px;
+            border: 2px solid #E2E8F0;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            background: white;
+            min-width: 140px;
+        }
+        .attendance-filters select:focus,
+        .attendance-filters input:focus {
+            outline: none;
+            border-color: #0A3D62;
+        }
+        .attendance-filters label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: #475569;
+        }
+        
+        .attendance-summary-bar {
+            padding: 10px 20px;
+            background: #F0FDF4;
+            border-bottom: 1px solid #D1FAE5;
+            display: flex;
+            gap: 16px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .attendance-summary-bar .summary-item {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            color: #475569;
+        }
+        .attendance-summary-bar .summary-item .num {
+            font-weight: 700;
+            color: #0A3D62;
+        }
+        .attendance-summary-bar .summary-item .num.present { color: #38A169; }
+        .attendance-summary-bar .summary-item .num.absent { color: #DC2626; }
+        .attendance-summary-bar .summary-item .num.in-progress { color: #F59E0B; }
+        .attendance-summary-bar .summary-item .num.live { color: #3B82F6; }
+        
+        .progress-bar-attendance {
+            height: 6px;
+            background: #E2E8F0;
+            border-radius: 3px;
+            overflow: hidden;
+            flex: 1;
+            min-width: 100px;
+        }
+        .progress-bar-attendance .progress-fill-attendance {
+            height: 100%;
+            background: linear-gradient(90deg, #38A169, #0A3D62);
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        
+        .attendance-table-wrap {
+            overflow-x: auto;
+            padding: 0 20px 20px;
+        }
+        .attendance-table-wrap table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.82rem;
+        }
+        .attendance-table-wrap th {
+            background: #F8FAFC;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid #E2E8F0;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+            white-space: nowrap;
+        }
+        .attendance-table-wrap td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #F1F5F9;
+            vertical-align: middle;
+        }
+        .attendance-table-wrap tbody tr:hover {
+            background: #F8FAFC;
+        }
+        
+        .btn-sm {
+            padding: 3px 10px;
+            font-size: 0.65rem;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-sm:hover {
+            transform: scale(1.05);
+        }
+        .btn-sm.btn-info { background: #DBEAFE; color: #1E40AF; }
+        .btn-sm.btn-primary { background: #0A3D62; color: white; }
+        .btn-sm.btn-success { background: #D1FAE5; color: #064E3B; }
+        .btn-sm.btn-danger { background: #FEE2E2; color: #991B1B; }
+        .btn-sm.btn-warning { background: #FEF3C7; color: #92400E; }
+        
+        .attendance-empty {
+            text-align: center;
+            padding: 40px;
+            color: #94A3B8;
+        }
+        .attendance-empty i {
+            font-size: 3rem;
+            display: block;
+            margin-bottom: 10px;
+        }
+        
+        .live-video-container {
+            width: 200px;
+            height: 140px;
+            background: #1a1a2e;
+            border-radius: 8px;
+            overflow: hidden;
+            position: relative;
+        }
+        .live-video-container video {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            background: #1a1a2e;
+        }
+        .live-badge {
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            background: rgba(0,0,0,0.7);
+            color: #4ADE80;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.55rem;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .live-badge .dot {
+            display: inline-block;
+            width: 6px;
+            height: 6px;
+            background: #4ADE80;
+            border-radius: 50%;
+            animation: pulse-dot 1s infinite;
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.8); }
+        }
+        .video-controls {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            right: 4px;
+            display: flex;
+            gap: 4px;
+            justify-content: center;
+        }
+        .video-controls button {
+            padding: 2px 8px;
+            background: rgba(0,0,0,0.6);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 0.55rem;
+            cursor: pointer;
+        }
+        .video-controls button:hover {
+            background: rgba(0,0,0,0.8);
+        }
+        .video-placeholder {
+            width: 200px;
+            height: 140px;
+            background: #F8FAFC;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 6px;
+            border: 2px dashed #E2E8F0;
+        }
+        .video-placeholder i {
+            font-size: 2rem;
+            color: #94A3B8;
+        }
+        .video-placeholder span {
+            font-size: 0.6rem;
+            color: #94A3B8;
+        }
+        
+        .full-video-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 10001;
+            padding: 20px;
+        }
+        .full-video-modal .video-wrapper {
+            background: #1a1a2e;
+            border-radius: 16px;
+            max-width: 900px;
+            width: 100%;
+            max-height: 90vh;
+            overflow: hidden;
+            position: relative;
+        }
+        .full-video-modal .video-wrapper video {
+            width: 100%;
+            max-height: 70vh;
+            background: #1a1a2e;
+        }
+        .full-video-modal .close-btn {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: rgba(0,0,0,0.7);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            z-index: 10;
+        }
+        .full-video-modal .close-btn:hover {
+            background: rgba(0,0,0,0.9);
+        }
+        .full-video-modal .video-info {
+            padding: 12px 20px;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: white;
+        }
+        .full-video-modal .video-info h3 {
+            margin: 0;
+            font-size: 1rem;
+        }
+        .full-video-modal .video-info p {
+            margin: 2px 0 0;
+            font-size: 0.8rem;
+            color: #94A3B8;
+        }
+        .full-video-modal .video-info .status-live {
+            color: #4ADE80;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .full-video-modal .video-info .status-live .dot {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            background: #4ADE80;
+            border-radius: 50%;
+            animation: pulse-dot 1s infinite;
+        }
+        
+        @media (max-width: 768px) {
+            .attendance-stats-grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 8px;
+                padding: 10px;
+            }
+            .attendance-stat-card {
+                padding: 8px 12px;
+            }
+            .attendance-stat-card .stat-value {
+                font-size: 1rem;
+            }
+            .live-video-container {
+                width: 140px;
+                height: 100px;
+            }
+            .video-placeholder {
+                width: 140px;
+                height: 100px;
+            }
+            .attendance-filters {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .attendance-filters select,
+            .attendance-filters input {
+                width: 100%;
+                min-width: unset;
+            }
+            .attendance-summary-bar {
+                gap: 8px;
+                font-size: 0.7rem;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -26,22 +407,111 @@
 
     <!-- ========== SIDEBAR ========== -->
     <div class="sidebar" id="sidebar">
-        <div class="sidebar-brand">
-            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="Logo">
-            <h2>NCHSM <span>Exam</span></h2>
-            <small>Proctoring Center</small>
+        <!-- Sidebar Header -->
+        <div class="sidebar-header">
+            <div class="sidebar-brand">
+                <div class="brand-icon">N</div>
+                <div class="brand-text">
+                    <h2>NCHSM <span>Exam</span></h2>
+                    <small>Proctoring Center</small>
+                </div>
+            </div>
         </div>
-        <ul class="sidebar-menu">
-            <li><a class="active" data-tab="students" onclick="switchTab('students')"><i class="fas fa-graduation-cap"></i> Students Results</a></li>
-            <li><a data-tab="allStudents" onclick="switchTab('allStudents')"><i class="fas fa-users"></i> All Students</a></li>
-            <li><a data-tab="livefeed" onclick="switchTab('livefeed')"><i class="fas fa-video"></i> Live Feed <span class="badge-sidebar" id="liveFeedBadge">0</span></a></li>
-            <li><a data-tab="liveStudents" onclick="switchTab('liveStudents')"><i class="fas fa-eye"></i> Live Students <span class="badge-sidebar" id="liveBadge">0</span></a></li>
-            <li><a data-tab="exams" onclick="switchTab('exams')"><i class="fas fa-file-alt"></i> Exam Management</a></li>
-            <li><a data-tab="proctoring" onclick="switchTab('proctoring')"><i class="fas fa-video"></i> Proctoring Alerts <span class="badge-sidebar" id="sidebarAlertCount">0</span></a></li>
-            <li><a data-tab="attendance" onclick="switchTab('attendance')"><i class="fas fa-clipboard-check"></i> Attendance Sheet <span class="badge-sidebar" id="attendanceBadge">0</span></a></li>
-        </ul>
+
+        <!-- Scrollable Menu -->
+        <div class="sidebar-scroll">
+            <!-- Dashboard -->
+            <div class="menu-section">
+                <div class="menu-label">Dashboard</div>
+                <ul class="sidebar-menu">
+                    <li><a class="active" data-tab="students" onclick="switchTab('students')">
+                        <i class="fas fa-th-large"></i> Overview
+                    </a></li>
+                </ul>
+            </div>
+
+            <!-- Students -->
+            <div class="menu-section">
+                <div class="menu-label">Students</div>
+                <ul class="sidebar-menu">
+                    <li><a data-tab="students" onclick="switchTab('students')">
+                        <i class="fas fa-graduation-cap"></i> Students Results
+                    </a></li>
+                    <li><a data-tab="allStudents" onclick="switchTab('allStudents')">
+                        <i class="fas fa-users"></i> All Students
+                        <span class="badge-sidebar success" id="allStudentsBadge">0</span>
+                    </a></li>
+                    <li><a data-tab="enrollments" onclick="switchTab('enrollments')">
+                        <i class="fas fa-user-plus"></i> Enrollments
+                    </a></li>
+                </ul>
+            </div>
+
+            <!-- Exams -->
+            <div class="menu-section">
+                <div class="menu-label">Exams</div>
+                <ul class="sidebar-menu">
+                    <li><a data-tab="exams" onclick="switchTab('exams')">
+                        <i class="fas fa-file-alt"></i> Exam Management
+                    </a></li>
+                    <li><a data-tab="createExam" onclick="switchTab('createExam')">
+                        <i class="fas fa-plus-circle"></i> Create Exam
+                    </a></li>
+                    <li><a data-tab="attendance" onclick="switchTab('attendance')">
+                        <i class="fas fa-clipboard-check"></i> Attendance
+                        <span class="badge-sidebar warning" id="attendanceBadge">0</span>
+                    </a></li>
+                </ul>
+            </div>
+
+            <!-- Monitoring -->
+            <div class="menu-section">
+                <div class="menu-label">Monitoring</div>
+                <ul class="sidebar-menu">
+                    <li><a data-tab="liveStudents" onclick="switchTab('liveStudents')">
+                        <i class="fas fa-eye"></i> Live Students
+                        <span class="badge-sidebar success" id="liveBadge">0</span>
+                    </a></li>
+                    <li><a data-tab="livefeed" onclick="switchTab('livefeed')">
+                        <i class="fas fa-video"></i> Live Feed
+                        <span class="badge-sidebar" id="liveFeedBadge">0</span>
+                    </a></li>
+                    <li><a data-tab="proctoring" onclick="switchTab('proctoring')">
+                        <i class="fas fa-exclamation-triangle"></i> Proctoring Alerts
+                        <span class="badge-sidebar" id="sidebarAlertCount">0</span>
+                    </a></li>
+                </ul>
+            </div>
+
+            <!-- Settings -->
+            <div class="menu-section">
+                <div class="menu-label">Settings</div>
+                <ul class="sidebar-menu">
+                    <li><a data-tab="settings" onclick="switchTab('settings')">
+                        <i class="fas fa-cog"></i> System Settings
+                    </a></li>
+                    <li><a data-tab="profile" onclick="switchTab('profile')">
+                        <i class="fas fa-user-circle"></i> Profile
+                    </a></li>
+                    <li><a data-tab="security" onclick="switchTab('security')">
+                        <i class="fas fa-shield-alt"></i> Security
+                    </a></li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Sidebar Footer -->
         <div class="sidebar-footer">
-            <button class="logout-btn-sidebar" onclick="logout()"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            <div class="user-card">
+                <div class="avatar">S</div>
+                <div class="info">
+                    <div class="name">Super Administrator</div>
+                    <div class="role">Administrator</div>
+                </div>
+            </div>
+            <button class="logout-btn-sidebar" onclick="logout()">
+                <i class="fas fa-sign-out-alt"></i> Logout
+            </button>
         </div>
     </div>
 
