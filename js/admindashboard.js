@@ -557,38 +557,86 @@ window.logout = function() {
         }
     }
 
-   // ============================================
-// 📊 LOAD STUDENTS WITH RESULTS - WITH EXAM SEARCH
+ // ============================================
+// 📊 LOAD STUDENTS WITH RESULTS - WITH DEBUGGING
 // ============================================
 window.loadStudentsWithResults = async function() {
     const loadingDiv = document.getElementById('studentsLoading');
     const table = document.getElementById('studentsTable');
-    loadingDiv.style.display = 'block';
-    table.style.display = 'none';
+    
+    if (loadingDiv) {
+        loadingDiv.style.display = 'block';
+        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading student results...';
+    }
+    if (table) table.style.display = 'none';
+    
     try {
+        // ✅ Load exams map
         await loadExamsMap();
+        console.log('📚 Exams map loaded:', Object.keys(examsMap).length);
+        
+        // ✅ Fetch grades
         const { data: grades, error } = await sb
             .from('exam_grades')
             .select('*')
             .eq('question_id', '00000000-0000-0000-0000-000000000000');
         
         if (error) { 
-            loadingDiv.innerHTML = 'Error loading data'; 
+            console.error('❌ Error fetching grades:', error);
+            if (loadingDiv) {
+                loadingDiv.innerHTML = '❌ Error loading grades: ' + error.message;
+                loadingDiv.style.color = '#DC2626';
+            }
             return; 
         }
         
+        console.log('📊 Grades found:', grades?.length || 0);
+        
+        // ✅ If no grades, show empty state
+        if (!grades || grades.length === 0) {
+            console.log('📊 No grades found in database');
+            studentsResults = [];
+            displayStudentsResults();
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (table) table.style.display = 'table';
+            updateStats();
+            return;
+        }
+        
+        // ✅ Get released results
         const { data: releases } = await sb.from('released_exam_results').select('result_id');
         const releasedSet = new Set(releases?.map(r => r.result_id) || []);
-        const studentIds = [...new Set(grades.map(g => g.student_id))];
+        console.log('📤 Released results:', releasedSet.size);
         
-        const { data: profiles } = await sb
+        // ✅ Get student IDs
+        const studentIds = [...new Set(grades.map(g => g.student_id).filter(id => id))];
+        console.log('👥 Student IDs found:', studentIds.length);
+        
+        // ✅ If no student IDs, show empty state
+        if (studentIds.length === 0) {
+            console.log('⚠️ No student IDs found in grades');
+            studentsResults = [];
+            displayStudentsResults();
+            if (loadingDiv) loadingDiv.style.display = 'none';
+            if (table) table.style.display = 'table';
+            updateStats();
+            return;
+        }
+        
+        // ✅ Fetch student profiles
+        const { data: profiles, error: profileError } = await sb
             .from('consolidated_user_profiles_table')
             .select('user_id, full_name, student_id, email, program, block, intake_year')
             .in('user_id', studentIds);
         
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        if (profileError) {
+            console.error('❌ Error fetching profiles:', profileError);
+        }
         
-        // ✅ FIX: Include exam status in exam_info
+        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
+        console.log('👥 Profiles found:', Object.keys(profileMap).length);
+        
+        // ✅ Build studentsResults
         studentsResults = grades.map(g => {
             const exam = examsMap[g.exam_id] || null;
             return {
@@ -597,12 +645,14 @@ window.loadStudentsWithResults = async function() {
                 isReleased: releasedSet.has(g.id),
                 exam_info: exam ? {
                     ...exam,
-                    status: exam.status || 'published'  // ✅ Ensure status is included
+                    status: exam.status || 'published'
                 } : null
             };
         });
         
-        // Get filter values
+        console.log('📊 Final studentsResults count:', studentsResults.length);
+        
+        // ✅ Apply filters
         const examFilter = document.getElementById('examFilter')?.value;
         const statusFilter = document.getElementById('statusFilter')?.value;
         const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
@@ -612,14 +662,16 @@ window.loadStudentsWithResults = async function() {
         // Filter by exam
         if (examFilter) {
             filtered = filtered.filter(r => r.exam_id == examFilter);
+            console.log('🔍 Filtered by exam:', filtered.length);
         }
         
         // Filter by status
         if (statusFilter) {
             filtered = filtered.filter(r => r.result_status === statusFilter);
+            console.log('🔍 Filtered by status:', filtered.length);
         }
         
-        // ✅ FILTER BY SEARCH (Name, ID, Exam Name, Email, Program)
+        // Filter by search
         if (search) {
             filtered = filtered.filter(r => {
                 const name = (r.student_profile?.full_name || '').toLowerCase();
@@ -634,16 +686,24 @@ window.loadStudentsWithResults = async function() {
                        email.includes(search) ||
                        program.includes(search);
             });
+            console.log('🔍 Filtered by search:', filtered.length);
         }
         
         studentsResults = filtered;
+        
+        // ✅ Display results
         displayStudentsResults();
-        loadingDiv.style.display = 'none';
-        table.style.display = 'table';
+        
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (table) table.style.display = 'table';
         updateStats();
+        
     } catch (err) { 
-        console.error(err);
-        loadingDiv.innerHTML = 'Error loading data'; 
+        console.error('❌ Error in loadStudentsWithResults:', err);
+        if (loadingDiv) {
+            loadingDiv.innerHTML = '❌ Error: ' + err.message;
+            loadingDiv.style.color = '#DC2626';
+        }
     }
 };
     // ============================================
