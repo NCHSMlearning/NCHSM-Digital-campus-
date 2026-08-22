@@ -8,6 +8,9 @@
     <!-- Favicon -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32" />
 
+    <!-- External CSS -->
+    <link rel="stylesheet" href="admissions.css" />
+
     <!-- Font Awesome 6 (Free) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" />
 
@@ -22,599 +25,6 @@
 
     <!-- Supabase JS -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-    <style>
-        /* ============================================================
-           CSS VARIABLES
-           ============================================================ */
-        :root {
-            --primary: #0b8a5e;
-            --primary-dark: #086b48;
-            --primary-light: #d1fae5;
-            --primary-gradient: linear-gradient(135deg, #0b8a5e 0%, #06b6d4 100%);
-            --gray-50: #f8fafc;
-            --gray-100: #f1f5f9;
-            --gray-200: #e2e8f0;
-            --gray-300: #cbd5e1;
-            --gray-400: #94a3b8;
-            --gray-500: #64748b;
-            --gray-600: #475569;
-            --gray-700: #334155;
-            --gray-800: #1e293b;
-            --gray-900: #0f172a;
-            --success: #0b8a5e;
-            --danger: #ef4444;
-            --warning: #f59e0b;
-            --info: #3b82f6;
-            --radius: 16px;
-            --radius-sm: 10px;
-            --shadow: 0 4px 24px rgba(0, 0, 0, 0.06);
-            --shadow-lg: 0 12px 48px rgba(0, 0, 0, 0.1);
-            --transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --font: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-        }
-
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: var(--font); background: #f0f4f8; color: var(--gray-800); min-height: 100vh; }
-
-        /* ============================================================
-           VALIDATION MODAL
-           ============================================================ */
-        .validation-modal {
-            display: none;
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(0, 0, 0, 0.7);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-            z-index: 99999;
-            align-items: center;
-            justify-content: center;
-            animation: modalFadeIn 0.35s cubic-bezier(0.4, 0, 0.2, 1);
-        }
-        .validation-modal.show { display: flex; }
-        @keyframes modalFadeIn {
-            from { opacity: 0; transform: scale(0.92); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        .validation-modal-content {
-            background: #ffffff;
-            border-radius: var(--radius);
-            max-width: 600px;
-            width: 94%;
-            max-height: 90vh;
-            overflow-y: auto;
-            box-shadow: 0 24px 80px rgba(0, 0, 0, 0.25);
-            animation: modalSlideUp 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
-            position: relative;
-        }
-        @keyframes modalSlideUp {
-            from { transform: translateY(40px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        .validation-modal-content::-webkit-scrollbar { width: 6px; }
-        .validation-modal-content::-webkit-scrollbar-track { background: var(--gray-100); border-radius: 10px; }
-        .validation-modal-content::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
-        .validation-modal-content::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
-
-        .validation-modal-header {
-            padding: 1.5rem 1.75rem;
-            background: linear-gradient(135deg, #fef2f2 0%, #fee2e2 100%);
-            border-bottom: 2px solid #fecaca;
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            border-radius: var(--radius) var(--radius) 0 0;
-            position: sticky;
-            top: 0;
-            z-index: 2;
-        }
-        .validation-modal-header .header-left { display: flex; align-items: center; gap: 0.75rem; }
-        .validation-modal-header .icon-circle {
-            width: 44px; height: 44px;
-            border-radius: 50%;
-            background: #dc2626;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-        }
-        .validation-modal-header .icon-circle i { font-size: 1.3rem; color: #fff; }
-        .validation-modal-header h3 { color: #991b1b; font-size: 1.15rem; font-weight: 800; letter-spacing: -0.02em; }
-        .validation-modal-header h3 span { display: block; font-size: 0.75rem; font-weight: 500; color: #7f1d1d; opacity: 0.8; margin-top: 2px; }
-        .validation-modal-close {
-            background: rgba(255, 255, 255, 0.6);
-            border: none;
-            width: 36px; height: 36px;
-            border-radius: 50%;
-            font-size: 1.2rem;
-            cursor: pointer;
-            color: var(--gray-500);
-            transition: var(--transition);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-            backdrop-filter: blur(4px);
-        }
-        .validation-modal-close:hover { background: #dc2626; color: #fff; transform: rotate(90deg); }
-
-        .validation-modal-body { padding: 1.75rem; }
-        .validation-summary {
-            background: linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%);
-            padding: 0.9rem 1.25rem;
-            border-radius: var(--radius-sm);
-            font-size: 0.9rem;
-            color: #92400e;
-            margin-bottom: 1.5rem;
-            display: flex;
-            align-items: flex-start;
-            gap: 0.75rem;
-            border-left: 4px solid var(--warning);
-        }
-        .validation-summary i { font-size: 1.2rem; color: #d97706; margin-top: 2px; flex-shrink: 0; }
-        .validation-summary strong { color: #78350f; }
-
-        .missing-fields-list { display: flex; flex-direction: column; gap: 0.75rem; }
-        .missing-section {
-            background: var(--gray-50);
-            border-radius: var(--radius-sm);
-            overflow: hidden;
-            border: 1px solid var(--gray-200);
-            transition: var(--transition);
-        }
-        .missing-section:hover { border-color: var(--gray-300); }
-        .missing-section-header {
-            padding: 0.65rem 1rem;
-            background: var(--gray-100);
-            font-weight: 600;
-            font-size: 0.8rem;
-            color: var(--gray-700);
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            border-bottom: 1px solid var(--gray-200);
-        }
-        .missing-section-header .section-icon { color: var(--primary); }
-        .missing-section-header .badge-count {
-            margin-left: auto;
-            background: #dc2626;
-            color: #fff;
-            font-size: 0.6rem;
-            font-weight: 700;
-            padding: 0.1rem 0.6rem;
-            border-radius: 40px;
-        }
-        .missing-field-item {
-            padding: 0.55rem 1rem 0.55rem 2.5rem;
-            font-size: 0.85rem;
-            color: var(--gray-700);
-            display: flex;
-            align-items: center;
-            gap: 0.6rem;
-            border-bottom: 1px solid var(--gray-100);
-            transition: var(--transition);
-            position: relative;
-        }
-        .missing-field-item:last-child { border-bottom: none; }
-        .missing-field-item::before {
-            content: "•";
-            position: absolute;
-            left: 1rem;
-            color: var(--danger);
-            font-weight: 700;
-            font-size: 1.2rem;
-        }
-        .missing-field-item .field-name { font-weight: 500; }
-        .missing-field-item .field-hint { font-size: 0.65rem; color: var(--gray-400); margin-left: auto; }
-
-        .validation-modal-footer {
-            padding: 1.25rem 1.75rem;
-            border-top: 1px solid var(--gray-200);
-            display: flex;
-            gap: 0.75rem;
-            flex-wrap: wrap;
-            justify-content: flex-end;
-            background: var(--gray-50);
-            border-radius: 0 0 var(--radius) var(--radius);
-        }
-        .validation-modal-footer .btn {
-            padding: 0.6rem 1.5rem;
-            border: none;
-            border-radius: var(--radius-sm);
-            font-weight: 600;
-            font-size: 0.85rem;
-            font-family: var(--font);
-            cursor: pointer;
-            transition: var(--transition);
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        .validation-modal-footer .btn-primary {
-            background: var(--primary-gradient);
-            color: #fff;
-            box-shadow: 0 4px 12px rgba(11, 138, 94, 0.25);
-        }
-        .validation-modal-footer .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(11, 138, 94, 0.3);
-        }
-        .validation-modal-footer .btn-secondary { background: var(--gray-200); color: var(--gray-700); }
-        .validation-modal-footer .btn-secondary:hover { background: var(--gray-300); }
-
-        .validation-progress {
-            display: flex;
-            align-items: center;
-            gap: 0.75rem;
-            margin-bottom: 1.25rem;
-            padding: 0.75rem 1rem;
-            background: var(--gray-50);
-            border-radius: var(--radius-sm);
-        }
-        .validation-progress .progress-bar {
-            flex: 1;
-            height: 6px;
-            background: var(--gray-200);
-            border-radius: 10px;
-            overflow: hidden;
-        }
-        .validation-progress .progress-bar .fill {
-            height: 100%;
-            background: var(--primary-gradient);
-            border-radius: 10px;
-            transition: width 0.6s ease;
-        }
-        .validation-progress .progress-text {
-            font-size: 0.75rem;
-            font-weight: 600;
-            color: var(--gray-600);
-            white-space: nowrap;
-        }
-
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
-        @media (max-width: 640px) {
-            .validation-modal-content { width: 96%; max-height: 92vh; }
-            .validation-modal-header { padding: 1.25rem; }
-            .validation-modal-header h3 { font-size: 1rem; }
-            .validation-modal-header h3 span { font-size: 0.65rem; }
-            .validation-modal-body { padding: 1.25rem; }
-            .validation-modal-footer { padding: 1rem 1.25rem; flex-direction: column; }
-            .validation-modal-footer .btn { width: 100%; justify-content: center; }
-            .missing-field-item { font-size: 0.78rem; padding: 0.45rem 0.75rem 0.45rem 2rem; }
-            .missing-field-item::before { left: 0.75rem; }
-            .validation-summary { font-size: 0.8rem; padding: 0.75rem 1rem; }
-        }
-
-        /* ============================================================
-           MAIN STYLES
-           ============================================================ */
-        .top-nav { display: flex; justify-content: space-between; align-items: center; padding: 0.75rem 2rem; background: #fff; border-bottom: 1px solid var(--gray-200); position: sticky; top: 0; z-index: 100; flex-wrap: wrap; gap: 0.5rem; }
-        .nav-brand { display: flex; align-items: center; gap: 0.75rem; }
-        .nav-brand img { height: 40px; width: auto; }
-        .nav-brand h2 { font-size: 1.1rem; font-weight: 800; }
-        .nav-brand h2 span { color: var(--primary); }
-        .nav-brand .badge { font-size: 0.6rem; background: var(--primary-light); color: var(--primary); padding: 0.1rem 0.6rem; border-radius: 40px; font-weight: 600; }
-        .nav-links { display: flex; align-items: center; gap: 0.25rem; flex-wrap: wrap; }
-        .nav-item { padding: 0.4rem 0.8rem; border: none; background: transparent; font-weight: 500; font-size: 0.8rem; color: var(--gray-600); cursor: pointer; border-radius: var(--radius-sm); transition: var(--transition); font-family: var(--font); }
-        .nav-item:hover { background: var(--gray-100); color: var(--gray-800); }
-        .nav-item.active { background: var(--primary-light); color: var(--primary); font-weight: 600; }
-        .nav-item.btn-nav { background: var(--primary-gradient); color: #fff; font-weight: 600; }
-        .nav-item.btn-nav:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(11, 138, 94, 0.3); }
-        .nav-item.btn-login { background: var(--gray-100); color: var(--gray-700); }
-        .nav-item.btn-login:hover { background: var(--gray-200); }
-        .divider { color: var(--gray-300); }
-        .page-content { display: none; max-width: 1400px; margin: 0 auto; padding: 1.5rem 2rem; }
-        .page-content.active { display: block; animation: fadeIn 0.3s ease; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
-        .home-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; }
-        @media (max-width: 992px) { .home-grid { grid-template-columns: 1fr; } }
-
-        .info-section { background: #fff; border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); border: 1px solid var(--gray-200); }
-        .info-header { margin-bottom: 1rem; padding-bottom: 1rem; border-bottom: 2px solid var(--gray-200); }
-        .info-header h3 { font-size: 1.1rem; font-weight: 800; color: var(--gray-900); }
-        .info-header h3 i { color: var(--primary); }
-        .info-header p { font-size: 0.85rem; color: var(--gray-500); }
-        .info-block { margin-bottom: 1rem; }
-        .info-block h4 { font-size: 0.95rem; font-weight: 700; color: var(--gray-800); margin-bottom: 0.5rem; }
-        .info-block h4 i { color: var(--primary); margin-right: 0.5rem; }
-        .info-block ol { padding-left: 1.25rem; color: var(--gray-600); font-size: 0.85rem; line-height: 2; }
-
-        .auth-wrapper { background: #fff; border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); border: 1px solid var(--gray-200); }
-        .auth-header { text-align: center; margin-bottom: 1.25rem; }
-        .auth-header img { width: 72px; margin-bottom: 0.5rem; }
-        .auth-header h2 { font-size: 1.3rem; font-weight: 800; }
-        .auth-header h2 span { color: var(--primary); }
-        .auth-header p { color: var(--gray-500); font-size: 0.85rem; }
-
-        .auth-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.25rem; border-bottom: 2px solid var(--gray-200); padding-bottom: 0.5rem; }
-        .auth-tabs .tab { padding: 0.4rem 1.25rem; border: none; background: transparent; font-weight: 600; color: var(--gray-500); cursor: pointer; border-radius: var(--radius-sm); transition: var(--transition); font-size: 0.85rem; }
-        .auth-tabs .tab:hover { background: var(--gray-100); color: var(--gray-700); }
-        .auth-tabs .tab.active { background: var(--primary); color: #fff; }
-
-        .auth-form { display: none; }
-        .auth-form.active { display: block; }
-        .auth-message { margin-top: 0.75rem; padding: 0.6rem 1rem; border-radius: var(--radius-sm); font-size: 0.85rem; display: none; }
-        .auth-message.error { display: block; background: #fee2e2; color: #dc2626; }
-        .auth-message.success { display: block; background: #d1fae5; color: #0b8a5e; }
-        .auth-message.info { display: block; background: #dbeafe; color: #2563eb; }
-        .auth-footer { text-align: center; margin-top: 1.25rem; font-size: 0.75rem; color: var(--gray-400); }
-
-        .form-group { display: flex; flex-direction: column; gap: 0.3rem; }
-        .form-group label { font-size: 0.78rem; font-weight: 600; color: var(--gray-700); display: flex; align-items: center; gap: 0.25rem; }
-        .form-group label .required { color: var(--danger); font-weight: 700; }
-        .form-group label .hint { font-weight: 400; color: var(--gray-400); font-size: 0.6rem; }
-        .form-group input, .form-group select, .form-group textarea {
-            padding: 0.55rem 0.9rem;
-            border: 2px solid var(--gray-200);
-            border-radius: var(--radius-sm);
-            font-size: 0.85rem;
-            font-family: var(--font);
-            transition: var(--transition);
-            background: #fff;
-            color: var(--gray-800);
-            width: 100%;
-        }
-        .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-            outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 4px rgba(11, 138, 94, 0.08);
-        }
-        .form-group textarea { resize: vertical; min-height: 70px; }
-
-        .help-text { font-size: 0.65rem; color: var(--gray-400); }
-        .help-text.error { color: var(--danger); }
-        .help-text.success { color: var(--success); }
-
-        .btn { padding: 0.6rem 1.5rem; border: none; border-radius: var(--radius-sm); font-weight: 600; font-size: 0.85rem; font-family: var(--font); cursor: pointer; transition: var(--transition); display: inline-flex; align-items: center; gap: 0.5rem; }
-        .btn-primary { background: var(--primary-gradient); color: #fff; box-shadow: 0 4px 12px rgba(11, 138, 94, 0.25); }
-        .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(11, 138, 94, 0.3); }
-        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-        .btn-secondary { background: var(--gray-100); color: var(--gray-700); }
-        .btn-secondary:hover { background: var(--gray-200); }
-
-        .grid-row { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-        .grid-row .col { display: flex; flex-direction: column; }
-        .grid-row .col-full { grid-column: 1 / -1; }
-        .grid-row .col-2 { grid-column: span 2; }
-        .grid-row .col-3 { grid-column: span 3; }
-
-        .panel { background: #fff; border-radius: var(--radius); box-shadow: var(--shadow); margin-bottom: 1.25rem; overflow: hidden; border: 1px solid var(--gray-200); transition: var(--transition); }
-        .panel:hover { box-shadow: var(--shadow-lg); }
-        .panel-heading { padding: 0.85rem 1.25rem; background: var(--primary-gradient); color: #fff; font-weight: 600; font-size: 0.9rem; display: flex; align-items: center; gap: 0.6rem; }
-        .panel-heading i { font-size: 1rem; }
-        .panel-heading .badge-required { margin-left: auto; background: rgba(255, 255, 255, 0.2); padding: 0.1rem 0.75rem; border-radius: 40px; font-size: 0.6rem; font-weight: 500; }
-        .panel-body { padding: 1.25rem; }
-
-        .conditional-field { transition: all 0.3s ease; overflow: hidden; }
-        .conditional-field.hidden { display: none !important; }
-        .conditional-field.visible { display: block !important; animation: slideDown 0.3s ease; }
-        @keyframes slideDown { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-
-        .photo-upload-container { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-        .photo-preview { width: 100px; height: 100px; border-radius: 50%; border: 4px solid var(--gray-200); overflow: hidden; flex-shrink: 0; background: var(--gray-100); display: flex; align-items: center; justify-content: center; transition: var(--transition); }
-        .photo-preview img { width: 100%; height: 100%; object-fit: cover; }
-        .photo-preview .placeholder { font-size: 2.5rem; color: var(--gray-400); }
-        .photo-preview.has-image { border-color: var(--primary); }
-
-        .emergency-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; }
-
-        /* ============================================================
-           FILE UPLOAD STYLES
-           ============================================================ */
-        .file-upload {
-            position: relative;
-            border: 2px dashed var(--gray-300);
-            border-radius: var(--radius-sm);
-            padding: 1.25rem;
-            text-align: center;
-            cursor: pointer;
-            transition: var(--transition);
-            background: var(--gray-50);
-            min-height: 100px;
-        }
-        .file-upload:hover { border-color: var(--primary); background: var(--primary-light); }
-        .file-upload input[type="file"] {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            opacity: 0;
-            cursor: pointer;
-            z-index: 5;
-        }
-        .file-upload .icon { font-size: 1.8rem; color: var(--gray-400); margin-bottom: 0.3rem; }
-        .file-upload .text { font-size: 0.8rem; color: var(--gray-500); }
-        .file-upload .text strong { color: var(--primary); }
-        .file-upload.uploaded { border-color: var(--success); background: var(--primary-light); }
-
-        /* Scanning Overlay */
-        .scanning-overlay {
-            position: absolute;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            background: rgba(255, 255, 255, 0.92);
-            border-radius: var(--radius-sm);
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            z-index: 20;
-            display: none;
-        }
-        .scanning-overlay.active { display: flex; }
-        .scanning-overlay i { font-size: 2rem; color: var(--primary); margin-bottom: 0.5rem; }
-        .scanning-overlay span { font-size: 0.85rem; font-weight: 600; color: var(--primary); }
-
-        .doc-status { font-size: 0.75rem; color: var(--gray-400); margin-top: 0.3rem; }
-        .doc-status.uploaded { color: var(--success); font-weight: 600; }
-
-        .ocr-status { font-size: 0.8rem; margin-top: 0.3rem; }
-        .ocr-status.pending { color: var(--warning); font-weight: 600; }
-        .ocr-status.success { color: var(--success); font-weight: 600; }
-        .ocr-status.fail { color: var(--danger); font-weight: 600; }
-
-        .ocr-result {
-            margin-top: 0.75rem;
-            padding: 0.75rem;
-            background: var(--gray-50);
-            border-radius: var(--radius-sm);
-            border: 1px solid var(--gray-200);
-            display: none;
-        }
-        .ocr-result.show { display: block; animation: fadeIn 0.4s ease; }
-        .ocr-result .ocr-title {
-            display: none;
-            font-weight: 600;
-            font-size: 0.85rem;
-            margin-bottom: 0.3rem;
-            color: var(--gray-700);
-        }
-        .ocr-result .ocr-title.show { display: block; }
-
-        .data-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 0.25rem 1rem;
-            font-size: 0.85rem;
-        }
-        .data-grid .label { color: var(--gray-500); font-weight: 500; }
-        .data-grid .value { color: var(--gray-800); font-weight: 600; }
-
-        .validation-pass { display: inline-block; background: #d1fae5; color: #0b8a5e; padding: 0.3rem 1rem; border-radius: 40px; font-weight: 600; font-size: 0.85rem; }
-        .validation-fail { display: inline-block; background: #fee2e2; color: #dc2626; padding: 0.3rem 1rem; border-radius: 40px; font-weight: 600; font-size: 0.85rem; }
-
-        /* ============================================================
-           OTHER STYLES
-           ============================================================ */
-        .loading-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(4px); z-index: 9999; align-items: center; justify-content: center; flex-direction: column; gap: 1rem; }
-        .loading-overlay.active { display: flex; animation: fadeIn 0.3s ease; }
-        .loading-overlay .spinner { width: 48px; height: 48px; border: 4px solid var(--gray-200); border-top-color: var(--primary); border-radius: 50%; animation: spin 0.8s linear infinite; }
-        .loading-overlay .text { font-size: 0.9rem; color: var(--gray-600); font-weight: 500; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        .app-steps { display: flex; gap: 0.5rem; background: #fff; border-radius: var(--radius); padding: 1rem 1.5rem; margin-bottom: 1.5rem; box-shadow: var(--shadow); border: 1px solid var(--gray-200); flex-wrap: wrap; }
-        .step-item { display: flex; align-items: center; gap: 0.5rem; padding: 0.4rem 0.8rem; cursor: pointer; border-radius: var(--radius-sm); transition: var(--transition); }
-        .step-item:hover { background: var(--gray-100); }
-        .step-item .step-num { width: 32px; height: 32px; border-radius: 50%; background: var(--gray-200); color: var(--gray-500); display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.75rem; transition: var(--transition); flex-shrink: 0; }
-        .step-item .step-name { font-size: 0.75rem; font-weight: 500; color: var(--gray-400); transition: var(--transition); }
-        .step-item.active .step-num { background: var(--primary-gradient); color: #fff; box-shadow: 0 4px 12px rgba(11, 138, 94, 0.3); }
-        .step-item.active .step-name { color: var(--primary); font-weight: 600; }
-        .step-item.completed .step-num { background: var(--success); color: #fff; }
-        .step-item.completed .step-name { color: var(--success); }
-
-        .form-section { display: none; animation: fadeIn 0.4s ease; }
-        .form-section.active { display: block; }
-
-        .section-desc { font-size: 0.85rem; color: var(--gray-500); margin-bottom: 1rem; }
-
-        .flex-row { display: flex; gap: 0.75rem; flex-wrap: wrap; margin-top: 1rem; justify-content: space-between; }
-        .flex-row .btn-group { display: flex; gap: 0.75rem; flex-wrap: wrap; }
-
-        .summary-box { background: var(--gray-50); border-radius: var(--radius-sm); padding: 1.25rem; border: 1px solid var(--gray-200); margin-bottom: 1rem; }
-        .summary-box h4 { font-size: 0.95rem; font-weight: 700; margin-bottom: 0.75rem; color: var(--gray-800); }
-        .summary-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.3rem 1.5rem; font-size: 0.85rem; }
-        .summary-grid p { display: flex; justify-content: space-between; padding: 0.2rem 0; border-bottom: 1px dashed var(--gray-200); }
-        .summary-grid strong { color: var(--gray-600); font-weight: 500; }
-
-        .terms-container { display: flex; align-items: flex-start; gap: 0.6rem; padding: 0.8rem 1.25rem; background: var(--gray-50); border-radius: var(--radius-sm); margin: 1rem 0; border: 1px solid var(--gray-200); }
-        .terms-container input[type="checkbox"] { width: 18px; height: 18px; margin-top: 2px; accent-color: var(--primary); flex-shrink: 0; cursor: pointer; }
-        .terms-container label { font-size: 0.8rem; color: var(--gray-600); line-height: 1.5; }
-        .terms-container label a { color: var(--primary); text-decoration: none; font-weight: 600; }
-        .terms-container label a:hover { text-decoration: underline; }
-
-        #authContainer2 { max-width: 520px; margin: 2rem auto; background: #fff; padding: 2rem; border-radius: var(--radius); box-shadow: var(--shadow-lg); border: 1px solid var(--gray-200); }
-        #authContainer2 .auth-header { text-align: center; margin-bottom: 1.5rem; }
-        #authContainer2 .auth-header img { width: 72px; margin-bottom: 0.5rem; }
-        #authContainer2 .auth-header h2 { font-size: 1.4rem; font-weight: 800; }
-        #authContainer2 .auth-header h2 span { color: var(--primary); }
-        #authContainer2 .auth-header p { color: var(--gray-500); font-size: 0.85rem; }
-        #authContainer2 .auth-tabs { display: flex; gap: 0.5rem; margin-bottom: 1.5rem; border-bottom: 2px solid var(--gray-200); padding-bottom: 0.5rem; }
-        #authContainer2 .auth-tabs .tab { padding: 0.5rem 1.5rem; border: none; background: transparent; font-weight: 600; color: var(--gray-500); cursor: pointer; border-radius: var(--radius-sm); transition: var(--transition); font-size: 0.85rem; }
-        #authContainer2 .auth-tabs .tab:hover { background: var(--gray-100); color: var(--gray-700); }
-        #authContainer2 .auth-tabs .tab.active { background: var(--primary); color: #fff; }
-        #authContainer2 .auth-form { display: none; }
-        #authContainer2 .auth-form.active { display: block; }
-        #authContainer2 .auth-footer { text-align: center; margin-top: 1.25rem; font-size: 0.75rem; color: var(--gray-400); }
-        #authContainer2 .auth-message { margin-top: 0.75rem; padding: 0.6rem 1rem; border-radius: var(--radius-sm); font-size: 0.85rem; display: none; }
-        #authContainer2 .auth-message.error { display: block; background: #fee2e2; color: #dc2626; }
-        #authContainer2 .auth-message.success { display: block; background: #d1fae5; color: #0b8a5e; }
-        #authContainer2 .auth-message.info { display: block; background: #dbeafe; color: #2563eb; }
-        #authContainer2 .form-group { margin-bottom: 1rem; }
-        #authContainer2 .form-group label { display: block; font-weight: 600; font-size: 0.8rem; color: var(--gray-700); margin-bottom: 0.2rem; }
-        #authContainer2 .form-group label .required { color: #ef4444; }
-        #authContainer2 .form-group input, #authContainer2 .form-group select { width: 100%; padding: 0.6rem 0.9rem; border: 2px solid var(--gray-200); border-radius: var(--radius-sm); font-size: 0.9rem; transition: var(--transition); background: #fff; color: var(--gray-900); }
-        #authContainer2 .form-group input:focus, #authContainer2 .form-group select:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 4px rgba(11, 138, 94, 0.08); }
-        #authContainer2 .btn { width: 100%; padding: 0.7rem; border: none; border-radius: var(--radius-sm); font-weight: 600; cursor: pointer; transition: var(--transition); font-size: 0.9rem; }
-        #authContainer2 .btn-primary { background: var(--primary-gradient); color: #fff; }
-        #authContainer2 .btn-primary:hover { transform: translateY(-2px); box-shadow: 0 4px 16px rgba(11, 138, 94, 0.3); }
-        #authContainer2 .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
-
-        .dashboard-header { background: #fff; border-radius: var(--radius); padding: 1.5rem; margin-bottom: 1.5rem; border: 1px solid var(--gray-200); box-shadow: var(--shadow); }
-        .dashboard-header .user-info { display: flex; align-items: center; gap: 1rem; }
-        .dashboard-header .avatar { width: 60px; height: 60px; border-radius: 50%; background: var(--primary-gradient); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; color: #fff; font-weight: 700; flex-shrink: 0; }
-        .dashboard-header .user-details h2 { font-size: 1.2rem; font-weight: 800; color: var(--gray-900); }
-        .dashboard-header .user-details p { color: var(--gray-500); font-size: 0.85rem; }
-        .dashboard-header .status-badge { background: #fef3c7; padding: 0.3rem 1rem; border-radius: 40px; font-size: 0.7rem; font-weight: 600; color: #d97706; }
-        .dashboard-header .app-no { background: var(--gray-50); padding: 0.4rem 1rem; border-radius: 40px; border: 1px solid var(--gray-200); font-size: 0.8rem; }
-        .dashboard-header .app-no span { color: var(--gray-400); font-weight: 400; }
-        .dashboard-header .app-no strong { color: var(--primary); }
-        .dashboard-header .header-right { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
-
-        .programs-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 1.5rem; }
-        .program-card { background: #ffffff; border-radius: var(--radius); padding: 1.5rem; box-shadow: var(--shadow); border: 1px solid var(--gray-200); transition: var(--transition); }
-        .program-card:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: var(--primary); }
-        .program-card .icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
-        .program-card h3 { font-size: 0.95rem; font-weight: 700; color: var(--gray-900); margin-bottom: 0.3rem; line-height: 1.3; }
-        .program-card .meta { font-size: 0.8rem; color: var(--gray-500); margin-bottom: 0.5rem; }
-        .program-card .badge-min { display: inline-block; background: var(--primary-light); color: var(--primary); font-size: 0.7rem; font-weight: 600; padding: 0.2rem 0.8rem; border-radius: 40px; }
-        .program-card .duration { display: inline-block; background: var(--gray-100); color: var(--gray-600); font-size: 0.7rem; padding: 0.2rem 0.8rem; border-radius: 40px; margin-left: 0.3rem; }
-        .program-card p { font-size: 0.85rem; color: var(--gray-600); margin-top: 0.5rem; }
-        .school-section { margin-bottom: 2rem; }
-        .school-title { font-size: 1.1rem; font-weight: 700; color: var(--primary); margin: 1.5rem 0 0.8rem 0; border-bottom: 2px solid var(--primary-light); padding-bottom: 0.5rem; }
-        .school-title i { margin-right: 0.5rem; }
-
-        .success-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); z-index: 9999; align-items: center; justify-content: center; }
-        .success-overlay.show { display: flex; animation: fadeIn 0.4s ease; }
-        .success-card { background: #fff; border-radius: var(--radius); padding: 2.5rem; max-width: 480px; width: 90%; text-align: center; box-shadow: var(--shadow-lg); }
-        .success-card .check-circle { font-size: 4rem; margin-bottom: 0.5rem; }
-        .success-card h2 { font-size: 1.5rem; font-weight: 800; color: var(--gray-900); margin-bottom: 0.5rem; }
-        .success-card p { color: var(--gray-500); font-size: 0.9rem; margin-bottom: 1rem; }
-        .success-card .ref-box { background: var(--primary-light); padding: 0.75rem; border-radius: var(--radius-sm); font-weight: 700; color: var(--primary); margin-bottom: 1rem; }
-        .success-card .workflow-steps { display: flex; justify-content: center; gap: 0.75rem; flex-wrap: wrap; margin-bottom: 1.5rem; }
-        .success-card .workflow-steps span { font-size: 0.7rem; background: var(--gray-100); padding: 0.3rem 0.8rem; border-radius: 40px; color: var(--gray-600); }
-
-        @media (max-width: 1200px) { .grid-row { grid-template-columns: repeat(3, 1fr); } .grid-row .col-2 { grid-column: span 2; } .grid-row .col-3 { grid-column: span 3; } .emergency-grid { grid-template-columns: repeat(2, 1fr); } }
-        @media (max-width: 992px) { .page-content { padding: 1rem; } }
-        @media (max-width: 768px) {
-            .grid-row { grid-template-columns: 1fr; }
-            .grid-row .col-2, .grid-row .col-3 { grid-column: span 1; }
-            .emergency-grid { grid-template-columns: 1fr; }
-            .photo-upload-container { flex-direction: column; align-items: center; }
-            .panel-body { padding: 0.75rem; }
-            .app-steps { overflow-x: auto; flex-wrap: nowrap; gap: 0.25rem; padding: 0.5rem; }
-            .step-item { min-width: 60px; flex-shrink: 0; }
-            .step-item .step-name { font-size: 0.55rem; display: none; }
-            .step-item .step-num { width: 28px; height: 28px; font-size: 0.65rem; }
-            .flex-row { flex-direction: column; align-items: stretch; }
-            .flex-row .btn { width: 100%; justify-content: center; }
-            .summary-grid { grid-template-columns: 1fr; }
-            .home-grid { grid-template-columns: 1fr; }
-            .dashboard-header .user-info { flex-direction: column; text-align: center; }
-            .dashboard-header .header-right { justify-content: center; margin-top: 0.5rem; }
-            .top-nav { flex-direction: column; padding: 0.5rem 1rem; }
-            .nav-links { justify-content: center; }
-            .nav-item { font-size: 0.7rem; padding: 0.3rem 0.6rem; }
-            .divider { display: none; }
-        }
-        ::-webkit-scrollbar { width: 6px; height: 6px; }
-        ::-webkit-scrollbar-track { background: var(--gray-100); }
-        ::-webkit-scrollbar-thumb { background: var(--gray-300); border-radius: 10px; }
-        ::-webkit-scrollbar-thumb:hover { background: var(--gray-400); }
-    </style>
 </head>
 <body>
 
@@ -812,15 +222,12 @@
                         <div class="form-group">
                             <label>Password <span class="required">*</span></label>
                             <input type="password" id="regPassword" placeholder="Min 8 characters" />
-                            <div class="password-strength">
-                                <div class="strength-bar"><div class="bar" id="strengthBar"></div></div>
-                                <div class="strength-text" id="strengthText">Enter a password</div>
-                            </div>
+                            <div id="strengthText" style="font-size:0.65rem;color:var(--gray-400);margin-top:0.2rem;">Enter a password</div>
                         </div>
                         <div class="form-group">
                             <label>Confirm Password <span class="required">*</span></label>
                             <input type="password" id="regConfirmPassword" placeholder="Confirm your password" />
-                            <div class="password-match" id="passwordMatch"></div>
+                            <div id="passwordMatch" style="font-size:0.65rem;color:var(--gray-400);margin-top:0.2rem;"></div>
                         </div>
                         <button class="btn btn-primary" onclick="registerUser()" id="registerBtn" style="width:100%;justify-content:center;">
                             <i class="fas fa-user-plus"></i> Create Account
@@ -857,6 +264,15 @@
                                     <span class="duration">3 Years</span>
                                 </div>
                                 <p>Biology: C Plain · Comprehensive nursing training with clinical placement.</p>
+                            </div>
+                            <div class="program-card">
+                                <div class="icon">🎓</div>
+                                <h3>Diploma in Kenya Registered Nursing (KRCHN)</h3>
+                                <div class="meta">
+                                    <span class="badge-min">Min C Plain</span>
+                                    <span class="duration">3 Years</span>
+                                </div>
+                                <p>Biology: C Plain · Full nursing council accredited program.</p>
                             </div>
                         </div>
                     </div>
@@ -950,10 +366,11 @@
         </div>
 
         <!-- ============================================================ -->
-        <!-- PAGE: REGISTER -->
+        <!-- PAGE: REGISTER / DASHBOARD -->
         <!-- ============================================================ -->
         <div class="page-content" id="page-register">
 
+            <!-- Auth Container (shown when not logged in) -->
             <div id="authContainer2">
                 <div class="auth-header">
                     <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" />
@@ -975,14 +392,15 @@
                     <div class="form-group"><label>Full Name <span class="required">*</span></label><input type="text" id="regName2" placeholder="John Mwangi" /></div>
                     <div class="form-group"><label>Email Address <span class="required">*</span></label><input type="email" id="regEmail2" placeholder="your@email.com" /><div id="regEmailStatus2" class="help-text"></div></div>
                     <div class="form-group"><label>Phone Number <span class="required">*</span></label><input type="tel" id="regPhone2" placeholder="07XXXXXXXX" /></div>
-                    <div class="form-group"><label>Password <span class="required">*</span></label><input type="password" id="regPassword2" placeholder="Min 8 characters" /><div class="password-strength"><div class="strength-bar"><div class="bar" id="strengthBar2"></div></div><div class="strength-text" id="strengthText2">Enter a password</div></div></div>
-                    <div class="form-group"><label>Confirm Password <span class="required">*</span></label><input type="password" id="regConfirmPassword2" placeholder="Confirm your password" /><div class="password-match" id="passwordMatch2"></div></div>
+                    <div class="form-group"><label>Password <span class="required">*</span></label><input type="password" id="regPassword2" placeholder="Min 8 characters" /><div id="strengthText2" style="font-size:0.65rem;color:var(--gray-400);margin-top:0.2rem;">Enter a password</div></div>
+                    <div class="form-group"><label>Confirm Password <span class="required">*</span></label><input type="password" id="regConfirmPassword2" placeholder="Confirm your password" /><div id="passwordMatch2" style="font-size:0.65rem;color:var(--gray-400);margin-top:0.2rem;"></div></div>
                     <button class="btn btn-primary" onclick="registerUser2()" id="registerBtn2" style="width:100%;"><i class="fas fa-user-plus"></i> Create Account</button>
                     <div id="registerMessage2" class="auth-message"></div>
                     <div class="auth-footer"><i class="fas fa-check-circle" style="color:var(--primary);"></i> By registering you accept our terms</div>
                 </div>
             </div>
 
+            <!-- Dashboard (shown when logged in) -->
             <div id="dashboardApp" style="display:none;">
                 <div class="dashboard-header">
                     <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:1rem;">
@@ -1001,24 +419,24 @@
                     </div>
                 </div>
 
-               <div class="app-steps">
-    <div class="step-item active" data-step="1" onclick="goToStep(1)">
-        <span class="step-num">1</span>
-        <span class="step-name">Profile</span>
-    </div>
-    <div class="step-item" data-step="2" onclick="goToStep(2)">
-        <span class="step-num">2</span>
-        <span class="step-name">Program</span>
-    </div>
-    <div class="step-item" data-step="3" onclick="goToStep(3)">
-        <span class="step-num">3</span>
-        <span class="step-name">Documents</span>
-    </div>
-    <div class="step-item" data-step="4" onclick="goToStep(4)">
-        <span class="step-num">4</span>
-        <span class="step-name">Submit</span>
-    </div>
-</div>
+                <div class="app-steps">
+                    <div class="step-item active" data-step="1" onclick="goToStep(1)">
+                        <span class="step-num">1</span>
+                        <span class="step-name">Profile</span>
+                    </div>
+                    <div class="step-item" data-step="2" onclick="goToStep(2)">
+                        <span class="step-num">2</span>
+                        <span class="step-name">Program</span>
+                    </div>
+                    <div class="step-item" data-step="3" onclick="goToStep(3)">
+                        <span class="step-num">3</span>
+                        <span class="step-name">Documents</span>
+                    </div>
+                    <div class="step-item" data-step="4" onclick="goToStep(4)">
+                        <span class="step-num">4</span>
+                        <span class="step-name">Submit</span>
+                    </div>
+                </div>
 
                 <form id="admissionForm" enctype="multipart/form-data" novalidate>
 
@@ -1158,188 +576,179 @@
                         </div>
                     </div>
 
-                    <!-- ============================================================ -->
-                    <!-- STEP 3: QUALIFICATIONS - ALL DOCUMENT UPLOADS IN ONE PLACE -->
-                    <!-- ============================================================ -->
-                  <!-- ============================================================ -->
-<!-- STEP 3: QUALIFICATIONS - ALL DOCUMENT UPLOADS IN ONE PLACE -->
-<!-- ============================================================ -->
-<div class="form-section" data-section="3">
-    <div class="panel">
-        <div class="panel-heading">
-            <i class="fas fa-clipboard-list"></i> Qualifications &amp; Documents
-            <span class="badge-required">OCR Enabled</span>
-        </div>
-        <div class="panel-body">
-            <p class="section-desc">Upload your KCSE certificate and National ID for automatic data extraction. All documents are required for your application.</p>
-
-            <div class="grid-row">
-                <!-- KCSE Certificate -->
-                <div class="col col-full">
-                    <div class="form-group">
-                        <label>KCSE Certificate / Results Slip <span class="required">*</span></label>
-                        <div class="file-upload" id="doc_kcse">
-                            <div class="scanning-overlay" id="scanning_kcse">
-                                <i class="fas fa-spinner fa-spin"></i>
-                                <span>🔍 Scanning document...</span>
+                    <!-- STEP 3: DOCUMENTS -->
+                    <div class="form-section" data-section="3">
+                        <div class="panel">
+                            <div class="panel-heading">
+                                <i class="fas fa-clipboard-list"></i> Qualifications &amp; Documents
+                                <span class="badge-required">OCR Enabled</span>
                             </div>
-                            <input type="file" id="doc_kcse_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleKCSEDocument(event)" />
-                            <div class="icon"><i class="fas fa-file-pdf"></i></div>
-                            <div class="text">Upload KCSE Certificate <strong>for auto-extraction</strong></div>
-                            <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_kcse_filename">No file chosen</div>
-                            <div class="doc-status" id="doc_kcse_status">Not uploaded</div>
-                            <div class="ocr-status" id="ocr_kcse_status"></div>
-                            <div class="ocr-result" id="ocr_kcse_result">
-                                <div class="ocr-title"><i class="fas fa-robot"></i> Extracted Data</div>
-                                <div class="data-grid" id="kcse_extracted_data"></div>
-                                <div id="kcse_validation_result" style="margin-top:0.5rem;"></div>
+                            <div class="panel-body">
+                                <p class="section-desc">Upload your KCSE certificate and National ID for automatic data extraction. All documents are required for your application.</p>
+
+                                <div class="grid-row">
+                                    <!-- KCSE Certificate -->
+                                    <div class="col col-full">
+                                        <div class="form-group">
+                                            <label>KCSE Certificate / Results Slip <span class="required">*</span></label>
+                                            <div class="file-upload" id="doc_kcse">
+                                                <div class="scanning-overlay" id="scanning_kcse">
+                                                    <i class="fas fa-spinner fa-spin"></i>
+                                                    <span>🔍 Scanning document...</span>
+                                                </div>
+                                                <input type="file" id="doc_kcse_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleKCSEDocument(event)" />
+                                                <div class="icon"><i class="fas fa-file-pdf"></i></div>
+                                                <div class="text">Upload KCSE Certificate <strong>for auto-extraction</strong></div>
+                                                <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_kcse_filename">No file chosen</div>
+                                                <div class="doc-status" id="doc_kcse_status">Not uploaded</div>
+                                                <div class="ocr-status" id="ocr_kcse_status"></div>
+                                                <div class="ocr-result" id="ocr_kcse_result">
+                                                    <div class="ocr-title"><i class="fas fa-robot"></i> Extracted Data</div>
+                                                    <div class="data-grid" id="kcse_extracted_data"></div>
+                                                    <div id="kcse_validation_result" style="margin-top:0.5rem;"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- National ID -->
+                                    <div class="col col-full">
+                                        <div class="form-group">
+                                            <label>National ID / Birth Certificate <span class="required">*</span></label>
+                                            <div class="file-upload" id="doc_id">
+                                                <div class="scanning-overlay" id="scanning_id">
+                                                    <i class="fas fa-spinner fa-spin"></i>
+                                                    <span>🔍 Scanning ID...</span>
+                                                </div>
+                                                <input type="file" id="doc_id_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleIDDocument(event)" />
+                                                <div class="icon"><i class="fas fa-id-card"></i></div>
+                                                <div class="text">Upload National ID <strong>for auto-extraction</strong></div>
+                                                <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_id_filename">No file chosen</div>
+                                                <div class="doc-status" id="doc_id_status">Not uploaded</div>
+                                                <div class="ocr-status" id="ocr_id_status"></div>
+                                                <div class="ocr-result" id="ocr_id_result">
+                                                    <div class="ocr-title"><i class="fas fa-robot"></i> Extracted Data</div>
+                                                    <div class="data-grid" id="id_extracted_data"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Recommendation Letter -->
+                                    <div class="col">
+                                        <div class="form-group">
+                                            <label>Recommendation Letter <span class="required">*</span></label>
+                                            <div class="file-upload" id="doc_recommendation">
+                                                <input type="file" id="doc_recommendation_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'recommendation')" />
+                                                <div class="icon"><i class="fas fa-file-alt"></i></div>
+                                                <div class="text">Upload Recommendation Letter</div>
+                                                <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_recommendation_filename">No file chosen</div>
+                                                <div class="doc-status" id="doc_recommendation_status">Not uploaded</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Academic Transcript (shown only for transfer students) -->
+                                    <div class="col" id="doc_transcript" style="display:none;">
+                                        <div class="form-group">
+                                            <label>Academic Transcript <span class="required">*</span></label>
+                                            <div class="file-upload" id="doc_transcript_upload">
+                                                <input type="file" id="doc_transcript_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'transcript')" />
+                                                <div class="icon"><i class="fas fa-file-alt"></i></div>
+                                                <div class="text">Upload Transcript</div>
+                                                <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_transcript_filename">No file chosen</div>
+                                                <div class="doc-status" id="doc_transcript_status">Not uploaded</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Other Documents -->
+                                    <div class="col">
+                                        <div class="form-group">
+                                            <label>Other Supporting Documents</label>
+                                            <div class="file-upload" id="doc_other">
+                                                <input type="file" id="doc_other_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'other')" />
+                                                <div class="icon"><i class="fas fa-paperclip"></i></div>
+                                                <div class="text">Upload Other Documents</div>
+                                                <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_other_filename">No file chosen</div>
+                                                <div class="doc-status" id="doc_other_status">Not uploaded</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- National ID / Birth Certificate -->
-                <div class="col col-full">
-                    <div class="form-group">
-                        <label>National ID / Birth Certificate <span class="required">*</span></label>
-                        <div class="file-upload" id="doc_id">
-                            <div class="scanning-overlay" id="scanning_id">
-                                <i class="fas fa-spinner fa-spin"></i>
-                                <span>🔍 Scanning ID...</span>
+                        <div class="flex-row">
+                            <button type="button" class="btn btn-secondary" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Back</button>
+                            <button type="button" class="btn btn-primary" onclick="goToStep(4)">Next: Review &amp; Submit <i class="fas fa-arrow-right"></i></button>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4: REVIEW & SUBMIT -->
+                    <div class="form-section" data-section="4">
+                        <div class="panel">
+                            <div class="panel-heading">
+                                <i class="fas fa-clipboard-check"></i> Review &amp; Submit
                             </div>
-                            <input type="file" id="doc_id_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleIDDocument(event)" />
-                            <div class="icon"><i class="fas fa-id-card"></i></div>
-                            <div class="text">Upload National ID <strong>for auto-extraction</strong></div>
-                            <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_id_filename">No file chosen</div>
-                            <div class="doc-status" id="doc_id_status">Not uploaded</div>
-                            <div class="ocr-status" id="ocr_id_status"></div>
-                            <div class="ocr-result" id="ocr_id_result">
-                                <div class="ocr-title"><i class="fas fa-robot"></i> Extracted Data</div>
-                                <div class="data-grid" id="id_extracted_data"></div>
+                            <div class="panel-body">
+                                <p class="section-desc">Review all your details and documents before submitting your application.</p>
+
+                                <div class="summary-box">
+                                    <h4><i class="fas fa-file-alt"></i> Application Summary</h4>
+                                    <div class="summary-grid">
+                                        <p><strong>Application No:</strong> <span id="sumAppNo">ADM-2026-001</span></p>
+                                        <p><strong>Full Name:</strong> <span id="sumName">—</span></p>
+                                        <p><strong>Email:</strong> <span id="sumEmail">—</span></p>
+                                        <p><strong>Phone:</strong> <span id="sumPhone">—</span></p>
+                                        <p><strong>Course:</strong> <span id="sumProgram">—</span></p>
+                                        <p><strong>School:</strong> <span id="sumSchool">—</span></p>
+                                        <p><strong>Campus:</strong> <span id="sumCampus">—</span></p>
+                                        <p><strong>Intake:</strong> <span id="sumIntake">—</span></p>
+                                        <p><strong>Mode of Study:</strong> <span id="sumMode">—</span></p>
+                                        <p><strong>Student Type:</strong> <span id="sumStudentType">—</span></p>
+                                        <p><strong>KCSE Validation:</strong> <span id="sumValidation">Pending</span></p>
+                                        <p><strong>Eligibility:</strong> <span id="sumEligibility">Pending</span></p>
+                                        <p><strong>Documents:</strong> <span id="sumDocs">0 uploaded</span></p>
+                                    </div>
+                                </div>
+
+                                <!-- Document Upload Status -->
+                                <div style="background:var(--gray-50);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem;border:1px solid var(--gray-200);">
+                                    <h4 style="font-size:0.9rem;margin-bottom:0.5rem;"><i class="fas fa-upload" style="color:var(--primary);"></i> Uploaded Documents</h4>
+                                    <div id="documentStatusList" style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem;font-size:0.85rem;">
+                                        <span>📄 KCSE Certificate: <span id="doc_status_kcse" style="color:var(--gray-400);">Not uploaded</span></span>
+                                        <span>🪪 National ID: <span id="doc_status_id" style="color:var(--gray-400);">Not uploaded</span></span>
+                                        <span>📝 Recommendation Letter: <span id="doc_status_recommendation" style="color:var(--gray-400);">Not uploaded</span></span>
+                                        <span id="doc_status_transcript_row" style="display:none;">📚 Academic Transcript: <span id="doc_status_transcript" style="color:var(--gray-400);">Not uploaded</span></span>
+                                    </div>
+                                </div>
+
+                                <div class="terms-container">
+                                    <input type="checkbox" id="termsCheck" required />
+                                    <label for="termsCheck">
+                                        I confirm that all information provided is accurate and I have read the
+                                        <a href="#" onclick="alert('📋 Terms & Conditions (Full version available)');return false;">Terms &amp; Conditions</a>.
+                                        I consent to the processing of my data for admission purposes.
+                                    </label>
+                                </div>
+
+                                <button type="button" id="submitBtn" class="btn btn-primary submit-btn" onclick="submitAdmission()" style="width:100%;justify-content:center;padding:0.8rem;">
+                                    <i class="fas fa-paper-plane"></i> Submit Application
+                                </button>
+
+                                <div style="margin-top:0.75rem;text-align:center;">
+                                    <button type="button" class="btn btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
+                                </div>
+
+                                <div id="submitMessage" class="auth-message"></div>
                             </div>
                         </div>
-                    </div>
-                </div>
 
-                <!-- Recommendation Letter -->
-                <div class="col">
-                    <div class="form-group">
-                        <label>Recommendation Letter <span class="required">*</span></label>
-                        <div class="file-upload" id="doc_recommendation">
-                            <input type="file" id="doc_recommendation_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'recommendation')" />
-                            <div class="icon"><i class="fas fa-file-alt"></i></div>
-                            <div class="text">Upload Recommendation Letter</div>
-                            <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_recommendation_filename">No file chosen</div>
-                            <div class="doc-status" id="doc_recommendation_status">Not uploaded</div>
+                        <div class="flex-row">
+                            <button type="button" class="btn btn-secondary" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Back</button>
                         </div>
                     </div>
-                </div>
-
-                <!-- Academic Transcript (shown only for transfer students) -->
-                <div class="col" id="doc_transcript" style="display:none;">
-                    <div class="form-group">
-                        <label>Academic Transcript <span class="required">*</span></label>
-                        <div class="file-upload" id="doc_transcript_upload">
-                            <input type="file" id="doc_transcript_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'transcript')" />
-                            <div class="icon"><i class="fas fa-file-alt"></i></div>
-                            <div class="text">Upload Transcript</div>
-                            <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_transcript_filename">No file chosen</div>
-                            <div class="doc-status" id="doc_transcript_status">Not uploaded</div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Other Documents -->
-                <div class="col">
-                    <div class="form-group">
-                        <label>Other Supporting Documents</label>
-                        <div class="file-upload" id="doc_other">
-                            <input type="file" id="doc_other_input" accept=".pdf,.jpg,.png,.jpeg" onchange="handleDocUpload(event, 'other')" />
-                            <div class="icon"><i class="fas fa-paperclip"></i></div>
-                            <div class="text">Upload Other Documents</div>
-                            <div class="text" style="font-size:0.7rem;color:var(--gray-400);" id="doc_other_filename">No file chosen</div>
-                            <div class="doc-status" id="doc_other_status">Not uploaded</div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="flex-row">
-        <button type="button" class="btn btn-secondary" onclick="goToStep(2)"><i class="fas fa-arrow-left"></i> Back</button>
-        <button type="button" class="btn btn-primary" onclick="goToStep(4)">Next: Review &amp; Submit <i class="fas fa-arrow-right"></i></button>
-    </div>
-</div>
-
-                  
-
-                      <!-- ============================================================ -->
-<!-- STEP 4: REVIEW & SUBMIT (NO UPLOADS - JUST REVIEW) -->
-<!-- ============================================================ -->
-<div class="form-section" data-section="4">
-    <div class="panel">
-        <div class="panel-heading">
-            <i class="fas fa-clipboard-check"></i> Review &amp; Submit
-        </div>
-        <div class="panel-body">
-            <p class="section-desc">Review all your details and documents before submitting your application.</p>
-
-            <div class="summary-box">
-                <h4><i class="fas fa-file-alt"></i> Application Summary</h4>
-                <div class="summary-grid">
-                    <p><strong>Application No:</strong> <span id="sumAppNo">ADM-2026-001</span></p>
-                    <p><strong>Full Name:</strong> <span id="sumName">—</span></p>
-                    <p><strong>Email:</strong> <span id="sumEmail">—</span></p>
-                    <p><strong>Phone:</strong> <span id="sumPhone">—</span></p>
-                    <p><strong>Course:</strong> <span id="sumProgram">—</span></p>
-                    <p><strong>School:</strong> <span id="sumSchool">—</span></p>
-                    <p><strong>Campus:</strong> <span id="sumCampus">—</span></p>
-                    <p><strong>Intake:</strong> <span id="sumIntake">—</span></p>
-                    <p><strong>Mode of Study:</strong> <span id="sumMode">—</span></p>
-                    <p><strong>Student Type:</strong> <span id="sumStudentType">—</span></p>
-                    <p><strong>KCSE Validation:</strong> <span id="sumValidation">Pending</span></p>
-                    <p><strong>Eligibility:</strong> <span id="sumEligibility">Pending</span></p>
-                    <p><strong>Documents:</strong> <span id="sumDocs">0 uploaded</span></p>
-                </div>
-            </div>
-
-            <!-- Document Upload Status -->
-            <div style="background:var(--gray-50);border-radius:var(--radius-sm);padding:1rem;margin-bottom:1rem;border:1px solid var(--gray-200);">
-                <h4 style="font-size:0.9rem;margin-bottom:0.5rem;"><i class="fas fa-upload" style="color:var(--primary);"></i> Uploaded Documents</h4>
-                <div id="documentStatusList" style="display:grid;grid-template-columns:1fr 1fr;gap:0.25rem;font-size:0.85rem;">
-                    <span>📄 KCSE Certificate: <span id="doc_status_kcse" style="color:var(--gray-400);">Not uploaded</span></span>
-                    <span>🪪 National ID: <span id="doc_status_id" style="color:var(--gray-400);">Not uploaded</span></span>
-                    <span>📝 Recommendation Letter: <span id="doc_status_recommendation" style="color:var(--gray-400);">Not uploaded</span></span>
-                    <span id="doc_status_transcript_row" style="display:none;">📚 Academic Transcript: <span id="doc_status_transcript" style="color:var(--gray-400);">Not uploaded</span></span>
-                </div>
-            </div>
-
-            <div class="terms-container">
-                <input type="checkbox" id="termsCheck" required />
-                <label for="termsCheck">
-                    I confirm that all information provided is accurate and I have read the
-                    <a href="#" onclick="alert('📋 Terms & Conditions (Full version available)');return false;">Terms &amp; Conditions</a>.
-                    I consent to the processing of my data for admission purposes.
-                </label>
-            </div>
-
-            <button type="button" id="submitBtn" class="btn btn-primary submit-btn" onclick="submitAdmission()" style="width:100%;justify-content:center;padding:0.8rem;">
-                <i class="fas fa-paper-plane"></i> Submit Application
-            </button>
-
-            <div style="margin-top:0.75rem;text-align:center;">
-                <button type="button" class="btn btn-secondary" onclick="saveDraft()"><i class="fas fa-save"></i> Save Draft</button>
-            </div>
-
-            <div id="submitMessage" class="auth-message"></div>
-        </div>
-    </div>
-
-    <div class="flex-row">
-        <button type="button" class="btn btn-secondary" onclick="goToStep(3)"><i class="fas fa-arrow-left"></i> Back</button>
-    </div>
-</div>
 
                 </form>
 
@@ -1382,447 +791,9 @@
     </div>
 
     <!-- ============================================================ -->
-    <!-- EXTERNAL JAVASCRIPT - admissions.js -->
+    <!-- EXTERNAL JAVASCRIPT -->
     <!-- ============================================================ -->
     <script src="admissions.js"></script>
-
-    <!-- ============================================================ -->
-    <!-- INLINE JAVASCRIPT - ONLY UI CONTROLS (NO DUPLICATES) -->
-    <!-- ============================================================ -->
-    <script>
-        // ============================================================
-        // UI ENHANCEMENTS & VALIDATION MODAL CONTROLS
-        // ============================================================
-
-        // NOTE: missingFieldsData is defined in admissions.js
-        // DO NOT redeclare it here!
-
-        /**
-         * Show the validation modal with detailed missing fields
-         * @param {string} title - The main title
-         * @param {string} subtitle - The subtitle
-         * @param {Array} missingFields - Array of {field, section, hint} objects
-         */
-        function showValidationModal(title, subtitle, missingFields) {
-            const modal = document.getElementById('validationModal');
-            const titleEl = document.getElementById('modalTitle');
-            const subtitleEl = document.getElementById('modalSubtitle');
-            const summaryEl = document.getElementById('validationSummary');
-            const countEl = document.getElementById('missingCount');
-            const listEl = document.getElementById('missingFieldsList');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
-
-            if (!modal) return;
-
-            // Store for later use - uses global from admissions.js
-            window.missingFieldsData = missingFields || [];
-
-            // Set header
-            if (titleEl) titleEl.textContent = title || 'Cannot Proceed';
-            if (subtitleEl) subtitleEl.textContent = subtitle || 'Please complete all required fields';
-
-            // Update summary
-            const count = window.missingFieldsData.length;
-            if (countEl) countEl.textContent = count;
-            if (summaryEl) {
-                const msg = count === 1 ? 
-                    'required field needs your attention before you can proceed.' :
-                    'required fields need your attention before you can proceed.';
-                summaryEl.querySelector('div').innerHTML = `<strong>${count}</strong> ${msg}`;
-            }
-
-            // Update progress
-            const totalSteps = 5;
-            const completed = totalSteps - Math.ceil(count / 3);
-            const percent = Math.min(Math.round((completed / totalSteps) * 100), 100);
-            if (progressFill) progressFill.style.width = percent + '%';
-            if (progressText) progressText.textContent = percent + '%';
-
-            // Build missing fields list grouped by section
-            if (listEl) {
-                const grouped = {};
-                window.missingFieldsData.forEach(item => {
-                    const section = item.section || 'General';
-                    if (!grouped[section]) grouped[section] = [];
-                    grouped[section].push(item);
-                });
-
-                let html = '';
-                const sectionIcons = {
-                    'Personal Details': 'fa-user',
-                    'Program Details': 'fa-graduation-cap',
-                    'Qualifications': 'fa-clipboard-list',
-                    'Attachment': 'fa-id-card',
-                    'Submission': 'fa-clipboard-check',
-                    'Emergency Contact': 'fa-ambulance',
-                    'Medical History': 'fa-heartbeat',
-                    'Employment': 'fa-briefcase',
-                    'General': 'fa-circle'
-                };
-
-                for (const [section, fields] of Object.entries(grouped)) {
-                    const icon = sectionIcons[section] || 'fa-circle';
-                    html += `
-                        <div class="missing-section">
-                            <div class="missing-section-header">
-                                <i class="fas ${icon} section-icon"></i>
-                                ${section}
-                                <span class="badge-count">${fields.length}</span>
-                            </div>
-                            ${fields.map(f => `
-                                <div class="missing-field-item">
-                                    <span class="field-name">${f.field}</span>
-                                    ${f.hint ? `<span class="field-hint">${f.hint}</span>` : ''}
-                                </div>
-                            `).join('')}
-                        </div>
-                    `;
-                }
-
-                listEl.innerHTML = html || `
-                    <div style="text-align:center;padding:2rem;color:var(--gray-400);">
-                        <i class="fas fa-check-circle" style="font-size:2rem;color:var(--success);"></i>
-                        <p style="margin-top:0.5rem;">No missing fields found!</p>
-                    </div>
-                `;
-            }
-
-            modal.classList.add('show');
-            document.body.style.overflow = 'hidden';
-        }
-
-        function closeValidation() {
-            const modal = document.getElementById('validationModal');
-            if (modal) {
-                modal.classList.remove('show');
-                document.body.style.overflow = '';
-            }
-        }
-
-        function scrollToFirstMissing() {
-            closeValidation();
-            
-            if (window.missingFieldsData && window.missingFieldsData.length > 0) {
-                const fieldMap = {
-                    'Full Name': 'fullName',
-                    'Email Address': 'email',
-                    'Date of Birth': 'dob',
-                    'Nationality': 'nationality',
-                    'National ID': 'nationalId',
-                    'Country of Birth': 'countryOfBirth',
-                    'Gender': 'gender',
-                    'Address': 'address',
-                    'City': 'city',
-                    'Phone Number': 'phone',
-                    'How did you Know about Us': 'hearAbout',
-                    'Are you Sponsored': 'sponsored',
-                    'Sponsor Name': 'sponsorName',
-                    'School': 'school',
-                    'Course': 'program',
-                    'Campus': 'campus',
-                    'Intake': 'intake',
-                    'Mode of Study': 'modeOfStudy',
-                    'Student Type': 'studentType',
-                    'Previous Institution': 'prevInstitution',
-                    'Previous Year of Study': 'prevYear',
-                    'KCSE Certificate': 'doc_kcse_input',
-                    'Recommendation Letter': 'doc_recommendation_input',
-                    'Academic Transcript': 'doc_transcript_input',
-                    'National ID / Birth Certificate': 'doc_id_input',
-                    'Passport Photo': 'doc_passport_input',
-                    'Father Alive': 'fatherAlive',
-                    'Father Name': 'fatherName',
-                    'Father Phone No.': 'fatherPhone',
-                    'Mother Alive': 'motherAlive',
-                    'Mother Name': 'motherName',
-                    'Mother Phone No.': 'motherPhone',
-                    'Person With Disability': 'disability',
-                    'Disability Description': 'disabilityDesc',
-                    'Any Medical Condition': 'medicalCondition',
-                    'Medical Condition Description': 'medicalDesc',
-                    'Are you employed': 'employed',
-                    'Employment Details': 'employmentDesc',
-                    'Terms & Conditions': 'termsCheck'
-                };
-
-                const firstField = window.missingFieldsData[0];
-                const fieldId = fieldMap[firstField.field];
-                
-                if (fieldId) {
-                    const el = document.getElementById(fieldId);
-                    if (el) {
-                        el.style.borderColor = '#ef4444';
-                        el.style.boxShadow = '0 0 0 4px rgba(239, 68, 68, 0.2)';
-                        setTimeout(() => {
-                            el.style.borderColor = '';
-                            el.style.boxShadow = '';
-                        }, 3000);
-                        el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                        el.focus();
-                        return;
-                    }
-                }
-            }
-        }
-
-        // ============================================================
-        // CONDITIONAL FIELD TOGGLES
-        // ============================================================
-
-        function toggleSponsor() {
-            const val = document.getElementById('sponsored')?.value;
-            const field = document.getElementById('sponsorField');
-            const input = document.getElementById('sponsorName');
-            if (!field) return;
-            if (val === 'Yes') {
-                field.className = 'col conditional-field visible';
-                if (input) input.setAttribute('required', 'required');
-            } else {
-                field.className = 'col conditional-field hidden';
-                if (input) input.removeAttribute('required');
-            }
-        }
-
-        function toggleFather() {
-            const val = document.getElementById('fatherAlive')?.value;
-            const nameField = document.getElementById('fatherNameField');
-            const phoneField = document.getElementById('fatherPhoneField');
-            const nameInput = document.getElementById('fatherName');
-            const phoneInput = document.getElementById('fatherPhone');
-            if (!nameField || !phoneField) return;
-            if (val === 'Yes') {
-                nameField.className = 'form-group conditional-field visible';
-                phoneField.className = 'form-group conditional-field visible';
-                if (nameInput) nameInput.setAttribute('required', 'required');
-                if (phoneInput) phoneInput.setAttribute('required', 'required');
-            } else {
-                nameField.className = 'form-group conditional-field hidden';
-                phoneField.className = 'form-group conditional-field hidden';
-                if (nameInput) nameInput.removeAttribute('required');
-                if (phoneInput) phoneInput.removeAttribute('required');
-            }
-        }
-
-        function toggleMother() {
-            const val = document.getElementById('motherAlive')?.value;
-            const nameField = document.getElementById('motherNameField');
-            const phoneField = document.getElementById('motherPhoneField');
-            const nameInput = document.getElementById('motherName');
-            const phoneInput = document.getElementById('motherPhone');
-            if (!nameField || !phoneField) return;
-            if (val === 'Yes') {
-                nameField.className = 'form-group conditional-field visible';
-                phoneField.className = 'form-group conditional-field visible';
-                if (nameInput) nameInput.setAttribute('required', 'required');
-                if (phoneInput) phoneInput.setAttribute('required', 'required');
-            } else {
-                nameField.className = 'form-group conditional-field hidden';
-                phoneField.className = 'form-group conditional-field hidden';
-                if (nameInput) nameInput.removeAttribute('required');
-                if (phoneInput) phoneInput.removeAttribute('required');
-            }
-        }
-
-        function toggleDisability() {
-            const val = document.getElementById('disability')?.value;
-            const field = document.getElementById('disabilityField');
-            const input = document.getElementById('disabilityDesc');
-            if (!field) return;
-            if (val === 'Yes') {
-                field.className = 'col conditional-field visible';
-                if (input) input.setAttribute('required', 'required');
-            } else {
-                field.className = 'col conditional-field hidden';
-                if (input) input.removeAttribute('required');
-            }
-        }
-
-        function toggleMedical() {
-            const val = document.getElementById('medicalCondition')?.value;
-            const field = document.getElementById('medicalField');
-            const input = document.getElementById('medicalDesc');
-            if (!field) return;
-            if (val === 'Yes') {
-                field.className = 'col conditional-field visible';
-                if (input) input.setAttribute('required', 'required');
-            } else {
-                field.className = 'col conditional-field hidden';
-                if (input) input.removeAttribute('required');
-            }
-        }
-
-        function toggleEmployment() {
-            const val = document.getElementById('employed')?.value;
-            const field = document.getElementById('employmentField');
-            const input = document.getElementById('employmentDesc');
-            if (!field) return;
-            if (val === 'Yes') {
-                field.className = 'col col-3 conditional-field visible';
-                if (input) input.setAttribute('required', 'required');
-            } else {
-                field.className = 'col col-3 conditional-field hidden';
-                if (input) input.removeAttribute('required');
-            }
-        }
-
-        function toggleStudentType() {
-            const transferChecked = document.querySelector('input[name="studentType"][value="transfer"]')?.checked;
-            const transferFields = document.getElementById('transferFields');
-            const transcriptDoc = document.getElementById('doc_transcript');
-            
-            if (transferChecked) {
-                if (transferFields) transferFields.style.display = 'block';
-                if (transcriptDoc) transcriptDoc.style.display = 'block';
-                document.getElementById('prevInstitution').setAttribute('required', 'required');
-                document.getElementById('prevYear').setAttribute('required', 'required');
-            } else {
-                if (transferFields) transferFields.style.display = 'none';
-                if (transcriptDoc) transcriptDoc.style.display = 'none';
-                document.getElementById('prevInstitution').removeAttribute('required');
-                document.getElementById('prevYear').removeAttribute('required');
-            }
-        }
-
-        // ============================================================
-        // PHOTO PREVIEW
-        // ============================================================
-
-        function previewPhoto(event) {
-            const file = event.target.files[0];
-            const preview = document.getElementById('photoPreview');
-            const fileName = document.getElementById('photoFileName');
-            const upload = document.getElementById('photoUpload');
-            if (!file || !preview) return;
-            if (!file.type.startsWith('image/')) {
-                alert('Please upload an image file.');
-                event.target.value = '';
-                return;
-            }
-            if (file.size > 4 * 1024 * 1024) {
-                alert('File too large. Max 4MB.');
-                event.target.value = '';
-                return;
-            }
-            const reader = new FileReader();
-            reader.onload = function(e) {
-                preview.innerHTML = `<img src="${e.target.result}" alt="Passport" />`;
-                preview.classList.add('has-image');
-                if (fileName) fileName.textContent = file.name;
-                if (upload) upload.classList.add('uploaded');
-            };
-            reader.readAsDataURL(file);
-        }
-
-        // ============================================================
-        // NAVIGATION
-        // ============================================================
-
-        function navigateTo(page) {
-            document.querySelectorAll('.page-content').forEach(el => el.classList.remove('active'));
-            const target = document.getElementById(`page-${page}`);
-            if (target) target.classList.add('active');
-            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add('active');
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        // ============================================================
-        // AUTH TAB SWITCHING
-        // ============================================================
-
-        function switchAuthTab(tab) {
-            const tabs = document.querySelectorAll('.auth-tabs .tab');
-            const forms = document.querySelectorAll('.auth-form');
-            tabs.forEach(t => t.classList.remove('active'));
-            forms.forEach(f => f.classList.remove('active'));
-            document.querySelector(`.auth-tabs .tab[data-tab="${tab}"]`)?.classList.add('active');
-            document.getElementById(tab === 'login' ? 'loginForm' : 'registerForm')?.classList.add('active');
-            document.getElementById('loginMessage').className = 'auth-message';
-            document.getElementById('loginMessage').textContent = '';
-            document.getElementById('registerMessage').className = 'auth-message';
-            document.getElementById('registerMessage').textContent = '';
-        }
-
-        function switchAuthTab2(tab) {
-            const tabs = document.querySelectorAll('#authContainer2 .auth-tabs .tab');
-            const forms = document.querySelectorAll('#authContainer2 .auth-form');
-            tabs.forEach(t => t.classList.remove('active'));
-            forms.forEach(f => f.classList.remove('active'));
-            document.querySelector(`#authContainer2 .auth-tabs .tab[data-tab="${tab}"]`)?.classList.add('active');
-            document.getElementById(tab === 'login2' ? 'loginForm2' : 'registerForm2')?.classList.add('active');
-            document.getElementById('loginMessage2').className = 'auth-message';
-            document.getElementById('loginMessage2').textContent = '';
-            document.getElementById('registerMessage2').className = 'auth-message';
-            document.getElementById('registerMessage2').textContent = '';
-        }
-
-        // ============================================================
-        // ENQUIRY HANDLER
-        // ============================================================
-
-        function handleEnquiry(e) {
-            e.preventDefault();
-            const msg = document.getElementById('enquiryMessageStatus');
-            if (msg) {
-                msg.className = 'auth-message success';
-                msg.textContent = '✅ Your enquiry has been sent! We will get back to you within 24 hours.';
-                setTimeout(() => {
-                    msg.className = 'auth-message';
-                    msg.textContent = '';
-                }, 5000);
-            }
-            e.target.reset();
-        }
-
-        // ============================================================
-        // INITIALIZE
-        // ============================================================
-
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(function() {
-                toggleSponsor();
-                toggleFather();
-                toggleMother();
-                toggleDisability();
-                toggleMedical();
-                toggleEmployment();
-            }, 100);
-            
-            document.addEventListener('keydown', function(e) {
-                if (e.key === 'Escape') closeValidation();
-            });
-            
-            document.getElementById('validationModal')?.addEventListener('click', function(e) {
-                if (e.target === this) closeValidation();
-            });
-            
-            console.log('✅ NCHSM Admission System loaded with Ultra Modern Validation Modal');
-        });
-
-        // ============================================================
-        // MAKE FUNCTIONS GLOBALLY AVAILABLE
-        // ============================================================
-
-        window.goToStep = goToStep;
-        window.closeValidation = closeValidation;
-        window.showValidationModal = showValidationModal;
-        window.scrollToFirstMissing = scrollToFirstMissing;
-        window.navigateTo = navigateTo;
-        window.switchAuthTab = switchAuthTab;
-        window.switchAuthTab2 = switchAuthTab2;
-        window.toggleSponsor = toggleSponsor;
-        window.toggleFather = toggleFather;
-        window.toggleMother = toggleMother;
-        window.toggleDisability = toggleDisability;
-        window.toggleMedical = toggleMedical;
-        window.toggleEmployment = toggleEmployment;
-        window.toggleStudentType = toggleStudentType;
-        window.previewPhoto = previewPhoto;
-        window.handleEnquiry = handleEnquiry;
-
-        console.log('✅ All functions registered globally');
-    </script>
 
 </body>
 </html>
