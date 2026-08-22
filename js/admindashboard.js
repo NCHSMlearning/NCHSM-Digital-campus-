@@ -5773,53 +5773,89 @@ window.batchResendReleaseEmails = async function(examId) {
         overlay.classList.toggle('show');
     };
 
-    window.switchTab = function(tab) {
-        currentTab = tab;
-        document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
-        document.querySelector(`.sidebar-menu a[data-tab="${tab}"]`)?.classList.add('active');
+   window.switchTab = function(tab) {
+    currentTab = tab;
+    
+    // Update sidebar active state
+    document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+    document.querySelector(`.sidebar-menu a[data-tab="${tab}"]`)?.classList.add('active');
 
-        const titles = {
-            'students': ['Students Results', 'View and manage student exam results', 'fa-graduation-cap'],
-            'allStudents': ['All Students', 'View all registered students', 'fa-users'],
-            'exams': ['Exam Management', 'Create, edit and manage exams', 'fa-file-alt'],
-            'proctoring': ['Proctoring Alerts', 'Live monitoring and alerts', 'fa-video'],
-            'liveStudents': ['Live Students', 'Students currently taking exams', 'fa-eye'],
-            'livefeed': ['Live Camera Feed', 'Real-time camera feeds of active students', 'fa-video'],
-            'attendance': ['Attendance Sheet', 'View exam attendance with live video feeds', 'fa-clipboard-check']  // ✅ ADD THIS LINE
-        };
-        
-        const [title, subtitle, icon] = titles[tab] || ['Dashboard', 'Overview', 'fa-home'];
-        document.getElementById('pageTitle').innerHTML = `<i class="fas ${icon}"></i> ${title}`;
-        document.getElementById('pageSubtitle').textContent = subtitle;
-
-        document.getElementById('studentsTableContainer').style.display = tab === 'students' ? 'block' : 'none';
-        document.getElementById('allStudentsTableContainer').style.display = tab === 'allStudents' ? 'block' : 'none';
-        document.getElementById('examsTableContainer').style.display = tab === 'exams' ? 'block' : 'none';
-        document.getElementById('proctoringTableContainer').style.display = tab === 'proctoring' ? 'block' : 'none';
-        document.getElementById('liveStudentsTableContainer').style.display = tab === 'liveStudents' ? 'block' : 'none';
-        document.getElementById('livefeedTableContainer').style.display = tab === 'livefeed' ? 'block' : 'none';
-        document.getElementById('attendanceTableContainer').style.display = tab === 'attendance' ? 'block' : 'none';  // ✅ ADD THIS LINE
-
-        if (tab === 'students') loadStudentsWithResults();
-        if (tab === 'allStudents') loadAllStudents();
-        if (tab === 'exams') loadAllExams();
-        if (tab === 'proctoring') loadProctoringLogs();
-        if (tab === 'liveStudents') loadLiveStudents();
-        if (tab === 'livefeed') {
-            loadLiveFeed();
-            startLiveFeedAutoRefresh();
-        }
-        if (tab === 'attendance') {  // ✅ ADD THIS BLOCK
-            initAttendanceTab();
-        }
-        
-        renderFilters();
-
-        if (window.innerWidth <= 768) {
-            document.getElementById('sidebar').classList.remove('open');
-            document.getElementById('sidebarOverlay').classList.remove('show');
-        }
+    // Update page title
+    const titles = {
+        'students': ['Students Results', 'View and manage student exam results', 'fa-graduation-cap'],
+        'allStudents': ['All Students', 'View all registered students', 'fa-users'],
+        'exams': ['Exam Management', 'Create, edit and manage exams', 'fa-file-alt'],
+        'proctoring': ['Proctoring Alerts', 'Live monitoring and alerts', 'fa-video'],
+        'liveStudents': ['Live Students', 'Students currently taking exams', 'fa-eye'],
+        'livefeed': ['Live Camera Feed', 'Real-time camera feeds of active students', 'fa-video'],
+        'attendance': ['Attendance Sheet', 'View exam attendance with live video feeds', 'fa-clipboard-check'],
+        'enrollments': ['Enrollments', 'Manage student enrollments', 'fa-user-plus'],
+        'createExam': ['Create Exam', 'Set up a new exam', 'fa-plus-circle'],
+        'settings': ['System Settings', 'Configure system preferences', 'fa-cog'],
+        'profile': ['Profile', 'Manage your profile', 'fa-user-circle'],
+        'security': ['Security', 'Security settings and access control', 'fa-shield-alt']
     };
+    
+    const [title, subtitle, icon] = titles[tab] || ['Dashboard', 'Overview', 'fa-home'];
+    const pageTitle = document.getElementById('pageTitle');
+    const pageSubtitle = document.getElementById('pageSubtitle');
+    
+    if (pageTitle) pageTitle.innerHTML = `<i class="fas ${icon}"></i> ${title}`;
+    if (pageSubtitle) pageSubtitle.textContent = subtitle;
+
+    // ✅ FIX: Handle both section and container elements
+    // Hide all sections first
+    document.querySelectorAll('.tab-content, [id$="TableContainer"]').forEach(el => {
+        if (el) el.style.display = 'none';
+    });
+
+    // Show the selected section (by ID)
+    const targetSection = document.getElementById(tab);
+    if (targetSection) {
+        targetSection.style.display = 'block';
+    }
+
+    // Also show container if it exists (for backward compatibility)
+    const containerMap = {
+        'students': 'studentsTableContainer',
+        'allStudents': 'allStudentsTableContainer',
+        'exams': 'examsTableContainer',
+        'proctoring': 'proctoringTableContainer',
+        'liveStudents': 'liveStudentsTableContainer',
+        'livefeed': 'livefeedTableContainer',
+        'attendance': 'attendanceTableContainer'
+    };
+    
+    const containerId = containerMap[tab];
+    if (containerId) {
+        const container = document.getElementById(containerId);
+        if (container) container.style.display = 'block';
+    }
+
+    // Load data based on tab
+    if (tab === 'students') loadStudentsWithResults();
+    if (tab === 'allStudents') loadAllStudents();
+    if (tab === 'exams') loadAllExams();
+    if (tab === 'proctoring') loadProctoringLogs();
+    if (tab === 'liveStudents') loadLiveStudents();
+    if (tab === 'livefeed') {
+        loadLiveFeed();
+        startLiveFeedAutoRefresh();
+    }
+    if (tab === 'attendance') {
+        initAttendanceTab();
+    }
+    
+    renderFilters();
+
+    // Close sidebar on mobile
+    if (window.innerWidth <= 768) {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (sidebar) sidebar.classList.remove('open');
+        if (overlay) overlay.classList.remove('show');
+    }
+};
     // ============================================
     // 🔄 REFRESH STUDENT PROGRESS
     // ============================================
