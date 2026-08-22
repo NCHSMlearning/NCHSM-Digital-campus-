@@ -789,6 +789,62 @@ function displayStudentsResults() {
     
     renderPagination('students', studentsResults.length);
 }
+    // ============================================
+// 👥 LOAD ALL STUDENTS
+// ============================================
+window.loadAllStudents = async function() {
+    const loadingDiv = document.getElementById('allStudentsLoading');
+    const table = document.getElementById('allStudentsTable');
+    
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (table) table.style.display = 'none';
+    
+    try {
+        const { data, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .order('full_name');
+            
+        if (error) throw error;
+        
+        allStudents = data || [];
+        
+        // Get exam counts for each student
+        if (allStudents.length > 0) {
+            const studentIds = allStudents.map(s => s.user_id).filter(id => id);
+            
+            if (studentIds.length > 0) {
+                const { data: gradeCounts } = await sb
+                    .from('exam_grades')
+                    .select('student_id')
+                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                    .in('student_id', studentIds);
+                
+                const countMap = {};
+                if (gradeCounts) {
+                    gradeCounts.forEach(g => {
+                        countMap[g.student_id] = (countMap[g.student_id] || 0) + 1;
+                    });
+                }
+                allStudents.forEach(s => {
+                    s.examsTaken = countMap[s.user_id] || 0;
+                });
+            }
+        }
+        
+        displayAllStudents();
+        
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (table) table.style.display = 'table';
+        
+    } catch (error) {
+        console.error('Error loading students:', error);
+        if (loadingDiv) {
+            loadingDiv.innerHTML = '❌ Error loading students: ' + error.message;
+            loadingDiv.style.color = '#DC2626';
+        }
+    }
+};
   // ============================================
 // 👥 DISPLAY ALL STUDENTS - MODERN STYLING
 // ============================================
