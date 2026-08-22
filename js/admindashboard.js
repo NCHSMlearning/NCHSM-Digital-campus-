@@ -1937,13 +1937,23 @@ Are you sure?`;
         }
     }
 };
- // ============================================
-// 📈 UPDATE STATS - FIXED
+// ============================================
+// 📈 UPDATE STATS - FIXED FOR BOTH DASHBOARDS
 // ============================================
 async function updateStats() {
-    // Get container
-    const statsContainer = document.getElementById('statsContainer');
-    if (!statsContainer) return;
+    // ✅ Try both container IDs (admin and lecturer)
+    let statsContainer = document.getElementById('statsContainer');
+    let isLecturerDashboard = false;
+    
+    if (!statsContainer) {
+        statsContainer = document.getElementById('dashboardStats');
+        isLecturerDashboard = true;
+    }
+    
+    if (!statsContainer) {
+        console.warn('Stats container not found');
+        return;
+    }
 
     // ✅ Calculate stats from actual data
     const totalStudents = allStudents.length || 0;
@@ -1985,7 +1995,22 @@ async function updateStats() {
         onlineCount = 0;
     }
 
-    // ✅ Display stats with modern cards
+    // ✅ If lecturer dashboard, update individual stat elements
+    if (isLecturerDashboard) {
+        const totalExamsEl = document.getElementById('statTotalExams');
+        const totalStudentsEl = document.getElementById('statTotalStudents');
+        const passedEl = document.getElementById('statPassed');
+        const liveStudentsEl = document.getElementById('statLiveStudents');
+        
+        if (totalExamsEl) totalExamsEl.textContent = allExams.length || 0;
+        if (totalStudentsEl) totalStudentsEl.textContent = totalStudents;
+        if (passedEl) passedEl.textContent = passed;
+        if (liveStudentsEl) liveStudentsEl.textContent = onlineCount;
+        
+        return;
+    }
+
+    // ✅ Admin dashboard - render full stats grid
     statsContainer.innerHTML = `
         <div style="background: linear-gradient(135deg, #ffffff, #f8fafc); border-left: 4px solid #0A3D62; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
             <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
