@@ -628,44 +628,61 @@ window.loadStudentsWithResults = async function() {
 };
 
     // ============================================
-// 📊 DISPLAY STUDENTS RESULTS - FIXED
+// 📊 DISPLAY STUDENTS RESULTS - EXACT MATCH FOR 10 COLUMNS
 // ============================================
 function displayStudentsResults() {
     const start = (currentPage.students - 1) * itemsPerPage;
     const page = studentsResults.slice(start, start + itemsPerPage);
     const tbody = document.getElementById('studentsBody');
     
+    if (!tbody) return;
+    
     if (page.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="12" style="text-align:center">No results found</td></tr>'; 
+        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px; color:#94A3B8;"><i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i>No results found</td></tr>'; 
         return; 
     }
     
-    tbody.innerHTML = page.map(r => {
-        const studentName = (r.student_profile?.full_name || 'Unknown').replace(/'/g, "\\'");
-        const examName = (r.exam_info?.exam_name || 'Exam ' + r.exam_id).replace(/'/g, "\\'");
+    tbody.innerHTML = page.map((r, index) => {
+        // ✅ Get student and exam data with fallbacks
+        const student = r.student_profile || {};
+        const exam = r.exam_info || {};
         
-        // ✅ FIX: Use the actual total_marks from the exam record
-        const totalMarks = r.exam_info?.total_marks || 100;
-        const passMark = r.exam_info?.pass_mark || Math.round(totalMarks * 0.6);
-        const score = r.marks || 0;
+        // Column 1: Student ID
+        const studentId = student.student_id || 'N/A';
+        
+        // Column 2: Name
+        const studentName = student.full_name || 'Unknown';
+        
+        // Column 3: Email
+        const studentEmail = student.email || '-';
+        
+        // Column 4: Program
+        const studentProgram = student.program || '-';
+        
+        // Column 5: Exam
+        const examName = exam.exam_name || 'Exam ' + r.exam_id;
+        const typeLabel = exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
+        const typeBadgeClass = exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
+        
+        // Column 6 & 7: Score and %
+        const totalMarks = exam.total_marks || 100;
+        const passMark = exam.pass_mark || Math.round(totalMarks * 0.6);
+        const score = parseFloat(r.marks) || 0;
         const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-        
-        // ✅ CRITICAL FIX: Check exam status FIRST
-        const examStatus = r.exam_info?.status || 'published';
-        const isPendingReview = examStatus === 'pending_review';
-        const isReleased = r.isReleased || false;
         const percentNum = parseFloat(percentage);
         
-        // ✅ Determine display status based on exam status
+        // Column 8: Status
+        const examStatus = exam.status || 'published';
+        const isPendingReview = examStatus === 'pending_review';
+        const isReleased = r.isReleased || false;
+        
         let displayStatus = '';
         let statusClass = '';
         
         if (isPendingReview) {
-            // 🔴 ALWAYS show PENDING for pending_review exams
             displayStatus = 'PENDING';
             statusClass = 'status-pending';
         } else if (isReleased) {
-            // Only show PASS/FAIL if released
             if (percentNum >= passMark) {
                 displayStatus = 'PASS';
                 statusClass = 'status-pass';
@@ -674,360 +691,683 @@ function displayStudentsResults() {
                 statusClass = 'status-fail';
             }
         } else if (r.result_status === 'PASS' || r.result_status === 'FAIL') {
-            // Use stored result status
             displayStatus = r.result_status;
             statusClass = displayStatus === 'PASS' ? 'status-pass' : 'status-fail';
         } else {
-            // Default fallback
             displayStatus = 'PENDING';
             statusClass = 'status-pending';
         }
         
-        const typeLabel = r.exam_info?.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
-        const totalDisplay = totalMarks;
+        // Column 9: Released
+        const releasedDisplay = isReleased ? 
+            '<span class="status-pass">✅ Released</span>' : 
+            '<span class="status-pending">🔒 Not Released</span>';
         
-        const studentId = r.student_id || r.student_profile?.user_id || '';
-        const examId = r.exam_id || '';
+        // Column 10: Actions
+        const studentUserId = r.student_id || '';
+        const examId = r.exam_id || 0;
+        const safeName = studentName.replace(/'/g, "\\'");
+        const safeExam = examName.replace(/'/g, "\\'");
         
         return `<tr>
-            <td><span class="student-id-badge">${r.student_profile?.student_id || 'N/A'}</span></td>
-            <td><strong>${r.student_profile?.full_name || 'Unknown'}</strong></td>
-            <td>${r.student_profile?.email || '-'}</td>
-            <td>${r.student_profile?.program || '-'}</td>
-            <td>${r.exam_info?.exam_name || 'Exam ' + r.exam_id} <span class="exam-type-badge ${r.exam_info?.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam'}">${typeLabel}</span></td>
-            <td class="clickable-score" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
-                ${score} / ${totalDisplay} ✏️
-            </td>
-            <td class="clickable-percentage" onclick="openEditMarksModal('${studentId}', ${examId}, '${studentName}', '${examName}')" style="cursor:pointer;color:#0A3D62;font-weight:600;">
-                ${percentage}% ✏️
-            </td>
-            <td><span class="${statusClass}">${displayStatus}</span></td>
-            <td>${isReleased ? '<span class="status-pass">✅ Released</span>' : '<span class="status-pending">🔒 Not Released</span>'}</td>
+            <!-- Column 1: Student ID -->
+            <td><span class="student-id-badge">${studentId}</span></td>
+            
+            <!-- Column 2: Name -->
+            <td><strong>${studentName}</strong></td>
+            
+            <!-- Column 3: Email -->
+            <td>${studentEmail}</td>
+            
+            <!-- Column 4: Program -->
+            <td>${studentProgram}</td>
+            
+            <!-- Column 5: Exam -->
             <td>
-                <button class="action-btn btn-view" onclick="viewExamResult('${studentId}',${examId})" style="background:#4299E1; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">View</button>
-                <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="View Live Progress">
-                    <i class="fas fa-chart-line"></i> Progress
-                </button>
-                <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${examName.replace(/'/g, "\\'")}')" style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;" title="Manage Timer">
-                    <i class="fas fa-clock"></i> Timer
-                </button>
-                <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${examName}')" style="background:#DC2626; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer;">
-                    <i class="fas fa-user-slash"></i> Reset
-                </button>
+                ${examName}
+                <span class="exam-type-badge ${typeBadgeClass}">${typeLabel}</span>
+            </td>
+            
+            <!-- Column 6: Score -->
+            <td style="text-align:center;">
+                <span class="clickable-score" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')">
+                    ${score} / ${totalMarks} ✏️
+                </span>
+            </td>
+            
+            <!-- Column 7: % -->
+            <td style="text-align:center;">
+                <span class="clickable-percentage" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')">
+                    ${percentage}% ✏️
+                </span>
+            </td>
+            
+            <!-- Column 8: Status -->
+            <td style="text-align:center;"><span class="${statusClass}">${displayStatus}</span></td>
+            
+            <!-- Column 9: Released -->
+            <td style="text-align:center;">${releasedDisplay}</td>
+            
+            <!-- Column 10: Actions -->
+            <td style="text-align:center;">
+                <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
+                    <button class="action-btn btn-view" onclick="viewExamResult('${studentUserId}',${examId})" title="View Details">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentUserId}', '${safeName}', ${examId})" title="View Progress">
+                        <i class="fas fa-chart-line"></i> Progress
+                    </button>
+                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${safeName}', ${examId}, '${safeExam}')" title="Manage Timer">
+                        <i class="fas fa-clock"></i> Timer
+                    </button>
+                    <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')" title="Reset Student">
+                        <i class="fas fa-user-slash"></i> Reset
+                    </button>
+                </div>
             </td>
         </tr>`;
     }).join('');
     
     renderPagination('students', studentsResults.length);
 }
-    // ============================================
-    // 👥 LOAD ALL STUDENTS
-    // ============================================
-    window.loadAllStudents = async function() {
-        const loadingDiv = document.getElementById('allStudentsLoading');
-        const table = document.getElementById('allStudentsTable');
-        loadingDiv.style.display = 'block';
-        const { data, error } = await sb.from('consolidated_user_profiles_table').select('*');
-        if (error) return;
-        allStudents = data || [];
-        const studentIds = allStudents.map(s => s.user_id);
-        const { data: gradeCounts } = await sb
-            .from('exam_grades')
-            .select('student_id')
-            .eq('question_id', '00000000-0000-0000-0000-000000000000')
-            .in('student_id', studentIds);
-        const countMap = {};
-        if (gradeCounts) {
-            gradeCounts.forEach(g => { 
-                countMap[g.student_id] = (countMap[g.student_id] || 0) + 1; 
-            });
-        }
-        allStudents.forEach(s => { s.examsTaken = countMap[s.user_id] || 0; });
-        displayAllStudents();
-        loadingDiv.style.display = 'none';
-        table.style.display = 'table';
-    };
-
-    function displayAllStudents() {
-        const start = (currentPage.allStudents - 1) * itemsPerPage;
-        const page = allStudents.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('allStudentsBody');
-        tbody.innerHTML = page.map(s =>
-            `<tr>
-                <td><span class="student-id-badge">${s.student_id || 'N/A'}</span></td>
-                <td><strong>${s.full_name}</strong></td>
-                <td>${s.email}</td>
-                <td>${s.program || '-'}</td>
-                <td>${s.block || '-'}</td>
-                <td>${s.examsTaken || 0}</td>
-                <td>
-                    <button class="action-btn btn-view" onclick="viewStudentProfile('${s.id}')">Profile</button>
-                    <button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button>
-                </td>
-            </tr>`
-        ).join('');
-        renderPagination('allStudents', allStudents.length);
+  // ============================================
+// 👥 DISPLAY ALL STUDENTS - MODERN STYLING
+// ============================================
+function displayAllStudents() {
+    const start = (currentPage.allStudents - 1) * itemsPerPage;
+    const page = allStudents.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('allStudentsBody');
+    
+    if (!tbody) return;
+    
+    if (page.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:40px; color:#94A3B8;"><i class="fas fa-users-slash" style="font-size:2rem; display:block; margin-bottom:10px;"></i>No students found</td></tr>'; 
+        return; 
     }
-
-    // ============================================
-    // 📝 LOAD ALL EXAMS
-    // ============================================
-    window.loadAllExams = async function() {
-        const loadingDiv = document.getElementById('examsLoading');
-        const table = document.getElementById('examsTable');
-        loadingDiv.style.display = 'block';
-        table.style.display = 'none';
-        try {
-            const { data, error } = await sb.from('exams').select('*').order('id');
-            if (error) throw error;
-            allExams = data || [];
+    
+    tbody.innerHTML = page.map(s => {
+        // ✅ Safe data with fallbacks
+        const studentId = s.student_id || 'N/A';
+        const studentName = s.full_name || 'Unknown';
+        const studentEmail = s.email || '-';
+        const studentProgram = s.program || '-';
+        const studentBlock = s.block || '-';
+        const examsTaken = s.examsTaken || 0;
+        const userId = s.id || s.user_id || '';
+        
+        return `<tr>
+            <!-- Column 1: Student ID -->
+            <td><span class="student-id-badge">${studentId}</span></td>
             
-            const { data: grades } = await sb
-                .from('exam_grades')
-                .select('exam_id, result_status')
-                .eq('question_id', '00000000-0000-0000-0000-000000000000');
+            <!-- Column 2: Name -->
+            <td><strong>${studentName}</strong></td>
             
-            const countMap = {};
-            const hasResultsMap = {};
-            if (grades) { 
-                grades.forEach(g => { 
-                    countMap[g.exam_id] = (countMap[g.exam_id] || 0) + 1; 
-                    if (g.result_status === 'PASS' || g.result_status === 'FAIL') {
-                        hasResultsMap[g.exam_id] = true; 
-                    }
-                }); 
-            }
+            <!-- Column 3: Email -->
+            <td>${studentEmail}</td>
             
-            let filteredExams = allExams;
-            if (currentExamFilter === 'active') {
-                filteredExams = allExams.filter(e => !hasResultsMap[e.id]);
-            } else if (currentExamFilter === 'completed') {
-                filteredExams = allExams.filter(e => hasResultsMap[e.id]);
-            }
+            <!-- Column 4: Program -->
+            <td>${studentProgram}</td>
             
-            displayAllExams(filteredExams, countMap, hasResultsMap);
-            loadingDiv.style.display = 'none';
-            table.style.display = 'table';
-            updateStats();
-        } catch(err) { 
-            console.error('Error loading exams:', err); 
-            loadingDiv.innerHTML = 'Error loading exams: ' + err.message; 
+            <!-- Column 5: Block -->
+            <td style="text-align:center;">${studentBlock}</td>
+            
+            <!-- Column 6: Exams Taken -->
+            <td style="text-align:center;">
+                <span class="modern-badge ${examsTaken > 0 ? 'pass' : 'pending'}">
+                    ${examsTaken}
+                </span>
+            </td>
+            
+            <!-- Column 7: Actions -->
+            <td style="text-align:center;">
+                <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
+                    <button class="action-btn btn-view" onclick="viewStudentProfile('${userId}')" title="View Profile">
+                        <i class="fas fa-user"></i> Profile
+                    </button>
+                    <button class="action-btn btn-assign" onclick="openAssignExamModal()" title="Assign Exam">
+                        <i class="fas fa-plus"></i> Assign
+                    </button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    renderPagination('allStudents', allStudents.length);
+}
+   // ============================================
+// 📝 LOAD ALL EXAMS - MODERN
+// ============================================
+window.loadAllExams = async function() {
+    const loadingDiv = document.getElementById('examsLoading');
+    const table = document.getElementById('examsTable');
+    
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (table) table.style.display = 'none';
+    
+    try {
+        const { data, error } = await sb.from('exams').select('*').order('id');
+        if (error) throw error;
+        allExams = data || [];
+        
+        const { data: grades } = await sb
+            .from('exam_grades')
+            .select('exam_id, result_status')
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        const countMap = {};
+        const hasResultsMap = {};
+        if (grades) { 
+            grades.forEach(g => { 
+                countMap[g.exam_id] = (countMap[g.exam_id] || 0) + 1; 
+                if (g.result_status === 'PASS' || g.result_status === 'FAIL') {
+                    hasResultsMap[g.exam_id] = true; 
+                }
+            }); 
+        }
+        
+        let filteredExams = allExams;
+        if (currentExamFilter === 'active') {
+            filteredExams = allExams.filter(e => !hasResultsMap[e.id]);
+        } else if (currentExamFilter === 'completed') {
+            filteredExams = allExams.filter(e => hasResultsMap[e.id]);
+        }
+        
+        displayAllExams(filteredExams, countMap, hasResultsMap);
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (table) table.style.display = 'table';
+        updateStats();
+        
+    } catch(err) { 
+        console.error('Error loading exams:', err); 
+        if (loadingDiv) {
+            loadingDiv.innerHTML = '❌ Error loading exams: ' + err.message; 
             loadingDiv.style.color = '#DC2626';
         }
-    };
+    }
+};
 
-    function displayAllExams(exams, countMap, hasResultsMap) {
-        const start = (currentPage.exams - 1) * itemsPerPage;
-        const page = exams.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('examsBody');
-        if (!page || page.length === 0) { 
-            tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:30px;">📭 No exams found</td></tr>'; 
-            return; 
-        }
-
-        tbody.innerHTML = page.map(e => {
-            try {
-                const hasResults = hasResultsMap[e.id] || false;
-                const examStatus = hasResults ? 'Completed' : 'Active';
-                const statusClass = hasResults ? 'status-completed' : 'status-active';
-                const publishStatus = e.status || 'draft';
-                const totalMarks = e.total_marks || e.marks_out_of || getExamTotalMarks(e.exam_type) || 100;
-                const passMark = e.pass_mark || getPassMark(totalMarks) || 60;
-                const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
-                const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
-                const examDisplayName = e.title || e.exam_name || 'Unnamed Exam';
-
-                let timerData;
-                try {
-                    timerData = calculateExamTimer(e);
-                } catch (timerError) {
-                    console.warn('Timer error for exam:', e.id, timerError);
-                    timerData = {
-                        timerHtml: `<span class="badge bg-secondary">⏱️ N/A</span>`,
-                        status: 'N/A',
-                        timeLeft: 'N/A',
-                        examStart: null,
-                        examEnd: null,
-                        isActive: false,
-                        isUpcoming: false,
-                        isExpired: false
-                    };
-                }
-
-                const timerDisplay = timerData.timerHtml || `<span class="badge bg-secondary">⏱️ N/A</span>`;
-                const statusDisplay = timerData.status || 'N/A';
-
-                let examStartStr = '';
-                let examEndStr = '';
-                try {
-                    if (timerData.examStart && typeof timerData.examStart === 'object' && !isNaN(timerData.examStart.getTime())) {
-                        examStartStr = timerData.examStart.toISOString();
-                    }
-                } catch(e) { examStartStr = ''; }
-
-                try {
-                    if (timerData.examEnd && typeof timerData.examEnd === 'object' && !isNaN(timerData.examEnd.getTime())) {
-                        examEndStr = timerData.examEnd.toISOString();
-                    }
-                } catch(e) { examEndStr = ''; }
-
-                return `<tr>
-                    <td><strong>${examDisplayName}</strong></td>
-                    <td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td>
-                    <td>${e.course_code || e.course || '-'}</td>
-                    <td>${totalMarks} (Pass: ${passMark})</td>
-                    <td>${e.duration_minutes || 30} min</td>
-                    <td>${countMap[e.id] || 0}</td>
-                    <td><span class="${statusClass}">${examStatus}</span></td>
-                    <td>
-                        <span class="${timerData.isActive ? 'status-active' : timerData.isUpcoming ? 'status-pending' : 'status-fail'}">
-                            ${statusDisplay}
-                        </span>
-                    </td>
-                    <td class="exam-timer-cell" 
-                        data-exam-id="${e.id}"
-                        data-exam-start="${examStartStr}"
-                        data-exam-end="${examEndStr}">
-                        ${timerDisplay}
-                    </td>
-                    <td>
-                        <label class="publish-toggle">
-                            <input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} 
-                                   onchange="togglePublish(${e.id}, '${publishStatus}')">
-                            <span style="margin-left:8px;">${publishStatus === 'published' ? 'Published' : 'Draft'}</span>
-                        </label>
-                    </td>
-                    <td>
-                        <button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})">Edit</button>
-                        <button class="action-btn btn-assign" onclick="openAssignExamModal()">Assign</button>
-                        <button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')">Reset All</button>
-                        <button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')">Delete</button>
-                    </td>
-                </tr>`;
-            } catch (error) {
-                console.error('Error rendering exam row:', e.id, error);
-                return `<tr><td colspan="11" style="color:red; padding:10px;">❌ Error loading exam ${e.id}</td></tr>`;
-            }
-        }).join('');
-        renderPagination('exams', exams.length);
+// ============================================
+// 📝 DISPLAY ALL EXAMS - MODERN
+// ============================================
+function displayAllExams(exams, countMap, hasResultsMap) {
+    const start = (currentPage.exams - 1) * itemsPerPage;
+    const page = exams.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('examsBody');
+    
+    if (!tbody) return;
+    
+    if (!page || page.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px; color:#94A3B8;"><i class="fas fa-file-alt" style="font-size:2rem; display:block; margin-bottom:10px;"></i>No exams found</td></tr>'; 
+        return; 
     }
 
-    // ============================================
-    // 🎥 LOAD PROCTORING LOGS
-    // ============================================
-    async function loadProctoringLogs() {
-        const loadingDiv = document.getElementById('proctoringLoading');
-        const table = document.getElementById('proctoringTable');
-        loadingDiv.style.display = 'block';
-        table.style.display = 'none';
+    tbody.innerHTML = page.map(e => {
         try {
-            let query = sb.from('exam_proctoring_logs')
-                .select('*')
-                .order('timestamp', { ascending: false })
-                .limit(500);
-            const { data: logs, error } = await query;
-            if (error) { 
-                loadingDiv.innerHTML = 'Error loading logs'; 
-                return; 
-            }
-            
-            const { data: allStudents } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id, program, email');
-            
-            const studentMap = {};
-            allStudents?.forEach(s => {
-                studentMap[s.user_id] = s;
-                if (s.student_id) studentMap[s.student_id] = s;
-            });
-            
-            proctoringLogs = logs.map(log => {
-                let student = studentMap[log.student_id] || null;
-                if (!student) student = studentMap[log.student_id] || null;
-                return { ...log, student_profile: student };
-            });
-            
-            displayProctoringLogs();
-            loadingDiv.style.display = 'none';
-            table.style.display = 'table';
-            updateStats();
-        } catch (error) {
-            console.error('Error loading proctoring logs:', error);
-            loadingDiv.innerHTML = 'Error loading logs: ' + error.message;
-        }
-    }
+            const hasResults = hasResultsMap[e.id] || false;
+            const examStatus = hasResults ? 'Completed' : 'Active';
+            const statusClass = hasResults ? 'status-completed' : 'status-active';
+            const publishStatus = e.status || 'draft';
+            const totalMarks = e.total_marks || e.marks_out_of || getExamTotalMarks(e.exam_type) || 100;
+            const passMark = e.pass_mark || getPassMark(totalMarks) || 60;
+            const typeLabel = e.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
+            const typeBadge = e.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
+            const examDisplayName = e.title || e.exam_name || 'Unnamed Exam';
 
-    function displayProctoringLogs() {
-        const start = (currentPage.proctoring - 1) * itemsPerPage;
-        const page = proctoringLogs.slice(start, start + itemsPerPage);
-        const tbody = document.getElementById('proctoringBody');
-        if (!tbody) return;
-        if (page.length === 0) { 
-            tbody.innerHTML = '<tr><td colspan="8">No alerts</td></tr>'; 
+            let timerData;
+            try {
+                timerData = calculateExamTimer(e);
+            } catch (timerError) {
+                timerData = {
+                    timerHtml: `<span class="exam-timer-cell" style="background:#f1f5f9; color:#64748B;">⏱️ N/A</span>`,
+                    status: 'N/A',
+                    timeLeft: 'N/A',
+                    examStart: null,
+                    examEnd: null,
+                    isActive: false,
+                    isUpcoming: false,
+                    isExpired: false
+                };
+            }
+
+            const timerDisplay = timerData.timerHtml || `<span class="exam-timer-cell" style="background:#f1f5f9; color:#64748B;">⏱️ N/A</span>`;
+            const statusDisplay = timerData.status || 'N/A';
+
+            let examStartStr = '';
+            let examEndStr = '';
+            try {
+                if (timerData.examStart && typeof timerData.examStart === 'object' && !isNaN(timerData.examStart.getTime())) {
+                    examStartStr = timerData.examStart.toISOString();
+                }
+            } catch(e) { examStartStr = ''; }
+
+            try {
+                if (timerData.examEnd && typeof timerData.examEnd === 'object' && !isNaN(timerData.examEnd.getTime())) {
+                    examEndStr = timerData.examEnd.toISOString();
+                }
+            } catch(e) { examEndStr = ''; }
+
+            // Get student count badge color
+            const studentCount = countMap[e.id] || 0;
+            const countBadgeClass = studentCount > 0 ? 'status-pass' : 'status-pending';
+
+            // Timer status class
+            let timerStatusClass = 'status-pending';
+            if (timerData.isActive) timerStatusClass = 'status-active';
+            else if (timerData.isUpcoming) timerStatusClass = 'status-pending';
+            else if (timerData.isExpired) timerStatusClass = 'status-fail';
+
+            return `<tr>
+                <!-- Column 1: Exam Name -->
+                <td><strong>${examDisplayName}</strong></td>
+                
+                <!-- Column 2: Type -->
+                <td><span class="exam-type-badge ${typeBadge}">${typeLabel}</span></td>
+                
+                <!-- Column 3: Course -->
+                <td>${e.course_code || e.course || '-'}</td>
+                
+                <!-- Column 4: Total Marks -->
+                <td>
+                    <span style="font-weight:600; color:#0A3D62;">${totalMarks}</span>
+                    <span style="font-size:0.6rem; color:#94A3B8; display:block;">Pass: ${passMark}</span>
+                </td>
+                
+                <!-- Column 5: Duration -->
+                <td style="text-align:center;">${e.duration_minutes || 30} <span style="font-size:0.6rem; color:#94A3B8;">min</span></td>
+                
+                <!-- Column 6: Students -->
+                <td style="text-align:center;">
+                    <span class="status-badge ${countBadgeClass}">${studentCount}</span>
+                </td>
+                
+                <!-- Column 7: Status -->
+                <td style="text-align:center;"><span class="status-badge ${statusClass}">${examStatus}</span></td>
+                
+                <!-- Column 8: Timer Status -->
+                <td style="text-align:center;">
+                    <span class="status-badge ${timerStatusClass}">${statusDisplay}</span>
+                </td>
+                
+                <!-- Column 9: Time Remaining -->
+                <td style="text-align:center;" class="exam-timer-cell" 
+                    data-exam-id="${e.id}"
+                    data-exam-start="${examStartStr}"
+                    data-exam-end="${examEndStr}">
+                    ${timerDisplay}
+                </td>
+                
+                <!-- Column 10: Published -->
+                <td style="text-align:center;">
+                    <label class="publish-toggle">
+                        <input type="checkbox" ${publishStatus === 'published' ? 'checked' : ''} 
+                               onchange="togglePublish(${e.id}, '${publishStatus}')">
+                        <span style="margin-left:8px; font-size:0.7rem; font-weight:500; ${publishStatus === 'published' ? 'color:#059669;' : 'color:#94A3B8;'}">
+                            ${publishStatus === 'published' ? '✅ Published' : '📝 Draft'}
+                        </span>
+                    </label>
+                </td>
+                
+                <!-- Column 11: Actions -->
+                <td>
+                    <div style="display:flex; gap:3px; flex-wrap:wrap; justify-content:center;">
+                        <button class="action-btn btn-edit" onclick="openCreateExamModal(${e.id})" title="Edit Exam">
+                            <i class="fas fa-edit"></i>
+                        </button>
+                        <button class="action-btn btn-assign" onclick="openAssignExamModal()" title="Assign to Students">
+                            <i class="fas fa-user-plus"></i>
+                        </button>
+                        <button class="action-btn btn-reset" onclick="openResetModal(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')" title="Reset All Students">
+                            <i class="fas fa-undo"></i>
+                        </button>
+                        <button class="action-btn btn-delete" onclick="deleteExam(${e.id}, '${examDisplayName.replace(/'/g, "\\'")}')" title="Delete Exam">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>`;
+        } catch (error) {
+            console.error('Error rendering exam row:', e.id, error);
+            return `<tr><td colspan="11" style="color:#DC2626; padding:10px; text-align:center;">❌ Error loading exam ${e.id}</td></tr>`;
+        }
+    }).join('');
+    
+    renderPagination('exams', exams.length);
+}
+    // ============================================
+// 🎥 LOAD PROCTORING LOGS - MODERN
+// ============================================
+async function loadProctoringLogs() {
+    const loadingDiv = document.getElementById('proctoringLoading');
+    const table = document.getElementById('proctoringTable');
+    
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    if (table) table.style.display = 'none';
+    
+    try {
+        let query = sb.from('exam_proctoring_logs')
+            .select('*')
+            .order('timestamp', { ascending: false })
+            .limit(500);
+        const { data: logs, error } = await query;
+        if (error) { 
+            if (loadingDiv) {
+                loadingDiv.innerHTML = '❌ Error loading logs'; 
+                loadingDiv.style.color = '#DC2626';
+            }
             return; 
         }
         
-        tbody.innerHTML = page.map(log => {
-            const student = log.student_profile || {};
-            const studentName = student.full_name || 'Unknown';
-            const studentIdDisplay = student.student_id || log.student_id || 'N/A';
-            const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
-            let severityClass = 'status-pending';
-            let severityText = log.severity || 'info';
-            if (severityText === 'critical') severityClass = 'status-critical';
-            else if (severityText === 'warning') severityClass = 'status-warning';
-            let alertIcon = '📹';
-            if (log.event_type === 'multiple_faces_detected') alertIcon = '🚨';
-            else if (log.event_type === 'face_missing') alertIcon = '😞';
-            else if (log.event_type === 'fullscreen_exit_attempt') alertIcon = '🔄';
-            const hasSnapshot = log.snapshot_url;
-            const snapshotHtml = hasSnapshot ?
-                `<a href="${log.snapshot_url}" target="_blank" style="padding:2px 8px;font-size:0.6rem;margin-left:5px;background:#10B981;color:white;border-radius:4px;text-decoration:none;" title="View Snapshot">📸</a>` :
-                '';
-            return `<tr style="${severityText === 'critical' ? 'background:#FEF2F2;' : ''}">
-                <td style="padding:8px;font-size:0.75rem;">${formatKenyaTime(log.timestamp)}</td>
-                <td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
-                <td style="padding:8px;"><strong>${studentName}</strong><br><small style="color:#6b7280;">${student.program || ''}</small></td>
-                <td style="padding:8px;">${examName}</td>
-                <td style="padding:8px;"><span class="${severityText === 'critical' ? 'status-critical' : 'status-pending'}">${alertIcon} ${log.event_type}</span></td>
-                <td style="padding:8px;font-size:0.75rem;">${log.details || '-'}</td>
-                <td style="padding:8px;"><span class="${severityClass}">${severityText}</span></td>
-                <td style="padding:8px;"><button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')" style="background:#4299E1;color:white;border:none;padding:4px 10px;border-radius:4px;cursor:pointer;"><i class="fas fa-eye"></i> View</button>${snapshotHtml}</td>
-            </tr>`;
-        }).join('');
-        renderPagination('proctoring', proctoringLogs.length);
+        const { data: allStudents } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, program, email');
+        
+        const studentMap = {};
+        allStudents?.forEach(s => {
+            studentMap[s.user_id] = s;
+            if (s.student_id) studentMap[s.student_id] = s;
+        });
+        
+        proctoringLogs = logs.map(log => {
+            let student = studentMap[log.student_id] || null;
+            if (!student) student = studentMap[log.student_id] || null;
+            return { ...log, student_profile: student };
+        });
+        
+        displayProctoringLogs();
+        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (table) table.style.display = 'table';
+        updateStats();
+        
+    } catch (error) {
+        console.error('Error loading proctoring logs:', error);
+        if (loadingDiv) {
+            loadingDiv.innerHTML = '❌ Error loading logs: ' + error.message;
+            loadingDiv.style.color = '#DC2626';
+        }
     }
+}
 
+// ============================================
+// 🎥 DISPLAY PROCTORING LOGS - MODERN
+// ============================================
+function displayProctoringLogs() {
+    const start = (currentPage.proctoring - 1) * itemsPerPage;
+    const page = proctoringLogs.slice(start, start + itemsPerPage);
+    const tbody = document.getElementById('proctoringBody');
+    
+    if (!tbody) return;
+    
+    if (page.length === 0) { 
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:#94A3B8;"><i class="fas fa-shield-alt" style="font-size:2rem; display:block; margin-bottom:10px;"></i>No proctoring alerts found</td></tr>'; 
+        return; 
+    }
+    
+    tbody.innerHTML = page.map(log => {
+        const student = log.student_profile || {};
+        const studentName = student.full_name || 'Unknown';
+        const studentIdDisplay = student.student_id || log.student_id || 'N/A';
+        const examName = examsMap[log.exam_id]?.exam_name || 'Exam ' + log.exam_id;
+        
+        // Severity styling
+        let severityClass = 'status-pending';
+        let severityText = log.severity || 'info';
+        let severityIcon = '';
+        let severityColor = '';
+        
+        if (severityText === 'critical') {
+            severityClass = 'status-critical';
+            severityIcon = '🚨';
+            severityColor = '#DC2626';
+        } else if (severityText === 'warning') {
+            severityClass = 'status-pending';
+            severityIcon = '⚠️';
+            severityColor = '#F59E0B';
+        } else {
+            severityIcon = 'ℹ️';
+            severityColor = '#3B82F6';
+        }
+        
+        // Alert icon
+        let alertIcon = '📹';
+        let alertClass = 'status-pending';
+        if (log.event_type === 'multiple_faces_detected') {
+            alertIcon = '🚨';
+            alertClass = 'status-critical';
+        } else if (log.event_type === 'face_missing') {
+            alertIcon = '😞';
+            alertClass = 'status-pending';
+        } else if (log.event_type === 'fullscreen_exit_attempt') {
+            alertIcon = '🔄';
+            alertClass = 'status-pending';
+        } else if (log.event_type === 'tab_switched') {
+            alertIcon = '📱';
+            alertClass = 'status-pending';
+        } else if (log.event_type === 'exam_started') {
+            alertIcon = '▶️';
+            alertClass = 'status-active';
+        } else if (log.event_type === 'exam_submitted') {
+            alertIcon = '✅';
+            alertClass = 'status-pass';
+        }
+        
+        const hasSnapshot = log.snapshot_url || log.screenshot_data;
+        const snapshotUrl = log.snapshot_url || log.screenshot_data;
+        const snapshotHtml = hasSnapshot ?
+            `<a href="${snapshotUrl}" target="_blank" style="padding:2px 10px; font-size:0.6rem; margin-left:3px; background:linear-gradient(135deg,#10B981,#059669); color:white; border-radius:6px; text-decoration:none; display:inline-flex; align-items:center; gap:4px;" title="View Snapshot">
+                <i class="fas fa-camera"></i> Snapshot
+            </a>` :
+            '';
+        
+        // Row background for critical alerts
+        const rowStyle = severityText === 'critical' ? 'background:#FEF2F2; border-left: 4px solid #DC2626;' : '';
+        
+        return `<tr style="${rowStyle}">
+            <!-- Column 1: Time -->
+            <td style="font-size:0.75rem; white-space:nowrap; padding:12px 14px;">
+                <i class="far fa-clock" style="color:#94A3B8; margin-right:4px;"></i>
+                ${formatKenyaTime(log.timestamp)}
+            </td>
+            
+            <!-- Column 2: Student ID -->
+            <td style="padding:12px 14px;">
+                <span class="student-id-badge">${studentIdDisplay}</span>
+            </td>
+            
+            <!-- Column 3: Student Name -->
+            <td style="padding:12px 14px;">
+                <strong>${studentName}</strong>
+                <div style="font-size:0.65rem; color:#64748B; margin-top:2px;">
+                    <i class="fas fa-graduation-cap" style="margin-right:4px;"></i>${student.program || 'No program'}
+                </div>
+            </td>
+            
+            <!-- Column 4: Exam -->
+            <td style="padding:12px 14px;">
+                <span style="font-weight:500;">${examName}</span>
+            </td>
+            
+            <!-- Column 5: Alert Type -->
+            <td style="padding:12px 14px;">
+                <span class="status-badge ${alertClass}" style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.7rem;">
+                    ${alertIcon} ${log.event_type.replace(/_/g, ' ')}
+                </span>
+            </td>
+            
+            <!-- Column 6: Details -->
+            <td style="padding:12px 14px; font-size:0.75rem; color:#475569; max-width:200px; word-wrap:break-word;">
+                ${log.details || '-'}
+            </td>
+            
+            <!-- Column 7: Severity -->
+            <td style="padding:12px 14px; text-align:center;">
+                <span class="status-badge ${severityClass}" style="display:inline-flex; align-items:center; gap:4px; padding:4px 12px; border-radius:20px; font-size:0.7rem; text-transform:capitalize;">
+                    ${severityIcon} ${severityText}
+                </span>
+            </td>
+            
+            <!-- Column 8: Actions -->
+            <td style="padding:12px 14px; text-align:center;">
+                <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center; align-items:center;">
+                    <button class="action-btn btn-view" onclick="viewAlertDetails('${log.id}')" title="View Details" style="background:linear-gradient(135deg,#4299E1,#3182CE); color:white; border:none; padding:5px 12px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    ${snapshotHtml}
+                    ${severityText === 'critical' ? 
+                        `<button class="action-btn btn-danger" onclick="markAlertResolved('${log.id}')" title="Mark Resolved" style="background:linear-gradient(135deg,#DC2626,#B91C1C); color:white; border:none; padding:5px 10px; border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; font-size:0.65rem;">
+                            <i class="fas fa-check"></i>
+                        </button>` : 
+                        ''
+                    }
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+    
+    renderPagination('proctoring', proctoringLogs.length);
+}
+
+// ============================================
+// 📝 MARK ALERT AS RESOLVED
+// ============================================
+async function markAlertResolved(logId) {
+    try {
+        if (!confirm('Mark this alert as resolved?')) return;
+        
+        const { error } = await sb
+            .from('exam_proctoring_logs')
+            .update({ 
+                severity: 'info',
+                details: 'Resolved by admin',
+                resolved_at: new Date().toISOString()
+            })
+            .eq('id', logId);
+        
+        if (error) throw error;
+        
+        showToast('✅ Alert marked as resolved', 'success');
+        loadProctoringLogs();
+        
+    } catch (error) {
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+}
     // ============================================
-    // 🔔 REALTIME NOTIFICATIONS
-    // ============================================
-    async function setupRealtimeNotifications() {
+// 🔔 REALTIME NOTIFICATIONS - MODERN
+// ============================================
+async function setupRealtimeNotifications() {
+    try {
         const { data: existingLogs } = await sb
             .from('exam_proctoring_logs')
             .select('id, is_read')
             .eq('is_read', false);
         
         unreadCount = existingLogs?.length || 0;
-        document.getElementById('notificationCount').innerText = unreadCount;
-        document.getElementById('sidebarAlertCount').innerText = unreadCount;
+        updateNotificationBadges(unreadCount);
         
+        // Subscribe to new alerts
         notificationSubscription = sb.channel('proctoring-alerts')
             .on('postgres_changes', { 
                 event: 'INSERT', 
                 schema: 'public', 
                 table: 'exam_proctoring_logs' 
             }, async (payload) => {
+                // Show toast notification for new alert
+                const newAlert = payload.new;
+                const alertType = newAlert.event_type || 'Unknown';
+                const studentName = newAlert.student_name || 'Student';
+                
+                // Play notification sound if available
+                playNotificationSound();
+                
+                // Show toast
+                showToast(`🚨 ${alertType.replace(/_/g, ' ')} - ${studentName}`, 'warning');
+                
+                // Update counts
                 unreadCount++;
-                document.getElementById('notificationCount').innerText = unreadCount;
-                document.getElementById('sidebarAlertCount').innerText = unreadCount;
+                updateNotificationBadges(unreadCount);
+                
+                // Reload notifications
                 await loadNotifications();
+                
+                // Reload proctoring tab if active
                 if (currentTab === 'proctoring') loadProctoringLogs();
+                
+                // Update stats
                 updateStats();
             })
             .subscribe();
+            
+        // Initial load
+        await loadNotifications();
+        
+        console.log('🔔 Realtime notifications setup complete');
+        
+    } catch (error) {
+        console.error('Error setting up notifications:', error);
     }
+}
 
-    async function loadNotifications() {
+// ============================================
+// 🔔 UPDATE NOTIFICATION BADGES
+// ============================================
+function updateNotificationBadges(count) {
+    const countEl = document.getElementById('notificationCount');
+    const sidebarEl = document.getElementById('sidebarAlertCount');
+    
+    if (countEl) {
+        countEl.innerText = count;
+        countEl.style.display = count > 0 ? 'flex' : 'none';
+    }
+    
+    if (sidebarEl) {
+        sidebarEl.innerText = count;
+        sidebarEl.style.display = count > 0 ? 'inline-block' : 'none';
+    }
+    
+    // Update notification bell color
+    const bell = document.getElementById('notificationBell');
+    if (bell) {
+        const icon = bell.querySelector('i');
+        if (icon) {
+            icon.style.color = count > 0 ? '#FDB913' : '#64748B';
+        }
+    }
+}
+
+// ============================================
+// 🔔 PLAY NOTIFICATION SOUND
+// ============================================
+function playNotificationSound() {
+    try {
+        // Create a simple beep using Web Audio API
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const oscillator = audioCtx.createOscillator();
+        const gainNode = audioCtx.createGain();
+        
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+        
+        oscillator.frequency.value = 800;
+        oscillator.type = 'sine';
+        
+        gainNode.gain.setValueAtTime(0.3, audioCtx.currentTime);
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
+        
+        oscillator.start(audioCtx.currentTime);
+        oscillator.stop(audioCtx.currentTime + 0.3);
+    } catch (e) {
+        // Audio not supported, just skip
+    }
+}
+
+// ============================================
+// 🔔 LOAD NOTIFICATIONS - MODERN
+// ============================================
+async function loadNotifications() {
+    const container = document.getElementById('notificationList');
+    if (!container) return;
+    
+    try {
         const { data: logs } = await sb
             .from('exam_proctoring_logs')
             .select('*')
@@ -1035,41 +1375,206 @@ function displayStudentsResults() {
             .order('timestamp', { ascending: false })
             .limit(20);
         
+        // Get student profiles
         const studentIds = [...new Set(logs?.map(l => l.student_id).filter(Boolean))];
-        const { data: profiles } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id')
-            .in('user_id', studentIds);
-        
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        const container = document.getElementById('notificationList');
-        
-        if (!logs || logs.length === 0) { 
-            container.innerHTML = '<div style="padding:20px;text-align:center;">No new alerts</div>'; 
-            return; 
+        let profileMap = {};
+        if (studentIds.length > 0) {
+            const { data: profiles } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name, student_id')
+                .in('user_id', studentIds);
+            profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
         }
         
-        container.innerHTML = logs.map(log =>
-            `<div class="notification-item ${log.event_type === 'multiple_faces_detected' ? 'critical' : 'unread'}" onclick="markNotificationRead('${log.id}')">
-                <div class="notification-title">${log.event_type === 'multiple_faces_detected' ? '🚨 MULTIPLE FACES' : '📹 ' + log.event_type}</div>
-                <div class="notification-detail"><strong>Student:</strong> ${profileMap[log.student_id]?.full_name} (${profileMap[log.student_id]?.student_id})</div>
-                <div class="notification-detail"><strong>Exam:</strong> ${examsMap[log.exam_id]?.exam_name}</div>
-                <div class="notification-time">${formatKenyaTime(log.timestamp)}</div>
-                <button class="mark-read-btn" onclick="event.stopPropagation(); markNotificationRead('${log.id}')">Mark read</button>
-            </div>`
-        ).join('');
+        if (!logs || logs.length === 0) {
+            container.innerHTML = `
+                <div style="padding:30px 20px; text-align:center; color:#94A3B8;">
+                    <i class="fas fa-check-circle" style="font-size:2rem; display:block; margin-bottom:10px; color:#10B981;"></i>
+                    <p style="margin:0; font-weight:500;">All caught up!</p>
+                    <p style="margin:4px 0 0; font-size:0.8rem; color:#94A3B8;">No new alerts</p>
+                </div>
+            `;
+            return;
+        }
         
-        document.getElementById('notificationCount').innerText = logs.length;
-        document.getElementById('sidebarAlertCount').innerText = logs.length;
+        container.innerHTML = logs.map(log => {
+            const student = profileMap[log.student_id] || {};
+            const studentName = student.full_name || log.student_name || 'Unknown';
+            const studentId = student.student_id || log.student_id || 'N/A';
+            const examName = examsMap[log.exam_id]?.exam_name || 'Exam';
+            
+            // Determine alert type and styling
+            let alertIcon = '📹';
+            let alertTitle = log.event_type.replace(/_/g, ' ').toUpperCase();
+            let alertClass = 'notification-item unread';
+            let severityBadge = '';
+            
+            if (log.event_type === 'multiple_faces_detected') {
+                alertIcon = '🚨';
+                alertClass = 'notification-item critical';
+                severityBadge = `<span style="background:#DC2626; color:white; padding:2px 8px; border-radius:4px; font-size:0.55rem; font-weight:600; margin-left:8px;">CRITICAL</span>`;
+            } else if (log.event_type === 'face_missing') {
+                alertIcon = '😞';
+                severityBadge = `<span style="background:#F59E0B; color:white; padding:2px 8px; border-radius:4px; font-size:0.55rem; font-weight:600; margin-left:8px;">WARNING</span>`;
+            } else if (log.event_type === 'tab_switched') {
+                alertIcon = '📱';
+            } else if (log.event_type === 'fullscreen_exit_attempt') {
+                alertIcon = '🔄';
+            } else if (log.event_type === 'exam_started') {
+                alertIcon = '▶️';
+            } else if (log.event_type === 'exam_submitted') {
+                alertIcon = '✅';
+            }
+            
+            return `
+                <div class="${alertClass}" onclick="markNotificationRead('${log.id}')" 
+                     style="padding:14px 18px; border-bottom:1px solid #E2E8F0; cursor:pointer; transition:all 0.2s; ${log.event_type === 'multiple_faces_detected' ? 'background:#FEF2F2; border-left:3px solid #DC2626;' : ''}">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <span style="font-size:1.2rem;">${alertIcon}</span>
+                            <div>
+                                <div style="font-weight:700; font-size:0.8rem; color:#0A3D62; display:flex; align-items:center; flex-wrap:wrap; gap:4px;">
+                                    ${alertTitle}
+                                    ${severityBadge}
+                                </div>
+                                <div style="font-size:0.7rem; color:#64748B; margin-top:2px;">
+                                    <strong>${studentName}</strong> (${studentId})
+                                </div>
+                                <div style="font-size:0.65rem; color:#94A3B8; margin-top:1px;">
+                                    <i class="fas fa-book" style="margin-right:4px;"></i>${examName}
+                                </div>
+                                <div style="font-size:0.6rem; color:#94A3B8; margin-top:4px;">
+                                    <i class="far fa-clock" style="margin-right:4px;"></i>${formatKenyaTime(log.timestamp)}
+                                </div>
+                            </div>
+                        </div>
+                        <button class="mark-read-btn" onclick="event.stopPropagation(); markNotificationRead('${log.id}')" 
+                                style="background:transparent; border:none; color:#3B82F6; font-size:0.6rem; font-weight:600; cursor:pointer; padding:4px 8px; border-radius:4px; transition:all 0.2s; white-space:nowrap;"
+                                onmouseover="this.style.background='#EFF6FF'"
+                                onmouseout="this.style.background='transparent'">
+                            <i class="fas fa-check"></i> Mark read
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        // Update counts
+        updateNotificationBadges(logs.length);
+        
+    } catch (error) {
+        console.error('Error loading notifications:', error);
+        container.innerHTML = `
+            <div style="padding:20px; text-align:center; color:#DC2626;">
+                <i class="fas fa-exclamation-circle" style="font-size:1.5rem; display:block; margin-bottom:8px;"></i>
+                Error loading notifications
+            </div>
+        `;
     }
+}
 
-    window.markNotificationRead = async function(logId) {
+// ============================================
+// 🔔 MARK NOTIFICATION AS READ
+// ============================================
+window.markNotificationRead = async function(logId) {
+    try {
         await sb.from('exam_proctoring_logs').update({ is_read: true }).eq('id', logId);
-        unreadCount--;
-        document.getElementById('notificationCount').innerText = Math.max(0, unreadCount);
-        document.getElementById('sidebarAlertCount').innerText = Math.max(0, unreadCount);
+        
+        unreadCount = Math.max(0, unreadCount - 1);
+        updateNotificationBadges(unreadCount);
+        
+        // Reload notifications
+        await loadNotifications();
+        
+        // Reload proctoring tab if active
+        if (currentTab === 'proctoring') loadProctoringLogs();
+        
+    } catch (error) {
+        console.error('Error marking notification read:', error);
+    }
+};
+
+// ============================================
+// 🔔 MARK ALL NOTIFICATIONS AS READ
+// ============================================
+window.markAllNotificationsRead = async function() {
+    try {
+        if (unreadCount === 0) {
+            showToast('No unread notifications', 'info');
+            return;
+        }
+        
+        if (!confirm(`Mark all ${unreadCount} notifications as read?`)) return;
+        
+        await sb
+            .from('exam_proctoring_logs')
+            .update({ is_read: true })
+            .eq('is_read', false);
+        
+        unreadCount = 0;
+        updateNotificationBadges(0);
+        
+        await loadNotifications();
+        
+        if (currentTab === 'proctoring') loadProctoringLogs();
+        
+        showToast('✅ All notifications marked as read', 'success');
+        
+    } catch (error) {
+        console.error('Error marking all read:', error);
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+};
+
+// ============================================
+// 🔔 TOGGLE NOTIFICATION PANEL
+// ============================================
+function toggleNotificationPanel() {
+    const panel = document.getElementById('notificationPanel');
+    if (!panel) return;
+    
+    const isOpen = panel.classList.contains('show');
+    
+    if (isOpen) {
+        panel.classList.remove('show');
+    } else {
+        panel.classList.add('show');
+        // Load fresh notifications when opening
         loadNotifications();
-    };
+    }
+}
+
+// ============================================
+// 🔔 CLOSE NOTIFICATION PANEL
+// ============================================
+function closeNotificationPanel() {
+    const panel = document.getElementById('notificationPanel');
+    if (panel) panel.classList.remove('show');
+}
+
+// ============================================
+// 🔔 INITIALIZE NOTIFICATION BELL CLICK
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    const bell = document.getElementById('notificationBell');
+    if (bell) {
+        bell.addEventListener('click', function(e) {
+            e.stopPropagation();
+            toggleNotificationPanel();
+        });
+    }
+    
+    // Close panel when clicking outside
+    document.addEventListener('click', function(e) {
+        const panel = document.getElementById('notificationPanel');
+        const bell = document.getElementById('notificationBell');
+        if (panel && bell) {
+            if (!panel.contains(e.target) && !bell.contains(e.target)) {
+                panel.classList.remove('show');
+            }
+        }
+    });
+});
 
     // ============================================
     // 🧹 CLEAR ALL ALERTS
@@ -1095,26 +1600,39 @@ function displayStudentsResults() {
         loadProctoringLogs();
     };
 
-    // ============================================
-    // 🚀 RESET BY EMAIL
-    // ============================================
-    window.openResetByEmailModal = function() {
-        let modal = document.getElementById('resetByEmailModal');
-        loadExamsForResetDropdown();
-        document.getElementById('resetEmailInput').value = '';
-        document.getElementById('resetStudentInfo').style.display = 'none';
-        document.getElementById('resetErrorInfo').style.display = 'none';
-        document.getElementById('confirmResetByEmailBtn').disabled = true;
-        modal.style.display = 'flex';
-    };
+   // ============================================
+// 🚀 RESET BY EMAIL - UPDATED (ONLY THIS)
+// ============================================
+window.openResetByEmailModal = function() {
+    const modal = document.getElementById('resetByEmailModal');
+    if (!modal) return;
+    
+    loadExamsForResetDropdown();
+    
+    const emailInput = document.getElementById('resetEmailInput');
+    const studentInfo = document.getElementById('resetStudentInfo');
+    const errorInfo = document.getElementById('resetErrorInfo');
+    const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+    
+    if (emailInput) emailInput.value = '';
+    if (studentInfo) studentInfo.style.display = 'none';
+    if (errorInfo) errorInfo.style.display = 'none';
+    if (confirmBtn) confirmBtn.disabled = true;
+    
+    window.resetTargetStudent = null;
+    modal.style.display = 'flex';
+};
 
-   window.confirmResetByEmail = async function() {
-    if (!window.resetTargetStudent) { 
-        alert('No student selected. Please enter a valid email.'); 
-        return; 
+// ============================================
+// 🚀 CONFIRM RESET BY EMAIL - UPDATED (ONLY THIS)
+// ============================================
+window.confirmResetByEmail = async function() {
+    if (!window.resetTargetStudent) {
+        showToast('❌ No student selected. Please enter a valid email.', 'error');
+        return;
     }
     
-    const examId = document.getElementById('resetExamSelect').value;
+    const examId = document.getElementById('resetExamSelect')?.value;
     const student = window.resetTargetStudent;
     const examName = examId ? (examsMap[examId]?.exam_name || 'Selected Exam') : 'ALL EXAMS';
     
@@ -1136,14 +1654,16 @@ function displayStudentsResults() {
     
     if (!confirm(confirmMsg)) return;
     
+    const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+    }
+    
     try {
-        // ✅ DO NOT DELETE - PRESERVE ALL ANSWERS
-        
-        // Update main grade records
         let updateQuery = sb
             .from('exam_grades')
             .update({
-                // Keep existing marks
                 result_status: 'RESET_FOR_RETAKE',
                 completed: false,
                 graded_at: null,
@@ -1161,7 +1681,6 @@ function displayStudentsResults() {
         const { error: updateError } = await updateQuery;
         if (updateError) throw updateError;
         
-        // Delete released results (they can be re-released later)
         if (examId) {
             const { data: grades } = await sb
                 .from('exam_grades')
@@ -1175,14 +1694,12 @@ function displayStudentsResults() {
             await sb.from('released_exam_results').delete().eq('student_id', student.user_id);
         }
         
-        // Delete heartbeat data (reset timer)
         try {
             let heartbeatQuery = sb.from('exam_heartbeats').delete().eq('student_id', student.user_id);
             if (examId) heartbeatQuery = heartbeatQuery.eq('exam_id', parseInt(examId));
             await heartbeatQuery;
         } catch (e) { /* table might not exist */ }
         
-        // LOG the reset
         await sb.from('exam_proctoring_logs').insert({
             student_id: student.user_id,
             exam_id: examId ? parseInt(examId) : null,
@@ -1192,35 +1709,85 @@ function displayStudentsResults() {
             timestamp: new Date().toISOString()
         });
         
-        alert(`✅ Successfully unlocked ${examId ? `"${examName}" for ${student.full_name}` : `ALL exams for ${student.full_name}`} for continuation!\n\nTheir answers have been preserved.`);
+        showToast(`✅ Successfully unlocked ${examId ? `"${examName}" for ${student.full_name}` : `ALL exams for ${student.full_name}`} for continuation!`, 'success');
+        
         closeResetByEmailModal();
         loadStudentsWithResults();
         loadAllExams();
         loadAllStudents();
         updateStats();
         
-    } catch (err) { 
-        alert('❌ Error: ' + err.message); 
+    } catch (err) {
+        showToast('❌ Error: ' + err.message, 'error');
         console.error(err);
+    } finally {
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-undo"></i> Reset Student';
+        }
     }
 };
+
+// ============================================
+// 📋 CLOSE RESET BY EMAIL MODAL (ADDED)
+// ============================================
+window.closeResetByEmailModal = function() {
+    const modal = document.getElementById('resetByEmailModal');
+    if (modal) modal.style.display = 'none';
+    window.resetTargetStudent = null;
+    
+    const emailInput = document.getElementById('resetEmailInput');
+    if (emailInput) emailInput.value = '';
+    
+    const infoDiv = document.getElementById('resetStudentInfo');
+    if (infoDiv) infoDiv.style.display = 'none';
+    
+    const errorDiv = document.getElementById('resetErrorInfo');
+    if (errorDiv) errorDiv.style.display = 'none';
+    
+    const confirmBtn = document.getElementById('confirmResetByEmailBtn');
+    if (confirmBtn) confirmBtn.disabled = true;
+};
     // ============================================
-    // 🔄 RESET SINGLE STUDENT
-    // ============================================
-   window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
-    if (!confirm(
-        `⚠️ RESET STUDENT FOR CONTINUATION\n\n` +
-        `Student: ${studentName}\n` +
-        `Exam: ${examName}\n\n` +
-        `This will:\n` +
-        `✅ PRESERVE all answered questions\n` +
-        `✅ KEEP their current score\n` +
-        `✅ RESET their timer (full time)\n` +
-        `✅ ALLOW them to continue where they left off\n` +
-        `✅ UNLOCK the exam for retake\n\n` +
-        `⚠️ Their progress will NOT be lost!\n\n` +
-        `Are you sure?`
-    )) return;
+// 🔄 RESET SINGLE STUDENT - MODERN
+// ============================================
+window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
+    // Modern confirmation dialog with better formatting
+    const confirmMsg = `
+╔══════════════════════════════════════════════════════════════╗
+║                 ⚠️ RESET STUDENT FOR CONTINUATION           ║
+╠══════════════════════════════════════════════════════════════╣
+║  👤 Student: ${studentName}
+║  📝 Exam:    ${examName}
+╚══════════════════════════════════════════════════════════════╝
+
+This will:
+✅ PRESERVE all answered questions
+✅ KEEP their current score
+✅ RESET their timer (full time)
+✅ ALLOW them to continue where they left off
+✅ UNLOCK the exam for retake
+
+⚠️ Their progress will NOT be lost!
+
+Are you sure?`;
+
+    if (!confirm(confirmMsg)) return;
+    
+    // Show loading state on the button
+    const buttons = document.querySelectorAll(`button[onclick*="resetSingleStudent('${studentId}'"]`);
+    let targetBtn = null;
+    buttons.forEach(btn => {
+        if (btn.textContent.includes('Reset')) {
+            targetBtn = btn;
+        }
+    });
+    
+    if (targetBtn) {
+        const originalText = targetBtn.innerHTML;
+        targetBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting...';
+        targetBtn.disabled = true;
+    }
     
     try {
         // 1. ✅ KEEP all answers - DO NOT DELETE
@@ -1229,20 +1796,15 @@ function displayStudentsResults() {
             .from('exam_grades')
             .update({
                 // Keep their marks - DO NOT reset to 0
-                // marks: keep existing
-                // total_score: keep existing
-                // percentage: keep existing
-                result_status: 'RESET_FOR_RETAKE',  // or 'IN_PROGRESS'
+                result_status: 'RESET_FOR_RETAKE',
                 completed: false,
                 graded_at: null,
                 released: false,
                 released_at: null,
                 reset_at: new Date().toISOString(),
                 reset_count: sb.sql`reset_count + 1`,
-                // ✅ ALLOW retake - set a flag
                 allow_retake: true,
                 retake_unlocked: true,
-                // ✅ Reset timer - give full time
                 timer_reset_at: new Date().toISOString(),
                 time_extension: 0
             })
@@ -1280,7 +1842,8 @@ function displayStudentsResults() {
                 timestamp: new Date().toISOString()
             });
         
-        showToast(`✅ ${studentName}'s exam "${examName}" unlocked for continuation (answers preserved!)`, 'success');
+        // Show success toast
+        showToast(`✅ ${studentName}'s exam "${examName}" unlocked for continuation!`, 'success');
         
         // Refresh data
         loadStudentsWithResults();
@@ -1288,44 +1851,112 @@ function displayStudentsResults() {
         loadAllStudents();
         updateStats();
         
-    } catch (err) { 
+    } catch (err) {
         showToast('❌ Error: ' + err.message, 'error');
         console.error(err);
+    } finally {
+        // Restore button state
+        if (targetBtn) {
+            targetBtn.innerHTML = '<i class="fas fa-user-slash"></i> Reset';
+            targetBtn.disabled = false;
+        }
     }
 };
-    // ============================================
-    // 📈 UPDATE STATS
-    // ============================================
-    async function updateStats() {
-        const totalStudents = allStudents.length;
-        const passed = studentsResults.filter(r => r.result_status === 'PASS').length;
-        const failed = studentsResults.filter(r => r.result_status === 'FAIL').length;
-        const pending = studentsResults.filter(r => r.result_status === 'PENDING' || r.result_status === 'PENDING_REVIEW' || !r.result_status).length;
-        const scoredExams = studentsResults.filter(r => r.total_score > 0);
-        const avg = scoredExams.length ? (scoredExams.reduce((a, b) => a + (parseFloat(b.total_score) || 0), 0) / scoredExams.length).toFixed(1) : 0;
-        const faceAlerts = proctoringLogs.filter(l => l.event_type === 'multiple_faces_detected').length;
+   // ============================================
+// 📈 UPDATE STATS - MODERN
+// ============================================
+async function updateStats() {
+    const totalStudents = allStudents.length;
+    const passed = studentsResults.filter(r => r.result_status === 'PASS').length;
+    const failed = studentsResults.filter(r => r.result_status === 'FAIL').length;
+    const pending = studentsResults.filter(r => r.result_status === 'PENDING' || r.result_status === 'PENDING_REVIEW' || !r.result_status).length;
+    const scoredExams = studentsResults.filter(r => r.total_score > 0);
+    const avg = scoredExams.length ? (scoredExams.reduce((a, b) => a + (parseFloat(b.total_score) || 0), 0) / scoredExams.length).toFixed(1) : 0;
+    const faceAlerts = proctoringLogs.filter(l => l.event_type === 'multiple_faces_detected').length;
 
-        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-        const { data: recentStarts } = await sb
-            .from('exam_proctoring_logs')
-            .select('student_id')
-            .eq('event_type', 'exam_started')
-            .gte('timestamp', fiveMinutesAgo);
-        
-        const onlineStudents = new Set();
-        recentStarts?.forEach(s => onlineStudents.add(s.student_id));
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+    const { data: recentStarts } = await sb
+        .from('exam_proctoring_logs')
+        .select('student_id')
+        .eq('event_type', 'exam_started')
+        .gte('timestamp', fiveMinutesAgo);
+    
+    const onlineStudents = new Set();
+    recentStarts?.forEach(s => onlineStudents.add(s.student_id));
 
-        document.getElementById('statsContainer').innerHTML = `
-            <div class="stat-card total"><div class="stat-value">${totalStudents}</div><div class="stat-label">Total Students</div></div>
-            <div class="stat-card online"><div class="stat-value">${onlineStudents.size}</div><div class="stat-label">🟢 Currently Online</div></div>
-            <div class="stat-card passed"><div class="stat-value">${passed}</div><div class="stat-label">Passed</div></div>
-            <div class="stat-card failed"><div class="stat-value">${failed}</div><div class="stat-label">Failed</div></div>
-            <div class="stat-card pending"><div class="stat-value">${pending}</div><div class="stat-label">Pending Release</div></div>
-            <div class="stat-card avg"><div class="stat-value">${avg}%</div><div class="stat-label">Avg Score</div></div>
-            <div class="stat-card face-alerts"><div class="stat-value">${faceAlerts}</div><div class="stat-label">Face Violations</div></div>
-        `;
-    }
+    // Modern stats cards with gradient icons and hover effects
+    document.getElementById('statsContainer').innerHTML = `
+        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #f8fafc); border-left: 4px solid #0A3D62; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
+                <i class="fas fa-users"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #0A3D62; line-height: 1.2;">${totalStudents}</div>
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Total Students</div>
+            </div>
+        </div>
 
+        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #f0fdf4); border-left: 4px solid #10B981; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #10B981, #059669); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
+                <i class="fas fa-wifi"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #059669; line-height: 1.2;">${onlineStudents.size}</div>
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">🟢 Currently Online</div>
+            </div>
+        </div>
+
+        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #d1fae5); border-left: 4px solid #059669; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #059669, #047857); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #059669; line-height: 1.2;">${passed}</div>
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Passed</div>
+            </div>
+        </div>
+
+        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #fee2e2); border-left: 4px solid #DC2626; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #DC2626, #B91C1C); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
+                <i class="fas fa-times-circle"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #DC2626; line-height: 1.2;">${failed}</div>
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Failed</div>
+            </div>
+        </div>
+
+        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #fef3c7); border-left: 4px solid #F59E0B; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #F59E0B, #D97706); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
+                <i class="fas fa-clock"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #D97706; line-height: 1.2;">${pending}</div>
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Pending Release</div>
+            </div>
+        </div>
+
+        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #dbeafe); border-left: 4px solid #3B82F6; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #3B82F6, #2563EB); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
+                <i class="fas fa-chart-line"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #2563EB; line-height: 1.2;">${avg}%</div>
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Avg Score</div>
+            </div>
+        </div>
+
+        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #fce7f3); border-left: 4px solid #EC4899; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #EC4899, #DB2777); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
+                <i class="fas fa-exclamation-triangle"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #DB2777; line-height: 1.2;">${faceAlerts}</div>
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Face Violations</div>
+            </div>
+        </div>
+    `;
+}
     // ============================================
     // 📄 PAGINATION
     // ============================================
@@ -1355,27 +1986,52 @@ function displayStudentsResults() {
         if (type === 'proctoring') displayProctoringLogs(); 
     };
 
-    // ============================================
-    // 🔍 VIEW EXAM RESULT
-    // ============================================
-    window.viewExamResult = async function(sid, eid) {
-        const { data: grade } = await sb
-            .from('exam_grades')
-            .select('*')
-            .eq('student_id', sid)
-            .eq('exam_id', eid)
-            .eq('question_id', '00000000-0000-0000-0000-000000000000')
-            .single();
+   // ============================================
+// 🔍 VIEW EXAM RESULT - MODERN
+// ============================================
+window.viewExamResult = async function(sid, eid) {
+    // Show loading state
+    const modalContent = document.getElementById('modalContent');
+    const modalTitle = document.getElementById('modalTitle');
+    
+    if (modalTitle) {
+        modalTitle.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+    }
+    if (modalContent) {
+        modalContent.innerHTML = `
+            <div style="text-align:center; padding:40px;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="color:#0A3D62;"></i>
+                <p style="margin-top:12px; color:#94A3B8;">Loading exam results...</p>
+            </div>
+        `;
+    }
+    document.getElementById('studentModal').style.display = 'flex';
+    
+    try {
+        // Fetch all data in parallel
+        const [gradeResult, examResult, profileResult] = await Promise.all([
+            sb
+                .from('exam_grades')
+                .select('*')
+                .eq('student_id', sid)
+                .eq('exam_id', eid)
+                .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                .maybeSingle(),
+            sb.from('exams').select('*').eq('id', eid).single(),
+            sb
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('user_id', sid)
+                .maybeSingle()
+        ]);
         
-        const { data: exam } = await sb.from('exams').select('*').eq('id', eid).single();
-        const { data: profile } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('user_id', sid)
-            .single();
+        const grade = gradeResult.data;
+        const exam = examResult.data;
+        const profile = profileResult.data;
         
-        const totalMarks = exam?.total_marks || getExamTotalMarks(exam?.exam_type);
-        const passMark = exam?.pass_mark || getPassMark(totalMarks);
+        // Calculate values with fallbacks
+        const totalMarks = exam?.total_marks || getExamTotalMarks(exam?.exam_type) || 100;
+        const passMark = exam?.pass_mark || getPassMark(totalMarks) || Math.round(totalMarks * 0.6);
         const score = grade?.marks || 0;
         const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
         const status = grade?.result_status || 'PENDING';
@@ -1383,36 +2039,417 @@ function displayStudentsResults() {
         const displayStatus = isPassed ? 'PASS' : (status === 'FAIL' ? 'FAIL' : 'PENDING');
         const statusClass = displayStatus === 'PASS' ? 'status-pass' : (displayStatus === 'FAIL' ? 'status-fail' : 'status-pending');
         
-        document.getElementById('modalContent').innerHTML = `
-            <div style="background:${isPassed ? '#D1FAE5' : '#FEE2E2'};padding:20px;border-radius:16px;">
-                <h3>${profile?.full_name} (${profile?.student_id})</h3>
-                <p><strong>Exam:</strong> ${exam?.exam_name}</p>
-                <p><strong>Score:</strong> ${score} / ${totalMarks} marks</p>
-                <p><strong>Percentage:</strong> ${percentage}%</p>
-                <p><strong>Pass Mark:</strong> ${passMark} marks (60%)</p>
-                <p><strong>Status:</strong> <span class="${statusClass}">${displayStatus}</span></p>
-            </div>`;
-        document.getElementById('studentModal').style.display = 'flex';
-    };
+        // Get exam type badge
+        const typeLabel = exam?.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
+        const typeBadgeClass = exam?.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
+        
+        // Check if released
+        const isReleased = grade?.released || false;
+        const releasedDisplay = isReleased ? 
+            '<span style="color:#059669; font-weight:600;"><i class="fas fa-check-circle"></i> Released</span>' : 
+            '<span style="color:#F59E0B; font-weight:600;"><i class="fas fa-lock"></i> Not Released</span>';
+        
+        // Get grade breakdown (if available)
+        let breakdownHtml = '';
+        if (grade && (grade.cat_1_score !== undefined || grade.cat_2_score !== undefined || grade.exam_score !== undefined)) {
+            const isCatExam = exam?.exam_type?.includes('CAT');
+            if (isCatExam) {
+                breakdownHtml = `
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid #E2E8F0;">
+                        <div><span style="color:#64748B;">CAT Score:</span> <strong>${grade.cat_1_score || 0} / ${Math.min(totalMarks, 30)}</strong></div>
+                        <div><span style="color:#64748B;">Total:</span> <strong>${score} / ${totalMarks}</strong></div>
+                    </div>
+                `;
+            } else {
+                breakdownHtml = `
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-top:12px; padding-top:12px; border-top:1px solid #E2E8F0;">
+                        <div><span style="color:#64748B;">CAT 1:</span> <strong>${grade.cat_1_score || 0} / 30</strong></div>
+                        <div><span style="color:#64748B;">CAT 2:</span> <strong>${grade.cat_2_score || 0} / 30</strong></div>
+                        <div><span style="color:#64748B;">Exam:</span> <strong>${grade.exam_score || 0} / 70</strong></div>
+                    </div>
+                `;
+            }
+        }
+        
+        // Modern result card
+        const bgColor = displayStatus === 'PASS' ? '#F0FDF4' : (displayStatus === 'FAIL' ? '#FEF2F2' : '#FEF3C7');
+        const borderColor = displayStatus === 'PASS' ? '#059669' : (displayStatus === 'FAIL' ? '#DC2626' : '#F59E0B');
+        
+        if (modalTitle) {
+            modalTitle.innerHTML = `<i class="fas fa-file-alt"></i> Exam Result - ${profile?.full_name || 'Student'}`;
+        }
+        
+        if (modalContent) {
+            modalContent.innerHTML = `
+                <div style="background:${bgColor}; border-radius:16px; padding:24px; border-left: 4px solid ${borderColor};">
+                    <!-- Student Info -->
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+                        <div>
+                            <h3 style="margin:0; color:#0A3D62; display:flex; align-items:center; gap:10px;">
+                                <span style="width:40px; height:40px; border-radius:50%; background:linear-gradient(135deg,#0A3D62,#1a5a7a); color:white; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.9rem;">
+                                    ${profile?.full_name?.charAt(0) || 'S'}
+                                </span>
+                                ${profile?.full_name || 'Unknown Student'}
+                            </h3>
+                            <p style="margin:4px 0 0 0; color:#64748B; font-size:0.85rem;">
+                                <i class="fas fa-id-card"></i> ${profile?.student_id || 'N/A'} 
+                                <span style="margin:0 8px;">|</span>
+                                <i class="fas fa-envelope"></i> ${profile?.email || 'No email'}
+                            </p>
+                        </div>
+                        <span class="exam-type-badge ${typeBadgeClass}" style="font-size:0.75rem; padding:4px 16px;">
+                            ${typeLabel}
+                        </span>
+                    </div>
+                    
+                    <!-- Exam Info -->
+                    <div style="background:white; border-radius:12px; padding:16px; margin-bottom:16px; border:1px solid #E2E8F0;">
+                        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                            <div>
+                                <span style="color:#64748B; font-size:0.7rem; display:block;">Exam</span>
+                                <strong style="color:#0A3D62;">${exam?.exam_name || 'Unknown Exam'}</strong>
+                            </div>
+                            <div>
+                                <span style="color:#64748B; font-size:0.7rem; display:block;">Course</span>
+                                <strong style="color:#0A3D62;">${exam?.course_code || exam?.course || '-'}</strong>
+                            </div>
+                            <div>
+                                <span style="color:#64748B; font-size:0.7rem; display:block;">Duration</span>
+                                <strong style="color:#0A3D62;">${exam?.duration_minutes || 30} minutes</strong>
+                            </div>
+                            <div>
+                                <span style="color:#64748B; font-size:0.7rem; display:block;">Released</span>
+                                ${releasedDisplay}
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Score -->
+                    <div style="background:white; border-radius:12px; padding:20px; border:1px solid #E2E8F0; margin-bottom:16px;">
+                        <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:16px; text-align:center;">
+                            <div style="padding:12px; background:#F8FAFC; border-radius:10px;">
+                                <div style="font-size:0.6rem; color:#94A3B8; text-transform:uppercase; letter-spacing:0.5px;">Score</div>
+                                <div style="font-size:1.5rem; font-weight:700; color:#0A3D62;">${score}</div>
+                                <div style="font-size:0.7rem; color:#94A3B8;">out of ${totalMarks}</div>
+                            </div>
+                            <div style="padding:12px; background:#F8FAFC; border-radius:10px;">
+                                <div style="font-size:0.6rem; color:#94A3B8; text-transform:uppercase; letter-spacing:0.5px;">Percentage</div>
+                                <div style="font-size:1.5rem; font-weight:700; color:${displayStatus === 'PASS' ? '#059669' : (displayStatus === 'FAIL' ? '#DC2626' : '#F59E0B')};">${percentage}%</div>
+                                <div style="font-size:0.7rem; color:#94A3B8;">Pass mark: ${passMark} (60%)</div>
+                            </div>
+                            <div style="padding:12px; background:#F8FAFC; border-radius:10px;">
+                                <div style="font-size:0.6rem; color:#94A3B8; text-transform:uppercase; letter-spacing:0.5px;">Status</div>
+                                <div style="font-size:1.5rem; font-weight:700;">
+                                    <span class="${statusClass}">${displayStatus}</span>
+                                </div>
+                                <div style="font-size:0.7rem; color:#94A3B8;">
+                                    ${isPassed ? '✅ Passed' : (status === 'FAIL' ? '❌ Failed' : '⏳ Pending Review')}
+                                </div>
+                            </div>
+                        </div>
+                        ${breakdownHtml}
+                    </div>
+                    
+                    <!-- Actions -->
+                    <div style="display:flex; gap:10px; justify-content:flex-end; flex-wrap:wrap; border-top:1px solid #E2E8F0; padding-top:16px;">
+                        <button onclick="closeModal()" style="padding:8px 20px; background:#E2E8F0; color:#475569; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                        <button onclick="openEditMarksModal('${sid}', ${eid}, '${(profile?.full_name || 'Student').replace(/'/g, "\\'")}', '${(exam?.exam_name || 'Exam').replace(/'/g, "\\'")}')" 
+                                style="padding:8px 20px; background:linear-gradient(135deg,#0A3D62,#1a5a7a); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                            <i class="fas fa-edit"></i> Edit Marks
+                        </button>
+                        ${!isReleased ? `
+                            <button onclick="releaseSingleResult('${sid}', ${eid})" 
+                                    style="padding:8px 20px; background:linear-gradient(135deg,#8B5CF6,#7C3AED); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                                <i class="fas fa-share-alt"></i> Release
+                            </button>
+                        ` : `
+                            <button onclick="resendReleaseEmail('${sid}', ${eid}, '${(profile?.full_name || 'Student').replace(/'/g, "\\'")}', '${(exam?.exam_name || 'Exam').replace(/'/g, "\\'")}')" 
+                                    style="padding:8px 20px; background:linear-gradient(135deg,#10B981,#059669); color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                                <i class="fas fa-envelope"></i> Resend Email
+                            </button>
+                        `}
+                    </div>
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Error loading exam result:', error);
+        if (modalContent) {
+            modalContent.innerHTML = `
+                <div style="background:#FEF2F2; padding:20px; border-radius:16px; border-left:4px solid #DC2626;">
+                    <h3 style="color:#DC2626; margin:0 0 8px 0;">
+                        <i class="fas fa-exclamation-circle"></i> Error Loading Result
+                    </h3>
+                    <p style="color:#64748B; margin:0;">${error.message || 'Unable to load exam results. Please try again.'}</p>
+                    <button onclick="closeModal()" style="margin-top:12px; padding:8px 20px; background:#DC2626; color:white; border:none; border-radius:8px; cursor:pointer; font-weight:600;">
+                        Close
+                    </button>
+                </div>
+            `;
+        }
+    }
+};
 
-    // ============================================
-    // 👤 VIEW STUDENT PROFILE
-    // ============================================
-    window.viewStudentProfile = async function(pid) {
-        const { data: student } = await sb
+// ============================================
+// 📤 RELEASE SINGLE RESULT
+// ============================================
+async function releaseSingleResult(studentId, examId) {
+    if (!confirm('Release this result for the student?')) return;
+    
+    try {
+        const { data: grade } = await sb
+            .from('exam_grades')
+            .select('id')
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .single();
+        
+        if (!grade) {
+            showToast('❌ Grade not found', 'error');
+            return;
+        }
+        
+        const { error } = await sb
+            .from('released_exam_results')
+            .insert({
+                result_id: grade.id,
+                student_id: studentId,
+                exam_id: parseInt(examId)
+            });
+        
+        if (error) throw error;
+        
+        await sb
+            .from('exam_grades')
+            .update({ released: true, released_at: new Date().toISOString() })
+            .eq('id', grade.id);
+        
+        showToast('✅ Result released successfully!', 'success');
+        viewExamResult(studentId, examId);
+        loadStudentsWithResults();
+        
+    } catch (error) {
+        showToast('❌ Error: ' + error.message, 'error');
+    }
+}
+   // ============================================
+// 👤 VIEW STUDENT PROFILE - MODERN
+// ============================================
+window.viewStudentProfile = async function(pid) {
+    // Show loading state
+    const modalContent = document.getElementById('modalContent');
+    const modalTitle = document.getElementById('modalTitle');
+    
+    if (modalTitle) {
+        modalTitle.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+    }
+    if (modalContent) {
+        modalContent.innerHTML = `
+            <div style="text-align:center; padding:40px;">
+                <i class="fas fa-spinner fa-spin fa-2x" style="color:#0A3D62;"></i>
+                <p style="margin-top:12px; color:#94A3B8;">Loading student profile...</p>
+            </div>
+        `;
+    }
+    document.getElementById('studentModal').style.display = 'flex';
+    
+    try {
+        const { data: student, error } = await sb
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('id', pid)
             .single();
         
-        document.getElementById('modalContent').innerHTML = `
-            <p><strong>Student ID:</strong> ${student.student_id}</p>
-            <p><strong>Email:</strong> ${student.email}</p>
-            <p><strong>Program:</strong> ${student.program}</p>
-            <p><strong>Block:</strong> ${student.block}</p>`;
-        document.getElementById('studentModal').style.display = 'flex';
-    };
-
+        if (error || !student) {
+            throw new Error(error?.message || 'Student not found');
+        }
+        
+        // Get exam stats for this student
+        const { data: grades } = await sb
+            .from('exam_grades')
+            .select('exam_id, marks, total_score, result_status')
+            .eq('student_id', student.user_id)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        const totalExams = grades?.length || 0;
+        const passedExams = grades?.filter(g => g.result_status === 'PASS' || (g.marks > 0 && g.total_score > 0)).length || 0;
+        const avgScore = grades && grades.length > 0 
+            ? (grades.reduce((sum, g) => sum + (parseFloat(g.total_score) || 0), 0) / grades.length).toFixed(1) 
+            : '0';
+        
+        // Get latest exam
+        let latestExam = null;
+        if (grades && grades.length > 0) {
+            const { data: latestGrade } = await sb
+                .from('exam_grades')
+                .select('exam_id, marks, total_score, result_status')
+                .eq('student_id', student.user_id)
+                .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                .order('created_at', { ascending: false })
+                .limit(1);
+            
+            if (latestGrade && latestGrade.length > 0) {
+                const { data: exam } = await sb
+                    .from('exams')
+                    .select('exam_name')
+                    .eq('id', latestGrade[0].exam_id)
+                    .single();
+                latestExam = {
+                    ...latestGrade[0],
+                    exam_name: exam?.exam_name || 'Exam'
+                };
+            }
+        }
+        
+        if (modalTitle) {
+            modalTitle.innerHTML = `<i class="fas fa-user-graduate"></i> Student Profile - ${student.full_name || 'Student'}`;
+        }
+        
+        if (modalContent) {
+            modalContent.innerHTML = `
+                <div style="background: linear-gradient(135deg, #f8fafc, #ffffff); border-radius: 16px; padding: 24px; border: 1px solid #e5e7eb;">
+                    <!-- Header with Avatar -->
+                    <div style="display: flex; align-items: center; gap: 16px; margin-bottom: 20px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb;">
+                        <div style="width: 64px; height: 64px; border-radius: 50%; background: linear-gradient(135deg, #0A3D62, #1a5a7a); display: flex; align-items: center; justify-content: center; font-size: 1.5rem; font-weight: 700; color: white; flex-shrink: 0;">
+                            ${student.full_name?.charAt(0) || 'S'}
+                        </div>
+                        <div>
+                            <h3 style="margin: 0; color: #0A3D62; font-size: 1.2rem;">${student.full_name || 'Unknown'}</h3>
+                            <p style="margin: 2px 0 0 0; color: #64748B; font-size: 0.85rem;">
+                                <i class="fas fa-id-card"></i> ${student.student_id || 'N/A'}
+                            </p>
+                        </div>
+                        <div style="margin-left: auto; text-align: right;">
+                            <span style="background: ${student.status === 'approved' ? '#D1FAE5' : '#FEF3C7'}; color: ${student.status === 'approved' ? '#064E3B' : '#92400E'}; padding: 4px 16px; border-radius: 20px; font-size: 0.7rem; font-weight: 600; display: inline-block;">
+                                ${student.status === 'approved' ? '✅ Active' : '⏳ Pending'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Personal Info Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 20px;">
+                        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
+                            <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Email</span>
+                            <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
+                                <i class="fas fa-envelope" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
+                                ${student.email || 'N/A'}
+                            </span>
+                        </div>
+                        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
+                            <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Phone</span>
+                            <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
+                                <i class="fas fa-phone" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
+                                ${student.phone || 'N/A'}
+                            </span>
+                        </div>
+                        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
+                            <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Program</span>
+                            <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
+                                <i class="fas fa-graduation-cap" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
+                                ${student.program || 'N/A'}
+                            </span>
+                        </div>
+                        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
+                            <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Block / Term</span>
+                            <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
+                                <i class="fas fa-layer-group" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
+                                ${student.block || student.block_term || 'N/A'}
+                            </span>
+                        </div>
+                        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
+                            <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">Intake Year</span>
+                            <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem;">
+                                <i class="fas fa-calendar" style="color:#64748B; margin-right:6px; font-size:0.7rem;"></i>
+                                ${student.intake_year || 'N/A'}
+                            </span>
+                        </div>
+                        <div style="background: #f8fafc; padding: 12px 16px; border-radius: 10px;">
+                            <span style="color: #94A3B8; font-size: 0.65rem; text-transform: uppercase; letter-spacing: 0.3px; display: block;">User ID</span>
+                            <span style="color: #0A3D62; font-weight: 500; font-size: 0.85rem; font-family: monospace; font-size: 0.75rem;">
+                                ${student.user_id || student.id || 'N/A'}
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Exam Stats -->
+                    <div style="background: linear-gradient(135deg, #EFF6FF, #DBEAFE); border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; border-left: 4px solid #3B82F6;">
+                        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; text-align: center;">
+                            <div>
+                                <div style="font-size: 0.6rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.3px;">Total Exams</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #0A3D62;">${totalExams}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.6rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.3px;">Passed</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #059669;">${passedExams}</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.6rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.3px;">Avg Score</div>
+                                <div style="font-size: 1.3rem; font-weight: 700; color: #2563EB;">${avgScore}%</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.6rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.3px;">Latest Exam</div>
+                                <div style="font-size: 0.8rem; font-weight: 600; color: #0A3D62; margin-top: 2px;">
+                                    ${latestExam ? latestExam.exam_name : 'N/A'}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Guardian Info (if available) -->
+                    ${(student.guardian_name || student.parent_name) ? `
+                        <div style="background: #F0FDF4; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; border-left: 4px solid #10B981;">
+                            <div style="font-size: 0.7rem; color: #64748B; text-transform: uppercase; letter-spacing: 0.3px; margin-bottom: 8px;">
+                                <i class="fas fa-users" style="margin-right:6px;"></i> Guardian / Parent Information
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div><span style="color:#64748B;">Name:</span> <strong>${student.guardian_name || student.parent_name || 'N/A'}</strong></div>
+                                <div><span style="color:#64748B;">Phone:</span> <strong>${student.guardian_phone || student.parent_phone || 'N/A'}</strong></div>
+                                <div style="grid-column: span 2;"><span style="color:#64748B;">Email:</span> <strong>${student.parent_email || 'N/A'}</strong></div>
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Actions -->
+                    <div style="display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                        <button onclick="closeModal()" style="padding: 8px 20px; background: #E2E8F0; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                            <i class="fas fa-times"></i> Close
+                        </button>
+                        ${student.user_id ? `
+                            <button onclick="viewStudentProgress('${student.user_id}', '${(student.full_name || 'Student').replace(/'/g, "\\'")}')" 
+                                    style="padding: 8px 20px; background: linear-gradient(135deg, #8B5CF6, #7C3AED); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                <i class="fas fa-chart-line"></i> View Progress
+                            </button>
+                            <button onclick="openAssignExamModal()" 
+                                    style="padding: 8px 20px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                                <i class="fas fa-plus"></i> Assign Exam
+                            </button>
+                        ` : ''}
+                    </div>
+                </div>
+            `;
+        }
+        
+    } catch (error) {
+        console.error('Error loading student profile:', error);
+        if (modalContent) {
+            modalContent.innerHTML = `
+                <div style="background: #FEF2F2; padding: 20px; border-radius: 16px; border-left: 4px solid #DC2626;">
+                    <h3 style="color: #DC2626; margin: 0 0 8px 0;">
+                        <i class="fas fa-exclamation-circle"></i> Error Loading Profile
+                    </h3>
+                    <p style="color: #64748B; margin: 0;">${error.message || 'Unable to load student profile. Please try again.'}</p>
+                    <button onclick="closeModal()" style="margin-top: 12px; padding: 8px 20px; background: #DC2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Close
+                    </button>
+                </div>
+            `;
+        }
+    }
+};
     // ============================================
     // 📝 VIEW ALERT DETAILS
     // ============================================
