@@ -4,23 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>NCHSM · Parents Portal</title>
-    <!-- External Libraries -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
-    <!-- External CSS -->
-    <link rel="stylesheet" href="style.css" />
+    <link rel="stylesheet" href="parents.css" />
 </head>
 <body>
     <div class="portal-container">
-
-        <!-- ===== LOADING OVERLAY ===== -->
-        <div id="loadingOverlay" class="loading-overlay">
-            <div class="spinner"></div>
-            <p>Loading your child's data...</p>
-        </div>
 
         <!-- ===== HEADER ===== -->
         <header class="header">
@@ -63,35 +52,233 @@
             <div class="stat-card red"><div class="label"><i class="fas fa-exclamation-triangle"></i> Pending Tasks</div><div class="value" id="pendingTasks">—</div><div class="sub" id="taskSub">—</div></div>
         </div>
 
-        <!-- ===== CHART ===== -->
-        <div class="card">
-            <div class="card-header"><h3><i class="fas fa-chart-line"></i> Academic Performance</h3><span style="font-size:0.8rem;color:#94a3b8;">CATs & Exam scores</span></div>
-            <div class="card-body"><div style="height:240px;"><canvas id="performanceChart"></canvas></div></div>
-        </div>
+        <!-- ===== TABS: Academic Reports ===== -->
+        <div class="tabs-container">
+            <div class="tabs-header">
+                <button class="tab-btn active" data-tab="grades" onclick="switchTab('grades')">
+                    <i class="fas fa-chart-bar"></i> Grades & Marks
+                </button>
+                <button class="tab-btn" data-tab="performance" onclick="switchTab('performance')">
+                    <i class="fas fa-chart-line"></i> Performance Overview
+                </button>
+                <button class="tab-btn" data-tab="transcript" onclick="switchTab('transcript')">
+                    <i class="fas fa-file-alt"></i> Transcript
+                </button>
+                <button class="tab-btn" data-tab="attendance" onclick="switchTab('attendance')">
+                    <i class="fas fa-calendar-check"></i> Attendance
+                </button>
+                <button class="tab-btn" data-tab="finance" onclick="switchTab('finance')">
+                    <i class="fas fa-coins"></i> Finance
+                </button>
+            </div>
 
-        <!-- ===== UNIT GRADES TABLE ===== -->
-        <div class="card">
-            <div class="card-header"><h3><i class="fas fa-book-open"></i> Unit Performance</h3><div><span class="status-badge pass">Pass</span><span class="status-badge fail">Fail</span><span class="status-badge pending">Pending</span></div></div>
-            <div class="card-body table-wrap"><table><thead><tr><th>Code</th><th>Unit</th><th>Cr</th><th>CAT1</th><th>CAT2</th><th>Final</th><th>Total</th><th>Grade</th><th>Status</th></tr></thead><tbody id="unitGradesTable"><tr><td colspan="9" class="text-center text-muted">No data loaded</td></tr></tbody></table></div>
-        </div>
-
-        <!-- ===== ATTENDANCE ===== -->
-        <div class="card">
-            <div class="card-header"><h3><i class="fas fa-calendar-check"></i> Attendance History</h3><span style="font-size:0.8rem;color:#94a3b8;">Last 30 days</span></div>
-            <div class="card-body table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Location</th><th>Verified</th></tr></thead><tbody id="attendanceTable"><tr><td colspan="5" class="text-center text-muted">No data loaded</td></tr></tbody></table></div>
-        </div>
-
-        <!-- ===== FINANCE ===== -->
-        <div class="card">
-            <div class="card-header"><h3><i class="fas fa-coins"></i> Financial Summary</h3><span style="font-size:0.8rem;color:#94a3b8;">Current period</span></div>
-            <div class="card-body">
-                <div class="finance-grid">
-                    <div><span class="label">Total Fees Due</span><span class="value" id="financeDue" style="color:#0A3D62;">—</span></div>
-                    <div><span class="label">Amount Paid</span><span class="value" id="financePaid" style="color:#10b981;">—</span></div>
-                    <div><span class="label">Outstanding</span><span class="value" id="financeOutstanding" style="color:#dc2626;">—</span></div>
-                    <div><span class="label">Status</span><span class="value" id="financeStatus" style="color:#f59e0b;font-size:1.1rem;">—</span></div>
+            <!-- ===== TAB 1: GRADES & MARKS ===== -->
+            <div id="tab-grades" class="tab-content active">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-book-open"></i> Unit Performance</h3>
+                        <div>
+                            <span class="status-badge pass">Pass</span>
+                            <span class="status-badge fail">Fail</span>
+                            <span class="status-badge pending">Pending</span>
+                            <span class="status-badge distinction">Distinction</span>
+                            <span class="status-badge credit">Credit</span>
+                        </div>
+                    </div>
+                    <div class="card-body table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Code</th>
+                                    <th>Unit</th>
+                                    <th>Cr</th>
+                                    <th>CAT1</th>
+                                    <th>CAT2</th>
+                                    <th>Final</th>
+                                    <th>Total</th>
+                                    <th>Grade</th>
+                                    <th>Status</th>
+                                    <th>Retake</th>
+                                </tr>
+                            </thead>
+                            <tbody id="unitGradesTable">
+                                <tr><td colspan="10" class="text-center text-muted">Loading grades...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
-                <div style="margin-top:14px;"><div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#64748b;"><span>Payment progress</span><span id="financeProgressText">0%</span></div><div class="progress-bar"><div class="fill" id="financeProgressFill" style="width:0%;"></div></div></div>
+
+                <!-- Summary Stats -->
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                    <div class="stat-card" style="border-top-color: #10b981;">
+                        <div class="label">Passed</div>
+                        <div class="value" id="passedCount">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #dc2626;">
+                        <div class="label">Failed</div>
+                        <div class="value" id="failedCount">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #f59e0b;">
+                        <div class="label">Retakes</div>
+                        <div class="value" id="retakeCount">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #8B5CF6;">
+                        <div class="label">Avg Score</div>
+                        <div class="value" id="avgScore">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB 2: PERFORMANCE OVERVIEW ===== -->
+            <div id="tab-performance" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-chart-line"></i> Performance Trend</h3>
+                        <span style="font-size:0.8rem;color:#94a3b8;">CATs & Exam scores</span>
+                    </div>
+                    <div class="card-body"><div style="height:280px;"><canvas id="performanceChart"></canvas></div></div>
+                </div>
+
+                <div class="card">
+                    <div class="card-header"><h3><i class="fas fa-chart-pie"></i> Grade Distribution</h3></div>
+                    <div class="card-body"><div style="height:200px;"><canvas id="gradeDistributionChart"></canvas></div></div>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <div class="stat-card" style="border-top-color: #059669;">
+                        <div class="label">Distinction (≥85%)</div>
+                        <div class="value" id="distinctionCount">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #3B82F6;">
+                        <div class="label">Credit (75-84%)</div>
+                        <div class="value" id="creditCount">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #FDB913;">
+                        <div class="label">Pass (60-74%)</div>
+                        <div class="value" id="passCount">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #dc2626;">
+                        <div class="label">Fail (&lt;60%)</div>
+                        <div class="value" id="failCount">0</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB 3: TRANSCRIPT ===== -->
+            <div id="tab-transcript" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-file-alt"></i> Academic Transcript</h3>
+                        <button onclick="exportTranscriptPDF()" class="btn-primary" style="padding:6px 16px;font-size:0.8rem;">
+                            <i class="fas fa-download"></i> Download PDF
+                        </button>
+                    </div>
+                    <div class="card-body table-wrap" id="transcriptContainer">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Year/Semester</th>
+                                    <th>Unit Code</th>
+                                    <th>Unit Name</th>
+                                    <th>Credits</th>
+                                    <th>Grade</th>
+                                    <th>Points</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="transcriptTable">
+                                <tr><td colspan="7" class="text-center text-muted">Loading transcript...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));">
+                    <div class="stat-card" style="border-top-color: #0A3D62;">
+                        <div class="label">Total Credits</div>
+                        <div class="value" id="totalCredits">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #059669;">
+                        <div class="label">Credits Earned</div>
+                        <div class="value" id="creditsEarned">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #FDB913;">
+                        <div class="label">Cumulative GPA</div>
+                        <div class="value" id="cumulativeGPA">0.00</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB 4: ATTENDANCE ===== -->
+            <div id="tab-attendance" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-calendar-check"></i> Attendance History</h3>
+                        <span style="font-size:0.8rem;color:#94a3b8;">Last 30 days</span>
+                    </div>
+                    <div class="card-body table-wrap">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Date</th>
+                                    <th>Type</th>
+                                    <th>Status</th>
+                                    <th>Location</th>
+                                    <th>Verified</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendanceTable">
+                                <tr><td colspan="5" class="text-center text-muted">Loading attendance...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="stats-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+                    <div class="stat-card" style="border-top-color: #10b981;">
+                        <div class="label">Present</div>
+                        <div class="value" id="presentCount">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #dc2626;">
+                        <div class="label">Absent</div>
+                        <div class="value" id="absentCount">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #f59e0b;">
+                        <div class="label">Pending</div>
+                        <div class="value" id="pendingAttendance">0</div>
+                    </div>
+                    <div class="stat-card" style="border-top-color: #8B5CF6;">
+                        <div class="label">Attendance Rate</div>
+                        <div class="value" id="attendanceRateDisplay">0%</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ===== TAB 5: FINANCE ===== -->
+            <div id="tab-finance" class="tab-content">
+                <div class="card">
+                    <div class="card-header">
+                        <h3><i class="fas fa-coins"></i> Financial Summary</h3>
+                        <span style="font-size:0.8rem;color:#94a3b8;">Current period</span>
+                    </div>
+                    <div class="card-body">
+                        <div class="finance-grid">
+                            <div><span class="label">Total Fees Due</span><span class="value" id="financeDue" style="color:#0A3D62;">—</span></div>
+                            <div><span class="label">Amount Paid</span><span class="value" id="financePaid" style="color:#10b981;">—</span></div>
+                            <div><span class="label">Outstanding</span><span class="value" id="financeOutstanding" style="color:#dc2626;">—</span></div>
+                            <div><span class="label">Status</span><span class="value" id="financeStatus" style="color:#f59e0b;font-size:1.1rem;">—</span></div>
+                        </div>
+                        <div style="margin-top:14px;">
+                            <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#64748b;">
+                                <span>Payment progress</span>
+                                <span id="financeProgressText">0%</span>
+                            </div>
+                            <div class="progress-bar">
+                                <div class="fill" id="financeProgressFill" style="width:0%;"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -102,7 +289,8 @@
         </footer>
     </div>
 
-    <!-- External JavaScript -->
-    <script src="script.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="parents.js"></script>
 </body>
 </html>
