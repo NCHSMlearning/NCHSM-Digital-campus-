@@ -2194,46 +2194,98 @@ window.viewExamResult = async function(sid, eid) {
 };
 
 // ============================================
-// 📤 RELEASE SINGLE RESULT
+// 📤 RELEASE SINGLE RESULT - UPDATED
 // ============================================
 async function releaseSingleResult(studentId, examId) {
-    if (!confirm('Release this result for the student?')) return;
+    if (!confirm('📤 Release this result for the student?\n\nThis will:\n✅ Release the result to the student\n✅ Send an email notification\n✅ Update the status to released')) return;
+    
+    const confirmBtn = document.querySelector(`button[onclick*="releaseSingleResult('${studentId}', ${examId})"]`);
+    if (confirmBtn) {
+        confirmBtn.disabled = true;
+        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Releasing...';
+    }
     
     try {
-        const { data: grade } = await sb
+        // Get the grade record
+        const { data: grade, error: gradeError } = await sb
             .from('exam_grades')
-            .select('id')
+            .select('id, student_id, exam_id, marks, total_score, result_status')
             .eq('student_id', studentId)
             .eq('exam_id', parseInt(examId))
             .eq('question_id', '00000000-0000-0000-0000-000000000000')
-            .single();
+            .maybeSingle();
+        
+        if (gradeError) throw gradeError;
         
         if (!grade) {
-            showToast('❌ Grade not found', 'error');
+            showToast('❌ Grade record not found for this student', 'error');
             return;
         }
         
-        const { error } = await sb
+        // Check if already released
+        const { data: existingRelease } = await sb
+            .from('released_exam_results')
+            .select('result_id')
+            .eq('result_id', grade.id)
+            .maybeSingle();
+        
+        if (existingRelease) {
+            showToast('⚠️ This result has already been released', 'warning');
+            return;
+        }
+        
+        // Insert into released_exam_results
+        const { error: releaseError } = await sb
             .from('released_exam_results')
             .insert({
                 result_id: grade.id,
                 student_id: studentId,
-                exam_id: parseInt(examId)
+                exam_id: parseInt(examId),
+                released_at: new Date().toISOString()
             });
         
-        if (error) throw error;
+        if (releaseError) throw releaseError;
         
-        await sb
+        // Update the grade record
+        const { error: updateError } = await sb
             .from('exam_grades')
-            .update({ released: true, released_at: new Date().toISOString() })
+            .update({ 
+                released: true, 
+                released_at: new Date().toISOString(),
+                result_status: grade.result_status || (grade.marks >= 60 ? 'PASS' : 'FAIL')
+            })
             .eq('id', grade.id);
         
+        if (updateError) throw updateError;
+        
+        // Log the release
+        await sb
+            .from('exam_proctoring_logs')
+            .insert({
+                student_id: studentId,
+                exam_id: parseInt(examId),
+                event_type: 'result_released_single',
+                details: `Admin released result for student`,
+                severity: 'info',
+                timestamp: new Date().toISOString()
+            });
+        
         showToast('✅ Result released successfully!', 'success');
-        viewExamResult(studentId, examId);
+        
+        // Refresh data
+        await viewExamResult(studentId, examId);
         loadStudentsWithResults();
+        loadAllExams();
+        updateStats();
         
     } catch (error) {
+        console.error('Release error:', error);
         showToast('❌ Error: ' + error.message, 'error');
+    } finally {
+        if (confirmBtn) {
+            confirmBtn.disabled = false;
+            confirmBtn.innerHTML = '<i class="fas fa-share-alt"></i> Release';
+        }
     }
 }
    // ============================================
@@ -7643,7 +7695,7 @@ async function getStudentVideoStream(studentId) {
     }
 }
 // ============================================
-// 📹 START REAL VIDEO STREAM
+// 📹 START REAL VIDEO STREAM - UPDATED
 // ============================================
 
 async function startVideoStream(studentId) {
@@ -7686,6 +7738,36 @@ async function startVideoStream(studentId) {
     } catch (error) {
         console.error(`❌ Error starting video for ${studentId}:`, error);
         
+        // Show error in the video element
+        const container = videoElement.closest('.live-video-container');
+        if (container) {
+            const errorDiv = document.createElement('div');
+            errorDiv.style.cssText = `
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(0,0,0,0.8);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                color: #FCA5A5;
+                flex-direction: column;
+                gap: 8px;
+                z-index: 5;
+                border-radius: 8px;
+                padding: 16px;
+                text-align: center;
+            `;
+            errorDiv.innerHTML = `
+                <i class="fas fa-camera-slash fa-2x" style="color:#DC2626;"></i>
+                <span style="font-size:0.75rem; font-weight:600;">Camera unavailable</span>
+                <span style="font-size:0.6rem; opacity:0.6;">${error.message || 'Please check camera permissions'}</span>
+            `;
+            container.appendChild(errorDiv);
+        }
+        
         // ✅ FALLBACK: If camera fails, show simulated stream
         try {
             const fallbackStream = await getSimulatedVideoStream(studentId);
@@ -7694,6 +7776,10 @@ async function startVideoStream(studentId) {
                 videoElement.srcObject = fallbackStream;
                 await videoElement.play();
                 console.log(`📹 SIMULATED stream started for student: ${studentId}`);
+                
+                // Remove error div if present
+                const errorDiv = container?.querySelector('[style*="background: rgba(0,0,0,0.8)"]');
+                if (errorDiv) errorDiv.remove();
             }
         } catch (fallbackError) {
             console.error('❌ Fallback stream failed:', fallbackError);
@@ -7701,7 +7787,6 @@ async function startVideoStream(studentId) {
         }
     }
 }
-
 // ============================================
 // 📹 SIMULATED VIDEO STREAM (Fallback)
 // ============================================
