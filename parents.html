@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>NCHSM · Parents Portal</title>
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700;14..32,800&display=swap" rel="stylesheet" />
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" />
+    <!-- External CSS -->
+    <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+    <div class="portal-container">
+
+        <!-- ===== LOADING OVERLAY ===== -->
+        <div id="loadingOverlay" class="loading-overlay">
+            <div class="spinner"></div>
+            <p>Loading your child's data...</p>
+        </div>
+
+        <!-- ===== HEADER ===== -->
+        <header class="header">
+            <div>
+                <h1><i class="fas fa-user-friends"></i> Parents Portal</h1>
+                <div class="header-sub"><i class="fas fa-graduation-cap"></i> Monitor your child's academic progress at NCHSM</div>
+            </div>
+            <div class="header-actions">
+                <span class="badge-online" id="connectionStatus"><i class="fas fa-circle"></i> Connecting...</span>
+                <span class="badge-online" id="liveClock"><i class="fas fa-clock"></i> Loading...</span>
+                <button class="btn-outline-light" onclick="location.reload()"><i class="fas fa-sync-alt"></i> Refresh</button>
+                <button class="btn-outline-light" id="logoutBtn"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </header>
+
+        <!-- ===== STUDENT SELECTOR ===== -->
+        <div class="selector-card">
+            <label for="studentSelector"><i class="fas fa-child"></i> Select Student</label>
+            <select id="studentSelector">
+                <option value="">Loading students...</option>
+            </select>
+            <button class="btn-primary" id="loadStudentBtn"><i class="fas fa-eye"></i> View Progress</button>
+        </div>
+
+        <!-- ===== STUDENT PROFILE ===== -->
+        <div class="profile-banner" id="studentProfile">
+            <div><span class="label">Student Name</span><span class="value" id="studentNameDisplay">—</span></div>
+            <div><span class="label">Admission</span><span class="value" id="studentIdDisplay">—</span></div>
+            <div><span class="label">Program</span><span class="value" id="studentProgramDisplay">—</span></div>
+            <div><span class="label">Current Block</span><span class="value" id="studentBlockDisplay">—</span></div>
+            <div><span class="label">Overall GPA</span><span class="value gpa" id="studentGpaDisplay">—</span></div>
+        </div>
+
+        <!-- ===== STATS ROW ===== -->
+        <div class="stats-grid" id="statsGrid">
+            <div class="stat-card"><div class="label"><i class="fas fa-check-circle"></i> Attendance</div><div class="value" id="attendanceRate">—</div><div class="sub" id="attendanceSub">—</div></div>
+            <div class="stat-card green"><div class="label"><i class="fas fa-star"></i> Units Done</div><div class="value" id="unitsCompleted">—</div><div class="sub" id="unitsSub">—</div></div>
+            <div class="stat-card gold"><div class="label"><i class="fas fa-trophy"></i> Current GPA</div><div class="value" id="gpaDisplay">—</div><div class="sub" id="gpaSub">—</div></div>
+            <div class="stat-card purple"><div class="label"><i class="fas fa-calendar-check"></i> Upcoming Exams</div><div class="value" id="upcomingExams">—</div><div class="sub" id="examSub">—</div></div>
+            <div class="stat-card red"><div class="label"><i class="fas fa-exclamation-triangle"></i> Pending Tasks</div><div class="value" id="pendingTasks">—</div><div class="sub" id="taskSub">—</div></div>
+        </div>
+
+        <!-- ===== CHART ===== -->
+        <div class="card">
+            <div class="card-header"><h3><i class="fas fa-chart-line"></i> Academic Performance</h3><span style="font-size:0.8rem;color:#94a3b8;">CATs & Exam scores</span></div>
+            <div class="card-body"><div style="height:240px;"><canvas id="performanceChart"></canvas></div></div>
+        </div>
+
+        <!-- ===== UNIT GRADES TABLE ===== -->
+        <div class="card">
+            <div class="card-header"><h3><i class="fas fa-book-open"></i> Unit Performance</h3><div><span class="status-badge pass">Pass</span><span class="status-badge fail">Fail</span><span class="status-badge pending">Pending</span></div></div>
+            <div class="card-body table-wrap"><table><thead><tr><th>Code</th><th>Unit</th><th>Cr</th><th>CAT1</th><th>CAT2</th><th>Final</th><th>Total</th><th>Grade</th><th>Status</th></tr></thead><tbody id="unitGradesTable"><tr><td colspan="9" class="text-center text-muted">No data loaded</td></tr></tbody></table></div>
+        </div>
+
+        <!-- ===== ATTENDANCE ===== -->
+        <div class="card">
+            <div class="card-header"><h3><i class="fas fa-calendar-check"></i> Attendance History</h3><span style="font-size:0.8rem;color:#94a3b8;">Last 30 days</span></div>
+            <div class="card-body table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Status</th><th>Location</th><th>Verified</th></tr></thead><tbody id="attendanceTable"><tr><td colspan="5" class="text-center text-muted">No data loaded</td></tr></tbody></table></div>
+        </div>
+
+        <!-- ===== FINANCE ===== -->
+        <div class="card">
+            <div class="card-header"><h3><i class="fas fa-coins"></i> Financial Summary</h3><span style="font-size:0.8rem;color:#94a3b8;">Current period</span></div>
+            <div class="card-body">
+                <div class="finance-grid">
+                    <div><span class="label">Total Fees Due</span><span class="value" id="financeDue" style="color:#0A3D62;">—</span></div>
+                    <div><span class="label">Amount Paid</span><span class="value" id="financePaid" style="color:#10b981;">—</span></div>
+                    <div><span class="label">Outstanding</span><span class="value" id="financeOutstanding" style="color:#dc2626;">—</span></div>
+                    <div><span class="label">Status</span><span class="value" id="financeStatus" style="color:#f59e0b;font-size:1.1rem;">—</span></div>
+                </div>
+                <div style="margin-top:14px;"><div style="display:flex;justify-content:space-between;font-size:0.8rem;color:#64748b;"><span>Payment progress</span><span id="financeProgressText">0%</span></div><div class="progress-bar"><div class="fill" id="financeProgressFill" style="width:0%;"></div></div></div>
+            </div>
+        </div>
+
+        <!-- ===== FOOTER ===== -->
+        <footer class="footer">
+            <div>© 2026 Nakuru College of Health Sciences and Management · <span style="background:#f1f5f9;padding:2px 10px;border-radius:20px;font-size:0.7rem;">Parents Portal v1.0</span></div>
+            <div><a href="#">Privacy</a> · <a href="#">Support</a></div>
+        </footer>
+    </div>
+
+    <!-- External JavaScript -->
+    <script src="script.js"></script>
+</body>
+</html>
