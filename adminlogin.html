@@ -854,13 +854,14 @@
         }
 
         // ============================================================
-        // COMPLETE LOGIN - UPDATED REDIRECTS
+        // COMPLETE LOGIN - FIXED: Stores in BOTH places
         // ============================================================
         function completeLogin(profileData, isStaff = false) {
             const safeProfile = {
                 user_id: profileData.user_id || profileData.staff_id || null,
                 staff_id: profileData.staff_id || null,
                 email: profileData.email,
+                name: profileData.full_name || 'Staff',
                 full_name: profileData.full_name || 'Staff',
                 role: profileData.role || 'staff',
                 program: profileData.program || '',
@@ -870,7 +871,10 @@
                 loggedInAt: new Date().toISOString()
             };
 
+            // ✅ Store in BOTH places for compatibility
             localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+            localStorage.setItem('adminSession', JSON.stringify(safeProfile));
+            
             successText.textContent = `✅ Welcome ${safeProfile.full_name}! Redirecting...`;
             successDiv.classList.add('show');
 
@@ -1106,13 +1110,15 @@
         });
 
         // ============================================================
-        // SESSION CHECK & INIT
+        // SESSION CHECK & INIT - FIXED: Checks BOTH sessions
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             emailInput.focus();
             loadStaffRecords();
 
-            const session = localStorage.getItem('userProfile');
+            // ✅ Check BOTH session locations
+            let session = localStorage.getItem('adminSession') || localStorage.getItem('userProfile');
+            
             if (session) {
                 try {
                     const data = JSON.parse(session);
@@ -1129,9 +1135,11 @@
                             window.location.href = 'dashboard.html';
                         }
                     } else {
+                        localStorage.removeItem('adminSession');
                         localStorage.removeItem('userProfile');
                     }
                 } catch (e) {
+                    localStorage.removeItem('adminSession');
                     localStorage.removeItem('userProfile');
                 }
             }
@@ -1140,6 +1148,7 @@
         console.log('%c🔐 Admin & Lecturer Login', 'color: #0A3D62; font-size: 16px; font-weight: bold;');
         console.log('%c✅ Admins → adminexams.html | Lecturers → lecturerexams.html', 'color: #38A169;');
         console.log('%c🔑 Uses staff_records + consolidated_user_profiles_table', 'color: #F59E0B;');
+        console.log('%c✅ Session stored in BOTH userProfile AND adminSession', 'color: #8B5CF6;');
     </script>
 </body>
 </html>
