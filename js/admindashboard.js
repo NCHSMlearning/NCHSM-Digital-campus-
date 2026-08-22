@@ -558,7 +558,7 @@ window.logout = function() {
     }
 
    // ============================================
-// 📊 LOAD STUDENTS WITH RESULTS - FIXED
+// 📊 LOAD STUDENTS WITH RESULTS - WITH EXAM SEARCH
 // ============================================
 window.loadStudentsWithResults = async function() {
     const loadingDiv = document.getElementById('studentsLoading');
@@ -602,18 +602,38 @@ window.loadStudentsWithResults = async function() {
             };
         });
         
+        // Get filter values
         const examFilter = document.getElementById('examFilter')?.value;
         const statusFilter = document.getElementById('statusFilter')?.value;
-        const search = document.getElementById('searchInput')?.value;
+        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
         
         let filtered = studentsResults;
-        if (examFilter) filtered = filtered.filter(r => r.exam_id == examFilter);
-        if (statusFilter) filtered = filtered.filter(r => r.result_status === statusFilter);
+        
+        // Filter by exam
+        if (examFilter) {
+            filtered = filtered.filter(r => r.exam_id == examFilter);
+        }
+        
+        // Filter by status
+        if (statusFilter) {
+            filtered = filtered.filter(r => r.result_status === statusFilter);
+        }
+        
+        // ✅ FILTER BY SEARCH (Name, ID, Exam Name, Email, Program)
         if (search) {
-            filtered = filtered.filter(r => 
-                r.student_profile?.full_name?.toLowerCase().includes(search.toLowerCase()) || 
-                r.student_profile?.student_id?.toLowerCase().includes(search.toLowerCase())
-            );
+            filtered = filtered.filter(r => {
+                const name = (r.student_profile?.full_name || '').toLowerCase();
+                const studentId = (r.student_profile?.student_id || '').toLowerCase();
+                const examName = (r.exam_info?.exam_name || '').toLowerCase();
+                const email = (r.student_profile?.email || '').toLowerCase();
+                const program = (r.student_profile?.program || '').toLowerCase();
+                
+                return name.includes(search) || 
+                       studentId.includes(search) || 
+                       examName.includes(search) ||
+                       email.includes(search) ||
+                       program.includes(search);
+            });
         }
         
         studentsResults = filtered;
@@ -626,7 +646,6 @@ window.loadStudentsWithResults = async function() {
         loadingDiv.innerHTML = 'Error loading data'; 
     }
 };
-
     // ============================================
 // 📊 DISPLAY STUDENTS RESULTS - EXACT MATCH FOR 10 COLUMNS
 // ============================================
@@ -5172,66 +5191,140 @@ window.displayLiveFeed = function() {
         document.getElementById('liveFeedGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-    // ============================================
-    // 📋 RENDER FILTERS
-    // ============================================
-    function renderFilters() {
-        const container = document.getElementById('filtersContainer');
-        if (currentTab === 'students') {
-            container.innerHTML = `
-                <h3><i class="fas fa-filter"></i> Filter Results</h3>
-                <div class="filters-grid">
-                    <div class="filter-group"><label>Exam</label><select id="examFilter"><option value="">All</option></select></div>
-                    <div class="filter-group"><label>Status</label><select id="statusFilter"><option value="">All</option><option value="PASS">Pass</option><option value="FAIL">Fail</option></select></div>
+   function renderFilters() {
+    const container = document.getElementById('filtersContainer');
+    if (!container) return;
+    
+    if (currentTab === 'students') {
+        container.innerHTML = `
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Exam</label>
+                    <select id="examFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;">
+                        <option value="">All Exams</option>
+                    </select>
                 </div>
-                <div class="search-box">
-                    <input type="text" id="searchInput" placeholder="Search by name or ID...">
-                    <button class="btn btn-primary" onclick="loadStudentsWithResults()">Search</button>
-                    <button class="btn btn-danger" onclick="resetFilters()">Reset</button>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Status</label>
+                    <select id="statusFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 120px;">
+                        <option value="">All</option>
+                        <option value="PASS">Pass</option>
+                        <option value="FAIL">Fail</option>
+                        <option value="PENDING">Pending</option>
+                    </select>
                 </div>
-            `;
-            loadExamDropdown();
-        } else if (currentTab === 'allStudents') {
-            container.innerHTML = `
-                <h3><i class="fas fa-filter"></i> Filter Students</h3>
-                <div class="filters-grid">
-                    <div class="filter-group"><label>Program</label><select id="programFilter"><option value="">All</option></select></div>
+                <div style="flex: 1; min-width: 200px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 140px; position: relative;">
+                        <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
+                        <input type="text" id="searchInput" placeholder="🔍 Search by name, ID or exam..." 
+                               style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
+                               onkeydown="if(event.key==='Enter') loadStudentsWithResults()">
+                    </div>
+                    <button class="btn btn-primary" onclick="loadStudentsWithResults()" style="padding: 6px 14px; white-space: nowrap;">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <button class="btn btn-danger" onclick="resetFilters()" style="padding: 6px 12px; white-space: nowrap;">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
                 </div>
-                <div class="search-box">
-                    <input type="text" id="studentSearch" placeholder="Search by name or ID...">
-                    <button class="btn btn-primary" onclick="loadAllStudents()">Search</button>
-                    <button class="btn btn-danger" onclick="resetStudentFilters()">Reset</button>
+            </div>
+        `;
+        loadExamDropdown();
+    } else if (currentTab === 'allStudents') {
+        container.innerHTML = `
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Program</label>
+                    <select id="programFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;">
+                        <option value="">All</option>
+                    </select>
                 </div>
-            `;
-            loadProgramDropdown();
-        } else if (currentTab === 'exams') {
-            container.innerHTML = `
-                <h3><i class="fas fa-filter"></i> Filter Exams</h3>
-                <div class="filters-grid">
-                    <div class="filter-group"><label>Type</label><select id="examTypeFilter"><option value="">All</option><option value="EXAM">Final Exam (70)</option><option value="CAT_1">CAT 1 (30)</option><option value="CAT_2">CAT 2 (30)</option><option value="CAT">CAT (30)</option><option value="QUIZ">Quiz</option></select></div>
+                <div style="flex: 1; min-width: 200px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 140px; position: relative;">
+                        <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
+                        <input type="text" id="studentSearch" placeholder="🔍 Search by name or ID..." 
+                               style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
+                               onkeydown="if(event.key==='Enter') loadAllStudents()">
+                    </div>
+                    <button class="btn btn-primary" onclick="loadAllStudents()" style="padding: 6px 14px; white-space: nowrap;">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <button class="btn btn-danger" onclick="resetStudentFilters()" style="padding: 6px 12px; white-space: nowrap;">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
                 </div>
-                <div class="search-box">
-                    <input type="text" id="examSearch" placeholder="Search exam name...">
-                    <button class="btn btn-primary" onclick="loadAllExams()">Search</button>
-                    <button class="btn btn-danger" onclick="resetExamFilters()">Reset</button>
+            </div>
+        `;
+        loadProgramDropdown();
+    } else if (currentTab === 'exams') {
+        container.innerHTML = `
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Type</label>
+                    <select id="examTypeFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;">
+                        <option value="">All</option>
+                        <option value="EXAM">Final Exam (70)</option>
+                        <option value="CAT_1">CAT 1 (30)</option>
+                        <option value="CAT_2">CAT 2 (30)</option>
+                        <option value="CAT">CAT (30)</option>
+                        <option value="QUIZ">Quiz</option>
+                    </select>
                 </div>
-            `;
-        } else {
-            container.innerHTML = `
-                <h3><i class="fas fa-filter"></i> Filter Proctoring Alerts</h3>
-                <div class="filters-grid">
-                    <div class="filter-group"><label>Alert Type</label><select id="alertTypeFilter"><option value="">All</option><option value="multiple_faces_detected">🚨 Multiple Faces</option><option value="face_missing">😞 Face Missing</option></select></div>
-                    <div class="filter-group"><label>Severity</label><select id="severityFilter"><option value="">All</option><option value="critical">Critical</option><option value="warning">Warning</option></select></div>
+                <div style="flex: 1; min-width: 200px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 140px; position: relative;">
+                        <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
+                        <input type="text" id="examSearch" placeholder="🔍 Search exam name..." 
+                               style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
+                               onkeydown="if(event.key==='Enter') loadAllExams()">
+                    </div>
+                    <button class="btn btn-primary" onclick="loadAllExams()" style="padding: 6px 14px; white-space: nowrap;">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <button class="btn btn-danger" onclick="resetExamFilters()" style="padding: 6px 12px; white-space: nowrap;">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
                 </div>
-                <div class="search-box">
-                    <input type="text" id="proctoringSearch" placeholder="Search by student...">
-                    <button class="btn btn-primary" onclick="loadProctoringLogs()">Search</button>
-                    <button class="btn btn-danger" onclick="resetProctoringFilters()">Reset</button>
+            </div>
+        `;
+    } else if (currentTab === 'proctoring') {
+        container.innerHTML = `
+            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Alert Type</label>
+                    <select id="alertTypeFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;">
+                        <option value="">All</option>
+                        <option value="multiple_faces_detected">🚨 Multiple Faces</option>
+                        <option value="face_missing">😞 Face Missing</option>
+                        <option value="tab_switched">📱 Tab Switched</option>
+                    </select>
                 </div>
-            `;
-        }
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Severity</label>
+                    <select id="severityFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 120px;">
+                        <option value="">All</option>
+                        <option value="critical">Critical</option>
+                        <option value="warning">Warning</option>
+                        <option value="info">Info</option>
+                    </select>
+                </div>
+                <div style="flex: 1; min-width: 200px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
+                    <div style="flex: 1; min-width: 140px; position: relative;">
+                        <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
+                        <input type="text" id="proctoringSearch" placeholder="🔍 Search by student..." 
+                               style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
+                               onkeydown="if(event.key==='Enter') loadProctoringLogs()">
+                    </div>
+                    <button class="btn btn-primary" onclick="loadProctoringLogs()" style="padding: 6px 14px; white-space: nowrap;">
+                        <i class="fas fa-search"></i> Search
+                    </button>
+                    <button class="btn btn-danger" onclick="resetProctoringFilters()" style="padding: 6px 12px; white-space: nowrap;">
+                        <i class="fas fa-undo"></i> Reset
+                    </button>
+                </div>
+            </div>
+        `;
     }
-
+}
     // ============================================
     // 🔄 RESET FILTERS
     // ============================================
