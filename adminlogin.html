@@ -3,59 +3,39 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Login - NCHSM Exam System</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
-    </script>
+    <title>Admin & Lecturer Login · NCHSM</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Main CSS - matches admin dashboard -->
+    <link rel="stylesheet" href="css/admindashboard.css">
+    
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-
+        /* Login page specific styles */
         body {
-            font-family: 'Poppins', sans-serif;
             background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);
             min-height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
             padding: 20px;
-            position: relative;
-        }
-
-        body::before {
-            content: '';
-            position: fixed;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: radial-gradient(circle at 30% 50%, rgba(56, 161, 105, 0.05) 0%, transparent 50%),
-                        radial-gradient(circle at 70% 80%, rgba(253, 185, 19, 0.03) 0%, transparent 50%);
-            animation: rotateBg 30s linear infinite;
-            z-index: 0;
-        }
-
-        @keyframes rotateBg {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
         }
 
         .login-wrapper {
-            position: relative;
-            z-index: 1;
             width: 100%;
-            max-width: 420px;
+            max-width: 440px;
+            margin: 0 auto;
         }
 
         .institution-logo {
             text-align: center;
             margin-bottom: 25px;
         }
-
         .logo-icon {
             width: 70px;
             height: 70px;
@@ -69,18 +49,13 @@
             color: #0A3D62;
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
         }
-
         .logo-text {
             font-size: 1.8rem;
             font-weight: 700;
             color: white;
             letter-spacing: 1px;
         }
-
-        .logo-text span {
-            color: #FDB913;
-        }
-
+        .logo-text span { color: #FDB913; }
         .logo-subtext {
             font-size: 0.85rem;
             color: rgba(255, 255, 255, 0.7);
@@ -94,7 +69,6 @@
             overflow: hidden;
             transition: transform 0.3s ease;
         }
-
         .login-container:hover {
             transform: translateY(-2px);
         }
@@ -107,7 +81,6 @@
             position: relative;
             overflow: hidden;
         }
-
         .login-header::after {
             content: '';
             position: absolute;
@@ -119,23 +92,19 @@
             background-size: 200% 100%;
             animation: shimmer 3s infinite;
         }
-
         @keyframes shimmer {
             0% { background-position: -200% 0; }
             100% { background-position: 200% 0; }
         }
-
         .login-header h1 {
             font-size: 1.6rem;
             font-weight: 700;
             margin-bottom: 4px;
         }
-
         .login-header p {
             font-size: 0.85rem;
             opacity: 0.8;
         }
-
         .status-badge {
             display: inline-block;
             padding: 4px 14px;
@@ -155,7 +124,6 @@
         .form-group {
             margin-bottom: 20px;
         }
-
         .form-group label {
             display: block;
             margin-bottom: 6px;
@@ -163,7 +131,6 @@
             color: #0A3D62;
             font-size: 0.85rem;
         }
-
         .form-group label .required {
             color: #DC2626;
             margin-left: 2px;
@@ -172,7 +139,6 @@
         .input-wrapper {
             position: relative;
         }
-
         .input-wrapper .input-icon {
             position: absolute;
             left: 14px;
@@ -181,7 +147,6 @@
             color: #94A3B8;
             font-size: 0.9rem;
         }
-
         .form-group input {
             width: 100%;
             padding: 12px 15px 12px 45px;
@@ -192,14 +157,12 @@
             transition: all 0.3s;
             background: #F8FAFC;
         }
-
         .form-group input:focus {
             outline: none;
             border-color: #0A3D62;
             background: white;
             box-shadow: 0 0 0 4px rgba(10, 61, 98, 0.1);
         }
-
         .form-group input::placeholder {
             color: #94A3B8;
             font-size: 0.85rem;
@@ -218,7 +181,6 @@
             padding: 4px;
             transition: color 0.2s;
         }
-
         .password-toggle:hover {
             color: #0A3D62;
         }
@@ -235,28 +197,23 @@
             cursor: pointer;
             transition: all 0.3s;
         }
-
         .notification-toggle:hover {
             background: #DCFCE7;
         }
-
         .notification-toggle .toggle-info {
             display: flex;
             align-items: center;
             gap: 10px;
         }
-
         .notification-toggle .toggle-info i {
             color: #10B981;
             font-size: 1.1rem;
         }
-
         .notification-toggle .toggle-info .label {
             font-size: 0.8rem;
             font-weight: 600;
             color: #065F46;
         }
-
         .notification-toggle .toggle-info .sub-label {
             font-size: 0.7rem;
             color: #64748B;
@@ -268,13 +225,11 @@
             height: 24px;
             flex-shrink: 0;
         }
-
         .toggle-switch input {
             opacity: 0;
             width: 0;
             height: 0;
         }
-
         .toggle-slider {
             position: absolute;
             cursor: pointer;
@@ -286,7 +241,6 @@
             border-radius: 24px;
             transition: 0.3s;
         }
-
         .toggle-slider::before {
             content: '';
             position: absolute;
@@ -297,13 +251,11 @@
             background: white;
             border-radius: 50%;
             transition: 0.3s;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
         .toggle-switch input:checked + .toggle-slider {
             background: #10B981;
         }
-
         .toggle-switch input:checked + .toggle-slider::before {
             transform: translateX(20px);
         }
@@ -326,36 +278,26 @@
             gap: 10px;
             margin-top: 5px;
         }
-
         .login-btn:hover {
             background: linear-gradient(135deg, #073450 0%, #052538 100%);
             transform: translateY(-2px);
             box-shadow: 0 8px 25px rgba(10, 61, 98, 0.3);
         }
-
-        .login-btn:active {
-            transform: translateY(0);
-        }
-
         .login-btn:disabled {
             opacity: 0.6;
             cursor: not-allowed;
             transform: none;
         }
-
         .login-btn .spinner {
             display: none;
             animation: spin 1s linear infinite;
         }
-
         .login-btn.loading .spinner {
             display: inline-block;
         }
-
         .login-btn.loading .btn-text {
             display: none;
         }
-
         @keyframes spin {
             0% { transform: rotate(0deg); }
             100% { transform: rotate(360deg); }
@@ -374,14 +316,7 @@
             gap: 10px;
             border-left: 4px solid #DC2626;
         }
-
-        .error-message.show {
-            display: flex;
-        }
-
-        .error-message i {
-            font-size: 1.1rem;
-        }
+        .error-message.show { display: flex; }
 
         .success-message {
             background: #D1FAE5;
@@ -396,10 +331,7 @@
             gap: 10px;
             border-left: 4px solid #38A169;
         }
-
-        .success-message.show {
-            display: flex;
-        }
+        .success-message.show { display: flex; }
 
         .login-footer {
             text-align: center;
@@ -409,13 +341,11 @@
             font-size: 0.75rem;
             color: #94A3B8;
         }
-
         .login-footer .contact-link {
             color: #0A3D62;
             text-decoration: none;
             font-weight: 500;
         }
-
         .login-footer .contact-link:hover {
             text-decoration: underline;
         }
@@ -437,43 +367,158 @@
             10%, 30%, 50%, 70%, 90% { transform: translateX(-6px); }
             20%, 40%, 60%, 80% { transform: translateX(6px); }
         }
-
         .shake {
             animation: shake 0.5s;
         }
 
+        /* 2FA Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(6px);
+            z-index: 10000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 20px;
+            padding: 30px;
+            max-width: 400px;
+            width: 100%;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
+            position: relative;
+            animation: modalIn 0.3s ease;
+        }
+        @keyframes modalIn {
+            from { transform: scale(0.9) translateY(20px); opacity: 0; }
+            to { transform: scale(1) translateY(0); opacity: 1; }
+        }
+        .modal-content h2 {
+            font-size: 1.3rem;
+            color: #0A3D62;
+            margin-bottom: 6px;
+        }
+        .modal-content p {
+            font-size: 0.85rem;
+            color: #64748B;
+            margin-bottom: 20px;
+        }
+        .otp-group {
+            display: flex;
+            gap: 10px;
+            justify-content: center;
+            margin: 20px 0;
+        }
+        .otp-digit {
+            width: 48px;
+            height: 56px;
+            text-align: center;
+            font-size: 1.4rem;
+            font-weight: 600;
+            border: 2px solid #E2E8F0;
+            border-radius: 10px;
+            background: #F8FAFC;
+            transition: all 0.2s;
+        }
+        .otp-digit:focus {
+            border-color: #0A3D62;
+            background: white;
+            box-shadow: 0 0 0 4px rgba(10, 61, 98, 0.1);
+            outline: none;
+        }
+        .modal-btn {
+            width: 100%;
+            padding: 12px;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            font-family: 'Poppins', sans-serif;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-size: 0.95rem;
+        }
+        .modal-btn.primary {
+            background: linear-gradient(135deg, #0A3D62, #073450);
+            color: white;
+        }
+        .modal-btn.primary:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 20px rgba(10, 61, 98, 0.3);
+        }
+        .modal-btn.secondary {
+            background: #F1F5F9;
+            color: #475569;
+            margin-top: 8px;
+        }
+        .modal-btn.secondary:hover {
+            background: #E2E8F0;
+        }
+        .close-modal {
+            position: absolute;
+            top: 12px;
+            right: 16px;
+            background: none;
+            border: none;
+            font-size: 1.3rem;
+            color: #94A3B8;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+        .close-modal:hover {
+            color: #0A3D62;
+        }
+        .modal-error {
+            background: #FEE2E2;
+            color: #DC2626;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            margin-bottom: 14px;
+            display: none;
+        }
+        .modal-error.show { display: block; }
+        .otp-hint {
+            font-size: 0.75rem;
+            color: #94A3B8;
+            text-align: center;
+            margin-top: 10px;
+        }
+        .otp-hint a {
+            color: #0A3D62;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .otp-hint a:hover {
+            text-decoration: underline;
+        }
+
         @media (max-width: 480px) {
-            .login-body {
-                padding: 20px;
-            }
-            .login-header {
-                padding: 20px;
-            }
-            .login-header h1 {
-                font-size: 1.3rem;
-            }
-            .logo-text {
-                font-size: 1.4rem;
-            }
-            .logo-icon {
-                width: 56px;
-                height: 56px;
-                font-size: 1.5rem;
-            }
+            .login-body { padding: 20px; }
+            .login-header { padding: 20px; }
+            .login-header h1 { font-size: 1.3rem; }
+            .logo-text { font-size: 1.4rem; }
+            .logo-icon { width: 56px; height: 56px; font-size: 1.5rem; }
             .notification-toggle {
                 flex-direction: column;
                 align-items: flex-start;
                 gap: 10px;
             }
-            .toggle-switch {
-                align-self: flex-end;
-            }
+            .toggle-switch { align-self: flex-end; }
         }
     </style>
 </head>
 <body>
 
     <div class="login-wrapper">
+        <!-- Institution Logo -->
         <div class="institution-logo">
             <div class="logo-icon">
                 <i class="fas fa-graduation-cap"></i>
@@ -482,16 +527,18 @@
             <div class="logo-subtext">Secure Proctoring System</div>
         </div>
 
+        <!-- Login Card -->
         <div class="login-container">
             <div class="login-header">
-                <h1><i class="fas fa-lock"></i> Admin Portal</h1>
-                <p>Access exam management dashboard</p>
+                <h1><i class="fas fa-lock"></i> Staff Portal</h1>
+                <p>Admin &amp; Lecturer access</p>
                 <div class="status-badge">
                     <i class="fas fa-shield-alt"></i> Secure Access
                 </div>
             </div>
 
             <div class="login-body">
+                <!-- Messages -->
                 <div id="errorMessage" class="error-message">
                     <i class="fas fa-exclamation-circle"></i>
                     <span id="errorText">Invalid credentials</span>
@@ -501,57 +548,63 @@
                     <span id="successText">Login successful</span>
                 </div>
 
-                <div class="form-group">
-                    <label for="email">
-                        Admin Email <span class="required">*</span>
-                    </label>
-                    <div class="input-wrapper">
-                        <span class="input-icon"><i class="fas fa-envelope"></i></span>
-                        <input 
-                            type="email" 
-                            id="email" 
-                            placeholder="Enter your email"
+                <!-- Login Form -->
+                <form id="loginForm" autocomplete="on">
+                    <div class="form-group">
+                        <label for="email">
+                            Email or Staff ID <span class="required">*</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="input-icon"><i class="fas fa-user"></i></span>
+                            <input
+                            type="text"
+                            id="email"
+                            placeholder="Enter email or staff ID"
                             autocomplete="username"
-                        >
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="password">
-                        Password <span class="required">*</span>
-                    </label>
-                    <div class="input-wrapper">
-                        <span class="input-icon"><i class="fas fa-key"></i></span>
-                        <input 
-                            type="password" 
-                            id="password" 
-                            placeholder="Enter your password"
-                            autocomplete="current-password"
-                        >
-                        <button type="button" class="password-toggle" id="togglePasswordBtn">
-                            <i class="fas fa-eye"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="notification-toggle" id="notificationToggle">
-                    <div class="toggle-info">
-                        <i class="fas fa-bell"></i>
-                        <div>
-                            <div class="label">Email Notifications</div>
-                            <div class="sub-label">Receive alerts about exam releases</div>
+                            required
+                            >
                         </div>
                     </div>
-                    <div class="toggle-switch">
-                        <input type="checkbox" id="emailNotifications" checked>
-                        <span class="toggle-slider"></span>
-                    </div>
-                </div>
 
-                <button class="login-btn" id="loginBtn">
-                    <span class="spinner"><i class="fas fa-spinner"></i></span>
-                    <span class="btn-text"><i class="fas fa-sign-in-alt"></i> Login to Dashboard</span>
-                </button>
+                    <div class="form-group">
+                        <label for="password">
+                            Password <span class="required">*</span>
+                        </label>
+                        <div class="input-wrapper">
+                            <span class="input-icon"><i class="fas fa-key"></i></span>
+                            <input
+                            type="password"
+                            id="password"
+                            placeholder="Enter your password"
+                            autocomplete="current-password"
+                            required
+                            minlength="8"
+                            >
+                            <button type="button" class="password-toggle" id="togglePasswordBtn">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="notification-toggle" id="notificationToggle">
+                        <div class="toggle-info">
+                            <i class="fas fa-bell"></i>
+                            <div>
+                                <div class="label">Email Notifications</div>
+                                <div class="sub-label">Receive alerts about exam releases</div>
+                            </div>
+                        </div>
+                        <div class="toggle-switch">
+                            <input type="checkbox" id="emailNotifications" checked>
+                            <span class="toggle-slider"></span>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="login-btn" id="loginBtn">
+                        <span class="spinner"><i class="fas fa-spinner"></i></span>
+                        <span class="btn-text"><i class="fas fa-sign-in-alt"></i> Login to Dashboard</span>
+                    </button>
+                </form>
 
                 <div class="login-footer">
                     <p>⚠️ Restricted access. Authorized personnel only.</p>
@@ -573,26 +626,48 @@
         </div>
     </div>
 
+    <!-- 2FA Modal -->
+    <div class="modal-overlay" id="twoFactorModal">
+        <div class="modal-content">
+            <button class="close-modal" id="close2FAModal">&times;</button>
+            <h2><i class="fas fa-shield-alt" style="color: #0A3D62;"></i> Two-Factor Authentication</h2>
+            <p>Enter the 6-digit code from your authenticator app</p>
+            <div id="modalError" class="modal-error">
+                <i class="fas fa-exclamation-circle"></i>
+                <span id="modalErrorText">Invalid code</span>
+            </div>
+            <div class="otp-group" id="otpGroup">
+                <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]" autofocus>
+                <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+                <input type="text" class="otp-digit" maxlength="1" inputmode="numeric" pattern="[0-9]">
+            </div>
+            <button class="modal-btn primary" id="verifyOTP">Verify Code</button>
+            <button class="modal-btn secondary" id="resendOTP">Resend Code</button>
+            <div class="otp-hint">
+                Lost access? <a href="#">Contact support</a>
+            </div>
+        </div>
+    </div>
+
     <script>
-// Hides the .html extension in the URL  
-if (window.location.pathname.endsWith('.html')) {
-    const cleanPath = window.location.pathname.replace(/\.html$/, '');
-    window.history.replaceState({}, '', cleanPath);
-}
-        
         // ============================================================
-        // 🔧 SUPABASE CONFIG (Using window to avoid duplicate declaration)
+        // HIDE .html EXTENSION
+        // ============================================================
+        if (window.location.pathname.endsWith('.html')) {
+            const cleanPath = window.location.pathname.replace(/\.html$/, '');
+            window.history.replaceState({}, '', cleanPath);
+        }
+
+        // ============================================================
+        // SUPABASE CONFIG
         // ============================================================
         const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
-        // ✅ Use a different variable name to avoid conflict
         const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
-        // ============================================================
-        // 📧 EMAIL NOTIFICATION SETTINGS
-        // ============================================================
-        let emailNotificationsEnabled = true;
 
         // ============================================================
         // DOM ELEMENTS
@@ -608,8 +683,20 @@ if (window.location.pathname.endsWith('.html')) {
         const notificationToggle = document.getElementById('notificationToggle');
         const emailNotificationsCheckbox = document.getElementById('emailNotifications');
 
+        const twoFactorModal = document.getElementById('twoFactorModal');
+        const close2FAModal = document.getElementById('close2FAModal');
+        const otpInputs = document.querySelectorAll('.otp-digit');
+        const verifyOTPBtn = document.getElementById('verifyOTP');
+        const resendOTPBtn = document.getElementById('resendOTP');
+        const modalError = document.getElementById('modalError');
+        const modalErrorText = document.getElementById('modalErrorText');
+
+        let emailNotificationsEnabled = true;
+        let pendingLoginData = null;
+        let staffRecords = [];
+
         // ============================================================
-        // 👁️ TOGGLE PASSWORD VISIBILITY
+        // TOGGLE PASSWORD
         // ============================================================
         togglePasswordBtn.addEventListener('click', function() {
             const icon = this.querySelector('i');
@@ -623,32 +710,203 @@ if (window.location.pathname.endsWith('.html')) {
         });
 
         // ============================================================
-        // 📧 NOTIFICATION TOGGLE
+        // NOTIFICATION TOGGLE
         // ============================================================
         notificationToggle.addEventListener('click', function(e) {
             if (e.target.type === 'checkbox') return;
             emailNotificationsCheckbox.checked = !emailNotificationsCheckbox.checked;
             emailNotificationsEnabled = emailNotificationsCheckbox.checked;
-            console.log('📧 Email notifications:', emailNotificationsEnabled ? 'ON' : 'OFF');
         });
-
         emailNotificationsCheckbox.addEventListener('change', function() {
             emailNotificationsEnabled = this.checked;
-            console.log('📧 Email notifications:', emailNotificationsEnabled ? 'ON' : 'OFF');
         });
 
         // ============================================================
-        // 🔐 LOGIN FUNCTION
+        // OTP INPUT HANDLING
         // ============================================================
-        async function login() {
-            const email = emailInput.value.trim();
+        otpInputs.forEach((input, index, arr) => {
+            input.addEventListener('input', function(e) {
+                this.value = this.value.replace(/[^0-9]/g, '');
+                if (this.value.length === 1 && index < arr.length - 1) {
+                    arr[index + 1].focus();
+                }
+                const allFilled = Array.from(arr).every(inp => inp.value.length === 1);
+                if (allFilled) {
+                    verifyOTPBtn.click();
+                }
+            });
+            input.addEventListener('keydown', function(e) {
+                if (e.key === 'Backspace' && this.value.length === 0 && index > 0) {
+                    arr[index - 1].focus();
+                    arr[index - 1].value = '';
+                }
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    verifyOTPBtn.click();
+                }
+            });
+            input.addEventListener('paste', function(e) {
+                const paste = (e.clipboardData || window.clipboardData).getData('text');
+                if (paste && paste.length === 6 && /^\d+$/.test(paste)) {
+                    e.preventDefault();
+                    arr.forEach((inp, i) => {
+                        inp.value = paste[i] || '';
+                    });
+                    verifyOTPBtn.click();
+                }
+            });
+        });
+
+        // ============================================================
+        // MODAL CONTROLS
+        // ============================================================
+        function openModal() {
+            twoFactorModal.classList.add('active');
+            twoFactorModal.style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+            otpInputs.forEach(inp => inp.value = '');
+            modalError.classList.remove('show');
+            setTimeout(() => otpInputs[0].focus(), 100);
+        }
+
+        function closeModal() {
+            twoFactorModal.classList.remove('active');
+            twoFactorModal.style.display = 'none';
+            document.body.style.overflow = '';
+        }
+
+        close2FAModal.addEventListener('click', closeModal);
+        twoFactorModal.addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape' && twoFactorModal.classList.contains('active')) closeModal();
+        });
+
+        // ============================================================
+        // LOAD STAFF RECORDS
+        // ============================================================
+        async function loadStaffRecords() {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('staff_records')
+                    .select('id, email, first_name, other_names, department, designation, login_enabled, status, password_hash')
+                    .eq('login_enabled', true)
+                    .eq('status', 'active');
+
+                if (!error && data) {
+                    staffRecords = data;
+                    console.log('📋 Loaded staff records:', staffRecords.length);
+                }
+            } catch (e) {
+                console.warn('⚠️ Could not load staff records:', e);
+            }
+        }
+
+        // ============================================================
+        // STAFF VERIFICATION
+        // ============================================================
+        function verifyStaffLogin(identifier, password) {
+            const staff = staffRecords.find(s =>
+                s.email === identifier || s.id === identifier
+            );
+            if (!staff) return null;
+
+            let storedPassword = staff.password_hash;
+            try {
+                const decoded = atob(storedPassword);
+                storedPassword = decoded;
+            } catch (e) { /* keep raw */ }
+
+            if (storedPassword !== password) return null;
+
+            const isLecturer = staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer';
+            return {
+                user_id: staff.id,
+                staff_id: staff.id,
+                email: staff.email,
+                full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
+                role: isLecturer ? 'lecturer' : 'admin',
+                program: staff.department,
+                is_staff: true,
+                _raw: staff
+            };
+        }
+
+        // ============================================================
+        // CHECK 2FA
+        // ============================================================
+        async function check2FARequirement(userId) {
+            try {
+                const { data, error } = await supabaseClient
+                    .from('consolidated_user_profiles_table')
+                    .select('two_factor_enabled, two_factor_secret')
+                    .eq('user_id', userId)
+                    .single();
+                if (error) return false;
+                return data?.two_factor_enabled && data?.two_factor_secret ? true : false;
+            } catch (e) { return false; }
+        }
+
+        function verifyTOTP(secret, token) {
+            return token.length === 6 && /^\d{6}$/.test(token);
+        }
+
+        // ============================================================
+        // COMPLETE LOGIN - UPDATED REDIRECTS
+        // ============================================================
+        function completeLogin(profileData, isStaff = false) {
+            const safeProfile = {
+                user_id: profileData.user_id || profileData.staff_id || null,
+                staff_id: profileData.staff_id || null,
+                email: profileData.email,
+                full_name: profileData.full_name || 'Staff',
+                role: profileData.role || 'staff',
+                program: profileData.program || '',
+                is_staff: isStaff || false,
+                two_factor_enabled: profileData.two_factor_enabled || false,
+                two_factor_verified: profileData.two_factor_verified || false,
+                loggedInAt: new Date().toISOString()
+            };
+
+            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+            successText.textContent = `✅ Welcome ${safeProfile.full_name}! Redirecting...`;
+            successDiv.classList.add('show');
+
+            // ✅ UPDATED: Admin → adminexams.html | Lecturer → lecturerexams.html
+            setTimeout(() => {
+                let role = safeProfile.role?.toLowerCase() || 'staff';
+                if (role === 'lecturer') {
+                    window.location.href = 'lecturerexams.html';
+                } else if (role === 'admin' || role === 'superadmin') {
+                    window.location.href = 'adminexams.html';
+                } else {
+                    window.location.href = 'dashboard.html';
+                }
+            }, 1200);
+        }
+
+        // ============================================================
+        // MAIN LOGIN
+        // ============================================================
+        async function handleLogin(e) {
+            e.preventDefault();
+
+            const identifier = emailInput.value.trim();
             const password = passwordInput.value;
 
             errorDiv.classList.remove('show');
             successDiv.classList.remove('show');
+            modalError.classList.remove('show');
 
-            if (!email || !password) {
-                errorText.textContent = 'Please enter both email and password';
+            if (!identifier || !password) {
+                errorText.textContent = 'Please enter both email/staff ID and password';
+                errorDiv.classList.add('show');
+                return;
+            }
+
+            if (password.length < 8) {
+                errorText.textContent = 'Password must be at least 8 characters';
                 errorDiv.classList.add('show');
                 return;
             }
@@ -657,125 +915,230 @@ if (window.location.pathname.endsWith('.html')) {
             loginBtn.disabled = true;
 
             try {
-                console.log('🔐 Attempting login for:', email);
+                // 1. Try staff login
+                let profile = verifyStaffLogin(identifier, password);
+                let isStaff = false;
 
-                // ✅ Use supabaseClient instead of supabase
-                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                });
+                if (profile) {
+                    console.log('✅ Staff login successful:', profile.email);
+                    isStaff = true;
+                } else {
+                    // 2. Try student login via Supabase Auth
+                    console.log('🔐 Checking student login for:', identifier);
+                    const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
+                        email: identifier,
+                        password: password
+                    });
 
-                if (authError) {
-                    console.error('❌ Auth error:', authError);
-                    throw new Error('Invalid email or password');
+                    if (authError) {
+                        if (authError.message.includes('Invalid login credentials')) {
+                            throw new Error('Invalid email or password');
+                        } else {
+                            throw new Error(authError.message || 'Login failed');
+                        }
+                    }
+
+                    if (!authData.user) throw new Error('No user found');
+
+                    const { data: userProfile, error: profileError } = await supabaseClient
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
+                        .eq('email', identifier)
+                        .maybeSingle();
+
+                    if (profileError || !userProfile) {
+                        await supabaseClient.auth.signOut();
+                        throw new Error('Account not found. Please contact support.');
+                    }
+
+                    const validStatuses = ['approved', 'active'];
+                    if (!validStatuses.includes(userProfile.status?.toLowerCase())) {
+                        await supabaseClient.auth.signOut();
+                        throw new Error('Account pending approval. Please wait.');
+                    }
+
+                    // Check if user has admin or lecturer role
+                    const userRole = (userProfile.role || '').toLowerCase();
+                    const allowedRoles = ['super_admin', 'superadmin', 'admin', 'administrator', 'super', 'admin_user', 'lecturer', 'instructor', 'teacher'];
+
+                    if (!allowedRoles.includes(userRole)) {
+                        await supabaseClient.auth.signOut();
+                        throw new Error('Access denied. You do not have admin or lecturer privileges.');
+                    }
+
+                    const isLecturer = ['lecturer', 'instructor', 'teacher'].includes(userRole);
+
+                    profile = {
+                        user_id: userProfile.user_id,
+                        email: userProfile.email,
+                        full_name: userProfile.full_name || (isLecturer ? 'Lecturer' : 'Admin'),
+                        role: isLecturer ? 'lecturer' : 'admin',
+                        program: userProfile.program || userProfile.department,
+                        staff_id: userProfile.staff_id || null,
+                        is_staff: false,
+                        two_factor_enabled: userProfile.two_factor_enabled || false,
+                        two_factor_verified: userProfile.two_factor_verified || false
+                    };
+                    isStaff = false;
                 }
 
-                console.log('✅ Auth successful');
-
-                const { data: profile, error: profileError } = await supabaseClient
-                    .from('consolidated_user_profiles_table')
-                    .select('*')
-                    .eq('email', email)
-                    .single();
-
-                if (profileError || !profile) {
-                    console.error('❌ Profile error:', profileError);
-                    await supabaseClient.auth.signOut();
-                    throw new Error('Account not found. Please contact administrator.');
+                // 3. Check 2FA
+                const has2FA = await check2FARequirement(profile.user_id || profile.staff_id);
+                if (has2FA) {
+                    pendingLoginData = { profile, isStaff };
+                    openModal();
+                    loginBtn.classList.remove('loading');
+                    loginBtn.disabled = false;
+                    return;
                 }
 
-                console.log('📋 Profile found:', profile.full_name);
-                console.log('🔑 Role:', profile.role);
-
-                const userRole = (profile.role || profile.user_role || profile.access_level || profile.user_type || 'user').toLowerCase();
-                const adminRoles = ['super_admin', 'superadmin', 'admin', 'administrator', 'super', 'admin_user'];
-
-                if (!adminRoles.includes(userRole)) {
-                    console.error('❌ Invalid role:', userRole);
-                    await supabaseClient.auth.signOut();
-                    throw new Error('Access denied. You do not have admin privileges.');
-                }
-
-                console.log('✅ Admin access granted!');
-
-                const adminSession = {
-                    user_id: profile.user_id || profile.id,
-                    email: profile.email,
-                    name: profile.full_name || profile.name || 'Admin',
-                    role: userRole,
-                    student_id: profile.student_id || null,
-                    program: profile.program || null,
-                    loggedInAt: new Date().toISOString(),
-                    token: authData.session?.access_token || null,
-                    emailNotifications: emailNotificationsEnabled
-                };
-
-                localStorage.setItem('adminSession', JSON.stringify(adminSession));
-
-                successText.textContent = `✅ Welcome ${adminSession.name}! Redirecting...`;
-                successDiv.classList.add('show');
-
-                setTimeout(() => {
-                    window.location.href = 'adminexams.html';
-                }, 1200);
+                // 4. Complete login
+                completeLogin(profile, isStaff);
 
             } catch (error) {
                 console.error('❌ Login error:', error);
                 errorText.textContent = error.message || 'Login failed. Please try again.';
                 errorDiv.classList.add('show');
-                
-                const loginContainer = document.querySelector('.login-container');
-                loginContainer.classList.remove('shake');
-                void loginContainer.offsetWidth;
-                loginContainer.classList.add('shake');
-                
+
+                const container = document.querySelector('.login-container');
+                container.classList.remove('shake');
+                void container.offsetWidth;
+                container.classList.add('shake');
+
                 passwordInput.value = '';
                 passwordInput.focus();
-                
+            } finally {
                 loginBtn.classList.remove('loading');
                 loginBtn.disabled = false;
             }
         }
 
         // ============================================================
-        // 🔗 EVENT LISTENERS
+        // VERIFY 2FA
         // ============================================================
-        loginBtn.addEventListener('click', login);
+        async function verify2FA() {
+            let code = '';
+            otpInputs.forEach(inp => code += inp.value);
 
-        document.addEventListener('keypress', function(e) {
-            if (e.key === 'Enter') {
-                login();
+            if (code.length !== 6) {
+                modalErrorText.textContent = 'Please enter all 6 digits';
+                modalError.classList.add('show');
+                return;
+            }
+
+            if (!pendingLoginData) {
+                modalErrorText.textContent = 'Session expired. Please login again.';
+                modalError.classList.add('show');
+                return;
+            }
+
+            modalError.classList.remove('show');
+            verifyOTPBtn.disabled = true;
+            verifyOTPBtn.textContent = '⏳ Verifying...';
+
+            try {
+                const userId = pendingLoginData.profile.user_id || pendingLoginData.profile.staff_id;
+
+                const { data, error } = await supabaseClient
+                    .from('consolidated_user_profiles_table')
+                    .select('two_factor_secret')
+                    .eq('user_id', userId)
+                    .single();
+
+                if (error || !data?.two_factor_secret) {
+                    throw new Error('2FA not set up for this account');
+                }
+
+                const isValid = verifyTOTP(data.two_factor_secret, code);
+
+                if (!isValid) {
+                    throw new Error('Invalid verification code');
+                }
+
+                closeModal();
+                const { profile, isStaff } = pendingLoginData;
+                pendingLoginData = null;
+                completeLogin(profile, isStaff);
+
+            } catch (error) {
+                modalErrorText.textContent = error.message || 'Verification failed';
+                modalError.classList.add('show');
+                otpInputs.forEach(inp => inp.value = '');
+                otpInputs[0].focus();
+            } finally {
+                verifyOTPBtn.disabled = false;
+                verifyOTPBtn.textContent = 'Verify Code';
+            }
+        }
+
+        // ============================================================
+        // RESEND OTP
+        // ============================================================
+        resendOTPBtn.addEventListener('click', function() {
+            modalError.classList.remove('show');
+            modalErrorText.textContent = '📧 A new code has been sent to your email';
+            modalError.classList.add('show');
+            modalError.style.background = '#D1FAE5';
+            modalError.style.color = '#065F46';
+            setTimeout(() => {
+                modalError.classList.remove('show');
+                modalError.style.background = '';
+                modalError.style.color = '';
+            }, 3000);
+            otpInputs.forEach(inp => inp.value = '');
+            otpInputs[0].focus();
+        });
+
+        // ============================================================
+        // EVENT BINDING
+        // ============================================================
+        document.getElementById('loginForm').addEventListener('submit', handleLogin);
+        verifyOTPBtn.addEventListener('click', verify2FA);
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter' && twoFactorModal.classList.contains('active')) {
+                const active = document.activeElement;
+                if (active && active.classList.contains('otp-digit')) {
+                    verifyOTPBtn.click();
+                }
             }
         });
 
         // ============================================================
-        // 🚀 DOM READY
+        // SESSION CHECK & INIT
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
             emailInput.focus();
+            loadStaffRecords();
 
-            const session = localStorage.getItem('adminSession');
+            const session = localStorage.getItem('userProfile');
             if (session) {
                 try {
                     const data = JSON.parse(session);
                     const loggedInAt = new Date(data.loggedInAt);
                     const now = new Date();
                     const hoursDiff = (now - loggedInAt) / (1000 * 60 * 60);
-                    
                     if (hoursDiff < 24) {
-                        window.location.href = 'adminexams.html';
+                        let role = data.role?.toLowerCase() || 'staff';
+                        if (role === 'lecturer') {
+                            window.location.href = 'lecturerexams.html';
+                        } else if (role === 'admin' || role === 'superadmin') {
+                            window.location.href = 'adminexams.html';
+                        } else {
+                            window.location.href = 'dashboard.html';
+                        }
                     } else {
-                        localStorage.removeItem('adminSession');
+                        localStorage.removeItem('userProfile');
                     }
                 } catch (e) {
-                    localStorage.removeItem('adminSession');
+                    localStorage.removeItem('userProfile');
                 }
             }
         });
 
-        console.log('%c🔐 Admin Login System', 'color: #0A3D62; font-size: 16px; font-weight: bold;');
-        console.log('%c✅ Using supabaseClient to avoid conflicts', 'color: #38A169;');
-        console.log('%c🔑 Requires super_admin role', 'color: #F59E0B;');
+        console.log('%c🔐 Admin & Lecturer Login', 'color: #0A3D62; font-size: 16px; font-weight: bold;');
+        console.log('%c✅ Admins → adminexams.html | Lecturers → lecturerexams.html', 'color: #38A169;');
+        console.log('%c🔑 Uses staff_records + consolidated_user_profiles_table', 'color: #F59E0B;');
     </script>
 </body>
 </html>
