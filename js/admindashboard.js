@@ -1055,74 +1055,191 @@ function displayStudentsResults() {
         modal.style.display = 'flex';
     };
 
-    window.confirmResetByEmail = async function() {
-        if (!window.resetTargetStudent) { 
-            alert('No student selected. Please enter a valid email.'); 
-            return; 
-        }
+   window.confirmResetByEmail = async function() {
+    if (!window.resetTargetStudent) { 
+        alert('No student selected. Please enter a valid email.'); 
+        return; 
+    }
+    
+    const examId = document.getElementById('resetExamSelect').value;
+    const student = window.resetTargetStudent;
+    const examName = examId ? (examsMap[examId]?.exam_name || 'Selected Exam') : 'ALL EXAMS';
+    
+    let confirmMsg = `⚠️ UNLOCK STUDENT FOR CONTINUATION\n\nStudent: ${student.full_name}\nEmail: ${student.email}\nStudent ID: ${student.student_id || 'N/A'}\n\n`;
+    
+    if (examId) {
+        confirmMsg += `Exam: ${examName}\n\n`;
+    } else {
+        confirmMsg += `⚠️ You are about to unlock ALL EXAMS for this student!\n\n`;
+    }
+    confirmMsg += 
+        `This will:\n` +
+        `✅ PRESERVE all answered questions\n` +
+        `✅ KEEP their current scores\n` +
+        `✅ RESET their timer (full time)\n` +
+        `✅ ALLOW them to continue from where they left off\n\n` +
+        `⚠️ Their progress will NOT be lost!\n\n` +
+        `Are you sure?`;
+    
+    if (!confirm(confirmMsg)) return;
+    
+    try {
+        // ✅ DO NOT DELETE - PRESERVE ALL ANSWERS
         
-        const examId = document.getElementById('resetExamSelect').value;
-        const student = window.resetTargetStudent;
-        const examName = examId ? (examsMap[examId]?.exam_name || 'Selected Exam') : 'ALL EXAMS';
+        // Update main grade records
+        let updateQuery = sb
+            .from('exam_grades')
+            .update({
+                // Keep existing marks
+                result_status: 'RESET_FOR_RETAKE',
+                completed: false,
+                graded_at: null,
+                released: false,
+                released_at: null,
+                reset_at: new Date().toISOString(),
+                allow_retake: true,
+                retake_unlocked: true,
+                timer_reset_at: new Date().toISOString(),
+                time_extension: 0
+            })
+            .eq('student_id', student.user_id);
         
-        let confirmMsg = `⚠️ RESET STUDENT EXAMS\n\nStudent: ${student.full_name}\nEmail: ${student.email}\nStudent ID: ${student.student_id || 'N/A'}\n\n`;
+        if (examId) updateQuery = updateQuery.eq('exam_id', parseInt(examId));
+        const { error: updateError } = await updateQuery;
+        if (updateError) throw updateError;
+        
+        // Delete released results (they can be re-released later)
         if (examId) {
-            confirmMsg += `Exam to reset: ${examName}\nThis will delete ALL answers for this specific exam.\n\n`;
-        } else {
-            confirmMsg += `⚠️ You are about to reset ALL EXAMS for this student!\nThis will delete EVERY exam attempt.\n\n`;
-        }
-        confirmMsg += `This action cannot be undone! Are you absolutely sure?`;
-        
-        if (!confirm(confirmMsg)) return;
-        
-        try {
-            let query = sb.from('exam_grades').delete().eq('student_id', student.user_id);
-            if (examId) query = query.eq('exam_id', parseInt(examId));
-            const { error: deleteError } = await query;
-            if (deleteError) throw deleteError;
-            
-            if (examId) {
-                const { data: grades } = await sb
-                    .from('exam_grades')
-                    .select('id')
-                    .eq('student_id', student.user_id)
-                    .eq('exam_id', parseInt(examId));
-                if (grades && grades.length) {
-                    await sb.from('released_exam_results').delete().in('result_id', grades.map(g => g.id));
-                }
-            } else {
-                await sb.from('released_exam_results').delete().eq('student_id', student.user_id);
+            const { data: grades } = await sb
+                .from('exam_grades')
+                .select('id')
+                .eq('student_id', student.user_id)
+                .eq('exam_id', parseInt(examId));
+            if (grades && grades.length) {
+                await sb.from('released_exam_results').delete().in('result_id', grades.map(g => g.id));
             }
-            
-            alert(`✅ Successfully reset ${examId ? `"${examName}" for ${student.full_name}` : `ALL exams for ${student.full_name}`}`);
-            closeResetByEmailModal();
-            loadStudentsWithResults();
-            loadAllExams();
-            loadAllStudents();
-        } catch (err) { 
-            alert('❌ Error resetting: ' + err.message); 
+        } else {
+            await sb.from('released_exam_results').delete().eq('student_id', student.user_id);
         }
-    };
-
+        
+        // Delete heartbeat data (reset timer)
+        try {
+            let heartbeatQuery = sb.from('exam_heartbeats').delete().eq('student_id', student.user_id);
+            if (examId) heartbeatQuery = heartbeatQuery.eq('exam_id', parseInt(examId));
+            await heartbeatQuery;
+        } catch (e) { /* table might not exist */ }
+        
+        // LOG the reset
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: student.user_id,
+            exam_id: examId ? parseInt(examId) : null,
+            event_type: 'bulk_exam_retake_unlocked',
+            details: `Student ${student.full_name} unlocked for continuation${examId ? ` for exam ${examName}` : ' (ALL EXAMS)'} - answers preserved`,
+            severity: 'info',
+            timestamp: new Date().toISOString()
+        });
+        
+        alert(`✅ Successfully unlocked ${examId ? `"${examName}" for ${student.full_name}` : `ALL exams for ${student.full_name}`} for continuation!\n\nTheir answers have been preserved.`);
+        closeResetByEmailModal();
+        loadStudentsWithResults();
+        loadAllExams();
+        loadAllStudents();
+        updateStats();
+        
+    } catch (err) { 
+        alert('❌ Error: ' + err.message); 
+        console.error(err);
+    }
+};
     // ============================================
     // 🔄 RESET SINGLE STUDENT
     // ============================================
-    window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
-        if (!confirm(
-            `⚠️ RESET STUDENT EXAM\n\nReset "${studentName}"'s attempt for "${examName}"?\n\nThis will delete ALL their answers and scores.\n\nCannot be undone!`
-        )) return;
+   window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
+    if (!confirm(
+        `⚠️ RESET STUDENT FOR CONTINUATION\n\n` +
+        `Student: ${studentName}\n` +
+        `Exam: ${examName}\n\n` +
+        `This will:\n` +
+        `✅ PRESERVE all answered questions\n` +
+        `✅ KEEP their current score\n` +
+        `✅ RESET their timer (full time)\n` +
+        `✅ ALLOW them to continue where they left off\n` +
+        `✅ UNLOCK the exam for retake\n\n` +
+        `⚠️ Their progress will NOT be lost!\n\n` +
+        `Are you sure?`
+    )) return;
+    
+    try {
+        // 1. ✅ KEEP all answers - DO NOT DELETE
+        // 2. UPDATE the main grade record
+        const { error: updateError } = await sb
+            .from('exam_grades')
+            .update({
+                // Keep their marks - DO NOT reset to 0
+                // marks: keep existing
+                // total_score: keep existing
+                // percentage: keep existing
+                result_status: 'RESET_FOR_RETAKE',  // or 'IN_PROGRESS'
+                completed: false,
+                graded_at: null,
+                released: false,
+                released_at: null,
+                reset_at: new Date().toISOString(),
+                reset_count: sb.sql`reset_count + 1`,
+                // ✅ ALLOW retake - set a flag
+                allow_retake: true,
+                retake_unlocked: true,
+                // ✅ Reset timer - give full time
+                timer_reset_at: new Date().toISOString(),
+                time_extension: 0
+            })
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
         
+        if (updateError) throw updateError;
+        
+        // 3. DELETE released results (so they can be re-released later)
+        await sb
+            .from('released_exam_results')
+            .delete()
+            .eq('student_id', studentId)
+            .eq('exam_id', parseInt(examId));
+        
+        // 4. DELETE heartbeat/timer data to reset timer
         try {
-            await sb.from('exam_grades').delete().eq('student_id', studentId).eq('exam_id', examId);
-            await sb.from('released_exam_results').delete().eq('student_id', studentId);
-            alert(`✅ ${studentName}'s exam "${examName}" has been reset.`);
-            loadStudentsWithResults();
-            loadAllExams();
-        } catch (err) { 
-            alert('Error: ' + err.message); 
-        }
-    };
-
+            await sb
+                .from('exam_heartbeats')
+                .delete()
+                .eq('student_id', studentId)
+                .eq('exam_id', parseInt(examId));
+        } catch (e) { /* table might not exist */ }
+        
+        // 5. LOG the reset action
+        await sb
+            .from('exam_proctoring_logs')
+            .insert({
+                student_id: studentId,
+                exam_id: parseInt(examId),
+                event_type: 'exam_retake_unlocked',
+                details: `Student ${studentName} unlocked for retake/continuation (answers preserved)`,
+                severity: 'info',
+                timestamp: new Date().toISOString()
+            });
+        
+        showToast(`✅ ${studentName}'s exam "${examName}" unlocked for continuation (answers preserved!)`, 'success');
+        
+        // Refresh data
+        loadStudentsWithResults();
+        loadAllExams();
+        loadAllStudents();
+        updateStats();
+        
+    } catch (err) { 
+        showToast('❌ Error: ' + err.message, 'error');
+        console.error(err);
+    }
+};
     // ============================================
     // 📈 UPDATE STATS
     // ============================================
@@ -5364,21 +5481,81 @@ window.batchResendReleaseEmails = async function(examId) {
         document.getElementById('resetExamModal').style.display = 'flex';
     };
 
-    window.confirmResetExam = async function() {
-        if (!examToReset) return;
-        if (confirm(`Reset all student answers for "${examToReset.name}"? This cannot be undone.`)) {
-            const { error } = await sb.from('exam_grades').delete().eq('exam_id', examToReset.id);
-            if (error) { 
-                alert('Error: ' + error.message); 
-            } else { 
-                alert(`Exam "${examToReset.name}" has been reset!`);
-                loadAllExams();
-                loadStudentsWithResults(); 
-            }
-        }
+   window.confirmResetExam = async function() {
+    if (!examToReset) return;
+    
+    if (!confirm(
+        `⚠️ UNLOCK EXAM FOR ALL STUDENTS\n\n` +
+        `Exam: "${examToReset.name}"\n\n` +
+        `This will:\n` +
+        `✅ PRESERVE ALL student answers\n` +
+        `✅ KEEP their current scores\n` +
+        `✅ RESET ALL student timers\n` +
+        `✅ ALLOW ALL students to continue where they left off\n\n` +
+        `⚠️ Student progress will NOT be lost!\n\n` +
+        `Are you sure?`
+    )) return;
+    
+    try {
+        // ✅ DO NOT DELETE - PRESERVE ALL ANSWERS
+        
+        // Update all main grade records for this exam
+        const { error: updateError } = await sb
+            .from('exam_grades')
+            .update({
+                // Keep existing marks
+                result_status: 'RESET_FOR_RETAKE',
+                completed: false,
+                graded_at: null,
+                released: false,
+                released_at: null,
+                reset_at: new Date().toISOString(),
+                allow_retake: true,
+                retake_unlocked: true,
+                timer_reset_at: new Date().toISOString(),
+                time_extension: 0
+            })
+            .eq('exam_id', examToReset.id)
+            .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        if (updateError) throw updateError;
+        
+        // Delete all released results for this exam
+        await sb
+            .from('released_exam_results')
+            .delete()
+            .eq('exam_id', examToReset.id);
+        
+        // Delete all heartbeat data for this exam (reset timers)
+        try {
+            await sb
+                .from('exam_heartbeats')
+                .delete()
+                .eq('exam_id', examToReset.id);
+        } catch (e) { /* table might not exist */ }
+        
+        // LOG the reset
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: 'admin',
+            exam_id: examToReset.id,
+            event_type: 'exam_bulk_retake_unlocked',
+            details: `Exam "${examToReset.name}" unlocked for all students to continue (answers preserved)`,
+            severity: 'info',
+            timestamp: new Date().toISOString()
+        });
+        
+        alert(`✅ Exam "${examToReset.name}" unlocked for all students to continue!\n\nTheir answers have been preserved.`);
         closeResetModal();
-    };
-
+        loadAllExams();
+        loadStudentsWithResults();
+        loadAllStudents();
+        updateStats();
+        
+    } catch (error) {
+        alert('❌ Error: ' + error.message);
+        console.error(error);
+    }
+};
     window.openCreateExamModal = function(examId = null) {
     document.getElementById('examModalTitle').innerHTML = examId ? '<i class="fas fa-edit"></i> Edit Exam' : '<i class="fas fa-plus-circle"></i> Create New Exam';
     document.getElementById('editingExamId').value = examId || '';
