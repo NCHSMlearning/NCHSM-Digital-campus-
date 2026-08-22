@@ -374,31 +374,84 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
     // ============================================
-
-    // 🔐 AUTHENTICATION
-    // ============================================
-    function checkAdminAuth() {
-        const session = localStorage.getItem('adminSession');
-        if (!session) { 
-            window.location.href = 'admin_login.html'; 
-            return false; 
-        }
-        try {
-            const s = JSON.parse(session);
-            document.getElementById('adminName').textContent = s.name || 'Admin';
-            document.getElementById('adminEmail').textContent = s.email || 'admin@nchsm.ac.ke';
-            document.getElementById('adminInitial').textContent = (s.name || 'A')[0].toUpperCase();
-            return true;
-        } catch (e) { 
-            window.location.href = 'admin_login.html'; 
-            return false; 
-        }
+// 🔐 AUTHENTICATION - FIXED
+// ============================================
+function checkAdminAuth() {
+    // ✅ Try adminSession first
+    let session = localStorage.getItem('adminSession');
+    let sessionData = null;
+    
+    // ✅ If not found, try userProfile
+    if (!session) {
+        session = localStorage.getItem('userProfile');
     }
-
-    window.logout = function() { 
+    
+    if (!session) { 
+        console.log('❌ No session found, redirecting to login...');
+        window.location.href = 'login.html'; 
+        return false; 
+    }
+    
+    try {
+        sessionData = JSON.parse(session);
+        
+        // ✅ Check if user has admin or lecturer role
+        const role = (sessionData.role || sessionData.user_role || '').toLowerCase();
+        const allowedRoles = ['admin', 'superadmin', 'administrator', 'lecturer', 'instructor', 'teacher', 'super_admin'];
+        
+        if (!allowedRoles.includes(role) && !sessionData.is_staff) {
+            console.log('❌ Unauthorized role:', role);
+            localStorage.removeItem('adminSession');
+            localStorage.removeItem('userProfile');
+            window.location.href = 'login.html';
+            return false;
+        }
+        
+        // ✅ Set admin info in UI
+        const name = sessionData.name || sessionData.full_name || sessionData.user_name || 'Admin';
+        const email = sessionData.email || 'admin@nchsm.ac.ke';
+        const initial = name.charAt(0).toUpperCase();
+        
+        // Update all admin name elements
+        document.querySelectorAll('#adminName, #adminNameTop, .admin-name').forEach(el => {
+            if (el) el.textContent = name;
+        });
+        
+        document.querySelectorAll('#adminEmail, #adminEmailTop, .admin-email').forEach(el => {
+            if (el) el.textContent = email;
+        });
+        
+        document.querySelectorAll('#adminInitial, #adminAvatar, .admin-avatar').forEach(el => {
+            if (el) el.textContent = initial;
+        });
+        
+        // Set role
+        const roleDisplay = role === 'lecturer' ? 'Lecturer' : 'Administrator';
+        document.querySelectorAll('#adminRole, .admin-role').forEach(el => {
+            if (el) el.textContent = roleDisplay;
+        });
+        
+        // ✅ Store session for later use
+        window.adminSessionData = sessionData;
+        
+        console.log('✅ Admin authenticated:', name, '(' + role + ')');
+        return true;
+        
+    } catch (e) { 
+        console.error('❌ Session parse error:', e);
         localStorage.removeItem('adminSession');
-        window.location.href = 'admin_login.html'; 
-    };
+        localStorage.removeItem('userProfile');
+        window.location.href = 'login.html'; 
+        return false; 
+    }
+}
+
+window.logout = function() { 
+    localStorage.removeItem('adminSession');
+    localStorage.removeItem('userProfile');
+    sessionStorage.clear();
+    window.location.href = 'login.html'; 
+};
 
     // ============================================
     // 📋 LOAD EXAM DROPDOWN
@@ -5775,160 +5828,169 @@ window.batchResendReleaseEmails = async function(examId) {
         alert('🔄 Data refreshed!');
     };
 
-    // ============================================
-    // 🚀 DOM READY
-    // ============================================
-    document.addEventListener('DOMContentLoaded', function() {
-        if (!checkAdminAuth()) return;
+  // ============================================
+// 🚀 DOM READY - FIXED
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    // ✅ Check authentication FIRST
+    if (!checkAdminAuth()) return;
 
-        const session = JSON.parse(localStorage.getItem('adminSession') || '{}');
-        document.getElementById('adminName').textContent = session.name || 'Admin';
-        document.getElementById('adminEmail').textContent = session.email || 'admin@nchsm.ac.ke';
-        document.getElementById('adminInitial').textContent = (session.name || 'A')[0].toUpperCase();
-
-        window.switchTab('students');
-        setupRealtimeNotifications();
-        updateTotalMarksHint();
-
-        setInterval(updateAdminTimers, 1000);
-
-        document.addEventListener('visibilitychange', function() {
-            if (!document.hidden) updateAdminTimers();
-        });
-
-        document.addEventListener('click', function(e) {
-            const sidebar = document.getElementById('sidebar');
-            const overlay = document.getElementById('sidebarOverlay');
-            if (window.innerWidth <= 768 && sidebar.classList.contains('open')) {
-                if (!sidebar.contains(e.target) && !e.target.closest('.mobile-toggle')) {
-                    sidebar.classList.remove('open');
-                    overlay.classList.remove('show');
-                }
-            }
-        });
-
-        // ✅ Load attendance exam dropdown
-        if (typeof loadAttendanceExamDropdown === 'function') {
-            loadAttendanceExamDropdown();
-        }
-        if (typeof setDefaultAttendanceDate === 'function') {
-            setDefaultAttendanceDate();
-        }
-
-        // Load live feed in background after 2 seconds
-        setTimeout(function() {
-            if (typeof loadLiveFeed === 'function') {
-                loadLiveFeed();
-                startLiveFeedAutoRefresh();
-                console.log('📹 Live Feed initialized');
-            }
-        }, 2000);
-
-        // Auto-refresh live data every 30 seconds
-        setInterval(function() {
-            if (currentTab === 'liveStudents' && typeof loadLiveStudents === 'function') {
-                loadLiveStudents();
-            }
-            if (currentTab === 'livefeed' && typeof loadLiveFeed === 'function') {
-                loadLiveFeed();
-            }
-            // ✅ Auto-refresh attendance
-            if (currentTab === 'attendance' && attendanceAutoRefresh && typeof loadAttendanceSheet === 'function') {
-                loadAttendanceSheet();
-            }
-        }, 30000);
-
-        // Keyboard shortcuts
-        document.addEventListener('keydown', function(e) {
-            if (e.ctrlKey && e.shiftKey && e.key === 'L') {
-                e.preventDefault();
-                if (typeof switchTab === 'function') {
-                    switchTab('livefeed');
-                    if (typeof showToast === 'function') {
-                        showToast('📹 Opening Live Feed', 'info');
-                    }
-                }
-            }
-            
-            if (e.ctrlKey && e.shiftKey && e.key === 'S') {
-                e.preventDefault();
-                if (currentTab === 'livefeed' && typeof refreshLiveFeed === 'function') {
-                    refreshLiveFeed();
-                }
-            }
-            
-            if (e.ctrlKey && e.shiftKey && e.key === 'V') {
-                e.preventDefault();
-                if (typeof liveFeedData !== 'undefined' && liveFeedData && liveFeedData.length > 0) {
-                    const first = liveFeedData[0];
-                    const profile = first.profile || {};
-                    const exam = first.exam || {};
-                    if (profile.user_id && exam.id && typeof openCameraView === 'function') {
-                        openCameraView(profile.user_id, exam.id, profile.full_name || 'Student', exam.exam_name || 'Exam');
-                    }
-                }
-            }
-            
-            // ✅ Keyboard shortcut for Attendance: Ctrl+Shift+A
-            if (e.ctrlKey && e.shiftKey && e.key === 'A') {
-                e.preventDefault();
-                if (typeof switchTab === 'function') {
-                    switchTab('attendance');
-                    if (typeof showToast === 'function') {
-                        showToast('📋 Opening Attendance Sheet', 'info');
-                    }
-                }
-            }
-            
-            if (e.key === 'Escape') {
-                document.querySelectorAll('.modal').forEach(function(modal) {
-                    if (modal.style.display === 'flex') {
-                        modal.style.display = 'none';
-                        if (modal.id === 'releaseModal') {
-                            selectedStudentIds = new Set();
-                            const checkbox = document.getElementById('selectAllCheckbox');
-                            if (checkbox) checkbox.checked = false;
-                            const countEl = document.getElementById('selectedCount');
-                            if (countEl) countEl.innerHTML = '0 selected';
-                            const confirmBtn = document.getElementById('confirmReleaseBtn');
-                            if (confirmBtn) confirmBtn.disabled = true;
-                        }
-                        if (modal.id === 'cameraModal' && typeof closeCameraModal === 'function') {
-                            closeCameraModal();
-                        }
-                        if (modal.id === 'attendanceDetailModal') {
-                            modal.remove();
-                        }
-                    }
-                });
-            }
-        });
-
-        document.addEventListener('click', function(e) {
-            if (e.target.classList.contains('modal')) {
-                e.target.style.display = 'none';
-                if (e.target.id === 'releaseModal') {
-                    selectedStudentIds = new Set();
-                    const checkbox = document.getElementById('selectAllCheckbox');
-                    if (checkbox) checkbox.checked = false;
-                    const countEl = document.getElementById('selectedCount');
-                    if (countEl) countEl.innerHTML = '0 selected';
-                    const confirmBtn = document.getElementById('confirmReleaseBtn');
-                    if (confirmBtn) confirmBtn.disabled = true;
-                }
-                if (e.target.id === 'cameraModal' && typeof closeCameraModal === 'function') {
-                    closeCameraModal();
-                }
-                if (e.target.id === 'attendanceDetailModal') {
-                    e.target.remove();
-                }
-            }
-        });
-
-        console.log('✅ Dashboard fully initialized');
-        console.log('📹 Press Ctrl+Shift+L to open Live Feed');
-        console.log('📋 Press Ctrl+Shift+A to open Attendance Sheet');
+    // ✅ Get session data
+    const session = localStorage.getItem('adminSession') || localStorage.getItem('userProfile');
+    let sessionData = null;
+    try {
+        sessionData = JSON.parse(session);
+    } catch (e) {
+        sessionData = {};
+    }
+    
+    // ✅ Set admin info from session
+    const name = sessionData.name || sessionData.full_name || 'Admin';
+    const email = sessionData.email || 'admin@nchsm.ac.ke';
+    const initial = name.charAt(0).toUpperCase();
+    
+    document.querySelectorAll('#adminName, #adminNameTop, .admin-name').forEach(el => {
+        if (el) el.textContent = name;
     });
+    document.querySelectorAll('#adminEmail, #adminEmailTop, .admin-email').forEach(el => {
+        if (el) el.textContent = email;
+    });
+    document.querySelectorAll('#adminInitial, #adminAvatar, .admin-avatar').forEach(el => {
+        if (el) el.textContent = initial;
+    });
+
+    // ✅ Initialize dashboard
+    window.switchTab('students');
+    setupRealtimeNotifications();
+    updateTotalMarksHint();
+
+    // ✅ Start timer updates
+    setInterval(updateAdminTimers, 1000);
+
+    // ✅ Handle visibility change
+    document.addEventListener('visibilitychange', function() {
+        if (!document.hidden) updateAdminTimers();
+    });
+
+    // ✅ Handle sidebar closing on mobile
+    document.addEventListener('click', function(e) {
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('open')) {
+            if (!sidebar.contains(e.target) && !e.target.closest('.mobile-toggle')) {
+                sidebar.classList.remove('open');
+                if (overlay) overlay.classList.remove('show');
+            }
+        }
+    });
+
+    // ✅ Load attendance exam dropdown
+    if (typeof loadAttendanceExamDropdown === 'function') {
+        loadAttendanceExamDropdown();
+    }
+    if (typeof setDefaultAttendanceDate === 'function') {
+        setDefaultAttendanceDate();
+    }
+
+    // ✅ Load live feed in background
+    setTimeout(function() {
+        if (typeof loadLiveFeed === 'function') {
+            loadLiveFeed();
+            if (typeof startLiveFeedAutoRefresh === 'function') {
+                startLiveFeedAutoRefresh();
+            }
+            console.log('📹 Live Feed initialized');
+        }
+    }, 2000);
+
+    // ✅ Auto-refresh live data every 30 seconds
+    setInterval(function() {
+        if (window.currentTab === 'liveStudents' && typeof loadLiveStudents === 'function') {
+            loadLiveStudents();
+        }
+        if (window.currentTab === 'livefeed' && typeof loadLiveFeed === 'function') {
+            loadLiveFeed();
+        }
+        if (window.currentTab === 'attendance' && attendanceAutoRefresh && typeof loadAttendanceSheet === 'function') {
+            loadAttendanceSheet();
+        }
+    }, 30000);
+
+    // ✅ Keyboard shortcuts
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+Shift+L = Live Feed
+        if (e.ctrlKey && e.shiftKey && e.key === 'L') {
+            e.preventDefault();
+            if (typeof switchTab === 'function') {
+                switchTab('livefeed');
+                if (typeof showToast === 'function') {
+                    showToast('📹 Opening Live Feed', 'info');
+                }
+            }
+        }
+        
+        // Ctrl+Shift+A = Attendance
+        if (e.ctrlKey && e.shiftKey && e.key === 'A') {
+            e.preventDefault();
+            if (typeof switchTab === 'function') {
+                switchTab('attendance');
+                if (typeof showToast === 'function') {
+                    showToast('📋 Opening Attendance Sheet', 'info');
+                }
+            }
+        }
+        
+        // Escape = Close modals
+        if (e.key === 'Escape') {
+            document.querySelectorAll('.modal').forEach(function(modal) {
+                if (modal.style.display === 'flex') {
+                    modal.style.display = 'none';
+                    if (modal.id === 'releaseModal') {
+                        selectedStudentIds = new Set();
+                        const checkbox = document.getElementById('selectAllCheckbox');
+                        if (checkbox) checkbox.checked = false;
+                        const countEl = document.getElementById('selectedCount');
+                        if (countEl) countEl.innerHTML = '0 selected';
+                        const confirmBtn = document.getElementById('confirmReleaseBtn');
+                        if (confirmBtn) confirmBtn.disabled = true;
+                    }
+                    if (modal.id === 'cameraModal' && typeof closeCameraModal === 'function') {
+                        closeCameraModal();
+                    }
+                    if (modal.id === 'attendanceDetailModal') {
+                        modal.remove();
+                    }
+                }
+            });
+        }
+    });
+
+    // ✅ Close modals on overlay click
+    document.addEventListener('click', function(e) {
+        if (e.target.classList.contains('modal')) {
+            e.target.style.display = 'none';
+            if (e.target.id === 'releaseModal') {
+                selectedStudentIds = new Set();
+                const checkbox = document.getElementById('selectAllCheckbox');
+                if (checkbox) checkbox.checked = false;
+                const countEl = document.getElementById('selectedCount');
+                if (countEl) countEl.innerHTML = '0 selected';
+                const confirmBtn = document.getElementById('confirmReleaseBtn');
+                if (confirmBtn) confirmBtn.disabled = true;
+            }
+            if (e.target.id === 'cameraModal' && typeof closeCameraModal === 'function') {
+                closeCameraModal();
+            }
+            if (e.target.id === 'attendanceDetailModal') {
+                e.target.remove();
+            }
+        }
+    });
+
+    console.log('✅ Dashboard fully initialized');
+    console.log('📹 Press Ctrl+Shift+L to open Live Feed');
+    console.log('📋 Press Ctrl+Shift+A to open Attendance Sheet');
+});
 // ============================================
 // 📋 ATTENDANCE SHEET FUNCTIONS
 // ============================================
