@@ -4731,42 +4731,76 @@ window.displayLiveFeed = function() {
             showToast('Auto-refresh disabled', 'info');
         }
     };
+// ============================================
+// 📹 START LIVE FEED AUTO REFRESH - FIXED
+// ============================================
 function startLiveFeedAutoRefresh() {
-    if (liveFeedInterval) clearInterval(liveFeedInterval);
+    // Clear any existing interval
+    if (liveFeedInterval) {
+        clearInterval(liveFeedInterval);
+        liveFeedInterval = null;
+    }
+    
     liveFeedInterval = setInterval(() => {
-        if (liveFeedAutoRefresh && document.getElementById('livefeedTableContainer').style.display !== 'none') {
-            // ✅ Save current filter values
-            const searchValue = document.getElementById('liveFeedSearch')?.value || '';
-            const examValue = document.getElementById('liveFeedExamFilter')?.value || '';
-            const statusValue = document.getElementById('liveFeedStatusFilter')?.value || '';
-            const currentView = liveFeedViewMode || 'live';
-            
-            // ✅ Reload based on current view
-            if (currentView === 'live') {
+        // ✅ Check if liveFeedAutoRefresh is enabled
+        if (!liveFeedAutoRefresh) return;
+        
+        // ✅ Check if container exists and is visible
+        const container = document.getElementById('livefeedTableContainer');
+        if (!container) {
+            console.warn('⚠️ livefeedTableContainer not found');
+            return;
+        }
+        
+        if (container.style.display === 'none') return;
+        
+        // ✅ Save current filter values
+        const searchValue = document.getElementById('liveFeedSearch')?.value || '';
+        const examValue = document.getElementById('liveFeedExamFilter')?.value || '';
+        const statusValue = document.getElementById('liveFeedStatusFilter')?.value || '';
+        const currentView = liveFeedViewMode || 'live';
+        
+        // ✅ Reload based on current view
+        if (currentView === 'live') {
+            if (typeof loadLiveFeed === 'function') {
                 loadLiveFeed().then(() => {
-                    restoreFilters(searchValue, examValue, statusValue);
-                });
-            } else {
+                    if (typeof restoreFilters === 'function') {
+                        restoreFilters(searchValue, examValue, statusValue);
+                    }
+                }).catch(err => console.warn('Auto-refresh live feed error:', err));
+            }
+        } else {
+            if (typeof loadPastStudents === 'function') {
                 loadPastStudents().then(() => {
-                    restoreFilters(searchValue, examValue, statusValue);
-                });
+                    if (typeof restoreFilters === 'function') {
+                        restoreFilters(searchValue, examValue, statusValue);
+                    }
+                }).catch(err => console.warn('Auto-refresh past students error:', err));
             }
         }
     }, 10000);
 }
 
-// ========== RESTORE FILTERS ==========
+// ============================================
+// 🔄 RESTORE FILTERS - FIXED
+// ============================================
 function restoreFilters(searchValue, examValue, statusValue) {
-    const searchInput = document.getElementById('liveFeedSearch');
-    if (searchInput) searchInput.value = searchValue;
-    
-    const examFilter = document.getElementById('liveFeedExamFilter');
-    if (examFilter) examFilter.value = examValue;
-    
-    const statusFilter = document.getElementById('liveFeedStatusFilter');
-    if (statusFilter) statusFilter.value = statusValue;
-    
-    filterLiveFeed();
+    try {
+        const searchInput = document.getElementById('liveFeedSearch');
+        if (searchInput) searchInput.value = searchValue;
+        
+        const examFilter = document.getElementById('liveFeedExamFilter');
+        if (examFilter) examFilter.value = examValue;
+        
+        const statusFilter = document.getElementById('liveFeedStatusFilter');
+        if (statusFilter) statusFilter.value = statusValue;
+        
+        if (typeof filterLiveFeed === 'function') {
+            filterLiveFeed();
+        }
+    } catch (e) {
+        console.warn('Error restoring filters:', e);
+    }
 }
 
     window.clearAllCameraFeeds = function() {
