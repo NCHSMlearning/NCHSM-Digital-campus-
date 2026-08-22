@@ -1957,3 +1957,312 @@ body {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.7; }
 }
+/* ============================================================
+   ULTRA MODERN TABLES - FIX FOR YOUR DASHBOARD
+   ============================================================ */
+
+/* Target tables inside main-content */
+.main-content .table-container table,
+.main-content table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0 8px;
+    font-size: 0.82rem;
+}
+
+/* --- MODERN HEADERS --- */
+.main-content .table-container table thead th,
+.main-content table thead th {
+    padding: 14px 18px;
+    text-align: left;
+    font-weight: 700;
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.6px;
+    color: #64748B;
+    background: transparent !important;
+    border-bottom: none !important;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.main-content .table-container table thead th i,
+.main-content table thead th i {
+    margin-right: 6px;
+    color: #0A3D62;
+    opacity: 0.5;
+}
+
+/* Remove old header background */
+.main-content .table-container table thead tr,
+.main-content table thead tr {
+    background: transparent !important;
+}
+
+/* --- MODERN ROWS AS CARDS --- */
+.main-content .table-container table tbody tr,
+.main-content table tbody tr {
+    background: white !important;
+    border-radius: 16px !important;
+    box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04) !important;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    animation: slideUp 0.4s ease forwards;
+    opacity: 0;
+    border-bottom: none !important;
+}
+
+.main-content .table-container table tbody tr:hover,
+.main-content table tbody tr:hover {
+    transform: translateY(-4px) scale(1.005) !important;
+    box-shadow: 0 12px 40px rgba(10, 61, 98, 0.08) !important;
+    background: white !important;
+}
+
+/* Remove old row borders */
+.main-content .table-container table tbody tr td,
+.main-content table tbody tr td {
+    border-bottom: none !important;
+    padding: 14px 18px;
+    vertical-align: middle;
+    background: transparent !important;
+}
+
+/* --- ROUNDED CORNERS --- */
+.main-content .table-container table tbody tr td:first-child,
+.main-content table tbody tr td:first-child {
+    border-radius: 16px 0 0 16px !important;
+    padding-left: 22px !important;
+}
+
+.main-content .table-container table tbody tr td:last-child,
+.main-content table tbody tr td:last-child {
+    border-radius: 0 16px 16px 0 !important;
+    padding-right: 22px !important;
+}
+
+/* --- STATUS BADGES - GRADIENT --- */
+.main-content table .status-pass,
+.main-content table .status-pass.status-badge {
+    background: linear-gradient(135deg, #D1FAE5, #A7F3D0) !important;
+    color: #064E3B !important;
+    padding: 4px 16px !important;
+    border-radius: 50px !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+    border: 1px solid rgba(16, 185, 129, 0.15) !important;
+    box-shadow: 0 2px 8px rgba(16, 185, 129, 0.08) !important;
+}
+
+.main-content table .status-fail,
+.main-content table .status-fail.status-badge {
+    background: linear-gradient(135deg, #FEE2E2, #FECACA) !important;
+    color: #991B1B !important;
+    padding: 4px 16px !important;
+    border-radius: 50px !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+    border: 1px solid rgba(239, 68, 68, 0.15) !important;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.08) !important;
+}
+
+.main-content table .status-pending,
+.main-content table .status-pending.status-badge {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A) !important;
+    color: #92400E !important;
+    padding: 4px 16px !important;
+    border-radius: 50px !important;
+    font-size: 0.7rem !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+    border: 1px solid rgba(245, 158, 11, 0.15) !important;
+    animation: pulse-gold 2s infinite !important;
+}
+
+/* --- STUDENT ID BADGE --- */
+.main-content table .student-id-badge {
+    font-family: 'Courier New', monospace !important;
+    font-weight: 600 !important;
+    font-size: 0.7rem !important;
+    background: rgba(10, 61, 98, 0.04) !important;
+    padding: 4px 12px !important;
+    border-radius: 8px !important;
+    color: #0A3D62 !important;
+    letter-spacing: 0.3px !important;
+    border: 1px solid rgba(10, 61, 98, 0.06) !important;
+    display: inline-block !important;
+}
+
+/* --- SCORE & PERCENTAGE --- */
+.main-content table .clickable-score,
+.main-content table .clickable-percentage {
+    font-weight: 700 !important;
+    color: #0A3D62 !important;
+    padding: 4px 14px !important;
+    border-radius: 10px !important;
+    background: rgba(10, 61, 98, 0.03) !important;
+    display: inline-block !important;
+    font-size: 0.85rem !important;
+    transition: all 0.25s ease !important;
+    cursor: pointer !important;
+    border: 1px solid rgba(10, 61, 98, 0.04) !important;
+}
+
+.main-content table .clickable-score:hover,
+.main-content table .clickable-percentage:hover {
+    background: rgba(10, 61, 98, 0.06) !important;
+    transform: scale(1.03) !important;
+    box-shadow: 0 2px 12px rgba(10, 61, 98, 0.06) !important;
+}
+
+/* --- ACTION BUTTONS --- */
+.main-content table .action-btn {
+    padding: 5px 14px !important;
+    border: none !important;
+    border-radius: 10px !important;
+    font-size: 0.6rem !important;
+    font-weight: 600 !important;
+    cursor: pointer !important;
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 4px !important;
+    letter-spacing: 0.3px !important;
+    margin: 2px !important;
+}
+
+.main-content table .action-btn:hover {
+    transform: translateY(-2px) !important;
+    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.1) !important;
+}
+
+/* Button variants */
+.main-content table .btn-view {
+    background: linear-gradient(135deg, #DBEAFE, #93C5FD) !important;
+    color: #1E40AF !important;
+}
+
+.main-content table .btn-edit {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A) !important;
+    color: #92400E !important;
+}
+
+.main-content table .btn-delete {
+    background: linear-gradient(135deg, #FEE2E2, #FECACA) !important;
+    color: #991B1B !important;
+}
+
+.main-content table .btn-assign {
+    background: linear-gradient(135deg, #D1FAE5, #A7F3D0) !important;
+    color: #064E3B !important;
+}
+
+.main-content table .btn-reset {
+    background: linear-gradient(135deg, #EDE9FE, #C4B5FD) !important;
+    color: #5B21B6 !important;
+}
+
+.main-content table .btn-info {
+    background: linear-gradient(135deg, #DBEAFE, #93C5FD) !important;
+    color: #1E40AF !important;
+}
+
+.main-content table .btn-warning {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A) !important;
+    color: #92400E !important;
+}
+
+.main-content table .btn-success {
+    background: linear-gradient(135deg, #D1FAE5, #A7F3D0) !important;
+    color: #064E3B !important;
+}
+
+.main-content table .btn-reset-student {
+    background: linear-gradient(135deg, #FEE2E2, #FECACA) !important;
+    color: #991B1B !important;
+}
+
+.main-content table .btn-release {
+    background: linear-gradient(135deg, #EDE9FE, #C4B5FD) !important;
+    color: #5B21B6 !important;
+}
+
+/* --- EXAM TYPE BADGES --- */
+.main-content table .exam-type-badge {
+    padding: 2px 14px !important;
+    border-radius: 50px !important;
+    font-size: 0.6rem !important;
+    font-weight: 600 !important;
+    display: inline-block !important;
+    margin-left: 4px !important;
+}
+
+.main-content table .badge-cat {
+    background: linear-gradient(135deg, #FEF3C7, #FDE68A) !important;
+    color: #92400E !important;
+}
+
+.main-content table .badge-exam {
+    background: linear-gradient(135deg, #DBEAFE, #93C5FD) !important;
+    color: #1E40AF !important;
+}
+
+/* --- TIMER --- */
+.main-content table .exam-timer-cell {
+    font-family: 'Courier New', monospace !important;
+    font-weight: 700 !important;
+    font-size: 0.7rem !important;
+    padding: 4px 14px !important;
+    border-radius: 10px !important;
+    display: inline-block !important;
+    background: rgba(10, 61, 98, 0.03) !important;
+    border: 1px solid rgba(10, 61, 98, 0.06) !important;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes slideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px) scale(0.98);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes pulse-gold {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+}
+
+/* --- RESPONSIVE --- */
+@media (max-width: 768px) {
+    .main-content .table-container table,
+    .main-content table {
+        font-size: 0.7rem;
+    }
+    
+    .main-content .table-container table tbody td,
+    .main-content table tbody td {
+        padding: 10px 12px !important;
+    }
+    
+    .main-content .table-container table tbody tr td:first-child,
+    .main-content table tbody tr td:first-child {
+        padding-left: 14px !important;
+    }
+    
+    .main-content .table-container table tbody tr td:last-child,
+    .main-content table tbody tr td:last-child {
+        padding-right: 14px !important;
+    }
+    
+    .main-content table .action-btn {
+        padding: 3px 10px !important;
+        font-size: 0.55rem !important;
+    }
+}
