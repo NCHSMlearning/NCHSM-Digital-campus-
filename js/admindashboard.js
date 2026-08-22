@@ -1881,31 +1881,57 @@ Are you sure?`;
         }
     }
 };
-   // ============================================
-// 📈 UPDATE STATS - MODERN
+ // ============================================
+// 📈 UPDATE STATS - FIXED
 // ============================================
 async function updateStats() {
-    const totalStudents = allStudents.length;
-    const passed = studentsResults.filter(r => r.result_status === 'PASS').length;
-    const failed = studentsResults.filter(r => r.result_status === 'FAIL').length;
-    const pending = studentsResults.filter(r => r.result_status === 'PENDING' || r.result_status === 'PENDING_REVIEW' || !r.result_status).length;
-    const scoredExams = studentsResults.filter(r => r.total_score > 0);
-    const avg = scoredExams.length ? (scoredExams.reduce((a, b) => a + (parseFloat(b.total_score) || 0), 0) / scoredExams.length).toFixed(1) : 0;
-    const faceAlerts = proctoringLogs.filter(l => l.event_type === 'multiple_faces_detected').length;
+    // Get container
+    const statsContainer = document.getElementById('statsContainer');
+    if (!statsContainer) return;
 
-    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
-    const { data: recentStarts } = await sb
-        .from('exam_proctoring_logs')
-        .select('student_id')
-        .eq('event_type', 'exam_started')
-        .gte('timestamp', fiveMinutesAgo);
+    // ✅ Calculate stats from actual data
+    const totalStudents = allStudents.length || 0;
     
-    const onlineStudents = new Set();
-    recentStarts?.forEach(s => onlineStudents.add(s.student_id));
+    // Count passed/failed/pending from studentsResults
+    const passed = studentsResults.filter(r => r.result_status === 'PASS').length || 0;
+    const failed = studentsResults.filter(r => r.result_status === 'FAIL').length || 0;
+    const pending = studentsResults.filter(r => r.result_status === 'PENDING' || r.result_status === 'PENDING_REVIEW' || !r.result_status).length || 0;
+    
+    // Calculate average score
+    const scoredExams = studentsResults.filter(r => r.marks > 0 || r.total_score > 0);
+    let avg = 0;
+    if (scoredExams.length > 0) {
+        const totalMarks = scoredExams.reduce((sum, r) => {
+            const score = parseFloat(r.marks) || parseFloat(r.total_score) || 0;
+            return sum + score;
+        }, 0);
+        avg = (totalMarks / scoredExams.length).toFixed(1);
+    }
+    
+    // Count face violations
+    const faceAlerts = proctoringLogs.filter(l => l.event_type === 'multiple_faces_detected').length || 0;
+    
+    // Get online students (last 5 minutes)
+    let onlineCount = 0;
+    try {
+        const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+        const { data: recentStarts } = await sb
+            .from('exam_proctoring_logs')
+            .select('student_id')
+            .eq('event_type', 'exam_started')
+            .gte('timestamp', fiveMinutesAgo);
+        
+        const onlineStudents = new Set();
+        recentStarts?.forEach(s => onlineStudents.add(s.student_id));
+        onlineCount = onlineStudents.size || 0;
+    } catch (e) {
+        console.warn('Could not fetch online students:', e);
+        onlineCount = 0;
+    }
 
-    // Modern stats cards with gradient icons and hover effects
-    document.getElementById('statsContainer').innerHTML = `
-        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #f8fafc); border-left: 4px solid #0A3D62; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+    // ✅ Display stats with modern cards
+    statsContainer.innerHTML = `
+        <div style="background: linear-gradient(135deg, #ffffff, #f8fafc); border-left: 4px solid #0A3D62; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
             <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
                 <i class="fas fa-users"></i>
             </div>
@@ -1915,17 +1941,17 @@ async function updateStats() {
             </div>
         </div>
 
-        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #f0fdf4); border-left: 4px solid #10B981; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+        <div style="background: linear-gradient(135deg, #ffffff, #f0fdf4); border-left: 4px solid #10B981; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
             <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #10B981, #059669); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
                 <i class="fas fa-wifi"></i>
             </div>
             <div>
-                <div style="font-size: 1.5rem; font-weight: 700; color: #059669; line-height: 1.2;">${onlineStudents.size}</div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #059669; line-height: 1.2;">${onlineCount}</div>
                 <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">🟢 Currently Online</div>
             </div>
         </div>
 
-        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #d1fae5); border-left: 4px solid #059669; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+        <div style="background: linear-gradient(135deg, #ffffff, #d1fae5); border-left: 4px solid #059669; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
             <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #059669, #047857); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
                 <i class="fas fa-check-circle"></i>
             </div>
@@ -1935,7 +1961,7 @@ async function updateStats() {
             </div>
         </div>
 
-        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #fee2e2); border-left: 4px solid #DC2626; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+        <div style="background: linear-gradient(135deg, #ffffff, #fee2e2); border-left: 4px solid #DC2626; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
             <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #DC2626, #B91C1C); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
                 <i class="fas fa-times-circle"></i>
             </div>
@@ -1945,7 +1971,7 @@ async function updateStats() {
             </div>
         </div>
 
-        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #fef3c7); border-left: 4px solid #F59E0B; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+        <div style="background: linear-gradient(135deg, #ffffff, #fef3c7); border-left: 4px solid #F59E0B; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
             <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #F59E0B, #D97706); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
                 <i class="fas fa-clock"></i>
             </div>
@@ -1955,7 +1981,7 @@ async function updateStats() {
             </div>
         </div>
 
-        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #dbeafe); border-left: 4px solid #3B82F6; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+        <div style="background: linear-gradient(135deg, #ffffff, #dbeafe); border-left: 4px solid #3B82F6; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
             <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #3B82F6, #2563EB); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
                 <i class="fas fa-chart-line"></i>
             </div>
@@ -1965,7 +1991,7 @@ async function updateStats() {
             </div>
         </div>
 
-        <div class="stat-card" style="background: linear-gradient(135deg, #ffffff, #fce7f3); border-left: 4px solid #EC4899; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); transition: all 0.3s ease; cursor: default; display: flex; align-items: center; gap: 14px;">
+        <div style="background: linear-gradient(135deg, #ffffff, #fce7f3); border-left: 4px solid #EC4899; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
             <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #EC4899, #DB2777); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
                 <i class="fas fa-exclamation-triangle"></i>
             </div>
@@ -7045,9 +7071,8 @@ window.batchResendReleaseEmails = async function(examId) {
         loadStudentsWithResults();
         alert('🔄 Data refreshed!');
     };
-
-  // ============================================
-// 🚀 DOM READY - FIXED
+// ============================================
+// 🚀 DOM READY - FIXED WITH STATS LOADING
 // ============================================
 document.addEventListener('DOMContentLoaded', function() {
     // ✅ Check authentication FIRST
@@ -7077,10 +7102,26 @@ document.addEventListener('DOMContentLoaded', function() {
         if (el) el.textContent = initial;
     });
 
-    // ✅ Initialize dashboard
+    // ✅ Initialize dashboard - LOAD DATA FIRST
     window.switchTab('students');
     setupRealtimeNotifications();
     updateTotalMarksHint();
+
+    // ✅ Load all data with proper order
+    // First load students and exams data
+    loadAllStudents();
+    loadAllExams();
+    loadProctoringLogs();
+    
+    // Then load results after exams map is ready
+    setTimeout(() => {
+        loadStudentsWithResults();
+    }, 500);
+    
+    // ✅ Update stats after data is loaded (with delay to ensure data is populated)
+    setTimeout(() => {
+        updateStats();
+    }, 1500);
 
     // ✅ Start timer updates
     setInterval(updateAdminTimers, 1000);
@@ -7131,6 +7172,10 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         if (window.currentTab === 'attendance' && attendanceAutoRefresh && typeof loadAttendanceSheet === 'function') {
             loadAttendanceSheet();
+        }
+        // ✅ Refresh stats periodically
+        if (typeof updateStats === 'function') {
+            updateStats();
         }
     }, 30000);
 
