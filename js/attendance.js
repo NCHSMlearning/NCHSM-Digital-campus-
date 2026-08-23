@@ -13,6 +13,7 @@
 // ✅ WAITS FOR PROFILE TO LOAD
 // ✅ CAPTURES BOTH user_id (UUID) AND admission_number
 // ✅ STUDENT-FRIENDLY - No distance warnings
+// ✅ READS FROM DATABASE ONLY - NO localStorage!
 // ============================================
 
 (function() {
@@ -63,61 +64,64 @@
     const MAX_PROFILE_ATTEMPTS = 20;
     
     // ============================================
-    // ✅ FIXED: GET CURRENT STUDENT INFO WITH BLOCK & INTAKE YEAR
+    // ✅ FIXED: GET CURRENT STUDENT INFO - DATABASE ONLY
+    // ✅ Reads ONLY from current session - NO localStorage!
     // ✅ Captures BOTH user_id (UUID) AND admission_number
     // ============================================
 
     function getCurrentStudentInfo() {
-        // Try multiple sources to get student info
         let profile = null;
         let source = 'none';
         
-        // 1. Try from localStorage
-        try {
-            const stored = localStorage.getItem('userProfile');
-            if (stored) {
-                profile = JSON.parse(stored);
-                source = 'localStorage';
-                console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            }
-        } catch(e) {}
+        // ✅ 1. Try from window.db.currentUser (most reliable - from database)
+        if (window.db?.currentUser) {
+            profile = window.db.currentUser;
+            source = 'window.db.currentUser';
+            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
+        }
         
-        // 2. Try from window.db.currentUserProfile
+        // ✅ 2. Try from window.currentUser
+        if (!profile && window.currentUser) {
+            profile = window.currentUser;
+            source = 'window.currentUser';
+            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
+        }
+        
+        // ✅ 3. Try from window.db.currentUserProfile
         if (!profile && window.db?.currentUserProfile) {
             profile = window.db.currentUserProfile;
             source = 'window.db.currentUserProfile';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // 3. Try from window.currentUserProfile
+        // ✅ 4. Try from window.currentUserProfile
         if (!profile && window.currentUserProfile) {
             profile = window.currentUserProfile;
             source = 'window.currentUserProfile';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // 4. Try from window.db.currentUser
-        if (!profile && window.db?.currentUser) {
-            profile = window.db.currentUser;
-            source = 'window.db.currentUser';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-        }
-        
-        // 5. Try from window.dashboardModule
+        // ✅ 5. Try from window.dashboardModule
         if (!profile && window.dashboardModule?.userData) {
             profile = window.dashboardModule.userData;
             source = 'window.dashboardModule.userData';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // 6. Try from window.userData
+        // ✅ 6. Try from window.userData
         if (!profile && window.userData) {
             profile = window.userData;
             source = 'window.userData';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // 7. Try from URL params (for testing)
+        // ✅ 7. URL params (for testing)
         if (!profile) {
             const urlParams = new URLSearchParams(window.location.search);
             const testUserId = urlParams.get('student_id');
@@ -137,7 +141,7 @@
             }
         }
         
-        // 8. Check if we have a user ID from anywhere
+        // ✅ 8. Check if we have a user ID from anywhere
         if (!profile) {
             const userId = window.userId || window.currentUserId || null;
             if (userId) {
@@ -173,8 +177,10 @@
             // ✅ IMPORTANT: Get BOTH user_id (UUID) AND admission_number
             const userId = profile.user_id || profile.id || null;
             const admissionNumber = profile.admission_number ||   // ✅ Primary
+                                   profile.admissionNumber ||    // ✅ Alternate case
                                    profile.student_id ||          // ✅ Fallback
                                    profile.registration_number || // ✅ Fallback
+                                   profile.reg_number ||          // ✅ Fallback
                                    null;
             
             console.log(`✅ Profile loaded from ${source}:`);
@@ -1870,49 +1876,21 @@
     }
 
     // ============================================
-    // ✅ WAIT FOR PROFILE TO LOAD
+    // ✅ WAIT FOR PROFILE TO LOAD - DATABASE ONLY
     // ============================================
     
     async function waitForProfile(maxAttempts = MAX_PROFILE_ATTEMPTS) {
         console.log('⏳ Waiting for student profile to load...');
         
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            // ✅ Get profile from current session (NO localStorage)
             const info = getCurrentStudentInfo();
             
             // Check if we have a valid profile with user_id
             if (info && info.user_id) {
                 console.log(`✅ Profile loaded after ${attempt} attempts:`, info.block, info.intake_year);
+                console.log(`📋 Admission Number:`, info.admission_number);
                 return info;
-            }
-            
-            // Also check if window.db.currentUser is available
-            if (window.db?.currentUser?.id) {
-                console.log(`✅ Found user in window.db.currentUser after ${attempt} attempts`);
-                return {
-                    user_id: window.db.currentUser.id,
-                    student_id: window.db.currentUser.admission_number || window.db.currentUser.student_id || null,
-                    admission_number: window.db.currentUser.admission_number || null,
-                    registration_number: window.db.currentUser.admission_number || window.db.currentUser.student_id || null,
-                    full_name: window.db.currentUser.full_name || 'Student',
-                    program: window.db.currentUser.program || 'KRCHN',
-                    block: window.db.currentUser.block || window.db.currentUser.current_block || 'Block 4',
-                    intake_year: window.db.currentUser.intake_year || '2024'
-                };
-            }
-            
-            // Check if window.currentUserProfile is available
-            if (window.currentUserProfile?.id) {
-                console.log(`✅ Found user in window.currentUserProfile after ${attempt} attempts`);
-                return {
-                    user_id: window.currentUserProfile.id,
-                    student_id: window.currentUserProfile.admission_number || window.currentUserProfile.student_id || null,
-                    admission_number: window.currentUserProfile.admission_number || null,
-                    registration_number: window.currentUserProfile.admission_number || window.currentUserProfile.student_id || null,
-                    full_name: window.currentUserProfile.full_name || 'Student',
-                    program: window.currentUserProfile.program || 'KRCHN',
-                    block: window.currentUserProfile.block || window.currentUserProfile.current_block || 'Block 4',
-                    intake_year: window.currentUserProfile.intake_year || '2024'
-                };
             }
             
             if (attempt < maxAttempts) {
@@ -1934,7 +1912,7 @@
         console.log('🏥 Clinical radius: Nakuru = 250m, Others = 200m');
         console.log('📚 Classroom radius: 50m for classes/labs');
         
-        // ✅ Wait for profile to load
+        // ✅ Wait for profile to load (NO localStorage)
         const studentInfo = await waitForProfile(MAX_PROFILE_ATTEMPTS);
         
         if (!studentInfo || !studentInfo.user_id) {
@@ -2090,5 +2068,6 @@
     console.log('📋 Filtering by Block & Intake Year enabled!');
     console.log('👤 Student ID capture: FIXED!');
     console.log('⏳ Waiting for profile to load before initializing...');
+    console.log('❌ NO localStorage - Reading from database only!');
     
 })();
