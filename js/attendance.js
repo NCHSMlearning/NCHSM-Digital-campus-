@@ -1583,10 +1583,11 @@
         }
     }
 
-    // ============================================
+   // ============================================
     // ✅ DO CHECK-IN - STUDENT FRIENDLY
     // ✅ Just checks in - no distance warnings to student
     // ✅ System determines status internally
+    // ✅ Handles NULL values properly
     // ============================================
     
     async function doCheckIn() {
@@ -1629,11 +1630,11 @@
                 return;
             }
             
-            // ✅ Get BOTH identifiers
+            // ✅ Get identifiers
             const userId = studentInfo.user_id;
             const admissionNumber = studentInfo.admission_number || 
                                    studentInfo.student_id || 
-                                   'N/A';
+                                   null;  // ✅ Use null instead of 'N/A'
             const studentFullName = studentInfo.full_name || 'Student';
             const studentBlock = studentInfo.block || 'Not Assigned';
             const studentProgram = studentInfo.program || 'KRCHN';
@@ -1647,7 +1648,7 @@
             });
             
             // ✅ Update the student info badge (with registration number)
-            updateStudentInfoBadge(studentBlock, studentIntakeYear, admissionNumber);
+            updateStudentInfoBadge(studentBlock, studentIntakeYear, admissionNumber || 'N/A');
             
             const supabase = getSupabase();
             if (!supabase) {
@@ -1734,7 +1735,7 @@
             // ✅ CONFIRM MODAL - Shows simple check-in details (NO distance warnings)
             const details = {
                 'Student': studentFullName,
-                'Reg No': admissionNumber,
+                'Reg No': admissionNumber || 'N/A',
                 'Block': studentBlock,
                 'Target': selectedTarget.name,
                 'Type': selectedTarget.type === 'clinical' ? '🏥 Clinical' : '📚 Classroom',
@@ -1760,12 +1761,16 @@
             
             const sessionType = sessionTypeSelect?.value || 'class';
             
-            // ✅ Record with BOTH identifiers
+            // ✅ Record with BOTH identifiers (ONLY use valid data)
             const record = {
-                // ✅ BOTH IDENTIFIERS
+                // ✅ PRIMARY IDENTIFIER (UUID - always exists)
                 user_id: userId,
-                student_id: admissionNumber,
-                registration_number: admissionNumber,
+                
+                // ✅ STUDENT IDENTIFIER (only if valid, otherwise null)
+                student_id: (admissionNumber && admissionNumber !== 'N/A' && admissionNumber !== 'null') ? admissionNumber : null,
+                
+                // ✅ REGISTRATION NUMBER (for display - only if valid)
+                registration_number: (admissionNumber && admissionNumber !== 'N/A' && admissionNumber !== 'null') ? admissionNumber : null,
                 
                 // ✅ STUDENT INFO
                 student_name: studentFullName,
@@ -1860,7 +1865,6 @@
             btn.style.opacity = '1';
         }
     }
-
     // ============================================
     // 🆕 UPDATE STUDENT INFO BADGE
     // ============================================
