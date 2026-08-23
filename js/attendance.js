@@ -1583,11 +1583,13 @@
         }
     }
 
-   // ============================================
+ // ============================================
     // ✅ DO CHECK-IN - STUDENT FRIENDLY
     // ✅ Just checks in - no distance warnings to student
     // ✅ System determines status internally
     // ✅ Handles NULL values properly
+    // ✅ CORRECT: student_id = admission_number, NOT UUID!
+    // ✅ user_id = UUID (for RLS)
     // ============================================
     
     async function doCheckIn() {
@@ -1630,21 +1632,22 @@
                 return;
             }
             
-            // ✅ Get identifiers
-            const userId = studentInfo.user_id;
-            const admissionNumber = studentInfo.admission_number || 
+            // ✅ Get BOTH identifiers
+            const userId = studentInfo.user_id;                              // ✅ UUID (for RLS)
+            const admissionNumber = studentInfo.admission_number ||          // ✅ KRCHN/0052/MAR/2024
                                    studentInfo.student_id || 
-                                   null;  // ✅ Use null instead of 'N/A'
+                                   null;
             const studentFullName = studentInfo.full_name || 'Student';
             const studentBlock = studentInfo.block || 'Not Assigned';
             const studentProgram = studentInfo.program || 'KRCHN';
             const studentIntakeYear = studentInfo.intake_year || '2024';
             
             console.log('👤 Student info:', {
-                user_id: userId,
-                admission_number: admissionNumber,
+                user_id: userId,                    // ✅ UUID
+                admission_number: admissionNumber,  // ✅ KRCHN/0052/MAR/2024
                 full_name: studentFullName,
-                block: studentBlock
+                block: studentBlock,
+                intake_year: studentIntakeYear
             });
             
             // ✅ Update the student info badge (with registration number)
@@ -1737,6 +1740,7 @@
                 'Student': studentFullName,
                 'Reg No': admissionNumber || 'N/A',
                 'Block': studentBlock,
+                'Intake': studentIntakeYear,
                 'Target': selectedTarget.name,
                 'Type': selectedTarget.type === 'clinical' ? '🏥 Clinical' : '📚 Classroom',
                 'Time': new Date().toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi' })
@@ -1761,16 +1765,19 @@
             
             const sessionType = sessionTypeSelect?.value || 'class';
             
-            // ✅ Record with BOTH identifiers (ONLY use valid data)
+            // ✅ Record with CORRECT identifiers
+            // ✅ user_id = UUID (for auth/RLS)
+            // ✅ student_id = admission_number (for display)
+            // ✅ registration_number = admission_number (for display)
             const record = {
-                // ✅ PRIMARY IDENTIFIER (UUID - always exists)
-                user_id: userId,
+                // ✅ PRIMARY IDENTIFIER (UUID from auth - for RLS)
+                user_id: userId,                              // ✅ UUID (e.g., 28fa4da5-93a9-4098-ac2e-88ba142a77ee)
                 
-                // ✅ STUDENT IDENTIFIER (only if valid, otherwise null)
-                student_id: (admissionNumber && admissionNumber !== 'N/A' && admissionNumber !== 'null') ? admissionNumber : null,
+                // ✅ STUDENT IDENTIFIER (admission_number for display)
+                student_id: admissionNumber,                  // ✅ KRCHN/0052/MAR/2024
                 
-                // ✅ REGISTRATION NUMBER (for display - only if valid)
-                registration_number: (admissionNumber && admissionNumber !== 'N/A' && admissionNumber !== 'null') ? admissionNumber : null,
+                // ✅ REGISTRATION NUMBER (display)
+                registration_number: admissionNumber,         // ✅ KRCHN/0052/MAR/2024
                 
                 // ✅ STUDENT INFO
                 student_name: studentFullName,
@@ -1816,9 +1823,9 @@
             };
             
             console.log('📝 Saving record:', {
-                user_id: record.user_id,
-                student_id: record.student_id,
-                registration_number: record.registration_number,
+                user_id: record.user_id,                    // ✅ UUID
+                student_id: record.student_id,              // ✅ KRCHN/0052/MAR/2024
+                registration_number: record.registration_number, // ✅ KRCHN/0052/MAR/2024
                 student_name: record.student_name,
                 status: record.attendance_status,
                 distance: record.distance_meters
