@@ -1043,10 +1043,6 @@
         </div>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- ===== JAVASCRIPT ===== -->
-    <!-- ============================================================ -->
-
     <script>
         // ============================================================
         // SUPABASE CONFIGURATION
@@ -1054,18 +1050,19 @@
         const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
-       let sbClient = null;
+        let sbClient = null;
 
-       function initSupabase() {
-    if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        window.sb = sbClient;  // ✅ CORRECT - using sbClient
-        console.log('✅ Supabase initialized');
-        return true;
-    }
-    console.warn('⚠️ Supabase not loaded');
-    return false;
-}
+        function initSupabase() {
+            if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+                sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                window.sb = sbClient;
+                console.log('✅ Supabase initialized');
+                return true;
+            }
+            console.warn('⚠️ Supabase not loaded');
+            return false;
+        }
+
         // ============================================================
         // GLOBAL STATE
         // ============================================================
@@ -1161,7 +1158,7 @@
                 if (!sbClient) { if(!initSupabase()) return; }
                 
                 // Get total students
-                const { count: totalStudents } = await supabase
+                const { count: totalStudents } = await sbClient
                     .from('consolidated_user_profiles_table')
                     .select('*', { count: 'exact', head: true })
                     .eq('role', 'student');
@@ -1169,7 +1166,7 @@
                 document.getElementById('accountsBadge').textContent = totalStudents || 0;
 
                 // Get payments
-                const { data: payments } = await supabase
+                const { data: payments } = await sbClient
                     .from('finance_payments')
                     .select('amount, payment_date, status, student_name, program, payment_method')
                     .order('payment_date', { ascending: false });
@@ -1205,7 +1202,7 @@
                 }
 
                 // Get outstanding balance
-                const { data: accounts } = await supabase
+                const { data: accounts } = await sbClient
                     .from('finance_student_accounts')
                     .select('balance')
                     .gt('balance', 0);
@@ -1293,7 +1290,7 @@
             try {
                 if (!sbClient) { if(!initSupabase()) return; }
                 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_staff')
                     .select('*')
                     .order('created_at', { ascending: false });
@@ -1429,7 +1426,7 @@
 
                 if (editId) {
                     // Update
-                    const { error } = await supabase
+                    const { error } = await sbClient
                         .from('finance_staff')
                         .update({
                             full_name: data.full_name,
@@ -1450,7 +1447,7 @@
                     showToast('Staff updated successfully!', 'success');
                 } else {
                     // Add new
-                    const { error } = await supabase
+                    const { error } = await sbClient
                         .from('finance_staff')
                         .insert([{
                             full_name: data.full_name,
@@ -1484,7 +1481,7 @@
             try {
                 if (!sbClient) { if(!initSupabase()) return; }
                 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_staff')
                     .select('*')
                     .eq('id', id)
@@ -1518,7 +1515,7 @@
             try {
                 if (!sbClient) { if(!initSupabase()) return; }
 
-                const { error } = await supabase
+                const { error } = await sbClient
                     .from('finance_staff')
                     .delete()
                     .eq('id', id);
@@ -1547,7 +1544,7 @@
                 showToast('Processing payroll...', 'info');
 
                 // Get active staff
-                const { data: staff, error: staffError } = await supabase
+                const { data: staff, error: staffError } = await sbClient
                     .from('finance_staff')
                     .select('*')
                     .eq('status', 'active');
@@ -1560,7 +1557,7 @@
                 }
 
                 // Check for existing payroll
-                const { data: existing, error: existingError } = await supabase
+                const { data: existing, error: existingError } = await sbClient
                     .from('finance_payroll_records')
                     .select('staff_id')
                     .eq('period', currentMonth);
@@ -1590,7 +1587,7 @@
                     return;
                 }
 
-                const { error: insertError } = await supabase
+                const { error: insertError } = await sbClient
                     .from('finance_payroll_records')
                     .insert(newRecords);
 
@@ -1610,9 +1607,9 @@
         // ============================================================
         async function loadAllStudentAccounts() {
             try {
-                 { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_student_accounts')
                     .select('*')
                     .order('student_name', { ascending: true });
@@ -1693,7 +1690,7 @@
             try {
                 if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_payments')
                     .select('*')
                     .order('payment_date', { ascending: false });
@@ -1893,7 +1890,7 @@
                     created_at: new Date().toISOString()
                 };
 
-                const { error } = await supabase
+                const { error } = await sbClient
                     .from('finance_payments')
                     .insert([paymentData]);
 
@@ -1917,7 +1914,7 @@
             try {
                 if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_fee_structure')
                     .select('*')
                     .order('created_at', { ascending: true });
@@ -1980,7 +1977,7 @@
             try {
                 if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_payments')
                     .select('*')
                     .order('payment_date', { ascending: false });
@@ -2045,7 +2042,7 @@
             try {
                 if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_audit_logs')
                     .select('*')
                     .order('created_at', { ascending: false })
