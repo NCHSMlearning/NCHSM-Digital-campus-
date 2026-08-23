@@ -1056,17 +1056,16 @@
 
        let sbClient = null;
 
-        function initSupabase() {
-            if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-                sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                window.sb = supabase;
-                console.log('✅ Supabase initialized');
-                return true;
-            }
-            console.warn('⚠️ Supabase not loaded');
-            return false;
-        }
-
+       function initSupabase() {
+    if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sb = sbClient;  // ✅ CORRECT - using sbClient
+        console.log('✅ Supabase initialized');
+        return true;
+    }
+    console.warn('⚠️ Supabase not loaded');
+    return false;
+}
         // ============================================================
         // GLOBAL STATE
         // ============================================================
