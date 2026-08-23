@@ -774,7 +774,7 @@
                     <div style="overflow-x: auto;">
                         <table class="modern-table">
                             <thead>
-                                <tr><th>Staff ID</th><th>Full Name</th><th>Department</th><th>Position</th><th>Basic Salary</th><th>Allowances</th><th>Total Pay</th><th>Status</th><th>Actions</th></tr>
+                                <tr><th>Staff ID</th><th>Full Name</th><th>Department</th><th>Job Title</th><th>Basic Salary</th><th>Allowances</th><th>Total Pay</th><th>Status</th><th>Actions</th></tr>
                             </thead>
                             <tbody id="staffTableBody">
                                 <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;"><div class="loading-spinner"></div><p style="margin-top:10px;">Loading staff data...</p></td></tr>
@@ -1007,7 +1007,7 @@
                         </select>
                     </div>
                     <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Position *</label>
+                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Job Title *</label>
                         <input type="text" id="staffPosition" class="form-control" placeholder="e.g., Senior Lecturer" required>
                     </div>
                     <div class="finance-form-group">
@@ -1049,17 +1049,18 @@
 
     <script>
         // ============================================================
-        // SUPABASE CONFIGURATION
+        // SUPABASE CONFIGURATION - Using sbClient to avoid conflicts
         // ============================================================
         const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
-        let supabase = null;
+        // Use sbClient instead of supabase to avoid conflicts
+        let sbClient = null;
 
         function initSupabase() {
             if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-                window.sb = supabase;
+                sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                window.sb = sbClient;
                 console.log('✅ Supabase initialized');
                 return true;
             }
@@ -1159,10 +1160,10 @@
         // ============================================================
         async function loadDashboardData() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
                 
                 // Get total students
-                const { count: totalStudents } = await supabase
+                const { count: totalStudents } = await sbClient
                     .from('consolidated_user_profiles_table')
                     .select('*', { count: 'exact', head: true })
                     .eq('role', 'student');
@@ -1170,7 +1171,7 @@
                 document.getElementById('accountsBadge').textContent = totalStudents || 0;
 
                 // Get payments
-                const { data: payments } = await supabase
+                const { data: payments } = await sbClient
                     .from('finance_payments')
                     .select('amount, payment_date, status, student_name, program, payment_method')
                     .order('payment_date', { ascending: false });
@@ -1206,7 +1207,7 @@
                 }
 
                 // Get outstanding balance
-                const { data: accounts } = await supabase
+                const { data: accounts } = await sbClient
                     .from('finance_student_accounts')
                     .select('balance')
                     .gt('balance', 0);
@@ -1292,9 +1293,9 @@
         // ============================================================
         async function loadStaffData() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
                 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_staff')
                     .select('*')
                     .order('created_at', { ascending: false });
@@ -1321,7 +1322,7 @@
                     <td><strong>${s.staff_id || '-'}</strong></td>
                     <td>${s.full_name || 'N/A'}</td>
                     <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
-                    <td>${s.position || '-'}</td>
+                    <td>${s.job_title || '-'}</td>
                     <td>${formatCurrency(s.basic_salary)}</td>
                     <td>${formatCurrency(s.allowances)}</td>
                     <td><strong>${formatCurrency(s.total_pay)}</strong></td>
@@ -1342,7 +1343,7 @@
             let filtered = staffData.filter(s => {
                 const matchSearch = (s.full_name || '').toLowerCase().includes(search) || 
                                    (s.staff_id || '').toLowerCase().includes(search) || 
-                                   (s.position || '').toLowerCase().includes(search);
+                                   (s.job_title || '').toLowerCase().includes(search);
                 const matchDept = dept === 'all' || s.department === dept;
                 const matchStatus = status === 'all' || s.status === status;
                 return matchSearch && matchDept && matchStatus;
@@ -1358,7 +1359,7 @@
                     <td><strong>${s.staff_id || '-'}</strong></td>
                     <td>${s.full_name || 'N/A'}</td>
                     <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
-                    <td>${s.position || '-'}</td>
+                    <td>${s.job_title || '-'}</td>
                     <td>${formatCurrency(s.basic_salary)}</td>
                     <td>${formatCurrency(s.allowances)}</td>
                     <td><strong>${formatCurrency(s.total_pay)}</strong></td>
@@ -1402,18 +1403,19 @@
             document.getElementById('addStaffForm').reset();
             document.getElementById('staffId').value = 'STF-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
             document.getElementById('addStaffForm').dataset.editId = '';
+            document.querySelector('#addStaffModal h3').textContent = 'Add Staff Member';
         }
 
         async function saveStaffToDatabase() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
                 const editId = document.getElementById('addStaffForm').dataset.editId;
                 const data = {
                     full_name: document.getElementById('staffFullName').value.trim(),
                     staff_id: document.getElementById('staffId').value.trim(),
                     department: document.getElementById('staffDepartment').value,
-                    position: document.getElementById('staffPosition').value.trim(),
+                    job_title: document.getElementById('staffPosition').value.trim(),
                     basic_salary: parseFloat(document.getElementById('staffBasicSalary').value) || 0,
                     allowances: parseFloat(document.getElementById('staffAllowances').value) || 0,
                     email: document.getElementById('staffEmail').value.trim(),
@@ -1421,7 +1423,7 @@
                     status: document.getElementById('staffStatus').value
                 };
 
-                if (!data.full_name || !data.staff_id || !data.department || !data.position) {
+                if (!data.full_name || !data.staff_id || !data.department || !data.job_title) {
                     showToast('Please fill in all required fields', 'warning');
                     return;
                 }
@@ -1430,13 +1432,13 @@
 
                 if (editId) {
                     // Update
-                    const { error } = await supabase
+                    const { error } = await sbClient
                         .from('finance_staff')
                         .update({
                             full_name: data.full_name,
                             staff_id: data.staff_id,
                             department: data.department,
-                            position: data.position,
+                            job_title: data.job_title,
                             basic_salary: data.basic_salary,
                             allowances: data.allowances,
                             total_pay: data.total_pay,
@@ -1451,13 +1453,13 @@
                     showToast('Staff updated successfully!', 'success');
                 } else {
                     // Add new
-                    const { error } = await supabase
+                    const { error } = await sbClient
                         .from('finance_staff')
                         .insert([{
                             full_name: data.full_name,
                             staff_id: data.staff_id,
                             department: data.department,
-                            position: data.position,
+                            job_title: data.job_title,
                             basic_salary: data.basic_salary,
                             allowances: data.allowances,
                             total_pay: data.total_pay,
@@ -1483,9 +1485,9 @@
 
         async function editStaffMember(id) {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
                 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_staff')
                     .select('*')
                     .eq('id', id)
@@ -1496,7 +1498,7 @@
                 document.getElementById('staffFullName').value = data.full_name || '';
                 document.getElementById('staffId').value = data.staff_id || '';
                 document.getElementById('staffDepartment').value = data.department || '';
-                document.getElementById('staffPosition').value = data.position || '';
+                document.getElementById('staffPosition').value = data.job_title || '';
                 document.getElementById('staffBasicSalary').value = data.basic_salary || 0;
                 document.getElementById('staffAllowances').value = data.allowances || 0;
                 document.getElementById('staffEmail').value = data.email || '';
@@ -1517,9 +1519,9 @@
             if (!confirm('Are you sure you want to delete this staff member? This action cannot be undone.')) return;
 
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
-                const { error } = await supabase
+                const { error } = await sbClient
                     .from('finance_staff')
                     .delete()
                     .eq('id', id);
@@ -1540,7 +1542,7 @@
         // ============================================================
         async function processPayrollAction() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
                 if (!confirm('Process payroll for all active staff for this month?')) return;
 
@@ -1548,7 +1550,7 @@
                 showToast('Processing payroll...', 'info');
 
                 // Get active staff
-                const { data: staff, error: staffError } = await supabase
+                const { data: staff, error: staffError } = await sbClient
                     .from('finance_staff')
                     .select('*')
                     .eq('status', 'active');
@@ -1561,7 +1563,7 @@
                 }
 
                 // Check for existing payroll
-                const { data: existing, error: existingError } = await supabase
+                const { data: existing, error: existingError } = await sbClient
                     .from('finance_payroll_records')
                     .select('staff_id')
                     .eq('period', currentMonth);
@@ -1575,7 +1577,7 @@
                         staff_id: s.id,
                         staff_name: s.full_name,
                         department: s.department,
-                        position: s.position,
+                        job_title: s.job_title,
                         period: currentMonth,
                         basic_salary: s.basic_salary || 0,
                         allowances: s.allowances || 0,
@@ -1591,7 +1593,7 @@
                     return;
                 }
 
-                const { error: insertError } = await supabase
+                const { error: insertError } = await sbClient
                     .from('finance_payroll_records')
                     .insert(newRecords);
 
@@ -1611,9 +1613,9 @@
         // ============================================================
         async function loadAllStudentAccounts() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_student_accounts')
                     .select('*')
                     .order('student_name', { ascending: true });
@@ -1692,9 +1694,9 @@
         // ============================================================
         async function loadAllPayments() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_payments')
                     .select('*')
                     .order('payment_date', { ascending: false });
@@ -1867,7 +1869,7 @@
 
         async function recordPaymentFromModal() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
                 const student = selectedStudent;
                 const amount = parseFloat(document.getElementById('modalPaymentAmount').value);
@@ -1894,7 +1896,7 @@
                     created_at: new Date().toISOString()
                 };
 
-                const { error } = await supabase
+                const { error } = await sbClient
                     .from('finance_payments')
                     .insert([paymentData]);
 
@@ -1916,9 +1918,9 @@
         // ============================================================
         async function loadFeeStructures() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_fee_structure')
                     .select('*')
                     .order('created_at', { ascending: true });
@@ -1979,9 +1981,9 @@
         // ============================================================
         async function loadAllTransactions() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_payments')
                     .select('*')
                     .order('payment_date', { ascending: false });
@@ -2044,9 +2046,9 @@
         // ============================================================
         async function loadAuditLog() {
             try {
-                if (!supabase) { if(!initSupabase()) return; }
+                if (!sbClient) { if(!initSupabase()) return; }
 
-                const { data, error } = await supabase
+                const { data, error } = await sbClient
                     .from('finance_audit_logs')
                     .select('*')
                     .order('created_at', { ascending: false })
