@@ -3694,13 +3694,16 @@
             </p>
         </div>
         <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-            <!-- ✅ Student Info Display -->
+            <!-- ✅ Student Info Badge - Shows Block, Intake, and Registration Number -->
             <div id="student-info-badge" style="background: rgba(255,255,255,0.12); padding: 6px 16px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.1); display: flex; align-items: center; gap: 10px; flex-wrap: wrap;">
-                <span style="color: rgba(255,255,255,0.6); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Block:</span>
-                <span id="student-block-display" style="color: #FDB913; font-weight: 600; font-size: 13px;">--</span>
-                <span style="color: rgba(255,255,255,0.3);">|</span>
-                <span style="color: rgba(255,255,255,0.6); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Intake:</span>
-                <span id="student-intake-display" style="color: #FDB913; font-weight: 600; font-size: 13px;">--</span>
+                <span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Reg:</span>
+                <span id="student-reg-display" style="color: #FDB913; font-weight: 600; font-size: 12px;">--</span>
+                <span style="color: rgba(255,255,255,0.2);">|</span>
+                <span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Block:</span>
+                <span id="student-block-display" style="color: #FDB913; font-weight: 600; font-size: 12px;">--</span>
+                <span style="color: rgba(255,255,255,0.2);">|</span>
+                <span style="color: rgba(255,255,255,0.5); font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px;">Intake:</span>
+                <span id="student-intake-display" style="color: #FDB913; font-weight: 600; font-size: 12px;">--</span>
             </div>
             <button onclick="window.loadAttendanceHistory?.()" style="background: rgba(255,255,255,0.12); color: white; border: 1px solid rgba(255,255,255,0.15); padding: 8px 18px; border-radius: 8px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.background='rgba(255,255,255,0.25)'" onmouseout="this.style.background='rgba(255,255,255,0.12)'">
                 <i class="fas fa-sync-alt"></i> Refresh
@@ -3808,10 +3811,8 @@
                             <span><span style="color: #94a3b8;">Lat:</span> <strong id="latitude" style="color: #0A3D62;">--</strong></span>
                             <span><span style="color: #94a3b8;">Long:</span> <strong id="longitude" style="color: #0A3D62;">--</strong></span>
                             <span><span style="color: #94a3b8;">Accuracy:</span> <strong id="accuracy-value" style="color: #0A3D62;">--</strong>m</span>
-                            <!-- 🆕 GPS Confidence - Added for ultra-accurate system -->
                             <span><span style="color: #94a3b8;">Confidence:</span> <strong id="gps-confidence" style="color: #0A3D62;">--</strong></span>
                         </div>
-                        <!-- 🆕 GPS Progress - Added for ultra-accurate system -->
                         <div id="gps-progress" style="margin-top: 4px;"></div>
                         <div id="accuracy-warning" style="display:none; margin-top: 4px; font-size: 11px; color: #f59e0b;">
                             <i class="fas fa-exclamation-triangle"></i> Low accuracy - GPS signal weak
@@ -3820,7 +3821,7 @@
                 </div>
             </div>
 
-            <!-- Distance Status -->
+            <!-- Distance Status - HIDDEN from students -->
             <div id="distance-status" style="display:none; margin-top: 12px;"></div>
 
             <!-- Check-in Button & Requirements -->
@@ -3876,9 +3877,9 @@
                     <div style="display: flex; gap: 8px; font-size: 12px; color: #475569;">
                         <i class="fas fa-lightbulb" style="color: #3B82F6; margin-top: 1px; font-size: 14px;"></i>
                         <div>
-                            <strong>How it works (Ultra-Accurate):</strong>
+                            <strong>How it works:</strong>
                             <span style="display: block; font-size: 11px; color: #64748b; margin-top: 1px;">
-                                📡 5 GPS readings averaged • 🏥 Clinical: 200-250m radius • 📚 Class: 50m radius • 📊 Confidence score shown
+                                📡 5 GPS readings averaged • 🏥 Clinical: 200-250m radius • 📚 Class: 50m radius
                             </span>
                         </div>
                     </div>
@@ -3901,7 +3902,7 @@
         </div>
     </div>
 
-    <!-- ========== HISTORY SECTION - ENHANCED TABLE ========== -->
+    <!-- ========== HISTORY SECTION ========== -->
     <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden;">
         <div style="padding: 14px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
             <div style="display: flex; align-items: center; gap: 10px;">
@@ -3927,7 +3928,7 @@
             </div>
         </div>
 
-        <!-- History Stats - Enhanced -->
+        <!-- History Stats -->
         <div id="history-stats" style="padding: 10px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: grid; grid-template-columns: repeat(auto-fit, minmax(80px, 1fr)); gap: 8px;">
             <div style="display: flex; align-items: center; gap: 6px;">
                 <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #0A3D62;"></span>
@@ -3956,22 +3957,22 @@
                 <thead style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
                     <tr>
                         <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-                            <i class="fas fa-clock" style="font-size: 11px;"></i> Date & Time
+                            <i class="fas fa-clock"></i> Date & Time
                         </th>
                         <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-                            <i class="fas fa-graduation-cap" style="font-size: 11px;"></i> Session Type
+                            <i class="fas fa-graduation-cap"></i> Session Type
                         </th>
                         <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-                            <i class="fas fa-bullseye" style="font-size: 11px;"></i> Target
+                            <i class="fas fa-bullseye"></i> Target
                         </th>
                         <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-                            <i class="fas fa-check-circle" style="font-size: 11px;"></i> Status
+                            <i class="fas fa-check-circle"></i> Status
                         </th>
                         <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-                            <i class="fas fa-map-marker-alt" style="font-size: 11px;"></i> Distance
+                            <i class="fas fa-map-marker-alt"></i> Distance
                         </th>
                         <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; white-space: nowrap;">
-                            <i class="fas fa-chart-line" style="font-size: 11px;"></i> Accuracy
+                            <i class="fas fa-chart-line"></i> Accuracy
                         </th>
                     </tr>
                 </thead>
@@ -3980,7 +3981,6 @@
                         <td colspan="6" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
                             <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
                             <p style="margin: 0; font-size: 13px;">Loading attendance history...</p>
-                            <p style="margin: 2px 0 0 0; font-size: 11px; color: #cbd5e1;">Please wait</p>
                         </td>
                     </tr>
                 </tbody>
@@ -4007,6 +4007,11 @@
         @keyframes fadeInBackdrop {
             from { opacity: 0; }
             to { opacity: 1; }
+        }
+        
+        @keyframes fadeOutBackdrop {
+            from { opacity: 1; }
+            to { opacity: 0; }
         }
         
         @keyframes slideUpModal {
