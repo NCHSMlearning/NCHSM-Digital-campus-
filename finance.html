@@ -1058,7 +1058,7 @@
 
         function initSupabase() {
             if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
-                supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+                sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
                 window.sb = supabase;
                 console.log('✅ Supabase initialized');
                 return true;
