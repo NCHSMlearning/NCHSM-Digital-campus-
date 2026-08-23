@@ -60,167 +60,192 @@
     let profileLoadAttempts = 0;
     const MAX_PROFILE_ATTEMPTS = 20;
     
-    // ============================================
-    // ✅ FIXED: GET CURRENT STUDENT INFO WITH BLOCK & INTAKE YEAR
-    // ============================================
+   // ============================================
+// ✅ FIXED: GET CURRENT STUDENT INFO WITH BLOCK & INTAKE YEAR
+// ✅ Captures BOTH user_id (UUID) AND admission_number
+// ============================================
+
+function getCurrentStudentInfo() {
+    // Try multiple sources to get student info
+    let profile = null;
+    let source = 'none';
     
-    function getCurrentStudentInfo() {
-        // Try multiple sources to get student info
-        let profile = null;
-        let source = 'none';
-        
-        // 1. Try from localStorage
-        try {
-            const stored = localStorage.getItem('userProfile');
-            if (stored) {
-                profile = JSON.parse(stored);
-                source = 'localStorage';
-                console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            }
-        } catch(e) {}
-        
-        // 2. Try from window.db.currentUserProfile
-        if (!profile && window.db?.currentUserProfile) {
-            profile = window.db.currentUserProfile;
-            source = 'window.db.currentUserProfile';
+    // 1. Try from localStorage
+    try {
+        const stored = localStorage.getItem('userProfile');
+        if (stored) {
+            profile = JSON.parse(stored);
+            source = 'localStorage';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
         }
-        
-        // 3. Try from window.currentUserProfile
-        if (!profile && window.currentUserProfile) {
-            profile = window.currentUserProfile;
-            source = 'window.currentUserProfile';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-        }
-        
-        // 4. Try from window.db.currentUser
-        if (!profile && window.db?.currentUser) {
-            profile = window.db.currentUser;
-            source = 'window.db.currentUser';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-        }
-        
-        // 5. Try from window.dashboardModule
-        if (!profile && window.dashboardModule?.userData) {
-            profile = window.dashboardModule.userData;
-            source = 'window.dashboardModule.userData';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-        }
-        
-        // 6. Try from window.userData
-        if (!profile && window.userData) {
-            profile = window.userData;
-            source = 'window.userData';
-            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-        }
-        
-        // 7. Try from URL params (for testing)
-        if (!profile) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const testUserId = urlParams.get('student_id');
-            if (testUserId) {
-                source = 'URL params';
-                console.log(`📋 Found profile in ${source}`);
-                return {
-                    user_id: testUserId,
-                    student_id: 'TEST/STUDENT/2024',
-                    full_name: 'Test Student',
-                    program: 'KRCHN',
-                    block: urlParams.get('block') || 'Block 4',
-                    intake_year: urlParams.get('intake_year') || '2024'
-                };
-            }
-        }
-        
-        // 8. Check if we have a user ID from anywhere
-        if (!profile) {
-            const userId = window.userId || window.currentUserId || null;
-            if (userId) {
-                source = 'userId fallback';
-                console.log(`📋 Found userId in ${source}:`, userId);
-                return {
-                    user_id: userId,
-                    student_id: null,
-                    full_name: 'Student',
-                    program: 'KRCHN',
-                    block: 'Block 4',
-                    intake_year: '2024'
-                };
-            }
-        }
-        
-        if (profile) {
-            // Extract block and intake year from various possible field names
-            const block = profile.block || 
-                         profile.current_block || 
-                         profile.blockTerm || 
-                         profile.userBlock || 
-                         'Block 4';
-            
-            const intakeYear = profile.intake_year || 
-                              profile.intakeYear || 
-                              profile.intake || 
-                              profile.academic_year || 
-                              '2024';
-            
-            console.log(`✅ Profile loaded from ${source}: Block=${block}, Intake=${intakeYear}`);
-            
+    } catch(e) {}
+    
+    // 2. Try from window.db.currentUserProfile
+    if (!profile && window.db?.currentUserProfile) {
+        profile = window.db.currentUserProfile;
+        source = 'window.db.currentUserProfile';
+        console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+    }
+    
+    // 3. Try from window.currentUserProfile
+    if (!profile && window.currentUserProfile) {
+        profile = window.currentUserProfile;
+        source = 'window.currentUserProfile';
+        console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+    }
+    
+    // 4. Try from window.db.currentUser
+    if (!profile && window.db?.currentUser) {
+        profile = window.db.currentUser;
+        source = 'window.db.currentUser';
+        console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+    }
+    
+    // 5. Try from window.dashboardModule
+    if (!profile && window.dashboardModule?.userData) {
+        profile = window.dashboardModule.userData;
+        source = 'window.dashboardModule.userData';
+        console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+    }
+    
+    // 6. Try from window.userData
+    if (!profile && window.userData) {
+        profile = window.userData;
+        source = 'window.userData';
+        console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+    }
+    
+    // 7. Try from URL params (for testing)
+    if (!profile) {
+        const urlParams = new URLSearchParams(window.location.search);
+        const testUserId = urlParams.get('student_id');
+        if (testUserId) {
+            source = 'URL params';
+            console.log(`📋 Found profile in ${source}`);
             return {
-                user_id: profile.user_id || profile.id || null,
-                student_id: profile.student_id || profile.registration_number || null,
-                full_name: profile.full_name || profile.name || 'Student',
-                program: profile.program || 'KRCHN',
-                block: block,
-                intake_year: intakeYear
+                user_id: testUserId,
+                student_id: urlParams.get('admission_number') || 'TEST/STUDENT/2024',
+                admission_number: urlParams.get('admission_number') || 'TEST/STUDENT/2024',
+                registration_number: urlParams.get('admission_number') || 'TEST/STUDENT/2024',
+                full_name: 'Test Student',
+                program: 'KRCHN',
+                block: urlParams.get('block') || 'Block 4',
+                intake_year: urlParams.get('intake_year') || '2024'
             };
         }
+    }
+    
+    // 8. Check if we have a user ID from anywhere
+    if (!profile) {
+        const userId = window.userId || window.currentUserId || null;
+        if (userId) {
+            source = 'userId fallback';
+            console.log(`📋 Found userId in ${source}:`, userId);
+            return {
+                user_id: userId,
+                student_id: null,
+                admission_number: null,
+                registration_number: null,
+                full_name: 'Student',
+                program: 'KRCHN',
+                block: 'Block 4',
+                intake_year: '2024'
+            };
+        }
+    }
+    
+    if (profile) {
+        // Extract block and intake year from various possible field names
+        const block = profile.block || 
+                     profile.current_block || 
+                     profile.blockTerm || 
+                     profile.userBlock || 
+                     'Block 4';
         
-        console.warn('⚠️ No student profile found! Using defaults.');
+        const intakeYear = profile.intake_year || 
+                          profile.intakeYear || 
+                          profile.intake || 
+                          profile.academic_year || 
+                          '2024';
+        
+        // ✅ IMPORTANT: Get BOTH user_id (UUID) AND admission_number
+        const userId = profile.user_id || profile.id || null;
+        const admissionNumber = profile.admission_number ||   // ✅ Primary
+                               profile.student_id ||          // ✅ Fallback
+                               profile.registration_number || // ✅ Fallback
+                               null;
+        
+        console.log(`✅ Profile loaded from ${source}:`);
+        console.log(`   📋 User ID (UUID): ${userId}`);
+        console.log(`   📋 Admission Number: ${admissionNumber}`);
+        console.log(`   📋 Block: ${block}`);
+        console.log(`   📋 Intake Year: ${intakeYear}`);
+        
         return {
-            user_id: null,
-            student_id: null,
-            full_name: 'Student',
-            program: 'KRCHN',
-            block: 'Block 4',
-            intake_year: '2024'
+            // ✅ Primary identifier (UUID from auth)
+            user_id: userId,
+            
+            // ✅ Student identifier (admission_number)
+            student_id: admissionNumber,          // ← admission_number
+            admission_number: admissionNumber,     // ← admission_number
+            registration_number: admissionNumber,  // ← admission_number (for display)
+            
+            // ✅ Profile info
+            full_name: profile.full_name || profile.name || 'Student',
+            program: profile.program || 'KRCHN',
+            block: block,
+            intake_year: intakeYear
         };
     }
     
-    // ✅ Get student ID - use user_id from profile
-    function getCurrentStudentId() {
-        const info = getCurrentStudentInfo();
-        return info?.user_id || null;
-    }
-    
-    // ✅ Get student registration number
-    function getCurrentStudentRegNumber() {
-        const info = getCurrentStudentInfo();
-        return info?.student_id || null;
-    }
-    
-    // ✅ Get student name
-    function getCurrentStudentName() {
-        const info = getCurrentStudentInfo();
-        return info?.full_name || 'Student';
-    }
-    
-    // ✅ Get student program
-    function getCurrentStudentProgram() {
-        const info = getCurrentStudentInfo();
-        return info?.program || 'KRCHN';
-    }
-    
-    // ✅ Get student block
-    function getCurrentStudentBlock() {
-        const info = getCurrentStudentInfo();
-        return info?.block || 'Block 4';
-    }
-    
-    // ✅ Get student intake year
-    function getCurrentStudentIntakeYear() {
-        const info = getCurrentStudentInfo();
-        return info?.intake_year || '2024';
-    }
+    console.warn('⚠️ No student profile found! Using defaults.');
+    return {
+        user_id: null,
+        student_id: null,
+        admission_number: null,
+        registration_number: null,
+        full_name: 'Student',
+        program: 'KRCHN',
+        block: 'Block 4',
+        intake_year: '2024'
+    };
+}
+
+// ✅ Get student ID - use user_id from profile
+function getCurrentStudentId() {
+    const info = getCurrentStudentInfo();
+    return info?.user_id || null;
+}
+
+// ✅ Get student registration number (admission_number)
+function getCurrentStudentRegNumber() {
+    const info = getCurrentStudentInfo();
+    return info?.admission_number || info?.student_id || null;
+}
+
+// ✅ Get student name
+function getCurrentStudentName() {
+    const info = getCurrentStudentInfo();
+    return info?.full_name || 'Student';
+}
+
+// ✅ Get student program
+function getCurrentStudentProgram() {
+    const info = getCurrentStudentInfo();
+    return info?.program || 'KRCHN';
+}
+
+// ✅ Get student block
+function getCurrentStudentBlock() {
+    const info = getCurrentStudentInfo();
+    return info?.block || 'Block 4';
+}
+
+// ✅ Get student intake year
+function getCurrentStudentIntakeYear() {
+    const info = getCurrentStudentInfo();
+    return info?.intake_year || '2024';
+}
     
     function getSupabase() {
         if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
@@ -1507,8 +1532,10 @@
         }
     }
 
-    // ============================================
-    // ✅ DO CHECK-IN - FIXED WITH PROPER STUDENT ID
+   // ============================================
+    // ✅ DO CHECK-IN - STUDENT FRIENDLY
+    // ✅ Just checks in - no distance warnings to student
+    // ✅ System determines status internally
     // ============================================
     
     async function doCheckIn() {
@@ -1551,20 +1578,21 @@
                 return;
             }
             
-            const studentId = studentInfo.user_id;
+            // ✅ Get BOTH identifiers
+            const userId = studentInfo.user_id;
+            const admissionNumber = studentInfo.admission_number || 
+                                   studentInfo.student_id || 
+                                   'N/A';
             const studentFullName = studentInfo.full_name || 'Student';
             const studentBlock = studentInfo.block || 'Not Assigned';
             const studentProgram = studentInfo.program || 'KRCHN';
-            const studentRegNumber = studentInfo.student_id || 'N/A';
             const studentIntakeYear = studentInfo.intake_year || '2024';
             
             console.log('👤 Student info:', {
-                student_id: studentId,
+                user_id: userId,
+                admission_number: admissionNumber,
                 full_name: studentFullName,
-                reg_number: studentRegNumber,
-                program: studentProgram,
-                block: studentBlock,
-                intake_year: studentIntakeYear
+                block: studentBlock
             });
             
             // ✅ Update the student info badge
@@ -1614,67 +1642,58 @@
             
             const accuracy = location.accuracy || 0;
             
+            // ✅ INTERNAL STATUS DETERMINATION (student doesn't see this)
             let status = 'Absent';
             let statusMessage = '';
-            let verificationDetails = [];
             
+            // Check GPS accuracy first
             if (accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) {
                 status = 'Pending';
-                statusMessage = `⚠️ GPS accuracy too low (±${accuracy.toFixed(0)}m)`;
-                verificationDetails.push(`GPS Accuracy: ${accuracy.toFixed(0)}m (needs < ${ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY}m)`);
+                statusMessage = 'GPS accuracy needs review';
             }
             
-            const isClinical = selectedTarget.type === 'clinical';
-            const radiusType = isClinical ? 'Clinical' : 'Classroom';
-            const radiusDisplay = isClinical ? `${radius}m (Clinical Radius)` : `${radius}m (Classroom Radius)`;
-            
+            // Check distance
             if (distance <= radius) {
                 if (status !== 'Pending') {
                     status = 'Present';
-                    statusMessage = `✅ Verified within ${radius}m (${distance.toFixed(0)}m away) • ${radiusType} Radius`;
+                    statusMessage = `✅ Verified within ${radius}m`;
                 }
             } else if (distance <= radius * 2) {
                 if (status !== 'Pending') {
                     status = 'Pending';
-                    statusMessage = `⚠️ ${distance.toFixed(0)}m from target (${radius}m ${radiusType} radius required)`;
+                    statusMessage = `Distance needs review`;
                 }
             } else {
                 status = 'Absent';
-                statusMessage = `❌ Too far: ${distance.toFixed(0)}m from target (${radius}m ${radiusType} radius)`;
+                statusMessage = `Location needs verification`;
             }
             
+            // Check confidence
             if (location.confidence < 50) {
                 status = 'Pending';
-                statusMessage += ` | Low confidence (${location.confidence.toFixed(0)}%)`;
-                verificationDetails.push(`Confidence: ${location.confidence.toFixed(0)}%`);
+                statusMessage = 'GPS confidence needs review';
             }
             
+            // Check readings
             if (location.readingsCount < 3) {
                 status = 'Pending';
-                verificationDetails.push(`GPS Readings: ${location.readingsCount} (needs 5)`);
+                statusMessage = 'GPS readings need review';
             }
             
+            // ✅ CONFIRM MODAL - Shows simple check-in details (NO distance warnings)
             const details = {
                 'Student': studentFullName,
-                'Reg No': studentRegNumber,
+                'Reg No': admissionNumber,
                 'Block': studentBlock,
-                'Intake Year': studentIntakeYear,
-                'Program': studentProgram,
                 'Target': selectedTarget.name,
-                'Type': selectedTarget.type === 'clinical' ? '🏥 Clinical' : selectedTarget.type === 'class' ? '📚 Classroom' : selectedTarget.type === 'lab' ? '🧪 Lab' : '📖 Tutorial',
-                'Distance': distance.toFixed(0) + 'm',
-                'GPS Accuracy': '±' + accuracy.toFixed(0) + 'm',
-                'Confidence': location.confidence.toFixed(0) + '%',
-                'Readings': location.readingsCount + ' readings',
-                'Radius': radiusDisplay,
-                'Status': status,
-                'Verification': verificationDetails.join(' | ') || 'All checks passed ✅'
+                'Type': selectedTarget.type === 'clinical' ? '🏥 Clinical' : '📚 Classroom',
+                'Time': new Date().toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi' })
             };
             
             const confirmed = await showConfirmModal({
                 icon: '📍',
-                title: '🔒 Verified Check-in',
-                subtitle: `Location verified with ${radiusType} radius (${radius}m)`,
+                title: '📍 Check-in Confirmation',
+                subtitle: `You are checking in to: ${selectedTarget.name}`,
                 details: details
             });
             
@@ -1690,12 +1709,14 @@
             
             const sessionType = sessionTypeSelect?.value || 'class';
             
-            // ✅ Record with proper student ID
+            // ✅ Record with BOTH identifiers
             const record = {
+                // ✅ BOTH IDENTIFIERS
+                user_id: userId,
+                student_id: admissionNumber,
+                registration_number: admissionNumber,
+                
                 // ✅ STUDENT INFO
-                student_id: studentId,
-                user_id: studentId,
-                registration_number: studentRegNumber,
                 student_name: studentFullName,
                 block: studentBlock,
                 intake_year: studentIntakeYear,
@@ -1711,7 +1732,7 @@
                 accuracy_m: location.accuracy,
                 distance_meters: distance,
                 
-                // ✅ VERIFICATION INFO
+                // ✅ VERIFICATION INFO (Internal - student doesn't see this)
                 is_verified: status === 'Present',
                 attendance_status: status,
                 
@@ -1732,13 +1753,20 @@
                 
                 // ✅ LOCATION TYPE
                 location_type: selectedTarget.type,
-                clinical_radius: isClinical ? radius : null,
+                clinical_radius: selectedTarget.type === 'clinical' ? radius : null,
                 
                 // ✅ CREATED AT
                 created_at: new Date().toISOString()
             };
             
-            console.log('📝 Saving record:', record);
+            console.log('📝 Saving record:', {
+                user_id: record.user_id,
+                student_id: record.student_id,
+                registration_number: record.registration_number,
+                student_name: record.student_name,
+                status: record.attendance_status,
+                distance: record.distance_meters
+            });
             
             const { error } = await supabase
                 .from('geo_attendance_logs')
@@ -1749,25 +1777,24 @@
                 throw error;
             }
             
-            let awardedPoints = 0;
+            // ✅ SUCCESS MODAL - Show check-in complete (NO distance warnings)
+            let successMessage = 'Check-in recorded successfully!';
             if (status === 'Present') {
-                awardedPoints = await awardAttendancePoints(studentId, selectedTarget.name, distance);
-                if (accuracy < 20) {
-                    awardedPoints += 5;
-                    showToast('🎯 Perfect GPS! +5 bonus points!', 'success', 2000);
-                }
+                successMessage = '✅ Check-in verified! You are within the required range.';
+            } else if (status === 'Pending') {
+                successMessage = '⏳ Check-in recorded for review. You will be notified once verified.';
+            } else {
+                successMessage = '📝 Check-in recorded. Your location will be verified by staff.';
             }
             
-            showSuccessModal({
+            showToast('✅ Check-in recorded!', 'success', 3000);
+            
+            // Show simple success modal
+            showSimpleSuccessModal({
+                message: successMessage,
                 target: selectedTarget.name,
-                type: selectedTarget.type === 'clinical' ? '🏥 Clinical' : selectedTarget.type === 'class' ? '📚 Classroom' : selectedTarget.type === 'lab' ? '🧪 Lab' : '📖 Tutorial',
-                distance: distance.toFixed(0),
-                accuracy: accuracy.toFixed(0),
-                status: status,
-                note: statusMessage,
-                points: awardedPoints,
-                confidence: location.confidence.toFixed(0),
-                readings: location.readingsCount
+                type: selectedTarget.type === 'clinical' ? '🏥 Clinical' : '📚 Classroom',
+                time: new Date().toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi' })
             });
             
             await loadHistory();
@@ -1782,7 +1809,6 @@
             btn.style.opacity = '1';
         }
     }
-
     // ============================================
     // 🆕 UPDATE STUDENT INFO BADGE
     // ============================================
@@ -1846,7 +1872,75 @@
         console.warn('⚠️ Profile not loaded after maximum attempts');
         return null;
     }
-
+// ============================================
+    // ✅ SIMPLE SUCCESS MODAL - No distance warnings
+    // ============================================
+    
+    function showSimpleSuccessModal(data) {
+        const existing = document.getElementById('successModal');
+        if (existing) existing.remove();
+        
+        const modal = document.createElement('div');
+        modal.id = 'successModal';
+        modal.innerHTML = `
+            <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(6px); z-index: 999999; display: flex; align-items: center; justify-content: center; animation: fadeInBackdrop 0.3s ease;">
+                <div style="background: #10b981; padding: 20px 24px 16px; text-align: center; color: white; border-radius: 24px 24px 0 0;">
+                    <div style="font-size: 48px; margin-bottom: 4px;">✅</div>
+                    <h2 style="margin: 0; font-size: 20px; font-weight: 700; color: white;">Check-in Complete!</h2>
+                    <p style="margin: 4px 0 0; font-size: 13px; opacity: 0.9;">${data.message}</p>
+                </div>
+                <div style="background: white; padding: 24px 24px 20px; border-radius: 0 0 24px 24px; box-shadow: 0 20px 60px rgba(0,0,0,0.2);">
+                    <div style="background: #f8fafc; border-radius: 10px; padding: 12px 14px; margin-bottom: 16px; text-align: center;">
+                        <div style="font-size: 11px; color: #94a3b8;">📍 Location</div>
+                        <div style="font-weight: 600; font-size: 14px; color: #0f172a;">${data.target}</div>
+                        <div style="font-size: 11px; color: #64748b;">${data.type}</div>
+                    </div>
+                    <div style="text-align: center; font-size: 12px; color: #94a3b8; margin-bottom: 16px;">
+                        <i class="fas fa-clock"></i> ${data.time}
+                    </div>
+                    <button onclick="window._closeSuccessModal()" style="width: 100%; padding: 14px; border: none; border-radius: 14px; font-size: 16px; font-weight: 600; cursor: pointer; background: #10b981; color: white;">👍 Done</button>
+                </div>
+            </div>
+        `;
+        
+        // Add backdrop styles
+        const backdrop = modal.querySelector('div');
+        backdrop.style.cssText = `
+            position: fixed; 
+            top: 0; 
+            left: 0; 
+            width: 100%; 
+            height: 100%; 
+            background: rgba(0,0,0,0.5); 
+            backdrop-filter: blur(6px); 
+            z-index: 999999; 
+            display: flex; 
+            align-items: center; 
+            justify-content: center; 
+            animation: fadeInBackdrop 0.3s ease;
+        `;
+        
+        const content = backdrop.querySelector('div');
+        content.style.cssText = `
+            background: white; 
+            border-radius: 24px; 
+            max-width: 420px; 
+            width: 92%; 
+            overflow: hidden; 
+            box-shadow: 0 20px 60px rgba(0,0,0,0.2); 
+            animation: slideUpModal 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+        `;
+        
+        document.body.appendChild(modal);
+        
+        window._closeSuccessModal = function() {
+            const modal = document.getElementById('successModal');
+            if (modal) {
+                modal.style.animation = 'fadeOutBackdrop 0.25s ease forwards';
+                setTimeout(() => modal.remove(), 250);
+            }
+        };
+    }
     // ============================================
     // 🚀 INIT
     // ============================================
