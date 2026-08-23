@@ -4,11 +4,12 @@
 // ✅ Multi-reading GPS averaging (5+ readings)
 // ✅ Confidence scoring & verification
 // ✅ Anti-spoofing protection
-// ✅ 300m radius for clinical locations (hospitals)
+// ✅ Clinical radius: Nakuru = 250m, Others = 200m
 // ✅ 50m radius for classroom/lab
 // ✅ Beautiful modals - NO "This site says" popups!
 // ✅ Working navigation and filters
 // ✅ FULLY SELF-CONTAINED
+// ✅ FILTERS BY BLOCK & INTAKE YEAR
 // ============================================
 
 (function() {
@@ -57,7 +58,7 @@
     let isGettingLocation = false;
     
     // ============================================
-    // ✅ FIXED: GET CURRENT STUDENT INFO
+    // ✅ FIXED: GET CURRENT STUDENT INFO WITH BLOCK & INTAKE YEAR
     // ============================================
     
     function getCurrentStudentInfo() {
@@ -82,61 +83,78 @@
             profile = window.currentUserProfile;
         }
         
+        // 4. Try from URL params (for testing)
+        if (!profile) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const testUserId = urlParams.get('student_id');
+            if (testUserId) {
+                return {
+                    user_id: testUserId,
+                    student_id: 'TEST/STUDENT/2024',
+                    full_name: 'Test Student',
+                    program: 'KRCHN',
+                    block: urlParams.get('block') || 'Block 4',
+                    intake_year: urlParams.get('intake_year') || '2024'
+                };
+            }
+        }
+        
         if (profile) {
             return {
                 user_id: profile.user_id || profile.id || null,
                 student_id: profile.student_id || profile.registration_number || null,
                 full_name: profile.full_name || profile.name || 'Student',
                 program: profile.program || 'KRCHN',
-                block: profile.block || profile.current_block || 'Introductory'
+                block: profile.block || profile.current_block || 'Block 4',
+                intake_year: profile.intake_year || '2024'
             };
         }
         
-        // 4. Try to get from URL params (for testing)
-        const urlParams = new URLSearchParams(window.location.search);
-        const testUserId = urlParams.get('student_id');
-        if (testUserId) {
-            return {
-                user_id: testUserId,
-                student_id: 'TEST/STUDENT',
-                full_name: 'Test Student',
-                program: 'KRCHN',
-                block: 'Introductory'
-            };
-        }
-        
-        console.warn('⚠️ No student profile found! Please log in.');
-        return null;
+        console.warn('⚠️ No student profile found! Using defaults.');
+        return {
+            user_id: null,
+            student_id: null,
+            full_name: 'Student',
+            program: 'KRCHN',
+            block: 'Block 4',
+            intake_year: '2024'
+        };
     }
     
-    // ✅ FIXED: Get student ID - use user_id from profile
+    // ✅ Get student ID - use user_id from profile
     function getCurrentStudentId() {
         const info = getCurrentStudentInfo();
         return info?.user_id || null;
     }
     
-    // ✅ FIXED: Get student registration number
+    // ✅ Get student registration number
     function getCurrentStudentRegNumber() {
         const info = getCurrentStudentInfo();
         return info?.student_id || null;
     }
     
-    // ✅ FIXED: Get student name
+    // ✅ Get student name
     function getCurrentStudentName() {
         const info = getCurrentStudentInfo();
         return info?.full_name || 'Student';
     }
     
-    // ✅ FIXED: Get student program
+    // ✅ Get student program
     function getCurrentStudentProgram() {
         const info = getCurrentStudentInfo();
         return info?.program || 'KRCHN';
     }
     
-    // ✅ FIXED: Get student block
+    // ✅ Get student block
     function getCurrentStudentBlock() {
         const info = getCurrentStudentInfo();
-        return info?.block || 'Introductory';
+        return info?.block || 'Block 4';
+    }
+    
+    // ✅ Get student intake year
+    function getCurrentStudentIntakeYear() {
+        const info = getCurrentStudentInfo();
+        return info?.intake_year || '2024';
     }
     
     function getSupabase() {
@@ -490,7 +508,7 @@
     }
 
     // ============================================
-    // 📚 LOAD DATA
+    // 📚 LOAD DATA WITH BLOCK & INTAKE YEAR FILTERING
     // ============================================
     
     async function loadApprovedUnits() {
@@ -517,35 +535,35 @@
         } catch(e) { return []; }
     }
     
+    // ✅ FIXED: Load Clinical Locations with Block & Intake Year Filtering
     async function loadClinicalLocations() {
         try {
             const supabase = getSupabase();
             if (!supabase) return [];
             
+            // ✅ Get student's intake year and block
+            const studentInfo = getCurrentStudentInfo();
+            const intakeYear = studentInfo?.intake_year || '2024';
+            const blockTerm = studentInfo?.block || 'Block 4';
+            
+            console.log(`🏥 Loading clinical locations for: ${intakeYear}, ${blockTerm}`);
+            
             const { data, error } = await supabase
                 .from('clinical_names')
-                .select('id, clinical_area_name, latitude, longitude, radius_meters')
+                .select('id, clinical_area_name, latitude, longitude, radius_meters, block_term, intake_year')
                 .eq('program', 'KRCHN')
-                .eq('intake_year', '2026');
+                .eq('intake_year', intakeYear)
+                .eq('block_term', blockTerm);
             
             if (error) throw error;
             
             clinicalLocations = (data || []).map(loc => {
-                let radius = loc.radius_meters || 300;
+                let radius = loc.radius_meters || 200;
                 
+                // ✅ Special radius for Nakuru hospitals (250m)
                 const lowerName = loc.clinical_area_name.toLowerCase();
-                if (lowerName.includes('clinic') || 
-                    lowerName.includes('health centre') || 
-                    lowerName.includes('dispensary') ||
-                    lowerName.includes('health center')) {
-                    radius = 150;
-                }
-                
-                if (lowerName.includes('national') || 
-                    lowerName.includes('teaching') || 
-                    lowerName.includes('level 6') ||
-                    lowerName.includes('referral')) {
-                    radius = 500;
+                if (lowerName.includes('nakuru county referral hospital')) {
+                    radius = 250;
                 }
                 
                 return {
@@ -554,12 +572,16 @@
                     type: 'clinical',
                     latitude: parseFloat(loc.latitude),
                     longitude: parseFloat(loc.longitude),
-                    radius: radius
+                    radius: radius,
+                    intake_year: loc.intake_year,
+                    block_term: loc.block_term
                 };
             });
             
-            console.log(`🏥 Loaded ${clinicalLocations.length} clinical locations with dynamic radius`);
+            console.log(`✅ Loaded ${clinicalLocations.length} clinical locations for ${blockTerm}, ${intakeYear}`);
+            console.log(`🏥 Nakuru hospitals: 250m, Others: 200m`);
             return clinicalLocations;
+            
         } catch(e) { 
             console.error('Error loading clinical locations:', e);
             return []; 
@@ -597,7 +619,7 @@
     }
 
     // ============================================
-    // 🎯 POPULATE TARGET OPTIONS
+    // 🎯 POPULATE TARGET OPTIONS WITH BLOCK & INTAKE YEAR
     // ============================================
     
     async function populateTargetOptions(sessionType) {
@@ -616,16 +638,37 @@
         console.log(`📋 Populating targets for session type: ${sessionType}`);
         
         if (sessionType === 'clinical') {
-            if (clinicalLocations.length === 0) await loadClinicalLocations();
-            options = clinicalLocations.map(loc => ({
-                id: loc.id,
-                name: loc.name,
-                type: 'clinical',
-                latitude: loc.latitude,
-                longitude: loc.longitude,
-                radius: loc.radius || 300
-            }));
-            console.log(`🏥 Found ${options.length} clinical locations with ${options[0]?.radius || 300}m radius`);
+            // ✅ Get student's block and intake year
+            const studentInfo = getCurrentStudentInfo();
+            const blockTerm = studentInfo?.block || 'Block 4';
+            const intakeYear = studentInfo?.intake_year || '2024';
+            
+            console.log(`🏥 Loading clinical locations for ${blockTerm}, ${intakeYear}`);
+            
+            if (clinicalLocations.length === 0) {
+                await loadClinicalLocations();
+            }
+            
+            // ✅ Filter by block and intake year
+            options = clinicalLocations
+                .filter(loc => {
+                    const locBlock = loc.block_term || 'Block 4';
+                    const locIntake = loc.intake_year || '2024';
+                    return locBlock === blockTerm && locIntake === intakeYear;
+                })
+                .map(loc => ({
+                    id: loc.id,
+                    name: loc.name,
+                    type: 'clinical',
+                    latitude: loc.latitude,
+                    longitude: loc.longitude,
+                    radius: loc.radius || 200
+                }));
+            
+            console.log(`🏥 Found ${options.length} clinical locations for ${blockTerm}, ${intakeYear}`);
+            if (options.length > 0) {
+                console.log(`📏 Radius: Nakuru hospitals = 250m, Others = 200m`);
+            }
         } else if (sessionType === 'class' || sessionType === 'lab' || sessionType === 'tutorial') {
             if (approvedUnits.length === 0) await loadApprovedUnits();
             options = approvedUnits.map(unit => ({
@@ -794,17 +837,27 @@
             else if (status === 'Absent') stats.absent++;
         });
         
-        document.getElementById('hist-present').textContent = stats.present;
-        document.getElementById('hist-pending').textContent = stats.pending;
-        document.getElementById('hist-absent').textContent = stats.absent;
+        const presentEl = document.getElementById('hist-present');
+        const pendingEl = document.getElementById('hist-pending');
+        const absentEl = document.getElementById('hist-absent');
+        const rateEl = document.getElementById('hist-rate');
+        
+        if (presentEl) presentEl.textContent = stats.present;
+        if (pendingEl) pendingEl.textContent = stats.pending;
+        if (absentEl) absentEl.textContent = stats.absent;
         
         const rate = stats.total > 0 ? Math.round((stats.present / stats.total) * 100) : 0;
-        document.getElementById('hist-rate').textContent = rate + '%';
+        if (rateEl) rateEl.textContent = rate + '%';
         
-        document.getElementById('presentCount').textContent = stats.present;
-        document.getElementById('pendingCount').textContent = stats.pending;
-        document.getElementById('absentCount').textContent = stats.absent;
-        document.getElementById('totalCount').textContent = stats.total;
+        const presentCount = document.getElementById('presentCount');
+        const pendingCount = document.getElementById('pendingCount');
+        const absentCount = document.getElementById('absentCount');
+        const totalCount = document.getElementById('totalCount');
+        
+        if (presentCount) presentCount.textContent = stats.present;
+        if (pendingCount) pendingCount.textContent = stats.pending;
+        if (absentCount) absentCount.textContent = stats.absent;
+        if (totalCount) totalCount.textContent = stats.total;
     }
 
     // ============================================
@@ -1263,10 +1316,15 @@
                 }
             });
             
-            document.getElementById('presentCount').textContent = stats.present;
-            document.getElementById('pendingCount').textContent = stats.pending;
-            document.getElementById('absentCount').textContent = stats.absent;
-            document.getElementById('totalCount').textContent = stats.total;
+            const presentCount = document.getElementById('presentCount');
+            const pendingCount = document.getElementById('pendingCount');
+            const absentCount = document.getElementById('absentCount');
+            const totalCount = document.getElementById('totalCount');
+            
+            if (presentCount) presentCount.textContent = stats.present;
+            if (pendingCount) pendingCount.textContent = stats.pending;
+            if (absentCount) absentCount.textContent = stats.absent;
+            if (totalCount) totalCount.textContent = stats.total;
             
         } catch (error) {
             console.error('Stats error:', error);
@@ -1417,7 +1475,7 @@
         btn.style.opacity = '0.6';
         
         try {
-            // ✅ FIXED: Get student info from the logged-in user
+            // ✅ Get student info from the logged-in user
             const studentInfo = getCurrentStudentInfo();
             
             if (!studentInfo || !studentInfo.user_id) {
@@ -1433,14 +1491,19 @@
             const studentBlock = studentInfo.block || 'Not Assigned';
             const studentProgram = studentInfo.program || 'KRCHN';
             const studentRegNumber = studentInfo.student_id || 'N/A';
+            const studentIntakeYear = studentInfo.intake_year || '2024';
             
             console.log('👤 Student info:', {
                 student_id: studentId,
                 full_name: studentFullName,
                 reg_number: studentRegNumber,
                 program: studentProgram,
-                block: studentBlock
+                block: studentBlock,
+                intake_year: studentIntakeYear
             });
+            
+            // ✅ Update the student info badge
+            updateStudentInfoBadge(studentBlock, studentIntakeYear);
             
             const supabase = getSupabase();
             if (!supabase) {
@@ -1468,10 +1531,16 @@
                 selectedTarget.latitude, selectedTarget.longitude
             );
             
-            let radius = selectedTarget.radius || 50;
+            let radius = selectedTarget.radius || 200;
             
-            if (selectedTarget.type === 'clinical' && radius < 100) {
-                radius = ACCURACY_CONFIG.CLINICAL_RADIUS;
+            // ✅ Clinical radius: Nakuru = 250m, Others = 200m
+            if (selectedTarget.type === 'clinical') {
+                const lowerName = selectedTarget.name.toLowerCase();
+                if (lowerName.includes('nakuru county referral hospital')) {
+                    radius = 250;
+                } else {
+                    radius = 200;
+                }
             }
             
             if (selectedTarget.type === 'class' || selectedTarget.type === 'lab' || selectedTarget.type === 'tutorial') {
@@ -1492,7 +1561,7 @@
             
             const isClinical = selectedTarget.type === 'clinical';
             const radiusType = isClinical ? 'Clinical' : 'Classroom';
-            const radiusDisplay = isClinical ? `${radius}m (Hospital Radius)` : `${radius}m (Classroom Radius)`;
+            const radiusDisplay = isClinical ? `${radius}m (Clinical Radius)` : `${radius}m (Classroom Radius)`;
             
             if (distance <= radius) {
                 if (status !== 'Pending') {
@@ -1524,6 +1593,7 @@
                 'Student': studentFullName,
                 'Reg No': studentRegNumber,
                 'Block': studentBlock,
+                'Intake Year': studentIntakeYear,
                 'Program': studentProgram,
                 'Target': selectedTarget.name,
                 'Type': selectedTarget.type === 'clinical' ? '🏥 Clinical' : selectedTarget.type === 'class' ? '📚 Classroom' : selectedTarget.type === 'lab' ? '🧪 Lab' : '📖 Tutorial',
@@ -1555,15 +1625,16 @@
             
             const sessionType = sessionTypeSelect?.value || 'class';
             
-            // ✅ FIXED: Record with proper student ID
+            // ✅ Record with proper student ID
             const record = {
-                // ✅ STUDENT INFO - Use the logged-in student's data
-                student_id: studentId,                          // ✅ UUID from profile
-                user_id: studentId,                             // ✅ Same as student_id
-                registration_number: studentRegNumber,          // ✅ Student's registration number
-                student_name: studentFullName,                  // ✅ Student's full name
-                block: studentBlock,                            // ✅ Student's block
-                program: studentProgram,                        // ✅ Student's program
+                // ✅ STUDENT INFO
+                student_id: studentId,
+                user_id: studentId,
+                registration_number: studentRegNumber,
+                student_name: studentFullName,
+                block: studentBlock,
+                intake_year: studentIntakeYear,
+                program: studentProgram,
                 
                 // ✅ CHECK-IN INFO
                 check_in_time: new Date().toISOString(),
@@ -1648,12 +1719,24 @@
     }
 
     // ============================================
+    // 🆕 UPDATE STUDENT INFO BADGE
+    // ============================================
+    
+    function updateStudentInfoBadge(block, intakeYear) {
+        const blockDisplay = document.getElementById('student-block-display');
+        const intakeDisplay = document.getElementById('student-intake-display');
+        
+        if (blockDisplay) blockDisplay.textContent = block || '--';
+        if (intakeDisplay) intakeDisplay.textContent = intakeYear || '--';
+    }
+
+    // ============================================
     // 🚀 INIT
     // ============================================
     
     async function init() {
         console.log('🚀 Initializing ULTRA-ACCURATE attendance system...');
-        console.log('🏥 Clinical radius: 300m for hospitals');
+        console.log('🏥 Clinical radius: Nakuru = 250m, Others = 200m');
         console.log('📚 Classroom radius: 50m for classes/labs');
         
         // Check if student is logged in
@@ -1665,6 +1748,11 @@
             console.log('👤 Student logged in:', studentInfo.full_name);
             console.log('📋 Student ID (UUID):', studentInfo.user_id);
             console.log('📋 Registration Number:', studentInfo.student_id);
+            console.log('📋 Block:', studentInfo.block);
+            console.log('📋 Intake Year:', studentInfo.intake_year);
+            
+            // ✅ Update the student info badge
+            updateStudentInfoBadge(studentInfo.block, studentInfo.intake_year);
         }
         
         let retries = 0;
@@ -1746,9 +1834,9 @@
         
         isInitialized = true;
         console.log('✅ Ultra-accurate attendance system ready!');
-        console.log(`🏥 Clinical radius: ${ACCURACY_CONFIG.CLINICAL_RADIUS}m`);
+        console.log(`🏥 Clinical radius: Nakuru = 250m, Others = 200m`);
         console.log(`📚 Classroom radius: ${ACCURACY_CONFIG.CLASSROOM_RADIUS}m`);
-        showToast(`🎯 Ultra-accurate attendance ready! (Clinical: ${ACCURACY_CONFIG.CLINICAL_RADIUS}m, Class: ${ACCURACY_CONFIG.CLASSROOM_RADIUS}m)`, 'success', 3000);
+        showToast(`🎯 Ultra-accurate attendance ready! (Clinical: 200-250m, Class: ${ACCURACY_CONFIG.CLASSROOM_RADIUS}m)`, 'success', 3000);
     }
     
     // ============================================
@@ -1763,6 +1851,9 @@
     window.doCheckIn = doCheckIn;
     window.getCurrentStudentInfo = getCurrentStudentInfo;
     window.getCurrentStudentId = getCurrentStudentId;
+    window.getCurrentStudentBlock = getCurrentStudentBlock;
+    window.getCurrentStudentIntakeYear = getCurrentStudentIntakeYear;
+    window.updateStudentInfoBadge = updateStudentInfoBadge;
     
     // ============================================
     // 🏁 START
@@ -1777,8 +1868,9 @@
     console.log('✅ ULTRA-ACCURATE attendance system module loaded!');
     console.log('🎯 5-point GPS verification enabled!');
     console.log('📡 Multi-reading averaging active!');
-    console.log('🏥 Clinical radius: 300m (hospitals)');
+    console.log('🏥 Clinical radius: Nakuru = 250m, Others = 200m');
     console.log('📚 Classroom radius: 50m (classes/labs)');
+    console.log('📋 Filtering by Block & Intake Year enabled!');
     console.log('👤 Student ID capture: FIXED!');
     
 })();
