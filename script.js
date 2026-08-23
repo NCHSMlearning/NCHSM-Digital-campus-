@@ -1135,7 +1135,11 @@ async function loadSectionData(tabId) {
         case 'system-health': 
             loadSystemHealth(); 
             break;
-            
+            case 'profile': 
+    if (typeof loadProfileData === 'function') {
+        loadProfileData();
+    }
+    break;
         case 'user-analytics': 
             loadUserAnalytics(); 
             break;
