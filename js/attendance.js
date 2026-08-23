@@ -1,5 +1,6 @@
 // ============================================
 // ✅ attendance.js - FIXED FOR STUDENT SELF CHECK-IN
+// ✅ Works like exams.js - waits for profile before loading
 // ✅ Captures student ID from logged-in user profile
 // ✅ Multi-reading GPS averaging (5+ readings)
 // ✅ Confidence scoring & verification
@@ -10,7 +11,7 @@
 // ✅ Working navigation and filters
 // ✅ FULLY SELF-CONTAINED
 // ✅ FILTERS BY BLOCK & INTAKE YEAR
-// ✅ WAITS FOR PROFILE TO LOAD
+// ✅ WAITS FOR PROFILE TO LOAD (like exams.js)
 // ✅ CAPTURES BOTH user_id (UUID) AND admission_number
 // ✅ STUDENT-FRIENDLY - No distance warnings
 // ✅ READS FROM DATABASE ONLY - NO localStorage!
@@ -63,19 +64,33 @@
     let profileLoadAttempts = 0;
     const MAX_PROFILE_ATTEMPTS = 20;
     
-   // ============================================
-    // ✅ FIXED: GET CURRENT STUDENT INFO - DATABASE ONLY
-    // ✅ ALWAYS reads from database via auth - NO localStorage!
-    // ✅ Captures BOTH user_id (UUID) AND admission_number
-    // ✅ Async function that waits for database response
     // ============================================
-
+    // ✅ GET SUPABASE CLIENT
+    // ============================================
+    
+    function getSupabase() {
+        if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
+            return window.db.supabase;
+        }
+        if (window.supabase && typeof window.supabase.from === 'function') {
+            return window.supabase;
+        }
+        if (window.sb && typeof window.sb.from === 'function') {
+            return window.sb;
+        }
+        return null;
+    }
+    
+    // ============================================
+    // ✅ GET CURRENT STUDENT INFO - LIKE EXAMS.JS
+    // ============================================
+    
     async function getCurrentStudentInfo() {
         let profile = null;
         let source = 'none';
         const supabase = getSupabase();
         
-        // ✅ 1. FIRST: Try to get authenticated user from Supabase Auth
+        // ✅ 1. FIRST: Try from Supabase Auth (like exams.js)
         if (supabase) {
             try {
                 const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -154,7 +169,7 @@
             console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 8. LAST RESORT: Check if we have a user ID from anywhere
+        // ✅ 8. EIGHTH: Check if we have a user ID from anywhere
         if (!profile) {
             const userId = window.userId || window.currentUserId || 
                           window.db?.currentUser?.id || 
@@ -186,13 +201,12 @@
             }
         }
         
-        // ✅ 9. ABSOLUTE LAST RESORT: Try localStorage (only if everything else failed)
+        // ✅ 9. ABSOLUTE LAST RESORT: Try localStorage
         if (!profile) {
             try {
                 const stored = localStorage.getItem('userProfile');
                 if (stored) {
                     const localProfile = JSON.parse(stored);
-                    // Only use if it has a user_id
                     if (localProfile.user_id) {
                         profile = localProfile;
                         source = 'localStorage (ABSOLUTE LAST RESORT)';
@@ -206,7 +220,6 @@
         }
         
         if (profile) {
-            // Extract block and intake year from various possible field names
             const block = profile.block || 
                          profile.current_block || 
                          profile.blockTerm || 
@@ -219,13 +232,12 @@
                               profile.academic_year || 
                               '2024';
             
-            // ✅ IMPORTANT: Get BOTH user_id (UUID) AND admission_number
             const userId = profile.user_id || profile.id || null;
-            const admissionNumber = profile.admission_number ||   // ✅ Primary
-                                   profile.admissionNumber ||    // ✅ Alternate case
-                                   profile.student_id ||          // ✅ Fallback
-                                   profile.registration_number || // ✅ Fallback
-                                   profile.reg_number ||          // ✅ Fallback
+            const admissionNumber = profile.admission_number ||   
+                                   profile.admissionNumber ||    
+                                   profile.student_id ||          
+                                   profile.registration_number || 
+                                   profile.reg_number ||          
                                    null;
             
             console.log(`✅ Profile loaded from ${source}:`);
@@ -235,15 +247,10 @@
             console.log(`   📋 Intake Year: ${intakeYear}`);
             
             return {
-                // ✅ Primary identifier (UUID from auth)
                 user_id: userId,
-                
-                // ✅ Student identifier (admission_number)
                 student_id: admissionNumber,
                 admission_number: admissionNumber,
                 registration_number: admissionNumber,
-                
-                // ✅ Profile info
                 full_name: profile.full_name || profile.name || 'Student',
                 program: profile.program || 'KRCHN',
                 block: block,
@@ -264,48 +271,40 @@
         };
     }
 
-    // ✅ Get student ID - use user_id from profile
-    function getCurrentStudentId() {
-        // ✅ This now needs to be async because getCurrentStudentInfo is async
-        return getCurrentStudentInfo().then(info => info?.user_id || null);
+    // ✅ Get student ID - use user_id from profile (ASYNC)
+    async function getCurrentStudentId() {
+        const info = await getCurrentStudentInfo();
+        return info?.user_id || null;
     }
 
-    // ✅ Get student registration number (admission_number)
-    function getCurrentStudentRegNumber() {
-        return getCurrentStudentInfo().then(info => info?.admission_number || info?.student_id || null);
+    // ✅ Get student registration number (ASYNC)
+    async function getCurrentStudentRegNumber() {
+        const info = await getCurrentStudentInfo();
+        return info?.admission_number || info?.student_id || null;
     }
 
-    // ✅ Get student name
-    function getCurrentStudentName() {
-        return getCurrentStudentInfo().then(info => info?.full_name || 'Student');
+    // ✅ Get student name (ASYNC)
+    async function getCurrentStudentName() {
+        const info = await getCurrentStudentInfo();
+        return info?.full_name || 'Student';
     }
 
-    // ✅ Get student program
-    function getCurrentStudentProgram() {
-        return getCurrentStudentInfo().then(info => info?.program || 'KRCHN');
+    // ✅ Get student program (ASYNC)
+    async function getCurrentStudentProgram() {
+        const info = await getCurrentStudentInfo();
+        return info?.program || 'KRCHN';
     }
 
-    // ✅ Get student block
-    function getCurrentStudentBlock() {
-        return getCurrentStudentInfo().then(info => info?.block || 'Block 4');
+    // ✅ Get student block (ASYNC)
+    async function getCurrentStudentBlock() {
+        const info = await getCurrentStudentInfo();
+        return info?.block || 'Block 4';
     }
 
-    // ✅ Get student intake year
-    function getCurrentStudentIntakeYear() {
-        return getCurrentStudentInfo().then(info => info?.intake_year || '2024');
-    }
-    
-    function getSupabase() {
-        if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
-            return window.db.supabase;
-        }
-        if (window.supabase && typeof window.supabase.from === 'function') {
-            return window.supabase;
-        }
-        if (window.sb && typeof window.sb.from === 'function') {
-            return window.sb;
-        }
-        return null;
+    // ✅ Get student intake year (ASYNC)
+    async function getCurrentStudentIntakeYear() {
+        const info = await getCurrentStudentInfo();
+        return info?.intake_year || '2024';
     }
     
     function calculateDistance(lat1, lon1, lat2, lon2) {
@@ -652,7 +651,7 @@
     async function loadApprovedUnits() {
         try {
             const supabase = getSupabase();
-            const studentId = getCurrentStudentId();
+            const studentId = await getCurrentStudentId(); // ✅ AWAIT
             if (!supabase || !studentId) return [];
             const { data, error } = await supabase
                 .from('student_unit_registrations')
@@ -673,14 +672,13 @@
         } catch(e) { return []; }
     }
     
-    // ✅ FIXED: Load Clinical Locations with Block & Intake Year Filtering
     async function loadClinicalLocations() {
         try {
             const supabase = getSupabase();
             if (!supabase) return [];
             
-            // ✅ Get student's intake year and block
-            const studentInfo = getCurrentStudentInfo();
+            // ✅ AWAIT the async function
+            const studentInfo = await getCurrentStudentInfo();
             const intakeYear = studentInfo?.intake_year || '2024';
             const blockTerm = studentInfo?.block || 'Block 4';
             
@@ -697,13 +695,10 @@
             
             clinicalLocations = (data || []).map(loc => {
                 let radius = loc.radius_meters || 200;
-                
-                // ✅ Special radius for Nakuru hospitals (250m)
                 const lowerName = loc.clinical_area_name.toLowerCase();
                 if (lowerName.includes('nakuru county referral hospital')) {
                     radius = 250;
                 }
-                
                 return {
                     id: `clinical_${loc.id}`,
                     name: loc.clinical_area_name,
@@ -717,9 +712,7 @@
             });
             
             console.log(`✅ Loaded ${clinicalLocations.length} clinical locations for ${blockTerm}, ${intakeYear}`);
-            console.log(`🏥 Nakuru hospitals: 250m, Others: 200m`);
             return clinicalLocations;
-            
         } catch(e) { 
             console.error('Error loading clinical locations:', e);
             return []; 
@@ -731,10 +724,10 @@
             const supabase = getSupabase();
             if (!supabase) return [];
             
-            const studentId = getCurrentStudentId();
+            const studentId = await getCurrentStudentId(); // ✅ AWAIT
             if (!studentId) return [];
             
-            const profile = getCurrentStudentInfo();
+            const profile = await getCurrentStudentInfo(); // ✅ AWAIT
             const program = profile?.program || 'KRCHN';
             
             const { data: sessions, error } = await supabase
@@ -757,7 +750,7 @@
     }
 
     // ============================================
-    // 🎯 POPULATE TARGET OPTIONS WITH BLOCK & INTAKE YEAR
+    // 🎯 POPULATE TARGET OPTIONS
     // ============================================
     
     async function populateTargetOptions(sessionType) {
@@ -776,8 +769,8 @@
         console.log(`📋 Populating targets for session type: ${sessionType}`);
         
         if (sessionType === 'clinical') {
-            // ✅ Get student's block and intake year
-            const studentInfo = getCurrentStudentInfo();
+            // ✅ AWAIT the async function
+            const studentInfo = await getCurrentStudentInfo();
             const blockTerm = studentInfo?.block || 'Block 4';
             const intakeYear = studentInfo?.intake_year || '2024';
             
@@ -787,7 +780,6 @@
                 await loadClinicalLocations();
             }
             
-            // ✅ Filter by block and intake year
             options = clinicalLocations
                 .filter(loc => {
                     const locBlock = loc.block_term || 'Block 4';
@@ -804,9 +796,6 @@
                 }));
             
             console.log(`🏥 Found ${options.length} clinical locations for ${blockTerm}, ${intakeYear}`);
-            if (options.length > 0) {
-                console.log(`📏 Radius: Nakuru hospitals = 250m, Others = 200m`);
-            }
         } else if (sessionType === 'class' || sessionType === 'lab' || sessionType === 'tutorial') {
             if (approvedUnits.length === 0) await loadApprovedUnits();
             options = approvedUnits.map(unit => ({
@@ -861,7 +850,7 @@
         `;
         
         const supabase = getSupabase();
-        const studentId = getCurrentStudentId();
+        const studentId = await getCurrentStudentId(); // ✅ AWAIT
         
         if (!supabase || !studentId) {
             table.innerHTML = `
@@ -1007,7 +996,7 @@
         if (!filter) return;
         
         const supabase = getSupabase();
-        const studentId = getCurrentStudentId();
+        const studentId = await getCurrentStudentId(); // ✅ AWAIT
         if (!supabase || !studentId) return;
         
         const table = document.getElementById('geo-attendance-history');
@@ -1281,7 +1270,7 @@
     
     async function exportAttendanceHistory() {
         const supabase = getSupabase();
-        const studentId = getCurrentStudentId();
+        const studentId = await getCurrentStudentId(); // ✅ AWAIT
         if (!supabase || !studentId) {
             showToast('Please log in to export', 'error');
             return;
@@ -1462,7 +1451,7 @@
     
     async function updateStats() {
         const supabase = getSupabase();
-        const studentId = getCurrentStudentId();
+        const studentId = await getCurrentStudentId(); // ✅ AWAIT
         if (!supabase || !studentId) return;
         
         try {
@@ -1623,13 +1612,8 @@
         }
     }
 
- // ============================================
+    // ============================================
     // ✅ DO CHECK-IN - STUDENT FRIENDLY
-    // ✅ Just checks in - no distance warnings to student
-    // ✅ System determines status internally
-    // ✅ Handles NULL values properly
-    // ✅ CORRECT: student_id = admission_number, NOT UUID!
-    // ✅ user_id = UUID (for RLS)
     // ============================================
     
     async function doCheckIn() {
@@ -1661,8 +1645,8 @@
         btn.style.opacity = '0.6';
         
         try {
-            // ✅ Get student info from the logged-in user
-            const studentInfo = getCurrentStudentInfo();
+            // ✅ AWAIT the async function
+            const studentInfo = await getCurrentStudentInfo();
             
             if (!studentInfo || !studentInfo.user_id) {
                 showToast('Please log in first', 'error');
@@ -1672,25 +1656,22 @@
                 return;
             }
             
-            // ✅ Get BOTH identifiers
-            const userId = studentInfo.user_id;                              // ✅ UUID (for RLS)
-            const admissionNumber = studentInfo.admission_number ||          // ✅ KRCHN/0052/MAR/2024
-                                   studentInfo.student_id || 
-                                   null;
+            const userId = studentInfo.user_id;
+            const admissionNumber = studentInfo.admission_number || studentInfo.student_id || null;
             const studentFullName = studentInfo.full_name || 'Student';
             const studentBlock = studentInfo.block || 'Not Assigned';
             const studentProgram = studentInfo.program || 'KRCHN';
             const studentIntakeYear = studentInfo.intake_year || '2024';
             
             console.log('👤 Student info:', {
-                user_id: userId,                    // ✅ UUID
-                admission_number: admissionNumber,  // ✅ KRCHN/0052/MAR/2024
+                user_id: userId,
+                admission_number: admissionNumber,
                 full_name: studentFullName,
                 block: studentBlock,
                 intake_year: studentIntakeYear
             });
             
-            // ✅ Update the student info badge (with registration number)
+            // ✅ Update the student info badge
             updateStudentInfoBadge(studentBlock, studentIntakeYear, admissionNumber || 'N/A');
             
             const supabase = getSupabase();
@@ -1721,7 +1702,6 @@
             
             let radius = selectedTarget.radius || 200;
             
-            // ✅ Clinical radius: Nakuru = 250m, Others = 200m
             if (selectedTarget.type === 'clinical') {
                 const lowerName = selectedTarget.name.toLowerCase();
                 if (lowerName.includes('nakuru county referral hospital')) {
@@ -1737,17 +1717,14 @@
             
             const accuracy = location.accuracy || 0;
             
-            // ✅ INTERNAL STATUS DETERMINATION (student doesn't see this)
             let status = 'Absent';
             let statusMessage = '';
             
-            // Check GPS accuracy first
             if (accuracy > ACCURACY_CONFIG.MAX_ACCEPTABLE_ACCURACY) {
                 status = 'Pending';
                 statusMessage = 'GPS accuracy needs review';
             }
             
-            // Check distance
             if (distance <= radius) {
                 if (status !== 'Pending') {
                     status = 'Present';
@@ -1763,19 +1740,16 @@
                 statusMessage = `Location needs verification`;
             }
             
-            // Check confidence
             if (location.confidence < 50) {
                 status = 'Pending';
                 statusMessage = 'GPS confidence needs review';
             }
             
-            // Check readings
             if (location.readingsCount < 3) {
                 status = 'Pending';
                 statusMessage = 'GPS readings need review';
             }
             
-            // ✅ CONFIRM MODAL - Shows simple check-in details (NO distance warnings)
             const details = {
                 'Student': studentFullName,
                 'Reg No': admissionNumber || 'N/A',
@@ -1806,26 +1780,20 @@
             const sessionType = sessionTypeSelect?.value || 'class';
             
             // ✅ Record with CORRECT identifiers
-            // ✅ user_id = UUID (for auth/RLS)
-            // ✅ student_id = admission_number (for display)
-            // ✅ registration_number = admission_number (for display)
             const record = {
-                // ✅ PRIMARY IDENTIFIER (UUID from auth - for RLS)
-                user_id: userId,                              // ✅ UUID (e.g., 28fa4da5-93a9-4098-ac2e-88ba142a77ee)
+                // ✅ user_id = UUID (for RLS)
+                user_id: userId,
                 
-                // ✅ STUDENT IDENTIFIER (admission_number for display)
-                student_id: admissionNumber,                  // ✅ KRCHN/0052/MAR/2024
+                // ✅ student_id = admission_number (for display)
+                student_id: admissionNumber,
                 
-                // ✅ REGISTRATION NUMBER (display)
-                registration_number: admissionNumber,         // ✅ KRCHN/0052/MAR/2024
+                // ✅ registration_number = admission_number (for display)
+                registration_number: admissionNumber,
                 
-                // ✅ STUDENT INFO
                 student_name: studentFullName,
                 block: studentBlock,
                 intake_year: studentIntakeYear,
                 program: studentProgram,
-                
-                // ✅ CHECK-IN INFO
                 check_in_time: new Date().toISOString(),
                 session_type: sessionType,
                 target_id: selectedTarget.id,
@@ -1834,38 +1802,26 @@
                 longitude: location.lon,
                 accuracy_m: location.accuracy,
                 distance_meters: distance,
-                
-                // ✅ VERIFICATION INFO (Internal - student doesn't see this)
                 is_verified: status === 'Present',
                 attendance_status: status,
-                
-                // ✅ TARGET INFO
                 target_latitude: selectedTarget.latitude,
                 target_longitude: selectedTarget.longitude,
                 target_radius: radius,
                 location_address: location.address || '',
-                
-                // ✅ ROLE
                 role: 'student',
-                
-                // ✅ GPS INFO
                 gps_confidence: location.confidence,
                 gps_readings: location.readingsCount,
                 gps_std_dev: location.stdDev,
                 verification_checks: JSON.stringify(location.verification?.checks || []),
-                
-                // ✅ LOCATION TYPE
                 location_type: selectedTarget.type,
                 clinical_radius: selectedTarget.type === 'clinical' ? radius : null,
-                
-                // ✅ CREATED AT
                 created_at: new Date().toISOString()
             };
             
             console.log('📝 Saving record:', {
-                user_id: record.user_id,                    // ✅ UUID
-                student_id: record.student_id,              // ✅ KRCHN/0052/MAR/2024
-                registration_number: record.registration_number, // ✅ KRCHN/0052/MAR/2024
+                user_id: record.user_id,
+                student_id: record.student_id,
+                registration_number: record.registration_number,
                 student_name: record.student_name,
                 status: record.attendance_status,
                 distance: record.distance_meters
@@ -1880,7 +1836,6 @@
                 throw error;
             }
             
-            // ✅ SUCCESS MODAL - Show check-in complete (NO distance warnings)
             let successMessage = 'Check-in recorded successfully!';
             if (status === 'Present') {
                 successMessage = '✅ Check-in verified! You are within the required range.';
@@ -1892,7 +1847,6 @@
             
             showToast('✅ Check-in recorded!', 'success', 3000);
             
-            // Show simple success modal
             showSimpleSuccessModal({
                 message: successMessage,
                 target: selectedTarget.name,
@@ -1912,6 +1866,7 @@
             btn.style.opacity = '1';
         }
     }
+
     // ============================================
     // 🆕 UPDATE STUDENT INFO BADGE
     // ============================================
@@ -1927,17 +1882,16 @@
     }
 
     // ============================================
-    // ✅ WAIT FOR PROFILE TO LOAD - DATABASE ONLY
+    // ✅ WAIT FOR PROFILE TO LOAD (like exams.js)
     // ============================================
     
     async function waitForProfile(maxAttempts = MAX_PROFILE_ATTEMPTS) {
         console.log('⏳ Waiting for student profile to load...');
         
         for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-            // ✅ Get profile from current session (NO localStorage)
-            const info = getCurrentStudentInfo();
+            // ✅ AWAIT the async function
+            const info = await getCurrentStudentInfo();
             
-            // Check if we have a valid profile with user_id
             if (info && info.user_id) {
                 console.log(`✅ Profile loaded after ${attempt} attempts:`, info.block, info.intake_year);
                 console.log(`📋 Admission Number:`, info.admission_number);
@@ -1955,7 +1909,7 @@
     }
 
     // ============================================
-    // 🚀 INIT
+    // 🚀 INIT (like exams.js)
     // ============================================
     
     async function init() {
@@ -1963,7 +1917,7 @@
         console.log('🏥 Clinical radius: Nakuru = 250m, Others = 200m');
         console.log('📚 Classroom radius: 50m for classes/labs');
         
-        // ✅ Wait for profile to load (NO localStorage)
+        // ✅ AWAIT the profile (like exams.js)
         const studentInfo = await waitForProfile(MAX_PROFILE_ATTEMPTS);
         
         if (!studentInfo || !studentInfo.user_id) {
@@ -1976,7 +1930,6 @@
             console.log('📋 Block:', studentInfo.block);
             console.log('📋 Intake Year:', studentInfo.intake_year);
             
-            // ✅ Update the student info badge (with registration number)
             updateStudentInfoBadge(studentInfo.block, studentInfo.intake_year, studentInfo.admission_number || studentInfo.student_id || 'N/A');
         }
         
@@ -1986,11 +1939,11 @@
             retries++;
         }
         
-        // ✅ Load clinical locations with the profile we waited for
         await loadClinicalLocations();
         await loadApprovedUnits();
         await loadActiveSessions();
         
+        // Setup event listeners
         const sessionType = document.getElementById('session-type');
         if (sessionType) {
             sessionType.addEventListener('change', function() {
@@ -2058,21 +2011,16 @@
         
         setInterval(updateStats, 30000);
         
-        // ✅ Listen for profile updates
+        // Listen for profile updates
         document.addEventListener('profileLoaded', function(event) {
             console.log('🔄 Profile updated, reloading clinical locations...');
             loadClinicalLocations();
-            const info = getCurrentStudentInfo();
-            updateStudentInfoBadge(info.block, info.intake_year, info.admission_number || info.student_id || 'N/A');
         });
         
-        // ✅ Also listen for appReady event
         document.addEventListener('appReady', function(event) {
             console.log('🔄 App ready, refreshing clinical locations...');
             setTimeout(() => {
                 loadClinicalLocations();
-                const info = getCurrentStudentInfo();
-                updateStudentInfoBadge(info.block, info.intake_year, info.admission_number || info.student_id || 'N/A');
             }, 500);
         });
         
@@ -2080,11 +2028,20 @@
         console.log('✅ Ultra-accurate attendance system ready!');
         console.log(`🏥 Clinical radius: Nakuru = 250m, Others = 200m`);
         console.log(`📚 Classroom radius: ${ACCURACY_CONFIG.CLASSROOM_RADIUS}m`);
-        showToast(`🎯 Ultra-accurate attendance ready! (Clinical: 200-250m, Class: ${ACCURACY_CONFIG.CLASSROOM_RADIUS}m)`, 'success', 3000);
+        showToast(`🎯 Ultra-accurate attendance ready!`, 'success', 3000);
+        
+        // Dispatch event like exams.js
+        const event = new CustomEvent('attendanceModuleReady', {
+            detail: { 
+                count: clinicalLocations.length,
+                timestamp: new Date().toISOString()
+            }
+        });
+        document.dispatchEvent(event);
     }
     
     // ============================================
-    // 🌐 EXPOSE GLOBALLY
+    // 🌐 EXPOSE GLOBALLY (like exams.js)
     // ============================================
     
     window.loadAttendanceHistory = loadHistory;
@@ -2101,13 +2058,12 @@
     window.waitForProfile = waitForProfile;
     
     // ============================================
-    // 🏁 START
+    // 🏁 START (like exams.js)
     // ============================================
     
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
-        // Wait a bit for other modules to initialize
         setTimeout(init, 500);
     }
     
@@ -2122,3 +2078,35 @@
     console.log('❌ NO localStorage - Reading from database only!');
     
 })();
+
+// ============================================
+// 🔄 FORCE DISPATCH ATTENDANCE READY EVENT
+// ============================================
+(function ensureAttendanceReadyEvent() {
+    console.log('📣 Ensuring attendanceModuleReady event...');
+    
+    const dispatchEvent = () => {
+        if (window.attendanceSystemReady) {
+            const event = new CustomEvent('attendanceModuleReady', {
+                detail: { 
+                    ready: true,
+                    timestamp: new Date().toISOString()
+                }
+            });
+            document.dispatchEvent(event);
+            console.log('✅ attendanceModuleReady event dispatched');
+            return true;
+        }
+        return false;
+    };
+    
+    if (!dispatchEvent()) {
+        setTimeout(() => {
+            if (!dispatchEvent()) {
+                setTimeout(dispatchEvent, 2000);
+            }
+        }, 500);
+    }
+})();
+
+console.log('✅ attendance.js fully loaded and ready');
