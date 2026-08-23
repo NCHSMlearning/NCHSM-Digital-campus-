@@ -10,6 +10,7 @@
 // ✅ Working navigation and filters
 // ✅ FULLY SELF-CONTAINED
 // ✅ FILTERS BY BLOCK & INTAKE YEAR
+// ✅ WAITS FOR PROFILE TO LOAD
 // ============================================
 
 (function() {
@@ -56,6 +57,8 @@
     let isInitialized = false;
     let gpsWatchId = null;
     let isGettingLocation = false;
+    let profileLoadAttempts = 0;
+    const MAX_PROFILE_ATTEMPTS = 20;
     
     // ============================================
     // ✅ FIXED: GET CURRENT STUDENT INFO WITH BLOCK & INTAKE YEAR
@@ -64,30 +67,60 @@
     function getCurrentStudentInfo() {
         // Try multiple sources to get student info
         let profile = null;
+        let source = 'none';
         
         // 1. Try from localStorage
         try {
             const stored = localStorage.getItem('userProfile');
             if (stored) {
                 profile = JSON.parse(stored);
+                source = 'localStorage';
+                console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
             }
         } catch(e) {}
         
-        // 2. Try from window.db
+        // 2. Try from window.db.currentUserProfile
         if (!profile && window.db?.currentUserProfile) {
             profile = window.db.currentUserProfile;
+            source = 'window.db.currentUserProfile';
+            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
         }
         
-        // 3. Try from window
+        // 3. Try from window.currentUserProfile
         if (!profile && window.currentUserProfile) {
             profile = window.currentUserProfile;
+            source = 'window.currentUserProfile';
+            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
         }
         
-        // 4. Try from URL params (for testing)
+        // 4. Try from window.db.currentUser
+        if (!profile && window.db?.currentUser) {
+            profile = window.db.currentUser;
+            source = 'window.db.currentUser';
+            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+        }
+        
+        // 5. Try from window.dashboardModule
+        if (!profile && window.dashboardModule?.userData) {
+            profile = window.dashboardModule.userData;
+            source = 'window.dashboardModule.userData';
+            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+        }
+        
+        // 6. Try from window.userData
+        if (!profile && window.userData) {
+            profile = window.userData;
+            source = 'window.userData';
+            console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+        }
+        
+        // 7. Try from URL params (for testing)
         if (!profile) {
             const urlParams = new URLSearchParams(window.location.search);
             const testUserId = urlParams.get('student_id');
             if (testUserId) {
+                source = 'URL params';
+                console.log(`📋 Found profile in ${source}`);
                 return {
                     user_id: testUserId,
                     student_id: 'TEST/STUDENT/2024',
@@ -99,14 +132,46 @@
             }
         }
         
+        // 8. Check if we have a user ID from anywhere
+        if (!profile) {
+            const userId = window.userId || window.currentUserId || null;
+            if (userId) {
+                source = 'userId fallback';
+                console.log(`📋 Found userId in ${source}:`, userId);
+                return {
+                    user_id: userId,
+                    student_id: null,
+                    full_name: 'Student',
+                    program: 'KRCHN',
+                    block: 'Block 4',
+                    intake_year: '2024'
+                };
+            }
+        }
+        
         if (profile) {
+            // Extract block and intake year from various possible field names
+            const block = profile.block || 
+                         profile.current_block || 
+                         profile.blockTerm || 
+                         profile.userBlock || 
+                         'Block 4';
+            
+            const intakeYear = profile.intake_year || 
+                              profile.intakeYear || 
+                              profile.intake || 
+                              profile.academic_year || 
+                              '2024';
+            
+            console.log(`✅ Profile loaded from ${source}: Block=${block}, Intake=${intakeYear}`);
+            
             return {
                 user_id: profile.user_id || profile.id || null,
                 student_id: profile.student_id || profile.registration_number || null,
                 full_name: profile.full_name || profile.name || 'Student',
                 program: profile.program || 'KRCHN',
-                block: profile.block || profile.current_block || 'Block 4',
-                intake_year: profile.intake_year || '2024'
+                block: block,
+                intake_year: intakeYear
             };
         }
         
@@ -1731,6 +1796,58 @@
     }
 
     // ============================================
+    // ✅ WAIT FOR PROFILE TO LOAD
+    // ============================================
+    
+    async function waitForProfile(maxAttempts = MAX_PROFILE_ATTEMPTS) {
+        console.log('⏳ Waiting for student profile to load...');
+        
+        for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+            const info = getCurrentStudentInfo();
+            
+            // Check if we have a valid profile with user_id
+            if (info && info.user_id) {
+                console.log(`✅ Profile loaded after ${attempt} attempts:`, info.block, info.intake_year);
+                return info;
+            }
+            
+            // Also check if window.db.currentUser is available
+            if (window.db?.currentUser?.id) {
+                console.log(`✅ Found user in window.db.currentUser after ${attempt} attempts`);
+                return {
+                    user_id: window.db.currentUser.id,
+                    student_id: window.db.currentUser.student_id || null,
+                    full_name: window.db.currentUser.full_name || 'Student',
+                    program: window.db.currentUser.program || 'KRCHN',
+                    block: window.db.currentUser.block || window.db.currentUser.current_block || 'Block 4',
+                    intake_year: window.db.currentUser.intake_year || '2024'
+                };
+            }
+            
+            // Check if window.currentUserProfile is available
+            if (window.currentUserProfile?.id) {
+                console.log(`✅ Found user in window.currentUserProfile after ${attempt} attempts`);
+                return {
+                    user_id: window.currentUserProfile.id,
+                    student_id: window.currentUserProfile.student_id || null,
+                    full_name: window.currentUserProfile.full_name || 'Student',
+                    program: window.currentUserProfile.program || 'KRCHN',
+                    block: window.currentUserProfile.block || window.currentUserProfile.current_block || 'Block 4',
+                    intake_year: window.currentUserProfile.intake_year || '2024'
+                };
+            }
+            
+            if (attempt < maxAttempts) {
+                await new Promise(r => setTimeout(r, 300));
+                console.log(`⏳ Attempt ${attempt}/${maxAttempts} - waiting for profile...`);
+            }
+        }
+        
+        console.warn('⚠️ Profile not loaded after maximum attempts');
+        return null;
+    }
+
+    // ============================================
     // 🚀 INIT
     // ============================================
     
@@ -1739,8 +1856,9 @@
         console.log('🏥 Clinical radius: Nakuru = 250m, Others = 200m');
         console.log('📚 Classroom radius: 50m for classes/labs');
         
-        // Check if student is logged in
-        const studentInfo = getCurrentStudentInfo();
+        // ✅ Wait for profile to load
+        const studentInfo = await waitForProfile(MAX_PROFILE_ATTEMPTS);
+        
         if (!studentInfo || !studentInfo.user_id) {
             console.warn('⚠️ No student logged in. Please log in first.');
             showToast('Please log in to check in', 'warning', 5000);
@@ -1761,8 +1879,9 @@
             retries++;
         }
         
-        await loadApprovedUnits();
+        // ✅ Load clinical locations with the profile we waited for
         await loadClinicalLocations();
+        await loadApprovedUnits();
         await loadActiveSessions();
         
         const sessionType = document.getElementById('session-type');
@@ -1832,6 +1951,24 @@
         
         setInterval(updateStats, 30000);
         
+        // ✅ Listen for profile updates
+        document.addEventListener('profileLoaded', function(event) {
+            console.log('🔄 Profile updated, reloading clinical locations...');
+            loadClinicalLocations();
+            const info = getCurrentStudentInfo();
+            updateStudentInfoBadge(info.block, info.intake_year);
+        });
+        
+        // ✅ Also listen for appReady event
+        document.addEventListener('appReady', function(event) {
+            console.log('🔄 App ready, refreshing clinical locations...');
+            setTimeout(() => {
+                loadClinicalLocations();
+                const info = getCurrentStudentInfo();
+                updateStudentInfoBadge(info.block, info.intake_year);
+            }, 500);
+        });
+        
         isInitialized = true;
         console.log('✅ Ultra-accurate attendance system ready!');
         console.log(`🏥 Clinical radius: Nakuru = 250m, Others = 200m`);
@@ -1854,6 +1991,7 @@
     window.getCurrentStudentBlock = getCurrentStudentBlock;
     window.getCurrentStudentIntakeYear = getCurrentStudentIntakeYear;
     window.updateStudentInfoBadge = updateStudentInfoBadge;
+    window.waitForProfile = waitForProfile;
     
     // ============================================
     // 🏁 START
@@ -1862,7 +2000,8 @@
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', init);
     } else {
-        init();
+        // Wait a bit for other modules to initialize
+        setTimeout(init, 500);
     }
     
     console.log('✅ ULTRA-ACCURATE attendance system module loaded!');
@@ -1872,5 +2011,6 @@
     console.log('📚 Classroom radius: 50m (classes/labs)');
     console.log('📋 Filtering by Block & Intake Year enabled!');
     console.log('👤 Student ID capture: FIXED!');
+    console.log('⏳ Waiting for profile to load before initializing...');
     
 })();
