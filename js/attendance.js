@@ -63,25 +63,58 @@
     let profileLoadAttempts = 0;
     const MAX_PROFILE_ATTEMPTS = 20;
     
-    // ============================================
+   // ============================================
     // ✅ FIXED: GET CURRENT STUDENT INFO - DATABASE ONLY
-    // ✅ Reads ONLY from current session - NO localStorage!
+    // ✅ ALWAYS reads from database via auth - NO localStorage!
     // ✅ Captures BOTH user_id (UUID) AND admission_number
+    // ✅ Async function that waits for database response
     // ============================================
 
-    function getCurrentStudentInfo() {
+    async function getCurrentStudentInfo() {
         let profile = null;
         let source = 'none';
+        const supabase = getSupabase();
         
-        // ✅ 1. Try from window.db.currentUser (most reliable - from database)
-        if (window.db?.currentUser) {
+        // ✅ 1. FIRST: Try to get authenticated user from Supabase Auth
+        if (supabase) {
+            try {
+                const { data: { user }, error: authError } = await supabase.auth.getUser();
+                
+                if (authError) {
+                    console.warn('⚠️ Auth error:', authError);
+                } else if (user) {
+                    console.log(`✅ Found authenticated user:`, user.id);
+                    
+                    // ✅ Fetch the full profile from database
+                    const { data: profileData, error: profileError } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .single();
+                    
+                    if (profileError) {
+                        console.warn('⚠️ Profile fetch error:', profileError);
+                    } else if (profileData) {
+                        profile = profileData;
+                        source = 'supabase.auth + database';
+                        console.log(`📋 Found profile in ${source}:`, profileData);
+                        console.log(`📋 Admission Number:`, profileData.admission_number);
+                    }
+                }
+            } catch(e) {
+                console.warn('⚠️ Auth not available:', e);
+            }
+        }
+        
+        // ✅ 2. SECOND: Try from window.db.currentUser (fallback)
+        if (!profile && window.db?.currentUser) {
             profile = window.db.currentUser;
             source = 'window.db.currentUser';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
             console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 2. Try from window.currentUser
+        // ✅ 3. THIRD: Try from window.currentUser
         if (!profile && window.currentUser) {
             profile = window.currentUser;
             source = 'window.currentUser';
@@ -89,7 +122,7 @@
             console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 3. Try from window.db.currentUserProfile
+        // ✅ 4. FOURTH: Try from window.db.currentUserProfile
         if (!profile && window.db?.currentUserProfile) {
             profile = window.db.currentUserProfile;
             source = 'window.db.currentUserProfile';
@@ -97,7 +130,7 @@
             console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 4. Try from window.currentUserProfile
+        // ✅ 5. FIFTH: Try from window.currentUserProfile
         if (!profile && window.currentUserProfile) {
             profile = window.currentUserProfile;
             source = 'window.currentUserProfile';
@@ -105,7 +138,7 @@
             console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 5. Try from window.dashboardModule
+        // ✅ 6. SIXTH: Try from window.dashboardModule
         if (!profile && window.dashboardModule?.userData) {
             profile = window.dashboardModule.userData;
             source = 'window.dashboardModule.userData';
@@ -113,7 +146,7 @@
             console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 6. Try from window.userData
+        // ✅ 7. SEVENTH: Try from window.userData
         if (!profile && window.userData) {
             profile = window.userData;
             source = 'window.userData';
@@ -121,42 +154,54 @@
             console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 7. URL params (for testing)
+        // ✅ 8. LAST RESORT: Check if we have a user ID from anywhere
         if (!profile) {
-            const urlParams = new URLSearchParams(window.location.search);
-            const testUserId = urlParams.get('student_id');
-            if (testUserId) {
-                source = 'URL params';
-                console.log(`📋 Found profile in ${source}`);
-                return {
-                    user_id: testUserId,
-                    student_id: urlParams.get('admission_number') || 'TEST/STUDENT/2024',
-                    admission_number: urlParams.get('admission_number') || 'TEST/STUDENT/2024',
-                    registration_number: urlParams.get('admission_number') || 'TEST/STUDENT/2024',
-                    full_name: 'Test Student',
-                    program: 'KRCHN',
-                    block: urlParams.get('block') || 'Block 4',
-                    intake_year: urlParams.get('intake_year') || '2024'
-                };
-            }
-        }
-        
-        // ✅ 8. Check if we have a user ID from anywhere
-        if (!profile) {
-            const userId = window.userId || window.currentUserId || null;
+            const userId = window.userId || window.currentUserId || 
+                          window.db?.currentUser?.id || 
+                          window.currentUser?.id || 
+                          null;
             if (userId) {
                 source = 'userId fallback';
                 console.log(`📋 Found userId in ${source}:`, userId);
-                return {
-                    user_id: userId,
-                    student_id: null,
-                    admission_number: null,
-                    registration_number: null,
-                    full_name: 'Student',
-                    program: 'KRCHN',
-                    block: 'Block 4',
-                    intake_year: '2024'
-                };
+                
+                // ✅ Try one more time to fetch from database with this userId
+                if (supabase) {
+                    try {
+                        const { data: profileData, error: profileError } = await supabase
+                            .from('consolidated_user_profiles_table')
+                            .select('*')
+                            .eq('user_id', userId)
+                            .single();
+                        
+                        if (profileData && !profileError) {
+                            profile = profileData;
+                            source = 'database by userId';
+                            console.log(`📋 Found profile in ${source}:`, profileData);
+                            console.log(`📋 Admission Number:`, profileData.admission_number);
+                        }
+                    } catch(e) {
+                        console.warn('⚠️ Could not fetch by userId:', e);
+                    }
+                }
+            }
+        }
+        
+        // ✅ 9. ABSOLUTE LAST RESORT: Try localStorage (only if everything else failed)
+        if (!profile) {
+            try {
+                const stored = localStorage.getItem('userProfile');
+                if (stored) {
+                    const localProfile = JSON.parse(stored);
+                    // Only use if it has a user_id
+                    if (localProfile.user_id) {
+                        profile = localProfile;
+                        source = 'localStorage (ABSOLUTE LAST RESORT)';
+                        console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
+                        console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
+                    }
+                }
+            } catch(e) {
+                console.warn('⚠️ Could not read localStorage:', e);
             }
         }
         
@@ -221,38 +266,33 @@
 
     // ✅ Get student ID - use user_id from profile
     function getCurrentStudentId() {
-        const info = getCurrentStudentInfo();
-        return info?.user_id || null;
+        // ✅ This now needs to be async because getCurrentStudentInfo is async
+        return getCurrentStudentInfo().then(info => info?.user_id || null);
     }
 
     // ✅ Get student registration number (admission_number)
     function getCurrentStudentRegNumber() {
-        const info = getCurrentStudentInfo();
-        return info?.admission_number || info?.student_id || null;
+        return getCurrentStudentInfo().then(info => info?.admission_number || info?.student_id || null);
     }
 
     // ✅ Get student name
     function getCurrentStudentName() {
-        const info = getCurrentStudentInfo();
-        return info?.full_name || 'Student';
+        return getCurrentStudentInfo().then(info => info?.full_name || 'Student');
     }
 
     // ✅ Get student program
     function getCurrentStudentProgram() {
-        const info = getCurrentStudentInfo();
-        return info?.program || 'KRCHN';
+        return getCurrentStudentInfo().then(info => info?.program || 'KRCHN');
     }
 
     // ✅ Get student block
     function getCurrentStudentBlock() {
-        const info = getCurrentStudentInfo();
-        return info?.block || 'Block 4';
+        return getCurrentStudentInfo().then(info => info?.block || 'Block 4');
     }
 
     // ✅ Get student intake year
     function getCurrentStudentIntakeYear() {
-        const info = getCurrentStudentInfo();
-        return info?.intake_year || '2024';
+        return getCurrentStudentInfo().then(info => info?.intake_year || '2024');
     }
     
     function getSupabase() {
