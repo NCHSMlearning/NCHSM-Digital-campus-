@@ -1,12 +1,33 @@
 /**
- * FINANCE MODULE - AUTHENTICATION (FIXED - NO INFINITE LOOP)
+ * FINANCE MODULE - AUTHENTICATION (FIXED - CONNECTS TO SUPABASE)
  */
+
+// ===== SUPABASE CONFIGURATION =====
+const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+
+// Initialize Supabase client
+let sbClient = null;
+
+function initSupabaseAuth() {
+    if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sb = sbClient;
+        console.log('✅ Supabase Auth client initialized');
+        return true;
+    }
+    console.warn('⚠️ Supabase not loaded');
+    return false;
+}
 
 // ===== CHECK AUTHENTICATION ON PAGE LOAD =====
 document.addEventListener('DOMContentLoaded', function() {
+    // Initialize Supabase
+    initSupabaseAuth();
+    
     // Get current page name
     const currentPage = window.location.pathname.split('/').pop();
-    const isLoginPage = currentPage === 'financelogin.html' || currentPage === '';
+    const isLoginPage = currentPage === 'financelogin.html' || currentPage === '' || currentPage === 'finance-login.html';
     const isFinancePage = currentPage === 'finance.html';
     
     console.log('📍 Current page:', currentPage);
@@ -42,41 +63,59 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
     
-    // If on login page and not authenticated, show login form
+    // If on login page and not authenticated, setup login form
     if (isLoginPage && !isAuth) {
         console.log('✅ Showing login form');
-        // Setup login form
         setupLoginForm();
     }
 });
 
 // ===== SETUP LOGIN FORM =====
 function setupLoginForm() {
-    const loginForm = document.getElementById('loginForm');
-    if (!loginForm) {
-        console.warn('⚠️ Login form not found');
+    const loginBtn = document.getElementById('loginBtn');
+    if (!loginBtn) {
+        console.warn('⚠️ Login button not found');
         return;
     }
     
     // Remove existing listeners to prevent duplicates
-    const newForm = loginForm.cloneNode(true);
-    loginForm.parentNode.replaceChild(newForm, loginForm);
+    const newBtn = loginBtn.cloneNode(true);
+    loginBtn.parentNode.replaceChild(newBtn, loginBtn);
     
-    newForm.addEventListener('submit', handleLogin);
+    newBtn.addEventListener('click', handleLogin);
+    
+    // Also handle Enter key
+    document.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            const email = document.getElementById('email');
+            const password = document.getElementById('password');
+            if (email && password && document.activeElement === email || document.activeElement === password) {
+                handleLogin(e);
+            }
+        }
+    });
+    
     console.log('✅ Login form setup complete');
 }
 
 // ===== HANDLE LOGIN =====
 async function handleLogin(e) {
-    e.preventDefault();
+    if (e) e.preventDefault();
     console.log('🔐 Login attempt');
     
-    const email = document.getElementById('loginEmail').value.trim();
-    const password = document.getElementById('loginPassword').value;
-    const rememberMe = document.getElementById('rememberMe').checked;
+    const emailInput = document.getElementById('email');
+    const passwordInput = document.getElementById('password');
     const loginBtn = document.getElementById('loginBtn');
-    const errorDiv = document.getElementById('loginError');
+    const errorDiv = document.getElementById('errorMessage');
     const errorText = document.getElementById('errorText');
+    
+    if (!emailInput || !passwordInput) {
+        console.error('Login form elements not found');
+        return;
+    }
+    
+    const email = emailInput.value.trim();
+    const password = passwordInput.value;
     
     // Reset error
     if (errorDiv) errorDiv.classList.remove('show');
@@ -94,39 +133,85 @@ async function handleLogin(e) {
     }
     
     try {
-        // Simulate API call
-        const response = await simulateLogin(email, password);
+        // Authenticate with Supabase
+        const { data: authData, error: authError } = await sbClient.auth.signInWithPassword({
+            email: email,
+            password: password
+        });
         
-        if (response.success) {
-            // Store user data
-            const userData = {
-                ...response.user,
-                token: response.token,
-                rememberMe: rememberMe,
-                loginTime: new Date().toISOString()
-            };
-            
-            // Store in appropriate storage
-            if (rememberMe) {
-                localStorage.setItem('finance_user', JSON.stringify(userData));
-            } else {
-                sessionStorage.setItem('finance_user', JSON.stringify(userData));
-            }
-            
-            showToast('Login successful! Redirecting...', 'success');
-            
-            // Redirect to dashboard
-            setTimeout(() => {
-                window.location.href = 'finance.html';
-            }, 500);
-            
-        } else {
-            showLoginError(response.message || 'Invalid credentials. Please try again.');
+        if (authError) {
+            console.error('❌ Auth error:', authError);
+            throw new Error('Invalid email or password');
         }
         
+        console.log('✅ Auth successful');
+        
+        // Get user profile from consolidated_user_profiles_table
+        const { data: profile, error: profileError } = await sbClient
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('email', email)
+            .single();
+        
+        if (profileError || !profile) {
+            console.error('❌ Profile error:', profileError);
+            await sbClient.auth.signOut();
+            throw new Error('Account not found. Please contact administrator.');
+        }
+        
+        console.log('📋 Profile found:', profile.full_name);
+        console.log('🔑 Role:', profile.role);
+        
+        // ✅ Check for finance roles
+        const userRole = (profile.role || '').toLowerCase();
+        const financeRoles = ['superadmin', 'finance_officer'];
+        
+        if (!financeRoles.includes(userRole)) {
+            console.error('❌ Invalid role:', userRole);
+            await sbClient.auth.signOut();
+            throw new Error('Access denied. You do not have finance privileges.');
+        }
+        
+        console.log('✅ Finance access granted!');
+        
+        // Store user data
+        const userData = {
+            id: profile.id,
+            email: profile.email,
+            name: profile.full_name || profile.name || 'Finance Officer',
+            role: userRole,
+            student_id: profile.student_id || null,
+            program: profile.program || null,
+            phone: profile.phone || null,
+            token: authData.session?.access_token || null,
+            loginTime: new Date().toISOString()
+        };
+        
+        // Store in localStorage
+        localStorage.setItem('finance_user', JSON.stringify(userData));
+        
+        showToast(`Welcome ${userData.name}! Redirecting...`, 'success');
+        
+        // Redirect to dashboard
+        setTimeout(() => {
+            window.location.href = 'finance.html';
+        }, 800);
+        
     } catch (error) {
-        console.error('Login error:', error);
-        showLoginError('Network error. Please check your connection.');
+        console.error('❌ Login error:', error);
+        showLoginError(error.message || 'Login failed. Please try again.');
+        
+        // Shake animation
+        const container = document.querySelector('.login-container');
+        if (container) {
+            container.classList.remove('shake');
+            void container.offsetWidth;
+            container.classList.add('shake');
+        }
+        
+        if (passwordInput) passwordInput.value = '';
+        if (passwordInput) passwordInput.focus();
+        
     } finally {
         if (loginBtn) {
             loginBtn.classList.remove('loading');
@@ -135,69 +220,9 @@ async function handleLogin(e) {
     }
 }
 
-// ===== SIMULATE LOGIN =====
-async function simulateLogin(email, password) {
-    return new Promise((resolve) => {
-        setTimeout(() => {
-            // Demo credentials
-            const validUsers = [
-                { 
-                    email: 'admin@nchsm.ac.ke', 
-                    password: 'admin123', 
-                    role: 'superadmin', 
-                    name: 'Super Admin',
-                    studentId: 'SA001'
-                },
-                { 
-                    email: 'finance@nchsm.ac.ke', 
-                    password: 'finance123', 
-                    role: 'finance_officer', 
-                    name: 'Finance Officer',
-                    studentId: 'FO001'
-                },
-                { 
-                    email: 'student@nchsm.ac.ke', 
-                    password: 'student123', 
-                    role: 'student', 
-                    name: 'John Student',
-                    studentId: 'STU001',
-                    program: 'KRCHN',
-                    intake: 'March 2026'
-                }
-            ];
-            
-            const user = validUsers.find(u => 
-                u.email.toLowerCase() === email.toLowerCase() && 
-                u.password === password
-            );
-            
-            if (user) {
-                resolve({
-                    success: true,
-                    user: {
-                        id: 'usr_' + Date.now(),
-                        email: user.email,
-                        name: user.name,
-                        role: user.role,
-                        studentId: user.studentId,
-                        program: user.program || 'KRCHN',
-                        intake: user.intake || 'March 2026'
-                    },
-                    token: 'token_' + Date.now() + '_' + Math.random().toString(36).substring(7)
-                });
-            } else {
-                resolve({
-                    success: false,
-                    message: 'Invalid email or password. Try admin@nchsm.ac.ke / admin123'
-                });
-            }
-        }, 800);
-    });
-}
-
 // ===== SHOW LOGIN ERROR =====
 function showLoginError(message) {
-    const errorDiv = document.getElementById('loginError');
+    const errorDiv = document.getElementById('errorMessage');
     const errorText = document.getElementById('errorText');
     if (errorDiv && errorText) {
         errorText.textContent = message;
@@ -210,12 +235,12 @@ function showLoginError(message) {
 // ===== GET CURRENT FINANCE USER =====
 function getCurrentFinanceUser() {
     try {
-        // Check sessionStorage first
-        let user = JSON.parse(sessionStorage.getItem('finance_user') || 'null');
+        // Check localStorage first
+        let user = JSON.parse(localStorage.getItem('finance_user') || 'null');
         if (user) return user;
         
-        // Check localStorage
-        user = JSON.parse(localStorage.getItem('finance_user') || 'null');
+        // Check sessionStorage
+        user = JSON.parse(sessionStorage.getItem('finance_user') || 'null');
         if (user) return user;
         
         return null;
@@ -257,30 +282,14 @@ function loadFinanceUser() {
     console.log('👤 Loading user:', user.name);
     
     // Update UI elements
-    const nameDisplay = document.getElementById('userNameDisplay');
-    const roleDisplay = document.getElementById('userRoleDisplay');
     const sidebarRole = document.getElementById('sidebarUserRole');
-    const connectionStatus = document.getElementById('connectionStatus');
-    
-    if (nameDisplay) nameDisplay.textContent = user.name || 'User';
-    
-    if (roleDisplay) {
-        const roleMap = {
-            'superadmin': 'Super Admin',
-            'admin': 'Administrator',
-            'finance_officer': 'Finance Officer',
-            'student': 'Student'
-        };
-        roleDisplay.textContent = roleMap[user.role] || user.role || 'User';
-    }
     
     if (sidebarRole) {
-        sidebarRole.textContent = roleDisplay ? roleDisplay.textContent : 'User';
-    }
-    
-    if (connectionStatus) {
-        connectionStatus.textContent = 'Online';
-        connectionStatus.style.color = '#22c55e';
+        const roleMap = {
+            'superadmin': 'Super Admin',
+            'finance_officer': 'Finance Officer'
+        };
+        sidebarRole.textContent = roleMap[user.role] || user.role || 'User';
     }
     
     updateCurrentDate();
@@ -298,28 +307,35 @@ function updateCurrentDate() {
 
 // ===== TOGGLE PASSWORD =====
 function togglePassword() {
-    const passwordInput = document.getElementById('loginPassword');
-    const toggleIcon = document.getElementById('toggleIcon');
+    const passwordInput = document.getElementById('password');
+    const toggleBtn = document.getElementById('togglePasswordBtn');
     
     if (!passwordInput) return;
     
     if (passwordInput.type === 'password') {
         passwordInput.type = 'text';
-        if (toggleIcon) toggleIcon.className = 'fas fa-eye-slash';
+        if (toggleBtn) toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i>';
     } else {
         passwordInput.type = 'password';
-        if (toggleIcon) toggleIcon.className = 'fas fa-eye';
+        if (toggleBtn) toggleBtn.innerHTML = '<i class="fas fa-eye"></i>';
     }
 }
 
 // ===== LOGOUT =====
 function logoutFinance() {
-    localStorage.removeItem('finance_user');
-    sessionStorage.removeItem('finance_user');
-    showToast('Logged out successfully', 'info');
-    setTimeout(() => {
-        window.location.href = 'financelogin.html';
-    }, 500);
+    if (confirm('Are you sure you want to logout?')) {
+        // Sign out from Supabase
+        if (sbClient) {
+            sbClient.auth.signOut();
+        }
+        
+        localStorage.removeItem('finance_user');
+        sessionStorage.removeItem('finance_user');
+        showToast('Logged out successfully', 'info');
+        setTimeout(() => {
+            window.location.href = 'financelogin.html';
+        }, 500);
+    }
 }
 
 // ===== SHOW TOAST =====
@@ -331,19 +347,8 @@ function showToast(message, type = 'info') {
     }
     
     const toast = document.createElement('div');
-    toast.className = `finance-toast finance-toast-${type}`;
-    
-    const icons = {
-        success: 'fa-check-circle',
-        error: 'fa-exclamation-circle',
-        warning: 'fa-exclamation-triangle',
-        info: 'fa-info-circle'
-    };
-    
-    toast.innerHTML = `
-        <i class="fas ${icons[type] || icons.info}"></i>
-        <span>${message}</span>
-    `;
+    toast.className = `toast toast-${type}`;
+    toast.textContent = message;
     
     container.appendChild(toast);
     
@@ -367,33 +372,13 @@ function resetSessionTimeout() {
     }, 30 * 60 * 1000);
 }
 
-// ===== MODAL HELPERS =====
-function showForgotPassword() {
-    const modal = document.getElementById('forgotModal');
-    if (modal) modal.classList.add('active');
-}
-
-function closeForgotModal() {
-    const modal = document.getElementById('forgotModal');
-    if (modal) modal.classList.remove('active');
-}
-
-function sendResetLink() {
-    const email = document.getElementById('forgotEmail');
-    if (!email || !email.value.trim()) {
-        showToast('Please enter your email address.', 'warning');
-        return;
-    }
-    showToast('Password reset link sent to your email.', 'success');
-    closeForgotModal();
-}
-
+// ===== HELPER FUNCTIONS =====
 function showHelp() {
-    showToast('Contact support at support@nchsm.ac.ke or call +254 700 000 000', 'info');
+    showToast('Contact support at support@nchsm.ac.ke', 'info');
 }
 
 function goToMainDashboard() {
-    window.location.href = '/index.html';
+    window.location.href = '/home';
 }
 
 function toggleSidebar() {
@@ -401,9 +386,14 @@ function toggleSidebar() {
     if (sidebar) sidebar.classList.toggle('open');
 }
 
+function closeModal(id) {
+    const modal = document.getElementById(id);
+    if (modal) modal.classList.remove('active');
+}
+
 // ===== CLOSE MODALS =====
 document.addEventListener('click', function(e) {
-    document.querySelectorAll('.finance-modal.active').forEach(modal => {
+    document.querySelectorAll('.modal-overlay.active').forEach(modal => {
         if (e.target === modal) {
             modal.classList.remove('active');
         }
@@ -412,11 +402,11 @@ document.addEventListener('click', function(e) {
 
 document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
-        document.querySelectorAll('.finance-modal.active').forEach(modal => {
+        document.querySelectorAll('.modal-overlay.active').forEach(modal => {
             modal.classList.remove('active');
         });
     }
 });
 
-console.log('✅ Finance Auth loaded successfully');
+console.log('✅ Finance Auth loaded successfully (Supabase)');
 console.log('🔑 Authenticated:', isFinanceAuthenticated());
