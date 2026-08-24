@@ -558,7 +558,7 @@ window.logout = function() {
     }
 
  // ============================================
-// 📊 LOAD STUDENTS WITH RESULTS - WITH DEBUGGING
+// 📊 LOAD STUDENTS WITH RESULTS - COMPLETE FIX
 // ============================================
 window.loadStudentsWithResults = async function() {
     const loadingDiv = document.getElementById('studentsLoading');
@@ -592,9 +592,7 @@ window.loadStudentsWithResults = async function() {
         
         console.log('📊 Grades found:', grades?.length || 0);
         
-        // ✅ If no grades, show empty state
         if (!grades || grades.length === 0) {
-            console.log('📊 No grades found in database');
             studentsResults = [];
             displayStudentsResults();
             if (loadingDiv) loadingDiv.style.display = 'none';
@@ -612,9 +610,7 @@ window.loadStudentsWithResults = async function() {
         const studentIds = [...new Set(grades.map(g => g.student_id).filter(id => id))];
         console.log('👥 Student IDs found:', studentIds.length);
         
-        // ✅ If no student IDs, show empty state
         if (studentIds.length === 0) {
-            console.log('⚠️ No student IDs found in grades');
             studentsResults = [];
             displayStudentsResults();
             if (loadingDiv) loadingDiv.style.display = 'none';
@@ -636,60 +632,123 @@ window.loadStudentsWithResults = async function() {
         const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
         console.log('👥 Profiles found:', Object.keys(profileMap).length);
         
-        // ✅ Build studentsResults
-        studentsResults = grades.map(g => {
+        // ✅ Build ALL results with pre-calculated values
+        const allResults = grades.map(g => {
             const exam = examsMap[g.exam_id] || null;
+            const profile = profileMap[g.student_id] || null;
+            
+            // Calculate derived status
+            const totalMarks = exam?.total_marks || 100;
+            const passMark = exam?.pass_mark || Math.round(totalMarks * 0.6);
+            const score = parseFloat(g.marks) || parseFloat(g.total_score) || 0;
+            const isPassed = score >= passMark;
+            
             return {
                 ...g,
-                student_profile: profileMap[g.student_id] || null,
+                student_profile: profile,
                 isReleased: releasedSet.has(g.id),
                 exam_info: exam ? {
                     ...exam,
                     status: exam.status || 'published'
-                } : null
+                } : null,
+                // ✅ Pre-calculated for filtering
+                _student_name: (profile?.full_name || '').toLowerCase().trim(),
+                _student_id: (profile?.student_id || '').toLowerCase().trim(),
+                _exam_name: (exam?.exam_name || '').toLowerCase().trim(),
+                _email: (profile?.email || '').toLowerCase().trim(),
+                _program: (profile?.program || '').toLowerCase().trim(),
+                _derived_status: isPassed ? 'PASS' : 'FAIL'
             };
         });
         
-        console.log('📊 Final studentsResults count:', studentsResults.length);
+        console.log('📊 All results built:', allResults.length);
         
-        // ✅ Apply filters
+        // ============================================================
+        // ✅ APPLY FILTERS - IMPROVED VERSION
+        // ============================================================
+        
+        // Get filter values
         const examFilter = document.getElementById('examFilter')?.value;
         const statusFilter = document.getElementById('statusFilter')?.value;
-        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+        const searchInput = document.getElementById('searchInput')?.value?.toLowerCase().trim() || '';
+        const programFilter = document.getElementById('programFilter')?.value;
         
-        let filtered = studentsResults;
+        let filtered = [...allResults];
+        console.log('🔍 Starting with:', filtered.length, 'results');
         
-        // Filter by exam
-        if (examFilter) {
-            filtered = filtered.filter(r => r.exam_id == examFilter);
-            console.log('🔍 Filtered by exam:', filtered.length);
-        }
-        
-        // Filter by status
-        if (statusFilter) {
-            filtered = filtered.filter(r => r.result_status === statusFilter);
-            console.log('🔍 Filtered by status:', filtered.length);
-        }
-        
-        // Filter by search
-        if (search) {
+        // ✅ FILTER 1: By Exam
+        if (examFilter && examFilter !== '') {
             filtered = filtered.filter(r => {
-                const name = (r.student_profile?.full_name || '').toLowerCase();
-                const studentId = (r.student_profile?.student_id || '').toLowerCase();
-                const examName = (r.exam_info?.exam_name || '').toLowerCase();
-                const email = (r.student_profile?.email || '').toLowerCase();
-                const program = (r.student_profile?.program || '').toLowerCase();
-                
-                return name.includes(search) || 
-                       studentId.includes(search) || 
-                       examName.includes(search) ||
-                       email.includes(search) ||
-                       program.includes(search);
+                return String(r.exam_id) === String(examFilter);
             });
-            console.log('🔍 Filtered by search:', filtered.length);
+            console.log('🔍 After exam filter:', filtered.length);
         }
         
+        // ✅ FILTER 2: By Program
+        if (programFilter && programFilter !== '') {
+            const programLower = programFilter.toLowerCase().trim();
+            filtered = filtered.filter(r => {
+                return r._program === programLower;
+            });
+            console.log('🔍 After program filter:', filtered.length);
+        }
+        
+        // ✅ FILTER 3: By Status (checks BOTH stored AND derived)
+        if (statusFilter && statusFilter !== '') {
+            filtered = filtered.filter(r => {
+                const storedStatus = (r.result_status || '').toUpperCase();
+                const derivedStatus = r._derived_status || '';
+                
+                // Special handling for PENDING
+                if (statusFilter === 'PENDING') {
+                    return storedStatus === 'PENDING' || 
+                           storedStatus === 'PENDING_REVIEW' || 
+                           storedStatus === '' ||
+                           storedStatus === 'SCHEDULED' ||
+                           (!storedStatus && derivedStatus !== 'PASS' && derivedStatus !== 'FAIL');
+                }
+                
+                return storedStatus === statusFilter || derivedStatus === statusFilter;
+            });
+            console.log('🔍 After status filter:', filtered.length);
+        }
+        
+        // ✅ FILTER 4: By Search - IMPROVED with multiple fields
+        if (searchInput && searchInput !== '') {
+            filtered = filtered.filter(r => {
+                // Get all searchable fields with fallbacks
+                const name = r._student_name || '';
+                const studentId = r._student_id || '';
+                const examName = r._exam_name || '';
+                const email = r._email || '';
+                const program = r._program || '';
+                
+                // Also search raw data
+                const rawStudentId = (r.student_id || '').toLowerCase().trim();
+                const rawExamId = String(r.exam_id || '').toLowerCase().trim();
+                
+                return name.includes(searchInput) || 
+                       studentId.includes(searchInput) || 
+                       examName.includes(searchInput) ||
+                       email.includes(searchInput) ||
+                       program.includes(searchInput) ||
+                       rawStudentId.includes(searchInput) ||
+                       rawExamId.includes(searchInput);
+            });
+            console.log('🔍 After search filter:', filtered.length);
+        }
+        
+        // ✅ Store filtered results
         studentsResults = filtered;
+        
+        // ✅ Update count display
+        const countEl = document.getElementById('filteredCount');
+        if (countEl) countEl.textContent = studentsResults.length;
+        
+        const totalEl = document.getElementById('totalCount');
+        if (totalEl) totalEl.textContent = allResults.length;
+        
+        console.log(`📊 FINAL: ${studentsResults.length} of ${allResults.length} results`);
         
         // ✅ Display results
         displayStudentsResults();
