@@ -447,18 +447,16 @@ const LecturerDashboard = {
                 return (s.absences || 0) > 5 || (s.cumulative_absences || 0) > 5;
             });
             this.metrics.atRiskStudents = atRisk.length || 0;
-            
-            // Exams due
+           // ✅ FIXED: Use 'target_program' instead of 'program'
             const { data: exams, error: examError } = await supabase
                 .from('cats_exams')
                 .select('*')
-                .eq('program', program)
+                .eq('target_program', program)  // ✅ Changed from 'program' to 'target_program'
                 .eq('status', 'Scheduled');
             
             if (!examError) {
                 this.metrics.examsDue = exams?.length || 0;
             }
-            
             // Pending attendance
             const today = new Date().toISOString().split('T')[0];
             const { data: todayLogs } = await supabase
