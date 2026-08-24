@@ -990,7 +990,6 @@ window.downloadTranscript = function() {
         window.showNotification(`✅ Transcript downloaded for ${studentName}`, 'success');
     }
 };
-
 // ============================================================
 // RENDER A SPECIFIC BLOCK - FINAL VERSION
 // A4 Ready - No outside text
@@ -1399,12 +1398,12 @@ function renderBlock(index) {
                 </table>
             </div>
             
-            <!-- SIGNATURES - Academic Registrar & Director ONLY -->
+            <!-- SIGNATURES - Principal & Director ONLY -->
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 30px; padding-top: 10px; border-top: 1px solid #e5e7eb;">
                 <div style="text-align: center;">
                     <div style="font-weight: 600; font-size: 12px; color: #0A3D62;">_________________________</div>
                     <div style="border-bottom: 2px solid #1e293b; width: 180px; margin: 6px auto 2px auto;"></div>
-                    <div style="font-size: 9px; color: #0A3D62; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">ACADEMIC REGISTRAR</div>
+                    <div style="font-size: 9px; color: #0A3D62; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">PRINCIPAL</div>
                     <div style="font-size: 8px; color: #94a3b8;">Date: _____________</div>
                 </div>
                 <div style="text-align: center;">
@@ -1418,7 +1417,7 @@ function renderBlock(index) {
             <!-- FOOTER -->
             <div style="text-align: center; margin-top: 12px; padding-top: 8px; border-top: 1px solid #e5e7eb; font-size: 8px; color: #94a3b8;">
                 <p style="font-style: italic;">This Transcript is issued without any alteration whatsoever, and is only valid with the College Seal.</p>
-                <p>Any queries relating to this document should be addressed to the Registrar (Academic Affairs).</p>
+                <p>Any queries relating to this document should be addressed to the Principal.</p>
                 <p style="font-size: 7px; color: #cbd5e1; margin-top: 4px;">Document ID: ${Date.now().toString(36).toUpperCase()} · Generated: ${now}</p>
             </div>
             
