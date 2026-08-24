@@ -557,8 +557,8 @@ window.logout = function() {
         }
     }
 
- // ============================================
-// 📊 LOAD STUDENTS WITH RESULTS - WITH DEBUGGING
+// ============================================
+// 📊 LOAD STUDENTS WITH RESULTS - COMPLETE FIXED VERSION
 // ============================================
 window.loadStudentsWithResults = async function() {
     const loadingDiv = document.getElementById('studentsLoading');
@@ -636,8 +636,8 @@ window.loadStudentsWithResults = async function() {
         const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
         console.log('👥 Profiles found:', Object.keys(profileMap).length);
         
-        // ✅ Build studentsResults
-        studentsResults = grades.map(g => {
+        // ✅ Build full studentsResults (ALL DATA - unfiltered)
+        const allResults = grades.map(g => {
             const exam = examsMap[g.exam_id] || null;
             return {
                 ...g,
@@ -646,50 +646,95 @@ window.loadStudentsWithResults = async function() {
                 exam_info: exam ? {
                     ...exam,
                     status: exam.status || 'published'
-                } : null
+                } : null,
+                // ✅ Pre-calculate derived values for faster filtering
+                _derived_status: exam ? (
+                    (g.marks || 0) >= (exam.pass_mark || Math.round((exam.total_marks || 100) * 0.6)) ? 'PASS' : 'FAIL'
+                ) : 'PENDING',
+                _student_name: (profileMap[g.student_id]?.full_name || '').toLowerCase(),
+                _student_id: (profileMap[g.student_id]?.student_id || '').toLowerCase(),
+                _exam_name: (exam?.exam_name || '').toLowerCase(),
+                _email: (profileMap[g.student_id]?.email || '').toLowerCase(),
+                _program: (profileMap[g.student_id]?.program || '').toLowerCase()
             };
         });
         
-        console.log('📊 Final studentsResults count:', studentsResults.length);
+        console.log('📊 All results built:', allResults.length);
         
-        // ✅ Apply filters
+        // ============================================================
+        // ✅ APPLY FILTERS TO ALL DATA
+        // ============================================================
+        
+        // Get filter values
         const examFilter = document.getElementById('examFilter')?.value;
+        const programFilter = document.getElementById('programFilter')?.value;
         const statusFilter = document.getElementById('statusFilter')?.value;
-        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+        const searchInput = document.getElementById('searchInput')?.value?.toLowerCase() || '';
         
-        let filtered = studentsResults;
+        // Start with all results
+        let filtered = [...allResults];
+        console.log('🔍 Starting filter with:', filtered.length, 'results');
         
-        // Filter by exam
+        // ✅ FILTER 1: By Exam
         if (examFilter) {
             filtered = filtered.filter(r => r.exam_id == examFilter);
-            console.log('🔍 Filtered by exam:', filtered.length);
+            console.log('🔍 After exam filter:', filtered.length);
         }
         
-        // Filter by status
+        // ✅ FILTER 2: By Program
+        if (programFilter) {
+            filtered = filtered.filter(r => 
+                (r.student_profile?.program || '').toLowerCase() === programFilter.toLowerCase()
+            );
+            console.log('🔍 After program filter:', filtered.length);
+        }
+        
+        // ✅ FILTER 3: By Status (handles both stored and derived status)
         if (statusFilter) {
-            filtered = filtered.filter(r => r.result_status === statusFilter);
-            console.log('🔍 Filtered by status:', filtered.length);
-        }
-        
-        // Filter by search
-        if (search) {
             filtered = filtered.filter(r => {
-                const name = (r.student_profile?.full_name || '').toLowerCase();
-                const studentId = (r.student_profile?.student_id || '').toLowerCase();
-                const examName = (r.exam_info?.exam_name || '').toLowerCase();
-                const email = (r.student_profile?.email || '').toLowerCase();
-                const program = (r.student_profile?.program || '').toLowerCase();
-                
-                return name.includes(search) || 
-                       studentId.includes(search) || 
-                       examName.includes(search) ||
-                       email.includes(search) ||
-                       program.includes(search);
+                // Use stored result_status if available, otherwise derived
+                const storedStatus = r.result_status || 'PENDING';
+                const derivedStatus = r._derived_status || 'PENDING';
+                const effectiveStatus = (storedStatus === 'PASS' || storedStatus === 'FAIL') ? storedStatus : derivedStatus;
+                return effectiveStatus === statusFilter;
             });
-            console.log('🔍 Filtered by search:', filtered.length);
+            console.log('🔍 After status filter:', filtered.length);
         }
         
+        // ✅ FILTER 4: By Search (name, ID, exam, email, program)
+        if (searchInput) {
+            filtered = filtered.filter(r => {
+                const name = r._student_name || '';
+                const studentId = r._student_id || '';
+                const examName = r._exam_name || '';
+                const email = r._email || '';
+                const program = r._program || '';
+                
+                return name.includes(searchInput) || 
+                       studentId.includes(searchInput) || 
+                       examName.includes(searchInput) ||
+                       email.includes(searchInput) ||
+                       program.includes(searchInput);
+            });
+            console.log('🔍 After search filter:', filtered.length);
+        }
+        
+        // ✅ Store filtered results
         studentsResults = filtered;
+        
+        // ✅ Update filter count display
+        const countEl = document.getElementById('filteredCount');
+        if (countEl) {
+            countEl.textContent = studentsResults.length;
+        }
+        
+        // ✅ Show total count
+        const totalEl = document.getElementById('totalCount');
+        if (totalEl) {
+            totalEl.textContent = allResults.length;
+        }
+        
+        console.log('📊 Final studentsResults count:', studentsResults.length);
         
         // ✅ Display results
         displayStudentsResults();
@@ -705,6 +750,91 @@ window.loadStudentsWithResults = async function() {
             loadingDiv.style.color = '#DC2626';
         }
     }
+};
+    // ============================================
+// 🎯 POPULATE EXAM FILTER DROPDOWN
+// ============================================
+async function populateExamFilterDropdown() {
+    try {
+        const select = document.getElementById('examFilter');
+        if (!select) return;
+        
+        const { data, error } = await sb.from('exams').select('id, exam_name').order('exam_name');
+        if (error) throw error;
+        
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">All Exams</option>';
+        
+        if (data) {
+            data.forEach(exam => {
+                const option = document.createElement('option');
+                option.value = exam.id;
+                option.textContent = exam.exam_name || 'Exam ' + exam.id;
+                select.appendChild(option);
+            });
+        }
+        
+        if (currentValue) select.value = currentValue;
+        console.log('📋 Exam filter populated with', data?.length || 0, 'exams');
+        
+    } catch (error) {
+        console.error('Error populating exam filter:', error);
+    }
+}
+
+// ============================================
+// 🎯 POPULATE PROGRAM FILTER DROPDOWN
+// ============================================
+async function populateProgramFilterDropdown() {
+    try {
+        const select = document.getElementById('programFilter');
+        if (!select) return;
+        
+        const { data, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('program')
+            .not('program', 'is', null)
+            .not('program', 'eq', '');
+        
+        if (error) throw error;
+        
+        const programs = [...new Set(data?.map(p => p.program).filter(Boolean))].sort();
+        
+        const currentValue = select.value;
+        select.innerHTML = '<option value="">All Programs</option>';
+        
+        programs.forEach(program => {
+            const option = document.createElement('option');
+            option.value = program;
+            option.textContent = program;
+            select.appendChild(option);
+        });
+        
+        if (currentValue) select.value = currentValue;
+        console.log('📋 Program filter populated with', programs.length, 'programs');
+        
+    } catch (error) {
+        console.error('Error populating program filter:', error);
+    }
+}
+
+// ============================================
+// 🔄 RESET FILTERS - UPDATED
+// ============================================
+window.resetFilters = function() { 
+    const examFilter = document.getElementById('examFilter');
+    const programFilter = document.getElementById('programFilter');
+    const statusFilter = document.getElementById('statusFilter');
+    const searchInput = document.getElementById('searchInput');
+    
+    if (examFilter) examFilter.value = '';
+    if (programFilter) programFilter.value = '';
+    if (statusFilter) statusFilter.value = '';
+    if (searchInput) searchInput.value = '';
+    
+    currentPage.students = 1;
+    loadStudentsWithResults(); 
+    showToast('Filters cleared', 'info');
 };
     // ============================================
 // 📊 DISPLAY STUDENTS RESULTS - EXACT MATCH FOR 10 COLUMNS
@@ -5392,7 +5522,10 @@ window.displayLiveFeed = function() {
         document.getElementById('liveFeedGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-   function renderFilters() {
+  // ============================================
+// 🎯 RENDER FILTERS - MATCHES YOUR HTML EXACTLY
+// ============================================
+function renderFilters() {
     const container = document.getElementById('filtersContainer');
     if (!container) return;
     
@@ -5401,13 +5534,19 @@ window.displayLiveFeed = function() {
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Exam</label>
-                    <select id="examFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;">
+                    <select id="examFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;" onchange="loadStudentsWithResults()">
                         <option value="">All Exams</option>
                     </select>
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                    <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Program</label>
+                    <select id="programFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;" onchange="loadStudentsWithResults()">
+                        <option value="">All Programs</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Status</label>
-                    <select id="statusFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 120px;">
+                    <select id="statusFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 120px;" onchange="loadStudentsWithResults()">
                         <option value="">All</option>
                         <option value="PASS">Pass</option>
                         <option value="FAIL">Fail</option>
@@ -5419,24 +5558,31 @@ window.displayLiveFeed = function() {
                         <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
                         <input type="text" id="searchInput" placeholder="🔍 Search by name, ID or exam..." 
                                style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
-                               onkeydown="if(event.key==='Enter') loadStudentsWithResults()">
+                               onkeyup="if(event.key==='Enter') loadStudentsWithResults()">
                     </div>
-                    <button class="btn btn-primary" onclick="loadStudentsWithResults()" style="padding: 6px 14px; white-space: nowrap;">
+                    <button class="btn btn-primary" onclick="loadStudentsWithResults()" style="padding: 6px 14px; white-space: nowrap; background: #0A3D62; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-search"></i> Search
                     </button>
-                    <button class="btn btn-danger" onclick="resetFilters()" style="padding: 6px 12px; white-space: nowrap;">
+                    <button class="btn btn-danger" onclick="resetFilters()" style="padding: 6px 12px; white-space: nowrap; background: #DC2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-undo"></i> Reset
                     </button>
                 </div>
+                <span style="margin-left: auto; font-size: 0.7rem; color: #64748B;">
+                    Showing <strong id="filteredCount" style="color:#0A3D62;">0</strong> of <strong id="totalCount" style="color:#0A3D62;">0</strong> students
+                </span>
             </div>
         `;
-        loadExamDropdown();
+        
+        // ✅ Populate dropdowns
+        populateExamFilterDropdown();
+        populateProgramFilterDropdown();
+        
     } else if (currentTab === 'allStudents') {
         container.innerHTML = `
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Program</label>
-                    <select id="programFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;">
+                    <select id="programFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;" onchange="loadAllStudents()">
                         <option value="">All</option>
                     </select>
                 </div>
@@ -5445,24 +5591,28 @@ window.displayLiveFeed = function() {
                         <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
                         <input type="text" id="studentSearch" placeholder="🔍 Search by name or ID..." 
                                style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
-                               onkeydown="if(event.key==='Enter') loadAllStudents()">
+                               onkeyup="if(event.key==='Enter') loadAllStudents()">
                     </div>
-                    <button class="btn btn-primary" onclick="loadAllStudents()" style="padding: 6px 14px; white-space: nowrap;">
+                    <button class="btn btn-primary" onclick="loadAllStudents()" style="padding: 6px 14px; white-space: nowrap; background: #0A3D62; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-search"></i> Search
                     </button>
-                    <button class="btn btn-danger" onclick="resetStudentFilters()" style="padding: 6px 12px; white-space: nowrap;">
+                    <button class="btn btn-danger" onclick="resetStudentFilters()" style="padding: 6px 12px; white-space: nowrap; background: #DC2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-undo"></i> Reset
                     </button>
                 </div>
+                <span style="margin-left: auto; font-size: 0.7rem; color: #64748B;">
+                    <strong id="allStudentsCount" style="color:#0A3D62;">0</strong> students
+                </span>
             </div>
         `;
         loadProgramDropdown();
+        
     } else if (currentTab === 'exams') {
         container.innerHTML = `
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Type</label>
-                    <select id="examTypeFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;">
+                    <select id="examTypeFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;" onchange="loadAllExams()">
                         <option value="">All</option>
                         <option value="EXAM">Final Exam (70)</option>
                         <option value="CAT_1">CAT 1 (30)</option>
@@ -5476,23 +5626,27 @@ window.displayLiveFeed = function() {
                         <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
                         <input type="text" id="examSearch" placeholder="🔍 Search exam name..." 
                                style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
-                               onkeydown="if(event.key==='Enter') loadAllExams()">
+                               onkeyup="if(event.key==='Enter') loadAllExams()">
                     </div>
-                    <button class="btn btn-primary" onclick="loadAllExams()" style="padding: 6px 14px; white-space: nowrap;">
+                    <button class="btn btn-primary" onclick="loadAllExams()" style="padding: 6px 14px; white-space: nowrap; background: #0A3D62; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-search"></i> Search
                     </button>
-                    <button class="btn btn-danger" onclick="resetExamFilters()" style="padding: 6px 12px; white-space: nowrap;">
+                    <button class="btn btn-danger" onclick="resetExamFilters()" style="padding: 6px 12px; white-space: nowrap; background: #DC2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-undo"></i> Reset
                     </button>
                 </div>
+                <span style="margin-left: auto; font-size: 0.7rem; color: #64748B;">
+                    <strong id="examsCount" style="color:#0A3D62;">0</strong> exams
+                </span>
             </div>
         `;
+        
     } else if (currentTab === 'proctoring') {
         container.innerHTML = `
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Alert Type</label>
-                    <select id="alertTypeFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;">
+                    <select id="alertTypeFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;" onchange="loadProctoringLogs()">
                         <option value="">All</option>
                         <option value="multiple_faces_detected">🚨 Multiple Faces</option>
                         <option value="face_missing">😞 Face Missing</option>
@@ -5501,7 +5655,7 @@ window.displayLiveFeed = function() {
                 </div>
                 <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
                     <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Severity</label>
-                    <select id="severityFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 120px;">
+                    <select id="severityFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 120px;" onchange="loadProctoringLogs()">
                         <option value="">All</option>
                         <option value="critical">Critical</option>
                         <option value="warning">Warning</option>
@@ -5513,15 +5667,18 @@ window.displayLiveFeed = function() {
                         <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
                         <input type="text" id="proctoringSearch" placeholder="🔍 Search by student..." 
                                style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
-                               onkeydown="if(event.key==='Enter') loadProctoringLogs()">
+                               onkeyup="if(event.key==='Enter') loadProctoringLogs()">
                     </div>
-                    <button class="btn btn-primary" onclick="loadProctoringLogs()" style="padding: 6px 14px; white-space: nowrap;">
+                    <button class="btn btn-primary" onclick="loadProctoringLogs()" style="padding: 6px 14px; white-space: nowrap; background: #0A3D62; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-search"></i> Search
                     </button>
-                    <button class="btn btn-danger" onclick="resetProctoringFilters()" style="padding: 6px 12px; white-space: nowrap;">
+                    <button class="btn btn-danger" onclick="resetProctoringFilters()" style="padding: 6px 12px; white-space: nowrap; background: #DC2626; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 600;">
                         <i class="fas fa-undo"></i> Reset
                     </button>
                 </div>
+                <span style="margin-left: auto; font-size: 0.7rem; color: #64748B;">
+                    <strong id="proctoringCount" style="color:#0A3D62;">0</strong> alerts
+                </span>
             </div>
         `;
     }
