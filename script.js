@@ -10671,25 +10671,25 @@ async function handleManualAttendance(e) {
     
     const isTVET = isTVETProgram(studentProgram);
     const blockLabel = isTVET ? 'Term' : 'Block';
-
-    const attendanceData = {
-        student_id,
-        session_type,
-        check_in_time,
-        department,
-        course_id,
-        program: studentProgram,
-        block_term: studentBlock,
-        is_manual_entry: true,
-        latitude: null,
-        longitude: null,
-        location_name,
-        ip_address: await getIPAddress(),
-        device_id: getDeviceId(),
-        target_name: session_type === 'clinical' ? department : 
-                     session_type === 'classroom' ? $('att_course_id')?.selectedOptions[0]?.text || null :
-                     department || location_name
-    };
+const attendanceData = {
+    student_id,
+    registration_number: studentProfile?.admission_number || null, // ✅ Add this
+    session_type,
+    check_in_time,
+    department,
+    course_id,
+    program: studentProgram,
+    block_term: studentBlock,
+    is_manual_entry: true,
+    latitude: null,
+    longitude: null,
+    location_name,
+    ip_address: await getIPAddress(),
+    device_id: getDeviceId(),
+    target_name: session_type === 'clinical' ? department : 
+                 session_type === 'classroom' ? $('att_course_id')?.selectedOptions[0]?.text || null :
+                 department || location_name
+};
 
     try {
         const { error, data } = await sb.from('geo_attendance_logs').insert([attendanceData]).select('id');
@@ -10753,6 +10753,7 @@ async function loadAttendance() {
     }
 
     try {
+        // ✅ FIXED: Join on user_id instead of student_id
         var result = await sb
             .from('geo_attendance_logs')
             .select(`
@@ -10766,7 +10767,7 @@ async function loadAttendance() {
                 location_friendly_name,
                 program,
                 block_term,
-                ${USER_PROFILE_TABLE}:student_id(full_name, role, program, block)
+                ${USER_PROFILE_TABLE}:user_id(full_name, role, program, block, admission_number)
             `)
             .order('check_in_time', { ascending: false });
 
@@ -10783,19 +10784,13 @@ async function loadAttendance() {
             pastBody.innerHTML = '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #6b7280;">📭 No past attendance history found.</td></tr>';
             
             var todayCountEl = document.getElementById('todayCount');
-            if (todayCountEl) {
-                todayCountEl.textContent = '0';
-            }
+            if (todayCountEl) todayCountEl.textContent = '0';
             
             var pastCountEl = document.getElementById('pastCount');
-            if (pastCountEl) {
-                pastCountEl.textContent = '0';
-            }
+            if (pastCountEl) pastCountEl.textContent = '0';
             
             var totalCountEl = document.getElementById('attendanceTotalCount');
-            if (totalCountEl) {
-                totalCountEl.textContent = '0';
-            }
+            if (totalCountEl) totalCountEl.textContent = '0';
             
             return;
         }
@@ -10812,14 +10807,17 @@ async function loadAttendance() {
             var userName = 'N/A User';
             var userProgram = 'N/A';
             var userBlock = 'N/A';
+            var admissionNumber = 'N/A';
             
             if (userProfile) {
                 userName = userProfile.full_name || 'N/A User';
                 userProgram = userProfile.program || r.program || 'N/A';
                 userBlock = userProfile.block || r.block_term || 'N/A';
+                admissionNumber = userProfile.admission_number || r.registration_number || 'N/A';
             } else {
                 userProgram = r.program || 'N/A';
                 userBlock = r.block_term || 'N/A';
+                admissionNumber = r.registration_number || 'N/A';
             }
             
             var isTVET = isTVETProgram(userProgram);
@@ -10831,10 +10829,8 @@ async function loadAttendance() {
             var dateTime = new Date(r.check_in_time).toLocaleString();
             var targetDetail = r.target_name || r.department || r.location_name || 'N/A Target';
             
-            // ✅ FIXED: Show location_address first, then target_name, then others
             var locationDisplay = r.location_address || r.target_name || r.location_friendly_name || r.location_name || r.department || 'N/A';
             
-            // ✅ Also show GPS coordinates if available
             if (r.latitude && r.longitude && locationDisplay === 'N/A') {
                 locationDisplay = `${r.latitude}, ${r.longitude}`;
             }
@@ -10873,7 +10869,7 @@ async function loadAttendance() {
             actionsHtml += '<button class="btn btn-delete btn-small" onclick="deleteAttendanceRecord(\'' + r.id + '\')" style="margin-left:5px; background: #dc2626; color: white; border: none; border-radius: 4px; padding: 4px 10px; cursor: pointer;">🗑️ Delete</button>';
 
             var rowHtml = '<tr>' +
-                '<td><strong>' + userName + '</strong></td>' +
+                '<td><strong>' + userName + '</strong><br><small style="color: #6b7280;">Reg: ' + admissionNumber + '</small></td>' +
                 '<td>' + (r.session_type || 'N/A') + '</td>' +
                 '<td><span style="background: ' + programBg + '; color: ' + programColor + '; padding: 2px 8px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">' + programBadge + '</span><br><small style="color: #6b7280;">' + blockLabel + ': ' + userBlock + '</small></td>' +
                 '<td>' + targetDetail + '</td>' +
@@ -10892,19 +10888,13 @@ async function loadAttendance() {
         }
 
         var todayCountEl = document.getElementById('todayCount');
-        if (todayCountEl) {
-            todayCountEl.textContent = todayCount;
-        }
+        if (todayCountEl) todayCountEl.textContent = todayCount;
         
         var pastCountEl = document.getElementById('pastCount');
-        if (pastCountEl) {
-            pastCountEl.textContent = pastCount;
-        }
+        if (pastCountEl) pastCountEl.textContent = pastCount;
         
         var totalCountEl = document.getElementById('attendanceTotalCount');
-        if (totalCountEl) {
-            totalCountEl.textContent = allRecords.length;
-        }
+        if (totalCountEl) totalCountEl.textContent = allRecords.length;
 
         todayBody.innerHTML = todayHtml || '<tr><td colspan="9" style="text-align: center; padding: 30px; color: #6b7280;">📭 No check-in records for today.</td></tr>';
         pastBody.innerHTML = pastHtml || '<tr><td colspan="8" style="text-align: center; padding: 30px; color: #6b7280;">📭 No past attendance history found.</td></tr>';
