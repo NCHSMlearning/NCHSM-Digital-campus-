@@ -1643,9 +1643,8 @@ const LecturerAttendance = {
             window.open(`https://www.google.com/maps?q=${loc.lat},${loc.lng}`, '_blank');
         }
     },
-
-   // ============================================================
-// ✅ VERIFY ATTENDANCE - ENHANCED WITH RELIABLE UI UPDATE
+// ============================================================
+// ✅ VERIFY ATTENDANCE - SIMPLIFIED FIX
 // ============================================================
 async function verifyAttendance(recordId) {
     if (!recordId) {
@@ -1677,13 +1676,13 @@ async function verifyAttendance(recordId) {
 
         const profile = window.lecturerDB?.getCurrentUserProfile();
         const lecturerName = profile?.full_name || 'Lecturer';
-        const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
+        const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || profile?.user_id || 'unknown';
         const typeLabel = this.getProgramTypeLabel();
 
         // ✅ First, check if already verified
         const { data: record, error: fetchError } = await supabase
             .from('geo_attendance_logs')
-            .select('id, attendance_status, is_verified, student_name, check_in_time')
+            .select('id, attendance_status, is_verified, student_name')
             .eq('id', recordId)
             .single();
 
@@ -1697,26 +1696,15 @@ async function verifyAttendance(recordId) {
                 verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verified ✓';
                 verifyBtn.style.background = '#10b981';
                 verifyBtn.disabled = true;
-                verifyBtn.style.cursor = 'default';
                 verifyBtn.textContent = '✓ Verified';
-            }
-            // ✅ Update row style
-            if (row) {
-                row.style.background = '#f0fdf4';
-                const statusCell = row.querySelector('td:nth-child(9)');
-                if (statusCell) {
-                    statusCell.innerHTML = `
-                        <span style="background: #10b98120; color: #10b981; padding: 3px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; display: inline-block;">
-                            ✅ Verified
-                        </span>
-                    `;
-                }
             }
             this.isProcessing = false;
             return;
         }
 
         const now = new Date().toISOString();
+
+        // ✅ SIMPLE UPDATE - all columns are TEXT
         const updateData = {
             is_verified: true,
             attendance_status: 'Verified',
@@ -1725,20 +1713,12 @@ async function verifyAttendance(recordId) {
             verified_at: now,
             verification_source: 'Manual Verification',
             program_type: typeLabel,
-            is_tvet: this.isTVET,
-            verification_checks: JSON.stringify({
-                verified_by: lecturerName,
-                verified_at: now,
-                method: 'Lecturer Verification',
-                record_id: recordId,
-                student: record.student_name,
-                program_type: typeLabel
-            })
+            is_tvet: this.isTVET
         };
 
         console.log(`📝 Verifying ${typeLabel} record:`, { recordId, updateData });
 
-        // ✅ Use a direct update with eq filter
+        // ✅ Update the record
         const { error: updateError } = await supabase
             .from('geo_attendance_logs')
             .update(updateData)
@@ -1757,14 +1737,12 @@ async function verifyAttendance(recordId) {
             verifyBtn.innerHTML = '<i class="fas fa-check-circle"></i> Verified ✓';
             verifyBtn.style.background = '#10b981';
             verifyBtn.disabled = true;
-            verifyBtn.style.cursor = 'default';
             verifyBtn.textContent = '✓ Verified';
         }
 
         // ✅ Update row style immediately
         if (row) {
             row.style.background = '#f0fdf4';
-            // Find status cell (9th column - index 8)
             const statusCell = row.querySelectorAll('td')[8];
             if (statusCell) {
                 statusCell.innerHTML = `
@@ -1781,16 +1759,12 @@ async function verifyAttendance(recordId) {
         // ✅ Force reload data from database
         console.log('🔄 Force refreshing all attendance data...');
 
-        // Clear cache
+        // Clear cache and reload
         this.todayLogs = [];
         this.pastLogs = [];
-
-        // Reload all data
         await this.loadTodayAttendance();
         await this.loadPastAttendance();
         await this.loadAttendanceStats();
-
-        // Re-render tables
         this.renderTodayAttendance();
         this.renderPastAttendance();
         this.updateStats(this.todayLogs);
@@ -1826,58 +1800,70 @@ isRecordVerified(log) {
            log.verification_source !== null;
 }
 
-    // ============================================================
-    // ✅ BULK VERIFY ATTENDANCE - WITH TVET SUPPORT
-    // ============================================================
-    async bulkVerifyAttendance(date = null) {
-        const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
+   // ============================================================
+// ✅ BULK VERIFY ATTENDANCE - ENHANCED
+// ============================================================
+async bulkVerifyAttendance(date = null) {
+    const targetDate = date || document.getElementById('filterDate')?.value || new Date().toISOString().split('T')[0];
 
-        if (!targetDate) {
-            this.showNotification('Please select a date to bulk verify', 'warning');
-            return;
+    if (!targetDate) {
+        this.showNotification('Please select a date to bulk verify', 'warning');
+        return;
+    }
+
+    if (!confirm(`Are you sure you want to verify ALL unverified attendance records for ${targetDate}?`)) {
+        return;
+    }
+
+    if (this.isProcessing) {
+        this.showNotification('Please wait, processing...', 'warning');
+        return;
+    }
+
+    this.isProcessing = true;
+    const btn = document.querySelector('.btn-bulk-verify');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
+    }
+
+    try {
+        const supabase = window.lecturerDB?.supabase;
+        if (!supabase) {
+            throw new Error('Database not available');
         }
 
-        if (!confirm(`Are you sure you want to verify ALL unverified attendance records for ${targetDate}?`)) {
-            return;
+        const profile = window.lecturerDB?.getCurrentUserProfile();
+        const lecturerName = profile?.full_name || 'Lecturer';
+        const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || profile?.user_id || 'unknown';
+        const typeLabel = this.getProgramTypeLabel();
+
+        // ✅ Get all unverified records for the date
+        const { data: records, error: fetchError } = await supabase
+            .from('geo_attendance_logs')
+            .select('id, student_name, attendance_status')
+            .eq('is_verified', false)
+            .neq('session_type', 'Lecturer Check-in')
+            .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
+            .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
+
+        if (fetchError) {
+            throw new Error('Failed to fetch records: ' + fetchError.message);
         }
 
-        if (this.isProcessing) {
-            this.showNotification('Please wait, processing...', 'warning');
-            return;
-        }
-
-        this.isProcessing = true;
-        const btn = document.querySelector('.btn-bulk-verify');
-        if (btn) {
-            btn.disabled = true;
-            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Verifying...';
-        }
-
-        try {
-            const supabase = window.lecturerDB?.supabase;
-            if (!supabase) {
-                throw new Error('Database not available');
+        if (!records || records.length === 0) {
+            this.showNotification(`No unverified records found for ${targetDate}`, 'info');
+            this.isProcessing = false;
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Verify';
             }
+            return;
+        }
 
-            const profile = window.lecturerDB?.getCurrentUserProfile();
-            const lecturerName = profile?.full_name || 'Lecturer';
-            const lecturerId = this.lecturerUuid || this.lecturerAssignmentId || 'unknown';
-            const typeLabel = this.getProgramTypeLabel();
-
-            const { data: records, error: fetchError } = await supabase
-                .from('geo_attendance_logs')
-                .select('id, student_name')
-                .eq('is_verified', false)
-                .neq('session_type', 'Lecturer Check-in')
-                .gte('check_in_time', `${targetDate}T00:00:00.000Z`)
-                .lte('check_in_time', `${targetDate}T23:59:59.999Z`);
-
-            if (fetchError) {
-                throw new Error('Failed to fetch records: ' + fetchError.message);
-            }
-
-            if (!records || records.length === 0) {
-                this.showNotification(`No unverified records found for ${targetDate}`, 'info');
+        // ✅ Double-check with user before proceeding with bulk update
+        if (records.length > 20) {
+            if (!confirm(`You are about to verify ${records.length} records. Continue?`)) {
                 this.isProcessing = false;
                 if (btn) {
                     btn.disabled = false;
@@ -1885,9 +1871,15 @@ isRecordVerified(log) {
                 }
                 return;
             }
+        }
 
-            const now = new Date().toISOString();
-            const updateData = {
+        const now = new Date().toISOString();
+        const recordIds = records.map(r => r.id);
+
+        // ✅ Simple update - all columns are TEXT
+        const { error: updateError } = await supabase
+            .from('geo_attendance_logs')
+            .update({
                 is_verified: true,
                 attendance_status: 'Verified',
                 verified_by: lecturerId,
@@ -1895,50 +1887,41 @@ isRecordVerified(log) {
                 verified_at: now,
                 verification_source: 'Bulk Verification',
                 program_type: typeLabel,
-                is_tvet: this.isTVET,
-                verification_checks: JSON.stringify({
-                    verified_by: lecturerName,
-                    verified_at: now,
-                    method: 'Bulk Lecturer Verification',
-                    record_count: records.length,
-                    program_type: typeLabel
-                })
-            };
+                is_tvet: this.isTVET
+            })
+            .in('id', recordIds);
 
-            const recordIds = records.map(r => r.id);
-            const { error: updateError } = await supabase
-                .from('geo_attendance_logs')
-                .update(updateData)
-                .in('id', recordIds);
-
-            if (updateError) {
-                throw new Error('Failed to bulk verify: ' + updateError.message);
-            }
-
-            this.showNotification(`✅ ${records.length} ${typeLabel} records verified successfully!`, 'success');
-
-            this.todayLogs = [];
-            this.pastLogs = [];
-            await this.loadTodayAttendance();
-            await this.loadPastAttendance();
-            await this.loadAttendanceStats();
-            this.renderTodayAttendance();
-            this.renderPastAttendance();
-            this.updateStats(this.todayLogs);
-            this.updateProgramBadge();
-
-        } catch (error) {
-            console.error('❌ Bulk verification error:', error);
-            this.showNotification('Bulk verification failed: ' + error.message, 'error');
-        } finally {
-            this.isProcessing = false;
-            if (btn) {
-                btn.disabled = false;
-                btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Verify';
-            }
+        if (updateError) {
+            console.error('❌ Update error:', updateError);
+            throw new Error('Failed to bulk verify: ' + updateError.message);
         }
-    },
 
+        this.showNotification(`✅ ${records.length} ${typeLabel} records verified successfully!`, 'success');
+
+        // ✅ Force reload all data
+        this.todayLogs = [];
+        this.pastLogs = [];
+        await this.loadTodayAttendance();
+        await this.loadPastAttendance();
+        await this.loadAttendanceStats();
+        this.renderTodayAttendance();
+        this.renderPastAttendance();
+        this.updateStats(this.todayLogs);
+        this.updateProgramBadge();
+
+        console.log(`✅ Bulk verification complete: ${records.length} records verified`);
+
+    } catch (error) {
+        console.error('❌ Bulk verification error:', error);
+        this.showNotification('Bulk verification failed: ' + error.message, 'error');
+    } finally {
+        this.isProcessing = false;
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-check-double"></i> Bulk Verify';
+        }
+    }
+}
     /**
      * Check if a record can be verified (not already verified)
      * @param {Object} record - The attendance record
