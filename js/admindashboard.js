@@ -557,8 +557,8 @@ window.logout = function() {
         }
     }
 
- // ============================================
-// 📊 LOAD STUDENTS WITH RESULTS - COMPLETE FIX
+// ============================================
+// 📊 LOAD STUDENTS WITH RESULTS - USING RELEASE MODAL LOGIC
 // ============================================
 window.loadStudentsWithResults = async function() {
     const loadingDiv = document.getElementById('studentsLoading');
@@ -575,7 +575,7 @@ window.loadStudentsWithResults = async function() {
         await loadExamsMap();
         console.log('📚 Exams map loaded:', Object.keys(examsMap).length);
         
-        // ✅ Fetch grades
+        // ✅ USE SAME LOGIC AS RELEASE MODAL
         const { data: grades, error } = await sb
             .from('exam_grades')
             .select('*')
@@ -632,16 +632,10 @@ window.loadStudentsWithResults = async function() {
         const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
         console.log('👥 Profiles found:', Object.keys(profileMap).length);
         
-        // ✅ Build ALL results with pre-calculated values
-        const allResults = grades.map(g => {
+        // ✅ Build results (SAME STRUCTURE as Release Modal)
+        studentsResults = grades.map(g => {
             const exam = examsMap[g.exam_id] || null;
             const profile = profileMap[g.student_id] || null;
-            
-            // Calculate derived status
-            const totalMarks = exam?.total_marks || 100;
-            const passMark = exam?.pass_mark || Math.round(totalMarks * 0.6);
-            const score = parseFloat(g.marks) || parseFloat(g.total_score) || 0;
-            const isPassed = score >= passMark;
             
             return {
                 ...g,
@@ -650,90 +644,61 @@ window.loadStudentsWithResults = async function() {
                 exam_info: exam ? {
                     ...exam,
                     status: exam.status || 'published'
-                } : null,
-                // ✅ Pre-calculated for filtering
-                _student_name: (profile?.full_name || '').toLowerCase().trim(),
-                _student_id: (profile?.student_id || '').toLowerCase().trim(),
-                _exam_name: (exam?.exam_name || '').toLowerCase().trim(),
-                _email: (profile?.email || '').toLowerCase().trim(),
-                _program: (profile?.program || '').toLowerCase().trim(),
-                _derived_status: isPassed ? 'PASS' : 'FAIL'
+                } : null
             };
         });
         
-        console.log('📊 All results built:', allResults.length);
+        console.log('📊 Final studentsResults count:', studentsResults.length);
         
         // ============================================================
-        // ✅ APPLY FILTERS - IMPROVED VERSION
+        // ✅ APPLY FILTERS - SIMPLE AND CLEAN
         // ============================================================
         
-        // Get filter values
         const examFilter = document.getElementById('examFilter')?.value;
         const statusFilter = document.getElementById('statusFilter')?.value;
-        const searchInput = document.getElementById('searchInput')?.value?.toLowerCase().trim() || '';
-        const programFilter = document.getElementById('programFilter')?.value;
+        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
         
-        let filtered = [...allResults];
-        console.log('🔍 Starting with:', filtered.length, 'results');
+        let filtered = studentsResults;
+        console.log('🔍 Starting filter with:', filtered.length, 'results');
         
-        // ✅ FILTER 1: By Exam
+        // ✅ FILTER 1: By Exam (SAME as Release Modal)
         if (examFilter && examFilter !== '') {
-            filtered = filtered.filter(r => {
-                return String(r.exam_id) === String(examFilter);
-            });
+            filtered = filtered.filter(r => String(r.exam_id) === String(examFilter));
             console.log('🔍 After exam filter:', filtered.length);
         }
         
-        // ✅ FILTER 2: By Program
-        if (programFilter && programFilter !== '') {
-            const programLower = programFilter.toLowerCase().trim();
-            filtered = filtered.filter(r => {
-                return r._program === programLower;
-            });
-            console.log('🔍 After program filter:', filtered.length);
-        }
-        
-        // ✅ FILTER 3: By Status (checks BOTH stored AND derived)
+        // ✅ FILTER 2: By Status
         if (statusFilter && statusFilter !== '') {
             filtered = filtered.filter(r => {
-                const storedStatus = (r.result_status || '').toUpperCase();
-                const derivedStatus = r._derived_status || '';
-                
-                // Special handling for PENDING
-                if (statusFilter === 'PENDING') {
-                    return storedStatus === 'PENDING' || 
-                           storedStatus === 'PENDING_REVIEW' || 
-                           storedStatus === '' ||
-                           storedStatus === 'SCHEDULED' ||
-                           (!storedStatus && derivedStatus !== 'PASS' && derivedStatus !== 'FAIL');
+                // Check if released first
+                if (r.isReleased) {
+                    const totalMarks = r.exam_info?.total_marks || 100;
+                    const passMark = r.exam_info?.pass_mark || Math.round(totalMarks * 0.6);
+                    const score = parseFloat(r.marks) || parseFloat(r.total_score) || 0;
+                    const isPassed = score >= passMark;
+                    const effectiveStatus = isPassed ? 'PASS' : 'FAIL';
+                    return effectiveStatus === statusFilter;
                 }
-                
-                return storedStatus === statusFilter || derivedStatus === statusFilter;
+                // For unreleased, use result_status
+                return (r.result_status || '') === statusFilter;
             });
             console.log('🔍 After status filter:', filtered.length);
         }
         
-        // ✅ FILTER 4: By Search - IMPROVED with multiple fields
-        if (searchInput && searchInput !== '') {
+        // ✅ FILTER 3: By Search
+        if (search && search !== '') {
             filtered = filtered.filter(r => {
-                // Get all searchable fields with fallbacks
-                const name = r._student_name || '';
-                const studentId = r._student_id || '';
-                const examName = r._exam_name || '';
-                const email = r._email || '';
-                const program = r._program || '';
+                const name = (r.student_profile?.full_name || '').toLowerCase();
+                const studentId = (r.student_profile?.student_id || '').toLowerCase();
+                const examName = (r.exam_info?.exam_name || '').toLowerCase();
+                const email = (r.student_profile?.email || '').toLowerCase();
+                const program = (r.student_profile?.program || '').toLowerCase();
                 
-                // Also search raw data
-                const rawStudentId = (r.student_id || '').toLowerCase().trim();
-                const rawExamId = String(r.exam_id || '').toLowerCase().trim();
-                
-                return name.includes(searchInput) || 
-                       studentId.includes(searchInput) || 
-                       examName.includes(searchInput) ||
-                       email.includes(searchInput) ||
-                       program.includes(searchInput) ||
-                       rawStudentId.includes(searchInput) ||
-                       rawExamId.includes(searchInput);
+                return name.includes(search) || 
+                       studentId.includes(search) || 
+                       examName.includes(search) ||
+                       email.includes(search) ||
+                       program.includes(search);
             });
             console.log('🔍 After search filter:', filtered.length);
         }
@@ -746,9 +711,9 @@ window.loadStudentsWithResults = async function() {
         if (countEl) countEl.textContent = studentsResults.length;
         
         const totalEl = document.getElementById('totalCount');
-        if (totalEl) totalEl.textContent = allResults.length;
+        if (totalEl) totalEl.textContent = filtered.length;
         
-        console.log(`📊 FINAL: ${studentsResults.length} of ${allResults.length} results`);
+        console.log(`📊 FINAL: ${studentsResults.length} results`);
         
         // ✅ Display results
         displayStudentsResults();
