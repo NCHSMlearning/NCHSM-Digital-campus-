@@ -832,122 +832,207 @@
         }
     }
 
-    // ============================================
-    // 📊 LOAD HISTORY
-    // ============================================
+  // ============================================
+// 📊 LOAD HISTORY - COMPLETE FIX
+// ============================================
+
+async function loadHistory() {
+    const table = document.getElementById('geo-attendance-history');
+    if (!table) return;
     
-    async function loadHistory() {
-        const table = document.getElementById('geo-attendance-history');
-        if (!table) return;
+    table.innerHTML = `
+        <tr>
+            <td colspan="6" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
+                <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
+                <p style="margin: 0; font-size: 13px;">Loading attendance history...</p>
+            </td>
+        </tr>
+    `;
+    
+    const supabase = getSupabase();
+    if (!supabase) {
+        table.innerHTML = `<tr><td colspan="6">Database not available</td></tr>`;
+        return;
+    }
+    
+    try {
+        const studentInfo = await getCurrentStudentInfo();
+        const userId = studentInfo?.user_id;
+        const admissionNumber = studentInfo?.admission_number || studentInfo?.student_id;
+        const studentName = studentInfo?.full_name;
         
-        table.innerHTML = `
-            <tr>
-                <td colspan="6" style="padding: 40px 20px; text-align: center; color: #94a3b8;">
-                    <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 8px;"></div>
-                    <p style="margin: 0; font-size: 13px;">Loading attendance history...</p>
-                </td>
-            </tr>
-        `;
+        console.log('👤 Loading history for:', { userId, admissionNumber, studentName });
         
-        const supabase = getSupabase();
-        const studentId = await getCurrentStudentId(); // ✅ AWAIT
+        let allRecords = [];
         
-        if (!supabase || !studentId) {
+        // ✅ 1. Get by user_id (NEW records)
+        if (userId) {
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('user_id', userId)
+                .order('check_in_time', { ascending: false });
+            
+            if (!error && data) {
+                allRecords = [...allRecords, ...data];
+                console.log(`✅ Found ${data.length} records by user_id`);
+            }
+        }
+        
+        // ✅ 2. Get by registration_number
+        if (admissionNumber) {
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('registration_number', admissionNumber)
+                .order('check_in_time', { ascending: false });
+            
+            if (!error && data) {
+                const existingIds = new Set(allRecords.map(r => r.id));
+                const newRecords = data.filter(r => !existingIds.has(r.id));
+                allRecords = [...allRecords, ...newRecords];
+                console.log(`✅ Added ${newRecords.length} records by registration_number`);
+            }
+        }
+        
+        // ✅ 3. Get by student_name (fallback)
+        if (studentName) {
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('student_name', studentName)
+                .order('check_in_time', { ascending: false });
+            
+            if (!error && data) {
+                const existingIds = new Set(allRecords.map(r => r.id));
+                const newRecords = data.filter(r => !existingIds.has(r.id));
+                allRecords = [...allRecords, ...newRecords];
+                console.log(`✅ Added ${newRecords.length} records by student_name`);
+            }
+        }
+        
+        // ✅ 4. Get by student_id (admission number)
+        if (admissionNumber) {
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('student_id', admissionNumber)
+                .order('check_in_time', { ascending: false });
+            
+            if (!error && data) {
+                const existingIds = new Set(allRecords.map(r => r.id));
+                const newRecords = data.filter(r => !existingIds.has(r.id));
+                allRecords = [...allRecords, ...newRecords];
+                console.log(`✅ Added ${newRecords.length} records by student_id (admission)`);
+            }
+        }
+        
+        // ✅ 5. Get by student_id (UUID) - for OLD records
+        if (userId) {
+            const { data, error } = await supabase
+                .from('geo_attendance_logs')
+                .select('*')
+                .eq('student_id', userId)
+                .order('check_in_time', { ascending: false });
+            
+            if (!error && data) {
+                const existingIds = new Set(allRecords.map(r => r.id));
+                const newRecords = data.filter(r => !existingIds.has(r.id));
+                allRecords = [...allRecords, ...newRecords];
+                console.log(`✅ Added ${newRecords.length} records by student_id (UUID)`);
+            }
+        }
+        
+        // ✅ Remove duplicates and sort
+        const seenIds = new Set();
+        const uniqueRecords = allRecords
+            .filter(r => {
+                if (seenIds.has(r.id)) return false;
+                seenIds.add(r.id);
+                return true;
+            })
+            .sort((a, b) => new Date(b.check_in_time) - new Date(a.check_in_time));
+        
+        console.log(`📊 TOTAL UNIQUE RECORDS: ${uniqueRecords.length}`);
+        
+        if (uniqueRecords.length === 0) {
             table.innerHTML = `
                 <tr>
                     <td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
-                        <i class="fas fa-info-circle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                        Please log in to view history
+                        <i class="fas fa-calendar-times" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                        No attendance records found.
                     </td>
                 </tr>
             `;
             return;
         }
         
-        try {
-            const { data, error } = await supabase
-                .from('geo_attendance_logs')
-                .select('*')
-                .eq('student_id', studentId)
-                .order('check_in_time', { ascending: false })
-                .limit(50);
+        attendanceHistory = uniqueRecords;
+        updateHistoryStats(uniqueRecords);
+        
+        // ✅ Render ALL records
+        table.innerHTML = uniqueRecords.map(log => {
+            const accuracy = log.accuracy_m || log.accuracy_meters || 0;
+            const distance = log.distance_meters || 0;
+            const dist = distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m';
+            const time = new Date(log.check_in_time).toLocaleString('en-KE', {
+                timeZone: 'Africa/Nairobi',
+                day: '2-digit', month: 'short', year: 'numeric',
+                hour: '2-digit', minute: '2-digit'
+            });
             
-            if (error) throw error;
-            
-            if (!data || data.length === 0) {
-                table.innerHTML = `
-                    <tr>
-                        <td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
-                            <i class="fas fa-calendar-times" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                            No attendance records found
-                        </td>
-                    </tr>
-                `;
-                return;
+            let status = log.attendance_status || 'Pending';
+            let statusClass = 'status-badge-pending';
+            let statusIcon = '⏳';
+            if (status === 'Present' || status === 'Verified') { 
+                statusClass = 'status-badge-present'; 
+                statusIcon = '✅'; 
+            } else if (status === 'Absent') { 
+                statusClass = 'status-badge-absent'; 
+                statusIcon = '❌'; 
             }
             
-            attendanceHistory = data;
-            updateHistoryStats(data);
+            const sessionIcon = log.session_type === 'class' ? '📚' : log.session_type === 'clinical' ? '🏥' : '📅';
+            const targetName = log.target_name || log.location_name || 'Unknown';
+            const distanceClass = distance < 100 ? 'distance-verified' : distance < 200 ? 'distance-pending' : 'distance-absent';
             
-            table.innerHTML = data.map(log => {
-                const accuracy = log.accuracy_m || log.accuracy_meters || 0;
-                const distance = log.distance_meters || 0;
-                const dist = distance >= 1000 ? (distance/1000).toFixed(2) + ' km' : distance.toFixed(0) + ' m';
-                const time = new Date(log.check_in_time).toLocaleString('en-KE', {
-                    timeZone: 'Africa/Nairobi',
-                    day: '2-digit', month: 'short', year: 'numeric',
-                    hour: '2-digit', minute: '2-digit'
-                });
-                let status = log.attendance_status || 'Pending';
-                let statusClass = 'status-badge-pending';
-                let statusIcon = '⏳';
-                if (status === 'Present' || status === 'Verified') { 
-                    statusClass = 'status-badge-present'; 
-                    statusIcon = '✅'; 
-                } else if (status === 'Absent') { 
-                    statusClass = 'status-badge-absent'; 
-                    statusIcon = '❌'; 
-                }
-                
-                const sessionIcon = log.session_type === 'class' ? '📚' : log.session_type === 'clinical' ? '🏥' : '📅';
-                const targetName = log.target_name || log.location_name || 'Unknown';
-                const distanceClass = distance < 100 ? 'distance-verified' : distance < 200 ? 'distance-pending' : 'distance-absent';
-                
-                return `
-                    <tr>
-                        <td style="padding: 10px 14px; white-space: nowrap; font-size: 12px; color: #475569;">${time}</td>
-                        <td style="padding: 10px 14px;">${sessionIcon} <span style="font-weight: 500; color: #1e293b;">${log.session_type || 'Unknown'}</span></td>
-                        <td style="padding: 10px 14px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
-                            <span style="font-weight: 500; color: #1e293b;">${targetName}</span>
-                        </td>
-                        <td style="padding: 10px 14px; text-align: center;">
-                            <span class="${statusClass}">${statusIcon} ${status}</span>
-                        </td>
-                        <td style="padding: 10px 14px; text-align: center;">
-                            <span class="${distanceClass}" style="font-weight: 600;">${dist}</span>
-                        </td>
-                        <td style="padding: 10px 14px; text-align: center;">
-                            <span style="color: #64748b;">±${accuracy.toFixed(0)}m</span>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            
-            const countEl = document.getElementById('history-count');
-            if (countEl) countEl.textContent = `${data.length} records`;
-            
-        } catch (error) {
-            console.error('History error:', error);
-            table.innerHTML = `
+            return `
                 <tr>
-                    <td colspan="6" style="padding: 40px; text-align: center; color: #ef4444;">
-                        <i class="fas fa-exclamation-triangle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                        Error loading history: ${error.message}
+                    <td style="padding: 10px 14px; white-space: nowrap; font-size: 12px; color: #475569;">${time}</td>
+                    <td style="padding: 10px 14px;">${sessionIcon} <span style="font-weight: 500; color: #1e293b;">${log.session_type || 'Unknown'}</span></td>
+                    <td style="padding: 10px 14px; max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${targetName}">
+                        <span style="font-weight: 500; color: #1e293b;">${targetName}</span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span class="${statusClass}">${statusIcon} ${status}</span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span class="${distanceClass}" style="font-weight: 600;">${dist}</span>
+                    </td>
+                    <td style="padding: 10px 14px; text-align: center;">
+                        <span style="color: #64748b;">±${accuracy.toFixed(0)}m</span>
                     </td>
                 </tr>
             `;
-        }
+        }).join('');
+        
+        const countEl = document.getElementById('history-count');
+        if (countEl) countEl.textContent = `${uniqueRecords.length} records`;
+        
+        console.log(`✅ History loaded: ${uniqueRecords.length} records (${uniqueRecords.filter(r => r.attendance_status === 'Absent').length} absent, ${uniqueRecords.filter(r => r.attendance_status === 'Present' || r.attendance_status === 'Verified').length} present)`);
+        
+    } catch (error) {
+        console.error('History error:', error);
+        table.innerHTML = `
+            <tr>
+                <td colspan="6" style="padding: 40px; text-align: center; color: #ef4444;">
+                    <i class="fas fa-exclamation-triangle" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                    Error loading history: ${error.message}
+                </td>
+            </tr>
+        `;
     }
+}
     
     function updateHistoryStats(records) {
         const stats = {
