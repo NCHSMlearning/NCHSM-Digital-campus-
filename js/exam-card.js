@@ -1,4 +1,5 @@
-// js/exam-card.js - v11.2 (TVET/KRCHN Support - Full A4 optimized with Dynamic HOD)
+// js/exam-card.js - v11.3 (TVET/KRCHN Support - Full A4 optimized with Dynamic HOD)
+// FIXED: Retake units display, Past Exam Records, Completed Exam Cards
 
 (function() {
     'use strict';
@@ -93,17 +94,14 @@
             const program = this.userProfile.program || this.userProfile.program_type || '';
             const programUpper = program.toUpperCase().trim();
             
-            // TVET Programs - show HOD + Program Code
             if (TVET_PROGRAMS.includes(programUpper)) {
                 return `HOD ${programUpper}`;
             }
             
-            // KRCHN Nursing
             if (programUpper === 'KRCHN' || programUpper.includes('NURSING')) {
                 return 'HOD Nursing';
             }
             
-            // Health/Medical Programs with code
             if (programUpper.includes('HEALTH') || programUpper.includes('MEDICAL') || 
                 programUpper.includes('CLINICAL') || programUpper.includes('PUBLIC')) {
                 if (programUpper.length <= 6) {
@@ -113,7 +111,6 @@
                 return cleanName ? `HOD ${cleanName}` : 'HOD';
             }
             
-            // Default with program code if short
             if (programUpper.length <= 6) {
                 return `HOD ${programUpper}`;
             }
@@ -334,209 +331,902 @@
                 this.showLoginMessage();
             }
         }
-        // ============================================================
-// DATA FETCHING - ADD THIS METHOD
-// ============================================================
-
-/**
- * Load approved units from the database
- * Fetches ALL approved units (Normal + Supplementary + Retake)
- * @returns {Promise<boolean>} - Success status
- */
-async loadApprovedUnitsFromDB() {
-    const supabase = window.db?.supabase || window.supabase;
-    if (!supabase) {
-        console.warn('⚠️ Supabase not available for exam card');
-        return false;
-    }
-    
-    try {
-        // Get the actual user ID
-        let actualUserId = this.userId;
         
-        if (!actualUserId) {
-            if (this.userProfile?.user_id) {
-                actualUserId = this.userProfile.user_id;
-            } else if (this.userProfile?.id) {
-                actualUserId = this.userProfile.id;
-            } else if (this.userProfile?.student_id) {
-                const { data: userData } = await supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id')
-                    .eq('student_id', this.userProfile.student_id)
-                    .maybeSingle();
-                if (userData?.user_id) actualUserId = userData.user_id;
+        // ============================================
+        // DATA FETCHING - LOAD APPROVED UNITS
+        // ============================================
+        
+        async loadApprovedUnitsFromDB() {
+            const supabase = window.db?.supabase || window.supabase;
+            if (!supabase) {
+                console.warn('⚠️ Supabase not available for exam card');
+                return false;
             }
-        }
-        
-        if (!actualUserId) {
-            console.error('❌ No user ID found for exam card');
-            return false;
-        }
-        
-        console.log('🔍 Fetching approved units for user:', actualUserId);
-        
-        // ✅ Get ALL approved units (regardless of type)
-        const { data, error } = await supabase
-            .from('student_unit_registrations')
-            .select('*')
-            .eq('student_id', actualUserId)
-            .eq('status', 'approved')
-            .order('created_at', { ascending: false });
-        
-        if (error) throw error;
-        
-        this.approvedUnits = data || [];
-        console.log(`✅ Found ${this.approvedUnits.length} approved units`);
-        
-        // Log breakdown by type
-        const normalCount = this.approvedUnits.filter(u => u.reg_type === 'Normal' || !u.reg_type).length;
-        const suppCount = this.approvedUnits.filter(u => u.reg_type === 'Supplementary').length;
-        const retakeCount = this.approvedUnits.filter(u => u.reg_type === 'Retake').length;
-        
-        if (suppCount > 0 || retakeCount > 0) {
-            console.log(`📋 Breakdown: ${normalCount} Normal, ${suppCount} Supplementary, ${retakeCount} Retake`);
-        }
-        
-        return true;
-        
-    } catch (error) {
-        console.error('❌ Error loading approved units:', error);
-        this.showError(`Database error: ${error.message || 'Unknown error'}`);
-        return false;
-    }
-}
-        // ============================================
-        // DATA FETCHING
-        // ============================================
-        
-       async loadExamCard() {
-    if (this.isLoading) return;
-    if (!this.userProfile) { 
-        this.tryLoadIfLoggedIn();
-        return; 
-    }
-    
-    this.isLoading = true;
-    this.showLoading();
-    
-    try {
-        const success = await this.loadApprovedUnitsFromDB();
-        if (success) {
-            await this.updateDashboard();
             
-            // ✅ Check if student has Supplementary/Retake units but no Normal units
-            const hasSuppUnits = await this.checkForSupplementaryUnits();
-            if (this.approvedUnits.length === 0 && hasSuppUnits) {
-                this.showSupplementaryOnlyMessage();
-            } else {
-                this.displayExamCard();
+            try {
+                let actualUserId = this.userId;
+                
+                if (!actualUserId) {
+                    if (this.userProfile?.user_id) {
+                        actualUserId = this.userProfile.user_id;
+                    } else if (this.userProfile?.id) {
+                        actualUserId = this.userProfile.id;
+                    } else if (this.userProfile?.student_id) {
+                        const { data: userData } = await supabase
+                            .from('consolidated_user_profiles_table')
+                            .select('user_id')
+                            .eq('student_id', this.userProfile.student_id)
+                            .maybeSingle();
+                        if (userData?.user_id) actualUserId = userData.user_id;
+                    }
+                }
+                
+                if (!actualUserId) {
+                    console.error('❌ No user ID found for exam card');
+                    return false;
+                }
+                
+                console.log('🔍 Fetching approved units for user:', actualUserId);
+                
+                const { data, error } = await supabase
+                    .from('student_unit_registrations')
+                    .select('*')
+                    .eq('student_id', actualUserId)
+                    .eq('status', 'approved')
+                    .order('created_at', { ascending: false });
+                
+                if (error) throw error;
+                
+                this.approvedUnits = data || [];
+                console.log(`✅ Found ${this.approvedUnits.length} approved units`);
+                
+                const normalCount = this.approvedUnits.filter(u => u.reg_type === 'Normal' || !u.reg_type).length;
+                const suppCount = this.approvedUnits.filter(u => u.reg_type === 'Supplementary').length;
+                const retakeCount = this.approvedUnits.filter(u => u.reg_type === 'Retake').length;
+                
+                if (suppCount > 0 || retakeCount > 0) {
+                    console.log(`📋 Breakdown: ${normalCount} Normal, ${suppCount} Supplementary, ${retakeCount} Retake`);
+                }
+                
+                return true;
+                
+            } catch (error) {
+                console.error('❌ Error loading approved units:', error);
+                this.showError(`Database error: ${error.message || 'Unknown error'}`);
+                return false;
             }
-            this.loaded = true;
-        } else {
-            this.showNoUnitsMessage();
         }
-    } catch (error) {
-        console.warn('Failed to load exam card:', error);
-        this.showErrorMessage();
-    } finally {
-        this.isLoading = false;
-    }
-}
-
-// ✅ New method to check for Supplementary/Retake units
-async checkForSupplementaryUnits() {
-    const supabase = window.db?.supabase || window.supabase;
-    if (!supabase) return false;
-    
-    try {
-        const { data, error } = await supabase
-            .from('student_unit_registrations')
-            .select('id')
-            .eq('student_id', this.userId)
-            .in('reg_type', ['Supplementary', 'Retake'])
-            .eq('status', 'approved')
-            .limit(1);
         
-        return !error && data && data.length > 0;
-    } catch (e) {
-        return false;
-    }
-}
-
-// ✅ New method to show message about Supplementary units
-showSupplementaryOnlyMessage() {
-    if (this.examCardContent) {
-        this.examCardContent.innerHTML = `
-            <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
-                <h3 style="color: #B45309;">Supplementary / Retake Units Only</h3>
-                <p style="color: #64748b; max-width: 500px; margin: 10px auto;">
-                    You have <strong>Supplementary or Retake</strong> units approved, but no <strong>Normal</strong> units.
-                </p>
-                <p style="color: #64748b; max-width: 500px; margin: 10px auto;">
-                    Please go to the <strong>Supplementary / Retake</strong> tab to view and download your Supplementary Exam Card.
-                </p>
-                <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                    <button onclick="document.querySelector('.reg-sub-tab[data-subtab=\\'supplementary\\']')?.click()" style="
-                        padding: 10px 28px;
-                        background: #B45309;
-                        color: white;
-                        border: none;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-weight: 600;
-                        font-size: 14px;
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 8px;
-                    ">
-                        <i class="fas fa-arrow-right"></i> Go to Supplementary Tab
-                    </button>
-                    <button onclick="window.examCardModule?.loadExamCard()" style="
-                        padding: 10px 28px;
-                        background: #f1f5f9;
-                        color: #475569;
-                        border: none;
-                        border-radius: 8px;
-                        cursor: pointer;
-                        font-weight: 500;
-                        font-size: 14px;
-                        display: inline-flex;
-                        align-items: center;
-                        gap: 8px;
-                    ">
-                        <i class="fas fa-sync-alt"></i> Refresh
-                    </button>
+        // ============================================
+        // LOAD EXAM CARD - FIXED
+        // ============================================
+        
+        async loadExamCard() {
+            if (this.isLoading) return;
+            if (!this.userProfile) { 
+                this.tryLoadIfLoggedIn();
+                return; 
+            }
+            
+            this.isLoading = true;
+            this.showLoading();
+            
+            try {
+                const success = await this.loadApprovedUnitsFromDB();
+                if (success) {
+                    await this.updateDashboard();
+                    
+                    // Check what types of units we have
+                    const hasNormal = this.approvedUnits.some(u => 
+                        u.reg_type === 'Normal' || !u.reg_type
+                    );
+                    const hasRetake = this.approvedUnits.some(u => 
+                        u.reg_type === 'Retake'
+                    );
+                    const hasSupplementary = this.approvedUnits.some(u => 
+                        u.reg_type === 'Supplementary'
+                    );
+                    
+                    console.log('📊 Unit breakdown:', { 
+                        total: this.approvedUnits.length, 
+                        normal: hasNormal, 
+                        retake: hasRetake, 
+                        supp: hasSupplementary 
+                    });
+                    
+                    if (this.approvedUnits.length === 0) {
+                        this.showNoUnitsMessage();
+                    } else if (!hasNormal && hasRetake && !hasSupplementary) {
+                        this.displayRetakeExamCard();
+                    } else if (!hasNormal && hasSupplementary && !hasRetake) {
+                        this.showSupplementaryOnlyMessage();
+                    } else {
+                        this.displayExamCard();
+                    }
+                    this.loaded = true;
+                } else {
+                    this.showNoUnitsMessage();
+                }
+            } catch (error) {
+                console.warn('Failed to load exam card:', error);
+                this.showErrorMessage();
+            } finally {
+                this.isLoading = false;
+            }
+        }
+        
+        // ============================================
+        // DISPLAY EXAM CARD - MAIN
+        // ============================================
+        
+        displayExamCard() {
+            if (!this.examCardContent) return;
+            
+            const student = this.userProfile;
+            const approvedUnits = this.approvedUnits;
+            const isEligible = approvedUnits.length > 0;
+            const examOver = this.isExamOver();
+            
+            const isTVET = this.isTVETStudent();
+            const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
+            const blockValue = this.getBlockValue();
+            const hodTitle = this.getHODTitle();
+            
+            const studentIdDisplay = student?.student_id || 
+                                    student?.admission_number || 
+                                    student?.user_id?.substring(0, 8) || 
+                                    'N/A';
+            const programDisplay = student?.program || student?.program_type || 'N/A';
+            
+            const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
+            
+            const unitCount = approvedUnits.length;
+            const needsCompression = unitCount > CONFIG.MAX_UNITS_DISPLAY;
+            
+            let tableRows = '';
+            let displayUnits = approvedUnits;
+            let compressedCount = 0;
+            
+            if (needsCompression) {
+                displayUnits = approvedUnits.slice(0, CONFIG.MAX_UNITS_DISPLAY);
+                compressedCount = approvedUnits.length - CONFIG.MAX_UNITS_DISPLAY;
+            }
+            
+            tableRows = displayUnits.map((unit, index) => {
+                const unitName = this.cleanText(unit.unit_name || unit.name || '');
+                const unitCode = this.cleanText(unit.unit_code || unit.code || '');
+                const isRetake = unit.reg_type === 'Retake';
+                return `
+                    <tr${isRetake ? ' style="background: #fef3c7;"' : ''}>
+                        <td class="text-center">${index + 1}</td>
+                        <td><strong>${unitCode}</strong></td>
+                        <td>${unitName}${isRetake ? ' <span style="background:#dc2626;color:white;padding:1px 8px;border-radius:10px;font-size:9px;margin-left:8px;">RET</span>' : ''}</td>
+                        <td class="text-center">${unit.credits || CONFIG.DEFAULT_CREDITS}</td>
+                        <td class="signature-cell">
+                            <div class="signature-line"></div>
+                            <span style="font-size: 9px; color: #94a3b8;">Lecturer's Signature</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            if (compressedCount > 0) {
+                tableRows += `
+                    <tr class="compressed-row">
+                        <td colspan="5" style="text-align:center; font-style:italic; color:#64748b; padding:8px; background:#f8fafc;">
+                            + ${compressedCount} more ${compressedCount === 1 ? 'unit' : 'units'} registered
+                        </td>
+                    </tr>
+                `;
+            }
+            
+            let statusBadge = '';
+            if (examOver) {
+                statusBadge = `<div class="status-badge completed">✅ COMPLETED</div>`;
+            } else {
+                statusBadge = `<div class="status-badge ${isEligible ? 'eligible' : 'ineligible'}">
+                    ${isEligible ? '✅ ELIGIBLE' : '❌ NOT ELIGIBLE'}
+                </div>`;
+            }
+            
+            const studentTypeBadge = isTVET ? 
+                `<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">TVET</span>` :
+                `<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">KRCHN</span>`;
+            
+            const html = `
+                <div class="exam-card-wrapper" id="exam-card-print-area">
+                    <div class="exam-card-compact" role="region" aria-label="Examination Card">
+                        <!-- Header -->
+                        <div class="card-header">
+                            <img src="${CONFIG.LOGO_URL}" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
+                            <div class="header-text">
+                                <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
+                                <div class="card-title">
+                                    EXAMINATION CARD
+                                    ${studentTypeBadge}
+                                </div>
+                                <div class="card-subtitle">${examOver ? '(Historical Record)' : '(Exam Entry Permit)'}</div>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        
+                        <!-- Info Grid -->
+                        <div class="info-grid">
+                            <div class="info-item"><span class="info-label">Name:</span> ${this.cleanText(student?.full_name || 'Not Available')}</div>
+                            <div class="info-item"><span class="info-label">REG NO.:</span> ${this.cleanText(studentIdDisplay)}</div>
+                            <div class="info-item"><span class="info-label">Program:</span> ${this.cleanText(programDisplay)}</div>
+                            <div class="info-item"><span class="info-label">${blockLabel}</span> <strong>${this.cleanText(blockValue)}</strong></div>
+                            <div class="info-item"><span class="info-label">Registered Units:</span> <strong>${approvedUnits.length}</strong></div>
+                            <div class="info-item"><span class="info-label">Total Credits:</span> <strong>${totalCredits}</strong></div>
+                            <div class="info-item"><span class="info-label">Exam Period:</span> ${this.getExamPeriod()}</div>
+                            <div class="info-item"><span class="info-label">Date Issued:</span> ${this.formatDate()}</div>
+                            <div class="info-item"><span class="info-label">Valid Until:</span> ${examOver ? 'Completed' : 'End of Exam Period'}</div>
+                        </div>
+                        
+                        <!-- Units Table -->
+                        ${approvedUnits.length > 0 ? `
+                            <table class="units-table">
+                                <thead>
+                                    <tr>
+                                        <th width="5%">#</th>
+                                        <th width="18%">Unit Code</th>
+                                        <th width="40%">Unit Title</th>
+                                        <th width="7%">Cr</th>
+                                        <th width="30%">Lecturer's Signature</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${tableRows}
+                                    <tr class="total-row">
+                                        <td colspan="3"><strong>TOTAL REGISTERED UNITS: ${approvedUnits.length}</strong></td>
+                                        <td class="text-center"><strong>${totalCredits}</strong></td>
+                                        <td></td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        ` : '<div class="no-units">No approved units found. Please register for units.</div>'}
+                        
+                        <!-- Signatures -->
+                        <div class="signatures-row">
+                            <div class="signature">
+                                <div class="sign-line"></div>
+                                <div style="font-weight: 600; font-size: 12px;">${hodTitle}</div>
+                                <div style="font-size: 9px; color: #94a3b8;">Head of Department</div>
+                            </div>
+                            <div class="signature">
+                                <div class="sign-line"></div>
+                                <div style="font-weight: 600; font-size: 12px;">Principal</div>
+                                <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
+                            </div>
+                            <div class="signature">
+                                <div class="sign-line"></div>
+                                <div style="font-weight: 600; font-size: 12px;">Finance Officer</div>
+                                <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Footer -->
+                        <div class="card-footer">
+                            <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
+                            <div class="rules-list">
+                                <div class="rule-item">• Present your exam card at each examination hall</div>
+                                <div class="rule-item">• No electronic devices allowed in examination room</div>
+                                <div class="rule-item">• Arrive 30 minutes before examination start time</div>
+                                <div class="rule-item">• Mobile phones must be switched off and stored</div>
+                                <div class="rule-item">• No unauthorized materials allowed</div>
+                            </div>
+                            
+                            <div class="student-section">
+                                <div class="student-declaration">
+                                    I hereby confirm that I have read and understood the examination rules and regulations.
+                                </div>
+                                
+                                <div class="student-sign-line">
+                                    <span class="student-label">Student Signature:</span>
+                                    <span class="signature-line-inline"></span>
+                                    <span class="student-date">Date: ${this.formatDate()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    ${!examOver && isEligible ? `
+                        <div class="action-buttons">
+                            <button class="download-btn" id="downloadExamCardBtn" aria-label="Download PDF">
+                                📥 Download PDF
+                            </button>
+                            <button class="print-btn" id="printExamCardBtn" aria-label="Print Card">
+                                🖨️ Print Card
+                            </button>
+                            <button class="preview-btn" id="previewExamCardBtn" aria-label="Preview A4">
+                                👁️ A4 Preview
+                            </button>
+                        </div>
+                    ` : ''}
+                    
+                    ${examOver ? `
+                        <div style="text-align: center; margin-top: 12px; font-size: 11px; color: #64748b;">
+                            📜 This is a historical record from the ${this.getExamPeriod()}
+                        </div>
+                    ` : ''}
                 </div>
-            </div>
-        `;
-    }
-}
+            `;
+            
+            this.examCardContent.innerHTML = html;
+            this.addCompactStyles();
+            
+            this.setupActionButtons();
+            this.loadPastExamRecords();
+        }
+        
+        // ============================================
+        // RETAKE EXAM CARD
+        // ============================================
+        
+        displayRetakeExamCard() {
+            if (!this.examCardContent) return;
+            
+            const student = this.userProfile;
+            const retakeUnits = this.approvedUnits.filter(u => 
+                u.reg_type === 'Retake'
+            );
+            
+            let tableRows = retakeUnits.map((unit, index) => {
+                return `
+                    <tr style="background: #fef3c7;">
+                        <td style="padding:10px 8px;text-align:center;border-bottom:1px solid #e2e8f0;">${index + 1}</td>
+                        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;"><strong>${this.cleanText(unit.unit_code)}</strong></td>
+                        <td style="padding:10px 8px;border-bottom:1px solid #e2e8f0;">
+                            ${this.cleanText(unit.unit_name)}
+                            <span style="background:#dc2626;color:white;padding:1px 8px;border-radius:10px;font-size:9px;margin-left:8px;">RET</span>
+                        </td>
+                        <td style="padding:10px 8px;text-align:center;border-bottom:1px solid #e2e8f0;">${unit.credits || 1}</td>
+                        <td style="padding:10px 8px;text-align:center;border-bottom:1px solid #e2e8f0;">
+                            <div style="width:80%;margin:8px auto;border-top:2px solid #000;"></div>
+                            <span style="font-size:9px;color:#94a3b8;">Lecturer's Signature</span>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            const totalCredits = retakeUnits.reduce((sum, u) => sum + (u.credits || 1), 0);
+            
+            const html = `
+                <div class="exam-card-wrapper" id="exam-card-print-area">
+                    <div class="exam-card-compact">
+                        <div class="card-header" style="background:linear-gradient(135deg,#dc2626,#b91c1c);">
+                            <img src="${CONFIG.LOGO_URL}" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
+                            <div class="header-text">
+                                <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
+                                <div class="card-title">
+                                    RETAKE EXAMINATION CARD
+                                    <span style="background:#dc2626;color:white;padding:2px 12px;border-radius:12px;font-size:11px;font-weight:600;">RET</span>
+                                </div>
+                                <div class="card-subtitle">(Retake Exam Entry Permit)</div>
+                            </div>
+                            <div style="background:#dc2626;padding:5px 15px;border-radius:20px;font-size:12px;font-weight:700;">🔄 RETAKE</div>
+                        </div>
+                        
+                        <div class="info-grid">
+                            <div class="info-item"><span class="info-label">Name:</span> ${this.cleanText(student?.full_name || 'N/A')}</div>
+                            <div class="info-item"><span class="info-label">REG NO.:</span> ${this.cleanText(student?.student_id || 'N/A')}</div>
+                            <div class="info-item"><span class="info-label">Program:</span> ${this.cleanText(student?.program || 'N/A')}</div>
+                            <div class="info-item"><span class="info-label">Current Block:</span> <strong>${this.getBlockValue()}</strong></div>
+                            <div class="info-item"><span class="info-label">Retake Units:</span> <strong>${retakeUnits.length}</strong></div>
+                            <div class="info-item"><span class="info-label">Total Credits:</span> <strong>${totalCredits}</strong></div>
+                            <div class="info-item"><span class="info-label">Exam Period:</span> ${this.getExamPeriod()}</div>
+                            <div class="info-item"><span class="info-label">Date Issued:</span> ${this.formatDate()}</div>
+                            <div class="info-item" style="grid-column:span 1;">
+                                <span class="info-label">Type:</span> 
+                                <span style="color:#dc2626;font-weight:700;">RETAKE</span>
+                            </div>
+                        </div>
+                        
+                        <table class="units-table">
+                            <thead>
+                                <tr>
+                                    <th width="5%">#</th>
+                                    <th width="18%">Unit Code</th>
+                                    <th width="40%">Unit Title</th>
+                                    <th width="7%">Cr</th>
+                                    <th width="30%">Lecturer's Signature</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${tableRows}
+                                <tr class="total-row">
+                                    <td colspan="3"><strong>TOTAL RETAKE UNITS: ${retakeUnits.length}</strong></td>
+                                    <td class="text-center"><strong>${totalCredits}</strong></td>
+                                    <td></td>
+                                </tr>
+                            </tbody>
+                        </table>
+                        
+                        <div class="signatures-row">
+                            <div class="signature">
+                                <div class="sign-line"></div>
+                                <div style="font-weight:600;font-size:12px;">${this.getHODTitle()}</div>
+                                <div style="font-size:9px;color:#94a3b8;">Head of Department</div>
+                            </div>
+                            <div class="signature">
+                                <div class="sign-line"></div>
+                                <div style="font-weight:600;font-size:12px;">Principal</div>
+                                <div style="font-size:9px;color:#94a3b8;">NCHSM</div>
+                            </div>
+                            <div class="signature">
+                                <div class="sign-line"></div>
+                                <div style="font-weight:600;font-size:12px;">Finance Officer</div>
+                                <div style="font-size:9px;color:#94a3b8;">NCHSM</div>
+                            </div>
+                        </div>
+                        
+                        <div class="card-footer">
+                            <div class="rules-header">📋 RETAKE EXAMINATION RULES & REGULATIONS</div>
+                            <div class="rules-list">
+                                <div class="rule-item">• Present your exam card at each examination hall</div>
+                                <div class="rule-item">• No electronic devices allowed in examination room</div>
+                                <div class="rule-item">• Arrive 30 minutes before examination start time</div>
+                                <div class="rule-item">• Mobile phones must be switched off and stored</div>
+                                <div class="rule-item">• No unauthorized materials allowed</div>
+                            </div>
+                            <div class="student-section">
+                                <div class="student-declaration">
+                                    I hereby confirm that I have read and understood the examination rules and regulations.
+                                </div>
+                                <div class="student-sign-line">
+                                    <span class="student-label">Student Signature:</span>
+                                    <span class="signature-line-inline"></span>
+                                    <span class="student-date">Date: ${this.formatDate()}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="action-buttons">
+                        <button class="download-btn" onclick="window.examCardModule?.downloadExamCardDirect()">📥 Download PDF</button>
+                        <button class="print-btn" onclick="window.examCardModule?.printExamCard()">🖨️ Print Card</button>
+                        <button class="preview-btn" onclick="window.examCardModule?.previewA4()">👁️ A4 Preview</button>
+                    </div>
+                </div>
+            `;
+            
+            this.examCardContent.innerHTML = html;
+            this.addCompactStyles();
+        }
+        
+        // ============================================
+        // SUPPLEMENTARY ONLY MESSAGE
+        // ============================================
+        
+        showSupplementaryOnlyMessage() {
+            if (this.examCardContent) {
+                this.examCardContent.innerHTML = `
+                    <div style="text-align: center; padding: 60px 20px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                        <div style="font-size: 48px; margin-bottom: 16px;">📋</div>
+                        <h3 style="color: #B45309;">Supplementary / Retake Units Only</h3>
+                        <p style="color: #64748b; max-width: 500px; margin: 10px auto;">
+                            You have <strong>Supplementary or Retake</strong> units approved, but no <strong>Normal</strong> units.
+                        </p>
+                        <p style="color: #64748b; max-width: 500px; margin: 10px auto;">
+                            Please go to the <strong>Supplementary / Retake</strong> tab to view and download your Supplementary Exam Card.
+                        </p>
+                        <div style="margin-top: 20px; display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                            <button onclick="document.querySelector('.reg-sub-tab[data-subtab=\\'supplementary\\']')?.click()" style="
+                                padding: 10px 28px;
+                                background: #B45309;
+                                color: white;
+                                border: none;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-weight: 600;
+                                font-size: 14px;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 8px;
+                            ">
+                                <i class="fas fa-arrow-right"></i> Go to Supplementary Tab
+                            </button>
+                            <button onclick="window.examCardModule?.loadExamCard()" style="
+                                padding: 10px 28px;
+                                background: #f1f5f9;
+                                color: #475569;
+                                border: none;
+                                border-radius: 8px;
+                                cursor: pointer;
+                                font-weight: 500;
+                                font-size: 14px;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 8px;
+                            ">
+                                <i class="fas fa-sync-alt"></i> Refresh
+                            </button>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
+        // ============================================
+        // PAST EXAM RECORDS - FIXED
+        // ============================================
         
         async loadPastExamRecords() {
             try {
                 const supabase = window.db?.supabase || window.supabase;
-                if (!supabase) return;
+                if (!supabase) {
+                    console.warn('⚠️ Supabase not available for past exams');
+                    return;
+                }
+                
+                let userId = this.userId;
+                if (!userId) {
+                    if (this.userProfile?.user_id) userId = this.userProfile.user_id;
+                    else if (this.userProfile?.id) userId = this.userProfile.id;
+                    else if (this.userProfile?.student_id) {
+                        const { data } = await supabase
+                            .from('consolidated_user_profiles_table')
+                            .select('user_id')
+                            .eq('student_id', this.userProfile.student_id)
+                            .maybeSingle();
+                        if (data?.user_id) userId = data.user_id;
+                    }
+                }
+                
+                if (!userId) {
+                    console.warn('⚠️ No user ID for past exams');
+                    return;
+                }
+                
+                console.log('🔍 Fetching past exam records for:', userId);
                 
                 const { data, error } = await supabase
                     .from('past_exam_records')
                     .select('*')
-                    .eq('student_id', this.userId)
+                    .eq('student_id', userId)
                     .order('created_at', { ascending: false })
                     .limit(10);
                 
-                if (!error && data) {
-                    this.pastExamRecords = data;
-                    this.displayPastExams();
+                if (error) {
+                    console.warn('⚠️ Past exams query error:', error);
+                    return;
                 }
+                
+                if (data && data.length > 0) {
+                    this.pastExamRecords = data;
+                    console.log(`✅ Found ${data.length} past exam records`);
+                    this.displayPastExams();
+                } else {
+                    console.log('📭 No past exam records found');
+                    this.displayNoPastExams();
+                }
+                
             } catch (error) {
-                console.debug('Past exams not available:', error);
+                console.error('❌ Error loading past exams:', error);
+                this.displayNoPastExams();
             }
         }
         
         // ============================================
-        // UI UPDATES
+        // DISPLAY PAST EXAMS - FIXED
+        // ============================================
+        
+        displayPastExams() {
+            if (!this.pastExamRecords || this.pastExamRecords.length === 0) {
+                this.displayNoPastExams();
+                return;
+            }
+            
+            let container = document.querySelector('.past-exams-container, .past-exams-section');
+            const wrapper = document.querySelector('.exam-card-wrapper');
+            
+            if (!wrapper) {
+                console.warn('⚠️ No exam card wrapper found');
+                return;
+            }
+            
+            // Remove existing container
+            const existing = wrapper.querySelector('.past-exams-container, .past-exams-section');
+            if (existing) existing.remove();
+            
+            container = document.createElement('div');
+            container.className = 'past-exams-container';
+            container.style.cssText = `
+                margin-top: 30px;
+                border-top: 2px solid #e2e8f0;
+                padding-top: 20px;
+                width: 100%;
+            `;
+            
+            const tableRows = this.pastExamRecords.map((record, index) => {
+                const recordId = record.id || record.exam_id || index;
+                const period = record.period || record.exam_period || record.semester || 'N/A';
+                const units = record.units || record.total_units || record.unit_count || 0;
+                const credits = record.credits || record.total_credits || 0;
+                const date = record.date || record.completed_date || record.created_at || new Date().toISOString();
+                const status = record.status || 'Completed';
+                const dateFormatted = new Date(date).toLocaleDateString('en-KE', {
+                    year: 'numeric',
+                    month: 'long',
+                    day: 'numeric'
+                });
+                
+                let statusColor = '#059669';
+                if (status.toLowerCase().includes('pending')) statusColor = '#f59e0b';
+                else if (status.toLowerCase().includes('failed')) statusColor = '#dc2626';
+                else if (status.toLowerCase().includes('incomplete')) statusColor = '#6b7280';
+                
+                return `
+                    <tr style="border-bottom: 1px solid #e2e8f0; transition: background 0.2s;">
+                        <td style="padding: 10px 12px; text-align: center; font-weight: 500; color: #64748b;">${index + 1}</td>
+                        <td style="padding: 10px 12px; font-weight: 500; color: #1e3a5f;">${this.cleanText(period)}</td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="background: #e0f2fe; color: #0369a1; padding: 2px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">${units}</span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="background: #fef3c7; color: #92400e; padding: 2px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">${credits}</span>
+                        </td>
+                        <td style="padding: 10px 12px; font-size: 12px; color: #64748b;">${dateFormatted}</td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <span style="background: ${statusColor}; color: white; padding: 3px 14px; border-radius: 20px; font-size: 11px; font-weight: 600;">
+                                ${status.toUpperCase()}
+                            </span>
+                        </td>
+                        <td style="padding: 10px 12px; text-align: center;">
+                            <button onclick="window.examCardModule?.viewPastExam('${recordId}')" style="
+                                background: #1e3a5f;
+                                color: white;
+                                border: none;
+                                padding: 5px 16px;
+                                border-radius: 20px;
+                                font-size: 11px;
+                                cursor: pointer;
+                                font-weight: 500;
+                                transition: all 0.2s;
+                            " onmouseenter="this.style.background='#2c5a8c'; this.style.transform='scale(1.02)'" onmouseleave="this.style.background='#1e3a5f'; this.style.transform='scale(1)'">
+                                📄 View
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            container.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h3 style="font-size: 16px; color: #1e3a5f; margin: 0;">
+                            📚 Completed Exam Cards
+                        </h3>
+                        <span style="background: #e2e8f0; color: #475569; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            ${this.pastExamRecords.length} records
+                        </span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 12px; color: #94a3b8;">View your previous exam cards from past periods</span>
+                        <button onclick="window.examCardModule?.loadPastExamRecords()" style="
+                            background: none;
+                            border: none;
+                            color: #1e3a5f;
+                            cursor: pointer;
+                            font-size: 13px;
+                            padding: 4px 12px;
+                            border-radius: 6px;
+                            background: #f1f5f9;
+                            font-weight: 500;
+                            transition: background 0.2s;
+                        " onmouseenter="this.style.background='#e2e8f0'" onmouseleave="this.style.background='#f1f5f9'">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: white;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">#</th>
+                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Exam Period</th>
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Units</th>
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Credits</th>
+                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Date</th>
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${tableRows}
+                        </tbody>
+                    </table>
+                </div>
+                <div style="margin-top: 10px; font-size: 11px; color: #94a3b8; text-align: center;">
+                    Click "View" to see the full exam card for each past period
+                </div>
+            `;
+            
+            wrapper.appendChild(container);
+        }
+        
+        // ============================================
+        // DISPLAY NO PAST EXAMS
+        // ============================================
+        
+        displayNoPastExams() {
+            const wrapper = document.querySelector('.exam-card-wrapper');
+            if (!wrapper) return;
+            
+            // Remove existing
+            const existing = wrapper.querySelector('.past-exams-container, .past-exams-section');
+            if (existing) existing.remove();
+            
+            const container = document.createElement('div');
+            container.className = 'past-exams-container';
+            container.style.cssText = `
+                margin-top: 30px;
+                border-top: 2px solid #e2e8f0;
+                padding-top: 20px;
+                width: 100%;
+            `;
+            
+            container.innerHTML = `
+                <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <h3 style="font-size: 16px; color: #1e3a5f; margin: 0;">
+                            📚 Completed Exam Cards
+                        </h3>
+                        <span style="background: #e2e8f0; color: #475569; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
+                            0 records
+                        </span>
+                    </div>
+                    <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <span style="font-size: 12px; color: #94a3b8;">View your previous exam cards from past periods</span>
+                        <button onclick="window.examCardModule?.loadPastExamRecords()" style="
+                            background: none;
+                            border: none;
+                            color: #1e3a5f;
+                            cursor: pointer;
+                            font-size: 13px;
+                            padding: 4px 12px;
+                            border-radius: 6px;
+                            background: #f1f5f9;
+                            font-weight: 500;
+                        ">
+                            🔄 Refresh
+                        </button>
+                    </div>
+                </div>
+                
+                <div style="overflow-x: auto; border-radius: 8px; border: 1px solid #e2e8f0;">
+                    <table style="width: 100%; border-collapse: collapse; font-size: 12px; background: white;">
+                        <thead>
+                            <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">#</th>
+                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Exam Period</th>
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Units</th>
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Credits</th>
+                                <th style="padding: 10px 12px; text-align: left; font-weight: 600; color: #475569;">Date</th>
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Status</th>
+                                <th style="padding: 10px 12px; text-align: center; font-weight: 600; color: #475569;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="7" style="text-align: center; padding: 30px 20px; color: #94a3b8;">
+                                    <div style="display: flex; align-items: center; justify-content: center; gap: 10px;">
+                                        <span style="display: inline-block; width: 16px; height: 16px; border: 2px solid #e2e8f0; border-top-color: #1e3a5f; border-radius: 50%; animation: spin 0.8s linear infinite;"></span>
+                                        Loading past exam records...
+                                    </div>
+                                    <style>
+                                        @keyframes spin {
+                                            to { transform: rotate(360deg); }
+                                        }
+                                    </style>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            wrapper.appendChild(container);
+        }
+        
+        // ============================================
+        // VIEW PAST EXAM
+        // ============================================
+        
+        viewPastExam(examId) {
+            const record = this.pastExamRecords.find(r => r.id == examId);
+            if (!record) {
+                alert('Record not found');
+                return;
+            }
+            
+            let unitsList = '';
+            const units = record.units_list || [];
+            if (units.length > 0) {
+                unitsList = units.map((unit, i) => `
+                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px;">
+                        <span>${i + 1}. ${this.cleanText(unit.unit_code || '')} - ${this.cleanText(unit.unit_name || '')}</span>
+                        <span style="font-weight: 600;">${unit.credits || 0} cr</span>
+                    </div>
+                `).join('');
+            }
+            
+            const modal = document.createElement('div');
+            modal.className = 'preview-overlay';
+            modal.setAttribute('role', 'dialog');
+            modal.setAttribute('aria-label', 'Past Exam Record');
+            
+            modal.innerHTML = `
+                <div class="preview-modal">
+                    <button class="preview-close" aria-label="Close">×</button>
+                    
+                    <h3 style="color: #1e3a5f; margin: 0 0 20px 0; font-size: 18px;">
+                        📄 Past Exam Record
+                    </h3>
+                    
+                    <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
+                            <div><strong style="color: #64748b;">Period:</strong> ${this.cleanText(record.period || record.exam_period || 'N/A')}</div>
+                            <div><strong style="color: #64748b;">Units Registered:</strong> ${record.units || record.total_units || 0}</div>
+                            <div><strong style="color: #64748b;">Total Credits:</strong> ${record.credits || record.total_credits || 0}</div>
+                            <div><strong style="color: #64748b;">Date:</strong> ${this.formatDate(new Date(record.date || record.completed_date || Date.now()))}</div>
+                            <div style="grid-column: span 2;"><strong style="color: #64748b;">Status:</strong> <span style="color: #059669; font-weight: 600;">${record.status || 'Completed'}</span></div>
+                        </div>
+                    </div>
+                    
+                    ${unitsList ? `
+                        <div style="margin-bottom: 16px;">
+                            <h4 style="font-size: 13px; color: #1e3a5f; margin: 0 0 8px 0;">📋 Units Registered</h4>
+                            <div style="background: #f8fafc; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto;">
+                                ${unitsList}
+                            </div>
+                        </div>
+                    ` : ''}
+                    
+                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+                        <button onclick="this.closest('.preview-overlay').remove()" style="
+                            flex: 1;
+                            padding: 10px;
+                            border: 1px solid #e2e8f0;
+                            border-radius: 8px;
+                            background: white;
+                            cursor: pointer;
+                            font-weight: 500;
+                            min-width: 100px;
+                        ">Close</button>
+                        <button onclick="window.examCardModule.downloadPastExamPDF('${examId}')" style="
+                            flex: 1;
+                            padding: 10px;
+                            border: none;
+                            border-radius: 8px;
+                            background: #1e3a5f;
+                            color: white;
+                            cursor: pointer;
+                            font-weight: 500;
+                            min-width: 100px;
+                        ">📥 Download PDF</button>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) modal.remove();
+            });
+            
+            modal.querySelector('.preview-close').addEventListener('click', () => {
+                modal.remove();
+            });
+            
+            modal.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') modal.remove();
+            });
+        }
+        
+        // ============================================
+        // UPDATE DASHBOARD
         // ============================================
         
         async updateDashboard() {
@@ -556,6 +1246,10 @@ showSupplementaryOnlyMessage() {
                 this.dashboardApprovedUnits.textContent = approvedCount;
             }
         }
+        
+        // ============================================
+        // UI MESSAGES
+        // ============================================
         
         showLoginMessage() {
             if (this.examCardContent) {
@@ -639,208 +1333,8 @@ showSupplementaryOnlyMessage() {
         }
         
         // ============================================
-        // EXAM CARD DISPLAY - COMPLETE
+        // SETUP ACTION BUTTONS
         // ============================================
-        
-        displayExamCard() {
-            if (!this.examCardContent) return;
-            
-            const student = this.userProfile;
-            const approvedUnits = this.approvedUnits;
-            const isEligible = approvedUnits.length > 0;
-            const examOver = this.isExamOver();
-            
-            const isTVET = this.isTVETStudent();
-            const blockLabel = isTVET ? 'Current Term:' : 'Current Block:';
-            const blockValue = this.getBlockValue();
-            const hodTitle = this.getHODTitle();
-            
-            const studentIdDisplay = student?.student_id || 
-                                    student?.admission_number || 
-                                    student?.user_id?.substring(0, 8) || 
-                                    'N/A';
-            const programDisplay = student?.program || student?.program_type || 'N/A';
-            
-            const totalCredits = approvedUnits.reduce((sum, unit) => sum + (unit.credits || CONFIG.DEFAULT_CREDITS), 0);
-            
-            const unitCount = approvedUnits.length;
-            const needsCompression = unitCount > CONFIG.MAX_UNITS_DISPLAY;
-            
-            let tableRows = '';
-            let displayUnits = approvedUnits;
-            let compressedCount = 0;
-            
-            if (needsCompression) {
-                displayUnits = approvedUnits.slice(0, CONFIG.MAX_UNITS_DISPLAY);
-                compressedCount = approvedUnits.length - CONFIG.MAX_UNITS_DISPLAY;
-            }
-            
-            tableRows = displayUnits.map((unit, index) => {
-                const unitName = this.cleanText(unit.unit_name || unit.name || '');
-                const unitCode = this.cleanText(unit.unit_code || unit.code || '');
-                return `
-                    <tr>
-                        <td class="text-center">${index + 1}</td>
-                        <td><strong>${unitCode}</strong></td>
-                        <td>${unitName}</td>
-                        <td class="text-center">${unit.credits || CONFIG.DEFAULT_CREDITS}</td>
-                        <td class="signature-cell">
-                            <div class="signature-line"></div>
-                            <span style="font-size: 9px; color: #94a3b8;">Lecturer's Signature</span>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            
-            if (compressedCount > 0) {
-                tableRows += `
-                    <tr class="compressed-row">
-                        <td colspan="5" style="text-align:center; font-style:italic; color:#64748b; padding:8px; background:#f8fafc;">
-                            + ${compressedCount} more ${compressedCount === 1 ? 'unit' : 'units'} registered
-                        </td>
-                    </tr>
-                `;
-            }
-            
-            let statusBadge = '';
-            if (examOver) {
-                statusBadge = `<div class="status-badge completed">✅ COMPLETED</div>`;
-            } else {
-                statusBadge = `<div class="status-badge ${isEligible ? 'eligible' : 'ineligible'}">
-                    ${isEligible ? '✅ ELIGIBLE' : '❌ NOT ELIGIBLE'}
-                </div>`;
-            }
-            
-            const studentTypeBadge = isTVET ? 
-                `<span style="background: #f59e0b; color: #78350f; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">TVET</span>` :
-                `<span style="background: #2563eb; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600; margin-left: 10px;">KRCHN</span>`;
-            
-            // Build the HTML
-            const html = `
-                <div class="exam-card-wrapper" id="exam-card-print-area">
-                    <div class="exam-card-compact" role="region" aria-label="Examination Card">
-                        <!-- Header -->
-                        <div class="card-header">
-                            <img src="${CONFIG.LOGO_URL}" alt="NCHSM Logo" class="card-logo" onerror="this.style.display='none'">
-                            <div class="header-text">
-                                <div class="institution">NAKURU COLLEGE OF HEALTH SCIENCES AND MANAGEMENT</div>
-                                <div class="card-title">
-                                    EXAMINATION CARD
-                                    ${studentTypeBadge}
-                                </div>
-                                <div class="card-subtitle">${examOver ? '(Historical Record)' : '(Exam Entry Permit)'}</div>
-                            </div>
-                            ${statusBadge}
-                        </div>
-                        
-                        <!-- Info Grid -->
-                        <div class="info-grid">
-                            <div class="info-item"><span class="info-label">Name:</span> ${this.cleanText(student?.full_name || 'Not Available')}</div>
-                            <div class="info-item"><span class="info-label">REG NO.:</span> ${this.cleanText(studentIdDisplay)}</div>
-                            <div class="info-item"><span class="info-label">Program:</span> ${this.cleanText(programDisplay)}</div>
-                            <div class="info-item"><span class="info-label">${blockLabel}</span> <strong>${this.cleanText(blockValue)}</strong></div>
-                            <div class="info-item"><span class="info-label">Registered Units:</span> <strong>${approvedUnits.length}</strong></div>
-                            <div class="info-item"><span class="info-label">Total Credits:</span> <strong>${totalCredits}</strong></div>
-                            <div class="info-item"><span class="info-label">Exam Period:</span> ${this.getExamPeriod()}</div>
-                            <div class="info-item"><span class="info-label">Date Issued:</span> ${this.formatDate()}</div>
-                            <div class="info-item"><span class="info-label">Valid Until:</span> ${examOver ? 'Completed' : 'End of Exam Period'}</div>
-                        </div>
-                        
-                        <!-- Units Table -->
-                        ${approvedUnits.length > 0 ? `
-                            <table class="units-table">
-                                <thead>
-                                    <tr>
-                                        <th width="5%">#</th>
-                                        <th width="18%">Unit Code</th>
-                                        <th width="40%">Unit Title</th>
-                                        <th width="7%">Cr</th>
-                                        <th width="30%">Lecturer's Signature</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    ${tableRows}
-                                    <tr class="total-row">
-                                        <td colspan="3"><strong>TOTAL REGISTERED UNITS: ${approvedUnits.length}</strong></td>
-                                        <td class="text-center"><strong>${totalCredits}</strong></td>
-                                        <td></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        ` : '<div class="no-units">No approved units found. Please register for units.</div>'}
-                        
-                        <!-- Signatures with Dynamic HOD -->
-                        <div class="signatures-row">
-                            <div class="signature">
-                                <div class="sign-line"></div>
-                                <div style="font-weight: 600; font-size: 12px;">${hodTitle}</div>
-                                <div style="font-size: 9px; color: #94a3b8;">Head of Department</div>
-                            </div>
-                            <div class="signature">
-                                <div class="sign-line"></div>
-                                <div style="font-weight: 600; font-size: 12px;">Principal</div>
-                                <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
-                            </div>
-                            <div class="signature">
-                                <div class="sign-line"></div>
-                                <div style="font-weight: 600; font-size: 12px;">Finance Officer</div>
-                                <div style="font-size: 9px; color: #94a3b8;">NCHSM</div>
-                            </div>
-                        </div>
-                        
-                        <!-- Footer -->
-                        <div class="card-footer">
-                            <div class="rules-header">📋 EXAMINATION RULES & REGULATIONS</div>
-                            <div class="rules-list">
-                                <div class="rule-item">• Present your exam card at each examination hall</div>
-                                <div class="rule-item">• No electronic devices allowed in examination room</div>
-                                <div class="rule-item">• Arrive 30 minutes before examination start time</div>
-                                <div class="rule-item">• Mobile phones must be switched off and stored</div>
-                                <div class="rule-item">• No unauthorized materials allowed</div>
-                            </div>
-                            
-                            <div class="student-section">
-                                <div class="student-declaration">
-                                    I hereby confirm that I have read and understood the examination rules and regulations.
-                                </div>
-                                
-                                <div class="student-sign-line">
-                                    <span class="student-label">Student Signature:</span>
-                                    <span class="signature-line-inline"></span>
-                                    <span class="student-date">Date: ${this.formatDate()}</span>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    ${!examOver && isEligible ? `
-                        <div class="action-buttons">
-                            <button class="download-btn" id="downloadExamCardBtn" aria-label="Download PDF">
-                                📥 Download PDF
-                            </button>
-                            <button class="print-btn" id="printExamCardBtn" aria-label="Print Card">
-                                🖨️ Print Card
-                            </button>
-                            <button class="preview-btn" id="previewExamCardBtn" aria-label="Preview A4">
-                                👁️ A4 Preview
-                            </button>
-                        </div>
-                    ` : ''}
-                    
-                    ${examOver ? `
-                        <div style="text-align: center; margin-top: 12px; font-size: 11px; color: #64748b;">
-                            📜 This is a historical record from the ${this.getExamPeriod()}
-                        </div>
-                    ` : ''}
-                </div>
-            `;
-            
-            this.examCardContent.innerHTML = html;
-            this.addCompactStyles();
-            
-            this.setupActionButtons();
-            this.loadPastExamRecords();
-        }
         
         setupActionButtons() {
             const downloadBtn = document.getElementById('downloadExamCardBtn');
@@ -1244,210 +1738,6 @@ showSupplementaryOnlyMessage() {
         }
         
         // ============================================
-        // PAST EXAM RECORDS
-        // ============================================
-        
-        displayPastExams() {
-            if (this.pastExamRecords.length === 0) return;
-            
-            const tableRows = this.pastExamRecords.map((record, index) => {
-                return `
-                    <tr>
-                        <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${index + 1}</td>
-                        <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0;">${this.cleanText(record.period || record.exam_period || 'N/A')}</td>
-                        <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${record.units || record.total_units || 0}</td>
-                        <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">${record.credits || record.total_credits || 0}</td>
-                        <td style="padding: 8px 10px; border-bottom: 1px solid #e2e8f0;">${this.formatDate(new Date(record.date || record.completed_date || Date.now()))}</td>
-                        <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">
-                            <span style="background: #059669; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 600;">
-                                ${record.status || 'Completed'}
-                            </span>
-                        </td>
-                        <td style="padding: 8px 10px; text-align: center; border-bottom: 1px solid #e2e8f0;">
-                            <button class="view-exam-btn" data-exam-id="${record.id}" style="
-                                background: #1e3a5f;
-                                color: white;
-                                border: none;
-                                padding: 4px 14px;
-                                border-radius: 20px;
-                                font-size: 11px;
-                                cursor: pointer;
-                                font-weight: 500;
-                                transition: all 0.2s;
-                            ">
-                                📄 View
-                            </button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-            
-            const pastExamsHTML = `
-                <div class="past-exams-section" style="margin-top: 30px; border-top: 2px solid #e2e8f0; padding-top: 20px;">
-                    <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 15px;">
-                        <h3 style="font-size: 16px; color: #1e3a5f; margin: 0;">
-                            📚 Past Exam Records
-                        </h3>
-                        <span style="background: #e2e8f0; color: #475569; padding: 2px 10px; border-radius: 12px; font-size: 11px;">
-                            ${this.pastExamRecords.length} records
-                        </span>
-                    </div>
-                    <div style="overflow-x: auto;">
-                        <table style="
-                            width: 100%;
-                            border-collapse: collapse;
-                            font-size: 12px;
-                            background: white;
-                            border-radius: 8px;
-                            overflow: hidden;
-                            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
-                        ">
-                            <thead>
-                                <tr style="background: #f1f5f9;">
-                                    <th style="padding: 10px 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #cbd5e1;">#</th>
-                                    <th style="padding: 10px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Exam Period</th>
-                                    <th style="padding: 10px 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Units</th>
-                                    <th style="padding: 10px 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Credits</th>
-                                    <th style="padding: 10px 10px; text-align: left; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Date</th>
-                                    <th style="padding: 10px 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Status</th>
-                                    <th style="padding: 10px 10px; text-align: center; font-weight: 600; border-bottom: 2px solid #cbd5e1;">Action</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${tableRows}
-                            </tbody>
-                        </table>
-                    </div>
-                    <div style="margin-top: 10px; font-size: 11px; color: #94a3b8; text-align: center;">
-                        Click "View" to see the full exam card for each past period
-                    </div>
-                </div>
-            `;
-            
-            const examCardWrapper = document.querySelector('.exam-card-wrapper');
-            if (examCardWrapper) {
-                const existingPast = examCardWrapper.querySelector('.past-exams-section');
-                if (existingPast) existingPast.remove();
-                
-                const pastSection = document.createElement('div');
-                pastSection.className = 'past-exams-section';
-                pastSection.innerHTML = pastExamsHTML;
-                examCardWrapper.appendChild(pastSection);
-                
-                pastSection.querySelectorAll('.view-exam-btn').forEach(btn => {
-                    btn.addEventListener('click', (e) => {
-                        const examId = btn.dataset.examId;
-                        this.viewPastExam(examId);
-                    });
-                    
-                    btn.addEventListener('mouseenter', () => {
-                        btn.style.background = '#2c5a8c';
-                        btn.style.transform = 'scale(1.02)';
-                    });
-                    btn.addEventListener('mouseleave', () => {
-                        btn.style.background = '#1e3a5f';
-                        btn.style.transform = 'scale(1)';
-                    });
-                });
-            }
-        }
-        
-        // ============================================
-        // PAST EXAM VIEWER
-        // ============================================
-        
-        viewPastExam(examId) {
-            const record = this.pastExamRecords.find(r => r.id == examId);
-            if (!record) {
-                alert('Record not found');
-                return;
-            }
-            
-            let unitsList = '';
-            const units = record.units_list || [];
-            if (units.length > 0) {
-                unitsList = units.map((unit, i) => `
-                    <div style="display: flex; justify-content: space-between; padding: 4px 0; border-bottom: 1px solid #f1f5f9; font-size: 12px;">
-                        <span>${i + 1}. ${this.cleanText(unit.unit_code || '')} - ${this.cleanText(unit.unit_name || '')}</span>
-                        <span style="font-weight: 600;">${unit.credits || 0} cr</span>
-                    </div>
-                `).join('');
-            }
-            
-            const modal = document.createElement('div');
-            modal.className = 'preview-overlay';
-            modal.setAttribute('role', 'dialog');
-            modal.setAttribute('aria-label', 'Past Exam Record');
-            
-            modal.innerHTML = `
-                <div class="preview-modal">
-                    <button class="preview-close" aria-label="Close">×</button>
-                    
-                    <h3 style="color: #1e3a5f; margin: 0 0 20px 0; font-size: 18px;">
-                        📄 Past Exam Record
-                    </h3>
-                    
-                    <div style="background: #f8fafc; border-radius: 8px; padding: 16px; margin-bottom: 16px;">
-                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
-                            <div><strong style="color: #64748b;">Period:</strong> ${this.cleanText(record.period || record.exam_period || 'N/A')}</div>
-                            <div><strong style="color: #64748b;">Units Registered:</strong> ${record.units || record.total_units || 0}</div>
-                            <div><strong style="color: #64748b;">Total Credits:</strong> ${record.credits || record.total_credits || 0}</div>
-                            <div><strong style="color: #64748b;">Date:</strong> ${this.formatDate(new Date(record.date || record.completed_date || Date.now()))}</div>
-                            <div style="grid-column: span 2;"><strong style="color: #64748b;">Status:</strong> <span style="color: #059669; font-weight: 600;">${record.status || 'Completed'}</span></div>
-                        </div>
-                    </div>
-                    
-                    ${unitsList ? `
-                        <div style="margin-bottom: 16px;">
-                            <h4 style="font-size: 13px; color: #1e3a5f; margin: 0 0 8px 0;">📋 Units Registered</h4>
-                            <div style="background: #f8fafc; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto;">
-                                ${unitsList}
-                            </div>
-                        </div>
-                    ` : ''}
-                    
-                    <div style="display: flex; gap: 10px; flex-wrap: wrap;">
-                        <button onclick="this.closest('.preview-overlay').remove()" style="
-                            flex: 1;
-                            padding: 10px;
-                            border: 1px solid #e2e8f0;
-                            border-radius: 8px;
-                            background: white;
-                            cursor: pointer;
-                            font-weight: 500;
-                            min-width: 100px;
-                        ">Close</button>
-                        <button onclick="window.examCardModule.downloadPastExamPDF('${examId}')" style="
-                            flex: 1;
-                            padding: 10px;
-                            border: none;
-                            border-radius: 8px;
-                            background: #1e3a5f;
-                            color: white;
-                            cursor: pointer;
-                            font-weight: 500;
-                            min-width: 100px;
-                        ">📥 Download PDF</button>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            modal.addEventListener('click', (e) => {
-                if (e.target === modal) modal.remove();
-            });
-            
-            modal.querySelector('.preview-close').addEventListener('click', () => {
-                modal.remove();
-            });
-            
-            modal.addEventListener('keydown', (e) => {
-                if (e.key === 'Escape') modal.remove();
-            });
-        }
-        
-        // ============================================
         // PDF GENERATION
         // ============================================
         
@@ -1567,7 +1857,7 @@ showSupplementaryOnlyMessage() {
             const allButtons = cloneCard.querySelectorAll('button');
             allButtons.forEach(btn => btn.style.display = 'none');
             
-            const pastSection = cloneCard.querySelector('.past-exams-section');
+            const pastSection = cloneCard.querySelector('.past-exams-container, .past-exams-section');
             if (pastSection) pastSection.remove();
             
             const signatureLines = cloneCard.querySelectorAll('.signature-line, .sign-line, .signature-line-inline');
@@ -1707,7 +1997,7 @@ showSupplementaryOnlyMessage() {
                             margin: 0 auto;
                             padding: 10px;
                         }
-                        .past-exams-section {
+                        .past-exams-container, .past-exams-section {
                             display: none !important;
                         }
                         .signature-line, .sign-line, .signature-line-inline {
@@ -1737,7 +2027,7 @@ showSupplementaryOnlyMessage() {
                                 -webkit-print-color-adjust: exact; 
                                 print-color-adjust: exact; 
                             }
-                            .past-exams-section { display: none !important; }
+                            .past-exams-container, .past-exams-section { display: none !important; }
                             .signature-line, .sign-line, .signature-line-inline {
                                 width: 80% !important;
                                 margin: 8px auto !important;
@@ -1863,7 +2153,7 @@ showSupplementaryOnlyMessage() {
     window.viewPastExam = (id) => examCardModule?.viewPastExam(id);
     window.downloadPastExamPDF = (id) => examCardModule?.downloadPastExamPDF(id);
     
-    console.log('✅ Exam Card module v11.2 ready - TVET/KRCHN Support - Dynamic HOD - Full A4 optimized');
+    console.log('✅ Exam Card module v11.3 ready - TVET/KRCHN Support - Dynamic HOD - Full A4 optimized - Fixed Retake & Past Records!');
     
     if (typeof module !== 'undefined' && module.exports) {
         module.exports = { ExamCardModule };
