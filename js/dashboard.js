@@ -1040,8 +1040,8 @@ async fixNurseIQDisplay() {
                 score: data?.nurseiq?.score || 0,
                 accuracy: data?.nurseiq?.accuracy || 0,
                 progress: data?.nurseiq?.progress || 0,
-                points: data?.nurseiq?.points || 0
-            };
+                points: data?.nurseiq?.points || 0  // ✅ This is the key fix!
+};
             
             // Store NurseIQ points separately for easy access
             this.nurseIQPoints = this.metrics.nurseiq.points;
@@ -2011,45 +2011,35 @@ async fixNurseIQDisplay() {
             this.elements.gamificationPointsDisplay.innerText = points;
         }
         
-        // ✅ FIXED: NurseIQ - Show ALL fields correctly
-        if (this.elements.nurseiqProgress) {
-            this.elements.nurseiqProgress.innerText = (m.nurseiq?.progress || 0) + '%';
-        }
-        if (this.elements.nurseiqAccuracy) {
-            this.elements.nurseiqAccuracy.innerText = (m.nurseiq?.accuracy || 0) + '%';
-        }
-        if (this.elements.nurseiqQuestions) {
-            this.elements.nurseiqQuestions.innerText = m.nurseiq?.questions || 0;
-        }
-        if (this.elements.nurseiqPoints) {
-            // ✅ Get points from multiple sources
-            let points = 0;
-            
-            // 1. Try from m.nurseiq.points
-            if (m.nurseiq?.points) {
-                points = m.nurseiq.points;
-            }
-            // 2. Try from m.nurseiqPoints
-            else if (m.nurseiqPoints) {
-                points = m.nurseiqPoints;
-            }
-            // 3. Try from this.nurseIQPoints
-            else if (this.nurseIQPoints) {
-                points = this.nurseIQPoints;
-            }
-            // 4. Calculate from score × 2
-            else if (m.nurseiq?.score) {
-                points = m.nurseiq.score * 2;
-            }
-            // 5. Calculate from questions (fallback)
-            else if (m.nurseiq?.questions) {
-                points = m.nurseiq.questions * 2;
-            }
-            
-            this.elements.nurseiqPoints.innerText = points;
-            console.log(`📊 NurseIQ Points set to: ${points}`);
-        }
-        
+       // In dashboard.js, find the updateUIFromMetrics method and update this section:
+
+// ✅ FIXED: NurseIQ - Show ALL fields correctly
+if (this.elements.nurseiqProgress) {
+    this.elements.nurseiqProgress.innerText = (m.nurseiq?.progress || 0) + '%';
+}
+if (this.elements.nurseiqAccuracy) {
+    this.elements.nurseiqAccuracy.innerText = (m.nurseiq?.accuracy || 0) + '%';
+}
+if (this.elements.nurseiqQuestions) {
+    this.elements.nurseiqQuestions.innerText = m.nurseiq?.questions || 0;
+}
+if (this.elements.nurseiqPoints) {
+    // ✅ Get points from nurseiq.points (this is the fix!)
+    let points = m.nurseiq?.points || 0;
+    
+    // If points is 0 but score has value, calculate from score
+    if (points === 0 && m.nurseiq?.score > 0) {
+        points = m.nurseiq.score * 2;
+    }
+    
+    // If still 0, try from this.nurseIQPoints
+    if (points === 0 && this.nurseIQPoints > 0) {
+        points = this.nurseIQPoints;
+    }
+    
+    this.elements.nurseiqPoints.innerText = points;
+    console.log(`📊 NurseIQ Points set to: ${points}`);
+}
         // Attendance color coding
         const rate = m.attendance.rate || 0;
         const percentEl = document.querySelector('.attendance-percent');
