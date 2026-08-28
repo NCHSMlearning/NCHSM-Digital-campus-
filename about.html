@@ -1,0 +1,400 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>About NCHSM | Nakuru College of Health Sciences and Management</title>
+    <meta name="description" content="Nakuru College of Health Sciences and Management - Located in Kiamunyi, Nakuru. Offering nursing and TVET courses with modern facilities.">
+    
+    <!-- ===== GOOGLE ADSENSE ===== -->
+    <meta name="google-adsense-account" content="ca-pub-9019033253872768">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9019033253872768"
+         crossorigin="anonymous"></script>
+    
+    <!-- ===== GOOGLE ANALYTICS ===== -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTZRYGB8PE"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-WTZRYGB8PE');
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
+            color: #0F172A;
+        }
+        
+        /* ===== HEADER ===== */
+        .blog-header {
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            color: white;
+            padding: 15px 0;
+            border-bottom: 3px solid #FDB913;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .blog-header .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .blog-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .blog-header .logo img {
+            height: 40px;
+        }
+        .blog-header .logo h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        .blog-header .logo h1 span {
+            color: #FDB913;
+        }
+        .blog-header .nav {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .blog-header .nav a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        .blog-header .nav a:hover {
+            color: #FDB913;
+        }
+        .blog-header .nav a.active {
+            color: #FDB913;
+            font-weight: 600;
+        }
+        .blog-header .nav a.home-link {
+            color: #FDB913;
+            font-weight: 600;
+        }
+        .blog-header .portal-btn {
+            background: #FDB913;
+            color: #0A3D62;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .blog-header .portal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(253,185,19,0.3);
+        }
+        
+        /* ===== PAGE CONTENT ===== */
+        .page-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .page-card {
+            background: white;
+            border-radius: 16px;
+            padding: 50px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            border: 1px solid #e5e7eb;
+        }
+        .page-card h1 {
+            font-size: 2.2rem;
+            color: #0A3D62;
+            margin-bottom: 10px;
+        }
+        .page-card .subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #FDB913;
+            padding-bottom: 15px;
+        }
+        .page-card h2 {
+            color: #0A3D62;
+            margin: 30px 0 12px;
+            font-size: 1.4rem;
+        }
+        .page-card p {
+            color: #334155;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05rem;
+        }
+        .page-card ul {
+            margin: 15px 0 15px 20px;
+        }
+        .page-card ul li {
+            color: #334155;
+            line-height: 1.8;
+            margin-bottom: 8px;
+        }
+        
+        /* ===== VISION & MISSION ===== */
+        .vision-mission {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 25px 0;
+        }
+        .vision-box, .mission-box {
+            background: #f8fafc;
+            padding: 25px;
+            border-radius: 12px;
+            border-left: 4px solid #FDB913;
+        }
+        .vision-box {
+            border-left-color: #0A3D62;
+        }
+        .vision-box h3, .mission-box h3 {
+            color: #0A3D62;
+            font-size: 1.1rem;
+            margin-bottom: 8px;
+        }
+        .vision-box p, .mission-box p {
+            color: #475569;
+            font-size: 1rem;
+            margin-bottom: 0;
+        }
+        
+        /* ===== FACILITIES GRID ===== */
+        .facilities-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 20px 0;
+        }
+        .facility-card {
+            background: #f8fafc;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            transition: transform 0.3s;
+        }
+        .facility-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 25px rgba(0,0,0,0.06);
+        }
+        .facility-card .icon {
+            font-size: 2rem;
+            color: #0A3D62;
+            margin-bottom: 8px;
+        }
+        .facility-card h3 {
+            color: #0A3D62;
+            font-size: 1.1rem;
+            margin-bottom: 6px;
+        }
+        .facility-card p {
+            color: #64748b;
+            font-size: 0.95rem;
+            line-height: 1.6;
+            margin-bottom: 0;
+        }
+        
+        .cta-box {
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 30px;
+        }
+        .cta-box h2 {
+            color: white;
+            margin: 0 0 5px 0;
+        }
+        .cta-box p {
+            color: rgba(255,255,255,0.85);
+            margin-bottom: 15px;
+        }
+        .cta-box .btn {
+            background: #FDB913;
+            color: #0A3D62;
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            display: inline-block;
+            transition: transform 0.3s;
+        }
+        .cta-box .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(253,185,19,0.3);
+        }
+        
+        /* ===== FOOTER ===== */
+        .blog-footer {
+            background: #0A3D62;
+            color: rgba(255,255,255,0.8);
+            padding: 30px 20px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        .blog-footer .links {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+        .blog-footer .links a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.3s;
+        }
+        .blog-footer .links a:hover {
+            color: #FDB913;
+        }
+        .blog-footer .copyright {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 768px) {
+            .page-card { padding: 25px; }
+            .vision-mission { grid-template-columns: 1fr; }
+            .facilities-grid { grid-template-columns: 1fr; }
+            .page-card h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <header class="blog-header">
+        <div class="container">
+            <div class="logo">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM">
+                <h1>NCHSM <span>About</span></h1>
+            </div>
+            <div class="nav">
+                <a href="/login" class="home-link">🏠 Home</a>
+                <a href="/blog/">📝 Blog</a>
+                <a href="/about" class="active">ℹ️ About</a>
+                <a href="/contact">📧 Contact</a>
+                <a href="/login" class="portal-btn">
+                    <i class="fas fa-graduation-cap"></i> Student Portal
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== PAGE CONTENT ===== -->
+    <div class="page-container">
+        <div class="page-card">
+            <h1>About Nakuru College of Health Sciences and Management</h1>
+            <div class="subtitle">Excellence in Healthcare Education Since 1978</div>
+            
+            <h2>Our Campus</h2>
+            <p>Located in the serene suburb of <strong>Kiamunyi</strong>, along the Nakuru–Kabarak Road off Canon Ndungu Street, Nakuru College of Health Sciences and Management offers a peaceful and conducive learning environment just 5 kilometres from Nakuru Central Business District.</p>
+            
+            <p>Our modern campus is thoughtfully designed to inspire learning, encourage collaboration, and provide students with an exceptional educational experience. Spacious, well-ventilated lecture halls are equipped to support interactive and engaging teaching, creating a comfortable environment where students can thrive academically.</p>
+            
+            <h2>Our Facilities</h2>
+            <p>Beyond the classroom, the college boasts modern facilities that enable students to gain practical experience and strengthen their technical competencies:</p>
+            
+            <div class="facilities-grid">
+                <div class="facility-card">
+                    <div class="icon"><i class="fas fa-flask"></i></div>
+                    <h3>Science Laboratory</h3>
+                    <p>Our well-equipped Science Laboratory supports quality learning through practical experiments and scientific investigation. Students gain valuable experience by applying classroom concepts in a controlled environment.</p>
+                </div>
+                <div class="facility-card">
+                    <div class="icon"><i class="fas fa-heartbeat"></i></div>
+                    <h3>Skills Laboratory</h3>
+                    <p>Our modern Skills Laboratory provides students with a safe, hands-on learning environment equipped with industry-standard training equipment and simulation models to develop essential clinical skills.</p>
+                </div>
+                <div class="facility-card">
+                    <div class="icon"><i class="fas fa-laptop"></i></div>
+                    <h3>Computer Laboratory (ICT Hub)</h3>
+                    <p>Featuring modern computers, reliable internet access, and relevant software, the ICT Hub supports research, e-learning, assignments, digital literacy, and essential workplace technology skills.</p>
+                </div>
+                <div class="facility-card">
+                    <div class="icon"><i class="fas fa-book"></i></div>
+                    <h3>Library</h3>
+                    <p>Stocked with a wide collection of textbooks, journals, reference materials, and digital resources, our Library provides a quiet, conducive environment for study, research, and personal development.</p>
+                </div>
+                <div class="facility-card">
+                    <div class="icon"><i class="fas fa-futbol"></i></div>
+                    <h3>Sports</h3>
+                    <p>We believe education extends beyond the classroom. Our Sports Department promotes physical fitness, teamwork, discipline, and leadership through a variety of indoor and outdoor sporting activities.</p>
+                </div>
+                <div class="facility-card">
+                    <div class="icon"><i class="fas fa-users"></i></div>
+                    <h3>Student Support</h3>
+                    <p>We provide comprehensive support services including academic advising, career counseling, mentorship, and guidance to help students succeed throughout their academic journey.</p>
+                </div>
+            </div>
+            
+            <h2>Our Vision</h2>
+            <div class="vision-mission">
+                <div class="vision-box">
+                    <h3>👁️ Vision</h3>
+                    <p>To produce an excellent professional health care provider of international standards</p>
+                </div>
+                <div class="mission-box">
+                    <h3>🎯 Mission</h3>
+                    <p>To train a committed, highly qualified and self-driven service provider</p>
+                </div>
+            </div>
+            
+            <h2>Why Choose NCHSM</h2>
+            <ul>
+                <li><strong>Accredited Programs</strong> — All programs are accredited by the Nursing Council of Kenya, TVET Authority, and KNQA.</li>
+                <li><strong>Experienced Faculty</strong> — Our lecturers are experienced healthcare professionals with years of practice and teaching experience.</li>
+                <li><strong>Modern Facilities</strong> — State-of-the-art laboratories, computer hubs, and library resources.</li>
+                <li><strong>Clinical Placements</strong> — Students gain hands-on experience through clinical placements in hospitals and health centers.</li>
+                <li><strong>Conducive Environment</strong> — Peaceful campus just 5 km from Nakuru CBD.</li>
+            </ul>
+            
+            <!-- ===== CTA BOX ===== -->
+            <div class="cta-box">
+                <h2>📅 September 2026 Intake Now Open!</h2>
+                <p>Applications are ongoing at Nakuru College of Health Sciences & Management for Nursing and TVET courses.</p>
+                <a href="/login" class="btn"><i class="fas fa-graduation-cap"></i> Apply Now</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="blog-footer">
+        <div class="container">
+            <div class="links">
+                <a href="/login">🏠 Home</a>
+                <a href="/blog/">📝 Blog</a>
+                <a href="/about">ℹ️ About</a>
+                <a href="/contact">📧 Contact</a>
+                <a href="/privacy">🔒 Privacy</a>
+                <a href="/login" style="color: #FDB913; font-weight: 600;">🎓 Student Portal</a>
+            </div>
+            <div class="copyright">
+                © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
