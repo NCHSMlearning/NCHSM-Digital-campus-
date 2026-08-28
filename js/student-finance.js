@@ -1,8 +1,9 @@
 // ============================================================
-// 📊 STUDENT FINANCE MODULE - COMPLETE FIXED VERSION
+// 📊 STUDENT FINANCE MODULE - COMPLETE WITH POS STYLE MODAL
 // ✅ Works with actual database structure
 // ✅ Supports KRCHN (Semesters) and TVET (Terms with Years)
 // ✅ M-Pesa STK Push Integration with PayHero
+// ✅ POS Style Payment Modal with ALL states
 // ✅ Real-time payment status updates
 // ✅ Mobile responsive with compact layout
 // ✅ All payments processed on the same page - NO REDIRECTS
@@ -68,6 +69,18 @@ const studentFinanceState = {
         period: null,
         status: 'idle'
     }
+};
+
+// ============================================================
+// 📦 PENDING PAYMENT STATE (FOR POS STYLE MODAL)
+// ============================================================
+
+const pendingPayment = {
+    orderId: null,
+    paymentId: null,
+    transactionId: null,
+    isProcessing: false,
+    cancelled: false
 };
 
 // ============================================================
@@ -209,6 +222,19 @@ function getPeriods(programType, programLevel = 'diploma') {
         } else {
             return ['Y1 T1', 'Y1 T2', 'Y1 T3', 'Y2 T1', 'Y2 T2', 'Y2 T3'];
         }
+    }
+}
+
+// ============================================================
+// 🔧 FEE AMOUNT FUNCTION
+// ============================================================
+
+function getFeeAmount(programType, periodIndex, programLevel = 'diploma') {
+    if (programType === 'KRCHN') {
+        const krchnFees = [94600, 95181, 93291, 64100, 78576, 64100, 64100, 64100, 64100];
+        return krchnFees[periodIndex] || 64100;
+    } else {
+        return periodIndex === 0 ? 57500 : 50000;
     }
 }
 
@@ -530,19 +556,6 @@ async function fetchFinanceDataFromSupabase(user) {
     } catch (error) {
         console.error('❌ Error fetching from Supabase:', error);
         return null;
-    }
-}
-
-// ============================================================
-// 🔧 FEE AMOUNT FUNCTION
-// ============================================================
-
-function getFeeAmount(programType, periodIndex, programLevel = 'diploma') {
-    if (programType === 'KRCHN') {
-        const krchnFees = [94600, 95181, 93291, 64100, 78576, 64100, 64100, 64100, 64100];
-        return krchnFees[periodIndex] || 64100;
-    } else {
-        return periodIndex === 0 ? 57500 : 50000;
     }
 }
 
@@ -1247,16 +1260,30 @@ function resendPaymentEmail() {
 }
 
 // ============================================================
-// 💳 PAYMENT MODAL - MOBILE OPTIMIZED
+// 💳 PAYMENT MODAL - POS STYLE
 // ============================================================
 
 function openPaymentModal() {
     const modal = document.getElementById('finance-paymentModal');
     if (!modal) return;
     
-    hidePaymentProcessing();
-    hideSTKStatus();
+    // Reset modal to POS style
+    const content = document.getElementById('finance-paymentContent');
+    const title = document.getElementById('finance-paymentModalTitle');
     
+    // Set initial POS style content
+    title.textContent = '⏳ Processing Payment';
+    content.innerHTML = `
+        <div class="spinner"></div>
+        <p class="status-text">⏳ Sending STK Push...</p>
+        <p class="status-sub" id="finance-paymentDetails">Amount: KES ${studentFinanceState.balance?.toLocaleString() || '0.00'}</p>
+        <p class="status-sub" style="font-size:12px;margin-top:8px;">📱 Check your phone and enter your PIN</p>
+        <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
+            <i class="fas fa-times"></i> Cancel Payment
+        </button>
+    `;
+    
+    // Populate period dropdown
     const periodSelect = document.getElementById('finance-paymentPeriodSelect');
     if (periodSelect) {
         const programType = studentFinanceState.programType || 'TVET';
@@ -1313,17 +1340,167 @@ function openPaymentModal() {
     document.querySelectorAll('.finance-validation-error').forEach(el => el.style.display = 'none');
     
     selectPaymentMethod('mpesa');
-    modal.style.display = 'flex';
+    modal.classList.add('active');
     document.body.style.overflow = 'hidden';
 }
 
 function closePaymentModal() {
     const modal = document.getElementById('finance-paymentModal');
     if (modal) {
-        modal.style.display = 'none';
+        modal.classList.remove('active');
         document.body.style.overflow = 'auto';
     }
+    pendingPayment.isProcessing = false;
+    pendingPayment.cancelled = false;
 }
+
+// ============================================================
+// 🎯 POS STYLE PAYMENT FUNCTIONS
+// ============================================================
+
+function cancelStudentPayment() {
+    if (pendingPayment && pendingPayment.isProcessing) {
+        pendingPayment.cancelled = true;
+        pendingPayment.isProcessing = false;
+        console.log('⛔ Student payment cancellation triggered');
+        
+        const content = document.getElementById('finance-paymentContent');
+        const title = document.getElementById('finance-paymentModalTitle');
+        
+        title.textContent = '⛔ Payment Cancelled';
+        content.innerHTML = `
+            <div class="status-icon warning">⛔</div>
+            <p class="status-text">Payment Cancelled</p>
+            <p class="status-sub">You cancelled the payment.</p>
+            <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
+        `;
+        showToast('⛔ Payment cancelled', 'warning');
+    } else {
+        closePaymentModal();
+        showToast('Payment cancelled', 'warning');
+    }
+}
+
+function updateStudentSTKStatus(attempt, maxAttempts, message) {
+    const content = document.getElementById('finance-paymentContent');
+    const remaining = Math.round((maxAttempts - attempt) * 1.5);
+    
+    content.innerHTML = `
+        <div class="spinner"></div>
+        <p class="status-text">⏳ Waiting for payment confirmation... (${attempt}/${maxAttempts})</p>
+        <p class="status-sub">${message || 'Please check your phone and enter your PIN'}</p>
+        <p class="status-sub" style="font-size:12px;color:var(--text-muted);margin-top:8px;">
+            ⏱️ ${remaining} seconds remaining
+        </p>
+        <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
+            <i class="fas fa-times"></i> Cancel Payment
+        </button>
+    `;
+}
+
+function showStudentPaymentSuccess(amount, reference, period) {
+    const content = document.getElementById('finance-paymentContent');
+    const title = document.getElementById('finance-paymentModalTitle');
+    
+    title.textContent = '✅ Payment Successful! 🎉';
+    content.innerHTML = `
+        <div class="status-icon success">✅</div>
+        <p class="status-text">Payment Successful! 🎉</p>
+        <p class="status-sub">${period || 'Tuition Fees'}</p>
+        <p class="status-sub" style="font-size:18px;font-weight:700;color:#10B981;margin-top:8px;">
+            KES ${amount.toLocaleString()}
+        </p>
+        <p class="status-sub" style="font-size:12px;color:var(--text-muted);">
+            Reference: ${reference}
+        </p>
+        <button class="btn btn-success" style="margin-top:12px;" onclick="closePaymentModal()">Done</button>
+    `;
+    
+    // Auto close after 3 seconds
+    setTimeout(() => {
+        const modal = document.getElementById('finance-paymentModal');
+        if (modal && modal.classList.contains('active')) {
+            closePaymentModal();
+        }
+    }, 3000);
+}
+
+function showStudentPaymentFailure(message) {
+    const content = document.getElementById('finance-paymentContent');
+    const title = document.getElementById('finance-paymentModalTitle');
+    
+    title.textContent = '❌ Payment Failed';
+    content.innerHTML = `
+        <div class="status-icon failed">❌</div>
+        <p class="status-text">Payment Failed</p>
+        <p class="status-sub">${message || 'Transaction was not completed'}</p>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">Try Again</button>
+    `;
+}
+
+function showStudentPaymentTimeout() {
+    const content = document.getElementById('finance-paymentContent');
+    const title = document.getElementById('finance-paymentModalTitle');
+    
+    title.textContent = '⏰ Payment Timeout';
+    content.innerHTML = `
+        <div class="status-icon warning">⏰</div>
+        <p class="status-text">Payment Timeout</p>
+        <p class="status-sub">The payment took too long to complete.</p>
+        <p class="status-sub" style="font-size:12px;color:var(--text-muted);margin-top:8px;">
+            Please check your M-Pesa transactions and try again.
+        </p>
+        <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
+    `;
+}
+
+// ============================================================
+// 📝 PAYMENT FORM VALIDATION
+// ============================================================
+
+function validatePaymentForm() {
+    let isValid = true;
+    document.querySelectorAll('.finance-validation-error').forEach(err => err.style.display = 'none');
+    
+    const period = document.getElementById('finance-paymentPeriodSelect');
+    if (!period.value) {
+        const errorEl = period.nextElementSibling;
+        if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
+        isValid = false;
+    }
+    
+    const amount = document.getElementById('finance-paymentAmountInput');
+    if (!amount.value || parseFloat(amount.value) < 1) {
+        const errorEl = amount.nextElementSibling;
+        if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
+        isValid = false;
+    }
+    
+    const selectedMethod = document.querySelector('.finance-payment-method-selected');
+    if (!selectedMethod) {
+        document.getElementById('finance-methodError').style.display = 'block';
+        isValid = false;
+    }
+    
+    let method = null;
+    if (selectedMethod) method = selectedMethod.id.replace('finance-method-', '');
+    
+    if (method === 'mpesa') {
+        const phone = document.getElementById('finance-mpesaPhoneInput');
+        if (!phone.value || phone.value.replace(/\D/g, '').length < 10) {
+            const errorEl = phone.nextElementSibling?.nextElementSibling;
+            if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
+            isValid = false;
+        }
+    }
+    
+    if (!isValid) showToast('Please fix all validation errors.', 'error');
+    return isValid;
+}
+
+// ============================================================
+// 📱 PAYMENT PROCESSING FUNCTIONS
+// ============================================================
 
 function selectPaymentMethod(method) {
     document.querySelectorAll('#finance-paymentMethodsContainer > div').forEach(el => {
@@ -1384,141 +1561,7 @@ function selectPaymentMethod(method) {
 }
 
 // ============================================================
-// 📝 PAYMENT FORM VALIDATION
-// ============================================================
-
-function validatePaymentForm() {
-    let isValid = true;
-    document.querySelectorAll('.finance-validation-error').forEach(err => err.style.display = 'none');
-    
-    const period = document.getElementById('finance-paymentPeriodSelect');
-    if (!period.value) {
-        const errorEl = period.nextElementSibling;
-        if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
-        isValid = false;
-    }
-    
-    const amount = document.getElementById('finance-paymentAmountInput');
-    if (!amount.value || parseFloat(amount.value) < 1) {
-        const errorEl = amount.nextElementSibling;
-        if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
-        isValid = false;
-    }
-    
-    const selectedMethod = document.querySelector('.finance-payment-method-selected');
-    if (!selectedMethod) {
-        document.getElementById('finance-methodError').style.display = 'block';
-        isValid = false;
-    }
-    
-    let method = null;
-    if (selectedMethod) method = selectedMethod.id.replace('finance-method-', '');
-    
-    if (method === 'mpesa') {
-        const phone = document.getElementById('finance-mpesaPhoneInput');
-        if (!phone.value || phone.value.replace(/\D/g, '').length < 10) {
-            const errorEl = phone.nextElementSibling?.nextElementSibling;
-            if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
-            isValid = false;
-        }
-    }
-    
-    if (!isValid) showToast('Please fix all validation errors.', 'error');
-    return isValid;
-}
-
-// ============================================================
-// 📱 PAYMENT PROCESSING FUNCTIONS
-// ============================================================
-
-function showPaymentProcessing(amount) {
-    const container = document.getElementById('finance-paymentProcessing');
-    if (container) {
-        container.style.display = 'block';
-        container.innerHTML = `
-            <div style="text-align: center; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb; margin: 10px 0;">
-                <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
-                <p style="margin: 8px 0 4px 0; font-weight: 600; color: #0A3D62;">Initiating STK Push...</p>
-                <p style="font-size: 13px; color: #64748b;">Amount: KES ${amount.toLocaleString()}</p>
-            </div>
-        `;
-    }
-}
-
-function hidePaymentProcessing() {
-    const container = document.getElementById('finance-paymentProcessing');
-    if (container) {
-        container.style.display = 'none';
-    }
-}
-
-function showSTKStatus(reference) {
-    const container = document.getElementById('finance-stkStatusDisplay');
-    if (container) {
-        container.style.display = 'block';
-        container.innerHTML = `
-            <div style="padding: 16px; background: #f0f7ff; border-radius: 8px; border: 1px solid #bfdbfe; margin: 10px 0;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
-                    <div>
-                        <p style="margin: 0; font-weight: 600; color: #0A3D62;">Processing STK Push</p>
-                        <p id="finance-stkStatusMessage" style="margin: 2px 0 0 0; font-size: 13px; color: #64748b;">⏳ Waiting for confirmation...</p>
-                        <p style="margin: 2px 0 0 0; font-size: 11px; color: #94a3b8;">Ref: ${reference}</p>
-                        <button onclick="cancelSTKPush()" style="margin-top: 6px; background: #fee2e2; color: #dc2626; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-}
-
-function updateSTKStatusDisplay(message, type = 'info') {
-    const statusEl = document.getElementById('finance-stkStatusMessage');
-    if (statusEl) {
-        const colors = {
-            success: '#059669',
-            error: '#dc2626',
-            info: '#64748b'
-        };
-        statusEl.style.color = colors[type] || colors.info;
-        statusEl.textContent = message;
-    }
-}
-
-function hideSTKStatus() {
-    const container = document.getElementById('finance-stkStatusDisplay');
-    if (container) {
-        container.style.display = 'none';
-    }
-}
-
-function cancelSTKPush() {
-    console.log('🔄 Cancelling STK Push...');
-    hidePaymentProcessing();
-    hideSTKStatus();
-    if (payheroState.stkCheckInterval) {
-        clearInterval(payheroState.stkCheckInterval);
-        payheroState.stkCheckInterval = null;
-    }
-    payheroState.isProcessing = false;
-    showToast('STK Push cancelled', 'info');
-    
-    if (payheroState.currentTransaction) {
-        payheroState.currentTransaction.status = 'cancelled';
-        saveSTKPaymentRecord(payheroState.currentTransaction.amount, payheroState.currentTransaction.period, {
-            status: 'cancelled',
-            transactionId: payheroState.currentTransaction.id,
-            reference: payheroState.currentTransaction.reference,
-            paymentMethod: 'M-Pesa STK Push',
-            phoneNumber: payheroState.currentTransaction.phone
-        });
-    }
-}
-
-// ============================================================
-// 📱 PROCESS PAYMENT - SAME PAGE, NO REDIRECT
+// 📱 PROCESS PAYMENT - WITH POS STYLE MODAL
 // ============================================================
 
 async function processPayment() {
@@ -1531,8 +1574,6 @@ async function processPayment() {
     if (!period) { showToast('❌ Please select a payment period', 'error'); return; }
     if (!amount || amount <= 0) { showToast('❌ Please enter a valid amount', 'error'); return; }
     
-    closePaymentModal();
-    
     const user = window.currentUserProfile || window.currentUser;
     const reference = 'PAY-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
     
@@ -1544,18 +1585,88 @@ async function processPayment() {
             return;
         }
         
+        // Set pending payment state
+        pendingPayment.isProcessing = true;
+        pendingPayment.cancelled = false;
+        
+        // Open payment modal (POS style)
+        openPaymentModal();
+        
         const result = await initiatePayHeroSTK(amount, phone, reference, period, user?.full_name);
+        
         if (result.success) {
-            showToast('📱 STK Push sent! Check your phone.', 'success');
+            // Start polling with POS style updates
+            await pollStudentPaymentStatus(result.reference, amount, period);
+        } else {
+            pendingPayment.isProcessing = false;
+            showStudentPaymentFailure(result.error || 'Payment initiation failed');
+            showToast('❌ Payment failed: ' + (result.error || 'Please try again'), 'error');
         }
-        return;
+    } else {
+        showToast('💰 Payment processing...', 'info');
+        setTimeout(() => {
+            showToast('✅ Payment recorded', 'success');
+            loadStudentFinance();
+        }, 2000);
+    }
+}
+
+// ============================================================
+// 🔍 POLL STUDENT PAYMENT STATUS - WITH POS STYLE UPDATES
+// ============================================================
+
+async function pollStudentPaymentStatus(reference, amount, period) {
+    let attempts = 0;
+    const maxAttempts = 25;
+    let paymentConfirmed = false;
+    
+    while (attempts < maxAttempts && !paymentConfirmed) {
+        // Check if payment was cancelled
+        if (pendingPayment.cancelled) {
+            pendingPayment.isProcessing = false;
+            showStudentPaymentFailure('Payment was cancelled by user');
+            return;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 1500));
+        attempts++;
+        
+        // Update modal with progress (POS style)
+        updateStudentSTKStatus(attempts, maxAttempts, 'Please check your phone and enter your PIN');
+        
+        // Check payment status
+        const payment = await checkPaymentStatus(reference);
+        
+        if (payment) {
+            if (payment.status === 'completed' || payment.status === 'success') {
+                paymentConfirmed = true;
+                pendingPayment.isProcessing = false;
+                
+                // Show success (POS style)
+                showStudentPaymentSuccess(amount, reference, period);
+                
+                // Update balance
+                await updateStudentBalanceAfterPayment(amount);
+                
+                // Reload finance data
+                setTimeout(loadStudentFinance, 1000);
+                showToast('✅ Payment successful!', 'success');
+                return;
+            } else if (payment.status === 'failed' || payment.status === 'cancelled') {
+                pendingPayment.isProcessing = false;
+                showStudentPaymentFailure('Transaction was not completed');
+                showToast('❌ Payment failed', 'error');
+                return;
+            }
+        }
     }
     
-    showToast('💰 Payment processing...', 'info');
-    setTimeout(() => {
-        showToast('✅ Payment recorded', 'success');
-        loadStudentFinance();
-    }, 2000);
+    // Timeout
+    if (!paymentConfirmed && !pendingPayment.cancelled) {
+        pendingPayment.isProcessing = false;
+        showStudentPaymentTimeout();
+        showToast('⏰ Payment timeout. Please try again.', 'warning');
+    }
 }
 
 // ============================================================
@@ -1592,8 +1703,6 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
         
         console.log('📤 Sending STK Push request:', requestData);
         
-        showPaymentProcessing(amount);
-        
         const response = await fetch(PAYHERO_CONFIG.baseUrl, {
             method: 'POST',
             headers: {
@@ -1621,7 +1730,6 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
                 timestamp: new Date().toISOString()
             };
             
-            startSTKStatusPolling(data.CheckoutRequestID || data.reference);
             await saveSTKPaymentRecord(amount, period, {
                 status: 'pending',
                 transactionId: data.CheckoutRequestID || data.reference,
@@ -1636,8 +1744,6 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
             return { success: true, data, reference: data.reference || requestData.external_reference };
         } else {
             console.error('❌ STK Push failed:', data);
-            hidePaymentProcessing();
-            hideSTKStatus();
             
             let errorMsg = data.error_message || data.message || data.error || 'Payment request failed';
             
@@ -1650,8 +1756,6 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
         }
     } catch (error) {
         console.error('❌ Request error:', error);
-        hidePaymentProcessing();
-        hideSTKStatus();
         showToast('❌ Network error. Please try again.', 'error');
         return { success: false, error: error.message };
     }
@@ -1680,141 +1784,6 @@ async function checkPaymentStatus(reference) {
         console.error('❌ Status check error:', error);
         return null;
     }
-}
-
-function startSTKStatusPolling(reference) {
-    let attempts = 0;
-    const maxAttempts = 30;
-    
-    if (payheroState.stkCheckInterval) clearInterval(payheroState.stkCheckInterval);
-    
-    showSTKStatus(reference);
-    
-    payheroState.stkCheckInterval = setInterval(async () => {
-        attempts++;
-        if (attempts > maxAttempts) {
-            clearInterval(payheroState.stkCheckInterval);
-            updateSTKStatusDisplay('⏰ Payment timeout. Please try again.', 'error');
-            hidePaymentProcessing();
-            setTimeout(() => hideSTKStatus(), 3000);
-            handleSTKFailure();
-            return;
-        }
-        
-        const timeLeft = maxAttempts - attempts;
-        updateSTKStatusDisplay(`⏳ Waiting for confirmation... (${timeLeft}s remaining)`, 'info');
-        
-        const payment = await checkPaymentStatus(reference);
-        if (payment) {
-            if (payment.status === 'completed' || payment.status === 'success') {
-                clearInterval(payheroState.stkCheckInterval);
-                updateSTKStatusDisplay('✅ Payment confirmed!', 'success');
-                setTimeout(() => hideSTKStatus(), 2000);
-                handleSTKSuccess();
-            } else if (payment.status === 'failed' || payment.status === 'cancelled') {
-                clearInterval(payheroState.stkCheckInterval);
-                updateSTKStatusDisplay('❌ Payment failed', 'error');
-                setTimeout(() => hideSTKStatus(), 3000);
-                handleSTKFailure();
-            }
-        }
-    }, 3000);
-}
-
-// ============================================================
-// ✅ HANDLE SUCCESS - SAME PAGE
-// ============================================================
-
-function handleSTKSuccess() {
-    const transaction = payheroState.currentTransaction;
-    if (!transaction) return;
-    
-    payheroState.isProcessing = false;
-    transaction.status = 'completed';
-    hidePaymentProcessing();
-    hideSTKStatus();
-    
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: '✅ Payment Successful!',
-            html: `
-                <div style="text-align: center;">
-                    <i class="fas fa-check-circle" style="font-size: 50px; color: #059669; margin-bottom: 10px;"></i>
-                    <p style="font-size: 18px; font-weight: 700; color: #059669; margin: 0 0 4px 0;">Payment Successful!</p>
-                    <p style="color: #64748b; font-size: 14px; margin: 0 0 6px 0;">KES ${transaction.amount.toLocaleString()} confirmed</p>
-                    <div style="background: #f8fafc; border-radius: 6px; padding: 8px 12px; margin: 6px 0; text-align: left; font-size: 12px;">
-                        <p style="margin: 2px 0;"><strong>Period:</strong> ${transaction.period}</p>
-                        <p style="margin: 2px 0;"><strong>Ref:</strong> ${transaction.reference}</p>
-                    </div>
-                </div>
-            `,
-            confirmButtonText: 'Done',
-            confirmButtonColor: '#059669',
-            width: 380
-        });
-    }
-    
-    saveSTKPaymentRecord(transaction.amount, transaction.period, {
-        status: 'success',
-        transactionId: transaction.id,
-        reference: transaction.reference,
-        paymentMethod: 'M-Pesa STK Push'
-    });
-    
-    const user = window.currentUserProfile || window.currentUser;
-    if (user?.user_id || user?.id) sendPaymentConfirmationEmail(user.user_id || user.id, {
-        amount: transaction.amount,
-        period: transaction.period,
-        transactionId: transaction.id,
-        reference: transaction.reference,
-        method: 'M-Pesa STK Push',
-        date: new Date().toISOString()
-    });
-    
-    notifySuperAdmin('payment_completed', {
-        studentId: user?.user_id || user?.id,
-        amount: transaction.amount,
-        reference: transaction.reference,
-        method: 'M-Pesa STK',
-        timestamp: new Date().toISOString()
-    });
-    
-    updateStudentBalanceAfterPayment(transaction.amount);
-    
-    setTimeout(loadStudentFinance, 1000);
-    showToast('✅ Payment successful!', 'success');
-}
-
-function handleSTKFailure() {
-    const transaction = payheroState.currentTransaction;
-    if (!transaction) return;
-    
-    payheroState.isProcessing = false;
-    transaction.status = 'failed';
-    hidePaymentProcessing();
-    hideSTKStatus();
-    
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: '❌ Payment Failed',
-            html: `
-                <div style="text-align: center;">
-                    <i class="fas fa-times-circle" style="font-size: 50px; color: #dc2626; margin-bottom: 10px;"></i>
-                    <p style="font-size: 17px; font-weight: 600; color: #dc2626; margin: 0;">Payment Failed</p>
-                    <p style="color: #64748b; font-size: 13px;">Please try again or use a different method.</p>
-                </div>
-            `,
-            confirmButtonText: 'Try Again',
-            cancelButtonText: 'Cancel',
-            showCancelButton: true,
-            confirmButtonColor: '#4C1D95',
-            cancelButtonColor: '#64748b',
-            width: 380
-        }).then((result) => {
-            if (result.isConfirmed) openPaymentModal();
-        });
-    }
-    showToast('❌ Payment failed. Please try again.', 'error');
 }
 
 // ============================================================
@@ -2129,7 +2098,7 @@ document.addEventListener('DOMContentLoaded', function() {
     listenForAdminEvents();
     
     notifySuperAdmin('module_ready', {
-        version: '2.2.0',
+        version: '2.3.0',
         timestamp: new Date().toISOString()
     });
     
@@ -2146,7 +2115,7 @@ document.addEventListener('DOMContentLoaded', function() {
     window.viewFeeStructure = viewFeeStructure;
     window.printFeeStructureTable = printFeeStructureTable;
     window.resendPaymentEmail = resendPaymentEmail;
-    window.cancelSTKPayment = cancelSTKPush;
+    window.cancelStudentPayment = cancelStudentPayment;
     window.renderFeeStructureData = renderFeeStructureData;
     window.notifySuperAdmin = notifySuperAdmin;
     window.showToast = showToast;
@@ -2169,4 +2138,5 @@ console.log('📊 Supports KRCHN (Semesters) and TVET (Terms)');
 console.log('📋 Vote heads loaded from database');
 console.log('💳 PayHero STK Push integration enabled - No redirects!');
 console.log('🔑 Channel ID:', PAYHERO_CONFIG.channelId);
-console.log('🔧 Fixed for database structure: UUID, reference_number, checkout_request_id');
+console.log('🔧 POS Style Payment Modal with ALL states');
+console.log('✅ Processing, Success, Failure, Timeout, Cancelled');
