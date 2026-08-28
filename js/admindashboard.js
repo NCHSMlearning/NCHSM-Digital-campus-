@@ -556,9 +556,8 @@ window.logout = function() {
             document.getElementById('confirmResetByEmailBtn').disabled = true;
         }
     }
-
 // ============================================
-// 📊 LOAD STUDENTS WITH RESULTS - USING RELEASE MODAL LOGIC
+// 📊 LOAD STUDENTS WITH RESULTS - DB FILTER FIXED
 // ============================================
 window.loadStudentsWithResults = async function() {
     const loadingDiv = document.getElementById('studentsLoading');
@@ -575,11 +574,26 @@ window.loadStudentsWithResults = async function() {
         await loadExamsMap();
         console.log('📚 Exams map loaded:', Object.keys(examsMap).length);
         
-        // ✅ USE SAME LOGIC AS RELEASE MODAL
-        const { data: grades, error } = await sb
+        // ✅ GET FILTER VALUES FIRST
+        const examFilter = document.getElementById('examFilter')?.value;
+        const statusFilter = document.getElementById('statusFilter')?.value;
+        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+        
+        console.log('🔍 Filters:', { examFilter, statusFilter, search });
+        
+        // ✅ BUILD QUERY WITH EXAM FILTER AT DATABASE LEVEL
+        let gradesQuery = sb
             .from('exam_grades')
             .select('*')
             .eq('question_id', '00000000-0000-0000-0000-000000000000');
+        
+        // ✅ Apply exam filter at DATABASE level (like release modal)
+        if (examFilter && examFilter !== '') {
+            gradesQuery = gradesQuery.eq('exam_id', parseInt(examFilter));
+            console.log('🔍 Filtering by exam ID:', examFilter);
+        }
+        
+        const { data: grades, error } = await gradesQuery;
         
         if (error) { 
             console.error('❌ Error fetching grades:', error);
@@ -633,7 +647,7 @@ window.loadStudentsWithResults = async function() {
         console.log('👥 Profiles found:', Object.keys(profileMap).length);
         
         // ✅ Build results (SAME STRUCTURE as Release Modal)
-        studentsResults = grades.map(g => {
+        let results = grades.map(g => {
             const exam = examsMap[g.exam_id] || null;
             const profile = profileMap[g.student_id] || null;
             
@@ -648,28 +662,11 @@ window.loadStudentsWithResults = async function() {
             };
         });
         
-        console.log('📊 Final studentsResults count:', studentsResults.length);
+        console.log('📊 Initial results count:', results.length);
         
-        // ============================================================
-        // ✅ APPLY FILTERS - SIMPLE AND CLEAN
-        // ============================================================
-        
-        const examFilter = document.getElementById('examFilter')?.value;
-        const statusFilter = document.getElementById('statusFilter')?.value;
-        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
-        
-        let filtered = studentsResults;
-        console.log('🔍 Starting filter with:', filtered.length, 'results');
-        
-        // ✅ FILTER 1: By Exam (SAME as Release Modal)
-        if (examFilter && examFilter !== '') {
-            filtered = filtered.filter(r => String(r.exam_id) === String(examFilter));
-            console.log('🔍 After exam filter:', filtered.length);
-        }
-        
-        // ✅ FILTER 2: By Status
+        // ✅ FILTER 1: By Status (in memory)
         if (statusFilter && statusFilter !== '') {
-            filtered = filtered.filter(r => {
+            results = results.filter(r => {
                 // Check if released first
                 if (r.isReleased) {
                     const totalMarks = r.exam_info?.total_marks || 100;
@@ -682,12 +679,12 @@ window.loadStudentsWithResults = async function() {
                 // For unreleased, use result_status
                 return (r.result_status || '') === statusFilter;
             });
-            console.log('🔍 After status filter:', filtered.length);
+            console.log('🔍 After status filter:', results.length);
         }
         
-        // ✅ FILTER 3: By Search
+        // ✅ FILTER 2: By Search (in memory)
         if (search && search !== '') {
-            filtered = filtered.filter(r => {
+            results = results.filter(r => {
                 const name = (r.student_profile?.full_name || '').toLowerCase();
                 const studentId = (r.student_profile?.student_id || '').toLowerCase();
                 const examName = (r.exam_info?.exam_name || '').toLowerCase();
@@ -700,18 +697,18 @@ window.loadStudentsWithResults = async function() {
                        email.includes(search) ||
                        program.includes(search);
             });
-            console.log('🔍 After search filter:', filtered.length);
+            console.log('🔍 After search filter:', results.length);
         }
         
         // ✅ Store filtered results
-        studentsResults = filtered;
+        studentsResults = results;
         
         // ✅ Update count display
         const countEl = document.getElementById('filteredCount');
         if (countEl) countEl.textContent = studentsResults.length;
         
         const totalEl = document.getElementById('totalCount');
-        if (totalEl) totalEl.textContent = filtered.length;
+        if (totalEl) totalEl.textContent = studentsResults.length;
         
         console.log(`📊 FINAL: ${studentsResults.length} results`);
         
