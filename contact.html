@@ -1,0 +1,566 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Contact NCHSM | Nakuru College of Health Sciences and Management</title>
+    <meta name="description" content="Contact Nakuru College of Health Sciences and Management for inquiries, admissions, and support.">
+    <!-- ===== FAVICON ===== -->
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
+<link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="16x16">
+<link rel="apple-touch-icon" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    <!-- ===== GOOGLE ADSENSE ===== -->
+    <meta name="google-adsense-account" content="ca-pub-9019033253872768">
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9019033253872768"
+         crossorigin="anonymous"></script>
+    
+    <!-- ===== GOOGLE ANALYTICS ===== -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTZRYGB8PE"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-WTZRYGB8PE');
+    </script>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
+            color: #0F172A;
+        }
+        
+        /* ===== HEADER ===== */
+        .blog-header {
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            color: white;
+            padding: 15px 0;
+            border-bottom: 3px solid #FDB913;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .blog-header .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .blog-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .blog-header .logo img {
+            height: 40px;
+        }
+        .blog-header .logo h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        .blog-header .logo h1 span {
+            color: #FDB913;
+        }
+        .blog-header .nav {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .blog-header .nav a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        .blog-header .nav a:hover {
+            color: #FDB913;
+        }
+        .blog-header .nav a.active {
+            color: #FDB913;
+            font-weight: 600;
+        }
+        .blog-header .nav a.home-link {
+            color: #FDB913;
+            font-weight: 600;
+        }
+        .blog-header .portal-btn {
+            background: #FDB913;
+            color: #0A3D62;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .blog-header .portal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(253,185,19,0.3);
+        }
+        
+        /* ===== PAGE CONTENT ===== */
+        .page-container {
+            max-width: 900px;
+            margin: 40px auto;
+            padding: 0 20px;
+        }
+        .page-card {
+            background: white;
+            border-radius: 16px;
+            padding: 50px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            border: 1px solid #e5e7eb;
+        }
+        .page-card h1 {
+            font-size: 2.2rem;
+            color: #0A3D62;
+            margin-bottom: 10px;
+        }
+        .page-card .subtitle {
+            color: #64748b;
+            font-size: 1.1rem;
+            margin-bottom: 30px;
+            border-bottom: 2px solid #FDB913;
+            padding-bottom: 15px;
+        }
+        .page-card h2 {
+            color: #0A3D62;
+            margin: 25px 0 12px;
+            font-size: 1.3rem;
+        }
+        .page-card p {
+            color: #334155;
+            line-height: 1.8;
+            margin-bottom: 15px;
+            font-size: 1.05rem;
+        }
+        
+        /* ===== CONTACT INFO GRID ===== */
+        .contact-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+            margin: 25px 0;
+        }
+        .contact-item {
+            background: #f8fafc;
+            padding: 25px;
+            border-radius: 12px;
+            border: 1px solid #e5e7eb;
+            text-align: center;
+            transition: transform 0.3s;
+        }
+        .contact-item:hover {
+            transform: translateY(-3px);
+        }
+        .contact-item .icon {
+            font-size: 2.2rem;
+            color: #0A3D62;
+            margin-bottom: 10px;
+        }
+        .contact-item h3 {
+            color: #0A3D62;
+            font-size: 1rem;
+            margin-bottom: 6px;
+        }
+        .contact-item p {
+            color: #64748b;
+            font-size: 0.95rem;
+            margin-bottom: 0;
+            line-height: 1.6;
+        }
+        .contact-item a {
+            color: #0A3D62;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .contact-item a:hover {
+            color: #FDB913;
+        }
+        
+        /* ===== CONTACT FORM ===== */
+        .contact-form {
+            margin-top: 25px;
+        }
+        .contact-form .form-group {
+            margin-bottom: 16px;
+        }
+        .contact-form label {
+            display: block;
+            font-weight: 600;
+            font-size: 0.9rem;
+            color: #475569;
+            margin-bottom: 5px;
+        }
+        .contact-form input,
+        .contact-form textarea,
+        .contact-form select {
+            width: 100%;
+            padding: 12px 16px;
+            border: 2px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 1rem;
+            font-family: inherit;
+            background: #f8fafc;
+            transition: border-color 0.3s;
+        }
+        .contact-form input:focus,
+        .contact-form textarea:focus,
+        .contact-form select:focus {
+            border-color: #0A3D62;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(10,61,98,0.1);
+        }
+        .contact-form textarea {
+            resize: vertical;
+            min-height: 130px;
+        }
+        .contact-form .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+        .contact-form .submit-btn {
+            background: #0A3D62;
+            color: white;
+            padding: 14px 30px;
+            border: none;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-block;
+        }
+        .contact-form .submit-btn:hover {
+            background: #1a5a7a;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(10,61,98,0.3);
+        }
+        .contact-form .submit-btn i {
+            margin-right: 8px;
+        }
+        
+        /* ===== CTA BOX ===== */
+        .cta-box {
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            color: white;
+            padding: 30px;
+            border-radius: 12px;
+            text-align: center;
+            margin-top: 30px;
+        }
+        .cta-box h2 {
+            color: white;
+            margin: 0 0 5px 0;
+            font-size: 1.4rem;
+        }
+        .cta-box p {
+            color: rgba(255,255,255,0.85);
+            margin-bottom: 15px;
+            font-size: 1rem;
+        }
+        .cta-box .btn {
+            background: #FDB913;
+            color: #0A3D62;
+            padding: 12px 30px;
+            border-radius: 8px;
+            text-decoration: none;
+            font-weight: 700;
+            display: inline-block;
+            transition: all 0.3s;
+        }
+        .cta-box .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 15px rgba(253,185,19,0.3);
+        }
+        
+        /* ===== MAP PLACEHOLDER ===== */
+        .map-placeholder {
+            background: #e2e8f0;
+            border-radius: 12px;
+            padding: 40px 20px;
+            text-align: center;
+            color: #94a3b8;
+            margin: 20px 0;
+        }
+        .map-placeholder i {
+            font-size: 2.5rem;
+            display: block;
+            margin-bottom: 10px;
+            color: #0A3D62;
+        }
+        .map-placeholder a {
+            color: #0A3D62;
+            font-weight: 600;
+            text-decoration: none;
+        }
+        .map-placeholder a:hover {
+            text-decoration: underline;
+        }
+        
+        /* ===== FORM SUCCESS ===== */
+        #formSuccess {
+            display: none;
+            margin-top: 20px;
+            padding: 20px;
+            background: #d1fae5;
+            border-radius: 8px;
+            color: #065f46;
+            text-align: center;
+        }
+        #formSuccess i {
+            font-size: 2rem;
+            display: block;
+            margin-bottom: 5px;
+        }
+        #formSuccess h3 {
+            margin: 5px 0;
+        }
+        
+        /* ===== FOOTER ===== */
+        .blog-footer {
+            background: #0A3D62;
+            color: rgba(255,255,255,0.8);
+            padding: 30px 20px;
+            text-align: center;
+            margin-top: 40px;
+        }
+        .blog-footer .links {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+        .blog-footer .links a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.3s;
+        }
+        .blog-footer .links a:hover {
+            color: #FDB913;
+        }
+        .blog-footer .copyright {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        
+        @media (max-width: 768px) {
+            .page-card { padding: 25px; }
+            .contact-grid { grid-template-columns: 1fr; }
+            .contact-form .form-row { grid-template-columns: 1fr; }
+            .page-card h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <header class="blog-header">
+        <div class="container">
+            <div class="logo">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM">
+                <h1>NCHSM <span>Contact</span></h1>
+            </div>
+            <div class="nav">
+                <a href="/login" class="home-link">🏠 Home</a>
+                <a href="/blog/">📝 Blog</a>
+                <a href="/about">ℹ️ About</a>
+                <a href="/contact" class="active">📧 Contact</a>
+                <a href="/login" class="portal-btn">
+                    <i class="fas fa-graduation-cap"></i> Student Portal
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== PAGE CONTENT ===== -->
+    <div class="page-container">
+        <div class="page-card">
+            <h1>📞 Contact Us</h1>
+            <div class="subtitle">Have any questions for us? Feel free to reach out anytime.</div>
+
+            <!-- ===== CONTACT GRID ===== -->
+            <div class="contact-grid">
+                <div class="contact-item">
+                    <div class="icon"><i class="fas fa-map-marker-alt"></i></div>
+                    <h3>📍 Campus Location</h3>
+                    <p>Kiamunyi Off Nakuru – Kabarak Rd<br>Canon Ndungu Street, Nakuru</p>
+                </div>
+                <div class="contact-item">
+                    <div class="icon"><i class="fas fa-building"></i></div>
+                    <h3>🏢 Town Office</h3>
+                    <p>K.F.A Building, 1st Floor, Office No.6<br>Nakuru Town</p>
+                </div>
+                <div class="contact-item">
+                    <div class="icon"><i class="fas fa-phone"></i></div>
+                    <h3>📞 Phone</h3>
+                    <p>
+                        <a href="tel:+254722702566">0722 702 566</a><br>
+                        <a href="tel:+254745215594">0745 215 594</a><br>
+                        <a href="tel:+254703345771">0703 345 771</a><br>
+                        <a href="tel:+2540103614355">0103 614 355</a>
+                    </p>
+                </div>
+                <div class="contact-item">
+                    <div class="icon"><i class="fas fa-envelope"></i></div>
+                    <h3>✉️ Email</h3>
+                    <p>
+                        <a href="mailto:info@nakurucollegeofhealth.ac.ke">info@nakurucollegeofhealth.ac.ke</a>
+                    </p>
+                </div>
+                <div class="contact-item">
+                    <div class="icon"><i class="fas fa-mailbox"></i></div>
+                    <h3>📬 Postal Address</h3>
+                    <p>P. O. Box 12906 – 20100<br>Nakuru, Kenya</p>
+                </div>
+                <div class="contact-item">
+                    <div class="icon"><i class="fas fa-clock"></i></div>
+                    <h3>🕐 Office Hours</h3>
+                    <p>Monday - Friday: 8:00 AM - 5:00 PM<br>Saturday: 9:00 AM - 1:00 PM</p>
+                </div>
+            </div>
+
+            <!-- ===== MAP ===== -->
+            <h2>📍 Find Us</h2>
+            <div class="map-placeholder">
+                <i class="fas fa-map"></i>
+                <p><strong>NCHSM Campus Location</strong></p>
+                <p>Kiamunyi Off Nakuru – Kabarak Rd, Canon Ndungu Street, Nakuru</p>
+                <p style="margin-top: 10px;">
+                    <a href="https://www.google.com/maps/dir//Nakuru+College+Of+Health+Sciences+%26+Management-Kiamunyi" target="_blank">
+                        <i class="fas fa-directions"></i> Get Directions
+                    </a>
+                </p>
+            </div>
+
+            <!-- ===== CONTACT FORM ===== -->
+            <h2>✉️ Send Us a Message</h2>
+            <form class="contact-form" id="contactForm">
+                <div class="form-group">
+                    <label for="name">Your Name *</label>
+                    <input type="text" id="name" placeholder="Enter your full name" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email Address *</label>
+                    <input type="email" id="email" placeholder="Enter your email address" required>
+                </div>
+                <div class="form-group">
+                    <label for="phone">Phone Number</label>
+                    <input type="tel" id="phone" placeholder="Enter your phone number">
+                </div>
+                <div class="form-group">
+                    <label for="subject">Subject *</label>
+                    <select id="subject" required>
+                        <option value="">Select a subject...</option>
+                        <option value="admissions">Admissions Inquiry</option>
+                        <option value="academic">Academic Information</option>
+                        <option value="finance">Finance & Fees</option>
+                        <option value="support">Student Support</option>
+                        <option value="feedback">Feedback</option>
+                        <option value="general">General Inquiry</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="message">Your Message *</label>
+                    <textarea id="message" placeholder="Write your message here..." required></textarea>
+                </div>
+                <button type="submit" class="submit-btn">
+                    <i class="fas fa-paper-plane"></i> Submit
+                </button>
+            </form>
+
+            <div id="formSuccess">
+                <i class="fas fa-check-circle"></i>
+                <h3>✅ Message Sent Successfully!</h3>
+                <p>Thank you for contacting NCHSM. We'll get back to you as soon as possible.</p>
+            </div>
+
+            <!-- ===== CTA BOX ===== -->
+            <div class="cta-box">
+                <h2>📅 September 2026 Intake Now Open!</h2>
+                <p>Applications are ongoing at Nakuru College of Health Sciences & Management for Nursing and TVET courses.</p>
+                <a href="/login" class="btn"><i class="fas fa-graduation-cap"></i> Apply Now</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="blog-footer">
+        <div class="container">
+            <div class="links">
+                <a href="/login">🏠 Home</a>
+                <a href="/blog/">📝 Blog</a>
+                <a href="/about">ℹ️ About</a>
+                <a href="/contact">📧 Contact</a>
+                <a href="/privacy">🔒 Privacy</a>
+                <a href="/login" style="color: #FDB913; font-weight: 600;">🎓 Student Portal</a>
+            </div>
+            <div class="copyright">
+                © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        // ============================================
+        // 📝 CONTACT FORM HANDLER
+        // ============================================
+        document.getElementById('contactForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+
+            // Get form data
+            const name = document.getElementById('name').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const phone = document.getElementById('phone').value.trim();
+            const subject = document.getElementById('subject').value;
+            const message = document.getElementById('message').value.trim();
+
+            // Validate
+            if (!name || !email || !subject || !message) {
+                alert('Please fill in all required fields (Name, Email, Subject, and Message).');
+                return;
+            }
+
+            // Show success message
+            document.getElementById('formSuccess').style.display = 'block';
+
+            // Reset form
+            this.reset();
+
+            // Scroll to success message
+            document.getElementById('formSuccess').scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+            // Hide success after 6 seconds
+            setTimeout(() => {
+                document.getElementById('formSuccess').style.display = 'none';
+            }, 6000);
+
+            // ===== Track with Google Analytics =====
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'form_submission', {
+                    'event_category': 'Contact',
+                    'event_label': subject,
+                    'value': 1
+                });
+            }
+
+            console.log('📝 Contact form submitted:', { name, email, phone, subject, message });
+        });
+    </script>
+
+</body>
+</html>
