@@ -15,6 +15,10 @@
         gtag('config', 'G-WTZRYGB8PE');
     </script>
     
+    <!-- Google AdSense -->
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_ADSENSE_ID" 
+            crossorigin="anonymous"></script>
+    
     <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -27,7 +31,7 @@
             color: #0F172A;
         }
         
-        /* Header */
+        /* ===== HEADER ===== */
         .blog-header {
             background: linear-gradient(135deg, #0A3D62, #1a5a7a);
             color: white;
@@ -77,6 +81,10 @@
         .blog-header .nav a:hover {
             color: #FDB913;
         }
+        .blog-header .nav a.home-link {
+            color: #FDB913;
+            font-weight: 600;
+        }
         .blog-header .portal-btn {
             background: #FDB913;
             color: #0A3D62;
@@ -94,7 +102,7 @@
             box-shadow: 0 4px 12px rgba(253,185,19,0.3);
         }
         
-        /* Hero */
+        /* ===== HERO ===== */
         .blog-hero {
             background: linear-gradient(135deg, #0A3D62, #1a5a7a);
             color: white;
@@ -113,7 +121,25 @@
             margin: 0 auto;
         }
         
-        /* Blog Grid */
+        /* ===== AD BANNER ===== */
+        .ad-banner {
+            background: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 12px;
+            margin: 20px auto;
+            max-width: 1200px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+            border: 1px solid #e5e7eb;
+        }
+        .ad-banner .ad-label {
+            font-size: 10px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        /* ===== BLOG GRID ===== */
         .blog-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -122,11 +148,13 @@
             grid-template-columns: 2fr 1fr;
             gap: 40px;
         }
+        
         .blog-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 25px;
         }
+        
         .blog-card {
             background: white;
             border-radius: 12px;
@@ -206,7 +234,18 @@
             color: #FDB913;
         }
         
-        /* Sidebar */
+        /* ===== AD PLACEMENTS ===== */
+        .ad-inline {
+            background: #f8fafc;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px;
+            margin: 20px 0;
+            border: 1px dashed #e2e8f0;
+            grid-column: 1 / -1;
+        }
+        
+        /* ===== SIDEBAR ===== */
         .sidebar {
             display: flex;
             flex-direction: column;
@@ -225,6 +264,9 @@
             color: #0A3D62;
             border-bottom: 2px solid #FDB913;
             padding-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
         }
         .sidebar-widget ul {
             list-style: none;
@@ -250,19 +292,58 @@
             border-radius: 12px;
             padding: 20px;
             text-align: center;
-            min-height: 150px;
+            min-height: 180px;
             display: flex;
             align-items: center;
             justify-content: center;
             border: 1px dashed #e2e8f0;
         }
+        .sidebar-ad .ad-label {
+            font-size: 10px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
         
-        /* Footer */
+        /* ===== PAGINATION ===== */
+        .pagination {
+            display: flex;
+            justify-content: center;
+            gap: 8px;
+            margin-top: 30px;
+            grid-column: 1 / -1;
+        }
+        .pagination button {
+            padding: 8px 16px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            background: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s;
+        }
+        .pagination button:hover {
+            background: #0A3D62;
+            color: white;
+            border-color: #0A3D62;
+        }
+        .pagination button.active {
+            background: #0A3D62;
+            color: white;
+            border-color: #0A3D62;
+        }
+        
+        /* ===== FOOTER ===== */
         .blog-footer {
             background: #0A3D62;
             color: rgba(255,255,255,0.8);
             padding: 30px 20px;
             text-align: center;
+            margin-top: 40px;
+        }
+        .blog-footer .container {
+            max-width: 1200px;
+            margin: 0 auto;
         }
         .blog-footer .links {
             display: flex;
@@ -285,11 +366,31 @@
             opacity: 0.7;
         }
         
-        /* Responsive */
+        /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
-            .blog-grid { grid-template-columns: 1fr; }
-            .blog-container { grid-template-columns: 1fr; }
-            .blog-hero h1 { font-size: 1.6rem; }
+            .blog-grid {
+                grid-template-columns: 1fr;
+            }
+            .blog-container {
+                grid-template-columns: 1fr;
+            }
+            .blog-hero h1 {
+                font-size: 1.6rem;
+            }
+            .blog-header .nav a {
+                font-size: 0.8rem;
+            }
+        }
+        @media (max-width: 480px) {
+            .blog-header .nav {
+                gap: 10px;
+            }
+            .blog-header .nav a {
+                font-size: 0.75rem;
+            }
+            .blog-card .image {
+                height: 140px;
+            }
         }
     </style>
 </head>
@@ -303,10 +404,10 @@
                 <h1>NCHSM <span>Blog</span></h1>
             </div>
             <div class="nav">
-                <a href="/">Home</a>
-                <a href="/blog/">Blog</a>
-                <a href="/about">About</a>
-                <a href="/contact">Contact</a>
+                <a href="/login" class="home-link">🏠 Home</a>
+                <a href="/blog/">📝 Blog</a>
+                <a href="/about">ℹ️ About</a>
+                <a href="/contact">📧 Contact</a>
                 <a href="/login" class="portal-btn">
                     <i class="fas fa-graduation-cap"></i> Student Portal
                 </a>
@@ -321,6 +422,20 @@
             <p>Stay updated with the latest news, tips, and resources from Nakuru College of Health Sciences and Management.</p>
         </div>
     </section>
+
+    <!-- ===== TOP AD BANNER ===== -->
+    <div class="ad-banner">
+        <div class="ad-label">— Advertisement —</div>
+        <!-- Google AdSense Code Here -->
+        <!-- <ins class="adsbygoogle"
+             style="display:block"
+             data-ad-client="ca-pub-YOUR_ADSENSE_ID"
+             data-ad-slot="YOUR_AD_SLOT"
+             data-ad-format="auto"
+             data-full-width-responsive="true"></ins>
+        <script>(adsbygoogle = window.adsbygoogle || []).push({});</script> -->
+        <div style="padding: 15px; color: #94a3b8; font-size: 14px;">📢 Ad Space Available</div>
+    </div>
 
     <!-- ===== MAIN CONTENT ===== -->
     <div class="blog-container">
@@ -362,6 +477,20 @@
                 </div>
             </article>
 
+            <!-- ===== INLINE AD ===== -->
+            <div class="ad-inline">
+                <div class="ad-label">— Advertisement —</div>
+                <!-- Google AdSense Code Here -->
+                <!-- <ins class="adsbygoogle"
+                     style="display:block"
+                     data-ad-client="ca-pub-YOUR_ADSENSE_ID"
+                     data-ad-slot="YOUR_AD_SLOT"
+                     data-ad-format="auto"
+                     data-full-width-responsive="true"></ins>
+                <script>(adsbygoogle = window.adsbygoogle || []).push({});</script> -->
+                <div style="padding: 15px; color: #94a3b8; font-size: 14px;">📢 Ad Space Available</div>
+            </div>
+
             <!-- Blog Post 3 -->
             <article class="blog-card">
                 <div class="image">
@@ -396,6 +525,15 @@
                 </div>
             </article>
 
+            <!-- ===== PAGINATION ===== -->
+            <div class="pagination">
+                <button disabled><i class="fas fa-chevron-left"></i></button>
+                <button class="active">1</button>
+                <button>2</button>
+                <button>3</button>
+                <button><i class="fas fa-chevron-right"></i></button>
+            </div>
+
         </div>
 
         <!-- ===== SIDEBAR ===== -->
@@ -415,7 +553,18 @@
 
             <!-- Sidebar Ad -->
             <div class="sidebar-ad">
-                <div style="color: #94a3b8; font-size: 0.8rem;">📢 Ad Space Available</div>
+                <div>
+                    <div class="ad-label">— Advertisement —</div>
+                    <!-- Google AdSense Code Here -->
+                    <!-- <ins class="adsbygoogle"
+                         style="display:block"
+                         data-ad-client="ca-pub-YOUR_ADSENSE_ID"
+                         data-ad-slot="YOUR_AD_SLOT"
+                         data-ad-format="auto"
+                         data-full-width-responsive="true"></ins>
+                    <script>(adsbygoogle = window.adsbygoogle || []).push({});</script> -->
+                    <div style="padding: 15px; color: #94a3b8; font-size: 14px;">📢 Ad Space Available</div>
+                </div>
             </div>
 
             <!-- Categories Widget -->
@@ -426,6 +575,7 @@
                     <li><a href="#">Student Life</a></li>
                     <li><a href="#">Study Tips</a></li>
                     <li><a href="#">Healthcare News</a></li>
+                    <li><a href="#">NCHSM Updates</a></li>
                 </ul>
             </div>
 
@@ -433,16 +583,16 @@
             <div class="sidebar-widget">
                 <h4>📝 Recent Posts</h4>
                 <ul>
-                    <li><a href="#">Top 5 Reasons to Choose Nursing</a></li>
-                    <li><a href="#">Day in the Life of a Health Sciences Student</a></li>
-                    <li><a href="#">10 Effective Study Tips</a></li>
-                    <li><a href="#">Healthcare Trends 2026</a></li>
+                    <li><a href="post.html?slug=nursing-career-guide">Top 5 Reasons to Choose Nursing</a></li>
+                    <li><a href="post.html?slug=student-life-tips">Day in the Life of a Health Sciences Student</a></li>
+                    <li><a href="post.html?slug=study-tips">10 Effective Study Tips</a></li>
+                    <li><a href="post.html?slug=healthcare-trends">Healthcare Trends 2026</a></li>
                 </ul>
             </div>
 
             <!-- Newsletter Widget -->
             <div class="sidebar-widget">
-                <h4>📧 Subscribe</h4>
+                <h4>📧 Subscribe to Newsletter</h4>
                 <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 12px;">
                     Get the latest updates delivered to your inbox.
                 </p>
@@ -461,12 +611,12 @@
     <footer class="blog-footer">
         <div class="container">
             <div class="links">
-                <a href="/">Home</a>
-                <a href="/blog/">Blog</a>
-                <a href="/about">About</a>
-                <a href="/contact">Contact</a>
-                <a href="/privacy">Privacy</a>
-                <a href="/login">Student Portal</a>
+                <a href="/login">🏠 Home</a>
+                <a href="/blog/">📝 Blog</a>
+                <a href="/about">ℹ️ About</a>
+                <a href="/contact">📧 Contact</a>
+                <a href="/privacy">🔒 Privacy</a>
+                <a href="/login" style="color: #FDB913; font-weight: 600;">🎓 Student Portal</a>
             </div>
             <div class="copyright">
                 © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
