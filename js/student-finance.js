@@ -1,14 +1,9 @@
 // ============================================================
 // 📊 STUDENT FINANCE MODULE - COMPLETE FIXED VERSION
-// Supports KRCHN (Semesters) and TVET (Terms with Years)
+// ✅ Works with actual database structure
+// ✅ Supports KRCHN (Semesters) and TVET (Terms with Years)
 // ✅ M-Pesa STK Push Integration with PayHero
 // ✅ Real-time payment status updates
-// ✅ View & Download fee structure actions
-// ✅ Fee balance updates when viewing specific periods
-// ✅ Auto-updates balances from database
-// ✅ Email notification after successful payment 
-// ✅ Detailed fee structure with vote heads from database
-// ✅ Communicates with Super Admin Finance Module
 // ✅ Mobile responsive with compact layout
 // ✅ All payments processed on the same page - NO REDIRECTS
 // ============================================================
@@ -55,7 +50,7 @@ const studentFinanceState = {
     lastUpdated: null,
     isLoaded: false,
     programType: 'TVET',
-    programLevel: 'certificate',
+    programLevel: 'diploma',
     currentPeriod: null,
     semesterFee: 0,
     paidThisSemester: 0,
@@ -76,7 +71,149 @@ const studentFinanceState = {
 };
 
 // ============================================================
-// 🔗 COMMUNICATION WITH SUPER ADMIN MODULE - FIXED
+// 🔧 UTILITY FUNCTIONS - FIXED FOR DATABASE STRUCTURE
+// ============================================================
+
+// Map database period names to display format
+function mapPeriodToDisplay(dbPeriod) {
+    if (!dbPeriod) return dbPeriod;
+    
+    // Already in correct format
+    if (/^Y\d+\s+[ST]\d+$/.test(dbPeriod)) return dbPeriod;
+    if (/^Y\d+[ST]\d+$/.test(dbPeriod)) return dbPeriod;
+    
+    // Handle "Term X" format
+    const termMatch = dbPeriod.match(/Term\s*(\d+)/i);
+    if (termMatch) {
+        const termNum = parseInt(termMatch[1]);
+        const year = Math.ceil(termNum / 3);
+        const termInYear = ((termNum - 1) % 3) + 1;
+        return `Y${year} T${termInYear}`;
+    }
+    
+    // Handle "Year X - Term Y" format
+    const yearTermMatch = dbPeriod.match(/Year\s*(\d+)\s*[-–]\s*Term\s*(\d+)/i);
+    if (yearTermMatch) {
+        const year = parseInt(yearTermMatch[1]);
+        const term = parseInt(yearTermMatch[2]);
+        return `Y${year} T${term}`;
+    }
+    
+    // Handle "Semester X" format for KRCHN
+    const semMatch = dbPeriod.match(/Semester\s*(\d+)/i);
+    if (semMatch) {
+        const semNum = parseInt(semMatch[1]);
+        const year = Math.ceil(semNum / 3);
+        const semInYear = ((semNum - 1) % 3) + 1;
+        return `Y${year} S${semInYear}`;
+    }
+    
+    return dbPeriod;
+}
+
+// Map display period to database format
+function mapPeriodToDatabase(displayPeriod) {
+    if (!displayPeriod) return displayPeriod;
+    
+    // Handle "Y1 T1" format
+    const match = displayPeriod.match(/^Y(\d+)\s*([ST])(\d+)$/i);
+    if (match) {
+        const year = parseInt(match[1]);
+        const type = match[2].toUpperCase();
+        const num = parseInt(match[3]);
+        
+        if (type === 'T') {
+            // TVET: Calculate term number
+            const termNum = (year - 1) * 3 + num;
+            return `Term ${termNum}`;
+        } else if (type === 'S') {
+            // KRCHN: Calculate semester number
+            const semNum = (year - 1) * 3 + num;
+            return `Semester ${semNum}`;
+        }
+    }
+    
+    return displayPeriod;
+}
+
+// Map program code to full name
+function mapProgramCodeToFullName(programCode) {
+    if (!programCode) return programCode;
+    
+    const programMap = {
+        'KRCHN': 'KRCHN',
+        'CCH': 'Caregiving',
+        'CPOTT': 'Health Records & IT',
+        'CHRIT': 'Health Records & IT',
+        'CPC': 'Community Health',
+        'CSL': 'Social Work',
+        'CSW': 'Social Work',
+        'CCJS': 'Criminology',
+        'CAG': 'Agriculture',
+        'CHSS': 'Humanities',
+        'CICT': 'ICT',
+        'CCA': 'Community Health',
+        'DPOTT': 'Health Records & IT',
+        'HRIT': 'Health Records & IT',
+        'CNA': 'Nursing Assistant'
+    };
+    
+    return programMap[programCode] || programCode;
+}
+
+// Map program full name to code
+function mapProgramFullNameToCode(fullName) {
+    if (!fullName) return fullName;
+    
+    const reverseMap = {
+        'KRCHN': 'KRCHN',
+        'Caregiving': 'CCH',
+        'Health Records & IT': 'CPOTT',
+        'Community Health': 'CPC',
+        'Social Work': 'CSL',
+        'Agriculture': 'CAG',
+        'ICT': 'CICT',
+        'Nursing Assistant': 'CNA'
+    };
+    
+    return reverseMap[fullName] || fullName;
+}
+
+// ============================================================
+// 🏷️ PROGRAM DETECTION - FIXED
+// ============================================================
+
+function getProgramType(program) {
+    if (!program) return 'TVET';
+    const upper = program.toUpperCase();
+    if (upper === 'KRCHN') return 'KRCHN';
+    return 'TVET';
+}
+
+function getProgramLevel(program) {
+    if (!program) return 'diploma';
+    const certPrograms = ['CCH', 'CPOTT', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'CCA', 'CNA'];
+    return certPrograms.includes(program) ? 'certificate' : 'diploma';
+}
+
+function getPeriodLabel(programType) {
+    return programType === 'KRCHN' ? 'Semester' : 'Term';
+}
+
+function getPeriods(programType, programLevel = 'diploma') {
+    if (programType === 'KRCHN') {
+        return ['Y1 S1', 'Y1 S2', 'Y1 S3', 'Y2 S1', 'Y2 S2', 'Y2 S3', 'Y3 S1', 'Y3 S2', 'Y3 S3'];
+    } else {
+        if (programLevel === 'certificate') {
+            return ['Y1 T1', 'Y1 T2', 'Y1 T3'];
+        } else {
+            return ['Y1 T1', 'Y1 T2', 'Y1 T3', 'Y2 T1', 'Y2 T2', 'Y2 T3'];
+        }
+    }
+}
+
+// ============================================================
+// 🔗 COMMUNICATION WITH SUPER ADMIN MODULE
 // ============================================================
 
 function notifySuperAdmin(eventType, data) {
@@ -96,7 +233,6 @@ function notifySuperAdmin(eventType, data) {
             window.handleStudentFinanceEvent(eventType, data);
         }
         
-        // Use the correct columns for admin_notifications
         if (typeof supabase !== 'undefined' && supabase && typeof supabase.from === 'function') {
             try {
                 const student = studentFinanceState.student || window.currentUserProfile || window.currentUser;
@@ -105,15 +241,12 @@ function notifySuperAdmin(eventType, data) {
                     .from('admin_notifications')
                     .insert([{
                         notification_type: eventType,
-                        student_id: student?.id || data?.studentId || 'unknown',
+                        student_id: student?.user_id || student?.id || data?.studentId || 'unknown',
                         student_name: student?.full_name || student?.name || data?.studentName || 'Unknown Student',
                         details: typeof data === 'object' ? JSON.stringify(data) : String(data),
                         is_read: false,
                         timestamp: new Date().toISOString()
                     }])
-                    .then(() => {
-                        // Success - do nothing
-                    })
                     .catch((error) => {
                         console.warn('⚠️ Could not save notification:', error.message);
                     });
@@ -137,7 +270,7 @@ function listenForAdminEvents() {
             case 'payment_verified':
             case 'balance_updated':
             case 'payment_recorded':
-                if (data?.studentId === studentFinanceState.student?.id) {
+                if (data?.studentId === studentFinanceState.student?.user_id) {
                     loadStudentFinance();
                     showToast('📋 Finance data updated', 'info');
                 }
@@ -163,568 +296,246 @@ function formatPhoneNumber(phone) {
     return clean;
 }
 
-async function initiatePayHeroSTK(amount, phoneNumber, reference, period, customerName = '') {
+// ============================================================
+// 📊 FETCH FINANCE DATA FROM SUPABASE - FIXED
+// ============================================================
+
+async function fetchFinanceDataFromSupabase(user) {
     try {
-        if (!PAYHERO_CONFIG.channelId) {
-            showToast('❌ Channel ID not configured', 'error');
-            return { success: false, error: 'Channel ID not configured' };
-        }
-        if (!amount || amount <= 0) {
-            showToast('❌ Please enter a valid amount', 'error');
-            return { success: false, error: 'Invalid amount' };
-        }
+        if (typeof supabase === 'undefined' || !supabase) return null;
         
-        let cleanPhone = formatPhoneNumber(phoneNumber);
-        if (!cleanPhone) {
-            showToast('❌ Enter valid phone (e.g., 0712345678)', 'error');
-            return { success: false, error: 'Invalid phone number' };
+        // Get the user ID - using user_id from consolidated table
+        const userId = user?.user_id || user?.id;
+        if (!userId) {
+            console.warn('⚠️ No user ID found');
+            return null;
         }
         
-        const user = window.currentUserProfile || window.currentUser;
-        const requestData = {
-            amount: parseInt(amount),
-            phone_number: cleanPhone,
-            channel_id: parseInt(PAYHERO_CONFIG.channelId),
-            provider: PAYHERO_CONFIG.provider,
-            external_reference: reference || `NCHSM-${Date.now()}`,
-            customer_name: customerName || user?.full_name || 'NCHSM Student',
-            callback_url: PAYHERO_CONFIG.callbackUrl
-        };
+        // Get user program from consolidated table
+        const program = user?.program || user?.program_name || 'KRCHN';
+        const programType = getProgramType(program);
+        const programLevel = getProgramLevel(program);
+        const periods = getPeriods(programType, programLevel);
         
-        console.log('📤 Sending STK Push request:', requestData);
+        console.log('📊 Fetching data for user:', userId);
+        console.log('📚 Program:', program);
+        console.log('🏷️ Program Type:', programType);
         
-        showPaymentProcessing(amount);
-        
-        const response = await fetch(PAYHERO_CONFIG.baseUrl, {
-            method: 'POST',
-            headers: {
-                'Authorization': PAYHERO_CONFIG.authToken,
-                'Content-Type': 'application/json',
-                'Accept': 'application/json'
-            },
-            body: JSON.stringify(requestData)
-        });
-        
-        const data = await response.json();
-        console.log('📥 Response:', data);
-        
-        if (response.ok) {
-            console.log('✅ STK Push initiated!');
+        // 1. Get student account data
+        let accountData = null;
+        try {
+            const { data, error } = await supabase
+                .from('finance_student_accounts')
+                .select('*')
+                .eq('student_id', userId)
+                .maybeSingle();
             
-            payheroState.currentTransaction = {
-                id: data.CheckoutRequestID || data.reference,
-                checkoutRequestID: data.CheckoutRequestID,
-                reference: data.reference || requestData.external_reference,
-                amount: amount,
-                phone: cleanPhone,
-                period: period,
-                status: 'pending',
-                timestamp: new Date().toISOString()
-            };
-            
-            startSTKStatusPolling(data.CheckoutRequestID || data.reference);
-            await saveSTKPaymentRecord(amount, period, {
-                status: 'pending',
-                transactionId: data.CheckoutRequestID || data.reference,
-                checkoutRequestID: data.CheckoutRequestID,
-                reference: data.reference || requestData.external_reference,
-                paymentMethod: 'M-Pesa STK Push',
-                phoneNumber: cleanPhone,
-                response: data
-            });
-            
-            showToast('📱 STK Push sent! Check your phone.', 'success');
-            return { success: true, data, reference: data.reference || requestData.external_reference };
-        } else {
-            console.error('❌ STK Push failed:', data);
-            hidePaymentProcessing();
-            hideSTKStatus();
-            
-            let errorMsg = data.error_message || data.message || data.error || 'Payment request failed';
-            
-            if (data.status === 429) {
-                errorMsg = 'Too many requests. Please wait a few minutes.';
+            if (!error && data) {
+                accountData = data;
+                console.log('✅ Account data found');
+            } else {
+                console.log('ℹ️ No account data found for student');
             }
-            
-            showToast('❌ ' + errorMsg, 'error');
-            return { success: false, error: errorMsg };
+        } catch (e) {
+            console.log('ℹ️ Account table error:', e.message);
         }
-    } catch (error) {
-        console.error('❌ Request error:', error);
-        hidePaymentProcessing();
-        hideSTKStatus();
-        showToast('❌ Network error. Please try again.', 'error');
-        return { success: false, error: error.message };
-    }
-}
-
-
-// ============================================================
-// 🎨 SHOW PAYMENT PROCESSING - SAME PAGE
-// ============================================================
-
-function showPaymentProcessing(amount) {
-    const container = document.getElementById('finance-paymentProcessing');
-    if (container) {
-        container.style.display = 'block';
-        container.innerHTML = `
-            <div style="text-align: center; padding: 20px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb; margin: 10px 0;">
-                <div style="display: inline-block; width: 40px; height: 40px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
-                <p style="margin: 12px 0 4px 0; font-weight: 600; color: #0A3D62;">Processing Payment</p>
-                <p style="font-size: 13px; color: #64748b;">Amount: KES ${amount.toLocaleString()}</p>
-                <p style="font-size: 12px; color: #94a3b8;">Please wait...</p>
-            </div>
-        `;
-    }
-}
-
-function hidePaymentProcessing() {
-    const container = document.getElementById('finance-paymentProcessing');
-    if (container) {
-        container.style.display = 'none';
-    }
-}
-
-// ============================================================
-// 🔍 CHECK PAYMENT STATUS
-// ============================================================
-
-async function checkPaymentStatus(reference) {
-    try {
-        if (typeof supabase !== 'undefined' && supabase) {
+        
+        // 2. Get payments data - using correct column names
+        let paymentsData = [];
+        try {
             const { data, error } = await supabase
                 .from('finance_payments')
                 .select('*')
-                .eq('reference', reference)
-                .single();
-            if (!error && data) return data;
-        }
-        
-        const localPayments = JSON.parse(localStorage.getItem('local_payments') || '[]');
-        const found = localPayments.find(p => p.reference === reference);
-        if (found) return found;
-        return null;
-    } catch (error) {
-        console.error('❌ Status check error:', error);
-        return null;
-    }
-}
-
-function startSTKStatusPolling(reference) {
-    let attempts = 0;
-    const maxAttempts = 30;
-    
-    if (payheroState.stkCheckInterval) clearInterval(payheroState.stkCheckInterval);
-    
-    showSTKStatus(reference);
-    
-    payheroState.stkCheckInterval = setInterval(async () => {
-        attempts++;
-        if (attempts > maxAttempts) {
-            clearInterval(payheroState.stkCheckInterval);
-            updateSTKStatusDisplay('⏰ Payment timeout. Please try again.', 'error');
-            hidePaymentProcessing();
-            setTimeout(() => hideSTKStatus(), 3000);
-            handleSTKFailure();
-            return;
-        }
-        
-        const timeLeft = maxAttempts - attempts;
-        updateSTKStatusDisplay(`⏳ Waiting for confirmation... (${timeLeft}s remaining)`, 'info');
-        
-        const payment = await checkPaymentStatus(reference);
-        if (payment) {
-            if (payment.status === 'completed' || payment.status === 'success') {
-                clearInterval(payheroState.stkCheckInterval);
-                updateSTKStatusDisplay('✅ Payment confirmed!', 'success');
-                setTimeout(() => hideSTKStatus(), 2000);
-                handleSTKSuccess();
-            } else if (payment.status === 'failed' || payment.status === 'cancelled') {
-                clearInterval(payheroState.stkCheckInterval);
-                updateSTKStatusDisplay('❌ Payment failed', 'error');
-                setTimeout(() => hideSTKStatus(), 3000);
-                handleSTKFailure();
-            }
-        }
-    }, 3000);
-}
-
-function showSTKStatus(reference) {
-    const container = document.getElementById('finance-stkStatusDisplay');
-    if (container) {
-        container.style.display = 'block';
-        container.innerHTML = `
-            <div style="padding: 16px; background: #f0f7ff; border-radius: 8px; border: 1px solid #bfdbfe; margin: 10px 0;">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
-                    <div>
-                        <p style="margin: 0; font-weight: 600; color: #0A3D62;">Processing STK Push</p>
-                        <p id="finance-stkStatusMessage" style="margin: 2px 0 0 0; font-size: 13px; color: #64748b;">⏳ Waiting for confirmation...</p>
-                        <p style="margin: 2px 0 0 0; font-size: 11px; color: #94a3b8;">Ref: ${reference}</p>
-                        <button onclick="cancelSTKPush()" style="margin-top: 6px; background: #fee2e2; color: #dc2626; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                            <i class="fas fa-times"></i> Cancel
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `;
-    }
-}
-function updateSTKStatusDisplay(message, type = 'info') {
-    const statusEl = document.getElementById('finance-stkStatusMessage');
-    if (statusEl) {
-        const colors = {
-            success: '#059669',
-            error: '#dc2626',
-            info: '#64748b'
-        };
-        statusEl.style.color = colors[type] || colors.info;
-        statusEl.textContent = message;
-    }
-}
-
-function hideSTKStatus() {
-    const container = document.getElementById('finance-stkStatusDisplay');
-    if (container) {
-        container.style.display = 'none';
-    }
-}
-
-// ============================================================
-// 📱 PROCESS PAYMENT - SAME PAGE, NO REDIRECT
-// ============================================================
-
-async function processPayment() {
-    if (!validatePaymentForm()) return;
-    
-    const period = document.getElementById('finance-paymentPeriodSelect')?.value;
-    const amount = parseFloat(document.getElementById('finance-paymentAmountInput')?.value);
-    const method = studentFinanceState.selectedPaymentMethod || 'mpesa';
-    
-    if (!period) { showToast('❌ Please select a payment period', 'error'); return; }
-    if (!amount || amount <= 0) { showToast('❌ Please enter a valid amount', 'error'); return; }
-    
-    // Close modal but stay on same page
-    closePaymentModal();
-    
-    const user = window.currentUserProfile || window.currentUser;
-    const reference = 'PAY-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
-    
-    if (method === 'mpesa') {
-        const phoneInput = document.getElementById('finance-mpesaPhoneInput');
-        let phone = phoneInput?.value || user?.phone || '';
-        if (!phone || phone.trim() === '') {
-            showToast('❌ Please enter your M-Pesa phone number', 'error');
-            return;
-        }
-        
-        const result = await initiatePayHeroSTK(amount, phone, reference, period, user?.full_name);
-        if (result.success && result.fallback !== 'lipwa') {
-            // Stay on same page - status is shown via polling
-            showToast('📱 STK Push sent! Check your phone.', 'success');
-        }
-        return;
-    }
-    
-    // Other payment methods - stay on same page
-    showToast('💰 Payment processing...', 'info');
-    setTimeout(() => {
-        showToast('✅ Payment recorded', 'success');
-        loadStudentFinance();
-    }, 2000);
-}
-
-// ============================================================
-// ✅ HANDLE SUCCESS - SAME PAGE
-// ============================================================
-
-function handleSTKSuccess() {
-    const transaction = payheroState.currentTransaction;
-    if (!transaction) return;
-    
-    payheroState.isProcessing = false;
-    transaction.status = 'completed';
-    hidePaymentProcessing();
-    hideSTKStatus();
-    
-    // Show success on same page
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: '✅ Payment Successful!',
-            html: `
-                <div style="text-align: center;">
-                    <i class="fas fa-check-circle" style="font-size: 50px; color: #059669; margin-bottom: 10px;"></i>
-                    <p style="font-size: 18px; font-weight: 700; color: #059669; margin: 0 0 4px 0;">Payment Successful!</p>
-                    <p style="color: #64748b; font-size: 14px; margin: 0 0 6px 0;">KES ${transaction.amount.toLocaleString()} confirmed</p>
-                    <div style="background: #f8fafc; border-radius: 6px; padding: 8px 12px; margin: 6px 0; text-align: left; font-size: 12px;">
-                        <p style="margin: 2px 0;"><strong>Period:</strong> ${transaction.period}</p>
-                        <p style="margin: 2px 0;"><strong>Ref:</strong> ${transaction.reference}</p>
-                    </div>
-                </div>
-            `,
-            confirmButtonText: 'Done',
-            confirmButtonColor: '#059669',
-            width: 380
-        });
-    }
-    
-    saveSTKPaymentRecord(transaction.amount, transaction.period, {
-        status: 'success',
-        transactionId: transaction.id,
-        reference: transaction.reference,
-        paymentMethod: 'M-Pesa STK Push'
-    });
-    
-    const user = window.currentUserProfile || window.currentUser;
-    if (user?.id) sendPaymentConfirmationEmail(user.id, {
-        amount: transaction.amount,
-        period: transaction.period,
-        transactionId: transaction.id,
-        reference: transaction.reference,
-        method: 'M-Pesa STK Push',
-        date: new Date().toISOString()
-    });
-    
-    notifySuperAdmin('payment_completed', {
-        studentId: user?.id,
-        amount: transaction.amount,
-        reference: transaction.reference,
-        method: 'M-Pesa STK',
-        timestamp: new Date().toISOString()
-    });
-    
-    // Update balance after successful payment
-    updateStudentBalanceAfterPayment(transaction.amount);
-    
-    setTimeout(loadStudentFinance, 1000);
-    showToast('✅ Payment successful!', 'success');
-}
-
-function handleSTKFailure() {
-    const transaction = payheroState.currentTransaction;
-    if (!transaction) return;
-    
-    payheroState.isProcessing = false;
-    transaction.status = 'failed';
-    hidePaymentProcessing();
-    hideSTKStatus();
-    
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: '❌ Payment Failed',
-            html: `
-                <div style="text-align: center;">
-                    <i class="fas fa-times-circle" style="font-size: 50px; color: #dc2626; margin-bottom: 10px;"></i>
-                    <p style="font-size: 17px; font-weight: 600; color: #dc2626; margin: 0;">Payment Failed</p>
-                    <p style="color: #64748b; font-size: 13px;">Please try again or use a different method.</p>
-                </div>
-            `,
-            confirmButtonText: 'Try Again',
-            cancelButtonText: 'Cancel',
-            showCancelButton: true,
-            confirmButtonColor: '#4C1D95',
-            cancelButtonColor: '#64748b',
-            width: 380
-        }).then((result) => {
-            if (result.isConfirmed) openPaymentModal();
-        });
-    }
-    showToast('❌ Payment failed. Please try again.', 'error');
-}
-
-// ============================================================
-// 💰 UPDATE BALANCE AFTER PAYMENT
-// ============================================================
-
-async function updateStudentBalanceAfterPayment(amount) {
-    try {
-        const user = window.currentUserProfile || window.currentUser;
-        if (!user || !user.id) return;
-        
-        if (typeof supabase === 'undefined' || !supabase) return;
-        
-        const { data: account, error: fetchError } = await supabase
-            .from('finance_student_accounts')
-            .select('balance, outstanding, total_paid')
-            .eq('student_id', user.id)
-            .single();
-        
-        if (fetchError) {
-            console.warn('⚠️ Could not fetch account for balance update:', fetchError);
-            return;
-        }
-        
-        if (account) {
-            const newBalance = Math.max((account.balance || 0) - amount, 0);
-            const newOutstanding = Math.max((account.outstanding || 0) - amount, 0);
-            const newTotalPaid = (account.total_paid || 0) + amount;
+                .eq('student_id', userId)
+                .order('payment_date', { ascending: false });
             
-            const { error: updateError } = await supabase
-                .from('finance_student_accounts')
-                .update({
-                    balance: newBalance,
-                    outstanding: newOutstanding,
-                    total_paid: newTotalPaid,
-                    last_payment_date: new Date().toISOString().split('T')[0],
-                    updated_at: new Date().toISOString()
-                })
-                .eq('student_id', user.id);
-            
-            if (updateError) {
-                console.warn('⚠️ Could not update balance:', updateError);
+            if (!error && data) {
+                paymentsData = data;
+                console.log('✅ Payments found:', data.length);
             } else {
-                console.log(`✅ Balance updated: New balance KES ${newBalance.toLocaleString()}`);
-                studentFinanceState.balance = newBalance;
-                studentFinanceState.outstanding = newOutstanding;
-                studentFinanceState.totalPaid = newTotalPaid;
+                console.log('ℹ️ No payments found');
             }
-        }
-    } catch (error) {
-        console.error('❌ Error updating balance:', error);
-    }
-}
-
-// ============================================================
-// 📝 SAVE PAYMENT RECORD
-// ============================================================
-
-async function saveSTKPaymentRecord(amount, period, result) {
-    try {
-        const user = window.currentUserProfile || window.currentUser;
-        const transactionId = result.transactionId || result.checkoutRequestID || `TXN-${Date.now()}`;
-        const method = result.paymentMethod || studentFinanceState.selectedPaymentMethod || 'M-Pesa STK';
-        const status = result.status === 'success' ? 'completed' : 'pending';
-        
-        const paymentRecord = {
-            student_id: user?.id || 'student_001',
-            student_name: user?.full_name || user?.name || 'Student',
-            amount: amount,
-            period: period,
-            payment_method: method,
-            status: status,
-            transaction_id: transactionId,
-            checkout_request_id: result.checkoutRequestID,
-            reference: result.reference || `PAY-${Date.now()}`,
-            phone_number: result.phoneNumber || '',
-            notes: `${period} Tuition Fees - ${method} Payment`,
-            payment_date: new Date().toISOString(),
-            source: 'payhero'
-        };
-        
-        savePaymentLocally(paymentRecord);
-        
-        if (typeof supabase !== 'undefined' && supabase) {
-            const { error } = await supabase
-                .from('finance_payments')
-                .insert([paymentRecord])
-                .catch(e => console.warn('⚠️ Could not save to database:', e.message));
-            if (error) console.error('❌ Error saving payment record:', error);
-            else console.log('✅ Payment record saved to database');
-        }
-    } catch (error) {
-        console.error('❌ Error saving payment:', error);
-    }
-}
-
-function savePaymentLocally(paymentRecord) {
-    try {
-        let payments = JSON.parse(localStorage.getItem('local_payments') || '[]');
-        payments.unshift(paymentRecord);
-        if (payments.length > 50) payments = payments.slice(0, 50);
-        localStorage.setItem('local_payments', JSON.stringify(payments));
-        console.log('💾 Payment saved locally:', paymentRecord.reference);
-    } catch (e) {
-        console.error('❌ Failed to save locally:', e);
-    }
-}
-
-function startPaymentCheck(reference) {
-    let attempts = 0;
-    const maxAttempts = 60;
-    if (window.paymentCheckInterval) clearInterval(window.paymentCheckInterval);
-    
-    window.paymentCheckInterval = setInterval(async () => {
-        attempts++;
-        if (attempts > maxAttempts) {
-            clearInterval(window.paymentCheckInterval);
-            console.log('⏰ Payment check timeout');
-            return;
+        } catch (e) {
+            console.log('ℹ️ Payments table error:', e.message);
         }
         
+        // 3. Get fee structure
+        let feeStructureData = null;
         try {
-            if (typeof supabase !== 'undefined' && supabase) {
-                const { data, error } = await supabase
-                    .from('finance_payments')
+            // Try to get fee structure by program name
+            const programFullName = mapProgramCodeToFullName(program);
+            
+            const { data, error } = await supabase
+                .from('finance_fee_structure')
+                .select('*')
+                .eq('program', programFullName)
+                .eq('is_active', true)
+                .order('period_index', { ascending: true });
+            
+            if (!error && data && data.length > 0) {
+                feeStructureData = data;
+                console.log('✅ Fee structure found for:', programFullName);
+            } else {
+                // Try with program code
+                const { data: altData, error: altError } = await supabase
+                    .from('finance_fee_structure')
                     .select('*')
-                    .eq('reference', reference)
-                    .single();
-                if (!error && data && (data.status === 'completed' || data.status === 'success')) {
-                    clearInterval(window.paymentCheckInterval);
-                    console.log('✅ Payment completed!');
-                    showToast('✅ Payment completed successfully!', 'success');
-                    loadStudentFinance();
-                    return;
+                    .eq('program', program)
+                    .eq('is_active', true)
+                    .order('period_index', { ascending: true });
+                
+                if (!altError && altData && altData.length > 0) {
+                    feeStructureData = altData;
+                    console.log('✅ Fee structure found for program code:', program);
+                } else {
+                    console.log('ℹ️ No fee structure found');
                 }
             }
-            
-            const localPayments = JSON.parse(localStorage.getItem('local_payments') || '[]');
-            const found = localPayments.find(p => p.reference === reference);
-            if (found && (found.status === 'completed' || found.status === 'success')) {
-                clearInterval(window.paymentCheckInterval);
-                console.log('✅ Payment completed (local)!');
-                showToast('✅ Payment completed successfully!', 'success');
-                loadStudentFinance();
-                return;
-            }
-        } catch (e) { /* silent */ }
-    }, 5000);
-}
-
-// ============================================================
-// 🔄 AUTO-REFRESH
-// ============================================================
-
-document.addEventListener('visibilitychange', function() {
-    if (document.visibilityState === 'visible') {
-        setTimeout(loadStudentFinance, 1000);
-        console.log('🔄 Refreshed finance data after return');
-    }
-});
-
-window.addEventListener('focus', function() {
-    setTimeout(loadStudentFinance, 500);
-    console.log('🔄 Refreshed finance data on focus');
-});
-
-// ============================================================
-// 🏷️ PROGRAM DETECTION
-// ============================================================
-
-function getProgramType(program) {
-    if (!program) return 'TVET';
-    return ['KRCHN', 'KRCHN'].includes(program.toUpperCase()) ? 'KRCHN' : 'TVET';
-}
-
-function getProgramLevel(program) {
-    const cert = ['CCH', 'CPOTT', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'CCA', 'ACH', 'AAG', 'ASW', 'HSS', 'CNA'];
-    return cert.includes(program) ? 'certificate' : 'diploma';
-}
-
-function getPeriodLabel(programType) {
-    return programType === 'KRCHN' ? 'Semester' : 'Term';
-}
-
-function getPeriods(programType, programLevel = 'diploma') {
-    if (programType === 'KRCHN') {
-        return ['Y1 S1', 'Y1 S2', 'Y1 S3', 'Y2 S1', 'Y2 S2', 'Y2 S3', 'Y3 S1', 'Y3 S2', 'Y3 S3'];
-    } else {
-        if (programLevel === 'certificate') {
-            return ['Y1 T1', 'Y1 T2', 'Y1 T3'];
-        } else {
-            return ['Y1 T1', 'Y1 T2', 'Y1 T3', 'Y2 T1', 'Y2 T2', 'Y2 T3'];
+        } catch (e) {
+            console.log('ℹ️ Fee structure table error:', e.message);
         }
+        
+        // Process fee structure
+        let processedFeeStructure = [];
+        let voteHeads = [];
+        let periodTotals = [];
+        
+        if (feeStructureData && feeStructureData.length > 0) {
+            const allVoteHeads = new Map();
+            const periodsList = [];
+            
+            feeStructureData.forEach(record => {
+                const periodName = record.block_term || record.period_name || 'Unknown';
+                const displayPeriod = mapPeriodToDisplay(periodName);
+                const amount = parseFloat(record.amount) || 0;
+                const hostel = parseFloat(record.hostel) || 0;
+                const components = record.components || [];
+                
+                periodsList.push({
+                    name: displayPeriod,
+                    amount: amount,
+                    hostel: hostel,
+                    components: components
+                });
+                periodTotals.push(amount);
+                
+                components.forEach(comp => {
+                    if (!allVoteHeads.has(comp.label)) {
+                        allVoteHeads.set(comp.label, { label: comp.label, amounts: [] });
+                    }
+                });
+            });
+            
+            // Build vote heads
+            allVoteHeads.forEach((vh, label) => {
+                const amounts = periodsList.map(period => {
+                    const comp = period.components.find(c => c.label === label);
+                    return comp ? comp.amount : 0;
+                });
+                voteHeads.push({ label, amounts });
+            });
+            
+            processedFeeStructure = periodsList;
+        } else {
+            // Fallback: Generate from periods
+            periods.forEach((period, index) => {
+                const amount = getFeeAmount(programType, index, programLevel);
+                processedFeeStructure.push({
+                    name: period,
+                    amount: amount,
+                    hostel: 0,
+                    components: []
+                });
+                periodTotals.push(amount);
+            });
+        }
+        
+        // Calculate current period and balance
+        const currentPeriod = accountData?.current_period || accountData?.current_block || periods[0];
+        const currentPeriodIndex = periods.indexOf(currentPeriod) >= 0 ? periods.indexOf(currentPeriod) : 0;
+        
+        // Calculate semester fee from fee structure
+        let semesterFee = 0;
+        if (processedFeeStructure && processedFeeStructure.length > currentPeriodIndex) {
+            semesterFee = processedFeeStructure[currentPeriodIndex]?.amount || 0;
+        } else {
+            semesterFee = getFeeAmount(programType, currentPeriodIndex, programLevel);
+        }
+        
+        // Calculate paid this semester
+        const paidThisSemester = paymentsData
+            .filter(p => {
+                const pPeriod = mapPeriodToDisplay(p.period);
+                return pPeriod === currentPeriod && p.status === 'completed';
+            })
+            .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+        
+        // Calculate balance
+        const accountBalance = accountData?.balance || 0;
+        const balance = Math.max(semesterFee - paidThisSemester, 0);
+        
+        // Format payments for display
+        const formattedPayments = paymentsData.map(p => ({
+            date: p.payment_date || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
+            description: p.notes || `${mapPeriodToDisplay(p.period)} Fees`,
+            period: mapPeriodToDisplay(p.period) || 'N/A',
+            amount: parseFloat(p.amount || 0),
+            method: p.payment_method || 'Cash',
+            reference: p.reference_number || p.checkout_request_id || '-',
+            status: p.status || 'pending',
+            transaction_id: p.checkout_request_id || null,
+            payment_method: p.payment_method || 'Cash'
+        }));
+        
+        // Format fee structure for timeline
+        const formattedFees = processedFeeStructure.map((f, index) => ({
+            block: f.name,
+            amount: f.amount,
+            description: `${f.name} Tuition Fees`,
+            status: index <= currentPeriodIndex ? (index === currentPeriodIndex && paidThisSemester > 0 ? 'Partial' : 'Paid') : 'Pending'
+        }));
+        
+        // Calculate total paid
+        const totalPaid = accountData?.total_paid || paymentsData
+            .filter(p => p.status === 'completed')
+            .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+        
+        return {
+            balance: balance,
+            totalPaid: totalPaid,
+            totalDue: semesterFee,
+            outstanding: balance,
+            paymentProgress: semesterFee > 0 ? (paidThisSemester / semesterFee * 100) : 0,
+            payments: formattedPayments,
+            feeStructure: formattedFees,
+            programType: programType,
+            programLevel: programLevel,
+            periodLabel: getPeriodLabel(programType),
+            currentPeriod: currentPeriod,
+            currentPeriodIndex: currentPeriodIndex,
+            semesterFee: semesterFee,
+            paidThisSemester: paidThisSemester,
+            voteHeads: voteHeads,
+            feeStructureRaw: { periods: processedFeeStructure, voteHeads: voteHeads, periodTotals: periodTotals },
+            student: {
+                name: user?.full_name || user?.name || 'Student',
+                id: user?.student_id || user?.id || 'N/A',
+                userId: userId,
+                program: program,
+                intake: user?.intake_year || '2026',
+                programType: programType,
+                programLevel: programLevel
+            }
+        };
+    } catch (error) {
+        console.error('❌ Error fetching from Supabase:', error);
+        return null;
     }
 }
+
+// ============================================================
+// 🔧 FEE AMOUNT FUNCTION
+// ============================================================
 
 function getFeeAmount(programType, periodIndex, programLevel = 'diploma') {
     if (programType === 'KRCHN') {
@@ -736,443 +547,73 @@ function getFeeAmount(programType, periodIndex, programLevel = 'diploma') {
 }
 
 // ============================================================
-// 📊 FETCH FEE STRUCTURE
-// ============================================================
-
-async function fetchFeeStructureFromDatabase(program, programType, programLevel) {
-    try {
-        if (typeof supabase === 'undefined' || !supabase) return null;
-        console.log(`📊 Fetching fee structure for: ${program}`);
-        
-        const { data, error } = await supabase
-            .from('finance_fee_structure')
-            .select('*')
-            .eq('program', program)
-            .eq('is_active', true)
-            .order('period_index', { ascending: true });
-        
-        if (error || !data || data.length === 0) {
-            console.warn(`⚠️ No fee structure found for: ${program}`);
-            return null;
-        }
-        
-        console.log(`✅ Found ${data.length} fee structure records`);
-        
-        const hasComponents = data.some(record => record.components && Array.isArray(record.components) && record.components.length > 0);
-        if (!hasComponents) return null;
-        
-        return processFeeStructureData(data, programType, programLevel);
-    } catch (error) {
-        console.error('❌ Error fetching fee structure:', error);
-        return null;
-    }
-}
-
-function processFeeStructureData(data, programType, programLevel) {
-    const periods = [];
-    const allVoteHeads = new Map();
-    const periodTotals = [];
-    let allTerms = [];
-    
-    data.forEach(record => {
-        const periodName = record.block_term || record.period_name || 'Unknown';
-        const components = record.components || [];
-        const amount = parseFloat(record.amount) || 0;
-        const hostel = parseFloat(record.hostel) || 0;
-        
-        periods.push({ name: periodName, amount, hostel, components });
-        periodTotals.push(amount);
-        if (record.terms && Array.isArray(record.terms)) allTerms = record.terms;
-        
-        components.forEach(comp => {
-            if (!allVoteHeads.has(comp.label)) {
-                allVoteHeads.set(comp.label, { label: comp.label, amounts: [] });
-            }
-        });
-    });
-    
-    const voteHeads = [];
-    allVoteHeads.forEach((vh, label) => {
-        const amounts = periods.map(period => {
-            const comp = period.components.find(c => c.label === label);
-            return comp ? comp.amount : 0;
-        });
-        voteHeads.push({ label, amounts });
-    });
-    
-    const krchnOrder = ['ADMISSION FEE', 'TUITION', 'REGISTRATION FEE', 'CAUTION FEE', 'UNIFORM', 'CLINICAL PLACEMENT FEE', 'COLLEGE I.D', 'LIBRARY & INTERNET', 'IMMUNIZATION', 'SKILLS LAB', 'INSURANCE', 'CONFIDENTIAL REPORT', 'FIRST AID TRAINING', 'NURSING COUNCIL INDEXING FEE & VERIFICATION', 'TRANSPORT @ 2000/-'];
-    
-    if (programType === 'TVET') {
-        voteHeads.sort((a, b) => a.label.localeCompare(b.label));
-    } else {
-        voteHeads.sort((a, b) => {
-            const indexA = krchnOrder.indexOf(a.label);
-            const indexB = krchnOrder.indexOf(b.label);
-            if (indexA === -1 && indexB === -1) return a.label.localeCompare(b.label);
-            if (indexA === -1) return 1;
-            if (indexB === -1) return -1;
-            return indexA - indexB;
-        });
-    }
-    
-    return { periods, voteHeads, periodTotals, programType, programLevel, terms: allTerms };
-}
-
-// ============================================================
-// 🔄 TOGGLE FEE STRUCTURE
-// ============================================================
-
-function toggleFeeStructure() {
-    const container = document.getElementById('finance-studentFeeStructureDisplay');
-    const toggleBtn = document.querySelector('[aria-controls="finance-studentFeeStructureDisplay"]');
-    const toggleText = document.getElementById('finance-toggleFeeText');
-    
-    if (!container) {
-        console.warn('⚠️ finance-studentFeeStructureDisplay not found');
-        return;
-    }
-    
-    if (container.style.display === 'none' || container.style.display === '') {
-        container.style.display = 'block';
-        container.style.animation = 'fadeIn 0.3s ease';
-        
-        if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="finance-toggleFeeText">Hide Fee Structure</span>';
-            toggleBtn.setAttribute('aria-expanded', 'true');
-        }
-        if (toggleText) {
-            toggleText.textContent = 'Hide Fee Structure';
-        }
-        studentFinanceState.feeStructureVisible = true;
-        
-        if (studentFinanceState.feeStructureRaw) {
-            renderFeeStructureData();
-        } else {
-            loadStudentFinance();
-        }
-        
-        setTimeout(() => {
-            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 300);
-        
-        notifySuperAdmin('fee_structure_viewed', {
-            studentId: studentFinanceState.student?.id,
-            timestamp: new Date().toISOString()
-        });
-    } else {
-        container.style.display = 'none';
-        container.style.animation = 'fadeOut 0.3s ease';
-        if (toggleBtn) {
-            toggleBtn.innerHTML = '<i class="fas fa-eye"></i> <span id="finance-toggleFeeText">View Fee Structure</span>';
-            toggleBtn.setAttribute('aria-expanded', 'false');
-        }
-        if (toggleText) {
-            toggleText.textContent = 'View Fee Structure';
-        }
-        studentFinanceState.feeStructureVisible = false;
-    }
-}
-
-// ============================================================
-// 📄 RENDER FEE STRUCTURE - MOBILE OPTIMIZED
-// ============================================================
-
-function renderFeeStructureData() {
-    const container = document.getElementById('finance-feeStructureContent');
-    if (!container) return;
-    
-    const displayContainer = document.getElementById('finance-studentFeeStructureDisplay');
-    if (displayContainer && displayContainer.style.display === 'none') return;
-    
-    const data = studentFinanceState.feeStructureRaw;
-    if (!data || !data.periods || data.periods.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 16px; color: #94a3b8; font-size: 12px;">
-                <i class="fas fa-info-circle" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>
-                <p>No fee structure available.</p>
-            </div>
-        `;
-        container.style.display = 'block';
-        return;
-    }
-    
-    const { periods, voteHeads, periodTotals } = data;
-    const programType = studentFinanceState.programType || 'TVET';
-    
-    let html = `
-        <div style="overflow-x: auto; margin: 0 -4px;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px; min-width: 420px;">
-                <thead>
-                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 4px 6px; text-align: left; font-weight: 600; color: #475569; font-size: 9px; text-transform: uppercase; width: 28px;">#</th>
-                        <th style="padding: 4px 6px; text-align: left; font-weight: 600; color: #475569; font-size: 9px; text-transform: uppercase;">VOTE HEAD</th>
-                        ${periods.map((p, i) => `
-                            <th style="padding: 4px 4px; text-align: right; font-weight: 600; color: #475569; font-size: 8px; text-transform: uppercase; min-width: 50px;">
-                                ${p.name.replace('Year ', 'Y').replace(' - ', ' ')}
-                                ${i === 0 ? ' <span style="background: #4C1D95; color: white; padding: 1px 3px; border-radius: 6px; font-size: 6px;">C</span>' : ''}
-                            </th>
-                        `).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    let sn = 0;
-    voteHeads.forEach((vh) => {
-        const hasAnyAmount = vh.amounts.some(a => a > 0);
-        if (!hasAnyAmount) return;
-        sn++;
-        html += `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 3px 6px; text-align: center; font-weight: 500; color: #94a3b8; font-size: 9px;">${sn}</td>
-                <td style="padding: 3px 6px; font-weight: 500; color: #0b1124; font-size: 9px;">${vh.label}</td>
-                ${vh.amounts.map(amount => `
-                    <td style="padding: 3px 4px; text-align: right; font-weight: 500; color: #0A3D62; font-size: 9px;">
-                        ${amount > 0 ? `KES ${amount.toLocaleString()}` : '---'}
-                    </td>
-                `).join('')}
-            </tr>
-        `;
-    });
-    
-    html += `
-        <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
-            <td style="padding: 4px 6px; text-align: center; color: #0A3D62; font-size: 9px;">-</td>
-            <td style="padding: 4px 6px; font-weight: 700; color: #0A3D62; font-size: 9px;">
-                <i class="fas fa-calculator" style="color: #4C1D95; margin-right: 3px; font-size: 9px;"></i> TOTAL
-            </td>
-            ${periodTotals.map(total => `
-                <td style="padding: 4px 4px; text-align: right; font-weight: 700; color: #4C1D95; font-size: 10px;">
-                    KES ${total.toLocaleString()}
-                </td>
-            `).join('')}
-        </tr>
-    `;
-    
-    html += `
-                </tbody>
-            </table>
-        </div>
-        <div style="margin-top: 6px; padding: 6px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 9px;">
-            <span style="color: #64748b;">📚 ${periods.length} ${programType === 'KRCHN' ? 'Semesters' : 'Terms'}</span>
-            <span style="color: #64748b;">📋 ${voteHeads.filter(v => v.amounts.some(a => a > 0)).length} Vote Heads</span>
-            <button onclick="printFeeStructureTable()" style="background: #475569; color: white; padding: 2px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 9px;">
-                <i class="fas fa-print"></i> Print
-            </button>
-        </div>
-    `;
-    
-    container.innerHTML = html;
-    container.style.display = 'block';
-}
-
-// ============================================================
-// 👁️ VIEW FUNCTIONS
-// ============================================================
-
-function viewVoteHeadDetails(voteHeadName) {
-    console.log('👁️ Viewing vote head:', voteHeadName);
-    
-    const data = studentFinanceState.feeStructureRaw;
-    if (!data || !data.voteHeads) {
-        showToast('❌ Fee data not loaded', 'error');
-        return;
-    }
-    
-    const vh = data.voteHeads.find(v => v.label === voteHeadName);
-    if (!vh) {
-        showToast(`❌ Vote head "${voteHeadName}" not found`, 'error');
-        return;
-    }
-    
-    const periods = data.periods;
-    let detailsHtml = `
-        <div style="text-align: left;">
-            <h4 style="color: #0A3D62; margin: 0 0 8px 0; font-size: 14px;">📊 ${vh.label}</h4>
-            <div style="background: #f8fafc; padding: 8px; border-radius: 6px;">
-    `;
-    
-    periods.forEach((period, index) => {
-        const amount = vh.amounts[index] || 0;
-        if (amount > 0) {
-            detailsHtml += `
-                <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px;">
-                    <span style="color: #475569;">${period.name}</span>
-                    <span style="font-weight: 600; color: #0A3D62;">KES ${amount.toLocaleString()}</span>
-                </div>
-            `;
-        }
-    });
-    
-    detailsHtml += `
-            </div>
-        </div>
-    `;
-    
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: 'Vote Head Details',
-            html: detailsHtml,
-            confirmButtonColor: '#4C1D95',
-            confirmButtonText: 'Close',
-            width: 400
-        });
-    } else {
-        alert(detailsHtml.replace(/<[^>]*>/g, ''));
-    }
-}
-
-function viewFullFeeStructure() {
-    const data = studentFinanceState.feeStructureRaw;
-    if (!data) {
-        showToast('❌ Fee data not loaded', 'error');
-        return;
-    }
-    
-    const { periods, voteHeads } = data;
-    const programType = studentFinanceState.programType || 'TVET';
-    
-    let tableHtml = `
-        <div style="text-align: left; overflow-x: auto;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
-                <thead>
-                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 4px 8px; text-align: left; font-weight: 600;">S/N</th>
-                        <th style="padding: 4px 8px; text-align: left; font-weight: 600;">VOTE HEADS</th>
-                        ${periods.map(p => `<th style="padding: 4px 8px; text-align: right; font-weight: 600; font-size: 8px;">${p.name}</th>`).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    let sn = 0;
-    voteHeads.forEach(vh => {
-        sn++;
-        const hasAnyAmount = vh.amounts.some(a => a > 0);
-        if (!hasAnyAmount) return;
-        
-        tableHtml += `
-            <tr>
-                <td style="padding: 3px 8px; border-bottom: 1px solid #f1f5f9;">${sn}</td>
-                <td style="padding: 3px 8px; border-bottom: 1px solid #f1f5f9; font-weight: 500;">${vh.label}</td>
-                ${vh.amounts.map(amount => `
-                    <td style="padding: 3px 8px; border-bottom: 1px solid #f1f5f9; text-align: right; ${amount > 0 ? 'font-weight: 500;' : 'color: #94a3b8;'}">${amount > 0 ? `KES ${amount.toLocaleString()}` : '---'}</td>
-                `).join('')}
-            </tr>
-        `;
-    });
-    
-    tableHtml += `
-        <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
-            <td colspan="2" style="padding: 4px 8px;">TOTAL</td>
-            ${periods.map(p => `
-                <td style="padding: 4px 8px; text-align: right; color: #4C1D95;">KES ${p.amount.toLocaleString()}</td>
-            `).join('')}
-        </tr>
-    `;
-    
-    const hasHostel = periods.some(p => p.hostel > 0);
-    if (hasHostel) {
-        tableHtml += `
-            <tr style="background: #fffbeb;">
-                <td colspan="2" style="padding: 4px 8px; color: #92400e;">🏠 HOSTEL (optional)</td>
-                ${periods.map(p => `
-                    <td style="padding: 4px 8px; text-align: right; color: #92400e;">${p.hostel > 0 ? `KES ${p.hostel.toLocaleString()}` : '---'}</td>
-                `).join('')}
-            </tr>
-        `;
-    }
-    
-    tableHtml += `
-                </tbody>
-            </table>
-        </div>
-    `;
-    
-    if (typeof Swal !== 'undefined') {
-        Swal.fire({
-            title: `📋 Full Fee Structure - ${programType}`,
-            html: tableHtml,
-            confirmButtonColor: '#4C1D95',
-            confirmButtonText: 'Close',
-            width: 700,
-            padding: '16px'
-        });
-    } else {
-        alert(tableHtml.replace(/<[^>]*>/g, ''));
-    }
-}
-
-// ============================================================
-// 📥 MAIN LOAD FUNCTION
+// 📊 MAIN LOAD FUNCTION - FIXED
 // ============================================================
 
 async function loadStudentFinance() {
     try {
         console.log('💰 Loading student finance...');
         
-        const user = window.currentUserProfile || window.currentUser;
+        // Get user from multiple possible sources
+        const user = window.currentUserProfile || window.currentUser || window.userData;
         if (!user) {
             console.warn('No user found');
             showFinanceError('Please login to view your finance data.');
             return;
         }
 
-        const programType = getProgramType(user.program);
-        const programLevel = getProgramLevel(user.program);
+        // Log user info for debugging
+        console.log('👤 User:', user.full_name || user.name);
+        console.log('📚 Program:', user.program);
+        console.log('🆔 User ID:', user.user_id || user.id);
+
+        const program = user.program || 'KRCHN';
+        const programType = getProgramType(program);
+        const programLevel = getProgramLevel(program);
         studentFinanceState.programType = programType;
         studentFinanceState.programLevel = programLevel;
         studentFinanceState.student = user;
         
-        console.log('👤 User:', user.full_name || user.name);
-        console.log('📚 Program:', user.program);
         console.log('🏷️ Program Type:', programType);
         console.log('📊 Program Level:', programLevel);
 
         updateProgramInfo(user, programType, programLevel);
         showFinanceLoading();
 
-        const feeData = await fetchFeeStructureFromDatabase(user.program, programType, programLevel);
-        if (feeData) {
-            studentFinanceState.feeStructureRaw = feeData;
-            console.log('✅ Fee structure loaded from database');
-        }
-
+        // Fetch data from Supabase
         const financeData = await fetchFinanceDataFromSupabase(user);
         
         if (financeData) {
+            // Store fee structure data
+            if (financeData.feeStructureRaw) {
+                studentFinanceState.feeStructureRaw = financeData.feeStructureRaw;
+                studentFinanceState.voteHeads = financeData.voteHeads || [];
+            }
+            
             updateFinanceUI(financeData);
             studentFinanceState.isLoaded = true;
             studentFinanceState.lastUpdated = new Date();
             console.log('✅ Finance data loaded successfully');
             
             notifySuperAdmin('student_finance_viewed', {
-                studentId: user.id,
+                studentId: user.user_id || user.id,
                 studentName: user.full_name || user.name,
-                program: user.program,
+                program: program,
                 balance: financeData.balance,
                 timestamp: new Date().toISOString()
             });
         } else {
-            console.log('📊 No data found, using mock data');
-            const mockData = getMockFinanceData(user);
-            updateFinanceUI(mockData);
+            console.log('📊 No data found, showing empty state');
+            showFinanceError('No finance data available. Please contact finance office.');
         }
     } catch (error) {
         console.error('Error loading finance:', error);
-        const user = window.currentUserProfile || window.currentUser;
-        if (user) {
-            const mockData = getMockFinanceData(user);
-            updateFinanceUI(mockData);
-            showToast('Using demo data - Connect to Supabase for real data', 'info');
-        } else {
-            showFinanceError('Unable to load finance data. Please try again.');
-        }
+        showFinanceError('Unable to load finance data. Please try again.');
     }
 }
 
 // ============================================================
-// 🔧 UPDATE PROGRAM INFO
+// 🎨 UI UPDATE FUNCTIONS - FIXED
 // ============================================================
 
 function updateProgramInfo(user, programType, programLevel) {
@@ -1180,7 +621,7 @@ function updateProgramInfo(user, programType, programLevel) {
     const periods = getPeriods(programType, programLevel);
     
     const programDisplay = document.getElementById('finance-studentProgramDisplay');
-    if (programDisplay) programDisplay.textContent = user.program || 'N/A';
+    if (programDisplay) programDisplay.textContent = user.program || user.program_name || 'N/A';
     
     const periodTypeBadge = document.getElementById('finance-periodTypeBadge');
     if (periodTypeBadge) {
@@ -1220,191 +661,6 @@ function updatePeriodFilter(programType, programLevel) {
     });
 }
 
-// ============================================================
-// 📊 FETCH FINANCE DATA FROM SUPABASE
-// ============================================================
-
-async function fetchFinanceDataFromSupabase(user) {
-    try {
-        if (typeof supabase === 'undefined' || !supabase) return null;
-        
-        const studentId = user.id;
-        const program = user.program || 'CPOTT';
-        const programType = getProgramType(program);
-        const programLevel = getProgramLevel(program);
-        const periods = getPeriods(programType, programLevel);
-        
-        console.log('📊 Fetching data for student:', studentId);
-        
-        let accountData = null;
-        try {
-            const { data, error } = await supabase
-                .from('finance_student_accounts')
-                .select('*')
-                .eq('student_id', studentId)
-                .maybeSingle();
-            
-            if (!error && data) {
-                accountData = data;
-                console.log('✅ Account data found');
-            } else if (error && error.code === '42P01') {
-                console.log('ℹ️ finance_student_accounts table does not exist');
-            } else if (error) {
-                console.warn('⚠️ Error fetching account:', error.message);
-            }
-        } catch (e) {
-            console.log('ℹ️ Account table may not exist yet:', e.message);
-        }
-        
-        let paymentsData = [];
-        try {
-            const { data, error } = await supabase
-                .from('finance_payments')
-                .select('*')
-                .eq('student_id', studentId)
-                .order('payment_date', { ascending: false });
-            
-            if (!error && data) {
-                paymentsData = data;
-                console.log('✅ Payments found:', data.length);
-            } else if (error && error.code === '42P01') {
-                console.log('ℹ️ finance_payments table does not exist');
-            } else if (error) {
-                console.warn('⚠️ Error fetching payments:', error.message);
-            }
-        } catch (e) {
-            console.log('ℹ️ Payments table may not exist yet:', e.message);
-        }
-        
-        let currentPeriod = accountData?.current_block || periods[0];
-        const currentPeriodIndex = periods.indexOf(currentPeriod);
-        const semesterFee = getFeeAmount(programType, currentPeriodIndex >= 0 ? currentPeriodIndex : 0, programLevel);
-        const paidThisSemester = paymentsData
-            .filter(p => p.period === currentPeriod && p.status === 'completed')
-            .reduce((sum, p) => sum + (p.amount || 0), 0);
-        const balance = semesterFee - paidThisSemester;
-        
-        const formattedPayments = paymentsData.map(p => ({
-            date: p.payment_date || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-            description: p.notes || `${p.period} Fees`,
-            period: p.period || 'N/A',
-            amount: p.amount || 0,
-            method: p.payment_method || 'Cash',
-            reference: p.reference_number || p.transaction_id || '-',
-            status: p.status || 'pending',
-            transaction_id: p.transaction_id || null,
-            payment_method: p.payment_method || 'Cash'
-        }));
-        
-        const formattedFees = periods.map((period, index) => ({
-            block: period,
-            amount: getFeeAmount(programType, index, programLevel),
-            description: `${period} Tuition Fees`,
-            status: index < 1 ? 'Paid' : (index === 1 ? 'Partial' : 'Pending')
-        }));
-        
-        return {
-            balance: Math.max(balance, 0),
-            totalPaid: accountData?.total_paid || paymentsData.filter(p => p.status === 'completed').reduce((sum, p) => sum + (p.amount || 0), 0),
-            totalDue: semesterFee,
-            outstanding: Math.max(balance, 0),
-            paymentProgress: semesterFee > 0 ? (paidThisSemester / semesterFee * 100) : 0,
-            payments: formattedPayments,
-            feeStructure: formattedFees,
-            programType: programType,
-            programLevel: programLevel,
-            periodLabel: getPeriodLabel(programType),
-            currentPeriod: currentPeriod,
-            currentPeriodIndex: currentPeriodIndex,
-            semesterFee: semesterFee,
-            paidThisSemester: paidThisSemester,
-            student: {
-                name: user.full_name || user.name || 'Student',
-                id: user.studentId || user.id || 'N/A',
-                program: program,
-                intake: user.intake || '2026'
-            }
-        };
-    } catch (error) {
-        console.error('❌ Error fetching from Supabase:', error);
-        return null;
-    }
-}
-
-// ============================================================
-// 🎭 MOCK DATA
-// ============================================================
-
-function getMockFinanceData(user) {
-    const programType = getProgramType(user?.program);
-    const programLevel = getProgramLevel(user?.program);
-    const periods = getPeriods(programType, programLevel);
-    const amount = getFeeAmount(programType, 0, programLevel);
-    
-    const mockPayments = [];
-    mockPayments.push({
-        date: '2026-07-31',
-        description: `${periods[0]} Fees (Full)`,
-        period: periods[0],
-        amount: amount,
-        method: 'M-Pesa STK',
-        reference: 'MPESA-STK-7845',
-        status: 'completed',
-        transaction_id: 'MPESA-2026-7845',
-        payment_method: 'M-Pesa STK'
-    });
-    
-    if (periods.length > 1) {
-        mockPayments.push({
-            date: '2026-08-15',
-            description: `${periods[1]} Fees (Partial)`,
-            period: periods[1],
-            amount: Math.round(amount * 0.4),
-            method: 'Bank Transfer',
-            reference: 'BT-5678',
-            status: 'pending',
-            transaction_id: 'BT-2026-5678',
-            payment_method: 'Bank Transfer'
-        });
-    }
-    
-    const totalPaid = mockPayments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0);
-    const semesterFee = getFeeAmount(programType, 0, programLevel);
-    const paidThisSemester = mockPayments.filter(p => p.period === periods[0] && p.status === 'completed').reduce((sum, p) => sum + p.amount, 0);
-    
-    return {
-        balance: Math.max(semesterFee - paidThisSemester, 0),
-        totalPaid: totalPaid,
-        totalDue: semesterFee,
-        outstanding: Math.max(semesterFee - paidThisSemester, 0),
-        paymentProgress: semesterFee > 0 ? (paidThisSemester / semesterFee * 100) : 0,
-        payments: mockPayments,
-        feeStructure: periods.map((period, index) => ({
-            block: period,
-            amount: getFeeAmount(programType, index, programLevel),
-            description: `${period} Tuition Fees`,
-            status: index < 1 ? 'Paid' : (index === 1 ? 'Partial' : 'Pending')
-        })),
-        programType: programType,
-        programLevel: programLevel,
-        periodLabel: getPeriodLabel(programType),
-        currentPeriod: periods[0],
-        currentPeriodIndex: 0,
-        semesterFee: semesterFee,
-        paidThisSemester: paidThisSemester,
-        student: {
-            name: user?.full_name || user?.name || 'Student',
-            id: user?.studentId || user?.id || 'N/A',
-            program: user?.program || 'CPOTT',
-            intake: user?.intake || '2026'
-        }
-    };
-}
-
-// ============================================================
-// 🎨 UI UPDATE FUNCTIONS
-// ============================================================
-
 function updateFinanceUI(data) {
     if (!data) return;
     
@@ -1415,6 +671,8 @@ function updateFinanceUI(data) {
     studentFinanceState.semesterFee = data.semesterFee;
     studentFinanceState.paidThisSemester = data.paidThisSemester;
     studentFinanceState.balance = data.balance;
+    studentFinanceState.totalPaid = data.totalPaid;
+    studentFinanceState.outstanding = data.outstanding;
     
     updateProgramInfo(data.student, data.programType, data.programLevel);
     updateBalance(data);
@@ -1422,6 +680,7 @@ function updateFinanceUI(data) {
     renderPayments(data.payments || []);
     renderPaymentTimeline(data.feeStructure || []);
     
+    // Render fee structure if visible
     const container = document.getElementById('finance-studentFeeStructureDisplay');
     if (container && container.style.display !== 'none') renderFeeStructureData();
     
@@ -1611,29 +870,156 @@ function renderPayments(payments) {
 }
 
 // ============================================================
-// 🔍 FILTER FUNCTIONS
+// 📄 RENDER FEE STRUCTURE - MOBILE OPTIMIZED - FIXED
 // ============================================================
 
-function filterStudentPayments() {
-    const statusFilter = document.getElementById('finance-paymentFilter')?.value || 'all';
-    const periodFilter = document.getElementById('finance-periodFilter')?.value || 'all';
-    const searchTerm = document.getElementById('finance-search')?.value?.toLowerCase() || '';
+function renderFeeStructureData() {
+    const container = document.getElementById('finance-feeStructureContent');
+    if (!container) return;
     
-    const payments = studentFinanceState.payments || [];
-    let filtered = payments.filter(p => {
-        if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-        if (periodFilter !== 'all' && p.period !== periodFilter) return false;
-        if (searchTerm) {
-            const searchable = `${p.description} ${p.reference} ${p.method} ${p.period}`.toLowerCase();
-            if (!searchable.includes(searchTerm)) return false;
-        }
-        return true;
+    const displayContainer = document.getElementById('finance-studentFeeStructureDisplay');
+    if (displayContainer && displayContainer.style.display === 'none') return;
+    
+    const data = studentFinanceState.feeStructureRaw;
+    if (!data || !data.periods || data.periods.length === 0) {
+        container.innerHTML = `
+            <div style="text-align: center; padding: 16px; color: #94a3b8; font-size: 12px;">
+                <i class="fas fa-info-circle" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>
+                <p>No fee structure available.</p>
+            </div>
+        `;
+        container.style.display = 'block';
+        return;
+    }
+    
+    const { periods, voteHeads, periodTotals } = data;
+    const programType = studentFinanceState.programType || 'TVET';
+    
+    let html = `
+        <div style="overflow-x: auto; margin: 0 -4px;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px; min-width: 420px;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 4px 6px; text-align: left; font-weight: 600; color: #475569; font-size: 9px; text-transform: uppercase; width: 28px;">#</th>
+                        <th style="padding: 4px 6px; text-align: left; font-weight: 600; color: #475569; font-size: 9px; text-transform: uppercase;">VOTE HEAD</th>
+                        ${periods.map((p, i) => `
+                            <th style="padding: 4px 4px; text-align: right; font-weight: 600; color: #475569; font-size: 8px; text-transform: uppercase; min-width: 50px;">
+                                ${p.name}
+                                ${i === 0 ? ' <span style="background: #4C1D95; color: white; padding: 1px 3px; border-radius: 6px; font-size: 6px;">C</span>' : ''}
+                            </th>
+                        `).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    let sn = 0;
+    voteHeads.forEach((vh) => {
+        const hasAnyAmount = vh.amounts.some(a => a > 0);
+        if (!hasAnyAmount) return;
+        sn++;
+        html += `
+            <tr style="border-bottom: 1px solid #f1f5f9;">
+                <td style="padding: 3px 6px; text-align: center; font-weight: 500; color: #94a3b8; font-size: 9px;">${sn}</td>
+                <td style="padding: 3px 6px; font-weight: 500; color: #0b1124; font-size: 9px;">${vh.label}</td>
+                ${vh.amounts.map(amount => `
+                    <td style="padding: 3px 4px; text-align: right; font-weight: 500; color: #0A3D62; font-size: 9px;">
+                        ${amount > 0 ? `KES ${amount.toLocaleString()}` : '---'}
+                    </td>
+                `).join('')}
+            </tr>
+        `;
     });
     
-    renderPayments(filtered);
-    const recordCount = document.getElementById('finance-paymentRecordCount');
-    if (recordCount) recordCount.textContent = `${filtered.length} records`;
+    html += `
+        <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
+            <td style="padding: 4px 6px; text-align: center; color: #0A3D62; font-size: 9px;">-</td>
+            <td style="padding: 4px 6px; font-weight: 700; color: #0A3D62; font-size: 9px;">
+                <i class="fas fa-calculator" style="color: #4C1D95; margin-right: 3px; font-size: 9px;"></i> TOTAL
+            </td>
+            ${periodTotals.map(total => `
+                <td style="padding: 4px 4px; text-align: right; font-weight: 700; color: #4C1D95; font-size: 10px;">
+                    KES ${total.toLocaleString()}
+                </td>
+            `).join('')}
+        </tr>
+    `;
+    
+    html += `
+                </tbody>
+            </table>
+        </div>
+        <div style="margin-top: 6px; padding: 6px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 9px;">
+            <span style="color: #64748b;">📚 ${periods.length} ${programType === 'KRCHN' ? 'Semesters' : 'Terms'}</span>
+            <span style="color: #64748b;">📋 ${voteHeads.filter(v => v.amounts.some(a => a > 0)).length} Vote Heads</span>
+            <button onclick="printFeeStructureTable()" style="background: #475569; color: white; padding: 2px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 9px;">
+                <i class="fas fa-print"></i> Print
+            </button>
+        </div>
+    `;
+    
+    container.innerHTML = html;
+    container.style.display = 'block';
 }
+
+// ============================================================
+// 🔄 TOGGLE FEE STRUCTURE
+// ============================================================
+
+function toggleFeeStructure() {
+    const container = document.getElementById('finance-studentFeeStructureDisplay');
+    const toggleBtn = document.querySelector('[aria-controls="finance-studentFeeStructureDisplay"]');
+    const toggleText = document.getElementById('finance-toggleFeeText');
+    
+    if (!container) {
+        console.warn('⚠️ finance-studentFeeStructureDisplay not found');
+        return;
+    }
+    
+    if (container.style.display === 'none' || container.style.display === '') {
+        container.style.display = 'block';
+        container.style.animation = 'fadeIn 0.3s ease';
+        
+        if (toggleBtn) {
+            toggleBtn.innerHTML = '<i class="fas fa-eye-slash"></i> <span id="finance-toggleFeeText">Hide Fee Structure</span>';
+            toggleBtn.setAttribute('aria-expanded', 'true');
+        }
+        if (toggleText) {
+            toggleText.textContent = 'Hide Fee Structure';
+        }
+        studentFinanceState.feeStructureVisible = true;
+        
+        if (studentFinanceState.feeStructureRaw) {
+            renderFeeStructureData();
+        } else {
+            loadStudentFinance();
+        }
+        
+        setTimeout(() => {
+            container.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 300);
+        
+        notifySuperAdmin('fee_structure_viewed', {
+            studentId: studentFinanceState.student?.user_id || studentFinanceState.student?.id,
+            timestamp: new Date().toISOString()
+        });
+    } else {
+        container.style.display = 'none';
+        container.style.animation = 'fadeOut 0.3s ease';
+        if (toggleBtn) {
+            toggleBtn.innerHTML = '<i class="fas fa-eye"></i> <span id="finance-toggleFeeText">View Fee Structure</span>';
+            toggleBtn.setAttribute('aria-expanded', 'false');
+        }
+        if (toggleText) {
+            toggleText.textContent = 'View Fee Structure';
+        }
+        studentFinanceState.feeStructureVisible = false;
+    }
+}
+
+// ============================================================
+// 👁️ VIEW FUNCTIONS
+// ============================================================
 
 function viewFeeStructure(periodName) {
     if (!periodName) return;
@@ -1658,6 +1044,139 @@ function viewFeeStructure(periodName) {
     showToast(`📋 Viewing fee structure for: ${periodName}`, 'info');
 }
 
+function viewVoteHeadDetails(voteHeadName) {
+    console.log('👁️ Viewing vote head:', voteHeadName);
+    
+    const data = studentFinanceState.feeStructureRaw;
+    if (!data || !data.voteHeads) {
+        showToast('❌ Fee data not loaded', 'error');
+        return;
+    }
+    
+    const vh = data.voteHeads.find(v => v.label === voteHeadName);
+    if (!vh) {
+        showToast(`❌ Vote head "${voteHeadName}" not found`, 'error');
+        return;
+    }
+    
+    const periods = data.periods;
+    let detailsHtml = `
+        <div style="text-align: left;">
+            <h4 style="color: #0A3D62; margin: 0 0 8px 0; font-size: 14px;">📊 ${vh.label}</h4>
+            <div style="background: #f8fafc; padding: 8px; border-radius: 6px;">
+    `;
+    
+    periods.forEach((period, index) => {
+        const amount = vh.amounts[index] || 0;
+        if (amount > 0) {
+            detailsHtml += `
+                <div style="display: flex; justify-content: space-between; padding: 3px 0; border-bottom: 1px solid #f1f5f9; font-size: 11px;">
+                    <span style="color: #475569;">${period.name}</span>
+                    <span style="font-weight: 600; color: #0A3D62;">KES ${amount.toLocaleString()}</span>
+                </div>
+            `;
+        }
+    });
+    
+    detailsHtml += `
+            </div>
+        </div>
+    `;
+    
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: 'Vote Head Details',
+            html: detailsHtml,
+            confirmButtonColor: '#4C1D95',
+            confirmButtonText: 'Close',
+            width: 400
+        });
+    } else {
+        alert(detailsHtml.replace(/<[^>]*>/g, ''));
+    }
+}
+
+function viewFullFeeStructure() {
+    const data = studentFinanceState.feeStructureRaw;
+    if (!data) {
+        showToast('❌ Fee data not loaded', 'error');
+        return;
+    }
+    
+    const { periods, voteHeads } = data;
+    const programType = studentFinanceState.programType || 'TVET';
+    
+    let tableHtml = `
+        <div style="text-align: left; overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 4px 8px; text-align: left; font-weight: 600;">S/N</th>
+                        <th style="padding: 4px 8px; text-align: left; font-weight: 600;">VOTE HEADS</th>
+                        ${periods.map(p => `<th style="padding: 4px 8px; text-align: right; font-weight: 600; font-size: 8px;">${p.name}</th>`).join('')}
+                    </tr>
+                </thead>
+                <tbody>
+    `;
+    
+    let sn = 0;
+    voteHeads.forEach(vh => {
+        sn++;
+        const hasAnyAmount = vh.amounts.some(a => a > 0);
+        if (!hasAnyAmount) return;
+        
+        tableHtml += `
+            <tr>
+                <td style="padding: 3px 8px; border-bottom: 1px solid #f1f5f9;">${sn}</td>
+                <td style="padding: 3px 8px; border-bottom: 1px solid #f1f5f9; font-weight: 500;">${vh.label}</td>
+                ${vh.amounts.map(amount => `
+                    <td style="padding: 3px 8px; border-bottom: 1px solid #f1f5f9; text-align: right; ${amount > 0 ? 'font-weight: 500;' : 'color: #94a3b8;'}">${amount > 0 ? `KES ${amount.toLocaleString()}` : '---'}</td>
+                `).join('')}
+            </tr>
+        `;
+    });
+    
+    tableHtml += `
+        <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
+            <td colspan="2" style="padding: 4px 8px;">TOTAL</td>
+            ${periods.map(p => `
+                <td style="padding: 4px 8px; text-align: right; color: #4C1D95;">KES ${p.amount.toLocaleString()}</td>
+            `).join('')}
+        </tr>
+    `;
+    
+    const hasHostel = periods.some(p => p.hostel > 0);
+    if (hasHostel) {
+        tableHtml += `
+            <tr style="background: #fffbeb;">
+                <td colspan="2" style="padding: 4px 8px; color: #92400e;">🏠 HOSTEL (optional)</td>
+                ${periods.map(p => `
+                    <td style="padding: 4px 8px; text-align: right; color: #92400e;">${p.hostel > 0 ? `KES ${p.hostel.toLocaleString()}` : '---'}</td>
+                `).join('')}
+            </tr>
+        `;
+    }
+    
+    tableHtml += `
+                </tbody>
+            </table>
+        </div>
+    `;
+    
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: `📋 Full Fee Structure - ${programType}`,
+            html: tableHtml,
+            confirmButtonColor: '#4C1D95',
+            confirmButtonText: 'Close',
+            width: 700,
+            padding: '16px'
+        });
+    } else {
+        alert(tableHtml.replace(/<[^>]*>/g, ''));
+    }
+}
+
 // ============================================================
 // 🎯 ACTION FUNCTIONS
 // ============================================================
@@ -1667,7 +1186,7 @@ function downloadStudentStatement() {
     setTimeout(() => {
         showToast('✅ Statement downloaded!', 'success');
         notifySuperAdmin('statement_downloaded', {
-            studentId: studentFinanceState.student?.id,
+            studentId: studentFinanceState.student?.user_id || studentFinanceState.student?.id,
             timestamp: new Date().toISOString()
         });
     }, 1500);
@@ -1722,145 +1241,9 @@ function printFeeStructureTable() {
 
 function resendPaymentEmail() {
     const user = studentFinanceState.student;
-    if (!user?.id) { showToast('❌ User not found', 'error'); return; }
+    if (!user?.user_id && !user?.id) { showToast('❌ User not found', 'error'); return; }
     showToast('📧 Resending confirmation email...', 'info');
     setTimeout(() => showToast('✅ Email resent!', 'success'), 1500);
-}
-function cancelSTKPush() {
-    console.log('🔄 Cancelling STK Push...');
-    hidePaymentProcessing();
-    hideSTKStatus();
-    if (payheroState.stkCheckInterval) {
-        clearInterval(payheroState.stkCheckInterval);
-        payheroState.stkCheckInterval = null;
-    }
-    payheroState.isProcessing = false;
-    showToast('STK Push cancelled', 'info');
-    
-    if (payheroState.currentTransaction) {
-        payheroState.currentTransaction.status = 'cancelled';
-        saveSTKPaymentRecord(payheroState.currentTransaction.amount, payheroState.currentTransaction.period, {
-            status: 'cancelled',
-            transactionId: payheroState.currentTransaction.id,
-            reference: payheroState.currentTransaction.reference,
-            paymentMethod: 'M-Pesa STK Push',
-            phoneNumber: payheroState.currentTransaction.phone
-        });
-    }
-}
-function updateSTKStatusDisplay(message, type = 'info') {
-    const statusEl = document.getElementById('finance-stkStatusMessage');
-    if (statusEl) {
-        const colors = {
-            success: '#059669',
-            error: '#dc2626',
-            info: '#64748b'
-        };
-        statusEl.style.color = colors[type] || colors.info;
-        statusEl.textContent = message;
-    }
-}
-
-function hideSTKStatus() {
-    const container = document.getElementById('finance-stkStatusDisplay');
-    if (container) {
-        container.style.display = 'none';
-    }
-}
-
-function showPaymentProcessing(amount) {
-    const container = document.getElementById('finance-paymentProcessing');
-    if (container) {
-        container.style.display = 'block';
-        container.innerHTML = `
-            <div style="text-align: center; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb; margin: 10px 0;">
-                <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
-                <p style="margin: 8px 0 4px 0; font-weight: 600; color: #0A3D62;">Initiating STK Push...</p>
-                <p style="font-size: 13px; color: #64748b;">Amount: KES ${amount.toLocaleString()}</p>
-            </div>
-        `;
-    }
-}
-
-function hidePaymentProcessing() {
-    const container = document.getElementById('finance-paymentProcessing');
-    if (container) {
-        container.style.display = 'none';
-    }
-}
-
-// ============================================================
-// 🔔 TOAST NOTIFICATIONS
-// ============================================================
-
-function showToast(message, type = 'info') {
-    let container = document.getElementById('financeToastContainer');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'financeToastContainer';
-        container.style.cssText = 'position: fixed; bottom: 12px; right: 12px; z-index: 9999; display: flex; flex-direction: column; gap: 4px; max-width: 92%; width: 320px;';
-        document.body.appendChild(container);
-    }
-    
-    const toast = document.createElement('div');
-    const colors = { success: '#059669', error: '#dc2626', warning: '#d97706', info: '#4C1D95' };
-    
-    toast.style.cssText = `
-        padding: 8px 14px;
-        border-radius: 6px;
-        color: white;
-        font-weight: 500;
-        font-size: 12px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-        background: ${colors[type] || colors.info};
-        animation: slideInRight 0.3s ease;
-        word-wrap: break-word;
-    `;
-    
-    toast.textContent = message;
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(20px)';
-        toast.style.transition = 'all 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 3000);
-}
-
-// ============================================================
-// ⏳ SHOW LOADING / ERROR
-// ============================================================
-
-function showFinanceLoading() {
-    const historyBody = document.getElementById('finance-studentPaymentHistory');
-    if (historyBody) {
-        historyBody.innerHTML = `
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 24px; color: #94a3b8;">
-                    <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
-                    <p style="margin-top: 4px; font-size: 11px;">Loading payment history...</p>
-                </td>
-            </tr>
-        `;
-    }
-}
-
-function showFinanceError(message) {
-    const historyBody = document.getElementById('finance-studentPaymentHistory');
-    if (historyBody) {
-        historyBody.innerHTML = `
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 24px; color: #dc2626; font-size: 12px;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>
-                    <p>${message}</p>
-                    <button onclick="loadStudentFinance()" style="margin-top: 6px; padding: 4px 14px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                        <i class="fas fa-sync-alt"></i> Retry
-                    </button>
-                </td>
-            </tr>
-        `;
-    }
 }
 
 // ============================================================
@@ -1871,7 +1254,6 @@ function openPaymentModal() {
     const modal = document.getElementById('finance-paymentModal');
     if (!modal) return;
     
-    // Reset any previous payment status
     hidePaymentProcessing();
     hideSTKStatus();
     
@@ -2046,6 +1428,511 @@ function validatePaymentForm() {
 }
 
 // ============================================================
+// 📱 PAYMENT PROCESSING FUNCTIONS
+// ============================================================
+
+function showPaymentProcessing(amount) {
+    const container = document.getElementById('finance-paymentProcessing');
+    if (container) {
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div style="text-align: center; padding: 16px; background: #f8fafc; border-radius: 12px; border: 1px solid #e5e7eb; margin: 10px 0;">
+                <div style="display: inline-block; width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
+                <p style="margin: 8px 0 4px 0; font-weight: 600; color: #0A3D62;">Initiating STK Push...</p>
+                <p style="font-size: 13px; color: #64748b;">Amount: KES ${amount.toLocaleString()}</p>
+            </div>
+        `;
+    }
+}
+
+function hidePaymentProcessing() {
+    const container = document.getElementById('finance-paymentProcessing');
+    if (container) {
+        container.style.display = 'none';
+    }
+}
+
+function showSTKStatus(reference) {
+    const container = document.getElementById('finance-stkStatusDisplay');
+    if (container) {
+        container.style.display = 'block';
+        container.innerHTML = `
+            <div style="padding: 16px; background: #f0f7ff; border-radius: 8px; border: 1px solid #bfdbfe; margin: 10px 0;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 32px; height: 32px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
+                    <div>
+                        <p style="margin: 0; font-weight: 600; color: #0A3D62;">Processing STK Push</p>
+                        <p id="finance-stkStatusMessage" style="margin: 2px 0 0 0; font-size: 13px; color: #64748b;">⏳ Waiting for confirmation...</p>
+                        <p style="margin: 2px 0 0 0; font-size: 11px; color: #94a3b8;">Ref: ${reference}</p>
+                        <button onclick="cancelSTKPush()" style="margin-top: 6px; background: #fee2e2; color: #dc2626; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                            <i class="fas fa-times"></i> Cancel
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+}
+
+function updateSTKStatusDisplay(message, type = 'info') {
+    const statusEl = document.getElementById('finance-stkStatusMessage');
+    if (statusEl) {
+        const colors = {
+            success: '#059669',
+            error: '#dc2626',
+            info: '#64748b'
+        };
+        statusEl.style.color = colors[type] || colors.info;
+        statusEl.textContent = message;
+    }
+}
+
+function hideSTKStatus() {
+    const container = document.getElementById('finance-stkStatusDisplay');
+    if (container) {
+        container.style.display = 'none';
+    }
+}
+
+function cancelSTKPush() {
+    console.log('🔄 Cancelling STK Push...');
+    hidePaymentProcessing();
+    hideSTKStatus();
+    if (payheroState.stkCheckInterval) {
+        clearInterval(payheroState.stkCheckInterval);
+        payheroState.stkCheckInterval = null;
+    }
+    payheroState.isProcessing = false;
+    showToast('STK Push cancelled', 'info');
+    
+    if (payheroState.currentTransaction) {
+        payheroState.currentTransaction.status = 'cancelled';
+        saveSTKPaymentRecord(payheroState.currentTransaction.amount, payheroState.currentTransaction.period, {
+            status: 'cancelled',
+            transactionId: payheroState.currentTransaction.id,
+            reference: payheroState.currentTransaction.reference,
+            paymentMethod: 'M-Pesa STK Push',
+            phoneNumber: payheroState.currentTransaction.phone
+        });
+    }
+}
+
+// ============================================================
+// 📱 PROCESS PAYMENT - SAME PAGE, NO REDIRECT
+// ============================================================
+
+async function processPayment() {
+    if (!validatePaymentForm()) return;
+    
+    const period = document.getElementById('finance-paymentPeriodSelect')?.value;
+    const amount = parseFloat(document.getElementById('finance-paymentAmountInput')?.value);
+    const method = studentFinanceState.selectedPaymentMethod || 'mpesa';
+    
+    if (!period) { showToast('❌ Please select a payment period', 'error'); return; }
+    if (!amount || amount <= 0) { showToast('❌ Please enter a valid amount', 'error'); return; }
+    
+    closePaymentModal();
+    
+    const user = window.currentUserProfile || window.currentUser;
+    const reference = 'PAY-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    
+    if (method === 'mpesa') {
+        const phoneInput = document.getElementById('finance-mpesaPhoneInput');
+        let phone = phoneInput?.value || user?.phone || '';
+        if (!phone || phone.trim() === '') {
+            showToast('❌ Please enter your M-Pesa phone number', 'error');
+            return;
+        }
+        
+        const result = await initiatePayHeroSTK(amount, phone, reference, period, user?.full_name);
+        if (result.success) {
+            showToast('📱 STK Push sent! Check your phone.', 'success');
+        }
+        return;
+    }
+    
+    showToast('💰 Payment processing...', 'info');
+    setTimeout(() => {
+        showToast('✅ Payment recorded', 'success');
+        loadStudentFinance();
+    }, 2000);
+}
+
+// ============================================================
+// 💰 STK PAYMENT FUNCTIONS
+// ============================================================
+
+async function initiatePayHeroSTK(amount, phoneNumber, reference, period, customerName = '') {
+    try {
+        if (!PAYHERO_CONFIG.channelId) {
+            showToast('❌ Channel ID not configured', 'error');
+            return { success: false, error: 'Channel ID not configured' };
+        }
+        if (!amount || amount <= 0) {
+            showToast('❌ Please enter a valid amount', 'error');
+            return { success: false, error: 'Invalid amount' };
+        }
+        
+        let cleanPhone = formatPhoneNumber(phoneNumber);
+        if (!cleanPhone) {
+            showToast('❌ Enter valid phone (e.g., 0712345678)', 'error');
+            return { success: false, error: 'Invalid phone number' };
+        }
+        
+        const user = window.currentUserProfile || window.currentUser;
+        const requestData = {
+            amount: parseInt(amount),
+            phone_number: cleanPhone,
+            channel_id: parseInt(PAYHERO_CONFIG.channelId),
+            provider: PAYHERO_CONFIG.provider,
+            external_reference: reference || `NCHSM-${Date.now()}`,
+            customer_name: customerName || user?.full_name || 'NCHSM Student',
+            callback_url: PAYHERO_CONFIG.callbackUrl
+        };
+        
+        console.log('📤 Sending STK Push request:', requestData);
+        
+        showPaymentProcessing(amount);
+        
+        const response = await fetch(PAYHERO_CONFIG.baseUrl, {
+            method: 'POST',
+            headers: {
+                'Authorization': PAYHERO_CONFIG.authToken,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            body: JSON.stringify(requestData)
+        });
+        
+        const data = await response.json();
+        console.log('📥 Response:', data);
+        
+        if (response.ok) {
+            console.log('✅ STK Push initiated!');
+            
+            payheroState.currentTransaction = {
+                id: data.CheckoutRequestID || data.reference,
+                checkoutRequestID: data.CheckoutRequestID,
+                reference: data.reference || requestData.external_reference,
+                amount: amount,
+                phone: cleanPhone,
+                period: period,
+                status: 'pending',
+                timestamp: new Date().toISOString()
+            };
+            
+            startSTKStatusPolling(data.CheckoutRequestID || data.reference);
+            await saveSTKPaymentRecord(amount, period, {
+                status: 'pending',
+                transactionId: data.CheckoutRequestID || data.reference,
+                checkoutRequestID: data.CheckoutRequestID,
+                reference: data.reference || requestData.external_reference,
+                paymentMethod: 'M-Pesa STK Push',
+                phoneNumber: cleanPhone,
+                response: data
+            });
+            
+            showToast('📱 STK Push sent! Check your phone.', 'success');
+            return { success: true, data, reference: data.reference || requestData.external_reference };
+        } else {
+            console.error('❌ STK Push failed:', data);
+            hidePaymentProcessing();
+            hideSTKStatus();
+            
+            let errorMsg = data.error_message || data.message || data.error || 'Payment request failed';
+            
+            if (data.status === 429) {
+                errorMsg = 'Too many requests. Please wait a few minutes.';
+            }
+            
+            showToast('❌ ' + errorMsg, 'error');
+            return { success: false, error: errorMsg };
+        }
+    } catch (error) {
+        console.error('❌ Request error:', error);
+        hidePaymentProcessing();
+        hideSTKStatus();
+        showToast('❌ Network error. Please try again.', 'error');
+        return { success: false, error: error.message };
+    }
+}
+
+// ============================================================
+// 🔍 CHECK PAYMENT STATUS
+// ============================================================
+
+async function checkPaymentStatus(reference) {
+    try {
+        if (typeof supabase !== 'undefined' && supabase) {
+            const { data, error } = await supabase
+                .from('finance_payments')
+                .select('*')
+                .eq('reference_number', reference)
+                .single();
+            if (!error && data) return data;
+        }
+        
+        const localPayments = JSON.parse(localStorage.getItem('local_payments') || '[]');
+        const found = localPayments.find(p => p.reference === reference || p.reference_number === reference);
+        if (found) return found;
+        return null;
+    } catch (error) {
+        console.error('❌ Status check error:', error);
+        return null;
+    }
+}
+
+function startSTKStatusPolling(reference) {
+    let attempts = 0;
+    const maxAttempts = 30;
+    
+    if (payheroState.stkCheckInterval) clearInterval(payheroState.stkCheckInterval);
+    
+    showSTKStatus(reference);
+    
+    payheroState.stkCheckInterval = setInterval(async () => {
+        attempts++;
+        if (attempts > maxAttempts) {
+            clearInterval(payheroState.stkCheckInterval);
+            updateSTKStatusDisplay('⏰ Payment timeout. Please try again.', 'error');
+            hidePaymentProcessing();
+            setTimeout(() => hideSTKStatus(), 3000);
+            handleSTKFailure();
+            return;
+        }
+        
+        const timeLeft = maxAttempts - attempts;
+        updateSTKStatusDisplay(`⏳ Waiting for confirmation... (${timeLeft}s remaining)`, 'info');
+        
+        const payment = await checkPaymentStatus(reference);
+        if (payment) {
+            if (payment.status === 'completed' || payment.status === 'success') {
+                clearInterval(payheroState.stkCheckInterval);
+                updateSTKStatusDisplay('✅ Payment confirmed!', 'success');
+                setTimeout(() => hideSTKStatus(), 2000);
+                handleSTKSuccess();
+            } else if (payment.status === 'failed' || payment.status === 'cancelled') {
+                clearInterval(payheroState.stkCheckInterval);
+                updateSTKStatusDisplay('❌ Payment failed', 'error');
+                setTimeout(() => hideSTKStatus(), 3000);
+                handleSTKFailure();
+            }
+        }
+    }, 3000);
+}
+
+// ============================================================
+// ✅ HANDLE SUCCESS - SAME PAGE
+// ============================================================
+
+function handleSTKSuccess() {
+    const transaction = payheroState.currentTransaction;
+    if (!transaction) return;
+    
+    payheroState.isProcessing = false;
+    transaction.status = 'completed';
+    hidePaymentProcessing();
+    hideSTKStatus();
+    
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '✅ Payment Successful!',
+            html: `
+                <div style="text-align: center;">
+                    <i class="fas fa-check-circle" style="font-size: 50px; color: #059669; margin-bottom: 10px;"></i>
+                    <p style="font-size: 18px; font-weight: 700; color: #059669; margin: 0 0 4px 0;">Payment Successful!</p>
+                    <p style="color: #64748b; font-size: 14px; margin: 0 0 6px 0;">KES ${transaction.amount.toLocaleString()} confirmed</p>
+                    <div style="background: #f8fafc; border-radius: 6px; padding: 8px 12px; margin: 6px 0; text-align: left; font-size: 12px;">
+                        <p style="margin: 2px 0;"><strong>Period:</strong> ${transaction.period}</p>
+                        <p style="margin: 2px 0;"><strong>Ref:</strong> ${transaction.reference}</p>
+                    </div>
+                </div>
+            `,
+            confirmButtonText: 'Done',
+            confirmButtonColor: '#059669',
+            width: 380
+        });
+    }
+    
+    saveSTKPaymentRecord(transaction.amount, transaction.period, {
+        status: 'success',
+        transactionId: transaction.id,
+        reference: transaction.reference,
+        paymentMethod: 'M-Pesa STK Push'
+    });
+    
+    const user = window.currentUserProfile || window.currentUser;
+    if (user?.user_id || user?.id) sendPaymentConfirmationEmail(user.user_id || user.id, {
+        amount: transaction.amount,
+        period: transaction.period,
+        transactionId: transaction.id,
+        reference: transaction.reference,
+        method: 'M-Pesa STK Push',
+        date: new Date().toISOString()
+    });
+    
+    notifySuperAdmin('payment_completed', {
+        studentId: user?.user_id || user?.id,
+        amount: transaction.amount,
+        reference: transaction.reference,
+        method: 'M-Pesa STK',
+        timestamp: new Date().toISOString()
+    });
+    
+    updateStudentBalanceAfterPayment(transaction.amount);
+    
+    setTimeout(loadStudentFinance, 1000);
+    showToast('✅ Payment successful!', 'success');
+}
+
+function handleSTKFailure() {
+    const transaction = payheroState.currentTransaction;
+    if (!transaction) return;
+    
+    payheroState.isProcessing = false;
+    transaction.status = 'failed';
+    hidePaymentProcessing();
+    hideSTKStatus();
+    
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            title: '❌ Payment Failed',
+            html: `
+                <div style="text-align: center;">
+                    <i class="fas fa-times-circle" style="font-size: 50px; color: #dc2626; margin-bottom: 10px;"></i>
+                    <p style="font-size: 17px; font-weight: 600; color: #dc2626; margin: 0;">Payment Failed</p>
+                    <p style="color: #64748b; font-size: 13px;">Please try again or use a different method.</p>
+                </div>
+            `,
+            confirmButtonText: 'Try Again',
+            cancelButtonText: 'Cancel',
+            showCancelButton: true,
+            confirmButtonColor: '#4C1D95',
+            cancelButtonColor: '#64748b',
+            width: 380
+        }).then((result) => {
+            if (result.isConfirmed) openPaymentModal();
+        });
+    }
+    showToast('❌ Payment failed. Please try again.', 'error');
+}
+
+// ============================================================
+// 💰 UPDATE BALANCE AFTER PAYMENT
+// ============================================================
+
+async function updateStudentBalanceAfterPayment(amount) {
+    try {
+        const user = window.currentUserProfile || window.currentUser;
+        if (!user) return;
+        
+        const userId = user.user_id || user.id;
+        if (!userId) return;
+        
+        if (typeof supabase === 'undefined' || !supabase) return;
+        
+        const { data: account, error: fetchError } = await supabase
+            .from('finance_student_accounts')
+            .select('balance, outstanding, total_paid')
+            .eq('student_id', userId)
+            .single();
+        
+        if (fetchError) {
+            console.warn('⚠️ Could not fetch account for balance update:', fetchError);
+            return;
+        }
+        
+        if (account) {
+            const newBalance = Math.max((account.balance || 0) - amount, 0);
+            const newOutstanding = Math.max((account.outstanding || 0) - amount, 0);
+            const newTotalPaid = (account.total_paid || 0) + amount;
+            
+            const { error: updateError } = await supabase
+                .from('finance_student_accounts')
+                .update({
+                    balance: newBalance,
+                    outstanding: newOutstanding,
+                    total_paid: newTotalPaid,
+                    last_payment_date: new Date().toISOString().split('T')[0],
+                    updated_at: new Date().toISOString()
+                })
+                .eq('student_id', userId);
+            
+            if (updateError) {
+                console.warn('⚠️ Could not update balance:', updateError);
+            } else {
+                console.log(`✅ Balance updated: New balance KES ${newBalance.toLocaleString()}`);
+                studentFinanceState.balance = newBalance;
+                studentFinanceState.outstanding = newOutstanding;
+                studentFinanceState.totalPaid = newTotalPaid;
+            }
+        }
+    } catch (error) {
+        console.error('❌ Error updating balance:', error);
+    }
+}
+
+// ============================================================
+// 📝 SAVE PAYMENT RECORD - FIXED
+// ============================================================
+
+async function saveSTKPaymentRecord(amount, period, result) {
+    try {
+        const user = window.currentUserProfile || window.currentUser;
+        const transactionId = result.transactionId || result.checkoutRequestID || `TXN-${Date.now()}`;
+        const method = result.paymentMethod || studentFinanceState.selectedPaymentMethod || 'M-Pesa STK';
+        const status = result.status === 'success' ? 'completed' : 'pending';
+        const reference = result.reference || `PAY-${Date.now()}`;
+        
+        // Map period to database format
+        const dbPeriod = mapPeriodToDatabase(period);
+        
+        const paymentRecord = {
+            student_id: user?.user_id || user?.id || 'student_001',
+            student_name: user?.full_name || user?.name || 'Student',
+            student_email: user?.email || '',
+            program: user?.program || 'KRCHN',
+            amount: amount,
+            payment_method: method,
+            reference_number: reference,
+            payment_date: new Date().toISOString().split('T')[0],
+            period: dbPeriod || period,
+            status: status,
+            notes: `${period} Tuition Fees - ${method} Payment`,
+            checkout_request_id: result.checkoutRequestID || transactionId,
+            phone_number: result.phoneNumber || '',
+            program_type: studentFinanceState.programType || 'KRCHN',
+            metadata: { source: 'payhero', original_period: period }
+        };
+        
+        savePaymentLocally(paymentRecord);
+        
+        if (typeof supabase !== 'undefined' && supabase) {
+            const { error } = await supabase
+                .from('finance_payments')
+                .insert([paymentRecord])
+                .catch(e => console.warn('⚠️ Could not save to database:', e.message));
+            if (error) console.error('❌ Error saving payment record:', error);
+            else console.log('✅ Payment record saved to database');
+        }
+    } catch (error) {
+        console.error('❌ Error saving payment:', error);
+    }
+}
+
+function savePaymentLocally(paymentRecord) {
+    try {
+        let payments = JSON.parse(localStorage.getItem('local_payments') || '[]');
+        payments.unshift(paymentRecord);
+        if (payments.length > 50) payments = payments.slice(0, 50);
+        localStorage.setItem('local_payments', JSON.stringify(payments));
+        console.log('💾 Payment saved locally:', paymentRecord.reference_number);
+    } catch (e) {
+        console.error('❌ Failed to save locally:', e);
+    }
+}
+
+// ============================================================
 // 📧 EMAIL NOTIFICATION
 // ============================================================
 
@@ -2073,7 +1960,6 @@ async function sendPaymentConfirmationEmail(studentId, paymentData) {
             day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
         });
         const balance = studentFinanceState.balance || 0;
-        const programType = studentFinanceState.programType || 'KRCHN';
         
         console.log(`✅ Payment confirmation email prepared for ${student.email}`);
         console.log(`   Amount: KES ${amount.toLocaleString()}`);
@@ -2085,6 +1971,105 @@ async function sendPaymentConfirmationEmail(studentId, paymentData) {
         console.error('❌ Email error:', error);
         return false;
     }
+}
+
+// ============================================================
+// ⏳ SHOW LOADING / ERROR
+// ============================================================
+
+function showFinanceLoading() {
+    const historyBody = document.getElementById('finance-studentPaymentHistory');
+    if (historyBody) {
+        historyBody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 24px; color: #94a3b8;">
+                    <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
+                    <p style="margin-top: 4px; font-size: 11px;">Loading payment history...</p>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+function showFinanceError(message) {
+    const historyBody = document.getElementById('finance-studentPaymentHistory');
+    if (historyBody) {
+        historyBody.innerHTML = `
+            <tr>
+                <td colspan="5" style="text-align: center; padding: 24px; color: #dc2626; font-size: 12px;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>
+                    <p>${message}</p>
+                    <button onclick="loadStudentFinance()" style="margin-top: 6px; padding: 4px 14px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// ============================================================
+// 🔔 TOAST NOTIFICATIONS
+// ============================================================
+
+function showToast(message, type = 'info') {
+    let container = document.getElementById('financeToastContainer');
+    if (!container) {
+        container = document.createElement('div');
+        container.id = 'financeToastContainer';
+        container.style.cssText = 'position: fixed; bottom: 12px; right: 12px; z-index: 9999; display: flex; flex-direction: column; gap: 4px; max-width: 92%; width: 320px;';
+        document.body.appendChild(container);
+    }
+    
+    const toast = document.createElement('div');
+    const colors = { success: '#059669', error: '#dc2626', warning: '#d97706', info: '#4C1D95' };
+    
+    toast.style.cssText = `
+        padding: 8px 14px;
+        border-radius: 6px;
+        color: white;
+        font-weight: 500;
+        font-size: 12px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+        background: ${colors[type] || colors.info};
+        animation: slideInRight 0.3s ease;
+        word-wrap: break-word;
+    `;
+    
+    toast.textContent = message;
+    container.appendChild(toast);
+    
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 3000);
+}
+
+// ============================================================
+// 🔄 FILTER FUNCTIONS
+// ============================================================
+
+function filterStudentPayments() {
+    const statusFilter = document.getElementById('finance-paymentFilter')?.value || 'all';
+    const periodFilter = document.getElementById('finance-periodFilter')?.value || 'all';
+    const searchTerm = document.getElementById('finance-search')?.value?.toLowerCase() || '';
+    
+    const payments = studentFinanceState.payments || [];
+    let filtered = payments.filter(p => {
+        if (statusFilter !== 'all' && p.status !== statusFilter) return false;
+        if (periodFilter !== 'all' && p.period !== periodFilter) return false;
+        if (searchTerm) {
+            const searchable = `${p.description} ${p.reference} ${p.method} ${p.period}`.toLowerCase();
+            if (!searchable.includes(searchTerm)) return false;
+        }
+        return true;
+    });
+    
+    renderPayments(filtered);
+    const recordCount = document.getElementById('finance-paymentRecordCount');
+    if (recordCount) recordCount.textContent = `${filtered.length} records`;
 }
 
 // ============================================================
@@ -2144,7 +2129,7 @@ document.addEventListener('DOMContentLoaded', function() {
     listenForAdminEvents();
     
     notifySuperAdmin('module_ready', {
-        version: '2.1.0',
+        version: '2.2.0',
         timestamp: new Date().toISOString()
     });
     
@@ -2174,10 +2159,14 @@ document.addEventListener('DOMContentLoaded', function() {
     window.getPeriodLabel = getPeriodLabel;
     window.viewVoteHeadDetails = viewVoteHeadDetails;
     window.viewFullFeeStructure = viewFullFeeStructure;
+    window.mapPeriodToDisplay = mapPeriodToDisplay;
+    window.mapPeriodToDatabase = mapPeriodToDatabase;
+    window.mapProgramCodeToFullName = mapProgramCodeToFullName;
 });
 
-console.log('✅ Student Finance module loaded successfully (Mobile Optimized + Fixed)!');
+console.log('✅ Student Finance module loaded successfully!');
 console.log('📊 Supports KRCHN (Semesters) and TVET (Terms)');
 console.log('📋 Vote heads loaded from database');
 console.log('💳 PayHero STK Push integration enabled - No redirects!');
 console.log('🔑 Channel ID:', PAYHERO_CONFIG.channelId);
+console.log('🔧 Fixed for database structure: UUID, reference_number, checkout_request_id');
