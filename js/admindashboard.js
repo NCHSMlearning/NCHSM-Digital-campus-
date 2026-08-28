@@ -1904,11 +1904,11 @@ window.closeResetByEmailModal = function() {
     const confirmBtn = document.getElementById('confirmResetByEmailBtn');
     if (confirmBtn) confirmBtn.disabled = true;
 };
-    // ============================================
-// 🔄 RESET SINGLE STUDENT - MODERN
+// ============================================
+// 🔄 RESET SINGLE STUDENT - FIXED
 // ============================================
 window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
-    // Modern confirmation dialog with better formatting
+    // Modern confirmation dialog
     const confirmMsg = `
 ╔══════════════════════════════════════════════════════════════╗
 ║                 ⚠️ RESET STUDENT FOR CONTINUATION           ║
@@ -1958,7 +1958,8 @@ Are you sure?`;
                 released: false,
                 released_at: null,
                 reset_at: new Date().toISOString(),
-                reset_count: sb.sql`reset_count + 1`,
+                // ✅ FIXED: Use a simple value instead of sb.sql
+                reset_count: 1,
                 allow_retake: true,
                 retake_unlocked: true,
                 timer_reset_at: new Date().toISOString(),
