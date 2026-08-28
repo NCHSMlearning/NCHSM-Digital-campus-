@@ -5,10 +5,12 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Blog Post | NCHSM</title>
     <meta name="description" content="Read the latest insights from NCHSM">
-     <!-- ===== GOOGLE ADSENSE ===== -->
+    
+    <!-- ===== GOOGLE ADSENSE ===== -->
     <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-9019033253872768"
          crossorigin="anonymous"></script>
-    <!-- Google Analytics -->
+    
+    <!-- ===== GOOGLE ANALYTICS ===== -->
     <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTZRYGB8PE"></script>
     <script>
         window.dataLayer = window.dataLayer || [];
@@ -17,14 +19,15 @@
         gtag('config', 'G-WTZRYGB8PE');
     </script>
     
+    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* Same styles as index.html, plus post-specific styles */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Inter', sans-serif; background: #f1f5f9; color: #0F172A; }
         
+        /* ===== HEADER ===== */
         .blog-header {
             background: linear-gradient(135deg, #0A3D62, #1a5a7a);
             color: white;
@@ -65,6 +68,10 @@
             transition: color 0.3s;
         }
         .blog-header .nav a:hover { color: #FDB913; }
+        .blog-header .nav a.home-link {
+            color: #FDB913;
+            font-weight: 600;
+        }
         .blog-header .portal-btn {
             background: #FDB913;
             color: #0A3D62;
@@ -82,6 +89,7 @@
             box-shadow: 0 4px 12px rgba(253,185,19,0.3);
         }
         
+        /* ===== POST CONTENT ===== */
         .blog-post-container {
             max-width: 800px;
             margin: 40px auto;
@@ -151,7 +159,7 @@
         }
         .back-link:hover { color: #FDB913; }
         
-        /* Sidebar */
+        /* ===== SIDEBAR ===== */
         .blog-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -193,6 +201,7 @@
             transition: color 0.3s;
         }
         .sidebar-widget ul li a:hover { color: #0A3D62; }
+        
         .sidebar-ad {
             background: #f8fafc;
             border-radius: 12px;
@@ -205,12 +214,21 @@
             align-items: center;
             justify-content: center;
         }
+        .sidebar-ad .ad-label {
+            font-size: 10px;
+            color: #94a3b8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 10px;
+        }
         
+        /* ===== FOOTER ===== */
         .blog-footer {
             background: #0A3D62;
             color: rgba(255,255,255,0.8);
             padding: 30px 20px;
             text-align: center;
+            margin-top: 40px;
         }
         .blog-footer .links {
             display: flex;
@@ -246,10 +264,10 @@
                 <h1>NCHSM <span>Blog</span></h1>
             </div>
             <div class="nav">
-                <a href="/">Home</a>
-                <a href="/blog/">Blog</a>
-                <a href="/about">About</a>
-                <a href="/contact">Contact</a>
+                <a href="/login" class="home-link">🏠 Home</a>
+                <a href="/blog/">📝 Blog</a>
+                <a href="/about">ℹ️ About</a>
+                <a href="/contact">📧 Contact</a>
                 <a href="/login" class="portal-btn">
                     <i class="fas fa-graduation-cap"></i> Student Portal
                 </a>
@@ -296,12 +314,12 @@
     <footer class="blog-footer">
         <div class="container">
             <div class="links">
-                <a href="/">Home</a>
-                <a href="/blog/">Blog</a>
-                <a href="/about">About</a>
-                <a href="/contact">Contact</a>
-                <a href="/privacy">Privacy</a>
-                <a href="/login">Student Portal</a>
+                <a href="/login">🏠 Home</a>
+                <a href="/blog/">📝 Blog</a>
+                <a href="/about">ℹ️ About</a>
+                <a href="/contact">📧 Contact</a>
+                <a href="/privacy">🔒 Privacy</a>
+                <a href="/login" style="color: #FDB913; font-weight: 600;">🎓 Student Portal</a>
             </div>
             <div class="copyright">
                 © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
