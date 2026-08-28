@@ -372,78 +372,90 @@
             }
         }
         
-        // ============================================
-        // 🔧 FIXED: applyDataFilter - Correctly handles PENDING_REVIEW and RETAKE
-        // ============================================
-        applyDataFilter() {
-            const kenyaNow = getKenyaNow();
-            
-            this.allExams = this.allExams.map(exam => {
-                // Exam expired and no grade = Missed
-                if (exam.examEndDateTime && kenyaNow > exam.examEndDateTime && !exam.hasGrade) {
-                    exam.isCompleted = true;
-                    exam.actionState = 'expired';
-                    exam.gradeText = 'Missed';
-                    exam.gradeClass = 'missed';
-                    exam.buttonText = 'Missed';
-                }
-                // 🔧 FIX: Exam has grade = Completed (even if not released!)
-                else if (exam.hasGrade) {
-                    exam.isCompleted = true;
-                    if (exam.isReleased) {
-                        exam.actionState = 'completed';
-                        exam.gradeText = exam.gradeText || 'Completed';
-                        exam.buttonText = 'View Results';
-                    } else {
-                        exam.actionState = 'pending_release';
-                        exam.gradeText = 'Pending Release';
-                        exam.gradeClass = 'pending';
-                        exam.buttonText = 'Pending';
-                    }
-                    exam.canTakeExam = false;
-                }
-                // Upcoming exam
-                else if (exam.examStartDateTime && kenyaNow < exam.examStartDateTime) {
-                    exam.isCompleted = false;
-                    exam.actionState = 'upcoming';
-                }
-                // Available exam
-                else if (exam.examStartDateTime && kenyaNow >= exam.examStartDateTime && kenyaNow <= exam.examEndDateTime) {
-                    exam.isCompleted = false;
-                    exam.actionState = 'available';
-                }
-                return exam;
-            });
-            
-            // 🔧 FIX: Any exam with hasGrade OR isCompleted goes to Completed
-            this.completedExams = this.allExams.filter(exam => 
-                exam.hasGrade === true || 
-                exam.isCompleted === true || 
-                exam.actionState === 'expired' || 
-                exam.actionState === 'pending_release' ||
-                exam.actionState === 'completed'
-            );
-            
-            // 🔧 FIX: Only exams WITHOUT grades and NOT completed go to Current
-            this.currentExams = this.allExams.filter(exam => 
-                exam.hasGrade !== true && 
-                !exam.isCompleted && 
-                exam.actionState !== 'expired' && 
-                exam.actionState !== 'pending_release'
-            );
-            
-            if (this.currentFilter === 'current') {
-                this.completedExams = [];
-            } else if (this.currentFilter === 'completed') {
-                this.currentExams = [];
-            }
-            
-            this.displayTables();
-            this.updateCounts();
-            this.updatePerformanceSummary();
-            this.initPerformanceChart();
+       // ============================================
+// 🔧 FIXED: applyDataFilter - Moves reset exams to Current
+// ============================================
+applyDataFilter() {
+    const kenyaNow = getKenyaNow();
+    
+    this.allExams = this.allExams.map(exam => {
+        // ✅ FIRST: Check if exam is reset for retake
+        if (exam.isResetForRetake && exam.retakeUnlocked) {
+            exam.isCompleted = false;
+            exam.actionState = 'available';
+            exam.canTakeExam = true;
+            exam.buttonText = '🔄 Retake Exam';
+            exam.gradeText = 'Retake Available';
+            exam.gradeClass = 'retake';
+            return exam;
         }
         
+        // Exam expired and no grade = Missed
+        if (exam.examEndDateTime && kenyaNow > exam.examEndDateTime && !exam.hasGrade) {
+            exam.isCompleted = true;
+            exam.actionState = 'expired';
+            exam.gradeText = 'Missed';
+            exam.gradeClass = 'missed';
+            exam.buttonText = 'Missed';
+        }
+        // Exam has grade = Completed
+        else if (exam.hasGrade) {
+            exam.isCompleted = true;
+            if (exam.isReleased) {
+                exam.actionState = 'completed';
+                exam.gradeText = exam.gradeText || 'Completed';
+                exam.buttonText = 'View Results';
+            } else {
+                exam.actionState = 'pending_release';
+                exam.gradeText = 'Pending Release';
+                exam.gradeClass = 'pending';
+                exam.buttonText = 'Pending';
+            }
+            exam.canTakeExam = false;
+        }
+        // Upcoming exam
+        else if (exam.examStartDateTime && kenyaNow < exam.examStartDateTime) {
+            exam.isCompleted = false;
+            exam.actionState = 'upcoming';
+        }
+        // Available exam
+        else if (exam.examStartDateTime && kenyaNow >= exam.examStartDateTime && kenyaNow <= exam.examEndDateTime) {
+            exam.isCompleted = false;
+            exam.actionState = 'available';
+        }
+        return exam;
+    });
+    
+    // ✅ FIX: Reset exams go to Current, NOT Completed
+    this.currentExams = this.allExams.filter(exam => 
+        // Normal current exams
+        (!exam.isCompleted && exam.actionState !== 'expired' && exam.actionState !== 'pending_release') ||
+        // ✅ Include reset exams
+        (exam.isResetForRetake && exam.retakeUnlocked)
+    );
+    
+    // ✅ FIX: Remove reset exams from Completed
+    this.completedExams = this.allExams.filter(exam => 
+        (exam.hasGrade === true || 
+         exam.isCompleted === true || 
+         exam.actionState === 'expired' || 
+         exam.actionState === 'pending_release' ||
+         exam.actionState === 'completed') &&
+        // ✅ Exclude reset exams
+        !(exam.isResetForRetake && exam.retakeUnlocked)
+    );
+    
+    if (this.currentFilter === 'current') {
+        this.completedExams = [];
+    } else if (this.currentFilter === 'completed') {
+        this.currentExams = [];
+    }
+    
+    this.displayTables();
+    this.updateCounts();
+    this.updatePerformanceSummary();
+    this.initPerformanceChart();
+}
         // ============================================
         // 📥 LOAD EXAMS
         // ============================================
