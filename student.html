@@ -5979,311 +5979,123 @@
         <span><i class="fas fa-shield-alt" style="color: #4C1D95;"></i> Encrypted</span>
     </div>
 
-    <!-- ============================================================ -->
-    <!-- STUDENT PAYMENT MODAL - POS STYLE (ALL STATES)               -->
-    <!-- ============================================================ -->
-    <div class="modal-overlay" id="finance-paymentModal">
-        <div class="modal" style="max-width: 450px;">
-            <!-- Modal Header -->
-            <div class="modal-header">
-                <h3 id="finance-paymentModalTitle">⏳ Processing Payment</h3>
-                <button class="close" onclick="closePaymentModal()">&times;</button>
-            </div>
-            
-            <!-- Modal Content - Updated by JavaScript for ALL STATES -->
-            <div id="finance-paymentContent" class="payment-status">
-                <!-- Default: Processing State -->
-                <div class="spinner"></div>
-                <p class="status-text">⏳ Sending STK Push...</p>
-                <p class="status-sub" id="finance-paymentDetails">Amount: KES 0.00</p>
-                <p class="status-sub" style="font-size:12px;margin-top:8px;">📱 Check your phone and enter your PIN</p>
-                <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
-                    <i class="fas fa-times"></i> Cancel Payment
-                </button>
-            </div>
+  <!-- ============================================================ -->
+<!-- STUDENT PAYMENT MODAL - COMPLETE WITH FORM + POS STYLE       -->
+<!-- ============================================================ -->
+<div class="modal-overlay" id="finance-paymentModal">
+    <div class="modal" style="max-width: 560px; width: 95%; max-height: 95vh; overflow-y: auto; background: #FFFFFF; border-radius: 16px; padding: 24px 28px; border: 1px solid #E2E8F0; box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
+        
+        <!-- Modal Header -->
+        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; padding-bottom: 12px; border-bottom: 2px solid #f1f5f9;">
+            <h3 id="finance-paymentModalTitle" style="font-size: 18px; font-weight: 700; color: #0F172A; margin: 0;">💳 Make Payment</h3>
+            <button class="close" onclick="closePaymentModal()" style="width: 36px; height: 36px; border-radius: 50%; border: none; background: #f1f5f9; color: #64748b; font-size: 18px; cursor: pointer; display: flex; align-items: center; justify-content: center;">&times;</button>
         </div>
+        
+        <!-- ===== PAYMENT STATUS (Shows during processing) ===== -->
+        <div id="finance-paymentContent" class="payment-status" style="display: none; text-align: center; padding: 20px 0;">
+            <div class="spinner" style="display: inline-block; width: 50px; height: 50px; border: 4px solid #E2E8F0; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 0.8s linear infinite; margin: 10px auto;"></div>
+            <p class="status-text" style="font-size: 16px; font-weight: 600; color: #0F172A; margin: 12px 0 4px 0;">⏳ Sending STK Push...</p>
+            <p class="status-sub" id="finance-paymentDetails" style="font-size: 14px; color: #94A3B8; margin: 4px 0;">Amount: KES 0.00</p>
+            <p class="status-sub" style="font-size: 12px; color: #94A3B8; margin-top: 8px;">📱 Check your phone and enter your PIN</p>
+            <button class="btn btn-danger" onclick="cancelStudentPayment()" style="background: linear-gradient(135deg, #EF4444, #DC2626); color: #fff; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; font-size: 14px; cursor: pointer; margin-top: 12px; width: 100%; display: inline-flex; align-items: center; justify-content: center; gap: 8px;">
+                <i class="fas fa-times"></i> Cancel Payment
+            </button>
+        </div>
+        
+        <!-- ===== PAYMENT FORM (Shows when not processing) ===== -->
+        <div id="finance-paymentFormContainer">
+            <form id="finance-paymentForm" novalidate>
+                
+                <!-- Period Selection -->
+                <div class="finance-form-group" style="margin-bottom: 14px;">
+                    <label for="finance-paymentPeriodSelect" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-calendar"></i> Payment Period <span style="color: #dc2626;">*</span>
+                    </label>
+                    <select id="finance-paymentPeriodSelect" required style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                        <option value="">Select period...</option>
+                    </select>
+                    <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Please select a period</span>
+                </div>
+                
+                <!-- Amount -->
+                <div class="finance-form-group" style="margin-bottom: 14px;">
+                    <label for="finance-paymentAmountInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-coins"></i> Amount (KES) <span style="color: #dc2626;">*</span>
+                    </label>
+                    <input type="number" id="finance-paymentAmountInput" placeholder="Enter amount" required min="1" step="0.01" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                    <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Enter valid amount (min KES 1)</span>
+                </div>
+                
+                <!-- Payment Method Selection -->
+                <div class="finance-form-group" style="margin-bottom: 14px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-wallet"></i> Payment Method <span style="color: #dc2626;">*</span>
+                    </label>
+                    <div class="payment-methods-grid" id="finance-paymentMethodsContainer" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                        <div role="button" tabindex="0" onclick="selectPaymentMethod('mpesa')" id="finance-method-mpesa" class="payment-method-item" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
+                            <i class="fas fa-mobile-alt" style="font-size: 22px; display: block; margin-bottom: 2px; color: #4C1D95;"></i>
+                            <span style="font-size: 12px; font-weight: 600; display: block; color: #0F172A;">M-Pesa</span>
+                            <small style="font-size: 9px; color: #94A3B8; display: block;">STK Push</small>
+                        </div>
+                        <div role="button" tabindex="0" onclick="selectPaymentMethod('paypal')" id="finance-method-paypal" class="payment-method-item" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
+                            <i class="fab fa-paypal" style="font-size: 22px; display: block; margin-bottom: 2px; color: #003087;"></i>
+                            <span style="font-size: 12px; font-weight: 600; display: block; color: #0F172A;">PayPal</span>
+                            <small style="font-size: 9px; color: #94A3B8; display: block;">International</small>
+                        </div>
+                        <div role="button" tabindex="0" onclick="selectPaymentMethod('card')" id="finance-method-card" class="payment-method-item" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
+                            <i class="fas fa-credit-card" style="font-size: 22px; display: block; margin-bottom: 2px; color: #059669;"></i>
+                            <span style="font-size: 12px; font-weight: 600; display: block; color: #0F172A;">Card</span>
+                            <small style="font-size: 9px; color: #94A3B8; display: block;">Visa/Mastercard</small>
+                        </div>
+                        <div role="button" tabindex="0" onclick="selectPaymentMethod('bank')" id="finance-method-bank" class="payment-method-item" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
+                            <i class="fas fa-university" style="font-size: 22px; display: block; margin-bottom: 2px; color: #d97706;"></i>
+                            <span style="font-size: 12px; font-weight: 600; display: block; color: #0F172A;">Bank</span>
+                            <small style="font-size: 9px; color: #94A3B8; display: block;">Transfer</small>
+                        </div>
+                    </div>
+                    <span class="finance-validation-error" id="finance-methodError" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Please select a payment method</span>
+                </div>
+                
+                <!-- Selected Method Details -->
+                <div id="finance-paymentMethodDetails" style="display: none; background: #f1f5f9; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; border-left: 3px solid #4C1D95;">
+                    <div id="finance-methodDetailsContent"></div>
+                </div>
+                
+                <!-- Description -->
+                <div class="finance-form-group" style="margin-bottom: 14px;">
+                    <label for="finance-paymentDescriptionInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-pencil-alt"></i> Description
+                    </label>
+                    <input type="text" id="finance-paymentDescriptionInput" placeholder="e.g., Tuition Fees Payment" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                </div>
+                
+                <!-- M-Pesa Fields -->
+                <div id="finance-mpesaFields" style="display: none;">
+                    <div class="finance-form-group" style="margin-bottom: 14px;">
+                        <label for="finance-mpesaPhoneInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                            <i class="fas fa-phone"></i> M-Pesa Phone <span style="color: #dc2626;">*</span>
+                        </label>
+                        <input type="tel" id="finance-mpesaPhoneInput" placeholder="0712345678" pattern="[0-9]{10,12}" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                        <small style="font-size: 11px; color: #94a3b8; display: block; margin-top: 3px;">You'll receive a prompt on your phone</small>
+                        <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Enter valid M-Pesa phone number</span>
+                    </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="modal-actions" style="display: flex; gap: 10px; margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                    <button type="button" onclick="closePaymentModal()" class="btn btn-outline" style="flex: 1; padding: 10px 20px; border: 1px solid #E2E8F0; border-radius: 10px; background: transparent; color: #475569; cursor: pointer; font-weight: 600; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit;">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                    <button type="submit" id="finance-processPaymentBtn" class="btn btn-primary" style="flex: 2; padding: 10px 20px; border: none; border-radius: 10px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: #fff; cursor: pointer; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 4px 15px rgba(76,29,149,0.3); font-family: inherit;">
+                        <i class="fas fa-check"></i> Pay Now
+                    </button>
+                </div>
+                
+            </form>
+        </div>
+        
     </div>
-
-    <!-- ============================================================ -->
-    <!-- STYLES - POS STYLE MODAL                                      -->
-    <!-- ============================================================ -->
-    <style>
-        /* ===== ANIMATIONS ===== */
-        @keyframes finance-spin {
-            to { transform: rotate(360deg); }
-        }
-        @keyframes slideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        /* ===== SCROLLBAR ===== */
-        ::-webkit-scrollbar {
-            height: 4px;
-            width: 4px;
-        }
-        ::-webkit-scrollbar-track {
-            background: #f1f5f9;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb {
-            background: #cbd5e1;
-            border-radius: 10px;
-        }
-        ::-webkit-scrollbar-thumb:hover {
-            background: #94a3b8;
-        }
-
-        /* ===== MODAL OVERLAY ===== */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            z-index: 99999;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        /* ===== MODAL CONTAINER ===== */
-        .modal {
-            background: #FFFFFF;
-            border-radius: 16px;
-            max-width: 450px;
-            width: 100%;
-            max-height: 90vh;
-            overflow-y: auto;
-            padding: 28px 32px;
-            border: 1px solid #E2E8F0;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            animation: slideUp 0.3s ease;
-        }
-
-        /* ===== MODAL HEADER ===== */
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 18px;
-            padding-bottom: 14px;
-            border-bottom: 2px solid #f1f5f9;
-        }
-
-        .modal-header h3 {
-            font-size: 18px;
-            font-weight: 700;
-            color: #0F172A;
-            margin: 0;
-        }
-
-        .modal-header .close {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: none;
-            background: #f1f5f9;
-            color: #64748b;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-header .close:hover {
-            background: #EF4444;
-            color: #fff;
-        }
-
-        /* ===== PAYMENT STATUS ===== */
-        .payment-status {
-            text-align: center;
-            padding: 20px 0;
-        }
-
-        /* ===== SPINNER ===== */
-        .spinner {
-            display: inline-block;
-            width: 50px;
-            height: 50px;
-            border: 4px solid #E2E8F0;
-            border-top-color: #4C1D95;
-            border-radius: 50%;
-            animation: finance-spin 0.8s linear infinite;
-            margin: 10px auto;
-        }
-
-        /* ===== STATUS TEXT ===== */
-        .status-text {
-            font-size: 16px;
-            font-weight: 600;
-            color: #0F172A;
-            margin: 12px 0 4px 0;
-        }
-
-        .status-sub {
-            font-size: 14px;
-            color: #94A3B8;
-            margin: 4px 0;
-        }
-
-        /* ===== STATUS ICONS ===== */
-        .status-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-        }
-
-        .status-icon.success {
-            color: #10B981;
-        }
-
-        .status-icon.failed {
-            color: #EF4444;
-        }
-
-        .status-icon.warning {
-            color: #F59E0B;
-        }
-
-        /* ===== BUTTONS ===== */
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #6C3CE1, #8B5CF6);
-            color: #fff;
-            box-shadow: 0 4px 16px rgba(108, 60, 225, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(108, 60, 225, 0.4);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #EF4444, #DC2626);
-            color: #fff;
-            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #10B981, #059669);
-            color: #fff;
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: #475569;
-            border: 1px solid #E2E8F0;
-        }
-
-        .btn-outline:hover {
-            border-color: #4C1D95;
-            color: #4C1D95;
-        }
-
-        /* ===== DARK MODE SUPPORT ===== */
-        [data-theme="dark"] .modal {
-            background: #1E293B;
-            border-color: #334155;
-        }
-
-        [data-theme="dark"] .modal-header h3 {
-            color: #F1F5F9;
-        }
-
-        [data-theme="dark"] .modal-header .close {
-            background: #334155;
-            color: #94A3B8;
-        }
-
-        [data-theme="dark"] .modal-header .close:hover {
-            background: #EF4444;
-            color: #fff;
-        }
-
-        [data-theme="dark"] .status-text {
-            color: #F1F5F9;
-        }
-
-        [data-theme="dark"] .status-sub {
-            color: #94A3B8;
-        }
-
-        [data-theme="dark"] .spinner {
-            border-color: #334155;
-            border-top-color: #8B5CF6;
-        }
-
-        [data-theme="dark"] .btn-outline {
-            color: #94A3B8;
-            border-color: #334155;
-        }
-
-        [data-theme="dark"] .btn-outline:hover {
-            border-color: #8B5CF6;
-            color: #8B5CF6;
-        }
-
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 480px) {
-            .modal {
-                padding: 20px;
-            }
-            .status-text {
-                font-size: 14px;
-            }
-            .status-sub {
-                font-size: 12px;
-            }
-            .spinner {
-                width: 40px;
-                height: 40px;
-                border-width: 3px;
-            }
-            .btn {
-                font-size: 12px;
-                padding: 8px 16px;
-            }
-        }
-    </style>
-
+</div>
 </section>
 <!-- END FINANCE TAB -->
 <!-- ==================== NURSEIQ / TVETIQ TAB ==================== -->
