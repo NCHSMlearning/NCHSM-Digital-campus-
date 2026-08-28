@@ -5979,8 +5979,8 @@
         <span><i class="fas fa-shield-alt" style="color: #4C1D95;"></i> Encrypted</span>
     </div>
 
-  <!-- ============================================================ -->
-<!-- STUDENT PAYMENT MODAL - COMPLETE WITH FORM + POS STYLE       -->
+ <!-- ============================================================ -->
+<!-- STUDENT PAYMENT MODAL - COMPLETE WITH ALL ELEMENTS            -->
 <!-- ============================================================ -->
 <div class="modal-overlay" id="finance-paymentModal">
     <div class="modal" style="max-width: 560px; width: 95%; max-height: 95vh; overflow-y: auto; background: #FFFFFF; border-radius: 16px; padding: 24px 28px; border: 1px solid #E2E8F0; box-shadow: 0 20px 60px rgba(0,0,0,0.15);">
@@ -6002,7 +6002,7 @@
             </button>
         </div>
         
-        <!-- ===== PAYMENT FORM (Shows when not processing) ===== -->
+        <!-- ===== PAYMENT FORM ===== -->
         <div id="finance-paymentFormContainer">
             <form id="finance-paymentForm" novalidate>
                 
@@ -6031,7 +6031,7 @@
                     <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
                         <i class="fas fa-wallet"></i> Payment Method <span style="color: #dc2626;">*</span>
                     </label>
-                    <div class="payment-methods-grid" id="finance-paymentMethodsContainer" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
+                    <div id="finance-paymentMethodsContainer" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px;">
                         <div role="button" tabindex="0" onclick="selectPaymentMethod('mpesa')" id="finance-method-mpesa" class="payment-method-item" style="border: 2px solid #e2e8f0; border-radius: 10px; padding: 12px 8px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
                             <i class="fas fa-mobile-alt" style="font-size: 22px; display: block; margin-bottom: 2px; color: #4C1D95;"></i>
                             <span style="font-size: 12px; font-weight: 600; display: block; color: #0F172A;">M-Pesa</span>
@@ -6056,7 +6056,7 @@
                     <span class="finance-validation-error" id="finance-methodError" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Please select a payment method</span>
                 </div>
                 
-                <!-- Selected Method Details -->
+                <!-- ✅ SELECTED METHOD DETAILS - THIS WAS MISSING! -->
                 <div id="finance-paymentMethodDetails" style="display: none; background: #f1f5f9; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; border-left: 3px solid #4C1D95;">
                     <div id="finance-methodDetailsContent"></div>
                 </div>
@@ -6076,8 +6076,51 @@
                             <i class="fas fa-phone"></i> M-Pesa Phone <span style="color: #dc2626;">*</span>
                         </label>
                         <input type="tel" id="finance-mpesaPhoneInput" placeholder="0712345678" pattern="[0-9]{10,12}" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
-                        <small style="font-size: 11px; color: #94a3b8; display: block; margin-top: 3px;">You'll receive a prompt on your phone</small>
+                        <small style="font-size: 11px; color: #94a3B8; display: block; margin-top: 3px;">You'll receive a prompt on your phone</small>
                         <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Enter valid M-Pesa phone number</span>
+                    </div>
+                </div>
+                
+                <!-- Card Fields -->
+                <div id="finance-cardFields" style="display: none;">
+                    <div class="finance-form-group" style="margin-bottom: 14px;">
+                        <label for="finance-cardNumberInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Card Number <span style="color: #dc2626;">*</span></label>
+                        <input type="text" id="finance-cardNumberInput" placeholder="1234 5678 9012 3456" maxlength="19" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="finance-form-group" style="margin-bottom: 14px;">
+                            <label for="finance-cardExpiryInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Expiry <span style="color: #dc2626;">*</span></label>
+                            <input type="text" id="finance-cardExpiryInput" placeholder="MM/YY" maxlength="5" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                        </div>
+                        <div class="finance-form-group" style="margin-bottom: 14px;">
+                            <label for="finance-cardCvvInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">CVV <span style="color: #dc2626;">*</span></label>
+                            <input type="password" id="finance-cardCvvInput" placeholder="123" maxlength="4" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bank Transfer Fields -->
+                <div id="finance-bankFields" style="display: none;">
+                    <div class="finance-form-group" style="margin-bottom: 14px;">
+                        <label for="finance-bankAccountNameInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Account Name <span style="color: #dc2626;">*</span></label>
+                        <input type="text" id="finance-bankAccountNameInput" placeholder="Full name" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                    </div>
+                    <div class="finance-form-group" style="margin-bottom: 14px;">
+                        <label for="finance-bankAccountNumberInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Account Number <span style="color: #dc2626;">*</span></label>
+                        <input type="text" id="finance-bankAccountNumberInput" placeholder="Account number" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                    </div>
+                    <div class="finance-form-group" style="margin-bottom: 14px;">
+                        <label for="finance-bankNameInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">Bank Name <span style="color: #dc2626;">*</span></label>
+                        <input type="text" id="finance-bankNameInput" placeholder="e.g., Equity Bank" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                    </div>
+                </div>
+                
+                <!-- PayPal Fields -->
+                <div id="finance-paypalFields" style="display: none;">
+                    <div class="finance-form-group" style="margin-bottom: 14px;">
+                        <label for="finance-paypalEmailInput" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">PayPal Email <span style="color: #dc2626;">*</span></label>
+                        <input type="email" id="finance-paypalEmailInput" placeholder="your-email@example.com" style="width: 100%; padding: 10px 14px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; font-family: inherit;">
+                        <small style="font-size: 11px; color: #94A3B8; display: block; margin-top: 3px;">You'll be redirected to PayPal</small>
                     </div>
                 </div>
                 
