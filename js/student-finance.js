@@ -1353,7 +1353,51 @@ function closePaymentModal() {
     pendingPayment.isProcessing = false;
     pendingPayment.cancelled = false;
 }
+// ============================================================
+// 📋 POPULATE PERIOD DROPDOWN
+// ============================================================
 
+function populatePeriodDropdown() {
+    const select = document.getElementById('finance-paymentPeriodSelect');
+    if (!select) {
+        console.warn('⚠️ Period select not found');
+        return;
+    }
+    
+    const programType = studentFinanceState.programType || 'KRCHN';
+    const programLevel = studentFinanceState.programLevel || 'diploma';
+    const periods = getPeriods(programType, programLevel);
+    const currentPeriod = studentFinanceState.currentPeriod || periods[0];
+    
+    select.innerHTML = '<option value="">Select period...</option>';
+    periods.forEach(p => {
+        const option = document.createElement('option');
+        option.value = p;
+        option.textContent = p;
+        if (p === currentPeriod) option.selected = true;
+        select.appendChild(option);
+    });
+    console.log('✅ Period dropdown populated with:', periods.length, 'periods');
+    
+    // Trigger change to set default amount
+    select.onchange = function() {
+        const selectedPeriod = this.value;
+        if (selectedPeriod) {
+            const index = periods.indexOf(selectedPeriod);
+            if (index !== -1) {
+                const amount = getFeeAmount(programType, index, programLevel);
+                const amountInput = document.getElementById('finance-paymentAmountInput');
+                if (amountInput) {
+                    amountInput.value = amount;
+                }
+                const descInput = document.getElementById('finance-paymentDescriptionInput');
+                if (descInput) {
+                    descInput.value = `${selectedPeriod} Tuition Fees`;
+                }
+            }
+        }
+    };
+}
 // ============================================================
 // 🎯 POS STYLE PAYMENT FUNCTIONS
 // ============================================================
