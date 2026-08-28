@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NCHSM Blog | Healthcare Education Insights</title>
+    <meta name="description" content="Latest news, tips, and insights from Nakuru College of Health Sciences and Management">
+    
+    <!-- Google Analytics -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTZRYGB8PE"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag(){dataLayer.push(arguments);}
+        gtag('js', new Date());
+        gtag('config', 'G-WTZRYGB8PE');
+    </script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #f1f5f9;
+            color: #0F172A;
+        }
+        
+        /* Header */
+        .blog-header {
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            color: white;
+            padding: 15px 0;
+            border-bottom: 3px solid #FDB913;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        .blog-header .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .blog-header .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .blog-header .logo img {
+            height: 40px;
+        }
+        .blog-header .logo h1 {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+        .blog-header .logo h1 span {
+            color: #FDB913;
+        }
+        .blog-header .nav {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .blog-header .nav a {
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 0.9rem;
+            transition: color 0.3s;
+        }
+        .blog-header .nav a:hover {
+            color: #FDB913;
+        }
+        .blog-header .portal-btn {
+            background: #FDB913;
+            color: #0A3D62;
+            padding: 8px 18px;
+            border-radius: 8px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .blog-header .portal-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(253,185,19,0.3);
+        }
+        
+        /* Hero */
+        .blog-hero {
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            color: white;
+            padding: 50px 20px;
+            text-align: center;
+        }
+        .blog-hero h1 {
+            font-size: 2.2rem;
+            font-weight: 800;
+            margin-bottom: 10px;
+        }
+        .blog-hero p {
+            font-size: 1.1rem;
+            opacity: 0.85;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        /* Blog Grid */
+        .blog-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 30px 20px 50px;
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 40px;
+        }
+        .blog-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 25px;
+        }
+        .blog-card {
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+            transition: all 0.3s ease;
+            border: 1px solid #e5e7eb;
+        }
+        .blog-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 8px 30px rgba(0,0,0,0.08);
+        }
+        .blog-card .image {
+            height: 180px;
+            background: #e2e8f0;
+            position: relative;
+        }
+        .blog-card .image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .blog-card .category-badge {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: #FDB913;
+            color: #0A3D62;
+            padding: 3px 12px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .blog-card .body {
+            padding: 16px 18px 18px;
+        }
+        .blog-card .body .meta {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-bottom: 6px;
+            display: flex;
+            gap: 12px;
+        }
+        .blog-card .body h3 {
+            font-size: 1rem;
+            margin-bottom: 8px;
+            color: #0A3D62;
+            line-height: 1.4;
+        }
+        .blog-card .body h3 a {
+            text-decoration: none;
+            color: #0A3D62;
+        }
+        .blog-card .body h3 a:hover {
+            color: #FDB913;
+        }
+        .blog-card .body p {
+            color: #64748b;
+            font-size: 0.85rem;
+            line-height: 1.6;
+            margin-bottom: 10px;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        .blog-card .body .read-more {
+            color: #0A3D62;
+            font-weight: 600;
+            font-size: 0.85rem;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .blog-card .body .read-more:hover {
+            color: #FDB913;
+        }
+        
+        /* Sidebar */
+        .sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+        .sidebar-widget {
+            background: white;
+            border-radius: 12px;
+            padding: 18px 20px;
+            border: 1px solid #e5e7eb;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+        }
+        .sidebar-widget h4 {
+            font-size: 0.95rem;
+            margin-bottom: 12px;
+            color: #0A3D62;
+            border-bottom: 2px solid #FDB913;
+            padding-bottom: 8px;
+        }
+        .sidebar-widget ul {
+            list-style: none;
+        }
+        .sidebar-widget ul li {
+            padding: 6px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .sidebar-widget ul li:last-child {
+            border-bottom: none;
+        }
+        .sidebar-widget ul li a {
+            color: #475569;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.3s;
+        }
+        .sidebar-widget ul li a:hover {
+            color: #0A3D62;
+        }
+        .sidebar-ad {
+            background: #f8fafc;
+            border-radius: 12px;
+            padding: 20px;
+            text-align: center;
+            min-height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 1px dashed #e2e8f0;
+        }
+        
+        /* Footer */
+        .blog-footer {
+            background: #0A3D62;
+            color: rgba(255,255,255,0.8);
+            padding: 30px 20px;
+            text-align: center;
+        }
+        .blog-footer .links {
+            display: flex;
+            justify-content: center;
+            gap: 25px;
+            margin: 12px 0;
+            flex-wrap: wrap;
+        }
+        .blog-footer .links a {
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: color 0.3s;
+        }
+        .blog-footer .links a:hover {
+            color: #FDB913;
+        }
+        .blog-footer .copyright {
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+        
+        /* Responsive */
+        @media (max-width: 768px) {
+            .blog-grid { grid-template-columns: 1fr; }
+            .blog-container { grid-template-columns: 1fr; }
+            .blog-hero h1 { font-size: 1.6rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== HEADER ===== -->
+    <header class="blog-header">
+        <div class="container">
+            <div class="logo">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM">
+                <h1>NCHSM <span>Blog</span></h1>
+            </div>
+            <div class="nav">
+                <a href="/">Home</a>
+                <a href="/blog/">Blog</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/login" class="portal-btn">
+                    <i class="fas fa-graduation-cap"></i> Student Portal
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- ===== HERO ===== -->
+    <section class="blog-hero">
+        <div class="container">
+            <h1>📝 Healthcare Education Insights</h1>
+            <p>Stay updated with the latest news, tips, and resources from Nakuru College of Health Sciences and Management.</p>
+        </div>
+    </section>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <div class="blog-container">
+
+        <!-- ===== BLOG GRID ===== -->
+        <div class="blog-grid">
+
+            <!-- Blog Post 1 -->
+            <article class="blog-card">
+                <div class="image">
+                    <img src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=600&h=400&fit=crop" alt="Nursing Career" loading="lazy">
+                    <span class="category-badge">Career</span>
+                </div>
+                <div class="body">
+                    <div class="meta">
+                        <span><i class="far fa-calendar-alt"></i> Aug 28, 2026</span>
+                        <span><i class="far fa-clock"></i> 3 min read</span>
+                    </div>
+                    <h3><a href="post.html?slug=nursing-career-guide">Top 5 Reasons to Choose a Nursing Career in 2026</a></h3>
+                    <p>Discover why nursing remains one of the most rewarding and in-demand careers in healthcare today...</p>
+                    <a href="post.html?slug=nursing-career-guide" class="read-more">Read More →</a>
+                </div>
+            </article>
+
+            <!-- Blog Post 2 -->
+            <article class="blog-card">
+                <div class="image">
+                    <img src="https://images.unsplash.com/photo-1582750433449-648ed127bb54?w=600&h=400&fit=crop" alt="Student Life" loading="lazy">
+                    <span class="category-badge">Student Life</span>
+                </div>
+                <div class="body">
+                    <div class="meta">
+                        <span><i class="far fa-calendar-alt"></i> Aug 25, 2026</span>
+                        <span><i class="far fa-clock"></i> 4 min read</span>
+                    </div>
+                    <h3><a href="post.html?slug=student-life-tips">A Day in the Life of a Health Sciences Student</a></h3>
+                    <p>From clinical rotations to study sessions, experience a typical day at NCHSM...</p>
+                    <a href="post.html?slug=student-life-tips" class="read-more">Read More →</a>
+                </div>
+            </article>
+
+            <!-- Blog Post 3 -->
+            <article class="blog-card">
+                <div class="image">
+                    <img src="https://images.unsplash.com/photo-1530023367847-a683933f4172?w=600&h=400&fit=crop" alt="Study Tips" loading="lazy">
+                    <span class="category-badge">Study Tips</span>
+                </div>
+                <div class="body">
+                    <div class="meta">
+                        <span><i class="far fa-calendar-alt"></i> Aug 20, 2026</span>
+                        <span><i class="far fa-clock"></i> 5 min read</span>
+                    </div>
+                    <h3><a href="post.html?slug=study-tips">10 Effective Study Tips for Nursing Students</a></h3>
+                    <p>Boost your academic performance with these proven study strategies for health sciences students...</p>
+                    <a href="post.html?slug=study-tips" class="read-more">Read More →</a>
+                </div>
+            </article>
+
+            <!-- Blog Post 4 -->
+            <article class="blog-card">
+                <div class="image">
+                    <img src="https://images.unsplash.com/photo-1516841273335-e78b1881b1e2?w=600&h=400&fit=crop" alt="Healthcare Trends" loading="lazy">
+                    <span class="category-badge">Healthcare</span>
+                </div>
+                <div class="body">
+                    <div class="meta">
+                        <span><i class="far fa-calendar-alt"></i> Aug 15, 2026</span>
+                        <span><i class="far fa-clock"></i> 4 min read</span>
+                    </div>
+                    <h3><a href="post.html?slug=healthcare-trends">Top Healthcare Trends Shaping the Future of Medicine</a></h3>
+                    <p>Explore the latest innovations and trends that are transforming the healthcare industry...</p>
+                    <a href="post.html?slug=healthcare-trends" class="read-more">Read More →</a>
+                </div>
+            </article>
+
+        </div>
+
+        <!-- ===== SIDEBAR ===== -->
+        <aside class="sidebar">
+
+            <!-- About Widget -->
+            <div class="sidebar-widget">
+                <h4>📖 About NCHSM</h4>
+                <p style="color: #64748b; font-size: 0.9rem; line-height: 1.6;">
+                    Nakuru College of Health Sciences and Management is a premier institution dedicated to 
+                    excellence in healthcare education since 1978.
+                </p>
+                <a href="/about" style="color: #0A3D62; font-weight: 600; text-decoration: none; display: inline-block; margin-top: 10px;">
+                    Learn More →
+                </a>
+            </div>
+
+            <!-- Sidebar Ad -->
+            <div class="sidebar-ad">
+                <div style="color: #94a3b8; font-size: 0.8rem;">📢 Ad Space Available</div>
+            </div>
+
+            <!-- Categories Widget -->
+            <div class="sidebar-widget">
+                <h4>📂 Categories</h4>
+                <ul>
+                    <li><a href="#">Career Advice</a></li>
+                    <li><a href="#">Student Life</a></li>
+                    <li><a href="#">Study Tips</a></li>
+                    <li><a href="#">Healthcare News</a></li>
+                </ul>
+            </div>
+
+            <!-- Recent Posts Widget -->
+            <div class="sidebar-widget">
+                <h4>📝 Recent Posts</h4>
+                <ul>
+                    <li><a href="#">Top 5 Reasons to Choose Nursing</a></li>
+                    <li><a href="#">Day in the Life of a Health Sciences Student</a></li>
+                    <li><a href="#">10 Effective Study Tips</a></li>
+                    <li><a href="#">Healthcare Trends 2026</a></li>
+                </ul>
+            </div>
+
+            <!-- Newsletter Widget -->
+            <div class="sidebar-widget">
+                <h4>📧 Subscribe</h4>
+                <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 12px;">
+                    Get the latest updates delivered to your inbox.
+                </p>
+                <form style="display: flex; gap: 8px;">
+                    <input type="email" placeholder="Your email" style="flex: 1; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem;">
+                    <button type="submit" style="background: #0A3D62; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                        Subscribe
+                    </button>
+                </form>
+            </div>
+
+        </aside>
+    </div>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="blog-footer">
+        <div class="container">
+            <div class="links">
+                <a href="/">Home</a>
+                <a href="/blog/">Blog</a>
+                <a href="/about">About</a>
+                <a href="/contact">Contact</a>
+                <a href="/privacy">Privacy</a>
+                <a href="/login">Student Portal</a>
+            </div>
+            <div class="copyright">
+                © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>
