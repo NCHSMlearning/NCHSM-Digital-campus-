@@ -1,8 +1,13 @@
 // ============================================
 // NCHSM SECURE LOGIN SYSTEM - ULTIMATE
-// Version: 5.1 - FIXED FOR VARCHAR COLUMNS
+// Version: 5.1 - WITH GOOGLE ANALYTICS
 // Copyright © 2026 Nakuru College of Health Sciences and Management
 // ============================================
+
+// ============================================
+// GOOGLE ANALYTICS CONFIG
+// ============================================
+const GA_MEASUREMENT_ID = 'G-WTZRYGB8PE';
 
 // ============================================
 // FORCE CACHE CLEAR IF VERSION MISMATCH
@@ -48,7 +53,7 @@ const LoginQueue = {
 };
 
 // ============================================
-// MAIN LOGIN SYSTEM - v5.1 WITH 2FA
+// MAIN LOGIN SYSTEM - v5.1 WITH 2FA + GA
 // ============================================
 window.NCHSMLogin = {
     // ===== STATE =====
@@ -78,6 +83,23 @@ window.NCHSMLogin = {
         },
         csrfProtection: true,
         enforce2FA: true
+    },
+
+    // ============================================
+    // 📊 GOOGLE ANALYTICS TRACKING
+    // ============================================
+    
+    trackGoogleAnalytics: function(eventName, eventData) {
+        try {
+            if (typeof gtag !== 'undefined') {
+                gtag('event', eventName, eventData);
+                console.log(`📊 GA Event: ${eventName}`, eventData);
+            } else {
+                console.warn('⚠️ Google Analytics not loaded');
+            }
+        } catch (error) {
+            console.warn('⚠️ GA tracking error:', error);
+        }
     },
 
     // ============================================
@@ -133,6 +155,7 @@ window.NCHSMLogin = {
         console.log('🚀 Initializing NCHSMLogin v5.1...');
         console.log('🛡️ Ultimate Security Edition + 2FA');
         console.log('🔐 Authenticator App Support Enabled');
+        console.log('📊 Google Analytics ID: ' + GA_MEASUREMENT_ID);
         
         this.disableDeveloperTools();
         
@@ -203,7 +226,7 @@ window.NCHSMLogin = {
         console.log('✅ NCHSMLogin v5.1 initialized');
         console.log('🔐 2FA enforcement: ENABLED');
         console.log(`🕐 ${new Date().toLocaleString()}`);
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // UPDATE 2FA BUTTON STATUS
@@ -245,7 +268,7 @@ window.NCHSMLogin = {
         } catch (e) {
             console.log('⚠️ Could not update 2FA button status');
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // THEME TOGGLE
@@ -269,7 +292,7 @@ window.NCHSMLogin = {
             this.applyTheme(newTheme);
             localStorage.setItem('nchsm_theme', newTheme);
         });
-    }, // ✅ COMMA ADDED
+    },
     
     applyTheme: function(theme) {
         const themeIcon = document.getElementById('themeIcon');
@@ -288,7 +311,7 @@ window.NCHSMLogin = {
         }
         
         if (typeof feather !== 'undefined') feather.replace();
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // LOAD BREVO API KEY
@@ -325,7 +348,7 @@ window.NCHSMLogin = {
             console.error('❌ Failed to load Brevo API key:', error);
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // 2FA FUNCTIONS - AUTHENTICATOR APP SUPPORT
@@ -350,7 +373,7 @@ window.NCHSMLogin = {
         } catch (e) {
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     generate2FASecret: async function(userId) {
         try {
@@ -391,7 +414,7 @@ window.NCHSMLogin = {
             console.error('Error generating 2FA secret:', error);
             return null;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     get2FASecret: async function(userId) {
         try {
@@ -409,7 +432,7 @@ window.NCHSMLogin = {
             console.error('Error getting 2FA secret:', error);
             return null;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     verifyTOTP: function(secret, token) {
         try {
@@ -423,7 +446,7 @@ window.NCHSMLogin = {
             console.error('Error verifying TOTP:', error);
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     show2FASetup: async function(userId, email) {
         try {
@@ -460,7 +483,7 @@ window.NCHSMLogin = {
             console.error('Error showing 2FA setup:', error);
             this.showError('Error setting up 2FA');
         }
-    }, // ✅ COMMA ADDED
+    },
 
     enable2FA: async function(userId, token) {
         try {
@@ -485,6 +508,13 @@ window.NCHSMLogin = {
                     })
                     .eq('user_id', userId);
                 
+                // ✅ Track 2FA enabled
+                this.trackGoogleAnalytics('2fa_enabled', {
+                    'event_category': 'Security',
+                    'event_label': '2FA_Setup',
+                    'user_id': userId
+                });
+                
                 this.showSuccess('✅ Two-factor authentication enabled!');
                 this.closeModal('twoFactorSetupModal');
                 
@@ -502,7 +532,7 @@ window.NCHSMLogin = {
             this.showError('Error enabling 2FA');
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     show2FAModal: function() {
         this.openModal('twoFactorModal');
@@ -517,7 +547,7 @@ window.NCHSMLogin = {
         if (verifyBtn) {
             verifyBtn.onclick = () => this.handle2FAVerification();
         }
-    }, // ✅ COMMA ADDED
+    },
 
     handle2FAVerification: async function() {
         const digits = document.querySelectorAll('#twoFactorModal .otp-digit');
@@ -546,6 +576,14 @@ window.NCHSMLogin = {
             const isValid = this.verifyTOTP(result.two_factor_secret, code);
             
             if (isValid) {
+                // ✅ Track 2FA verification success
+                this.trackGoogleAnalytics('2fa_verified', {
+                    'event_category': 'Security',
+                    'event_label': '2FA_Verification',
+                    'success': true,
+                    'user_id': pendingData.profile.user_id
+                });
+                
                 this.closeModal('twoFactorModal');
                 this.showSuccess('✅ 2FA verified successfully!');
                 
@@ -558,6 +596,14 @@ window.NCHSMLogin = {
                 
                 sessionStorage.removeItem('pending_login_data');
             } else {
+                // ✅ Track 2FA verification failure
+                this.trackGoogleAnalytics('2fa_failed', {
+                    'event_category': 'Security',
+                    'event_label': '2FA_Verification',
+                    'success': false,
+                    'user_id': pendingData.profile.user_id
+                });
+                
                 this.showError('Invalid code. Please try again.');
                 document.querySelectorAll('#twoFactorModal .otp-digit').forEach(input => {
                     input.value = '';
@@ -568,7 +614,7 @@ window.NCHSMLogin = {
             console.error('2FA verification error:', error);
             this.showError('Error verifying 2FA code');
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // SESSION TRACKING
@@ -631,7 +677,7 @@ window.NCHSMLogin = {
             console.error('❌ Session tracking error:', error);
             return null;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // COMPLETE LOGIN - FIXED
@@ -690,6 +736,15 @@ window.NCHSMLogin = {
             
             localStorage.setItem('userProfile', JSON.stringify(safeProfile));
             
+            // ✅ Track successful login
+            this.trackGoogleAnalytics('login_success', {
+                'event_category': 'Authentication',
+                'event_label': profileData.email,
+                'user_id': userIdForSession || profileData.user_id,
+                'method': isStaff ? 'staff' : 'password',
+                'role': profileData.role || 'student'
+            });
+            
             if (!isStaff && this.supabase) {
                 try {
                     const { data: { session } } = await this.supabase.auth.getSession();
@@ -715,7 +770,7 @@ window.NCHSMLogin = {
             console.error('❌ Complete login error:', error);
             this.showError('Error completing login: ' + error.message);
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // FORCE UPDATE LOGIN COUNT
@@ -756,7 +811,7 @@ window.NCHSMLogin = {
             console.error('❌ Force update error:', error);
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // SEND LOGIN NOTIFICATION
@@ -827,7 +882,7 @@ window.NCHSMLogin = {
         } catch(e) {
             console.warn('⚠️ Login notification error:', e);
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // HIDE SKELETON LOADER
@@ -839,7 +894,7 @@ window.NCHSMLogin = {
                 skeleton.classList.remove('active');
             }, 1000);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // RIPPLE EFFECT
@@ -862,7 +917,7 @@ window.NCHSMLogin = {
                 }, 600);
             });
         });
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // 2FA OTP INPUT
@@ -969,7 +1024,7 @@ window.NCHSMLogin = {
         });
         
         console.log('✅ 2FA OTP Inputs initialized');
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // LOAD STAFF RECORDS
@@ -991,7 +1046,7 @@ window.NCHSMLogin = {
         } catch (error) {
             console.error('Error loading staff records:', error);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // DISABLE DEVELOPER TOOLS
@@ -1032,7 +1087,7 @@ window.NCHSMLogin = {
             }
             originalConsoleTable.apply(console, args);
         };
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // CSRF TOKEN MANAGEMENT - FIXED
@@ -1055,7 +1110,7 @@ window.NCHSMLogin = {
                 csrfInput.value = this.csrfToken;
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     validateCSRFToken: function(token) {
         if (!this.security.csrfProtection) return true;
@@ -1066,7 +1121,7 @@ window.NCHSMLogin = {
             return false;
         }
         return true;
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // CLEAR URL PARAMETERS
@@ -1077,7 +1132,7 @@ window.NCHSMLogin = {
                 window.location.host + window.location.pathname;
             window.history.replaceState({}, document.title, cleanUrl);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // HONEYPOT
@@ -1094,7 +1149,7 @@ window.NCHSMLogin = {
             `;
             form.appendChild(honeypot.firstElementChild);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // RATE LIMITING
@@ -1122,11 +1177,11 @@ window.NCHSMLogin = {
         }
         
         return false;
-    }, // ✅ COMMA ADDED
+    },
     
     addRateLimitRequest: function() {
         this.rateLimit.requests.push(Date.now());
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // FAILED ATTEMPTS
@@ -1149,7 +1204,7 @@ window.NCHSMLogin = {
             }
         }
         return false;
-    }, // ✅ COMMA ADDED
+    },
     
     recordFailedAttempt: function() {
         this.state.failedAttempts++;
@@ -1158,7 +1213,7 @@ window.NCHSMLogin = {
         
         sessionStorage.setItem('failedAttempts', this.state.failedAttempts);
         sessionStorage.setItem('lastFailedTime', this.state.lastFailedTime);
-    }, // ✅ COMMA ADDED
+    },
     
     resetFailedAttempts: function() {
         this.state.failedAttempts = 0;
@@ -1166,7 +1221,7 @@ window.NCHSMLogin = {
         this.updateAttemptsDisplay(this.state.maxAttempts);
         sessionStorage.removeItem('failedAttempts');
         sessionStorage.removeItem('lastFailedTime');
-    }, // ✅ COMMA ADDED
+    },
     
     updateAttemptsDisplay: function(remaining) {
         const attemptsInfo = document.getElementById('attemptsInfo');
@@ -1191,7 +1246,7 @@ window.NCHSMLogin = {
                 }
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // SECURE TOKEN
@@ -1200,7 +1255,7 @@ window.NCHSMLogin = {
         const array = new Uint8Array(32);
         crypto.getRandomValues(array);
         return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // SUPABASE INIT
@@ -1230,7 +1285,7 @@ window.NCHSMLogin = {
         } catch (error) {
             console.error('❌ Supabase error:', error);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // PASSWORD TOGGLE
@@ -1261,7 +1316,7 @@ window.NCHSMLogin = {
                 toggleButton.click();
             }
         });
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // PASSWORD STRENGTH METER
@@ -1316,7 +1371,7 @@ window.NCHSMLogin = {
                 strengthText.style.color = result.color;
             }
         });
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // LOGIN FORM
@@ -1367,7 +1422,7 @@ window.NCHSMLogin = {
                 }
             });
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // RESET FORM
@@ -1393,7 +1448,7 @@ window.NCHSMLogin = {
             this.showSuccess('Form reset successfully');
             setTimeout(() => this.clearSuccess(), 3000);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // VALIDATION
@@ -1401,7 +1456,7 @@ window.NCHSMLogin = {
     validateEmail: function(email) {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(email);
-    }, // ✅ COMMA ADDED
+    },
     
     validateField: function(e) {
         const input = e.target;
@@ -1419,12 +1474,12 @@ window.NCHSMLogin = {
         
         input.classList.remove('error');
         return true;
-    }, // ✅ COMMA ADDED
+    },
     
     clearFieldError: function(e) {
         e.target.classList.remove('error');
         this.clearError();
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // MODALS
@@ -1445,7 +1500,7 @@ window.NCHSMLogin = {
                 }
             });
         });
-    }, // ✅ COMMA ADDED
+    },
     
     openModal: function(modalId) {
         const modal = document.getElementById(modalId);
@@ -1458,7 +1513,7 @@ window.NCHSMLogin = {
                 setTimeout(() => firstInput.focus(), 100);
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     closeModal: function(modalId) {
         const modal = document.getElementById(modalId);
@@ -1467,7 +1522,7 @@ window.NCHSMLogin = {
             modal.classList.remove('active');
             document.body.style.overflow = '';
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // FOCUS MANAGEMENT
@@ -1478,7 +1533,7 @@ window.NCHSMLogin = {
                 this.trapFocus(e);
             }
         });
-    }, // ✅ COMMA ADDED
+    },
     
     trapFocus: function(e) {
         const modal = document.querySelector('.modal-overlay.active');
@@ -1501,7 +1556,7 @@ window.NCHSMLogin = {
                 firstFocusable.focus();
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // VIRTUAL KEYBOARD
@@ -1523,7 +1578,7 @@ window.NCHSMLogin = {
                 document.body.style.paddingBottom = '0';
             }
         });
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // NETWORK STATUS
@@ -1532,7 +1587,7 @@ window.NCHSMLogin = {
         this.updateOnlineStatus();
         window.addEventListener('online', () => this.updateOnlineStatus());
         window.addEventListener('offline', () => this.updateOnlineStatus());
-    }, // ✅ COMMA ADDED
+    },
     
     updateOnlineStatus: function() {
         const isOnline = navigator.onLine;
@@ -1541,7 +1596,7 @@ window.NCHSMLogin = {
         if (!isOnline) {
             this.showError('You are offline. Please check your connection.');
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // TRUSTED DEVICE
@@ -1557,7 +1612,7 @@ window.NCHSMLogin = {
                 this.redirectToDashboard(profile);
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     generateDeviceId: function() {
         const data = [
@@ -1574,7 +1629,7 @@ window.NCHSMLogin = {
             hash |= 0;
         }
         return Math.abs(hash).toString(16);
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // STAFF LOGIN - FIXED
@@ -1637,7 +1692,7 @@ window.NCHSMLogin = {
             console.error('❌ Staff verification error:', error);
             return null;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // EXECUTE LOGIN - FIXED (NO AUTO-CREATE)
@@ -1671,6 +1726,15 @@ window.NCHSMLogin = {
             
             if (authError) {
                 this.recordFailedAttempt();
+                
+                // ✅ Track failed login attempt
+                this.trackGoogleAnalytics('login_failed', {
+                    'event_category': 'Authentication',
+                    'event_label': identifier,
+                    'error': authError.message,
+                    'reason': 'invalid_credentials'
+                });
+                
                 if (authError.message.includes('Invalid login credentials')) {
                     throw new Error('Invalid email or password');
                 } else if (authError.message.includes('Email not confirmed')) {
@@ -1710,6 +1774,8 @@ window.NCHSMLogin = {
                 throw new Error('Account pending approval. Please wait.');
             }
             
+            // ✅ Track successful login (will be completed in completeLogin)
+            
             return { 
                 profileData: {
                     user_id: profile.user_id,
@@ -1726,9 +1792,18 @@ window.NCHSMLogin = {
             };
         } catch (error) {
             console.error('❌ Student login error:', error);
+            
+            // ✅ Track login failure with error message
+            this.trackGoogleAnalytics('login_failed', {
+                'event_category': 'Authentication',
+                'event_label': identifier,
+                'error': error.message,
+                'reason': 'exception'
+            });
+            
             throw error;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // LOGIN HANDLER - WITH 2FA SUPPORT
@@ -1759,6 +1834,13 @@ window.NCHSMLogin = {
             this.showError('Please enter email or staff ID');
             this.recordFailedAttempt();
             this.addRateLimitRequest();
+            
+            // ✅ Track empty login attempt
+            this.trackGoogleAnalytics('login_attempt', {
+                'event_category': 'Authentication',
+                'event_label': 'empty_identifier',
+                'reason': 'empty_email'
+            });
             return;
         }
         
@@ -1766,6 +1848,13 @@ window.NCHSMLogin = {
             this.showError('Password must be at least 8 characters');
             this.recordFailedAttempt();
             this.addRateLimitRequest();
+            
+            // ✅ Track weak password attempt
+            this.trackGoogleAnalytics('login_attempt', {
+                'event_category': 'Authentication',
+                'event_label': identifier,
+                'reason': 'weak_password'
+            });
             return;
         }
         
@@ -1782,6 +1871,13 @@ window.NCHSMLogin = {
         
         this.addRateLimitRequest();
         
+        // ✅ Track login attempt
+        this.trackGoogleAnalytics('login_attempt', {
+            'event_category': 'Authentication',
+            'event_label': identifier,
+            'method': 'password'
+        });
+        
         try {
             console.log(`🔐 Logging in: ${identifier}`);
             
@@ -1797,6 +1893,13 @@ window.NCHSMLogin = {
                     isStaff: result.isStaff
                 }));
                 
+                // ✅ Track 2FA required
+                this.trackGoogleAnalytics('login_2fa_required', {
+                    'event_category': 'Authentication',
+                    'event_label': identifier,
+                    'user_id': result.profileData.user_id
+                });
+                
                 this.show2FAModal();
                 loginButton.disabled = false;
                 buttonText.textContent = 'Sign In';
@@ -1809,6 +1912,13 @@ window.NCHSMLogin = {
             
         } catch (error) {
             console.error('💥 Login error:', error);
+            
+            // ✅ Track login failure
+            this.trackGoogleAnalytics('login_failed', {
+                'event_category': 'Authentication',
+                'event_label': identifier,
+                'error': error.message
+            });
             
             if (this.supabase && !error.message.includes('staff')) {
                 try {
@@ -1827,7 +1937,7 @@ window.NCHSMLogin = {
             loginButton.disabled = false;
             buttonText.textContent = 'Sign In';
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // SESSION MANAGEMENT
@@ -1836,7 +1946,7 @@ window.NCHSMLogin = {
         this.sessionCheckInterval = setInterval(() => {
             this.checkSessionHealth();
         }, 30000);
-    }, // ✅ COMMA ADDED
+    },
     
     checkSessionHealth: function() {
         const sessionExpires = localStorage.getItem('session_expires');
@@ -1852,7 +1962,7 @@ window.NCHSMLogin = {
                 this.forceLogout('Your session has expired');
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     showSessionWarning: function() {
         const warning = document.getElementById('sessionWarning');
@@ -1867,7 +1977,7 @@ window.NCHSMLogin = {
             timer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             warning.style.display = 'block';
         }
-    }, // ✅ COMMA ADDED
+    },
     
     extendSession: function() {
         const expires = new Date();
@@ -1891,7 +2001,7 @@ window.NCHSMLogin = {
                 })
                 .catch(() => {});
         }
-    }, // ✅ COMMA ADDED
+    },
     
     forceLogout: function(message) {
         localStorage.removeItem('userProfile');
@@ -1906,7 +2016,7 @@ window.NCHSMLogin = {
         setTimeout(() => {
             window.location.href = 'login.html';
         }, 2000);
-    }, // ✅ COMMA ADDED
+    },
     
     hashToken: async function(token) {
         const encoder = new TextEncoder();
@@ -1914,7 +2024,7 @@ window.NCHSMLogin = {
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }, // ✅ COMMA ADDED
+    },
     
     parseUserAgent: function(userAgent) {
         if (!userAgent) return 'Unknown';
@@ -1939,7 +2049,7 @@ window.NCHSMLogin = {
         else if (ua.includes('tablet')) device = 'Tablet';
         
         return `${browser} on ${os} (${device})`;
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // UPDATE LAST LOGIN
@@ -1985,7 +2095,7 @@ window.NCHSMLogin = {
             console.error('❌ updateLastLogin exception:', error);
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // UPDATE LAST LOGIN INFO - FIXED
@@ -2072,7 +2182,7 @@ window.NCHSMLogin = {
             `;
             if (typeof feather !== 'undefined') feather.replace();
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // REDIRECT TO DASHBOARD
@@ -2103,7 +2213,7 @@ window.NCHSMLogin = {
         setTimeout(() => {
             window.location.replace(redirectFile);
         }, 300);
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // MESSAGE HELPERS
@@ -2118,14 +2228,14 @@ window.NCHSMLogin = {
             element.style.display = 'flex';
             this.clearSuccess();
         }
-    }, // ✅ COMMA ADDED
+    },
     
     clearError: function() {
         const element = document.getElementById('errorMsg');
         if (element) {
             element.style.display = 'none';
         }
-    }, // ✅ COMMA ADDED
+    },
     
     showSuccess: function(message) {
         const element = document.getElementById('successMsg');
@@ -2137,14 +2247,14 @@ window.NCHSMLogin = {
             element.style.display = 'flex';
             this.clearError();
         }
-    }, // ✅ COMMA ADDED
+    },
     
     clearSuccess: function() {
         const element = document.getElementById('successMsg');
         if (element) {
             element.style.display = 'none';
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // GOOGLE LOGIN
@@ -2195,7 +2305,7 @@ window.NCHSMLogin = {
         } catch (error) {
             console.error('❌ Google init error:', error);
         }
-    }, // ✅ COMMA ADDED
+    },
 
     listenForGoogleRedirect: function() {
         var self = this;
@@ -2213,7 +2323,7 @@ window.NCHSMLogin = {
                 self.handleGoogleCredential({ credential: event.detail.credential });
             }
         });
-    }, // ✅ COMMA ADDED
+    },
 
     handleGoogleCredential: function(response) {
         console.log('🎯 Google credential received');
@@ -2231,7 +2341,7 @@ window.NCHSMLogin = {
             console.error('❌ Error decoding JWT:', error);
             this.showError('Invalid Google response');
         }
-    }, // ✅ COMMA ADDED
+    },
 
     decodeJWT: function(token) {
         const base64Url = token.split('.')[1];
@@ -2242,7 +2352,7 @@ window.NCHSMLogin = {
             ).join('')
         );
         return JSON.parse(jsonPayload);
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // PROCESS GOOGLE LOGIN - FIXED (NO AUTO-CREATE)
@@ -2293,6 +2403,13 @@ window.NCHSMLogin = {
             const isStaff = profile.staff_id ? true : false;
             const userId = profile.user_id;
             
+            // ✅ Track Google login attempt
+            this.trackGoogleAnalytics('login_attempt', {
+                'event_category': 'Authentication',
+                'event_label': email,
+                'method': 'google'
+            });
+            
             const has2FA = await this.check2FARequirement(userId);
             
             if (has2FA) {
@@ -2309,6 +2426,14 @@ window.NCHSMLogin = {
                     },
                     isStaff: isStaff
                 }));
+                
+                // ✅ Track 2FA required for Google login
+                this.trackGoogleAnalytics('login_2fa_required', {
+                    'event_category': 'Authentication',
+                    'event_label': email,
+                    'user_id': userId,
+                    'method': 'google'
+                });
                 
                 this.show2FAModal();
                 if (loginButton) {
@@ -2343,6 +2468,15 @@ window.NCHSMLogin = {
             
             await this.updateLastLogin(userId, email);
             
+            // ✅ Track Google login success
+            this.trackGoogleAnalytics('login_success', {
+                'event_category': 'Authentication',
+                'event_label': email,
+                'user_id': userId,
+                'method': 'google',
+                'role': safeProfile.role
+            });
+            
             this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
             this.updateLastLoginInfo();
             
@@ -2354,6 +2488,15 @@ window.NCHSMLogin = {
             
         } catch (error) {
             console.error('❌ Google login error:', error);
+            
+            // ✅ Track Google login failure
+            this.trackGoogleAnalytics('login_failed', {
+                'event_category': 'Authentication',
+                'event_label': email,
+                'error': error.message,
+                'method': 'google'
+            });
+            
             this.showError('Login failed. Please try again.');
         } finally {
             if (loginButton) {
@@ -2361,7 +2504,7 @@ window.NCHSMLogin = {
                 buttonText.textContent = 'Sign In';
             }
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // CLEANUP
@@ -2376,8 +2519,8 @@ window.NCHSMLogin = {
         sessionStorage.removeItem('redirect_token');
         
         console.log('🧹 Cleaned up NCHSMLogin');
-    } // ✅ NO COMMA NEEDED HERE (end of object)
-}; // ✅ END OF NCHSMLogin OBJECT
+    }
+};
 
 // ============================================
 // GLOBAL FUNCTIONS
@@ -2474,6 +2617,15 @@ window.showQRCode = async function() {
         
         sessionStorage.setItem('2fa_setup_secret', secret);
         sessionStorage.setItem('2fa_setup_user', userProfile.user_id);
+        
+        // ✅ Track 2FA setup started
+        if (typeof gtag !== 'undefined') {
+            gtag('event', '2fa_setup_started', {
+                'event_category': 'Security',
+                'event_label': '2FA_Setup',
+                'user_id': userProfile.user_id
+            });
+        }
         
     } catch (error) {
         console.error('Error showing QR code:', error);
@@ -2573,6 +2725,15 @@ window.verifyAndEnable2FA = async function() {
             return;
         }
         
+        // ✅ Track 2FA enabled successfully
+        if (typeof gtag !== 'undefined') {
+            gtag('event', '2fa_enabled', {
+                'event_category': 'Security',
+                'event_label': '2FA_Setup',
+                'user_id': userProfile.user_id
+            });
+        }
+        
         window.NCHSMLogin.closeModal('twoFactorSetupModal');
         
         const statusEl = document.getElementById('twoFAStatus');
@@ -2598,6 +2759,15 @@ window.verifyAndEnable2FA = async function() {
         alert('✅ Two-Factor Authentication enabled successfully!');
         
     } else {
+        // ✅ Track 2FA setup failure
+        if (typeof gtag !== 'undefined') {
+            gtag('event', '2fa_setup_failed', {
+                'event_category': 'Security',
+                'event_label': '2FA_Setup',
+                'user_id': userProfile.user_id
+            });
+        }
+        
         const statusEl = document.getElementById('setupStatus');
         if (statusEl) {
             statusEl.style.display = 'block';
@@ -2631,6 +2801,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('✅ Secure application ready');
     console.log('🔐 2FA support: ENABLED');
+    console.log('📊 Google Analytics ID: G-WTZRYGB8PE');
     console.log(`📱 Device ID: ${window.NCHSMLogin.generateDeviceId()}`);
 });
 
@@ -2669,4 +2840,5 @@ window.forceClearCache = function() {
 
 console.log('📦 NCHSM Login v5.1 loaded - Full 2FA Support');
 console.log('🔐 Google Authenticator, Microsoft Authenticator, Authy ready');
+console.log('📊 Google Analytics ID: G-WTZRYGB8PE');
 console.log(`🕐 ${new Date().toLocaleString()}`);
