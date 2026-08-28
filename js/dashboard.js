@@ -48,7 +48,7 @@ class DashboardModule {
         // ============================================================
         // 📊 GOOGLE ANALYTICS CONFIG
         // ============================================================
-        this.GA_MEASUREMENT_ID = 'G-WTZRYGB8PE'; // Your Measurement ID
+        this.GA_MEASUREMENT_ID = 'G-KBYGBSYY2S'; // Your Measurement ID
         
         this.cacheElements();
         this.setupEventListeners();
