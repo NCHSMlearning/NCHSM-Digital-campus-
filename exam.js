@@ -681,61 +681,78 @@
     // START EXAM
     // ============================================================
 
-    window.startExam = async function() {
-        if (!AppState.cameraWorking || !AppState.termsAgreed || !AppState.faceVerified) {
-            showToast('Please complete all steps first', 'warning');
+   // ============================================================
+// START EXAM - FIXED (Fullscreen after exam loads)
+// ============================================================
+window.startExam = async function() {
+    // ✅ Step 1: Validate everything
+    if (!AppState.cameraWorking || !AppState.termsAgreed || !AppState.faceVerified) {
+        showToast('Please complete all steps first', 'warning');
+        return;
+    }
+
+    // ✅ Step 2: Check for active session (skip for retake)
+    if (!AppState.isRetake) {
+        const sessionOk = await checkActiveSession();
+        if (!sessionOk) {
+            showToast('⚠️ You already have an active exam session on another device', 'error', 5000);
             return;
         }
+    }
 
-        if (!AppState.isRetake) {
-            const sessionOk = await checkActiveSession();
-            if (!sessionOk) {
-                showToast('⚠️ You already have an active exam session on another device', 'error', 5000);
-                return;
-            }
-        }
+    // ✅ Step 3: Verify face is currently visible
+    const detections = await fastDetectFace(DOM.cameraVideo);
+    if (!detections || detections.length !== 1) {
+        showToast('❌ Face verification failed. Please try again.', 'error');
+        return;
+    }
 
-        const detections = await fastDetectFace(DOM.cameraVideo);
-        if (!detections || detections.length !== 1) {
-            showToast('❌ Face verification failed. Please try again.', 'error');
-            return;
-        }
+    // ✅ Step 4: Mark attendance
+    try {
+        await markExamAttendance('in_progress');
+        AppState.attendanceRecorded = true;
+    } catch (e) {
+        console.warn('Could not mark attendance:', e);
+    }
 
-        try {
-            await markExamAttendance('in_progress');
-            AppState.attendanceRecorded = true;
-        } catch (e) {
-            console.warn('Could not mark attendance:', e);
-        }
+    // ✅ Step 5: Start stealth proctoring
+    try {
+        const stealthProctor = new StealthProctor();
+        AppState.stealthProctor = stealthProctor;
+        await stealthProctor.startStealthRecording(AppState.studentId, AppState.examId);
+    } catch (error) {
+        console.warn('Stealth proctoring error:', error);
+    }
 
-        try {
-            const stealthProctor = new StealthProctor();
-            AppState.stealthProctor = stealthProctor;
-            await stealthProctor.startStealthRecording(AppState.studentId, AppState.examId);
-        } catch (error) {
-            console.warn('Stealth proctoring error:', error);
-        }
+    // ✅ Step 6: For retake - preserve answers
+    if (AppState.isRetake) {
+        console.log('🔄 CONTINUING EXAM - Preserving all previous answers');
+        showToast('🔄 Continuing from where you left off. Your answers are preserved.', 'info', 3000);
+        await logProctoringEvent('exam_retake_continued', 'Student continuing exam after reset (answers preserved)', 'info');
+    }
 
-        if (AppState.isRetake) {
-            console.log('🔄 CONTINUING EXAM - Preserving all previous answers');
-            showToast('🔄 Continuing from where you left off. Your answers are preserved.', 'info', 3000);
-            await logProctoringEvent('exam_retake_continued', 'Student continuing exam after reset (answers preserved)', 'info');
-        }
-
-        DOM.lobbyContainer.style.display = 'none';
-        DOM.examInterface.style.display = 'block';
-        DOM.examInterface.classList.add('active');
-        
-        if (AppState.cameraStream) {
-            DOM.faceVideo.srcObject = AppState.cameraStream;
-            await DOM.faceVideo.play();
-        }
-        
-        await enterSecureFullscreen();
-        checkNetworkQuality();
-        setupNetworkQualityMonitoring();
-        initExam();
-    };
+    // ✅ Step 7: HIDE LOBBY, SHOW EXAM
+    DOM.lobbyContainer.style.display = 'none';
+    DOM.examInterface.style.display = 'block';
+    DOM.examInterface.classList.add('active');
+    
+    // ✅ Step 8: Connect camera to exam view
+    if (AppState.cameraStream) {
+        DOM.faceVideo.srcObject = AppState.cameraStream;
+        await DOM.faceVideo.play();
+    }
+    
+    // ✅ Step 9: Check network quality
+    checkNetworkQuality();
+    setupNetworkQualityMonitoring();
+    
+    // ✅ Step 10: Initialize the exam (load questions, start timer)
+    await initExam();
+    
+    // ✅ Step 11: ONLY NOW enter fullscreen and block applications
+    // This happens AFTER the exam is fully loaded
+    await enterSecureFullscreen();
+};
 
     // ============================================================
     // EXAM INITIALIZATION
