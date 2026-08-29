@@ -17,7 +17,7 @@
     
     <style>
         /* ============================================================
-           ULTRA MODERN RESET
+           RESET & BASE
            ============================================================ */
         * {
             margin: 0;
@@ -35,7 +35,7 @@
         }
         
         /* ============================================================
-           LOBBY - ULTRA MODERN
+           LOBBY - ULTRA MODERN (Marks Entry Style)
            ============================================================ */
         .lobby-container {
             display: none;
@@ -45,7 +45,7 @@
             background: white;
             border-radius: 24px;
             padding: 32px 30px 30px;
-            box-shadow: 0 20px 60px rgba(10, 61, 98, 0.08), 0 4px 12px rgba(0,0,0,0.04);
+            box-shadow: 0 20px 60px rgba(10, 61, 98, 0.08);
             border: 1px solid rgba(226, 232, 240, 0.5);
         }
         .lobby-container.active {
@@ -137,6 +137,11 @@
             align-items: center;
             flex-wrap: wrap;
             gap: 12px;
+            transition: all 0.3s;
+        }
+        .exam-info-card:hover {
+            border-color: #cbd5e1;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
         }
         .exam-info-card .exam-title {
             font-size: 1.05rem;
@@ -400,6 +405,7 @@
             aspect-ratio: 16/9;
             margin-bottom: 14px;
             border: 2px solid #e2e8f0;
+            transition: all 0.3s;
         }
         .camera-preview.camera-status-good { border-color: #10b981; }
         .camera-preview.camera-status-warning { border-color: #f59e0b; }
@@ -653,7 +659,7 @@
         }
         
         /* ============================================================
-           EXAM INTERFACE - ULTRA MODERN (Matching Marks Entry)
+           EXAM INTERFACE - ULTRA MODERN (Marks Entry Style)
            ============================================================ */
         .exam-interface {
             display: none;
@@ -771,11 +777,11 @@
 <body>
 
     <!-- ============================================================
-    LOBBY - ULTRA MODERN
+    LOBBY - ULTRA MODERN (Marks Entry Style)
     ============================================================ -->
     <div class="lobby-container active" id="lobbyContainer">
         
-        <!-- Header -->
+        <!-- Lobby Header -->
         <div class="lobby-header">
             <div class="logo-wrapper">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
@@ -821,7 +827,7 @@
             </div>
         </div>
 
-        <!-- Steps -->
+        <!-- Steps Indicator -->
         <div class="steps-indicator">
             <div class="step active" id="step1">
                 <div class="step-number"><span class="num">1</span><span class="check">✓</span></div>
@@ -972,88 +978,86 @@
     </div>
 
     <!-- ============================================================
-    EXAM INTERFACE - ULTRA MODERN (Matching Marks Entry Design)
+    EXAM INTERFACE - ULTRA MODERN (Marks Entry Style)
     ============================================================ -->
     <div class="exam-interface" id="examInterface">
         
-        <!-- ✅ HEADER - Premium Gradient -->
-        <div style="background: linear-gradient(135deg, #0A3D62, #1a5276, #2c6b8f); border-radius: 16px; padding: 22px 28px; margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; box-shadow: 0 4px 24px rgba(10,61,98,0.3);">
+        <!-- ✅ HEADER - Gradient like Marks Entry -->
+        <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 20px rgba(10,61,98,0.25);">
             <div>
-                <h2 style="color: white; margin: 0; font-weight: 700; font-size: 1.15rem; display: flex; align-items: center; gap: 10px;">
-                    <i class="fas fa-graduation-cap" style="color: #FDB913;"></i> 
-                    <span id="exam-title">Examination</span>
+                <h2 style="color: white; margin: 0; font-weight: 700; font-size: 1.1rem;">
+                    <i class="fas fa-graduation-cap"></i> <span id="exam-title">Examination</span>
                 </h2>
-                <p style="color: rgba(255,255,255,0.85); margin: 3px 0 0 0; font-size: 13px;">
-                    <i class="fas fa-user" style="margin-right: 4px;"></i> <span id="examStudentName">Student</span> 
-                    <span style="margin: 0 8px; opacity: 0.3;">|</span>
-                    <i class="fas fa-id-card" style="margin-right: 4px;"></i> <span id="examStudentReg">ID</span>
+                <p style="color: rgba(255,255,255,0.85); margin: 2px 0 0 0; font-size: 13px;">
+                    <i class="fas fa-user"></i> <span id="examStudentName">Student</span> &nbsp;|&nbsp; 
+                    <i class="fas fa-id-card"></i> <span id="examStudentReg">ID</span>
                 </p>
             </div>
             <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
                 <!-- Timer -->
-                <div style="background: rgba(255,255,255,0.12); padding: 8px 18px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.08);">
-                    <i class="fas fa-clock" style="color: #FDB913; font-size: 0.95rem;"></i>
-                    <span style="color: white; font-weight: 700; font-size: 1.15rem; font-family: 'Courier New', monospace; letter-spacing: 0.5px;" id="timerDisplayHeader">00:00</span>
+                <div style="background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.1);">
+                    <i class="fas fa-clock" style="color: #FDB913; font-size: 1rem;"></i>
+                    <span style="color: white; font-weight: 700; font-size: 1.1rem; font-family: monospace;" id="timerDisplayHeader">00:00</span>
                 </div>
                 <!-- Proctoring Status -->
-                <div style="background: rgba(255,255,255,0.08); padding: 6px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                    <span id="examStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
+                <div style="background: rgba(255,255,255,0.1); padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 8px;">
+                    <span class="status-dot" id="examStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
                     <span style="color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500;" id="examStatusText">Active</span>
                 </div>
                 <!-- Face Count -->
-                <div style="background: rgba(255,255,255,0.08); padding: 6px 16px; border-radius: 20px; display: flex; align-items: center; gap: 8px; border: 1px solid rgba(255,255,255,0.05);">
-                    <i class="fas fa-user" style="color: #60a5fa; font-size: 0.75rem;"></i>
+                <div style="background: rgba(255,255,255,0.1); padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-user" style="color: #60a5fa; font-size: 0.8rem;"></i>
                     <span style="color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500;" id="examFaceCount">👤 1 face</span>
                 </div>
             </div>
         </div>
 
         <!-- ✅ STATS CARDS - Like Marks Entry -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 24px;">
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
             <!-- Answered -->
-            <div style="border-top: 4px solid #10b981; background: white; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                    <i class="fas fa-check-circle" style="color: #10b981; font-size: 0.85rem;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Answered</span>
+            <div style="border-top: 4px solid #10b981; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
+                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Answered</span>
                 </div>
-                <p style="font-size: 24px; font-weight: 700; color: #059669; margin: 0;" id="statsAnswered">0/0</p>
+                <p style="font-size: 22px; font-weight: 700; color: #059669; margin: 2px 0 0 0;" id="statsAnswered">0/0</p>
             </div>
             <!-- Flagged -->
-            <div style="border-top: 4px solid #f59e0b; background: white; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                    <i class="fas fa-flag" style="color: #f59e0b; font-size: 0.85rem;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Flagged</span>
+            <div style="border-top: 4px solid #f59e0b; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-flag" style="color: #f59e0b;"></i>
+                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Flagged</span>
                 </div>
-                <p style="font-size: 24px; font-weight: 700; color: #d97706; margin: 0;" id="statsFlagged">0</p>
+                <p style="font-size: 22px; font-weight: 700; color: #d97706; margin: 2px 0 0 0;" id="statsFlagged">0</p>
             </div>
             <!-- Face Status -->
-            <div style="border-top: 4px solid #3b82f6; background: white; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                    <i class="fas fa-user-check" style="color: #3b82f6; font-size: 0.85rem;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Face</span>
+            <div style="border-top: 4px solid #3b82f6; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-user-check" style="color: #3b82f6;"></i>
+                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Face</span>
                 </div>
-                <p style="font-size: 24px; font-weight: 700; color: #2563eb; margin: 0;" id="statsFace">✅ OK</p>
+                <p style="font-size: 22px; font-weight: 700; color: #2563eb; margin: 2px 0 0 0;" id="statsFace">✅ OK</p>
             </div>
             <!-- Progress -->
-            <div style="border-top: 4px solid #8b5cf6; background: white; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                    <i class="fas fa-chart-line" style="color: #8b5cf6; font-size: 0.85rem;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Progress</span>
+            <div style="border-top: 4px solid #8b5cf6; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-chart-line" style="color: #8b5cf6;"></i>
+                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Progress</span>
                 </div>
-                <p style="font-size: 24px; font-weight: 700; color: #6d28d9; margin: 0;" id="statsProgress">0%</p>
+                <p style="font-size: 22px; font-weight: 700; color: #6d28d9; margin: 2px 0 0 0;" id="statsProgress">0%</p>
             </div>
             <!-- Unanswered -->
-            <div style="border-top: 4px solid #ef4444; background: white; border-radius: 12px; padding: 16px 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
-                <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 2px;">
-                    <i class="fas fa-exclamation-circle" style="color: #ef4444; font-size: 0.85rem;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Unanswered</span>
+            <div style="border-top: 4px solid #ef4444; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-exclamation-circle" style="color: #ef4444;"></i>
+                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Unanswered</span>
                 </div>
-                <p style="font-size: 24px; font-weight: 700; color: #dc2626; margin: 0;" id="statsUnanswered">0</p>
+                <p style="font-size: 22px; font-weight: 700; color: #dc2626; margin: 2px 0 0 0;" id="statsUnanswered">0</p>
             </div>
         </div>
 
-        <!-- ✅ QUESTION PROGRESS -->
-        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 14px 20px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <!-- ✅ QUESTION PROGRESS - Like Marks Entry Program Display -->
+        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px 20px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
             <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
                 <span style="font-weight: 700; color: #0A3D62; font-size: 13px;">
                     <i class="fas fa-book-open"></i> Question:
@@ -1079,7 +1083,7 @@
         </div>
 
         <!-- ✅ QUESTION AREA -->
-        <div style="background: white; border-radius: 14px; padding: 24px 28px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; min-height: 280px; margin-bottom: 16px;">
+        <div style="background: white; border-radius: 14px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; min-height: 300px; margin-bottom: 16px;">
             <div id="exam-container" style="font-size: 15px; line-height: 1.7; color: #1e293b;">
                 Loading question...
             </div>
@@ -1167,7 +1171,7 @@
         <p style="font-size:0.6rem;color:#94a3b8;margin-top:12px;">⏱️ Timer continues running</p>
     </div>
 
-    <!-- Other Overlays (simplified placeholders) -->
+    <!-- Other Overlays (placeholders) -->
     <div id="face-block-overlay" class="overlay-hidden"></div>
     <div id="submission-modal" class="overlay-hidden"></div>
     <div id="submission-progress-overlay" class="overlay-hidden"></div>
