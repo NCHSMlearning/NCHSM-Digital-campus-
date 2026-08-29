@@ -1,6 +1,6 @@
 // ============================================================
-// EXAM.JS - COMPLETE UPDATED VERSION
-// WITH RETAKE/CONTINUATION SUPPORT & MODERN UI
+// EXAM.JS - COMPLETE FIXED VERSION
+// WITH RETAKE/CONTINUATION SUPPORT & ALL FUNCTIONS EXPOSED
 // ============================================================
 
 (function() {
@@ -266,8 +266,6 @@
         return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
     }
 
-    window.showToast = showToast;
-
     async function getIPAddress() {
         try {
             const response = await fetch('https://api.ipify.org?format=json');
@@ -396,13 +394,19 @@
 
     async function checkRetakeStatus() {
         try {
-            const { data } = await sb
+            const { data, error } = await sb
                 .from('exam_grades')
                 .select('result_status, reset_count, allow_retake, retake_unlocked')
                 .eq('student_id', AppState.studentId)
                 .eq('exam_id', parseInt(AppState.examId))
                 .eq('question_id', '00000000-0000-0000-0000-000000000000')
-                .single();
+                .maybeSingle();
+
+            // Handle 406 error gracefully (no data found)
+            if (error && error.code !== 'PGRST116') {
+                console.warn('Error checking retake status:', error);
+                return;
+            }
 
             if (data && data.result_status === 'RESET_FOR_RETAKE' && data.retake_unlocked === true) {
                 AppState.isRetake = true;
@@ -497,13 +501,13 @@
     // STEP NAVIGATION
     // ============================================================
 
-    window.toggleTermsAgreed = function() {
+    function toggleTermsAgreed() {
         AppState.termsAgreed = DOM.termsCheckbox.checked;
         DOM.termsNextBtn.disabled = !AppState.termsAgreed;
         updateStartButton();
-    };
+    }
 
-    window.goToStep = function(step) {
+    function goToStep(step) {
         AppState.currentStep = step;
         for (let i = 1; i <= 3; i++) {
             const stepEl = document.getElementById(`step${i}`);
@@ -525,7 +529,7 @@
         if (step === 3) {
             updateStartButton();
         }
-    };
+    }
 
     function updateStartButton() {
         const ready = AppState.termsAgreed && AppState.cameraWorking && AppState.faceVerified;
@@ -551,7 +555,7 @@
     // CAMERA TEST
     // ============================================================
 
-    window.testCamera = async function() {
+    async function testCamera() {
         if (AppState.isCameraTesting) return;
         AppState.isCameraTesting = true;
         DOM.testCameraBtn.disabled = true;
@@ -651,7 +655,7 @@
                 setTimeout(() => {
                     if (!AppState.faceVerified && !AppState.isCameraTesting) {
                         showToast('🔄 Retrying...', 'info');
-                        window.testCamera();
+                        testCamera();
                     }
                 }, 2000);
             }
@@ -675,84 +679,72 @@
 
         AppState.isCameraTesting = false;
         DOM.testCameraBtn.disabled = false;
-    };
+    }
 
     // ============================================================
     // START EXAM
     // ============================================================
 
-   // ============================================================
-// START EXAM - FIXED (Fullscreen after exam loads)
-// ============================================================
-window.startExam = async function() {
-    // ✅ Step 1: Validate everything
-    if (!AppState.cameraWorking || !AppState.termsAgreed || !AppState.faceVerified) {
-        showToast('Please complete all steps first', 'warning');
-        return;
-    }
-
-    // ✅ Step 2: Check for active session (skip for retake)
-    if (!AppState.isRetake) {
-        const sessionOk = await checkActiveSession();
-        if (!sessionOk) {
-            showToast('⚠️ You already have an active exam session on another device', 'error', 5000);
+    async function startExam() {
+        if (!AppState.cameraWorking || !AppState.termsAgreed || !AppState.faceVerified) {
+            showToast('Please complete all steps first', 'warning');
             return;
         }
-    }
 
-    // ✅ Step 3: Verify face is currently visible
-    const detections = await fastDetectFace(DOM.cameraVideo);
-    if (!detections || detections.length !== 1) {
-        showToast('❌ Face verification failed. Please try again.', 'error');
-        return;
-    }
+        if (!AppState.isRetake) {
+            const sessionOk = await checkActiveSession();
+            if (!sessionOk) {
+                showToast('⚠️ You already have an active exam session on another device', 'error', 5000);
+                return;
+            }
+        }
 
-    // ✅ Step 4: Mark attendance
-    try {
-        await markExamAttendance('in_progress');
-        AppState.attendanceRecorded = true;
-    } catch (e) {
-        console.warn('Could not mark attendance:', e);
-    }
+        const detections = await fastDetectFace(DOM.cameraVideo);
+        if (!detections || detections.length !== 1) {
+            showToast('❌ Face verification failed. Please try again.', 'error');
+            return;
+        }
 
-    // ✅ Step 5: Start stealth proctoring
-    try {
-        const stealthProctor = new StealthProctor();
-        AppState.stealthProctor = stealthProctor;
-        await stealthProctor.startStealthRecording(AppState.studentId, AppState.examId);
-    } catch (error) {
-        console.warn('Stealth proctoring error:', error);
-    }
+        try {
+            await markExamAttendance('in_progress');
+            AppState.attendanceRecorded = true;
+        } catch (e) {
+            console.warn('Could not mark attendance:', e);
+        }
 
-    // ✅ Step 6: For retake - preserve answers
-    if (AppState.isRetake) {
-        console.log('🔄 CONTINUING EXAM - Preserving all previous answers');
-        showToast('🔄 Continuing from where you left off. Your answers are preserved.', 'info', 3000);
-        await logProctoringEvent('exam_retake_continued', 'Student continuing exam after reset (answers preserved)', 'info');
-    }
+        try {
+            const stealthProctor = new StealthProctor();
+            AppState.stealthProctor = stealthProctor;
+            await stealthProctor.startStealthRecording(AppState.studentId, AppState.examId);
+        } catch (error) {
+            console.warn('Stealth proctoring error:', error);
+        }
 
-    // ✅ Step 7: HIDE LOBBY, SHOW EXAM
-    DOM.lobbyContainer.style.display = 'none';
-    DOM.examInterface.style.display = 'block';
-    DOM.examInterface.classList.add('active');
-    
-    // ✅ Step 8: Connect camera to exam view
-    if (AppState.cameraStream) {
-        DOM.faceVideo.srcObject = AppState.cameraStream;
-        await DOM.faceVideo.play();
+        if (AppState.isRetake) {
+            console.log('🔄 CONTINUING EXAM - Preserving all previous answers');
+            showToast('🔄 Continuing from where you left off. Your answers are preserved.', 'info', 3000);
+            await logProctoringEvent('exam_retake_continued', 'Student continuing exam after reset (answers preserved)', 'info');
+        }
+
+        // ✅ Show exam interface FIRST
+        DOM.lobbyContainer.style.display = 'none';
+        DOM.examInterface.style.display = 'block';
+        DOM.examInterface.classList.add('active');
+        
+        if (AppState.cameraStream) {
+            DOM.faceVideo.srcObject = AppState.cameraStream;
+            await DOM.faceVideo.play();
+        }
+        
+        // ✅ Load questions and start timer FIRST
+        await initExam();
+        
+        // ✅ THEN enter fullscreen and block applications (AFTER exam loads)
+        await enterSecureFullscreen();
+        
+        checkNetworkQuality();
+        setupNetworkQualityMonitoring();
     }
-    
-    // ✅ Step 9: Check network quality
-    checkNetworkQuality();
-    setupNetworkQualityMonitoring();
-    
-    // ✅ Step 10: Initialize the exam (load questions, start timer)
-    await initExam();
-    
-    // ✅ Step 11: ONLY NOW enter fullscreen and block applications
-    // This happens AFTER the exam is fully loaded
-    await enterSecureFullscreen();
-};
 
     // ============================================================
     // EXAM INITIALIZATION
@@ -1123,7 +1115,7 @@ window.startExam = async function() {
     // FLAGGING
     // ============================================================
 
-    window.toggleFlagQuestion = function() {
+    function toggleFlagQuestion() {
         const q = AppState.questions[AppState.currentIndex];
         if (!q) return;
 
@@ -1146,7 +1138,7 @@ window.startExam = async function() {
         }
         saveFlaggedQuestions();
         updateExamStats();
-    };
+    }
 
     function saveFlaggedQuestions() {
         saveToLocalStorage('flagged', AppState.flaggedQuestions);
@@ -1381,7 +1373,7 @@ window.startExam = async function() {
     // REVIEW MODE
     // ============================================================
 
-    window.toggleReviewMode = function() {
+    function toggleReviewMode() {
         const isReview = DOM.reviewModeToggle ? DOM.reviewModeToggle.checked : false;
         const container = DOM.reviewContainer;
 
@@ -1406,7 +1398,7 @@ window.startExam = async function() {
         } else {
             container.innerHTML = '';
         }
-    };
+    }
 
     // ============================================================
     // SUBMISSION
@@ -2005,7 +1997,7 @@ window.startExam = async function() {
         }
         if ((e.key === 'f' || e.key === 'F') && !e.target.matches('input, textarea, select')) {
             e.preventDefault();
-            if (!AppState.isExamPaused) window.toggleFlagQuestion();
+            if (!AppState.isExamPaused) toggleFlagQuestion();
         }
         if (e.key === '?' && !e.ctrlKey && !e.metaKey) {
             e.preventDefault();
@@ -2058,7 +2050,7 @@ window.startExam = async function() {
         }
     }
 
-    window.returnToExam = function() {
+    function returnToExam() {
         DOM.appBlockOverlay.style.display = 'none';
         if (document.documentElement.requestFullscreen) {
             document.documentElement.requestFullscreen().catch(() => {
@@ -2068,7 +2060,7 @@ window.startExam = async function() {
         window.focus();
         AppState.blurCount = 0;
         AppState.tabSwitchCount = 0;
-    };
+    }
 
     function handleVisibilityChange() {
         if (document.hidden && AppState.isExamActive && !AppState.isExamPaused) {
@@ -2429,11 +2421,11 @@ window.startExam = async function() {
         }
     }
 
-    window.closeAttendanceModal = function() {
+    function closeAttendanceModal() {
         if (DOM.attendanceModal) {
             DOM.attendanceModal.style.display = 'none';
         }
-    };
+    }
 
     // ============================================================
     // FACE DETECTION - EXAM
@@ -3155,54 +3147,178 @@ window.startExam = async function() {
 
     console.log('✅ exam.js loaded with Retake/Continuation support');
 
+    // ============================================================
+    // END OF IIFE - CLOSE THE IIFE HERE
+    // ============================================================
 })();
 
 // ============================================================
-// EXPOSE FUNCTIONS TO GLOBAL WINDOW
+// EXPOSE ALL FUNCTIONS TO GLOBAL WINDOW (OUTSIDE IIFE)
 // ============================================================
 
-// Navigation
-window.renderQuestion = renderQuestion;
-window.prevQuestion = prevQuestion;
-window.nextQuestion = nextQuestion;
+console.log('🔧 Exposing functions to window...');
 
-// Submission
-window.submitExam = submitExam;
+window.renderQuestion = function(index) {
+    if (typeof renderQuestion === 'function') {
+        renderQuestion(index);
+    } else {
+        console.warn('⚠️ renderQuestion not available yet, trying to find it...');
+        // Try to find the function in the IIFE scope
+        if (window.examsModule && typeof window.examsModule.renderQuestion === 'function') {
+            window.examsModule.renderQuestion(index);
+        } else {
+            console.warn('⚠️ renderQuestion still not available');
+        }
+    }
+};
 
-// Review & Flagging
-window.toggleReviewMode = toggleReviewMode;
-window.toggleFlagQuestion = toggleFlagQuestion;
+window.prevQuestion = function() {
+    if (typeof prevQuestion === 'function') {
+        prevQuestion();
+    } else if (window.examsModule && typeof window.examsModule.prevQuestion === 'function') {
+        window.examsModule.prevQuestion();
+    } else {
+        console.warn('⚠️ prevQuestion not available');
+    }
+};
 
-// Overlays & Modals
-window.returnToExam = returnToExam;
-window.closeAttendanceModal = closeAttendanceModal;
+window.nextQuestion = function() {
+    if (typeof nextQuestion === 'function') {
+        nextQuestion();
+    } else if (window.examsModule && typeof window.examsModule.nextQuestion === 'function') {
+        window.examsModule.nextQuestion();
+    } else {
+        console.warn('⚠️ nextQuestion not available');
+    }
+};
 
-// Lobby Functions
-window.startExam = startExam;
-window.testCamera = testCamera;
-window.goToStep = goToStep;
-window.toggleTermsAgreed = toggleTermsAgreed;
+window.submitExam = function() {
+    if (typeof submitExam === 'function') {
+        submitExam();
+    } else if (window.examsModule && typeof window.examsModule.submitExam === 'function') {
+        window.examsModule.submitExam();
+    } else {
+        console.warn('⚠️ submitExam not available');
+    }
+};
 
-// Camera Retry (during exam)
+window.toggleReviewMode = function() {
+    if (typeof toggleReviewMode === 'function') {
+        toggleReviewMode();
+    } else if (window.examsModule && typeof window.examsModule.toggleReviewMode === 'function') {
+        window.examsModule.toggleReviewMode();
+    } else {
+        console.warn('⚠️ toggleReviewMode not available');
+    }
+};
+
+window.toggleFlagQuestion = function() {
+    if (typeof toggleFlagQuestion === 'function') {
+        toggleFlagQuestion();
+    } else if (window.examsModule && typeof window.examsModule.toggleFlagQuestion === 'function') {
+        window.examsModule.toggleFlagQuestion();
+    } else {
+        console.warn('⚠️ toggleFlagQuestion not available');
+    }
+};
+
+window.returnToExam = function() {
+    if (typeof returnToExam === 'function') {
+        returnToExam();
+    } else {
+        // Fallback
+        const overlay = document.getElementById('app-block-overlay');
+        if (overlay) overlay.style.display = 'none';
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => {});
+        }
+        window.focus();
+        if (typeof AppState !== 'undefined') {
+            AppState.blurCount = 0;
+            AppState.tabSwitchCount = 0;
+        }
+    }
+};
+
+window.closeAttendanceModal = function() {
+    if (typeof closeAttendanceModal === 'function') {
+        closeAttendanceModal();
+    } else {
+        const modal = document.getElementById('attendance-required-modal');
+        if (modal) modal.style.display = 'none';
+    }
+};
+
+window.startExam = function() {
+    if (typeof startExam === 'function') {
+        startExam();
+    } else if (window.examsModule && typeof window.examsModule.startExam === 'function') {
+        window.examsModule.startExam();
+    } else {
+        console.warn('⚠️ startExam not available');
+    }
+};
+
+window.testCamera = function() {
+    if (typeof testCamera === 'function') {
+        testCamera();
+    } else if (window.examsModule && typeof window.examsModule.testCamera === 'function') {
+        window.examsModule.testCamera();
+    } else {
+        console.warn('⚠️ testCamera not available');
+    }
+};
+
+window.goToStep = function(step) {
+    if (typeof goToStep === 'function') {
+        goToStep(step);
+    } else if (window.examsModule && typeof window.examsModule.goToStep === 'function') {
+        window.examsModule.goToStep(step);
+    } else {
+        console.warn('⚠️ goToStep not available');
+    }
+};
+
+window.toggleTermsAgreed = function() {
+    if (typeof toggleTermsAgreed === 'function') {
+        toggleTermsAgreed();
+    } else if (window.examsModule && typeof window.examsModule.toggleTermsAgreed === 'function') {
+        window.examsModule.toggleTermsAgreed();
+    } else {
+        console.warn('⚠️ toggleTermsAgreed not available');
+    }
+};
+
 window.retryCameraDuringExam = function() {
-    if (AppState.secureProctor) {
+    if (typeof AppState !== 'undefined' && AppState.secureProctor) {
         AppState.secureProctor.retryCamera();
     } else {
         showToast('❌ Face detection not initialized', 'error');
     }
 };
 
-// Toast
-window.showToast = showToast;
+window.showToast = function(message, type, duration) {
+    if (typeof showToast === 'function') {
+        showToast(message, type, duration);
+    } else {
+        alert(message);
+    }
+};
 
-// Keyboard Shortcuts Helper
-window.showKeyboardShortcuts = showKeyboardShortcuts;
+window.showKeyboardShortcuts = function() {
+    if (typeof showKeyboardShortcuts === 'function') {
+        showKeyboardShortcuts();
+    } else {
+        alert('⌨️ ← → Navigate | F Flag | Ctrl+S Save | Enter Submit');
+    }
+};
 
-console.log('✅ exam.js loaded with Retake/Continuation support');
+// Store the module reference for debugging
+window.examsModule = window.examsModule || {};
+
+console.log('✅ All functions exposed to window!');
 console.log('📋 Available functions:');
-console.log('   🔄 Navigation: renderQuestion, prevQuestion, nextQuestion');
-console.log('   📤 Submission: submitExam');
-console.log('   🚩 Review: toggleReviewMode, toggleFlagQuestion');
-console.log('   📋 Lobby: startExam, testCamera, goToStep, toggleTermsAgreed');
-console.log('   🔙 Overlays: returnToExam, closeAttendanceModal, retryCameraDuringExam');
-console.log('   💬 Toast: showToast');
+console.log('   renderQuestion, prevQuestion, nextQuestion, submitExam');
+console.log('   toggleReviewMode, toggleFlagQuestion, returnToExam');
+console.log('   closeAttendanceModal, retryCameraDuringExam, goToStep');
+console.log('   toggleTermsAgreed, testCamera, startExam, showToast');
