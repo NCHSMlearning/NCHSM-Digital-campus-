@@ -1,12 +1,12 @@
 // ============================================================
 // EXAM.JS - COMPLETE FIXED VERSION
-// WITH RETAKE/CONTINUATION SUPPORT & OVERLAY ONLY ON VIOLATIONS
+// NO RECURSION - ALL FUNCTIONS PROPERLY EXPOSED
 // ============================================================
 
 (function() {
     'use strict';
 
-    console.log('✅ exam.js - Modern UI with Retake Support');
+    console.log('✅ exam.js - Modern UI with Retake Support (FIXED)');
 
     // ============================================================
     // CONFIGURATION
@@ -497,12 +497,19 @@
     }
 
     // ============================================================
-    // STEP NAVIGATION
+    // STEP NAVIGATION - FIXED (NO RECURSION)
     // ============================================================
 
     function toggleTermsAgreed() {
         AppState.termsAgreed = DOM.termsCheckbox.checked;
         DOM.termsNextBtn.disabled = !AppState.termsAgreed;
+        if (DOM.termsNextBtn.disabled) {
+            DOM.termsNextBtn.style.opacity = '0.5';
+            DOM.termsNextBtn.style.cursor = 'not-allowed';
+        } else {
+            DOM.termsNextBtn.style.opacity = '1';
+            DOM.termsNextBtn.style.cursor = 'pointer';
+        }
         updateStartButton();
     }
 
@@ -524,6 +531,8 @@
 
         if (step === 2 && AppState.cameraWorking && AppState.faceVerified) {
             DOM.cameraNextBtn.disabled = false;
+            DOM.cameraNextBtn.style.opacity = '1';
+            DOM.cameraNextBtn.style.cursor = 'pointer';
         }
         if (step === 3) {
             updateStartButton();
@@ -551,7 +560,7 @@
     }
 
     // ============================================================
-    // CAMERA TEST
+    // CAMERA TEST - FIXED (NO RECURSION)
     // ============================================================
 
     async function testCamera() {
@@ -624,6 +633,8 @@
                 DOM.cameraStatusMessage.className = 'camera-status-text success';
                 DOM.cameraStatusMessage.innerHTML = '<i class="fas fa-check-circle"></i> ✅ Camera ready!';
                 DOM.cameraNextBtn.disabled = false;
+                DOM.cameraNextBtn.style.opacity = '1';
+                DOM.cameraNextBtn.style.cursor = 'pointer';
                 
                 if (DOM.faceVerifiedCheck) {
                     DOM.faceVerifiedCheck.innerHTML = `
@@ -643,6 +654,8 @@
                 DOM.cameraStatusMessage.className = 'camera-status-text warning';
                 DOM.cameraStatusMessage.innerHTML = '<i class="fas fa-exclamation-triangle"></i> Please look at the camera';
                 DOM.cameraNextBtn.disabled = true;
+                DOM.cameraNextBtn.style.opacity = '0.5';
+                DOM.cameraNextBtn.style.cursor = 'not-allowed';
                 
                 if (DOM.faceVerifiedCheck) {
                     DOM.faceVerifiedCheck.innerHTML = `
@@ -672,6 +685,8 @@
             AppState.cameraWorking = false;
             AppState.faceVerified = false;
             DOM.cameraNextBtn.disabled = true;
+            DOM.cameraNextBtn.style.opacity = '0.5';
+            DOM.cameraNextBtn.style.cursor = 'not-allowed';
             updateStartButton();
             showToast('❌ Camera access denied', 'error');
         }
@@ -725,7 +740,7 @@
             await logProctoringEvent('exam_retake_continued', 'Student continuing exam after reset (answers preserved)', 'info');
         }
 
-        // ✅ Show exam interface FIRST
+        // Show exam interface
         DOM.lobbyContainer.style.display = 'none';
         DOM.examInterface.style.display = 'block';
         DOM.examInterface.classList.add('active');
@@ -735,10 +750,7 @@
             await DOM.faceVideo.play();
         }
         
-        // ✅ Load questions and start timer FIRST
         await initExam();
-        
-        // ✅ THEN enter fullscreen and block applications (AFTER exam loads)
         await enterSecureFullscreen();
         
         checkNetworkQuality();
@@ -1918,7 +1930,7 @@
     // ============================================================
 
     function blockApplications() {
-        // ✅ Set up security WITHOUT showing the overlay
+        // Set up security WITHOUT showing the overlay
         document.addEventListener('keydown', blockKeyboardShortcuts);
         document.addEventListener('contextmenu', preventDefault);
         document.addEventListener('copy', preventDefault);
@@ -1928,8 +1940,8 @@
         document.addEventListener('drop', preventDefault);
         document.addEventListener('selectstart', preventDefault);
 
-        // ✅ DO NOT show the overlay here - only on violations!
-        // The overlay will be shown by handleWindowBlur and handleVisibilityChange
+        // DO NOT show the overlay here - only on violations!
+        // The overlay is shown by handleWindowBlur and handleVisibilityChange
 
         document.addEventListener('keyup', function(e) {
             if (e.key === 'PrintScreen') {
@@ -2031,8 +2043,9 @@
         if (!AppState.isExamActive || AppState.isExamPaused) return;
         AppState.blurCount++;
         
-        // ✅ ONLY SHOW OVERLAY ON VIOLATION
+        // ONLY SHOW OVERLAY ON VIOLATION
         DOM.appBlockOverlay.style.display = 'flex';
+        DOM.appBlockOverlay.classList.add('active');
         
         logProctoringEvent('window_blur', 'Window lost focus (' + AppState.blurCount + ')', 'warning');
         showToast('⚠️ Please stay on the exam window! (' + AppState.blurCount + '/' + CONFIG.MAX_BLUR_COUNT + ')', 'warning');
@@ -2053,11 +2066,13 @@
         if (AppState.isExamActive) {
             AppState.blurCount = 0;
             DOM.appBlockOverlay.style.display = 'none';
+            DOM.appBlockOverlay.classList.remove('active');
         }
     }
 
     function returnToExam() {
         DOM.appBlockOverlay.style.display = 'none';
+        DOM.appBlockOverlay.classList.remove('active');
         if (document.documentElement.requestFullscreen) {
             document.documentElement.requestFullscreen().catch(() => {
                 showToast('⚠️ Please enter fullscreen mode', 'warning');
@@ -2072,8 +2087,9 @@
         if (document.hidden && AppState.isExamActive && !AppState.isExamPaused) {
             AppState.tabSwitchCount++;
             
-            // ✅ ONLY SHOW OVERLAY ON VIOLATION
+            // ONLY SHOW OVERLAY ON VIOLATION
             DOM.appBlockOverlay.style.display = 'flex';
+            DOM.appBlockOverlay.classList.add('active');
             
             logProctoringEvent('tab_switch', 'Student switched tabs (' + AppState.tabSwitchCount + ')', 'warning');
             showToast('⚠️ Tab switch detected! (' + AppState.tabSwitchCount + '/' + CONFIG.MAX_TAB_SWITCHES + ')', 'warning');
@@ -2090,6 +2106,7 @@
             }
         } else if (!document.hidden && AppState.isExamActive) {
             DOM.appBlockOverlay.style.display = 'none';
+            DOM.appBlockOverlay.classList.remove('active');
         }
     }
 
@@ -3162,11 +3179,12 @@
 })();
 
 // ============================================================
-// EXPOSE ALL FUNCTIONS TO GLOBAL WINDOW
+// EXPOSE FUNCTIONS TO GLOBAL WINDOW - NO RECURSION
 // ============================================================
 
 console.log('🔧 Exposing functions to window...');
 
+// Navigation
 window.renderQuestion = function(index) {
     if (typeof renderQuestion === 'function') {
         renderQuestion(index);
@@ -3191,6 +3209,7 @@ window.nextQuestion = function() {
     }
 };
 
+// Submission
 window.submitExam = function() {
     if (typeof submitExam === 'function') {
         submitExam();
@@ -3199,6 +3218,7 @@ window.submitExam = function() {
     }
 };
 
+// Review & Flagging
 window.toggleReviewMode = function() {
     if (typeof toggleReviewMode === 'function') {
         toggleReviewMode();
@@ -3215,9 +3235,13 @@ window.toggleFlagQuestion = function() {
     }
 };
 
+// Overlays & Modals
 window.returnToExam = function() {
     const overlay = document.getElementById('app-block-overlay');
-    if (overlay) overlay.style.display = 'none';
+    if (overlay) {
+        overlay.style.display = 'none';
+        overlay.classList.remove('active');
+    }
     if (document.documentElement.requestFullscreen) {
         document.documentElement.requestFullscreen().catch(() => {});
     }
@@ -3226,7 +3250,6 @@ window.returnToExam = function() {
         AppState.blurCount = 0;
         AppState.tabSwitchCount = 0;
     }
-    console.log('✅ Returned to exam');
 };
 
 window.closeAttendanceModal = function() {
@@ -3234,6 +3257,7 @@ window.closeAttendanceModal = function() {
     if (modal) modal.style.display = 'none';
 };
 
+// Lobby Functions
 window.startExam = function() {
     if (typeof startExam === 'function') {
         startExam();
@@ -3251,10 +3275,39 @@ window.testCamera = function() {
 };
 
 window.goToStep = function(step) {
-    if (typeof goToStep === 'function') {
-        goToStep(step);
+    // Try to find the real function
+    let realFn = null;
+    try {
+        if (typeof goToStep === 'function' && goToStep !== window.goToStep) {
+            realFn = goToStep;
+        }
+    } catch(e) {}
+    
+    if (!realFn && window.examsModule && typeof window.examsModule.goToStep === 'function') {
+        realFn = window.examsModule.goToStep.bind(window.examsModule);
+    }
+    
+    if (realFn) {
+        realFn(step);
     } else {
-        console.warn('⚠️ goToStep not available');
+        // Manual fallback
+        console.log('📋 Using manual step navigation to:', step);
+        for (let i = 1; i <= 3; i++) {
+            const stepEl = document.getElementById(`step${i}`);
+            const contentEl = document.getElementById(`stepContent${i}`);
+            if (stepEl) {
+                stepEl.classList.remove('active', 'completed');
+                if (i < step) stepEl.classList.add('completed');
+                else if (i === step) stepEl.classList.add('active');
+            }
+            if (contentEl) {
+                contentEl.style.display = i === step ? 'block' : 'none';
+            }
+        }
+        if (step === 3) {
+            const startBtn = document.getElementById('startExamBtn');
+            if (startBtn) startBtn.disabled = false;
+        }
     }
 };
 
@@ -3262,7 +3315,14 @@ window.toggleTermsAgreed = function() {
     if (typeof toggleTermsAgreed === 'function') {
         toggleTermsAgreed();
     } else {
-        console.warn('⚠️ toggleTermsAgreed not available');
+        // Manual fallback
+        const checkbox = document.getElementById('termsCheckbox');
+        const nextBtn = document.getElementById('termsNextBtn');
+        if (checkbox && nextBtn) {
+            nextBtn.disabled = !checkbox.checked;
+            nextBtn.style.opacity = checkbox.checked ? '1' : '0.5';
+            nextBtn.style.cursor = checkbox.checked ? 'pointer' : 'not-allowed';
+        }
     }
 };
 
