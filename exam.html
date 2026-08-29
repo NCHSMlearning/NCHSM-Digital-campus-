@@ -15,97 +15,111 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <!-- External Styles -->
+    <!-- External Styles (minimal - just for base) -->
     <link rel="stylesheet" href="exam.css">
 </head>
 <body>
 
     <!-- ============================================================
-    LOBBY SECTION - ONE CAMERA TEST HERE
+    LOBBY SECTION - MODERN DESIGN (INLINE STYLES)
     ============================================================ -->
-    <div class="lobby-container active" id="lobbyContainer">
+    <div class="lobby-container active" id="lobbyContainer" style="display:none; max-width:720px; margin:0 auto; padding:20px; min-height:100vh; background:white; box-shadow:0 0 40px rgba(0,0,0,0.05);">
+        
         <!-- Lobby Header -->
-        <div class="lobby-header">
-            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
-            <h1>📝 Exam Lobby</h1>
-            <p>Complete the steps below to start your exam</p>
+        <div style="text-align:center; padding:20px 0 16px; border-bottom:2px solid #f1f5f9;">
+            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="height:60px; margin-bottom:8px;">
+            <h1 style="font-size:1.5rem; color:#0A3D62; font-weight:700; margin:0;">📝 Exam Lobby</h1>
+            <p style="color:#94a3b8; font-size:0.9rem; margin:4px 0 0 0;">Complete the steps below to start your exam</p>
+        </div>
+
+        <!-- Continuation Badge (hidden by default) -->
+        <div id="continuationBadge" style="display:none; text-align:center; margin:10px auto 0;">
+            <span style="background:linear-gradient(135deg, #EDE9FE, #E0D4F5); color:#5B21B6; padding:10px 24px; border-radius:30px; font-size:0.9rem; font-weight:600; display:inline-flex; align-items:center; gap:10px; border:2px solid #8B5CF6; box-shadow:0 2px 10px rgba(139,92,246,0.2);">
+                <i class="fas fa-redo" style="color:#8B5CF6;"></i> 🔄 Continuation Exam - Your answers are preserved
+            </span>
         </div>
 
         <!-- Exam Info Card -->
-        <div class="exam-info-card">
+        <div style="background:linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius:14px; padding:18px 22px; margin:16px 0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; border:1px solid #e2e8f0;">
             <div>
-                <div class="exam-title" id="examTitle">Loading Exam...</div>
-                <div class="exam-meta">
-                    <span><i class="fas fa-clock"></i> <span id="examDuration">--</span> min</span>
-                    <span><i class="fas fa-question-circle"></i> <span id="examQuestions">--</span> Questions</span>
-                    <span><i class="fas fa-trophy"></i> Pass: <span id="examPassMark">--</span>%</span>
+                <div style="font-size:1.1rem; font-weight:700; color:#0A3D62;" id="examTitle">Loading Exam...</div>
+                <div style="display:flex; gap:16px; flex-wrap:wrap; font-size:0.85rem; color:#64748b; margin-top:4px;">
+                    <span style="display:flex; align-items:center; gap:4px;"><i class="fas fa-clock"></i> <span id="examDuration">--</span> min</span>
+                    <span style="display:flex; align-items:center; gap:4px;"><i class="fas fa-question-circle"></i> <span id="examQuestions">--</span> Questions</span>
+                    <span style="display:flex; align-items:center; gap:4px;"><i class="fas fa-trophy"></i> Pass: <span id="examPassMark">--</span>%</span>
                 </div>
             </div>
-            <div class="proctored-badge">
+            <div style="background:#dbeafe; color:#1e40af; padding:6px 16px; border-radius:20px; font-size:0.75rem; font-weight:600; display:flex; align-items:center; gap:6px; border:1px solid #93c5fd;">
                 <i class="fas fa-shield-alt"></i> Proctored
             </div>
         </div>
 
         <!-- Student Info -->
-        <div class="student-info">
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(140px, 1fr)); gap:12px; background:#f8fafc; border-radius:12px; padding:14px 18px; margin:12px 0 16px; border:1px solid #e2e8f0;">
             <div>
-                <div class="label">👤 Student</div>
-                <div class="value" id="studentName">Loading...</div>
+                <div style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.3px; font-weight:600;">👤 Student</div>
+                <div style="font-size:0.9rem; font-weight:600; color:#0A3D62;" id="studentName">Loading...</div>
             </div>
             <div>
-                <div class="label">🆔 Registration</div>
-                <div class="value" id="studentReg">Loading...</div>
+                <div style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.3px; font-weight:600;">🆔 Registration</div>
+                <div style="font-size:0.9rem; font-weight:600; color:#0A3D62;" id="studentReg">Loading...</div>
             </div>
             <div>
-                <div class="label">📚 Program</div>
-                <div class="value" id="studentProgram">Loading...</div>
+                <div style="font-size:0.65rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.3px; font-weight:600;">📚 Program</div>
+                <div style="font-size:0.9rem; font-weight:600; color:#0A3D62;" id="studentProgram">Loading...</div>
             </div>
         </div>
 
+        <!-- Retake Instructions -->
+        <div id="retakeInstructions" style="display:none; background:#EDE9FE; border-radius:12px; padding:16px 20px; margin:12px 0; border-left:4px solid #8B5CF6;">
+            <h4 style="color:#5B21B6; margin:0 0 8px 0;"><i class="fas fa-redo"></i> Continuation Exam</h4>
+            <p style="margin:4px 0; font-size:0.9rem; color:#4B2D7E;">✅ Your previous answers are preserved.<br>✅ Continue from where you left off.<br>✅ You have the full time to complete.<br>✅ <strong>Total attempts:</strong> <span id="retakeAttemptCount">1</span></p>
+        </div>
+
         <!-- Steps Indicator -->
-        <div class="steps-indicator">
-            <div class="step active" id="step1">
-                <span class="step-number">1</span> Terms
+        <div style="display:flex; justify-content:center; gap:0; margin:16px 0 20px; background:#f1f5f9; border-radius:30px; padding:4px;">
+            <div class="step active" id="step1" style="flex:1; text-align:center; padding:10px 8px; border-radius:26px; font-size:0.8rem; font-weight:500; color:#0A3D62; cursor:default; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:6px;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#0A3D62; color:white; font-weight:700; font-size:0.7rem;">1</span> Terms
             </div>
-            <div class="step" id="step2">
-                <span class="step-number">2</span> Camera Test
+            <div class="step" id="step2" style="flex:1; text-align:center; padding:10px 8px; border-radius:26px; font-size:0.8rem; font-weight:500; color:#94a3b8; cursor:default; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:6px;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#e2e8f0; color:#94a3b8; font-weight:700; font-size:0.7rem;">2</span> Camera Test
             </div>
-            <div class="step" id="step3">
-                <span class="step-number">3</span> Ready
+            <div class="step" id="step3" style="flex:1; text-align:center; padding:10px 8px; border-radius:26px; font-size:0.8rem; font-weight:500; color:#94a3b8; cursor:default; transition:all 0.3s; display:flex; align-items:center; justify-content:center; gap:6px;">
+                <span style="display:inline-flex; align-items:center; justify-content:center; width:26px; height:26px; border-radius:50%; background:#e2e8f0; color:#94a3b8; font-weight:700; font-size:0.7rem;">3</span> Ready
             </div>
         </div>
 
         <!-- STEP 1: TERMS -->
-        <div class="step-content active" id="stepContent1">
-            <div class="terms-box">
-                <h3><i class="fas fa-file-contract"></i> Exam Terms & Conditions</h3>
-                <ul>
-                    <li><i class="fas fa-video"></i> Camera will be active throughout the exam</li>
-                    <li><i class="fas fa-ban"></i> No switching tabs or applications</li>
-                    <li><i class="fas fa-user-check"></i> Only the registered student may take the exam</li>
-                    <li><i class="fas fa-clock"></i> Exam will auto-submit when timer ends</li>
-                    <li><i class="fas fa-eye"></i> Your screen and camera are being monitored</li>
-                    <li><i class="fas fa-check check"></i> Results will be released after admin review</li>
-                    <li><i class="fas fa-user-check" style="color:#DC2626;"></i> <strong>Face must be visible at all times</strong></li>
-                    <li><i class="fas fa-clipboard-check" style="color:#0A3D62;"></i> <strong>Attendance will be recorded upon submission</strong></li>
+        <div class="step-content active" id="stepContent1" style="display:block; animation:fadeIn 0.4s ease;">
+            <div style="background:#f8fafc; border-radius:12px; padding:20px 24px; border:1px solid #e2e8f0; margin-bottom:16px;">
+                <h3 style="color:#0A3D62; margin-bottom:12px; font-size:1rem;"><i class="fas fa-file-contract"></i> Exam Terms & Conditions</h3>
+                <ul style="list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:6px 16px;">
+                    <li style="padding:4px 0; font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:8px;"><i class="fas fa-video" style="width:18px; color:#0A3D62;"></i> Camera will be active throughout the exam</li>
+                    <li style="padding:4px 0; font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:8px;"><i class="fas fa-ban" style="width:18px; color:#0A3D62;"></i> No switching tabs or applications</li>
+                    <li style="padding:4px 0; font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:8px;"><i class="fas fa-user-check" style="width:18px; color:#0A3D62;"></i> Only the registered student may take the exam</li>
+                    <li style="padding:4px 0; font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:8px;"><i class="fas fa-clock" style="width:18px; color:#0A3D62;"></i> Exam will auto-submit when timer ends</li>
+                    <li style="padding:4px 0; font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:8px;"><i class="fas fa-eye" style="width:18px; color:#0A3D62;"></i> Your screen and camera are being monitored</li>
+                    <li style="padding:4px 0; font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:8px;"><i class="fas fa-check check" style="width:18px; color:#10b981;"></i> Results will be released after admin review</li>
+                    <li style="padding:4px 0; font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:8px;"><i class="fas fa-user-check" style="width:18px; color:#DC2626;"></i> <strong>Face must be visible at all times</strong></li>
+                    <li style="padding:4px 0; font-size:0.85rem; color:#475569; display:flex; align-items:center; gap:8px;"><i class="fas fa-clipboard-check" style="width:18px; color:#0A3D62;"></i> <strong>Attendance will be recorded upon submission</strong></li>
                 </ul>
             </div>
-            <div class="terms-agreement">
-                <input type="checkbox" id="termsCheckbox" onchange="window.toggleTermsAgreed()">
-                <label for="termsCheckbox">I have read and agree to the terms and conditions</label>
+            <div style="display:flex; align-items:center; gap:10px; margin:12px 0 16px; padding:12px 16px; background:#f0fdf4; border-radius:10px; border:1px solid #86efac;">
+                <input type="checkbox" id="termsCheckbox" onchange="window.toggleTermsAgreed()" style="width:18px; height:18px; accent-color:#10b981; cursor:pointer;">
+                <label for="termsCheckbox" style="font-size:0.9rem; font-weight:500; color:#065f46; cursor:pointer;">I have read and agree to the terms and conditions</label>
             </div>
-            <button class="btn-next" id="termsNextBtn" disabled onclick="window.goToStep(2)">
-                Next <i class="fas fa-arrow-right btn-icon"></i>
+            <button class="btn-next" id="termsNextBtn" disabled onclick="window.goToStep(2)" style="background:linear-gradient(135deg, #0A3D62, #1a5a7a); color:white; border:none; padding:12px 28px; border-radius:30px; font-weight:600; font-size:0.95rem; cursor:pointer; transition:all 0.3s; display:inline-flex; align-items:center; gap:8px; float:right; box-shadow:0 2px 10px rgba(10,61,98,0.2); opacity:0.5; cursor:not-allowed;">
+                Next <i class="fas fa-arrow-right" style="font-size:0.8rem;"></i>
             </button>
         </div>
 
-        <!-- STEP 2: CAMERA TEST (ONLY CAMERA TEST) -->
-        <div class="step-content" id="stepContent2">
-            <div class="camera-preview" id="cameraPreview">
-                <video id="cameraVideo" autoplay muted playsinline></video>
-                <div class="camera-overlay">
+        <!-- STEP 2: CAMERA TEST -->
+        <div class="step-content" id="stepContent2" style="display:none; animation:fadeIn 0.4s ease;">
+            <div style="position:relative; background:#0f172a; border-radius:14px; overflow:hidden; aspect-ratio:16/9; margin-bottom:12px; border:2px solid #e2e8f0;">
+                <video id="cameraVideo" autoplay muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(0,0,0,0.7)); padding:16px 20px; display:flex; justify-content:space-between; align-items:center; color:white; font-size:0.85rem;">
                     <div>
-                        <span class="status-dot inactive" id="cameraStatusDot"></span>
+                        <span class="status-dot inactive" id="cameraStatusDot" style="display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:#94a3b8;"></span>
                         <span id="cameraStatusText">Camera inactive</span>
                     </div>
                     <div>
@@ -114,62 +128,62 @@
                 </div>
             </div>
 
-            <div id="cameraStatusMessage" class="camera-status-text info">
+            <div id="cameraStatusMessage" class="camera-status-text info" style="padding:10px 16px; border-radius:10px; margin-bottom:12px; font-size:0.85rem; display:flex; align-items:center; gap:10px; background:#dbeafe; color:#1e40af;">
                 <i class="fas fa-info-circle"></i> Click "Test Camera" to begin
             </div>
 
-            <div class="camera-controls">
-                <button class="btn-test" id="testCameraBtn" onclick="window.testCamera()">
+            <div style="display:flex; gap:12px; flex-wrap:wrap; margin-bottom:16px;">
+                <button class="btn-test" id="testCameraBtn" onclick="window.testCamera()" style="background:linear-gradient(135deg, #0A3D62, #1a5a7a); color:white; border:none; padding:10px 24px; border-radius:30px; font-weight:600; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; gap:8px;">
                     <i class="fas fa-camera"></i> Test Camera
                 </button>
-                <button class="btn-retry" id="retryCameraBtn" onclick="window.testCamera()" style="display:none;">
+                <button class="btn-retry" id="retryCameraBtn" onclick="window.testCamera()" style="display:none; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:10px 24px; border-radius:30px; font-weight:600; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; gap:8px;">
                     <i class="fas fa-redo"></i> Retry Camera
                 </button>
             </div>
 
-            <button class="btn-next" id="cameraNextBtn" disabled onclick="window.goToStep(3)">
-                Next <i class="fas fa-arrow-right btn-icon"></i>
+            <button class="btn-next" id="cameraNextBtn" disabled onclick="window.goToStep(3)" style="background:linear-gradient(135deg, #0A3D62, #1a5a7a); color:white; border:none; padding:12px 28px; border-radius:30px; font-weight:600; font-size:0.95rem; cursor:pointer; transition:all 0.3s; display:inline-flex; align-items:center; gap:8px; float:right; box-shadow:0 2px 10px rgba(10,61,98,0.2); opacity:0.5; cursor:not-allowed;">
+                Next <i class="fas fa-arrow-right" style="font-size:0.8rem;"></i>
             </button>
         </div>
 
         <!-- STEP 3: READY -->
-        <div class="step-content" id="stepContent3">
-            <div class="ready-container">
-                <div class="ready-icon">🚀</div>
-                <h2 class="ready-title">You're Almost There!</h2>
-                <p class="ready-subtitle">
+        <div class="step-content" id="stepContent3" style="display:none; animation:fadeIn 0.4s ease;">
+            <div style="text-align:center; padding:10px 0;">
+                <div style="font-size:3rem; margin-bottom:8px;">🚀</div>
+                <h2 style="font-size:1.3rem; color:#0A3D62; font-weight:700;">You're Almost There!</h2>
+                <p style="color:#64748b; font-size:0.9rem; margin-bottom:16px;">
                     Your camera is working and you've accepted the terms.<br>
                     Take a moment to prepare yourself for success.
                 </p>
 
-                <div class="ready-check-list">
-                    <div class="check-item">
-                        <span class="check-icon verified"><i class="fas fa-check-circle"></i></span>
+                <div style="display:flex; flex-direction:column; gap:8px; max-width:400px; margin:0 auto 16px; text-align:left;">
+                    <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:#f8fafc; border-radius:10px; font-size:0.9rem;">
+                        <span style="color:#10b981; font-size:1.1rem;"><i class="fas fa-check-circle"></i></span>
                         <span>✅ Terms & Conditions accepted</span>
                     </div>
-                    <div class="check-item">
-                        <span class="check-icon verified"><i class="fas fa-check-circle"></i></span>
+                    <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:#f8fafc; border-radius:10px; font-size:0.9rem;">
+                        <span style="color:#10b981; font-size:1.1rem;"><i class="fas fa-check-circle"></i></span>
                         <span>✅ Camera is working perfectly</span>
                     </div>
-                    <div class="check-item" id="faceVerifiedCheck">
-                        <span class="check-icon pending"><i class="fas fa-circle"></i></span>
+                    <div style="display:flex; align-items:center; gap:10px; padding:8px 14px; background:#f8fafc; border-radius:10px; font-size:0.9rem;" id="faceVerifiedCheck">
+                        <span style="color:#f59e0b; font-size:1.1rem; animation:pulse-dot 1s infinite;"><i class="fas fa-circle"></i></span>
                         <span>🔍 Verifying your face...</span>
                     </div>
                 </div>
 
-                <div class="ready-motivation">
-                    <div class="quote-text">
+                <div style="background:linear-gradient(135deg, #f0fdf4, #ecfdf5); border-radius:12px; padding:16px 20px; margin:12px 0; border:1px solid #86efac;">
+                    <div style="font-size:0.95rem; color:#065f46; font-style:italic;">
                         "Believe in yourself! You've prepared for this moment.<br>
-                        <span>You are capable, focused, and ready to succeed.</span>"
+                        <span style="font-weight:600;">You are capable, focused, and ready to succeed.</span>"
                     </div>
-                    <div style="font-size:0.8rem;color:#64748B;margin-top:6px;">— NCHSM Examination Team</div>
+                    <div style="font-size:0.8rem; color:#64748B; margin-top:6px;">— NCHSM Examination Team</div>
                 </div>
 
-                <div class="ready-breath-container">
-                    <div class="breath-circle">
+                <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin:12px 0; padding:12px; background:#f8fafc; border-radius:12px; border:1px dashed #e2e8f0;">
+                    <div style="width:50px; height:50px; border-radius:50%; background:linear-gradient(135deg, #0A3D62, #1a5a7a); display:flex; align-items:center; justify-content:center; color:white; font-size:1.3rem; animation:breathe 3s ease-in-out infinite;">
                         <i class="fas fa-lungs"></i>
                     </div>
-                    <div class="breath-text">
+                    <div style="font-size:0.9rem; color:#475569; text-align:left;">
                         <strong>Take a deep breath...</strong><br>
                         Inhale confidence, exhale doubt.<br>
                         <span style="font-size:0.75rem; color:#94A3B8;">You've got this! ✨</span>
@@ -183,26 +197,26 @@
                     Once you click "Start Exam", your time begins.
                 </div>
 
-                <button class="btn-start-exam" id="startExamBtn" onclick="window.startExam()" disabled>
-                    <span class="btn-icon">🎯</span>
-                    <span>I'm Ready! Start My Exam</span>
+                <button class="btn-start-exam" id="startExamBtn" onclick="window.startExam()" disabled style="background:linear-gradient(135deg, #10b981, #059669); color:white; border:none; padding:14px 36px; border-radius:30px; font-weight:700; font-size:1.05rem; cursor:pointer; transition:all 0.3s; display:inline-flex; align-items:center; gap:12px; box-shadow:0 4px 20px rgba(5,150,105,0.35); margin:8px 0; opacity:0.5; cursor:not-allowed;">
+                    <span style="font-size:1.1rem;">🎯</span>
+                    <span id="startExamText">I'm Ready! Start My Exam</span>
                     <i class="fas fa-arrow-right"></i>
                 </button>
 
-                <div class="start-exam-info">
+                <div style="font-size:0.8rem; color:#64748b; margin:8px 0;">
                     <i class="fas fa-shield-alt"></i> Proctoring will begin immediately
                 </div>
-                <div class="start-exam-warning">
+                <div style="font-size:0.8rem; color:#dc2626; font-weight:500;">
                     <i class="fas fa-exclamation-triangle"></i> Face must be visible at all times
                 </div>
 
-                <div class="ready-fun-fact">
-                    <i class="fas fa-lightbulb"></i>
+                <div style="background:#fef3c7; border-radius:10px; padding:12px 18px; margin:12px 0; font-size:0.85rem; color:#92400e; display:flex; align-items:center; gap:10px; border:1px solid #fcd34d;">
+                    <i class="fas fa-lightbulb" style="font-size:1.2rem; color:#f59e0b;"></i>
                     <span id="funFact">💡 Did you know? Studies show that a positive mindset before an exam can improve performance by up to 15%!</span>
                 </div>
 
-                <div class="ready-progress-ring">
-                    <span class="ring-dot"></span>
+                <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:12px;">
+                    <span style="width:8px; height:8px; border-radius:50%; background:#10b981; animation:pulse-dot 1.5s infinite;"></span>
                     <span style="font-size:0.75rem; color:#94A3B8;">Ready when you are...</span>
                 </div>
             </div>
@@ -210,292 +224,264 @@
     </div>
 
     <!-- ============================================================
-    EXAM INTERFACE - 3-COLUMN LAYOUT (NO CAMERA TEST BUTTONS)
+    EXAM INTERFACE - MODERN DESIGN (INLINE STYLES)
     ============================================================ -->
-    <div class="exam-interface" id="examInterface">
-        <div class="page-wrapper">
-            
-            <!-- LEFT PANEL -->
-            <div class="left-panel">
-                <div class="student-info-card" id="studentInfoCard">
-                    <h4>👤 Student</h4>
-                    <p id="examStudentName">Loading...</p>
-                    <div class="student-reg" id="examStudentReg">ID: Loading...</div>
-                </div>
+    <div class="exam-interface" id="examInterface" style="display:none; max-width:1200px; margin:0 auto; padding:16px 20px 30px; min-height:100vh;">
 
-                <div class="timer-display" id="timerDisplay">
-                    <div class="timer-label">⏱️ Time Remaining</div>
-                    <div class="timer-time" id="timer">00:00</div>
+        <!-- ✅ HEADER - Gradient like Marks Entry -->
+        <div style="background:linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius:16px; padding:18px 24px; margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; box-shadow:0 4px 20px rgba(10,61,98,0.25);">
+            <div>
+                <h2 style="color:white; margin:0; font-weight:700; font-size:1.1rem; display:flex; align-items:center; gap:10px;">
+                    <i class="fas fa-graduation-cap" style="color:#FDB913;"></i> <span id="exam-title">Examination</span>
+                </h2>
+                <p style="color:rgba(255,255,255,0.85); margin:2px 0 0 0; font-size:0.8rem;">
+                    <i class="fas fa-user" style="margin-right:4px;"></i> <span id="examStudentName">Student</span> &nbsp;|&nbsp; 
+                    <i class="fas fa-id-card" style="margin-right:4px;"></i> <span id="examStudentReg">ID</span>
+                </p>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+                <!-- Timer Badge -->
+                <div style="background:rgba(255,255,255,0.15); padding:6px 16px; border-radius:10px; display:flex; align-items:center; gap:10px; border:1px solid rgba(255,255,255,0.1);">
+                    <i class="fas fa-clock" style="color:#FDB913; font-size:0.9rem;"></i>
+                    <span style="color:white; font-weight:700; font-size:1.1rem; font-family:monospace;" id="timerDisplayHeader">00:00</span>
                 </div>
-
-                <!-- Camera Feed - DISPLAY ONLY, NO TEST BUTTONS -->
-                <div class="camera-container" id="cameraContainer">
-                    <video id="face-video" autoplay muted playsinline></video>
-                    <canvas id="face-canvas"></canvas>
-                    <div class="camera-status-overlay">
-                        <div class="status-badge">
-                            <span class="status-dot inactive" id="examStatusDot"></span>
-                            <span id="examStatusText">Initializing...</span>
-                        </div>
-                        <div class="face-count" id="examFaceCount">👤 0 faces</div>
-                    </div>
+                <!-- Proctoring Status -->
+                <div style="background:rgba(255,255,255,0.1); padding:5px 14px; border-radius:20px; display:flex; align-items:center; gap:8px; font-size:0.75rem; color:rgba(255,255,255,0.9);">
+                    <span id="examStatusDot" style="width:10px; height:10px; border-radius:50%; background:#10b981; display:inline-block;"></span>
+                    <span id="examStatusText">Active</span>
                 </div>
-
-                <div class="proctoring-status">
-                    <span class="status-label">🛡️ Proctoring:</span>
-                    <span class="status-value active" id="proctoringStatusText">Active</span>
-                </div>
-
-                <div class="network-status" id="networkIndicator">
-                    <i class="fas fa-wifi"></i> Online
+                <!-- Face Count -->
+                <div style="background:rgba(255,255,255,0.1); padding:5px 14px; border-radius:20px; display:flex; align-items:center; gap:8px; font-size:0.75rem; color:rgba(255,255,255,0.9);">
+                    <i class="fas fa-user" style="color:#60a5fa; font-size:0.7rem;"></i>
+                    <span id="examFaceCount">👤 1 face</span>
                 </div>
             </div>
+        </div>
 
-            <!-- MIDDLE PANEL -->
-            <div class="middle-panel">
-                <div class="question-header">
-                    <h2 id="exam-title">📝 Examination</h2>
-                    <button class="flag-btn" id="flag-question-btn" onclick="window.toggleFlagQuestion()">
-                        <i class="far fa-flag"></i> Flag
-                    </button>
+        <!-- ✅ STATS CARDS - Like Marks Entry -->
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(130px, 1fr)); gap:12px; margin-bottom:20px;">
+            <!-- Answered -->
+            <div style="border-top:4px solid #10b981; background:white; border-radius:10px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:all 0.2s;">
+                <div style="display:flex; align-items:center; gap:8px; font-size:0.65rem; color:#94a3b8; font-weight:500; text-transform:uppercase; letter-spacing:0.3px;">
+                    <i class="fas fa-check-circle" style="color:#10b981;"></i> Answered
                 </div>
+                <p style="font-size:1.5rem; font-weight:700; color:#059669; margin:2px 0 0 0;" id="statsAnswered">0/0</p>
+            </div>
+            <!-- Flagged -->
+            <div style="border-top:4px solid #f59e0b; background:white; border-radius:10px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:all 0.2s;">
+                <div style="display:flex; align-items:center; gap:8px; font-size:0.65rem; color:#94a3b8; font-weight:500; text-transform:uppercase; letter-spacing:0.3px;">
+                    <i class="fas fa-flag" style="color:#f59e0b;"></i> Flagged
+                </div>
+                <p style="font-size:1.5rem; font-weight:700; color:#d97706; margin:2px 0 0 0;" id="statsFlagged">0</p>
+            </div>
+            <!-- Face Status -->
+            <div style="border-top:4px solid #3b82f6; background:white; border-radius:10px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:all 0.2s;">
+                <div style="display:flex; align-items:center; gap:8px; font-size:0.65rem; color:#94a3b8; font-weight:500; text-transform:uppercase; letter-spacing:0.3px;">
+                    <i class="fas fa-user-check" style="color:#3b82f6;"></i> Face
+                </div>
+                <p style="font-size:1.5rem; font-weight:700; color:#2563eb; margin:2px 0 0 0;" id="statsFace">✅ OK</p>
+            </div>
+            <!-- Progress -->
+            <div style="border-top:4px solid #8b5cf6; background:white; border-radius:10px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:all 0.2s;">
+                <div style="display:flex; align-items:center; gap:8px; font-size:0.65rem; color:#94a3b8; font-weight:500; text-transform:uppercase; letter-spacing:0.3px;">
+                    <i class="fas fa-chart-line" style="color:#8b5cf6;"></i> Progress
+                </div>
+                <p style="font-size:1.5rem; font-weight:700; color:#6d28d9; margin:2px 0 0 0;" id="statsProgress">0%</p>
+            </div>
+            <!-- Unanswered -->
+            <div style="border-top:4px solid #ef4444; background:white; border-radius:10px; padding:14px 16px; box-shadow:0 1px 3px rgba(0,0,0,0.06); transition:all 0.2s;">
+                <div style="display:flex; align-items:center; gap:8px; font-size:0.65rem; color:#94a3b8; font-weight:500; text-transform:uppercase; letter-spacing:0.3px;">
+                    <i class="fas fa-exclamation-circle" style="color:#ef4444;"></i> Unanswered
+                </div>
+                <p style="font-size:1.5rem; font-weight:700; color:#dc2626; margin:2px 0 0 0;" id="statsUnanswered">0</p>
+            </div>
+        </div>
 
-                <div class="progress-container">
-                    <div class="progress-text">Question <span id="current">0</span> of <span id="total">0</span></div>
-                    <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
-                    <div class="progress-percentage" id="progress-percentage">0% completed</div>
-                </div>
+        <!-- ✅ QUESTION PROGRESS BAR -->
+        <div style="background:#f8fafc; padding:12px 20px; border-radius:12px; margin-bottom:16px; border:1px solid #e2e8f0; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <span style="font-weight:700; color:#0A3D62; font-size:0.85rem;"><i class="fas fa-book-open"></i> Question:</span>
+                <span style="font-weight:600; color:#1e293b; font-size:0.9rem;"><span id="current">0</span> of <span id="total">0</span></span>
+            </div>
+            <div style="flex:1; min-width:100px; max-width:300px; height:6px; background:#e2e8f0; border-radius:10px; overflow:hidden;">
+                <div id="progress-fill" style="width:0%; height:100%; background:linear-gradient(90deg, #10b981, #059669); border-radius:10px; transition:width 0.5s ease;"></div>
+            </div>
+            <span style="font-size:0.8rem; font-weight:600; color:#94a3b8; min-width:45px; text-align:right;" id="progress-percentage">0%</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <button id="flag-question-btn" onclick="window.toggleFlagQuestion()" style="background:#fef3c7; color:#92400e; border:none; padding:5px 14px; border-radius:20px; font-weight:600; font-size:0.75rem; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
+                    <i class="far fa-flag"></i> Flag
+                </button>
+                <button onclick="window.toggleReviewMode()" style="background:#e0e7ff; color:#3730a3; border:none; padding:5px 14px; border-radius:20px; font-weight:600; font-size:0.75rem; cursor:pointer; display:flex; align-items:center; gap:6px; transition:all 0.2s;">
+                    <i class="fas fa-list"></i> Review
+                </button>
+            </div>
+        </div>
 
-                <div class="question-area-scroll" id="question-area">
-                    <div id="exam-container">Loading question...</div>
-                    <div id="answer-saved">✅ Answer saved!</div>
-                </div>
+        <!-- ✅ QUESTION AREA -->
+        <div style="background:white; border-radius:14px; padding:24px 28px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #e2e8f0; min-height:280px; margin-bottom:16px;">
+            <div id="exam-container" style="font-size:1.05rem; font-weight:500; color:#1e293b; line-height:1.7;">
+                Loading question...
+            </div>
+            <div id="answer-saved" style="display:none; color:#059669; font-weight:600; font-size:0.85rem; margin-top:12px; padding:8px 16px; background:#f0fdf4; border-radius:8px; border:1px solid #86efac;">
+                ✅ Answer saved!
+            </div>
+        </div>
 
-                <div class="nav-buttons">
-                    <div class="left-nav">
-                        <button id="prev-btn" disabled>← Previous</button>
-                        <button id="next-btn" disabled>Next →</button>
-                    </div>
-                    <div class="right-nav">
-                        <button id="submit-exam-btn" disabled>
-                            <span id="submit-text">Submit Exam</span>
-                            <span id="submit-spinner" style="display:none;">
-                                <i class="fas fa-spinner fa-spin"></i>
-                            </span>
-                        </button>
-                    </div>
-                </div>
+        <!-- ✅ NAVIGATION -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:16px;">
+            <div style="display:flex; gap:10px;">
+                <button id="prev-btn" disabled style="background:#f1f5f9; color:#64748b; border:none; padding:10px 20px; border-radius:10px; font-weight:600; font-size:0.9rem; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:8px; opacity:0.4; cursor:not-allowed;">
+                    <i class="fas fa-chevron-left"></i> Previous
+                </button>
+                <button id="next-btn" disabled style="background:#0A3D62; color:white; border:none; padding:10px 20px; border-radius:10px; font-weight:600; font-size:0.9rem; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:8px; opacity:0.4; cursor:not-allowed;">
+                    Next <i class="fas fa-chevron-right"></i>
+                </button>
+            </div>
+            <div>
+                <button id="submit-exam-btn" disabled style="background:linear-gradient(135deg, #10b981, #059669); color:white; border:none; padding:10px 24px; border-radius:10px; font-weight:700; font-size:0.9rem; cursor:pointer; transition:all 0.2s; display:flex; align-items:center; gap:8px; box-shadow:0 2px 10px rgba(5,150,105,0.25); opacity:0.4; cursor:not-allowed;">
+                    <span id="submit-text"><i class="fas fa-paper-plane"></i> Submit Exam</span>
+                    <span id="submit-spinner" style="display:none;"><i class="fas fa-spinner fa-spin"></i></span>
+                </button>
+            </div>
+        </div>
 
-                <div class="auto-save-status" id="auto-save-status">
-                    <i class="fas fa-check-circle"></i> Auto-saved
-                </div>
-
-                <div class="keyboard-shortcuts">
-                    <span><kbd>←</kbd> Previous</span>
-                    <span><kbd>→</kbd> Next</span>
-                    <span><kbd>Ctrl+S</kbd> Save</span>
-                    <span><kbd>F</kbd> Flag</span>
-                    <span><kbd>?</kbd> Help</span>
-                    <span><kbd>Enter</kbd> Submit</span>
-                </div>
-                <div class="keyboard-hint" style="font-size:0.6rem;color:#94A3B8;text-align:center;margin-top:2px;">
-                    💡 Swipe left/right on mobile to navigate
+        <!-- ✅ STATUS GRID -->
+        <div style="background:white; border-radius:14px; padding:18px 20px; box-shadow:0 1px 3px rgba(0,0,0,0.06); border:1px solid #e2e8f0;">
+            <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-bottom:12px;">
+                <span style="font-weight:700; color:#0A3D62; font-size:0.9rem; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-grid-2"></i> Question Status
+                </span>
+                <div style="display:flex; gap:12px; flex-wrap:wrap; font-size:0.7rem; color:#64748b;">
+                    <span style="display:flex; align-items:center; gap:4px;">
+                        <span style="width:12px; height:12px; border-radius:4px; background:#10b981; display:inline-block;"></span> Answered
+                    </span>
+                    <span style="display:flex; align-items:center; gap:4px;">
+                        <span style="width:12px; height:12px; border-radius:4px; background:#f59e0b; display:inline-block;"></span> Flagged
+                    </span>
+                    <span style="display:flex; align-items:center; gap:4px;">
+                        <span style="width:12px; height:12px; border-radius:4px; background:#e2e8f0; display:inline-block;"></span> Unanswered
+                    </span>
+                    <span style="display:flex; align-items:center; gap:4px;">
+                        <span style="width:12px; height:12px; border-radius:4px; background:#3b82f6; display:inline-block;"></span> Current
+                    </span>
                 </div>
             </div>
+            <div id="question-status-table" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(40px, 1fr)); gap:6px; max-height:160px; overflow-y:auto; padding:2px;"></div>
+        </div>
 
-            <!-- RIGHT PANEL -->
-            <div class="right-panel">
-                <div class="status-title">📊 Question Status</div>
-                
-                <div class="status-legend">
-                    <span class="legend-item">
-                        <span class="legend-dot answered"></span> Answered
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot current"></span> Current
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot flagged"></span> Flagged
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot unanswered"></span> Unanswered
-                    </span>
-                    <span class="legend-item">
-                        <span class="legend-dot face-lost"></span> Face Lost
-                    </span>
-                </div>
-                
-                <div class="question-status-grid" id="question-status-table"></div>
-
-                <div class="stats-summary" id="exam-stats">
-                    <div class="stat-item">
-                        <span class="stat-label">Answered</span>
-                        <span class="stat-value" id="statsAnswered">0/0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Flagged</span>
-                        <span class="stat-value" id="statsFlagged">0</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Face</span>
-                        <span class="stat-value" id="statsFace">✅ OK</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Progress</span>
-                        <span class="stat-value" id="statsProgress">0%</span>
-                    </div>
-                    <div class="stat-item" style="border-top: 1px solid #E2E8F0; margin-top: 4px; padding-top: 4px;">
-                        <span class="stat-label">Unanswered</span>
-                        <span class="stat-value stat-unanswered" id="statsUnanswered" style="color: #DC2626;">0</span>
-                    </div>
-                </div>
-
-                <div class="review-toggle">
-                    <input type="checkbox" id="review-mode-toggle" onchange="window.toggleReviewMode()">
-                    <label for="review-mode-toggle">📋 Review All Answers</label>
-                </div>
-                <div id="review-container"></div>
+        <!-- ✅ FOOTER - Auto-save & Network -->
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:10px; margin-top:12px; padding:8px 4px;">
+            <div id="auto-save-status" style="font-size:0.75rem; color:#94a3b8; display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-check-circle" style="color:#10b981;"></i> Auto-saved
+            </div>
+            <div id="networkIndicator" style="font-size:0.75rem; color:#94a3b8; display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-wifi"></i> Online
+            </div>
+            <div style="font-size:0.65rem; color:#94a3b8; display:flex; gap:12px; flex-wrap:wrap;">
+                <span><kbd style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.55rem;">←</kbd> <kbd style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.55rem;">→</kbd> Navigate</span>
+                <span><kbd style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.55rem;">F</kbd> Flag</span>
+                <span><kbd style="background:#f1f5f9; padding:2px 6px; border-radius:4px; font-size:0.55rem;">Ctrl+S</kbd> Save</span>
             </div>
         </div>
     </div>
 
     <!-- ============================================================
-    OVERLAYS
+    OVERLAYS (keep existing)
     ============================================================ -->
-    
     <!-- App Block Overlay -->
-    <div id="app-block-overlay">
-        <div class="block-icon">🚫</div>
-        <h2>Application Blocked</h2>
-        <p>To maintain exam integrity, the following have been blocked:</p>
-        <div class="blocked-items">
-            <span>📱 Other Apps</span>
-            <span>🔄 Background Apps</span>
-            <span>📋 Clipboard</span>
-            <span>🔍 Screen Recording</span>
-            <span>⌨️ Shortcuts</span>
+    <div id="app-block-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); z-index:99999; display:flex; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px; text-align:center;">
+        <div style="font-size:4rem; margin-bottom:16px;">🚫</div>
+        <h2 style="font-size:1.5rem;">Application Blocked</h2>
+        <p style="color:#94a3b8; margin-bottom:12px;">To maintain exam integrity, the following have been blocked:</p>
+        <div style="display:flex; gap:12px; flex-wrap:wrap; justify-content:center; margin-bottom:16px;">
+            <span style="background:rgba(255,255,255,0.1); padding:6px 16px; border-radius:20px; font-size:0.8rem;">📱 Other Apps</span>
+            <span style="background:rgba(255,255,255,0.1); padding:6px 16px; border-radius:20px; font-size:0.8rem;">🔄 Background Apps</span>
+            <span style="background:rgba(255,255,255,0.1); padding:6px 16px; border-radius:20px; font-size:0.8rem;">📋 Clipboard</span>
+            <span style="background:rgba(255,255,255,0.1); padding:6px 16px; border-radius:20px; font-size:0.8rem;">🔍 Screen Recording</span>
+            <span style="background:rgba(255,255,255,0.1); padding:6px 16px; border-radius:20px; font-size:0.8rem;">⌨️ Shortcuts</span>
         </div>
-        <p class="block-sub">Return to the exam window to continue.</p>
-        <button class="return-btn" onclick="window.returnToExam()">🔙 Return to Exam</button>
+        <p style="color:#94a3b8; font-size:0.9rem;">Return to the exam window to continue.</p>
+        <button onclick="window.returnToExam()" style="background:white; color:#0A3D62; border:none; padding:12px 30px; border-radius:30px; font-weight:600; cursor:pointer; margin-top:12px;">🔙 Return to Exam</button>
     </div>
 
     <!-- Timer Warning -->
-    <div id="timer-warning-overlay">
-        <div class="timer-icon">⏰</div>
-        <h2>⚠️ Time is Almost Up!</h2>
-        <p>Your exam will be automatically submitted in:</p>
-        <div class="timer-countdown" id="timer-warning-countdown">10</div>
-        <p>Make sure you have answered all questions.</p>
+    <div id="timer-warning-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:99999; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px; text-align:center;">
+        <div style="font-size:4rem; margin-bottom:16px;">⏰</div>
+        <h2 style="font-size:1.5rem;">⚠️ Time is Almost Up!</h2>
+        <p style="color:#94a3b8;">Your exam will be automatically submitted in:</p>
+        <div id="timer-warning-countdown" style="font-size:4rem; font-weight:700; color:#f59e0b; margin:12px 0;">10</div>
+        <p style="color:#94a3b8;">Make sure you have answered all questions.</p>
     </div>
 
     <!-- Fullscreen Exit Warning -->
-    <div id="fullscreen-exit-warning">
-        <div class="warning-icon">🚨</div>
-        <h1>VIOLATION DETECTED!</h1>
+    <div id="fullscreen-exit-warning" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(220,38,38,0.3); z-index:99998; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px; text-align:center;">
+        <div style="font-size:4rem; margin-bottom:16px;">🚨</div>
+        <h1 style="font-size:2rem;">VIOLATION DETECTED!</h1>
         <p>You attempted to exit fullscreen mode.</p>
         <p>Your exam will be automatically submitted in:</p>
-        <div class="countdown-timer" id="exit-countdown">10</div>
-        <p class="block-sub">Please return to fullscreen mode immediately.</p>
+        <div id="exit-countdown" style="font-size:4rem; font-weight:700; color:#ef4444; margin:12px 0;">10</div>
+        <p style="color:#94a3b8;">Please return to fullscreen mode immediately.</p>
     </div>
 
     <!-- Face Block Overlay -->
-    <div id="face-block-overlay">
-        <div class="block-icon">⏸️</div>
-        <h2>EXAM PAUSED</h2>
-        <p class="block-reason" id="face-block-reason">Face not detected</p>
-        <p class="block-instruction">Please look at the camera to continue.</p>
-        <div class="block-timer" id="face-recovery-countdown">30</div>
-        <p class="block-sub">Exam will auto-submit if face is not detected</p>
-        <p class="block-save-info"><i class="fas fa-info-circle"></i> Your answers are being saved</p>
-        <button class="btn-retry-camera-block" onclick="window.retryCameraDuringExam()">
+    <div id="face-block-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); z-index:99997; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px; text-align:center;">
+        <div style="font-size:4rem; margin-bottom:16px;">⏸️</div>
+        <h2 style="font-size:1.5rem;">EXAM PAUSED</h2>
+        <p id="face-block-reason" style="color:#f59e0b; font-size:1.1rem; margin:8px 0;">Face not detected</p>
+        <p style="color:#94a3b8;">Please look at the camera to continue.</p>
+        <div id="face-recovery-countdown" style="font-size:4rem; font-weight:700; color:#f59e0b; margin:12px 0;">30</div>
+        <p style="color:#94a3b8; font-size:0.9rem;">Exam will auto-submit if face is not detected</p>
+        <p style="color:#94a3b8; font-size:0.8rem; margin-top:4px;"><i class="fas fa-info-circle"></i> Your answers are being saved</p>
+        <button onclick="window.retryCameraDuringExam()" style="background:rgba(255,255,255,0.1); color:white; border:1px solid #94a3b8; padding:10px 24px; border-radius:30px; cursor:pointer; margin-top:12px; font-weight:600;">
             <i class="fas fa-camera"></i> Retry Camera
         </button>
-        <div class="block-status">
-            <div class="status-item">
-                <span class="status-icon">⏱️</span>
-                <span>Time continues</span>
+        <div style="display:flex; gap:20px; margin-top:12px;">
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:#94a3b8;">
+                <span>⏱️</span> Time continues
             </div>
-            <div class="status-item">
-                <span class="status-icon">⚠️</span>
-                <span>30s to recover</span>
+            <div style="display:flex; align-items:center; gap:6px; font-size:0.8rem; color:#94a3b8;">
+                <span>⚠️</span> 30s to recover
             </div>
         </div>
     </div>
 
     <!-- Multiple Faces Warning -->
-    <div id="multiple-faces-warning">
-        <div class="warning-icon">🚨</div>
-        <h3>Multiple Faces Detected!</h3>
+    <div id="multiple-faces-warning" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(220,38,38,0.2); z-index:99996; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px; text-align:center; backdrop-filter:blur(5px);">
+        <div style="font-size:4rem; margin-bottom:16px;">🚨</div>
+        <h3 style="font-size:1.3rem;">Multiple Faces Detected!</h3>
         <p>Please ensure only you are in the camera frame.</p>
-        <p class="countdown-text">⏳ Auto-submit in <span id="multiple-faces-countdown">30</span> seconds...</p>
-        <div class="progress-bar-warning">
-            <div class="progress-fill-warning" id="multiple-faces-progress" style="width:100%;"></div>
+        <p style="font-size:0.9rem;">⏳ Auto-submit in <span id="multiple-faces-countdown">30</span> seconds...</p>
+        <div style="width:300px; max-width:80%; height:6px; background:rgba(255,255,255,0.2); border-radius:10px; overflow:hidden; margin:8px 0;">
+            <div id="multiple-faces-progress" style="width:100%; height:100%; background:#ef4444; border-radius:10px;"></div>
         </div>
-        <p class="warning-sub">The exam will be automatically submitted if multiple faces persist.</p>
-    </div>
-
-    <!-- Camera Permission Modal -->
-    <div id="camera-permission-modal">
-        <div class="camera-permission-content">
-            <div class="camera-permission-icon">📹</div>
-            <h3>Camera Access Required</h3>
-            <div class="camera-warning"><strong>Mandatory for exam security</strong></div>
-            <p>Camera is needed to verify your identity and monitor exam integrity.</p>
-            <button id="allow-camera-btn">Allow Camera Access</button>
-        </div>
+        <p style="color:#94a3b8; font-size:0.8rem;">The exam will be automatically submitted if multiple faces persist.</p>
     </div>
 
     <!-- Submission Modal -->
-    <div id="submission-modal">
-        <div class="modal-content">
-            <h3>⚠️ Final Submission</h3>
-            <p id="modal-message">Submit your exam?</p>
-            <div class="modal-buttons">
-                <button id="cancel-submit-btn">Cancel</button>
-                <button id="confirm-submit-btn">Confirm</button>
+    <div id="submission-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); z-index:100000; align-items:center; justify-content:center; padding:20px;">
+        <div style="background:white; border-radius:16px; max-width:400px; width:100%; padding:30px; text-align:center;">
+            <h3 style="color:#0A3D62; margin-bottom:12px;">⚠️ Final Submission</h3>
+            <p id="modal-message" style="color:#64748b; margin-bottom:20px;">Submit your exam?</p>
+            <div style="display:flex; gap:12px; justify-content:center;">
+                <button id="cancel-submit-btn" style="background:#f1f5f9; color:#64748b; border:none; padding:10px 24px; border-radius:10px; font-weight:600; cursor:pointer;">Cancel</button>
+                <button id="confirm-submit-btn" style="background:linear-gradient(135deg, #10b981, #059669); color:white; border:none; padding:10px 24px; border-radius:10px; font-weight:600; cursor:pointer;">Confirm</button>
             </div>
-        </div>
-    </div>
-
-    <!-- Attendance Required Modal -->
-    <div id="attendance-required-modal">
-        <div class="modal-box">
-            <div class="modal-icon">📋</div>
-            <h2>Attendance Required</h2>
-            <p>You need to sign in for attendance before you can submit your exam.</p>
-            <div class="info-box">
-                <p><i class="fas fa-info-circle" style="color: #DC2626;"></i> Please contact your instructor to sign in for attendance.</p>
-                <p style="font-size:0.8rem; color:#94A3B8; margin-top:8px;">
-                    <i class="fas fa-clock"></i> Attendance is required for exam validation.
-                </p>
-            </div>
-            <button class="btn-ok" onclick="window.closeAttendanceModal()">OK, I Understand</button>
         </div>
     </div>
 
     <!-- Submission Progress -->
-    <div id="submission-progress-overlay">
-        <div class="progress-spinner"><i class="fas fa-spinner fa-spin"></i></div>
-        <h2 class="progress-title">⏳ Submitting your exam...</h2>
-        <p class="progress-message" id="submission-message">Please wait while we save your answers.</p>
-        <div class="progress-track">
-            <div class="progress-fill-submit" id="submission-progress-fill"></div>
+    <div id="submission-progress-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); z-index:100001; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px; text-align:center;">
+        <div style="font-size:3rem; margin-bottom:16px;"><i class="fas fa-spinner fa-spin"></i></div>
+        <h2 style="font-size:1.3rem;" class="progress-title">⏳ Submitting your exam...</h2>
+        <p class="progress-message" id="submission-message" style="color:#94a3b8;">Please wait while we save your answers.</p>
+        <div style="width:300px; max-width:80%; height:8px; background:rgba(255,255,255,0.2); border-radius:10px; overflow:hidden; margin:12px 0;">
+            <div id="submission-progress-fill" style="width:0%; height:100%; background:linear-gradient(90deg, #10b981, #059669); border-radius:10px; transition:width 0.5s;"></div>
         </div>
-        <p class="progress-percentage" id="submission-percentage">0%</p>
-    </div>
-
-    <!-- Blocked Screen -->
-    <div id="blocked-screen" class="blocked-screen">
-        <div class="blocked-content">
-            <div class="blocked-icon">📹</div>
-            <h2>Camera Required</h2>
-            <p>Please allow camera access to continue with your exam.</p>
-            <button onclick="location.reload()" class="try-again-btn">Try Again</button>
-        </div>
+        <p class="progress-percentage" id="submission-percentage" style="font-size:0.9rem; color:#94a3b8;">0%</p>
     </div>
 
     <!-- ============================================================
-    JAVASCRIPT - Loaded Last
+    JAVASCRIPT
     ============================================================ -->
     <script src="exam.js"></script>
 </body>
