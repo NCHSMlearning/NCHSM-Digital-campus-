@@ -3312,16 +3312,23 @@ window.goToStep = function(step) {
 };
 
 window.toggleTermsAgreed = function() {
-    if (typeof toggleTermsAgreed === 'function') {
-        toggleTermsAgreed();
-    } else {
-        // Manual fallback
-        const checkbox = document.getElementById('termsCheckbox');
-        const nextBtn = document.getElementById('termsNextBtn');
-        if (checkbox && nextBtn) {
+    const checkbox = document.getElementById('termsCheckbox');
+    const nextBtn = document.getElementById('termsNextBtn');
+    if (checkbox) {
+        checkbox.checked = !checkbox.checked;
+        if (nextBtn) {
             nextBtn.disabled = !checkbox.checked;
             nextBtn.style.opacity = checkbox.checked ? '1' : '0.5';
             nextBtn.style.cursor = checkbox.checked ? 'pointer' : 'not-allowed';
+        }
+        // Update start button state
+        const startBtn = document.getElementById('startExamBtn');
+        if (startBtn) {
+            const ready = checkbox.checked && 
+                document.querySelector('.camera-status-text.success') !== null;
+            startBtn.disabled = !ready;
+            startBtn.style.opacity = ready ? '1' : '0.5';
+            startBtn.style.cursor = ready ? 'pointer' : 'not-allowed';
         }
     }
 };
