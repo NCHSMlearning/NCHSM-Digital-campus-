@@ -5,20 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>NCHSM Secure Exam - Proctored</title>
     
-    <!-- External Scripts -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
     </script>
     <script src="https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/dist/face-api.min.js">
     </script>
     
-    <!-- Fonts & Icons -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
     <style>
-        /* ============================================================
-           RESET & BASE
-           ============================================================ */
         * {
             margin: 0;
             padding: 0;
@@ -34,11 +29,9 @@
             padding: 20px;
         }
         
-        /* ============================================================
-           LOBBY - ULTRA MODERN (Marks Entry Style)
-           ============================================================ */
+        /* ✅ LOBBY - SHOWS BY DEFAULT */
         .lobby-container {
-            display: none;
+            display: block !important;
             max-width: 580px;
             width: 100%;
             margin: 0 auto;
@@ -48,619 +41,11 @@
             box-shadow: 0 20px 60px rgba(10, 61, 98, 0.08);
             border: 1px solid rgba(226, 232, 240, 0.5);
         }
-        .lobby-container.active {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .lobby-container.hidden {
+            display: none !important;
         }
         
-        /* Header */
-        .lobby-header {
-            text-align: center;
-            margin-bottom: 24px;
-        }
-        .lobby-header .logo-wrapper {
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            background: #f8fafc;
-            padding: 6px 20px 6px 12px;
-            border-radius: 100px;
-            margin-bottom: 14px;
-            border: 1px solid #e2e8f0;
-        }
-        .lobby-header .logo-wrapper img {
-            height: 28px;
-            width: 28px;
-            border-radius: 50%;
-            object-fit: contain;
-        }
-        .lobby-header .logo-wrapper span {
-            font-weight: 600;
-            font-size: 0.8rem;
-            color: #0A3D62;
-        }
-        .lobby-header h1 {
-            font-size: 1.6rem;
-            font-weight: 800;
-            color: #0A3D62;
-            letter-spacing: -0.5px;
-            margin: 0;
-        }
-        .lobby-header h1 span {
-            background: linear-gradient(135deg, #8B5CF6, #6D28D9);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-        }
-        .lobby-header p {
-            color: #94a3b8;
-            font-size: 0.85rem;
-            font-weight: 400;
-            margin-top: 2px;
-        }
-        
-        /* Continuation Badge */
-        .continuation-badge {
-            display: none;
-            text-align: center;
-            margin: -8px 0 18px;
-        }
-        .continuation-badge.active {
-            display: block;
-        }
-        .continuation-badge span {
-            background: linear-gradient(135deg, #EDE9FE, #E0D4F5);
-            color: #5B21B6;
-            padding: 8px 20px;
-            border-radius: 100px;
-            font-size: 0.75rem;
-            font-weight: 600;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            border: 1px solid rgba(139, 92, 246, 0.15);
-            box-shadow: 0 2px 8px rgba(139, 92, 246, 0.06);
-        }
-        
-        /* Exam Info Card */
-        .exam-info-card {
-            background: linear-gradient(135deg, #f8fafc, #f1f5f9);
-            border-radius: 16px;
-            padding: 20px 24px;
-            margin-bottom: 20px;
-            border: 1px solid #e2e8f0;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 12px;
-            transition: all 0.3s;
-        }
-        .exam-info-card:hover {
-            border-color: #cbd5e1;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.04);
-        }
-        .exam-info-card .exam-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #0A3D62;
-        }
-        .exam-info-card .exam-meta {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            font-size: 0.75rem;
-            color: #64748b;
-            margin-top: 4px;
-        }
-        .exam-info-card .exam-meta span {
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            background: white;
-            padding: 2px 12px 2px 8px;
-            border-radius: 100px;
-            border: 1px solid #e2e8f0;
-        }
-        .exam-info-card .exam-meta span i {
-            color: #0A3D62;
-        }
-        .proctored-badge {
-            background: #dbeafe;
-            color: #1e40af;
-            padding: 6px 14px;
-            border-radius: 100px;
-            font-size: 0.65rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            border: 1px solid #93c5fd;
-        }
-        
-        /* Student Info */
-        .student-info {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 8px;
-            background: #f8fafc;
-            border-radius: 14px;
-            padding: 14px 18px;
-            margin-bottom: 20px;
-            border: 1px solid #e2e8f0;
-        }
-        .student-info .info-item {
-            text-align: center;
-        }
-        .student-info .info-item .label {
-            font-size: 0.55rem;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            font-weight: 600;
-        }
-        .student-info .info-item .value {
-            font-size: 0.85rem;
-            font-weight: 600;
-            color: #0A3D62;
-            margin-top: 2px;
-        }
-        
-        /* Steps */
-        .steps-indicator {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 20px 0 24px;
-            position: relative;
-        }
-        .steps-indicator::before {
-            content: '';
-            position: absolute;
-            top: 50%;
-            left: 30px;
-            right: 30px;
-            height: 2px;
-            background: #e2e8f0;
-            transform: translateY(-50%);
-            z-index: 0;
-        }
-        .steps-indicator .step {
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            gap: 6px;
-            z-index: 1;
-            flex: 1;
-        }
-        .steps-indicator .step .step-number {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-            font-size: 0.75rem;
-            transition: all 0.4s;
-            border: 2px solid #e2e8f0;
-            background: white;
-            color: #94a3b8;
-        }
-        .steps-indicator .step .step-number .check {
-            display: none;
-            font-size: 0.6rem;
-        }
-        .steps-indicator .step .step-label {
-            font-size: 0.65rem;
-            font-weight: 500;
-            color: #94a3b8;
-        }
-        .steps-indicator .step.active .step-number {
-            background: #0A3D62;
-            border-color: #0A3D62;
-            color: white;
-            box-shadow: 0 4px 16px rgba(10, 61, 98, 0.2);
-            transform: scale(1.05);
-        }
-        .steps-indicator .step.active .step-label {
-            color: #0A3D62;
-            font-weight: 600;
-        }
-        .steps-indicator .step.completed .step-number {
-            background: #10b981;
-            border-color: #10b981;
-            color: white;
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.2);
-        }
-        .steps-indicator .step.completed .step-number .check {
-            display: inline;
-        }
-        .steps-indicator .step.completed .step-number .num {
-            display: none;
-        }
-        .steps-indicator .step.completed .step-label {
-            color: #10b981;
-        }
-        
-        /* Step Content */
-        .step-content {
-            display: none;
-            animation: fadeSlideUp 0.5s ease;
-        }
-        .step-content.active {
-            display: block;
-        }
-        @keyframes fadeSlideUp {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* Terms Box */
-        .terms-box {
-            background: #f8fafc;
-            border-radius: 14px;
-            padding: 20px 24px;
-            border: 1px solid #e2e8f0;
-            margin-bottom: 16px;
-        }
-        .terms-box h3 {
-            color: #0A3D62;
-            font-size: 0.9rem;
-            font-weight: 700;
-            margin-bottom: 12px;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .terms-box ul {
-            list-style: none;
-            padding: 0;
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4px 12px;
-        }
-        .terms-box ul li {
-            padding: 4px 0;
-            font-size: 0.8rem;
-            color: #475569;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .terms-box ul li i {
-            width: 16px;
-            font-size: 0.7rem;
-            color: #0A3D62;
-        }
-        .terms-box ul li i.check {
-            color: #10b981;
-        }
-        @media (max-width: 480px) {
-            .terms-box ul { grid-template-columns: 1fr; }
-            .student-info { grid-template-columns: 1fr 1fr; }
-        }
-        
-        /* Terms Agreement */
-        .terms-agreement {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-            padding: 14px 18px;
-            background: #f0fdf4;
-            border-radius: 12px;
-            border: 1px solid #86efac;
-            margin-bottom: 16px;
-        }
-        .terms-agreement input[type="checkbox"] {
-            width: 20px;
-            height: 20px;
-            accent-color: #10b981;
-            cursor: pointer;
-        }
-        .terms-agreement label {
-            font-size: 0.85rem;
-            font-weight: 500;
-            color: #065f46;
-            cursor: pointer;
-        }
-        
-        /* Buttons */
-        .btn-next {
-            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
-            color: white;
-            border: none;
-            padding: 12px 28px;
-            border-radius: 100px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            float: right;
-            box-shadow: 0 4px 16px rgba(10, 61, 98, 0.15);
-        }
-        .btn-next:hover:not(:disabled) {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 24px rgba(10, 61, 98, 0.25);
-        }
-        .btn-next:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-        
-        /* Camera */
-        .camera-preview {
-            position: relative;
-            background: #0f172a;
-            border-radius: 16px;
-            overflow: hidden;
-            aspect-ratio: 16/9;
-            margin-bottom: 14px;
-            border: 2px solid #e2e8f0;
-            transition: all 0.3s;
-        }
-        .camera-preview.camera-status-good { border-color: #10b981; }
-        .camera-preview.camera-status-warning { border-color: #f59e0b; }
-        .camera-preview.camera-status-danger { border-color: #ef4444; }
-        .camera-preview video {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .camera-preview .camera-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            right: 0;
-            background: linear-gradient(transparent, rgba(0,0,0,0.6));
-            padding: 14px 18px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            color: white;
-            font-size: 0.8rem;
-        }
-        .camera-preview .camera-overlay .status-dot {
-            display: inline-block;
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            margin-right: 6px;
-        }
-        .camera-preview .camera-overlay .status-dot.inactive { background: #94a3b8; }
-        .camera-preview .camera-overlay .status-dot.good { background: #10b981; animation: pulse-dot 1.5s infinite; }
-        .camera-preview .camera-overlay .status-dot.warning { background: #f59e0b; animation: pulse-dot 1s infinite; }
-        .camera-preview .camera-overlay .status-dot.danger { background: #ef4444; animation: pulse-dot 0.8s infinite; }
-        
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
-        }
-        
-        .camera-status-text {
-            padding: 10px 16px;
-            border-radius: 12px;
-            margin-bottom: 12px;
-            font-size: 0.8rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-        .camera-status-text.info { background: #dbeafe; color: #1e40af; }
-        .camera-status-text.success { background: #d1fae5; color: #065f46; }
-        .camera-status-text.warning { background: #fef3c7; color: #92400e; }
-        .camera-status-text.error { background: #fee2e2; color: #991b1b; }
-        
-        .camera-controls {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            margin-bottom: 14px;
-        }
-        .btn-test {
-            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
-            color: white;
-            border: none;
-            padding: 10px 24px;
-            border-radius: 100px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-            box-shadow: 0 4px 12px rgba(10, 61, 98, 0.12);
-        }
-        .btn-test:hover:not(:disabled) { transform: translateY(-2px); }
-        .btn-test:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-retry {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-            padding: 10px 24px;
-            border-radius: 100px;
-            font-weight: 600;
-            font-size: 0.85rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        .btn-retry:hover { background: #e2e8f0; }
-        
-        /* Ready */
-        .ready-container {
-            text-align: center;
-            padding: 4px 0;
-        }
-        .ready-icon { font-size: 3.5rem; margin-bottom: 4px; }
-        .ready-title {
-            font-size: 1.3rem;
-            color: #0A3D62;
-            font-weight: 800;
-        }
-        .ready-subtitle {
-            color: #64748b;
-            font-size: 0.85rem;
-            margin-bottom: 16px;
-        }
-        
-        .ready-check-list {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            max-width: 380px;
-            margin: 0 auto 16px;
-            text-align: left;
-        }
-        .ready-check-list .check-item {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 16px;
-            background: #f8fafc;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            border: 1px solid #e2e8f0;
-        }
-        .ready-check-list .check-item .check-icon.verified { color: #10b981; }
-        .ready-check-list .check-item .check-icon.pending { color: #f59e0b; }
-        
-        .ready-motivation {
-            background: linear-gradient(135deg, #f0fdf4, #ecfdf5);
-            border-radius: 14px;
-            padding: 16px 20px;
-            margin: 12px 0;
-            border: 1px solid #86efac;
-        }
-        .ready-motivation .quote-text {
-            font-size: 0.9rem;
-            color: #065f46;
-            font-style: italic;
-            line-height: 1.6;
-        }
-        .ready-motivation .quote-text span { font-weight: 600; }
-        
-        .ready-breath-container {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 16px;
-            margin: 12px 0;
-            padding: 12px 16px;
-            background: #f8fafc;
-            border-radius: 14px;
-            border: 1px solid #e2e8f0;
-        }
-        .breath-circle {
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
-            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-size: 1.2rem;
-            animation: breathe 3s ease-in-out infinite;
-            flex-shrink: 0;
-        }
-        @keyframes breathe {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.06); }
-        }
-        .breath-text {
-            font-size: 0.85rem;
-            color: #475569;
-            text-align: left;
-        }
-        .breath-text strong { color: #0A3D62; }
-        
-        .btn-start-exam {
-            background: linear-gradient(135deg, #10b981, #059669);
-            color: white;
-            border: none;
-            padding: 14px 40px;
-            border-radius: 100px;
-            font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            transition: all 0.3s;
-            display: inline-flex;
-            align-items: center;
-            gap: 12px;
-            box-shadow: 0 4px 24px rgba(5, 150, 105, 0.3);
-            margin: 8px 0;
-            width: 100%;
-            justify-content: center;
-        }
-        .btn-start-exam:hover:not(:disabled) {
-            transform: translateY(-3px);
-            box-shadow: 0 6px 32px rgba(5, 150, 105, 0.4);
-        }
-        .btn-start-exam:disabled {
-            opacity: 0.4;
-            cursor: not-allowed;
-            transform: none !important;
-            box-shadow: none !important;
-        }
-        
-        .start-exam-info {
-            font-size: 0.75rem;
-            color: #64748b;
-            margin: 6px 0;
-        }
-        .start-exam-warning {
-            font-size: 0.75rem;
-            color: #dc2626;
-            font-weight: 500;
-        }
-        
-        .ready-fun-fact {
-            background: #fef3c7;
-            border-radius: 12px;
-            padding: 12px 18px;
-            margin: 12px 0;
-            font-size: 0.8rem;
-            color: #92400e;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border: 1px solid #fcd34d;
-        }
-        .ready-fun-fact i {
-            font-size: 1.1rem;
-            color: #f59e0b;
-            flex-shrink: 0;
-        }
-        .ready-progress-ring {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 8px;
-            margin-top: 8px;
-        }
-        .ring-dot {
-            width: 8px;
-            height: 8px;
-            border-radius: 50%;
-            background: #10b981;
-            animation: pulse-dot 1.5s infinite;
-        }
-        
-        /* ============================================================
-           EXAM INTERFACE - ULTRA MODERN (Marks Entry Style)
-           ============================================================ */
+        /* ✅ EXAM INTERFACE - HIDDEN BY DEFAULT */
         .exam-interface {
             display: none;
             max-width: 1200px;
@@ -671,12 +56,55 @@
         }
         .exam-interface.active {
             display: block;
-            animation: fadeIn 0.5s ease;
         }
         
-        /* ============================================================
-           OVERLAYS
-           ============================================================ */
+        /* Animations */
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes pulse-dot {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.4; transform: scale(0.8); }
+        }
+        @keyframes breathe {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.06); }
+        }
+        .step-content { animation: fadeSlideUp 0.5s ease; }
+        
+        /* Toast */
+        .toast {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #0A3D62;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 14px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+            z-index: 999999;
+            font-family: 'Inter', sans-serif;
+            font-size: 0.85rem;
+            font-weight: 500;
+            max-width: 90%;
+            text-align: center;
+            animation: slideUpToast 0.4s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        @keyframes slideUpToast {
+            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        .toast-success { background: #10b981; }
+        .toast-error { background: #ef4444; }
+        .toast-warning { background: #f59e0b; }
+        
+        /* Overlay */
         #app-block-overlay {
             display: none !important;
             position: fixed;
@@ -731,149 +159,151 @@
             box-shadow: 0 4px 20px rgba(255,255,255,0.1);
         }
         
-        /* Toast */
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #0A3D62;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 14px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-            z-index: 999999;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-            font-weight: 500;
-            max-width: 90%;
-            text-align: center;
-            animation: slideUpToast 0.4s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border: 1px solid rgba(255,255,255,0.05);
-        }
-        @keyframes slideUpToast {
-            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
-        }
-        .toast-success { background: #10b981; }
-        .toast-error { background: #ef4444; }
-        .toast-warning { background: #f59e0b; }
-        .toast-info { background: #0A3D62; }
-        
-        /* Hide overlay elements initially */
         .overlay-hidden {
             display: none !important;
         }
-        
-        /* Status dot animations */
-        .status-dot.good { background: #10b981; animation: pulse-dot 1.5s infinite; }
-        .status-dot.warning { background: #f59e0b; animation: pulse-dot 1s infinite; }
-        .status-dot.danger { background: #ef4444; animation: pulse-dot 0.8s infinite; }
     </style>
 </head>
 <body>
 
     <!-- ============================================================
-    LOBBY - ULTRA MODERN (Marks Entry Style)
+    LOBBY - ✅ SHOWS BY DEFAULT (Marks Entry Style)
     ============================================================ -->
-    <div class="lobby-container active" id="lobbyContainer">
+    <div class="lobby-container" id="lobbyContainer">
         
         <!-- Lobby Header -->
-        <div class="lobby-header">
-            <div class="logo-wrapper">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
-                <span>NCHSM</span>
+        <div style="text-align:center; margin-bottom:24px;">
+            <div style="display:inline-flex; align-items:center; gap:12px; background:#f8fafc; padding:6px 20px 6px 12px; border-radius:100px; margin-bottom:14px; border:1px solid #e2e8f0;">
+                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="height:28px; width:28px; border-radius:50%; object-fit:contain;">
+                <span style="font-weight:600; font-size:0.8rem; color:#0A3D62;">NCHSM</span>
             </div>
-            <h1>📝 <span>Exam</span> Lobby</h1>
-            <p>Complete the steps below to start your exam</p>
+            <h1 style="font-size:1.6rem; font-weight:800; color:#0A3D62; letter-spacing:-0.5px; margin:0;">
+                📝 <span style="background:linear-gradient(135deg, #8B5CF6, #6D28D9); -webkit-background-clip:text; -webkit-text-fill-color:transparent;">Exam</span> Lobby
+            </h1>
+            <p style="color:#94a3b8; font-size:0.85rem; font-weight:400; margin-top:2px;">Complete the steps below to start your exam</p>
         </div>
 
         <!-- Continuation Badge -->
-        <div class="continuation-badge" id="continuationBadge">
-            <span><i class="fas fa-redo"></i> 🔄 Continuation Exam - Answers preserved</span>
+        <div id="continuationBadge" style="display:none; text-align:center; margin:-8px 0 18px;">
+            <span style="background:linear-gradient(135deg, #EDE9FE, #E0D4F5); color:#5B21B6; padding:8px 20px; border-radius:100px; font-size:0.75rem; font-weight:600; display:inline-flex; align-items:center; gap:8px; border:1px solid rgba(139,92,246,0.15);">
+                <i class="fas fa-redo"></i> 🔄 Continuation Exam - Answers preserved
+            </span>
         </div>
 
-        <!-- Exam Info -->
-        <div class="exam-info-card">
+        <!-- Exam Info Card -->
+        <div style="background:linear-gradient(135deg, #f8fafc, #f1f5f9); border-radius:16px; padding:20px 24px; margin-bottom:20px; border:1px solid #e2e8f0; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
             <div>
-                <div class="exam-title" id="examTitle">Loading Exam...</div>
-                <div class="exam-meta">
-                    <span><i class="fas fa-clock"></i> <span id="examDuration">--</span> min</span>
-                    <span><i class="fas fa-question-circle"></i> <span id="examQuestions">--</span> Qs</span>
-                    <span><i class="fas fa-trophy"></i> Pass: <span id="examPassMark">--</span>%</span>
+                <div style="font-size:1.05rem; font-weight:700; color:#0A3D62;" id="examTitle">Loading Exam...</div>
+                <div style="display:flex; gap:10px; flex-wrap:wrap; font-size:0.75rem; color:#64748b; margin-top:4px;">
+                    <span style="display:flex; align-items:center; gap:4px; background:white; padding:2px 12px 2px 8px; border-radius:100px; border:1px solid #e2e8f0;">
+                        <i class="fas fa-clock" style="color:#0A3D62;"></i> <span id="examDuration">--</span> min
+                    </span>
+                    <span style="display:flex; align-items:center; gap:4px; background:white; padding:2px 12px 2px 8px; border-radius:100px; border:1px solid #e2e8f0;">
+                        <i class="fas fa-question-circle" style="color:#0A3D62;"></i> <span id="examQuestions">--</span> Qs
+                    </span>
+                    <span style="display:flex; align-items:center; gap:4px; background:white; padding:2px 12px 2px 8px; border-radius:100px; border:1px solid #e2e8f0;">
+                        <i class="fas fa-trophy" style="color:#0A3D62;"></i> Pass: <span id="examPassMark">--</span>%
+                    </span>
                 </div>
             </div>
-            <div class="proctored-badge">
+            <div style="background:#dbeafe; color:#1e40af; padding:6px 14px; border-radius:100px; font-size:0.65rem; font-weight:600; display:flex; align-items:center; gap:6px; border:1px solid #93c5fd;">
                 <i class="fas fa-shield-alt"></i> Proctored
             </div>
         </div>
 
         <!-- Student Info -->
-        <div class="student-info">
-            <div class="info-item">
-                <div class="label">👤 Student</div>
-                <div class="value" id="studentName">Loading...</div>
+        <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; background:#f8fafc; border-radius:14px; padding:14px 18px; margin-bottom:20px; border:1px solid #e2e8f0;">
+            <div style="text-align:center;">
+                <div style="font-size:0.55rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">👤 Student</div>
+                <div style="font-size:0.85rem; font-weight:600; color:#0A3D62; margin-top:2px;" id="studentName">Loading...</div>
             </div>
-            <div class="info-item">
-                <div class="label">🆔 Registration</div>
-                <div class="value" id="studentReg">Loading...</div>
+            <div style="text-align:center;">
+                <div style="font-size:0.55rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">🆔 Registration</div>
+                <div style="font-size:0.85rem; font-weight:600; color:#0A3D62; margin-top:2px;" id="studentReg">Loading...</div>
             </div>
-            <div class="info-item">
-                <div class="label">📚 Program</div>
-                <div class="value" id="studentProgram">Loading...</div>
+            <div style="text-align:center;">
+                <div style="font-size:0.55rem; color:#94a3b8; text-transform:uppercase; letter-spacing:0.5px; font-weight:600;">📚 Program</div>
+                <div style="font-size:0.85rem; font-weight:600; color:#0A3D62; margin-top:2px;" id="studentProgram">Loading...</div>
             </div>
         </div>
 
         <!-- Steps Indicator -->
-        <div class="steps-indicator">
-            <div class="step active" id="step1">
-                <div class="step-number"><span class="num">1</span><span class="check">✓</span></div>
-                <div class="step-label">Terms</div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin:20px 0 24px; position:relative;">
+            <div style="position:absolute; top:50%; left:30px; right:30px; height:2px; background:#e2e8f0; transform:translateY(-50%); z-index:0;"></div>
+            
+            <div style="display:flex; flex-direction:column; align-items:center; gap:6px; z-index:1; flex:1;">
+                <div style="width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.75rem; transition:all 0.4s; border:2px solid #0A3D62; background:#0A3D62; color:white; box-shadow:0 4px 16px rgba(10,61,98,0.2); transform:scale(1.05);">
+                    <span>1</span>
+                </div>
+                <div style="font-size:0.65rem; font-weight:600; color:#0A3D62;">Terms</div>
             </div>
-            <div class="step" id="step2">
-                <div class="step-number"><span class="num">2</span><span class="check">✓</span></div>
-                <div class="step-label">Camera</div>
+            
+            <div style="display:flex; flex-direction:column; align-items:center; gap:6px; z-index:1; flex:1;">
+                <div style="width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.75rem; transition:all 0.4s; border:2px solid #e2e8f0; background:white; color:#94a3b8;">
+                    <span>2</span>
+                </div>
+                <div style="font-size:0.65rem; font-weight:500; color:#94a3b8;">Camera</div>
             </div>
-            <div class="step" id="step3">
-                <div class="step-number"><span class="num">3</span><span class="check">✓</span></div>
-                <div class="step-label">Ready</div>
+            
+            <div style="display:flex; flex-direction:column; align-items:center; gap:6px; z-index:1; flex:1;">
+                <div style="width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:700; font-size:0.75rem; transition:all 0.4s; border:2px solid #e2e8f0; background:white; color:#94a3b8;">
+                    <span>3</span>
+                </div>
+                <div style="font-size:0.65rem; font-weight:500; color:#94a3b8;">Ready</div>
             </div>
         </div>
 
         <!-- STEP 1: TERMS -->
-        <div class="step-content active" id="stepContent1">
-            <div class="terms-box">
-                <h3><i class="fas fa-file-contract"></i> Terms & Conditions</h3>
-                <ul>
-                    <li><i class="fas fa-video"></i> Camera active throughout</li>
-                    <li><i class="fas fa-ban"></i> No tab switching</li>
-                    <li><i class="fas fa-user-check"></i> Only registered student</li>
-                    <li><i class="fas fa-clock"></i> Auto-submit on timer end</li>
-                    <li><i class="fas fa-eye"></i> Screen & camera monitored</li>
-                    <li><i class="fas fa-check check"></i> Results after admin review</li>
-                    <li><i class="fas fa-user-check" style="color:#DC2626;"></i> <strong>Face visible at all times</strong></li>
-                    <li><i class="fas fa-clipboard-check" style="color:#0A3D62;"></i> <strong>Attendance recorded</strong></li>
+        <div class="step-content active" id="stepContent1" style="display:block;">
+            <div style="background:#f8fafc; border-radius:14px; padding:20px 24px; border:1px solid #e2e8f0; margin-bottom:16px;">
+                <h3 style="color:#0A3D62; font-size:0.9rem; font-weight:700; margin-bottom:12px; display:flex; align-items:center; gap:8px;">
+                    <i class="fas fa-file-contract"></i> Terms & Conditions
+                </h3>
+                <ul style="list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:4px 12px;">
+                    <li style="padding:4px 0; font-size:0.8rem; color:#475569; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-video" style="width:16px; font-size:0.7rem; color:#0A3D62;"></i> Camera active throughout
+                    </li>
+                    <li style="padding:4px 0; font-size:0.8rem; color:#475569; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-ban" style="width:16px; font-size:0.7rem; color:#0A3D62;"></i> No tab switching
+                    </li>
+                    <li style="padding:4px 0; font-size:0.8rem; color:#475569; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-user-check" style="width:16px; font-size:0.7rem; color:#0A3D62;"></i> Only registered student
+                    </li>
+                    <li style="padding:4px 0; font-size:0.8rem; color:#475569; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-clock" style="width:16px; font-size:0.7rem; color:#0A3D62;"></i> Auto-submit on timer end
+                    </li>
+                    <li style="padding:4px 0; font-size:0.8rem; color:#475569; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-eye" style="width:16px; font-size:0.7rem; color:#0A3D62;"></i> Screen & camera monitored
+                    </li>
+                    <li style="padding:4px 0; font-size:0.8rem; color:#475569; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-check" style="width:16px; font-size:0.7rem; color:#10b981;"></i> Results after admin review
+                    </li>
+                    <li style="padding:4px 0; font-size:0.8rem; color:#475569; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-user-check" style="width:16px; font-size:0.7rem; color:#DC2626;"></i> <strong>Face visible at all times</strong>
+                    </li>
+                    <li style="padding:4px 0; font-size:0.8rem; color:#475569; display:flex; align-items:center; gap:8px;">
+                        <i class="fas fa-clipboard-check" style="width:16px; font-size:0.7rem; color:#0A3D62;"></i> <strong>Attendance recorded</strong>
+                    </li>
                 </ul>
             </div>
-            <div class="terms-agreement">
-                <input type="checkbox" id="termsCheckbox" onchange="window.toggleTermsAgreed()">
-                <label for="termsCheckbox">I have read and agree to the terms</label>
+            
+            <div style="display:flex; align-items:center; gap:12px; padding:14px 18px; background:#f0fdf4; border-radius:12px; border:1px solid #86efac; margin-bottom:16px;">
+                <input type="checkbox" id="termsCheckbox" onchange="window.toggleTermsAgreed()" style="width:20px; height:20px; accent-color:#10b981; cursor:pointer;">
+                <label for="termsCheckbox" style="font-size:0.85rem; font-weight:500; color:#065f46; cursor:pointer;">I have read and agree to the terms</label>
             </div>
-            <button class="btn-next" id="termsNextBtn" disabled onclick="window.goToStep(2)">
+            
+            <button class="btn-next" id="termsNextBtn" disabled onclick="window.goToStep(2)" style="background:linear-gradient(135deg, #0A3D62, #1a5a7a); color:white; border:none; padding:12px 28px; border-radius:100px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.3s; display:inline-flex; align-items:center; gap:8px; float:right; box-shadow:0 4px 16px rgba(10,61,98,0.15); opacity:0.4; cursor:not-allowed;">
                 Next <i class="fas fa-arrow-right"></i>
             </button>
         </div>
 
         <!-- STEP 2: CAMERA -->
-        <div class="step-content" id="stepContent2">
-            <div class="camera-preview" id="cameraPreview">
-                <video id="cameraVideo" autoplay muted playsinline></video>
-                <div class="camera-overlay">
+        <div class="step-content" id="stepContent2" style="display:none;">
+            <div style="position:relative; background:#0f172a; border-radius:16px; overflow:hidden; aspect-ratio:16/9; margin-bottom:14px; border:2px solid #e2e8f0;">
+                <video id="cameraVideo" autoplay muted playsinline style="width:100%; height:100%; object-fit:cover;"></video>
+                <div style="position:absolute; bottom:0; left:0; right:0; background:linear-gradient(transparent, rgba(0,0,0,0.6)); padding:14px 18px; display:flex; justify-content:space-between; align-items:center; color:white; font-size:0.8rem;">
                     <div>
-                        <span class="status-dot inactive" id="cameraStatusDot"></span>
+                        <span style="display:inline-block; width:10px; height:10px; border-radius:50%; margin-right:6px; background:#94a3b8;"></span>
                         <span id="cameraStatusText">Camera inactive</span>
                     </div>
                     <div>
@@ -882,279 +312,116 @@
                 </div>
             </div>
 
-            <div id="cameraStatusMessage" class="camera-status-text info">
+            <div id="cameraStatusMessage" style="padding:10px 16px; border-radius:12px; margin-bottom:12px; font-size:0.8rem; display:flex; align-items:center; gap:10px; background:#dbeafe; color:#1e40af;">
                 <i class="fas fa-info-circle"></i> Click "Test Camera" to begin
             </div>
 
-            <div class="camera-controls">
-                <button class="btn-test" id="testCameraBtn" onclick="window.testCamera()">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:14px;">
+                <button class="btn-test" id="testCameraBtn" onclick="window.testCamera()" style="background:linear-gradient(135deg, #0A3D62, #1a5a7a); color:white; border:none; padding:10px 24px; border-radius:100px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; gap:8px; box-shadow:0 4px 12px rgba(10,61,98,0.12);">
                     <i class="fas fa-camera"></i> Test Camera
                 </button>
-                <button class="btn-retry" id="retryCameraBtn" onclick="window.testCamera()" style="display:none;">
+                <button class="btn-retry" id="retryCameraBtn" onclick="window.testCamera()" style="display:none; background:#f1f5f9; color:#475569; border:1px solid #e2e8f0; padding:10px 24px; border-radius:100px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.3s; display:flex; align-items:center; gap:8px;">
                     <i class="fas fa-redo"></i> Retry
                 </button>
             </div>
 
-            <button class="btn-next" id="cameraNextBtn" disabled onclick="window.goToStep(3)">
+            <button class="btn-next" id="cameraNextBtn" disabled onclick="window.goToStep(3)" style="background:linear-gradient(135deg, #0A3D62, #1a5a7a); color:white; border:none; padding:12px 28px; border-radius:100px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.3s; display:inline-flex; align-items:center; gap:8px; float:right; box-shadow:0 4px 16px rgba(10,61,98,0.15); opacity:0.4; cursor:not-allowed;">
                 Next <i class="fas fa-arrow-right"></i>
             </button>
         </div>
 
         <!-- STEP 3: READY -->
-        <div class="step-content" id="stepContent3">
-            <div class="ready-container">
-                <div class="ready-icon">🚀</div>
-                <h2 class="ready-title">You're Almost There!</h2>
-                <p class="ready-subtitle">
+        <div class="step-content" id="stepContent3" style="display:none;">
+            <div style="text-align:center; padding:4px 0;">
+                <div style="font-size:3.5rem; margin-bottom:4px;">🚀</div>
+                <h2 style="font-size:1.3rem; color:#0A3D62; font-weight:800;">You're Almost There!</h2>
+                <p style="color:#64748b; font-size:0.85rem; margin-bottom:16px;">
                     Your camera is working and you've accepted the terms.<br>
                     Take a moment to prepare yourself for success.
                 </p>
 
-                <div class="ready-check-list">
-                    <div class="check-item">
-                        <span class="check-icon verified"><i class="fas fa-check-circle"></i></span>
+                <div style="display:flex; flex-direction:column; gap:8px; max-width:380px; margin:0 auto 16px; text-align:left;">
+                    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; background:#f8fafc; border-radius:12px; font-size:0.85rem; border:1px solid #e2e8f0;">
+                        <span style="color:#10b981; font-size:1.1rem;"><i class="fas fa-check-circle"></i></span>
                         <span>✅ Terms accepted</span>
                     </div>
-                    <div class="check-item">
-                        <span class="check-icon verified"><i class="fas fa-check-circle"></i></span>
+                    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; background:#f8fafc; border-radius:12px; font-size:0.85rem; border:1px solid #e2e8f0;">
+                        <span style="color:#10b981; font-size:1.1rem;"><i class="fas fa-check-circle"></i></span>
                         <span>✅ Camera working</span>
                     </div>
-                    <div class="check-item" id="faceVerifiedCheck">
-                        <span class="check-icon pending"><i class="fas fa-circle"></i></span>
+                    <div style="display:flex; align-items:center; gap:10px; padding:10px 16px; background:#f8fafc; border-radius:12px; font-size:0.85rem; border:1px solid #e2e8f0;" id="faceVerifiedCheck">
+                        <span style="color:#f59e0b; font-size:1.1rem;"><i class="fas fa-circle"></i></span>
                         <span>🔍 Verifying face...</span>
                     </div>
                 </div>
 
-                <div class="ready-motivation">
-                    <div class="quote-text">
+                <div style="background:linear-gradient(135deg, #f0fdf4, #ecfdf5); border-radius:14px; padding:16px 20px; margin:12px 0; border:1px solid #86efac;">
+                    <div style="font-size:0.9rem; color:#065f46; font-style:italic; line-height:1.6;">
                         "Believe in yourself! You've prepared for this moment.<br>
-                        <span>You are capable, focused, and ready to succeed.</span>"
+                        <span style="font-weight:600;">You are capable, focused, and ready to succeed.</span>"
                     </div>
-                    <div style="font-size:0.7rem;color:#64748B;margin-top:4px;">— NCHSM Examination Team</div>
+                    <div style="font-size:0.7rem; color:#64748B; margin-top:4px;">— NCHSM Examination Team</div>
                 </div>
 
-                <div class="ready-breath-container">
-                    <div class="breath-circle">
+                <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin:12px 0; padding:12px 16px; background:#f8fafc; border-radius:14px; border:1px solid #e2e8f0;">
+                    <div style="width:48px; height:48px; border-radius:50%; background:linear-gradient(135deg, #0A3D62, #1a5a7a); display:flex; align-items:center; justify-content:center; color:white; font-size:1.2rem; animation:breathe 3s ease-in-out infinite; flex-shrink:0;">
                         <i class="fas fa-lungs"></i>
                     </div>
-                    <div class="breath-text">
+                    <div style="font-size:0.85rem; color:#475569; text-align:left;">
                         <strong>Take a deep breath...</strong>
                         Inhale confidence, exhale doubt.<br>
-                        <span style="font-size:0.7rem;color:#94A3B8;">You've got this! ✨</span>
+                        <span style="font-size:0.7rem; color:#94A3B8;">You've got this! ✨</span>
                     </div>
                 </div>
 
-                <div style="font-size:1rem;font-weight:700;color:#0A3D62;margin-bottom:4px;">
+                <div style="font-size:1rem; font-weight:700; color:#0A3D62; margin-bottom:4px;">
                     🌟 Ready, <span id="readyStudentName">Student</span>?
                 </div>
-                <div style="font-size:0.75rem;color:#64748B;margin-bottom:16px;">
+                <div style="font-size:0.75rem; color:#64748B; margin-bottom:16px;">
                     Click below and your time begins.
                 </div>
 
-                <button class="btn-start-exam" id="startExamBtn" onclick="window.startExam()" disabled>
+                <button class="btn-start-exam" id="startExamBtn" onclick="window.startExam()" disabled style="background:linear-gradient(135deg, #10b981, #059669); color:white; border:none; padding:14px 40px; border-radius:100px; font-weight:700; font-size:1rem; cursor:pointer; transition:all 0.3s; display:inline-flex; align-items:center; gap:12px; box-shadow:0 4px 24px rgba(5,150,105,0.3); margin:8px 0; width:100%; justify-content:center; opacity:0.4; cursor:not-allowed;">
                     <span>🎯</span>
                     <span id="startExamText">Start My Exam</span>
                     <i class="fas fa-arrow-right"></i>
                 </button>
 
-                <div class="start-exam-info">
+                <div style="font-size:0.75rem; color:#64748b; margin:6px 0;">
                     <i class="fas fa-shield-alt"></i> Proctoring begins immediately
                 </div>
-                <div class="start-exam-warning">
+                <div style="font-size:0.75rem; color:#dc2626; font-weight:500;">
                     <i class="fas fa-exclamation-triangle"></i> Face must be visible at all times
                 </div>
 
-                <div class="ready-fun-fact">
-                    <i class="fas fa-lightbulb"></i>
+                <div style="background:#fef3c7; border-radius:12px; padding:12px 18px; margin:12px 0; font-size:0.8rem; color:#92400e; display:flex; align-items:center; gap:10px; border:1px solid #fcd34d;">
+                    <i class="fas fa-lightbulb" style="font-size:1.1rem; color:#f59e0b; flex-shrink:0;"></i>
                     <span id="funFact">💡 A positive mindset can improve performance by up to 15%!</span>
                 </div>
 
-                <div class="ready-progress-ring">
-                    <span class="ring-dot"></span>
-                    <span style="font-size:0.7rem;color:#94A3B8;">Ready when you are...</span>
+                <div style="display:flex; align-items:center; justify-content:center; gap:8px; margin-top:8px;">
+                    <span style="width:8px; height:8px; border-radius:50%; background:#10b981; animation:pulse-dot 1.5s infinite;"></span>
+                    <span style="font-size:0.7rem; color:#94A3B8;">Ready when you are...</span>
                 </div>
             </div>
         </div>
     </div>
 
     <!-- ============================================================
-    EXAM INTERFACE - ULTRA MODERN (Marks Entry Style)
+    EXAM INTERFACE (Hidden initially)
     ============================================================ -->
     <div class="exam-interface" id="examInterface">
-        
-        <!-- ✅ HEADER - Gradient like Marks Entry -->
-        <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; box-shadow: 0 4px 20px rgba(10,61,98,0.25);">
-            <div>
-                <h2 style="color: white; margin: 0; font-weight: 700; font-size: 1.1rem;">
-                    <i class="fas fa-graduation-cap"></i> <span id="exam-title">Examination</span>
-                </h2>
-                <p style="color: rgba(255,255,255,0.85); margin: 2px 0 0 0; font-size: 13px;">
-                    <i class="fas fa-user"></i> <span id="examStudentName">Student</span> &nbsp;|&nbsp; 
-                    <i class="fas fa-id-card"></i> <span id="examStudentReg">ID</span>
-                </p>
-            </div>
-            <div style="display: flex; gap: 10px; align-items: center; flex-wrap: wrap;">
-                <!-- Timer -->
-                <div style="background: rgba(255,255,255,0.15); padding: 8px 16px; border-radius: 10px; display: flex; align-items: center; gap: 10px; border: 1px solid rgba(255,255,255,0.1);">
-                    <i class="fas fa-clock" style="color: #FDB913; font-size: 1rem;"></i>
-                    <span style="color: white; font-weight: 700; font-size: 1.1rem; font-family: monospace;" id="timerDisplayHeader">00:00</span>
-                </div>
-                <!-- Proctoring Status -->
-                <div style="background: rgba(255,255,255,0.1); padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 8px;">
-                    <span class="status-dot" id="examStatusDot" style="width: 10px; height: 10px; border-radius: 50%; background: #10b981; display: inline-block;"></span>
-                    <span style="color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500;" id="examStatusText">Active</span>
-                </div>
-                <!-- Face Count -->
-                <div style="background: rgba(255,255,255,0.1); padding: 6px 14px; border-radius: 20px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-user" style="color: #60a5fa; font-size: 0.8rem;"></i>
-                    <span style="color: rgba(255,255,255,0.9); font-size: 12px; font-weight: 500;" id="examFaceCount">👤 1 face</span>
-                </div>
-            </div>
-        </div>
-
-        <!-- ✅ STATS CARDS - Like Marks Entry -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;">
-            <!-- Answered -->
-            <div style="border-top: 4px solid #10b981; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-check-circle" style="color: #10b981;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Answered</span>
-                </div>
-                <p style="font-size: 22px; font-weight: 700; color: #059669; margin: 2px 0 0 0;" id="statsAnswered">0/0</p>
-            </div>
-            <!-- Flagged -->
-            <div style="border-top: 4px solid #f59e0b; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-flag" style="color: #f59e0b;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Flagged</span>
-                </div>
-                <p style="font-size: 22px; font-weight: 700; color: #d97706; margin: 2px 0 0 0;" id="statsFlagged">0</p>
-            </div>
-            <!-- Face Status -->
-            <div style="border-top: 4px solid #3b82f6; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-user-check" style="color: #3b82f6;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Face</span>
-                </div>
-                <p style="font-size: 22px; font-weight: 700; color: #2563eb; margin: 2px 0 0 0;" id="statsFace">✅ OK</p>
-            </div>
-            <!-- Progress -->
-            <div style="border-top: 4px solid #8b5cf6; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-chart-line" style="color: #8b5cf6;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Progress</span>
-                </div>
-                <p style="font-size: 22px; font-weight: 700; color: #6d28d9; margin: 2px 0 0 0;" id="statsProgress">0%</p>
-            </div>
-            <!-- Unanswered -->
-            <div style="border-top: 4px solid #ef4444; background: white; border-radius: 10px; padding: 14px 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-exclamation-circle" style="color: #ef4444;"></i>
-                    <span style="font-size: 11px; color: #94a3b8; font-weight: 500;">Unanswered</span>
-                </div>
-                <p style="font-size: 22px; font-weight: 700; color: #dc2626; margin: 2px 0 0 0;" id="statsUnanswered">0</p>
-            </div>
-        </div>
-
-        <!-- ✅ QUESTION PROGRESS - Like Marks Entry Program Display -->
-        <div style="background: linear-gradient(135deg, #f8fafc, #f1f5f9); padding: 16px 20px; border-radius: 12px; margin-bottom: 16px; border: 1px solid #e2e8f0; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
-            <div style="display: flex; align-items: center; gap: 12px; flex: 1;">
-                <span style="font-weight: 700; color: #0A3D62; font-size: 13px;">
-                    <i class="fas fa-book-open"></i> Question:
-                </span>
-                <span style="font-weight: 600; color: #1e293b; font-size: 14px;">
-                    <span id="current">0</span> of <span id="total">0</span>
-                </span>
-                <div style="flex: 1; max-width: 200px;">
-                    <div style="background: #e2e8f0; height: 6px; border-radius: 10px; overflow: hidden;">
-                        <div id="progress-fill" style="width: 0%; height: 100%; background: linear-gradient(90deg, #10b981, #059669); border-radius: 10px; transition: width 0.3s;"></div>
-                    </div>
-                </div>
-                <span style="font-size: 12px; color: #94a3b8; font-weight: 500;" id="progress-percentage">0%</span>
-            </div>
-            <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button id="flag-question-btn" onclick="window.toggleFlagQuestion()" style="background: #fef3c7; color: #92400e; border: none; padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                    <i class="far fa-flag"></i> Flag
-                </button>
-                <button onclick="window.toggleReviewMode()" style="background: #e0e7ff; color: #3730a3; border: none; padding: 6px 14px; border-radius: 20px; font-weight: 600; font-size: 12px; cursor: pointer; display: flex; align-items: center; gap: 6px;">
-                    <i class="fas fa-list"></i> Review
-                </button>
-            </div>
-        </div>
-
-        <!-- ✅ QUESTION AREA -->
-        <div style="background: white; border-radius: 14px; padding: 24px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e2e8f0; min-height: 300px; margin-bottom: 16px;">
-            <div id="exam-container" style="font-size: 15px; line-height: 1.7; color: #1e293b;">
-                Loading question...
-            </div>
-            <div id="answer-saved" style="display: none; color: #059669; font-weight: 600; font-size: 14px; margin-top: 12px;">
-                ✅ Answer saved!
-            </div>
-        </div>
-
-        <!-- ✅ NAVIGATION -->
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px; margin-bottom: 16px;">
-            <div style="display: flex; gap: 10px;">
-                <button id="prev-btn" disabled style="background: #f1f5f9; color: #64748b; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-chevron-left"></i> Previous
-                </button>
-                <button id="next-btn" disabled style="background: #0A3D62; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px;">
-                    Next <i class="fas fa-chevron-right"></i>
-                </button>
-            </div>
-            <div>
-                <button id="submit-exam-btn" disabled style="background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; padding: 10px 24px; border-radius: 10px; font-weight: 700; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; box-shadow: 0 2px 10px rgba(5,150,105,0.3);">
-                    <span id="submit-text"><i class="fas fa-paper-plane"></i> Submit Exam</span>
-                    <span id="submit-spinner" style="display:none;"><i class="fas fa-spinner fa-spin"></i></span>
-                </button>
-            </div>
-        </div>
-
-        <!-- ✅ STATUS GRID -->
-        <div style="background: white; border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); border: 1px solid #e2e8f0;">
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-bottom: 12px;">
-                <span style="font-weight: 700; color: #0A3D62; font-size: 14px;">
-                    <i class="fas fa-grid-2"></i> Question Status
-                </span>
-                <div style="display: flex; gap: 12px; flex-wrap: wrap;">
-                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: #64748b;">
-                        <span style="width: 12px; height: 12px; border-radius: 4px; background: #10b981;"></span> Answered
-                    </span>
-                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: #64748b;">
-                        <span style="width: 12px; height: 12px; border-radius: 4px; background: #f59e0b;"></span> Flagged
-                    </span>
-                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: #64748b;">
-                        <span style="width: 12px; height: 12px; border-radius: 4px; background: #e2e8f0;"></span> Unanswered
-                    </span>
-                    <span style="display: flex; align-items: center; gap: 4px; font-size: 11px; color: #64748b;">
-                        <span style="width: 12px; height: 12px; border-radius: 4px; background: #3b82f6;"></span> Current
-                    </span>
-                </div>
-            </div>
-            <div id="question-status-table" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(40px, 1fr)); gap: 6px; max-height: 160px; overflow-y: auto; padding: 2px;"></div>
-        </div>
-
-        <!-- ✅ FOOTER - Auto-save & Network -->
-        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; padding: 8px 4px;">
-            <div id="auto-save-status" style="font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 6px;">
-                <i class="fas fa-check-circle" style="color: #10b981;"></i> Auto-saved
-            </div>
-            <div id="networkIndicator" style="font-size: 12px; color: #94a3b8; display: flex; align-items: center; gap: 6px;">
-                <i class="fas fa-wifi"></i> Online
-            </div>
-            <div style="font-size: 11px; color: #94a3b8; display: flex; gap: 12px; flex-wrap: wrap;">
-                <span><kbd style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 10px;">←</kbd> <kbd style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 10px;">→</kbd> Navigate</span>
-                <span><kbd style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 10px;">F</kbd> Flag</span>
-                <span><kbd style="background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 10px;">Ctrl+S</kbd> Save</span>
-            </div>
+        <div style="background:linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius:16px; padding:24px; color:white; text-align:center;">
+            <h2>📝 <span id="exam-title">Examination</span></h2>
+            <p id="examStudentName">Student</p>
+            <div id="timerDisplayHeader" style="font-size:2rem;font-weight:700;font-family:monospace;">00:00</div>
+            <div id="exam-container">Loading exam...</div>
         </div>
     </div>
 
     <!-- ============================================================
     OVERLAYS
     ============================================================ -->
-    
-    <!-- App Block Overlay -->
     <div id="app-block-overlay">
         <div class="icon">🚫</div>
         <h2>Application Blocked</h2>
@@ -1171,7 +438,6 @@
         <p style="font-size:0.6rem;color:#94a3b8;margin-top:12px;">⏱️ Timer continues running</p>
     </div>
 
-    <!-- Other Overlays (placeholders) -->
     <div id="face-block-overlay" class="overlay-hidden"></div>
     <div id="submission-modal" class="overlay-hidden"></div>
     <div id="submission-progress-overlay" class="overlay-hidden"></div>
