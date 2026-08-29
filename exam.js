@@ -1,6 +1,6 @@
 // ============================================================
 // EXAM.JS - COMPLETE FIXED VERSION
-// WITH RETAKE/CONTINUATION SUPPORT & ALL FUNCTIONS EXPOSED
+// WITH RETAKE/CONTINUATION SUPPORT & OVERLAY ONLY ON VIOLATIONS
 // ============================================================
 
 (function() {
@@ -402,7 +402,6 @@
                 .eq('question_id', '00000000-0000-0000-0000-000000000000')
                 .maybeSingle();
 
-            // Handle 406 error gracefully (no data found)
             if (error && error.code !== 'PGRST116') {
                 console.warn('Error checking retake status:', error);
                 return;
@@ -1915,10 +1914,11 @@
     }
 
     // ============================================================
-    // APPLICATION BLOCKING
+    // APPLICATION BLOCKING - OVERLAY ONLY ON VIOLATIONS
     // ============================================================
 
     function blockApplications() {
+        // ✅ Set up security WITHOUT showing the overlay
         document.addEventListener('keydown', blockKeyboardShortcuts);
         document.addEventListener('contextmenu', preventDefault);
         document.addEventListener('copy', preventDefault);
@@ -1927,6 +1927,9 @@
         document.addEventListener('dragstart', preventDefault);
         document.addEventListener('drop', preventDefault);
         document.addEventListener('selectstart', preventDefault);
+
+        // ✅ DO NOT show the overlay here - only on violations!
+        // The overlay will be shown by handleWindowBlur and handleVisibilityChange
 
         document.addEventListener('keyup', function(e) {
             if (e.key === 'PrintScreen') {
@@ -2021,13 +2024,16 @@
     }
 
     // ============================================================
-    // WINDOW EVENT HANDLERS
+    // WINDOW EVENT HANDLERS - OVERLAY ONLY ON VIOLATIONS
     // ============================================================
 
     function handleWindowBlur() {
         if (!AppState.isExamActive || AppState.isExamPaused) return;
         AppState.blurCount++;
+        
+        // ✅ ONLY SHOW OVERLAY ON VIOLATION
         DOM.appBlockOverlay.style.display = 'flex';
+        
         logProctoringEvent('window_blur', 'Window lost focus (' + AppState.blurCount + ')', 'warning');
         showToast('⚠️ Please stay on the exam window! (' + AppState.blurCount + '/' + CONFIG.MAX_BLUR_COUNT + ')', 'warning');
         captureSnapshot();
@@ -2065,7 +2071,10 @@
     function handleVisibilityChange() {
         if (document.hidden && AppState.isExamActive && !AppState.isExamPaused) {
             AppState.tabSwitchCount++;
+            
+            // ✅ ONLY SHOW OVERLAY ON VIOLATION
             DOM.appBlockOverlay.style.display = 'flex';
+            
             logProctoringEvent('tab_switch', 'Student switched tabs (' + AppState.tabSwitchCount + ')', 'warning');
             showToast('⚠️ Tab switch detected! (' + AppState.tabSwitchCount + '/' + CONFIG.MAX_TAB_SWITCHES + ')', 'warning');
             captureSnapshot();
@@ -3148,12 +3157,12 @@
     console.log('✅ exam.js loaded with Retake/Continuation support');
 
     // ============================================================
-    // END OF IIFE - CLOSE THE IIFE HERE
+    // END OF IIFE
     // ============================================================
 })();
 
 // ============================================================
-// EXPOSE ALL FUNCTIONS TO GLOBAL WINDOW (OUTSIDE IIFE)
+// EXPOSE ALL FUNCTIONS TO GLOBAL WINDOW
 // ============================================================
 
 console.log('🔧 Exposing functions to window...');
@@ -3162,21 +3171,13 @@ window.renderQuestion = function(index) {
     if (typeof renderQuestion === 'function') {
         renderQuestion(index);
     } else {
-        console.warn('⚠️ renderQuestion not available yet, trying to find it...');
-        // Try to find the function in the IIFE scope
-        if (window.examsModule && typeof window.examsModule.renderQuestion === 'function') {
-            window.examsModule.renderQuestion(index);
-        } else {
-            console.warn('⚠️ renderQuestion still not available');
-        }
+        console.warn('⚠️ renderQuestion not available');
     }
 };
 
 window.prevQuestion = function() {
     if (typeof prevQuestion === 'function') {
         prevQuestion();
-    } else if (window.examsModule && typeof window.examsModule.prevQuestion === 'function') {
-        window.examsModule.prevQuestion();
     } else {
         console.warn('⚠️ prevQuestion not available');
     }
@@ -3185,8 +3186,6 @@ window.prevQuestion = function() {
 window.nextQuestion = function() {
     if (typeof nextQuestion === 'function') {
         nextQuestion();
-    } else if (window.examsModule && typeof window.examsModule.nextQuestion === 'function') {
-        window.examsModule.nextQuestion();
     } else {
         console.warn('⚠️ nextQuestion not available');
     }
@@ -3195,8 +3194,6 @@ window.nextQuestion = function() {
 window.submitExam = function() {
     if (typeof submitExam === 'function') {
         submitExam();
-    } else if (window.examsModule && typeof window.examsModule.submitExam === 'function') {
-        window.examsModule.submitExam();
     } else {
         console.warn('⚠️ submitExam not available');
     }
@@ -3205,8 +3202,6 @@ window.submitExam = function() {
 window.toggleReviewMode = function() {
     if (typeof toggleReviewMode === 'function') {
         toggleReviewMode();
-    } else if (window.examsModule && typeof window.examsModule.toggleReviewMode === 'function') {
-        window.examsModule.toggleReviewMode();
     } else {
         console.warn('⚠️ toggleReviewMode not available');
     }
@@ -3215,45 +3210,33 @@ window.toggleReviewMode = function() {
 window.toggleFlagQuestion = function() {
     if (typeof toggleFlagQuestion === 'function') {
         toggleFlagQuestion();
-    } else if (window.examsModule && typeof window.examsModule.toggleFlagQuestion === 'function') {
-        window.examsModule.toggleFlagQuestion();
     } else {
         console.warn('⚠️ toggleFlagQuestion not available');
     }
 };
 
 window.returnToExam = function() {
-    if (typeof returnToExam === 'function') {
-        returnToExam();
-    } else {
-        // Fallback
-        const overlay = document.getElementById('app-block-overlay');
-        if (overlay) overlay.style.display = 'none';
-        if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(() => {});
-        }
-        window.focus();
-        if (typeof AppState !== 'undefined') {
-            AppState.blurCount = 0;
-            AppState.tabSwitchCount = 0;
-        }
+    const overlay = document.getElementById('app-block-overlay');
+    if (overlay) overlay.style.display = 'none';
+    if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(() => {});
     }
+    window.focus();
+    if (typeof AppState !== 'undefined') {
+        AppState.blurCount = 0;
+        AppState.tabSwitchCount = 0;
+    }
+    console.log('✅ Returned to exam');
 };
 
 window.closeAttendanceModal = function() {
-    if (typeof closeAttendanceModal === 'function') {
-        closeAttendanceModal();
-    } else {
-        const modal = document.getElementById('attendance-required-modal');
-        if (modal) modal.style.display = 'none';
-    }
+    const modal = document.getElementById('attendance-required-modal');
+    if (modal) modal.style.display = 'none';
 };
 
 window.startExam = function() {
     if (typeof startExam === 'function') {
         startExam();
-    } else if (window.examsModule && typeof window.examsModule.startExam === 'function') {
-        window.examsModule.startExam();
     } else {
         console.warn('⚠️ startExam not available');
     }
@@ -3262,8 +3245,6 @@ window.startExam = function() {
 window.testCamera = function() {
     if (typeof testCamera === 'function') {
         testCamera();
-    } else if (window.examsModule && typeof window.examsModule.testCamera === 'function') {
-        window.examsModule.testCamera();
     } else {
         console.warn('⚠️ testCamera not available');
     }
@@ -3272,8 +3253,6 @@ window.testCamera = function() {
 window.goToStep = function(step) {
     if (typeof goToStep === 'function') {
         goToStep(step);
-    } else if (window.examsModule && typeof window.examsModule.goToStep === 'function') {
-        window.examsModule.goToStep(step);
     } else {
         console.warn('⚠️ goToStep not available');
     }
@@ -3282,8 +3261,6 @@ window.goToStep = function(step) {
 window.toggleTermsAgreed = function() {
     if (typeof toggleTermsAgreed === 'function') {
         toggleTermsAgreed();
-    } else if (window.examsModule && typeof window.examsModule.toggleTermsAgreed === 'function') {
-        window.examsModule.toggleTermsAgreed();
     } else {
         console.warn('⚠️ toggleTermsAgreed not available');
     }
@@ -3312,9 +3289,6 @@ window.showKeyboardShortcuts = function() {
         alert('⌨️ ← → Navigate | F Flag | Ctrl+S Save | Enter Submit');
     }
 };
-
-// Store the module reference for debugging
-window.examsModule = window.examsModule || {};
 
 console.log('✅ All functions exposed to window!');
 console.log('📋 Available functions:');
