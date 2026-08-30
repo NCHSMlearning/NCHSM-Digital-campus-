@@ -33,7 +33,91 @@
             justify-content: center;
             padding: 20px;
         }
-        
+        /* ============================================================
+   FULL SCREEN EXAM - ADD THESE RULES
+   ============================================================ */
+
+/* When exam is active - remove body padding and centering */
+body.exam-active {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: #f1f5f9;
+    display: block !important;
+    align-items: unset !important;
+    justify-content: unset !important;
+    min-height: 100vh;
+}
+
+/* Exam interface - FULL SCREEN */
+.exam-interface {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100vh;
+    height: 100dvh; /* For mobile browsers */
+    padding: 12px 16px;
+    background: #f1f5f9;
+    overflow-y: auto;
+    z-index: 1000;
+}
+.exam-interface.active {
+    display: block;
+}
+
+/* 3-Column Grid - takes full height */
+.exam-grid {
+    display: grid;
+    grid-template-columns: 280px 1fr 260px;
+    gap: 12px;
+    max-width: 1440px;
+    margin: 0 auto;
+    height: calc(100vh - 24px);
+    height: calc(100dvh - 24px);
+    min-height: 500px;
+}
+
+/* Left panel scrollable */
+.exam-grid > div:first-child {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+/* Middle panel - takes remaining space */
+.exam-grid > div:nth-child(2) {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow: hidden;
+}
+
+/* Question area - flexible */
+.exam-grid > div:nth-child(2) > div:nth-child(4) {
+    flex: 1;
+    overflow-y: auto;
+    min-height: 150px;
+    max-height: none;
+}
+
+/* Right panel scrollable */
+.exam-grid > div:last-child {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    max-height: 100%;
+}
+
+/* Status grid - flexible height */
+.exam-grid > div:last-child > div:nth-child(4) {
+    flex: 1;
+    max-height: none;
+    min-height: 100px;
+}
         /* ============================================================
            LOBBY - ULTRA MODERN (Marks Entry Style)
            ============================================================ */
@@ -824,31 +908,162 @@
         </div>
     </div>
 
-    <!-- ============================================================
-    OVERLAYS
+   <!-- ============================================================
+    OVERLAYS & MODALS - COMPLETE
     ============================================================ -->
     
-    <!-- App Block Overlay -->
-    <div id="app-block-overlay">
-        <div class="icon">🚫</div>
-        <h2>Application Blocked</h2>
-        <p>To maintain exam integrity, the following have been blocked:</p>
-        <div class="blocked-items">
-            <span>📱 Other Apps</span>
-            <span>🔄 Background Apps</span>
-            <span>📋 Clipboard</span>
-            <span>🔍 Screen Recording</span>
-            <span>⌨️ Shortcuts</span>
-        </div>
-        <p style="font-size:0.85rem;color:#94a3b8;">⚠️ You must stay in the exam window.</p>
-        <button class="return-btn" onclick="window.returnToExam()">🔙 Return to Exam</button>
-        <p style="font-size:0.6rem;color:#94a3b8;margin-top:12px;">⏱️ Timer continues running</p>
+<!-- ============================================================
+    1. APP BLOCK OVERLAY (Fullscreen Exit / Tab Switch)
+    ============================================================ -->
+<div id="app-block-overlay">
+    <div class="icon">🚫</div>
+    <h2>⚠️ Application Blocked</h2>
+    <p>To maintain exam integrity, please stay in the exam window.</p>
+    <div class="blocked-items">
+        <span>📱 Other Apps</span>
+        <span>🔄 Background Apps</span>
+        <span>📋 Clipboard</span>
+        <span>🔍 Screen Recording</span>
+        <span>⌨️ Shortcuts</span>
     </div>
+    <p style="font-size:0.85rem;color:#94a3b8;">⚠️ You must stay in the exam window.</p>
+    <button class="return-btn" onclick="window.returnToExam()">🔙 Return to Exam</button>
+    <p style="font-size:0.6rem;color:#94a3b8;margin-top:12px;">⏱️ Timer continues running</p>
+</div>
 
-    <!-- Other Overlays (placeholders) -->
-    <div id="face-block-overlay" class="overlay-hidden"></div>
-    <div id="submission-modal" class="overlay-hidden"></div>
-    <div id="submission-progress-overlay" class="overlay-hidden"></div>
+<!-- ============================================================
+    2. FACE BLOCK OVERLAY (Face Lost / Paused)
+    ============================================================ -->
+<div id="face-block-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(12px); z-index:99999; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px; text-align:center;">
+    <div style="max-width:450px; width:100%;">
+        <div style="font-size:4rem; margin-bottom:16px;">😕</div>
+        <h2 id="face-block-reason" style="font-size:1.3rem; font-weight:700; margin-bottom:8px;">Face Not Detected</h2>
+        <p style="color:#94a3b8; font-size:0.95rem; margin-bottom:8px;">Please look at the camera to continue your exam.</p>
+        <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin:16px 0;">
+            <div style="font-size:3rem; font-weight:800; color:#f59e0b; font-family:'Courier New', monospace;" id="face-recovery-countdown">45</div>
+            <div style="font-size:1rem; color:#94a3b8;">seconds remaining</div>
+        </div>
+        <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden; margin-bottom:16px;">
+            <div id="face-recovery-progress" style="height:100%; background:linear-gradient(90deg, #f59e0b, #ef4444); border-radius:10px; transition:width 1s linear; width:100%;"></div>
+        </div>
+        <button onclick="window.retryCameraDuringExam()" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); padding:10px 24px; border-radius:100px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.3s; margin-top:8px;">
+            🔄 Retry Camera
+        </button>
+        <p style="font-size:0.65rem; color:#64748b; margin-top:12px;">Exam will auto-submit if face is not recovered in time</p>
+    </div>
+</div>
+
+<!-- ============================================================
+    3. SUBMISSION MODAL (Confirm Submit)
+    ============================================================ -->
+<div id="submission-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:99999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:white; border-radius:20px; padding:32px; max-width:480px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.2); animation:fadeSlideUp 0.3s ease;">
+        <div style="font-size:2.5rem; text-align:center; margin-bottom:12px;">📋</div>
+        <h3 style="text-align:center; color:#0A3D62; font-weight:700; font-size:1.2rem; margin-bottom:8px;">Submit Exam?</h3>
+        <p id="modal-message" style="text-align:center; color:#475569; font-size:0.95rem; line-height:1.6; margin-bottom:24px;">Are you sure you want to submit?</p>
+        <div style="display:flex; gap:12px;">
+            <button id="cancel-submit-btn" style="flex:1; padding:12px; border:2px solid #e2e8f0; border-radius:12px; background:white; color:#64748b; font-weight:600; font-size:0.9rem; cursor:pointer; transition:all 0.2s;">
+                Cancel
+            </button>
+            <button id="confirm-submit-btn" style="flex:1; padding:12px; border:none; border-radius:12px; background:linear-gradient(135deg, #10b981, #059669); color:white; font-weight:700; font-size:0.9rem; cursor:pointer; transition:all 0.2s; box-shadow:0 4px 16px rgba(5,150,105,0.3);">
+                ✅ Submit
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+    4. SUBMISSION PROGRESS OVERLAY (Loading Percentage)
+    ============================================================ -->
+<div id="submission-progress-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.85); backdrop-filter:blur(12px); z-index:999999; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px;">
+    <div style="max-width:500px; width:100%; text-align:center;">
+        <!-- Icon -->
+        <div id="submission-progress-icon" style="font-size:4rem; margin-bottom:16px;">⏳</div>
+        
+        <!-- Title -->
+        <h2 id="submission-progress-title" style="font-size:1.5rem; font-weight:700; margin-bottom:8px; color:white;">Submitting Exam...</h2>
+        
+        <!-- Message -->
+        <p id="submission-message" style="font-size:1rem; color:#94a3b8; margin-bottom:24px; min-height:30px;">Please wait...</p>
+        
+        <!-- Progress Bar -->
+        <div style="width:100%; height:10px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden; margin-bottom:12px;">
+            <div id="submission-progress-fill" style="height:100%; background:linear-gradient(90deg, #10b981, #059669); border-radius:10px; transition:width 0.8s ease; width:0%;"></div>
+        </div>
+        
+        <!-- Percentage Display -->
+        <div id="submission-percentage" style="font-size:2.5rem; font-weight:800; color:#10b981; font-family:'Courier New', monospace;">0%</div>
+        
+        <!-- Steps Indicator -->
+        <div style="margin-top:20px; display:flex; gap:10px; justify-content:center; flex-wrap:wrap; font-size:0.75rem; color:#64748b;">
+            <span id="step-snapshot" style="padding:4px 12px; border-radius:20px; background:rgba(255,255,255,0.05);">📸 Snapshot</span>
+            <span id="step-saving" style="padding:4px 12px; border-radius:20px; background:rgba(255,255,255,0.05);">💾 Saving</span>
+            <span id="step-results" style="padding:4px 12px; border-radius:20px; background:rgba(255,255,255,0.05);">📊 Results</span>
+            <span id="step-cleanup" style="padding:4px 12px; border-radius:20px; background:rgba(255,255,255,0.05);">🧹 Cleanup</span>
+            <span id="step-complete" style="padding:4px 12px; border-radius:20px; background:rgba(255,255,255,0.05);">✅ Complete</span>
+        </div>
+    </div>
+</div>
+
+<!-- ============================================================
+    5. FULLSCREEN EXIT WARNING
+    ============================================================ -->
+<div id="fullscreen-exit-warning" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.9); backdrop-filter:blur(12px); z-index:99999; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px; text-align:center;">
+    <div style="max-width:450px; width:100%;">
+        <div style="font-size:4rem; margin-bottom:16px;">🖥️</div>
+        <h2 style="font-size:1.3rem; font-weight:700; margin-bottom:8px;">⚠️ Fullscreen Required</h2>
+        <p style="color:#94a3b8; font-size:0.95rem; margin-bottom:16px;">Please return to fullscreen mode to continue your exam.</p>
+        <div style="display:flex; align-items:center; justify-content:center; gap:16px; margin:16px 0;">
+            <div style="font-size:3rem; font-weight:800; color:#ef4444; font-family:'Courier New', monospace;" id="exit-countdown">10</div>
+            <div style="font-size:1rem; color:#94a3b8;">seconds to auto-submit</div>
+        </div>
+        <div style="width:100%; height:6px; background:rgba(255,255,255,0.1); border-radius:10px; overflow:hidden; margin-bottom:16px;">
+            <div id="fullscreen-exit-progress" style="height:100%; background:linear-gradient(90deg, #f59e0b, #ef4444); border-radius:10px; transition:width 1s linear; width:100%;"></div>
+        </div>
+        <button onclick="window.enterSecureFullscreen()" style="background:rgba(255,255,255,0.1); color:white; border:1px solid rgba(255,255,255,0.2); padding:10px 24px; border-radius:100px; font-weight:600; font-size:0.85rem; cursor:pointer; transition:all 0.3s;">
+            🔄 Enter Fullscreen
+        </button>
+        <p style="font-size:0.65rem; color:#64748b; margin-top:12px;">Exam will auto-submit if fullscreen is not restored</p>
+    </div>
+</div>
+
+<!-- ============================================================
+    6. MULTIPLE FACES WARNING
+    ============================================================ -->
+<div id="multiple-faces-warning" style="display:none; position:fixed; top:20px; left:50%; transform:translateX(-50%); background:rgba(245,158,11,0.95); color:white; padding:12px 24px; border-radius:14px; z-index:99998; font-family:'Inter', sans-serif; font-size:0.85rem; font-weight:600; text-align:center; max-width:90%; box-shadow:0 4px 20px rgba(245,158,11,0.3); animation:fadeSlideUp 0.3s ease;">
+    <i class="fas fa-exclamation-triangle" style="margin-right:10px;"></i>
+    ⚠️ Multiple faces detected! Only one person allowed.
+    <span id="multiple-faces-countdown" style="display:inline-block; margin-left:8px; padding:2px 12px; background:rgba(0,0,0,0.2); border-radius:20px; font-weight:700;">30s</span>
+</div>
+
+<!-- ============================================================
+    7. ATTENDANCE REQUIRED MODAL
+    ============================================================ -->
+<div id="attendance-required-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(8px); z-index:99999; align-items:center; justify-content:center; padding:20px;">
+    <div style="background:white; border-radius:20px; padding:32px; max-width:440px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.2); animation:fadeSlideUp 0.3s ease;">
+        <div style="font-size:2.5rem; text-align:center; margin-bottom:12px;">📋</div>
+        <h3 style="text-align:center; color:#0A3D62; font-weight:700; font-size:1.2rem; margin-bottom:8px;">Attendance Required</h3>
+        <p style="text-align:center; color:#475569; font-size:0.95rem; line-height:1.6; margin-bottom:24px;">
+            Please sign in for attendance before submitting your exam.
+        </p>
+        <button onclick="window.closeAttendanceModal()" style="width:100%; padding:12px; border:none; border-radius:12px; background:linear-gradient(135deg, #0A3D62, #1a5a7a); color:white; font-weight:700; font-size:0.9rem; cursor:pointer; transition:all 0.2s;">
+            ✅ Sign In
+        </button>
+    </div>
+</div>
+
+<!-- ============================================================
+    8. TIMER WARNING OVERLAY (1 Minute Remaining)
+    ============================================================ -->
+<div id="timer-warning-overlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.7); backdrop-filter:blur(8px); z-index:99998; align-items:center; justify-content:center; flex-direction:column; color:white; padding:20px; text-align:center;">
+    <div style="max-width:400px; width:100%;">
+        <div style="font-size:4rem; margin-bottom:16px;">⏰</div>
+        <h2 style="font-size:1.5rem; font-weight:700; margin-bottom:8px;">⚠️ 1 Minute Remaining!</h2>
+        <p style="color:#94a3b8; font-size:0.95rem; margin-bottom:16px;">Your exam will auto-submit when time runs out.</p>
+        <div style="font-size:2rem; font-weight:800; color:#f59e0b; font-family:'Courier New', monospace;" id="timer-warning-countdown">10</div>
+        <p style="font-size:0.75rem; color:#64748b; margin-top:8px;">This warning will close automatically</p>
+    </div>
+</div>
 
     <!-- ============================================================
     JAVASCRIPT
