@@ -992,7 +992,7 @@ async function initExam() {
 }
 
 // ============================================================
-// RENDER QUESTION
+// RENDER QUESTION - Supports Multiple Choice & Text Input
 // ============================================================
 function renderQuestion(index) {
     if (AppState.questions.length === 0) return;
@@ -1008,30 +1008,44 @@ function renderQuestion(index) {
     AppState.questionTimeElapsed = 0;
 
     const isFlagged = AppState.flaggedQuestions[q.id] || false;
+    const savedAnswer = AppState.answers[q.id] || '';
 
-    let optionsHtml = '';
-    const optionLabels = ['A', 'B', 'C', 'D'];
-    const optionValues = [q.option_a, q.option_b, q.option_c, q.option_d];
-    
-    optionValues.forEach((option, i) => {
-        if (option) {
-            const label = optionLabels[i];
-            const checked = AppState.answers[q.id] === label ? 'checked' : '';
-            optionsHtml += `
-                <li style="padding:10px 16px; border-radius:10px; border:2px solid ${AppState.answers[q.id] === label ? '#10b981' : '#e2e8f0'}; cursor:pointer; transition:all 0.2s; font-size:0.95rem; background:${AppState.answers[q.id] === label ? '#f0fdf4' : 'transparent'};">
-                    <label style="cursor:pointer; display:flex; align-items:center; gap:10px; width:100%;">
-                        <input type="radio" name="q${q.id}" value="${label}" ${checked} style="accent-color:#10b981; width:16px; height:16px; cursor:pointer;">
-                        <strong>${label}.</strong> ${option}
-                    </label>
-                </li>
-            `;
-        }
-    });
+    // ============================================================
+    // DETECT QUESTION TYPE
+    // ============================================================
+    const questionType = q.question_type || 'multiple_choice';
+    const hasOptions = q.option_a || q.option_b || q.option_c || q.option_d;
+    const isTextQuestion = questionType === 'text' || questionType === 'essay' || !hasOptions;
 
-    if (DOM.examContainer) {
-        DOM.examContainer.innerHTML = `
+    let questionHtml = '';
+
+    // ============================================================
+    // MULTIPLE CHOICE
+    // ============================================================
+    if (!isTextQuestion) {
+        let optionsHtml = '';
+        const optionLabels = ['A', 'B', 'C', 'D'];
+        const optionValues = [q.option_a, q.option_b, q.option_c, q.option_d];
+        
+        optionValues.forEach((option, i) => {
+            if (option) {
+                const label = optionLabels[i];
+                const checked = AppState.answers[q.id] === label ? 'checked' : '';
+                optionsHtml += `
+                    <li style="padding:10px 16px; border-radius:10px; border:2px solid ${AppState.answers[q.id] === label ? '#10b981' : '#e2e8f0'}; cursor:pointer; transition:all 0.2s; font-size:0.95rem; background:${AppState.answers[q.id] === label ? '#f0fdf4' : 'transparent'};">
+                        <label style="cursor:pointer; display:flex; align-items:center; gap:10px; width:100%;">
+                            <input type="radio" name="q${q.id}" value="${label}" ${checked} style="accent-color:#10b981; width:16px; height:16px; cursor:pointer;">
+                            <strong>${label}.</strong> ${option}
+                        </label>
+                    </li>
+                `;
+            }
+        });
+
+        questionHtml = `
             <div style="font-size:1.05rem; font-weight:500; color:#1e293b; line-height:1.7;">
                 <strong>Q${AppState.currentIndex + 1}:</strong> ${q.question_text}
+                <span style="font-size:0.7rem; color:#94a3b8; font-weight:400; margin-left:8px;">(Multiple Choice)</span>
             </div>
             <div style="font-size:0.8rem; color:#94a3b8; margin:10px 0 14px; display:flex; align-items:center; gap:6px;">
                 ⏱️ Time on this question: <span id="q-timer" style="font-weight:600; color:#64748b;">0:00</span>
@@ -1041,6 +1055,61 @@ function renderQuestion(index) {
         `;
     }
 
+    // ============================================================
+    // TEXT / ESSAY INPUT
+    // ============================================================
+    else {
+        const maxChars = q.max_characters || 5000;
+        const currentChars = savedAnswer ? savedAnswer.length : 0;
+        const wordCount = savedAnswer ? savedAnswer.trim().split(/\s+/).length : 0;
+
+        questionHtml = `
+            <div style="font-size:1.05rem; font-weight:500; color:#1e293b; line-height:1.7;">
+                <strong>Q${AppState.currentIndex + 1}:</strong> ${q.question_text}
+                <span style="font-size:0.7rem; color:#94a3b8; font-weight:400; margin-left:8px;">(Written Answer)</span>
+            </div>
+            <div style="font-size:0.8rem; color:#94a3b8; margin:10px 0 14px; display:flex; align-items:center; gap:6px;">
+                ⏱️ Time on this question: <span id="q-timer" style="font-weight:600; color:#64748b;">0:00</span>
+            </div>
+            
+            <!-- Text Area -->
+            <div style="margin:8px 0 12px;">
+                <textarea 
+                    id="text-answer-${q.id}" 
+                    placeholder="Type your answer here..." 
+                    style="width:100%; min-height:180px; padding:14px 16px; border:2px solid #e2e8f0; border-radius:12px; font-size:0.95rem; font-family:'Inter', sans-serif; line-height:1.7; resize:vertical; transition:border-color 0.3s; background:#fafbfc;"
+                    onfocus="this.style.borderColor='#0A3D62'; this.style.background='white';"
+                    onblur="this.style.borderColor='#e2e8f0'; this.style.background='#fafbfc';"
+                >${savedAnswer || ''}</textarea>
+                
+                <!-- Character Counter -->
+                <div style="display:flex; justify-content:space-between; align-items:center; font-size:0.75rem; color:#94a3b8; margin-top:6px; flex-wrap:wrap; gap:4px;">
+                    <div>
+                        <span id="char-count-${q.id}">${currentChars}</span> characters 
+                        <span style="color:#64748b;">|</span> 
+                        <span id="word-count-${q.id}">${wordCount}</span> words
+                    </div>
+                    <div>
+                        <span id="char-limit-${q.id}" style="color:${currentChars > maxChars * 0.9 ? '#dc2626' : '#94a3b8'};">${currentChars}/${maxChars}</span>
+                        <span style="color:#64748b;">max</span>
+                    </div>
+                </div>
+            </div>
+            
+            ${isFlagged ? '<div style="color:#f59e0b; font-size:0.85rem; margin-top:10px;">🚩 Flagged for review</div>' : ''}
+        `;
+    }
+
+    // ============================================================
+    // RENDER THE QUESTION
+    // ============================================================
+    if (DOM.examContainer) {
+        DOM.examContainer.innerHTML = questionHtml;
+    }
+
+    // ============================================================
+    // UPDATE FLAG BUTTON
+    // ============================================================
     if (DOM.flagQuestionBtn) {
         if (isFlagged) {
             DOM.flagQuestionBtn.innerHTML = '<i class="fas fa-flag"></i> Flagged';
@@ -1053,24 +1122,86 @@ function renderQuestion(index) {
         }
     }
 
-    if (AppState.answers[q.id]) {
-        const radio = document.querySelector(`input[name="q${q.id}"][value="${AppState.answers[q.id]}"]`);
-        if (radio) radio.checked = true;
+    // ============================================================
+    // SETUP EVENT LISTENERS
+    // ============================================================
+    
+    // Multiple Choice: Radio buttons
+    if (!isTextQuestion) {
+        // Restore saved answer
+        if (AppState.answers[q.id]) {
+            const radio = document.querySelector(`input[name="q${q.id}"][value="${AppState.answers[q.id]}"]`);
+            if (radio) radio.checked = true;
+        }
+
+        document.querySelectorAll(`input[name="q${q.id}"]`).forEach((radio) => {
+            radio.addEventListener('change', function(e) {
+                const answer = e.target.value;
+                saveAnswer(answer);
+                saveAnswerToDatabase(q.id, answer);
+                saveProgressLocally();
+            });
+        });
+    }
+    
+    // Text Input: Textarea with auto-save
+    else {
+        const textarea = document.getElementById(`text-answer-${q.id}`);
+        if (textarea) {
+            let saveTimeout = null;
+            
+            textarea.addEventListener('input', function(e) {
+                const value = this.value;
+                const charCount = value.length;
+                const wordCount = value.trim() ? value.trim().split(/\s+/).length : 0;
+                
+                // Update character counter
+                const charCountEl = document.getElementById(`char-count-${q.id}`);
+                const wordCountEl = document.getElementById(`word-count-${q.id}`);
+                const charLimitEl = document.getElementById(`char-limit-${q.id}`);
+                
+                if (charCountEl) charCountEl.textContent = charCount;
+                if (wordCountEl) wordCountEl.textContent = wordCount;
+                if (charLimitEl) {
+                    charLimitEl.textContent = `${charCount}/${maxChars}`;
+                    charLimitEl.style.color = charCount > maxChars * 0.9 ? '#dc2626' : '#94a3b8';
+                }
+                
+                // Auto-save with debounce (500ms)
+                if (saveTimeout) clearTimeout(saveTimeout);
+                saveTimeout = setTimeout(() => {
+                    AppState.answers[q.id] = value;
+                    saveAnswerToDatabase(q.id, value);
+                    saveProgressLocally();
+                    // Show saved indicator
+                    if (DOM.answerSaved) {
+                        DOM.answerSaved.style.display = 'block';
+                        DOM.answerSaved.textContent = '✅ Answer saved!';
+                        setTimeout(() => { if (DOM.answerSaved) DOM.answerSaved.style.display = 'none'; }, 800);
+                    }
+                }, 500);
+            });
+            
+            // Save on blur (when user leaves the textarea)
+            textarea.addEventListener('blur', function() {
+                const value = this.value;
+                if (value !== AppState.answers[q.id]) {
+                    AppState.answers[q.id] = value;
+                    saveAnswerToDatabase(q.id, value);
+                    saveProgressLocally();
+                }
+            });
+        }
     }
 
-    document.querySelectorAll(`input[name="q${q.id}"]`).forEach((radio) => {
-        radio.addEventListener('change', function(e) {
-            const answer = e.target.value;
-            saveAnswer(answer);
-            saveAnswerToDatabase(q.id, answer);
-            saveProgressLocally();
-        });
-    });
-
+    // ============================================================
+    // UPDATE UI
+    // ============================================================
     updateProgress();
     updateStatusTable();
     updateExamStats();
 
+    // Start question timer
     AppState.questionStartTime = Date.now();
 
     AppState.questionTimerInterval = setInterval(() => {
