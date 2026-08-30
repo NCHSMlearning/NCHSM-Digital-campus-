@@ -62,22 +62,27 @@
                 </ul>
             </div>
 
-            <!-- Exams -->
-            <div class="menu-section">
-                <div class="menu-label">Exams</div>
-                <ul class="sidebar-menu">
-                    <li><a data-tab="exams" onclick="switchTab('exams')">
-                        <i class="fas fa-file-alt"></i> Exam Management
-                    </a></li>
-                    <li><a data-tab="createExam" onclick="switchTab('createExam')">
-                        <i class="fas fa-plus-circle"></i> Create Exam
-                    </a></li>
-                    <li><a data-tab="attendance" onclick="switchTab('attendance')">
-                        <i class="fas fa-clipboard-check"></i> Attendance
-                        <span class="badge-sidebar warning" id="attendanceBadge">0</span>
-                    </a></li>
-                </ul>
-            </div>
+           <!-- Exams -->
+<div class="menu-section">
+    <div class="menu-label">Exams</div>
+    <ul class="sidebar-menu">
+        <li><a data-tab="exams" onclick="switchTab('exams')">
+            <i class="fas fa-file-alt"></i> Exam Management
+        </a></li>
+        <li><a data-tab="createExam" onclick="switchTab('createExam')">
+            <i class="fas fa-plus-circle"></i> Create Exam
+        </a></li>
+        <!-- ✅ ADD THIS NEW MENU ITEM -->
+        <li><a data-tab="questions" onclick="switchTab('questions')">
+            <i class="fas fa-question-circle"></i> Question Bank
+            <span class="badge-sidebar" id="questionBankBadge">0</span>
+        </a></li>
+        <li><a data-tab="attendance" onclick="switchTab('attendance')">
+            <i class="fas fa-clipboard-check"></i> Attendance
+            <span class="badge-sidebar warning" id="attendanceBadge">0</span>
+        </a></li>
+    </ul>
+</div>
 
             <!-- Monitoring -->
             <div class="menu-section">
@@ -625,7 +630,68 @@
                 <div class="pagination" id="attendancePagination"></div>
             </div>
         </section>
+<!-- ============================================================ -->
+<!-- TAB: QUESTION BANK                                            -->
+<!-- ============================================================ -->
+<section id="questions" class="tab-content" style="display:none;">
+    <div style="background: linear-gradient(135deg, #1e3a5f, #0A3D62); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-question-circle" style="color: #FDB913;"></i> Question Bank
+            </h2>
+            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-tasks"></i> Create and manage exam questions
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="refreshQuestions()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync"></i> Refresh
+            </button>
+            <button onclick="openAddQuestion()" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-plus"></i> Add Question
+            </button>
+        </div>
+    </div>
 
+    <!-- Exam Selector -->
+    <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; border: 1px solid #e2e8f0; display: flex; gap: 16px; flex-wrap: wrap; align-items: center;">
+        <label style="font-weight: 600; color: #0A3D62; font-size: 0.9rem;">📚 Select Exam:</label>
+        <select id="questionExamSelect" onchange="loadQuestionsForExam()" style="flex: 1; min-width: 200px; padding: 10px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 0.9rem; font-family: 'Inter', sans-serif; background: white; cursor: pointer;">
+            <option value="">-- Select an exam --</option>
+        </select>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap; font-size: 0.8rem; color: #64748b;">
+            <span style="display: flex; align-items: center; gap: 4px; background: #f8fafc; padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0;">
+                <i class="fas fa-question-circle"></i> <span id="questionCountDisplay">0</span> questions
+            </span>
+            <span style="display: flex; align-items: center; gap: 4px; background: #f8fafc; padding: 4px 12px; border-radius: 20px; border: 1px solid #e2e8f0;">
+                <i class="fas fa-trophy"></i> <span id="questionTotalMarks">0</span> marks
+            </span>
+        </div>
+    </div>
+
+    <!-- Stats -->
+    <div id="questionStats" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px;"></div>
+
+    <!-- Question List -->
+    <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+        <div style="overflow-x: auto;">
+            <table id="questionsTable" style="width: 100%; border-collapse: collapse; font-size: 13px; display:none;">
+                <thead>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; width: 50px;">#</th>
+                        <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Question</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; width: 100px;">Type</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; width: 70px;">Marks</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; width: 80px;">Correct</th>
+                        <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569; width: 120px;">Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="questionsBody"></tbody>
+            </table>
+            <div id="questionsLoading" class="loading" style="padding:40px; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading questions...</div>
+        </div>
+    </div>
+</section>
         <!-- ============================================================ -->
         <!-- TAB: ENROLLMENTS                                              -->
         <!-- ============================================================ -->
@@ -1254,7 +1320,95 @@
             <div id="modalContent"></div>
         </div>
     </div>
-
+<!-- ============================================================ -->
+<!-- 📝 ADD/EDIT QUESTION MODAL                                    -->
+<!-- ============================================================ -->
+<div id="questionModal" class="modal" style="display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(5px); z-index: 10000; padding: 20px; align-items: center; justify-content: center;">
+    <div class="modal-content" style="max-width: 750px; width: 95%; background: white; border-radius: 16px; padding: 30px; max-height: 90vh; overflow-y: auto;">
+        <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px; position: sticky; top: 0; background: white; z-index: 10;">
+            <div>
+                <h3 style="margin: 0; color: #4C1D95;">
+                    <i class="fas fa-plus-circle"></i> <span id="questionModalTitle">Add New Question</span>
+                </h3>
+                <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
+                    <i class="fas fa-tasks"></i> Create a question for the selected exam
+                </p>
+            </div>
+            <button onclick="closeQuestionModal()" 
+                    style="background: none; border: none; font-size: 28px; cursor: pointer; color: #6b7280;">&times;</button>
+        </div>
+        
+        <form id="questionForm">
+            <input type="hidden" id="questionId" value="">
+            <input type="hidden" id="questionExamId" value="">
+            
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Question Type *</label>
+                    <select id="questionType" onchange="toggleQuestionType()" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                        <option value="multiple_choice">Multiple Choice</option>
+                        <option value="essay">Essay / Written Answer</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Marks *</label>
+                    <input type="number" id="questionMarks" value="1" min="1" max="100" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                </div>
+            </div>
+            
+            <div style="margin-top: 12px;">
+                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Question Text *</label>
+                <textarea id="questionText" required placeholder="Enter the question here..." style="width: 100%; min-height: 80px; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; font-family: 'Inter', sans-serif; resize: vertical;"></textarea>
+            </div>
+            
+            <!-- Multiple Choice Options -->
+            <div id="mcqOptions" style="margin-top: 12px;">
+                <h4 style="color: #0A3D62; margin: 0 0 10px 0; font-size: 13px;"><i class="fas fa-list"></i> Options</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-weight: 600; font-size: 11px; color: #475569; display: block; margin-bottom: 2px;">Option A *</label>
+                        <input type="text" id="optionA" placeholder="Option A" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 11px; color: #475569; display: block; margin-bottom: 2px;">Option B *</label>
+                        <input type="text" id="optionB" placeholder="Option B" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 11px; color: #475569; display: block; margin-bottom: 2px;">Option C</label>
+                        <input type="text" id="optionC" placeholder="Option C (optional)" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                    </div>
+                    <div>
+                        <label style="font-weight: 600; font-size: 11px; color: #475569; display: block; margin-bottom: 2px;">Option D</label>
+                        <input type="text" id="optionD" placeholder="Option D (optional)" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                    </div>
+                </div>
+                <div style="margin-top: 10px;">
+                    <label style="font-weight: 600; font-size: 11px; color: #475569; display: block; margin-bottom: 2px;">Correct Answer *</label>
+                    <select id="correctAnswer" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+                        <option value="">-- Select --</option>
+                        <option value="A">A</option>
+                        <option value="B">B</option>
+                        <option value="C">C</option>
+                        <option value="D">D</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Essay Options -->
+            <div id="essayOptions" style="display:none; margin-top: 12px;">
+                <label style="font-weight: 600; font-size: 11px; color: #475569; display: block; margin-bottom: 2px;">Max Characters</label>
+                <input type="number" id="maxChars" value="5000" min="100" max="50000" style="width: 100%; padding: 6px 10px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
+            </div>
+            
+            <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                <button type="button" class="btn btn-danger" onclick="closeQuestionModal()" style="padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">Cancel</button>
+                <button type="submit" class="btn btn-primary" style="background: #4C1D95; color: white; padding: 8px 24px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-save"></i> Save Question
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
     <!-- ============================================================ -->
     <!-- 📝 CREATE/EDIT EXAM MODAL                                    -->
     <!-- ============================================================ -->
