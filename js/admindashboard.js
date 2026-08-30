@@ -8937,17 +8937,18 @@ window.viewStudentRecordings = viewStudentRecordings;
 window.showVideoModal = showVideoModal;              
 window.downloadAllVideos = downloadAllVideos;  
     
-// ============================================
-// 📝 QUESTION BANK FUNCTIONS - COMPLETE FIX
-// ============================================
+// ============================================================
+// 📝 QUESTION BANK FUNCTIONS - COMPLETE WORKING VERSION
+// ============================================================
 
 let currentQuestions = [];
 let currentQuestionExamId = null;
 
-// ============================================
+// ============================================================
 // LOAD EXAMS FOR QUESTIONS
-// ============================================
+// ============================================================
 async function loadExamsForQuestions() {
+    console.log('📚 Loading exams for question bank...');
     try {
         const { data, error } = await sb
             .from('exams')
@@ -8957,7 +8958,10 @@ async function loadExamsForQuestions() {
         if (error) throw error;
 
         const select = document.getElementById('questionExamSelect');
-        if (!select) return;
+        if (!select) {
+            console.warn('⚠️ questionExamSelect not found');
+            return;
+        }
         
         select.innerHTML = '<option value="">-- Select an exam --</option>';
         
@@ -8971,22 +8975,27 @@ async function loadExamsForQuestions() {
 
             // Auto-select first exam
             select.value = data[0].id;
-            loadQuestionsForExam();
+            await loadQuestionsForExam();
         }
+        console.log(`✅ Loaded ${data?.length || 0} exams`);
     } catch (error) {
         console.error('Error loading exams:', error);
         showToast('❌ Error loading exams: ' + error.message, 'error');
     }
 }
 
-// ============================================
+// ============================================================
 // LOAD QUESTIONS FOR SELECTED EXAM
-// ============================================
+// ============================================================
 async function loadQuestionsForExam() {
     const select = document.getElementById('questionExamSelect');
-    if (!select) return;
+    if (!select) {
+        console.warn('⚠️ questionExamSelect not found');
+        return;
+    }
     
     const examId = select.value;
+    console.log('📝 Loading questions for exam:', examId);
 
     if (!examId) {
         const body = document.getElementById('questionsBody');
@@ -9050,12 +9059,17 @@ async function loadQuestionsForExam() {
     } catch (error) {
         console.error('Error loading questions:', error);
         showToast('❌ Error loading questions: ' + error.message, 'error');
+        const loading = document.getElementById('questionsLoading');
+        if (loading) {
+            loading.innerHTML = '❌ Error loading questions';
+            loading.style.color = '#DC2626';
+        }
     }
 }
 
-// ============================================
+// ============================================================
 // RENDER QUESTIONS TABLE
-// ============================================
+// ============================================================
 function renderQuestionsTable(questions) {
     const tbody = document.getElementById('questionsBody');
     const table = document.getElementById('questionsTable');
@@ -9112,9 +9126,9 @@ function renderQuestionsTable(questions) {
     if (loading) loading.style.display = 'none';
 }
 
-// ============================================
+// ============================================================
 // UPDATE QUESTION STATS
-// ============================================
+// ============================================================
 function updateQuestionStats(questions) {
     const container = document.getElementById('questionStats');
     if (!container) return;
@@ -9144,52 +9158,42 @@ function updateQuestionStats(questions) {
     `;
 }
 
-// ============================================
+// ============================================================
 // OPEN ADD QUESTION MODAL
-// ============================================
+// ============================================================
 function openAddQuestion() {
+    console.log('📝 openAddQuestion called');
+    
     const examSelect = document.getElementById('questionExamSelect');
     if (!examSelect || !examSelect.value) {
         showToast('⚠️ Please select an exam first', 'warning');
         return;
     }
 
-    const titleEl = document.getElementById('questionModalTitle');
-    const idEl = document.getElementById('questionId');
-    const examIdEl = document.getElementById('questionExamId');
-    const form = document.getElementById('questionForm');
-    const typeEl = document.getElementById('questionType');
-    const marksEl = document.getElementById('questionMarks');
-    const maxCharsEl = document.getElementById('maxChars');
-    const textEl = document.getElementById('questionText');
-    const optionA = document.getElementById('optionA');
-    const optionB = document.getElementById('optionB');
-    const optionC = document.getElementById('optionC');
-    const optionD = document.getElementById('optionD');
-    const correctEl = document.getElementById('correctAnswer');
-    
-    if (titleEl) titleEl.textContent = 'Add New Question';
-    if (idEl) idEl.value = '';
-    if (examIdEl) examIdEl.value = examSelect.value;
-    if (textEl) textEl.value = '';
-    if (optionA) optionA.value = '';
-    if (optionB) optionB.value = '';
-    if (optionC) optionC.value = '';
-    if (optionD) optionD.value = '';
-    if (correctEl) correctEl.value = '';
-    if (typeEl) typeEl.value = 'multiple_choice';
-    if (marksEl) marksEl.value = '1';
-    if (maxCharsEl) maxCharsEl.value = '5000';
+    // Reset form
+    document.getElementById('questionModalTitle').textContent = 'Add New Question';
+    document.getElementById('questionId').value = '';
+    document.getElementById('questionExamId').value = examSelect.value;
+    document.getElementById('questionText').value = '';
+    document.getElementById('optionA').value = '';
+    document.getElementById('optionB').value = '';
+    document.getElementById('optionC').value = '';
+    document.getElementById('optionD').value = '';
+    document.getElementById('correctAnswer').value = '';
+    document.getElementById('questionType').value = 'multiple_choice';
+    document.getElementById('questionMarks').value = '1';
+    document.getElementById('maxChars').value = '5000';
     
     toggleQuestionType();
-    const modal = document.getElementById('questionModal');
-    if (modal) modal.style.display = 'flex';
+    document.getElementById('questionModal').style.display = 'flex';
+    console.log('✅ Question modal opened');
 }
 
-// ============================================
+// ============================================================
 // EDIT QUESTION
-// ============================================
+// ============================================================
 async function editQuestion(questionId) {
+    console.log('📝 editQuestion called for:', questionId);
     try {
         const { data, error } = await sb
             .from('exam_questions')
@@ -9199,44 +9203,30 @@ async function editQuestion(questionId) {
 
         if (error) throw error;
 
-        const titleEl = document.getElementById('questionModalTitle');
-        const idEl = document.getElementById('questionId');
-        const examIdEl = document.getElementById('questionExamId');
-        const typeEl = document.getElementById('questionType');
-        const textEl = document.getElementById('questionText');
-        const optionA = document.getElementById('optionA');
-        const optionB = document.getElementById('optionB');
-        const optionC = document.getElementById('optionC');
-        const optionD = document.getElementById('optionD');
-        const correctEl = document.getElementById('correctAnswer');
-        const marksEl = document.getElementById('questionMarks');
-        const maxCharsEl = document.getElementById('maxChars');
-        
-        if (titleEl) titleEl.textContent = 'Edit Question';
-        if (idEl) idEl.value = data.id;
-        if (examIdEl) examIdEl.value = data.exam_id;
-        if (typeEl) typeEl.value = data.question_type || 'multiple_choice';
-        if (textEl) textEl.value = data.question_text || '';
-        if (optionA) optionA.value = data.option_a || '';
-        if (optionB) optionB.value = data.option_b || '';
-        if (optionC) optionC.value = data.option_c || '';
-        if (optionD) optionD.value = data.option_d || '';
-        if (correctEl) correctEl.value = data.correct_answer || '';
-        if (marksEl) marksEl.value = data.marks || 1;
-        if (maxCharsEl) maxCharsEl.value = data.max_characters || 5000;
+        document.getElementById('questionModalTitle').textContent = 'Edit Question';
+        document.getElementById('questionId').value = data.id;
+        document.getElementById('questionExamId').value = data.exam_id;
+        document.getElementById('questionType').value = data.question_type || 'multiple_choice';
+        document.getElementById('questionText').value = data.question_text || '';
+        document.getElementById('optionA').value = data.option_a || '';
+        document.getElementById('optionB').value = data.option_b || '';
+        document.getElementById('optionC').value = data.option_c || '';
+        document.getElementById('optionD').value = data.option_d || '';
+        document.getElementById('correctAnswer').value = data.correct_answer || '';
+        document.getElementById('questionMarks').value = data.marks || 1;
+        document.getElementById('maxChars').value = data.max_characters || 5000;
 
         toggleQuestionType();
-        const modal = document.getElementById('questionModal');
-        if (modal) modal.style.display = 'flex';
+        document.getElementById('questionModal').style.display = 'flex';
     } catch (error) {
         console.error('Error loading question:', error);
         showToast('❌ Error loading question: ' + error.message, 'error');
     }
 }
 
-// ============================================
+// ============================================================
 // TOGGLE QUESTION TYPE
-// ============================================
+// ============================================================
 function toggleQuestionType() {
     const type = document.getElementById('questionType');
     if (!type) return;
@@ -9253,9 +9243,9 @@ function toggleQuestionType() {
     }
 }
 
-// ============================================
-// SAVE QUESTION - FIXED
-// ============================================
+// ============================================================
+// SAVE QUESTION - FIXED WITH BETTER ERROR HANDLING
+// ============================================================
 async function saveQuestion() {
     console.log('📝 saveQuestion called');
     
@@ -9307,14 +9297,12 @@ async function saveQuestion() {
     try {
         let result;
         if (id) {
-            // UPDATE existing question
             console.log('📝 Updating question:', id);
             result = await sb
                 .from('exam_questions')
                 .update(questionData)
                 .eq('id', id);
         } else {
-            // INSERT new question
             console.log('📝 Creating new question');
             // Get next question number
             const { data: existing } = await sb
@@ -9347,8 +9335,9 @@ async function saveQuestion() {
         // Reload questions
         await loadQuestionsForExam();
         
-        // Update stats
-        updateQuestionStats(currentQuestions);
+        // Update badge
+        const badge = document.getElementById('questionBankBadge');
+        if (badge) badge.textContent = currentQuestions.length;
         
     } catch (error) {
         console.error('❌ Error saving question:', error);
@@ -9356,10 +9345,11 @@ async function saveQuestion() {
     }
 }
 
-// ============================================
+// ============================================================
 // DELETE QUESTION
-// ============================================
+// ============================================================
 async function deleteQuestion(questionId) {
+    console.log('🗑️ deleteQuestion called for:', questionId);
     if (!confirm('Are you sure you want to delete this question?')) return;
 
     try {
@@ -9372,52 +9362,36 @@ async function deleteQuestion(questionId) {
 
         showToast('✅ Question deleted successfully!', 'success');
         await loadQuestionsForExam();
-        updateQuestionStats(currentQuestions);
+        
+        const badge = document.getElementById('questionBankBadge');
+        if (badge) badge.textContent = currentQuestions.length;
     } catch (error) {
         console.error('Error deleting question:', error);
         showToast('❌ Error deleting question: ' + error.message, 'error');
     }
 }
 
-// ============================================
+// ============================================================
 // CLOSE QUESTION MODAL
-// ============================================
+// ============================================================
 function closeQuestionModal() {
     const modal = document.getElementById('questionModal');
     if (modal) modal.style.display = 'none';
+    console.log('📝 Question modal closed');
 }
 
-// ============================================
+// ============================================================
 // REFRESH QUESTIONS
-// ============================================
+// ============================================================
 function refreshQuestions() {
     console.log('🔄 Refreshing questions...');
     loadExamsForQuestions();
     showToast('🔄 Refreshing questions...', 'info');
 }
 
-// ============================================
-// INITIALIZE QUESTION FORM EVENT LISTENER
-// ============================================
-document.addEventListener('DOMContentLoaded', function() {
-    const form = document.getElementById('questionForm');
-    if (form) {
-        // Remove any existing listeners
-        const newForm = form.cloneNode(true);
-        form.parentNode.replaceChild(newForm, form);
-        
-        newForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            console.log('📝 Form submitted');
-            saveQuestion();
-        });
-        console.log('✅ Question form initialized');
-    }
-});
-
-// ============================================
-// ✅ EXPOSE FUNCTIONS GLOBALLY
-// ============================================
+// ============================================================
+// ✅ EXPOSE QUESTION BANK FUNCTIONS GLOBALLY
+// ============================================================
 window.loadExamsForQuestions = loadExamsForQuestions;
 window.loadQuestionsForExam = loadQuestionsForExam;
 window.renderQuestionsTable = renderQuestionsTable;
@@ -9430,5 +9404,5 @@ window.deleteQuestion = deleteQuestion;
 window.closeQuestionModal = closeQuestionModal;
 window.refreshQuestions = refreshQuestions;
 
-console.log('✅ Question Bank functions loaded and exposed!');
+console.log('✅ Question Bank functions exposed to window!');
 })();
