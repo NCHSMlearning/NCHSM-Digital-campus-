@@ -8935,5 +8935,404 @@ window.viewAllLiveVideos = viewAllLiveVideos;
 window.getLiveStudents = getLiveStudents;
 window.viewStudentRecordings = viewStudentRecordings;  
 window.showVideoModal = showVideoModal;              
-window.downloadAllVideos = downloadAllVideos;          
+window.downloadAllVideos = downloadAllVideos;  
+    
+// ============================================
+// 📝 QUESTION BANK FUNCTIONS - ADD HERE
+// ============================================
+
+let currentQuestions = [];
+let currentQuestionExamId = null;
+
+async function loadExamsForQuestions() {
+    try {
+        const { data, error } = await sb
+            .from('exams')
+            .select('id, title, exam_name')
+            .order('title');
+
+        if (error) throw error;
+
+        const select = document.getElementById('questionExamSelect');
+        if (!select) return;
+        
+        select.innerHTML = '<option value="">-- Select an exam --</option>';
+        
+        data.forEach(exam => {
+            const option = document.createElement('option');
+            option.value = exam.id;
+            option.textContent = exam.title || exam.exam_name || 'Untitled';
+            select.appendChild(option);
+        });
+
+        if (data.length > 0) {
+            select.value = data[0].id;
+            loadQuestionsForExam();
+        }
+    } catch (error) {
+        console.error('Error loading exams:', error);
+        showToast('❌ Error loading exams: ' + error.message, 'error');
+    }
+}
+
+async function loadQuestionsForExam() {
+    const select = document.getElementById('questionExamSelect');
+    if (!select) return;
+    
+    const examId = select.value;
+
+    if (!examId) {
+        const body = document.getElementById('questionsBody');
+        if (body) {
+            body.innerHTML = `
+                <tr><td colspan="6" style="text-align:center; padding:30px; color:#94a3b8;">
+                    <i class="fas fa-info-circle"></i> Select an exam to view questions
+                </td></tr>
+            `;
+        }
+        const table = document.getElementById('questionsTable');
+        const loading = document.getElementById('questionsLoading');
+        const countDisplay = document.getElementById('questionCountDisplay');
+        const totalMarks = document.getElementById('questionTotalMarks');
+        
+        if (table) table.style.display = 'table';
+        if (loading) loading.style.display = 'none';
+        if (countDisplay) countDisplay.textContent = '0';
+        if (totalMarks) totalMarks.textContent = '0';
+        return;
+    }
+
+    currentQuestionExamId = examId;
+
+    try {
+        const loading = document.getElementById('questionsLoading');
+        const table = document.getElementById('questionsTable');
+        
+        if (loading) loading.style.display = 'block';
+        if (table) table.style.display = 'none';
+
+        const { data, error } = await sb
+            .from('exam_questions')
+            .select('*')
+            .eq('exam_id', parseInt(examId))
+            .order('question_number', { ascending: true });
+
+        if (error) throw error;
+
+        currentQuestions = data || [];
+        renderQuestionsTable(currentQuestions);
+        updateQuestionStats(currentQuestions);
+        
+        const countDisplay = document.getElementById('questionCountDisplay');
+        const totalMarksEl = document.getElementById('questionTotalMarks');
+        
+        if (countDisplay) countDisplay.textContent = currentQuestions.length;
+        if (totalMarksEl) {
+            const totalMarks = currentQuestions.reduce((sum, q) => sum + (q.marks || 1), 0);
+            totalMarksEl.textContent = totalMarks;
+        }
+
+        showToast(`✅ Loaded ${currentQuestions.length} questions`, 'success');
+    } catch (error) {
+        console.error('Error loading questions:', error);
+        showToast('❌ Error loading questions: ' + error.message, 'error');
+    }
+}
+
+function renderQuestionsTable(questions) {
+    const tbody = document.getElementById('questionsBody');
+    const table = document.getElementById('questionsTable');
+    const loading = document.getElementById('questionsLoading');
+
+    if (!tbody) return;
+
+    if (!questions || questions.length === 0) {
+        tbody.innerHTML = `
+            <tr><td colspan="6" style="text-align:center; padding:30px; color:#94a3b8;">
+                <i class="fas fa-plus-circle" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+                No questions found. Click "Add Question" to create one.
+            </td></tr>
+        `;
+        if (table) table.style.display = 'table';
+        if (loading) loading.style.display = 'none';
+        return;
+    }
+
+    let html = '';
+    questions.forEach((q, index) => {
+        const isMcq = q.option_a || q.option_b || q.option_c || q.option_d;
+        const type = isMcq ? 'Multiple Choice' : 'Essay';
+        const correct = q.correct_answer || 'N/A';
+        const questionText = q.question_text.length > 60 ? q.question_text.substring(0, 60) + '...' : q.question_text;
+
+        html += `
+            <tr style="border-bottom: 1px solid #e5e7eb;">
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: #94a3b8;">${index + 1}</td>
+                <td style="padding: 8px 12px; color: #1e293b;">${questionText}</td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <span style="padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; background: ${isMcq ? '#DBEAFE' : '#FEF3C7'}; color: ${isMcq ? '#1E40AF' : '#92400E'};">
+                        ${type}
+                    </span>
+                </td>
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600;">${q.marks || 1}</td>
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${correct !== 'N/A' ? '#059669' : '#94a3b8'};">
+                    ${correct}
+                </td>
+                <td style="padding: 8px 12px; text-align: center;">
+                    <button onclick="editQuestion('${q.id}')" style="background: #E0E7FF; color: #3730A3; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; margin-right: 4px;">
+                        <i class="fas fa-edit"></i>
+                    </button>
+                    <button onclick="deleteQuestion('${q.id}')" style="background: #FEE2E2; color: #991B1B; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px;">
+                        <i class="fas fa-trash"></i>
+                    </button>
+                </td>
+            </tr>
+        `;
+    });
+
+    tbody.innerHTML = html;
+    if (table) table.style.display = 'table';
+    if (loading) loading.style.display = 'none';
+}
+
+function updateQuestionStats(questions) {
+    const container = document.getElementById('questionStats');
+    if (!container) return;
+    
+    const total = questions.length;
+    const mcqCount = questions.filter(q => q.option_a || q.option_b || q.option_c || q.option_d).length;
+    const essayCount = total - mcqCount;
+    const totalMarks = questions.reduce((sum, q) => sum + (q.marks || 1), 0);
+
+    container.innerHTML = `
+        <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
+            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Total Questions</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #0A3D62;">${total}</div>
+        </div>
+        <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
+            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Multiple Choice</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #1E40AF;">${mcqCount}</div>
+        </div>
+        <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
+            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Essay</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #92400E;">${essayCount}</div>
+        </div>
+        <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
+            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Total Marks</div>
+            <div style="font-size: 1.5rem; font-weight: 700; color: #059669;">${totalMarks}</div>
+        </div>
+    `;
+}
+
+function openAddQuestion() {
+    const examSelect = document.getElementById('questionExamSelect');
+    if (!examSelect || !examSelect.value) {
+        showToast('⚠️ Please select an exam first', 'warning');
+        return;
+    }
+
+    const titleEl = document.getElementById('questionModalTitle');
+    const idEl = document.getElementById('questionId');
+    const examIdEl = document.getElementById('questionExamId');
+    const form = document.getElementById('questionForm');
+    const typeEl = document.getElementById('questionType');
+    const marksEl = document.getElementById('questionMarks');
+    const maxCharsEl = document.getElementById('maxChars');
+    
+    if (titleEl) titleEl.textContent = 'Add New Question';
+    if (idEl) idEl.value = '';
+    if (examIdEl) examIdEl.value = examSelect.value;
+    if (form) form.reset();
+    if (typeEl) typeEl.value = 'multiple_choice';
+    if (marksEl) marksEl.value = '1';
+    if (maxCharsEl) maxCharsEl.value = '5000';
+    
+    toggleQuestionType();
+    const modal = document.getElementById('questionModal');
+    if (modal) modal.style.display = 'flex';
+}
+
+async function editQuestion(questionId) {
+    try {
+        const { data, error } = await sb
+            .from('exam_questions')
+            .select('*')
+            .eq('id', questionId)
+            .single();
+
+        if (error) throw error;
+
+        const titleEl = document.getElementById('questionModalTitle');
+        const idEl = document.getElementById('questionId');
+        const examIdEl = document.getElementById('questionExamId');
+        const typeEl = document.getElementById('questionType');
+        const textEl = document.getElementById('questionText');
+        const optionA = document.getElementById('optionA');
+        const optionB = document.getElementById('optionB');
+        const optionC = document.getElementById('optionC');
+        const optionD = document.getElementById('optionD');
+        const correctEl = document.getElementById('correctAnswer');
+        const marksEl = document.getElementById('questionMarks');
+        const maxCharsEl = document.getElementById('maxChars');
+        
+        if (titleEl) titleEl.textContent = 'Edit Question';
+        if (idEl) idEl.value = data.id;
+        if (examIdEl) examIdEl.value = data.exam_id;
+        if (typeEl) typeEl.value = data.question_type || 'multiple_choice';
+        if (textEl) textEl.value = data.question_text || '';
+        if (optionA) optionA.value = data.option_a || '';
+        if (optionB) optionB.value = data.option_b || '';
+        if (optionC) optionC.value = data.option_c || '';
+        if (optionD) optionD.value = data.option_d || '';
+        if (correctEl) correctEl.value = data.correct_answer || '';
+        if (marksEl) marksEl.value = data.marks || 1;
+        if (maxCharsEl) maxCharsEl.value = data.max_characters || 5000;
+
+        toggleQuestionType();
+        const modal = document.getElementById('questionModal');
+        if (modal) modal.style.display = 'flex';
+    } catch (error) {
+        console.error('Error loading question:', error);
+        showToast('❌ Error loading question: ' + error.message, 'error');
+    }
+}
+
+function toggleQuestionType() {
+    const type = document.getElementById('questionType');
+    if (!type) return;
+    
+    const mcqOptions = document.getElementById('mcqOptions');
+    const essayOptions = document.getElementById('essayOptions');
+
+    if (type.value === 'essay') {
+        if (mcqOptions) mcqOptions.style.display = 'none';
+        if (essayOptions) essayOptions.style.display = 'block';
+    } else {
+        if (mcqOptions) mcqOptions.style.display = 'block';
+        if (essayOptions) essayOptions.style.display = 'none';
+    }
+}
+
+async function saveQuestion() {
+    const id = document.getElementById('questionId')?.value;
+    const examId = parseInt(document.getElementById('questionExamId')?.value);
+    const questionType = document.getElementById('questionType')?.value;
+    const questionText = document.getElementById('questionText')?.value?.trim();
+    const optionA = document.getElementById('optionA')?.value?.trim();
+    const optionB = document.getElementById('optionB')?.value?.trim();
+    const optionC = document.getElementById('optionC')?.value?.trim();
+    const optionD = document.getElementById('optionD')?.value?.trim();
+    const correctAnswer = document.getElementById('correctAnswer')?.value;
+    const marks = parseInt(document.getElementById('questionMarks')?.value) || 1;
+    const maxChars = parseInt(document.getElementById('maxChars')?.value) || 5000;
+
+    if (!questionText) {
+        showToast('⚠️ Please enter the question text', 'warning');
+        return;
+    }
+
+    if (questionType === 'multiple_choice') {
+        if (!optionA || !optionB) {
+            showToast('⚠️ Please enter at least options A and B', 'warning');
+            return;
+        }
+        if (!correctAnswer) {
+            showToast('⚠️ Please select the correct answer', 'warning');
+            return;
+        }
+    }
+
+    const questionData = {
+        exam_id: examId,
+        question_type: questionType,
+        question_text: questionText,
+        option_a: optionA || null,
+        option_b: optionB || null,
+        option_c: optionC || null,
+        option_d: optionD || null,
+        correct_answer: correctAnswer || null,
+        marks: marks,
+        max_characters: maxChars,
+    };
+
+    try {
+        let result;
+        if (id) {
+            result = await sb.from('exam_questions').update(questionData).eq('id', id);
+        } else {
+            // Get next question number
+            const { data: existing } = await sb
+                .from('exam_questions')
+                .select('question_number')
+                .eq('exam_id', examId)
+                .order('question_number', { ascending: false })
+                .limit(1);
+            
+            const nextNumber = existing && existing.length > 0 ? (existing[0].question_number || 0) + 1 : 1;
+            questionData.question_number = nextNumber;
+            
+            result = await sb.from('exam_questions').insert([questionData]);
+        }
+
+        if (result.error) throw result.error;
+
+        showToast(`✅ Question ${id ? 'updated' : 'created'} successfully!`, 'success');
+        closeQuestionModal();
+        loadQuestionsForExam();
+    } catch (error) {
+        console.error('Error saving question:', error);
+        showToast('❌ Error saving question: ' + error.message, 'error');
+    }
+}
+
+async function deleteQuestion(questionId) {
+    if (!confirm('Are you sure you want to delete this question?')) return;
+
+    try {
+        const { error } = await sb.from('exam_questions').delete().eq('id', questionId);
+        if (error) throw error;
+
+        showToast('✅ Question deleted successfully!', 'success');
+        loadQuestionsForExam();
+    } catch (error) {
+        console.error('Error deleting question:', error);
+        showToast('❌ Error deleting question: ' + error.message, 'error');
+    }
+}
+
+function closeQuestionModal() {
+    const modal = document.getElementById('questionModal');
+    if (modal) modal.style.display = 'none';
+}
+
+function refreshQuestions() {
+    loadExamsForQuestions();
+}
+
+// Override switchTab to handle questions tab
+const originalSwitchTab2 = window.switchTab || function() {};
+window.switchTab = function(tabName) {
+    if (typeof originalSwitchTab2 === 'function' && originalSwitchTab2 !== window.switchTab) {
+        originalSwitchTab2(tabName);
+    }
+    
+    if (tabName === 'questions') {
+        setTimeout(() => {
+            loadExamsForQuestions();
+        }, 100);
+    }
+};
+
+// ✅ EXPOSE QUESTION BANK FUNCTIONS GLOBALLY
+window.loadExamsForQuestions = loadExamsForQuestions;
+window.loadQuestionsForExam = loadQuestionsForExam;
+window.renderQuestionsTable = renderQuestionsTable;
+window.updateQuestionStats = updateQuestionStats;
+window.openAddQuestion = openAddQuestion;
+window.editQuestion = editQuestion;
+window.toggleQuestionType = toggleQuestionType;
+window.saveQuestion = saveQuestion;
+window.deleteQuestion = deleteQuestion;
+window.closeQuestionModal = closeQuestionModal;
+window.refreshQuestions = refreshQuestions;
 })();
