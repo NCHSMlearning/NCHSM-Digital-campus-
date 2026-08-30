@@ -8938,12 +8938,15 @@ window.showVideoModal = showVideoModal;
 window.downloadAllVideos = downloadAllVideos;  
     
 // ============================================
-// 📝 QUESTION BANK FUNCTIONS - ADD HERE
+// 📝 QUESTION BANK FUNCTIONS - COMPLETE FIX
 // ============================================
 
 let currentQuestions = [];
 let currentQuestionExamId = null;
 
+// ============================================
+// LOAD EXAMS FOR QUESTIONS
+// ============================================
 async function loadExamsForQuestions() {
     try {
         const { data, error } = await sb
@@ -8958,14 +8961,15 @@ async function loadExamsForQuestions() {
         
         select.innerHTML = '<option value="">-- Select an exam --</option>';
         
-        data.forEach(exam => {
-            const option = document.createElement('option');
-            option.value = exam.id;
-            option.textContent = exam.title || exam.exam_name || 'Untitled';
-            select.appendChild(option);
-        });
+        if (data && data.length > 0) {
+            data.forEach(exam => {
+                const option = document.createElement('option');
+                option.value = exam.id;
+                option.textContent = exam.title || exam.exam_name || 'Untitled Exam';
+                select.appendChild(option);
+            });
 
-        if (data.length > 0) {
+            // Auto-select first exam
             select.value = data[0].id;
             loadQuestionsForExam();
         }
@@ -8975,6 +8979,9 @@ async function loadExamsForQuestions() {
     }
 }
 
+// ============================================
+// LOAD QUESTIONS FOR SELECTED EXAM
+// ============================================
 async function loadQuestionsForExam() {
     const select = document.getElementById('questionExamSelect');
     if (!select) return;
@@ -9008,7 +9015,10 @@ async function loadQuestionsForExam() {
         const loading = document.getElementById('questionsLoading');
         const table = document.getElementById('questionsTable');
         
-        if (loading) loading.style.display = 'block';
+        if (loading) {
+            loading.style.display = 'block';
+            loading.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading questions...';
+        }
         if (table) table.style.display = 'none';
 
         const { data, error } = await sb
@@ -9032,13 +9042,20 @@ async function loadQuestionsForExam() {
             totalMarksEl.textContent = totalMarks;
         }
 
-        showToast(`✅ Loaded ${currentQuestions.length} questions`, 'success');
+        // Update badge
+        const badge = document.getElementById('questionBankBadge');
+        if (badge) badge.textContent = currentQuestions.length;
+
+        console.log(`✅ Loaded ${currentQuestions.length} questions for exam ${examId}`);
     } catch (error) {
         console.error('Error loading questions:', error);
         showToast('❌ Error loading questions: ' + error.message, 'error');
     }
 }
 
+// ============================================
+// RENDER QUESTIONS TABLE
+// ============================================
 function renderQuestionsTable(questions) {
     const tbody = document.getElementById('questionsBody');
     const table = document.getElementById('questionsTable');
@@ -9079,10 +9096,10 @@ function renderQuestionsTable(questions) {
                     ${correct}
                 </td>
                 <td style="padding: 8px 12px; text-align: center;">
-                    <button onclick="editQuestion('${q.id}')" style="background: #E0E7FF; color: #3730A3; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; margin-right: 4px;">
-                        <i class="fas fa-edit"></i>
+                    <button onclick="window.editQuestion('${q.id}')" style="background: #E0E7FF; color: #3730A3; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; margin-right: 4px;">
+                        <i class="fas fa-edit"></i> Edit
                     </button>
-                    <button onclick="deleteQuestion('${q.id}')" style="background: #FEE2E2; color: #991B1B; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px;">
+                    <button onclick="window.deleteQuestion('${q.id}')" style="background: #FEE2E2; color: #991B1B; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px;">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -9095,14 +9112,17 @@ function renderQuestionsTable(questions) {
     if (loading) loading.style.display = 'none';
 }
 
+// ============================================
+// UPDATE QUESTION STATS
+// ============================================
 function updateQuestionStats(questions) {
     const container = document.getElementById('questionStats');
     if (!container) return;
     
-    const total = questions.length;
-    const mcqCount = questions.filter(q => q.option_a || q.option_b || q.option_c || q.option_d).length;
+    const total = questions ? questions.length : 0;
+    const mcqCount = questions ? questions.filter(q => q.option_a || q.option_b || q.option_c || q.option_d).length : 0;
     const essayCount = total - mcqCount;
-    const totalMarks = questions.reduce((sum, q) => sum + (q.marks || 1), 0);
+    const totalMarks = questions ? questions.reduce((sum, q) => sum + (q.marks || 1), 0) : 0;
 
     container.innerHTML = `
         <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
@@ -9124,6 +9144,9 @@ function updateQuestionStats(questions) {
     `;
 }
 
+// ============================================
+// OPEN ADD QUESTION MODAL
+// ============================================
 function openAddQuestion() {
     const examSelect = document.getElementById('questionExamSelect');
     if (!examSelect || !examSelect.value) {
@@ -9138,11 +9161,22 @@ function openAddQuestion() {
     const typeEl = document.getElementById('questionType');
     const marksEl = document.getElementById('questionMarks');
     const maxCharsEl = document.getElementById('maxChars');
+    const textEl = document.getElementById('questionText');
+    const optionA = document.getElementById('optionA');
+    const optionB = document.getElementById('optionB');
+    const optionC = document.getElementById('optionC');
+    const optionD = document.getElementById('optionD');
+    const correctEl = document.getElementById('correctAnswer');
     
     if (titleEl) titleEl.textContent = 'Add New Question';
     if (idEl) idEl.value = '';
     if (examIdEl) examIdEl.value = examSelect.value;
-    if (form) form.reset();
+    if (textEl) textEl.value = '';
+    if (optionA) optionA.value = '';
+    if (optionB) optionB.value = '';
+    if (optionC) optionC.value = '';
+    if (optionD) optionD.value = '';
+    if (correctEl) correctEl.value = '';
     if (typeEl) typeEl.value = 'multiple_choice';
     if (marksEl) marksEl.value = '1';
     if (maxCharsEl) maxCharsEl.value = '5000';
@@ -9152,6 +9186,9 @@ function openAddQuestion() {
     if (modal) modal.style.display = 'flex';
 }
 
+// ============================================
+// EDIT QUESTION
+// ============================================
 async function editQuestion(questionId) {
     try {
         const { data, error } = await sb
@@ -9197,6 +9234,9 @@ async function editQuestion(questionId) {
     }
 }
 
+// ============================================
+// TOGGLE QUESTION TYPE
+// ============================================
 function toggleQuestionType() {
     const type = document.getElementById('questionType');
     if (!type) return;
@@ -9213,7 +9253,12 @@ function toggleQuestionType() {
     }
 }
 
+// ============================================
+// SAVE QUESTION - FIXED
+// ============================================
 async function saveQuestion() {
+    console.log('📝 saveQuestion called');
+    
     const id = document.getElementById('questionId')?.value;
     const examId = parseInt(document.getElementById('questionExamId')?.value);
     const questionType = document.getElementById('questionType')?.value;
@@ -9226,6 +9271,9 @@ async function saveQuestion() {
     const marks = parseInt(document.getElementById('questionMarks')?.value) || 1;
     const maxChars = parseInt(document.getElementById('maxChars')?.value) || 5000;
 
+    console.log('📝 Question data:', { id, examId, questionType, questionText, optionA, optionB, correctAnswer, marks });
+
+    // Validation
     if (!questionText) {
         showToast('⚠️ Please enter the question text', 'warning');
         return;
@@ -9253,13 +9301,21 @@ async function saveQuestion() {
         correct_answer: correctAnswer || null,
         marks: marks,
         max_characters: maxChars,
+        updated_at: new Date().toISOString()
     };
 
     try {
         let result;
         if (id) {
-            result = await sb.from('exam_questions').update(questionData).eq('id', id);
+            // UPDATE existing question
+            console.log('📝 Updating question:', id);
+            result = await sb
+                .from('exam_questions')
+                .update(questionData)
+                .eq('id', id);
         } else {
+            // INSERT new question
+            console.log('📝 Creating new question');
             // Get next question number
             const { data: existing } = await sb
                 .from('exam_questions')
@@ -9270,60 +9326,98 @@ async function saveQuestion() {
             
             const nextNumber = existing && existing.length > 0 ? (existing[0].question_number || 0) + 1 : 1;
             questionData.question_number = nextNumber;
+            questionData.created_at = new Date().toISOString();
             
-            result = await sb.from('exam_questions').insert([questionData]);
+            result = await sb
+                .from('exam_questions')
+                .insert([questionData]);
         }
 
-        if (result.error) throw result.error;
+        if (result.error) {
+            console.error('❌ Supabase error:', result.error);
+            throw result.error;
+        }
 
+        console.log('✅ Question saved successfully!');
         showToast(`✅ Question ${id ? 'updated' : 'created'} successfully!`, 'success');
+        
+        // Close modal
         closeQuestionModal();
-        loadQuestionsForExam();
+        
+        // Reload questions
+        await loadQuestionsForExam();
+        
+        // Update stats
+        updateQuestionStats(currentQuestions);
+        
     } catch (error) {
-        console.error('Error saving question:', error);
+        console.error('❌ Error saving question:', error);
         showToast('❌ Error saving question: ' + error.message, 'error');
     }
 }
 
+// ============================================
+// DELETE QUESTION
+// ============================================
 async function deleteQuestion(questionId) {
     if (!confirm('Are you sure you want to delete this question?')) return;
 
     try {
-        const { error } = await sb.from('exam_questions').delete().eq('id', questionId);
+        const { error } = await sb
+            .from('exam_questions')
+            .delete()
+            .eq('id', questionId);
+            
         if (error) throw error;
 
         showToast('✅ Question deleted successfully!', 'success');
-        loadQuestionsForExam();
+        await loadQuestionsForExam();
+        updateQuestionStats(currentQuestions);
     } catch (error) {
         console.error('Error deleting question:', error);
         showToast('❌ Error deleting question: ' + error.message, 'error');
     }
 }
 
+// ============================================
+// CLOSE QUESTION MODAL
+// ============================================
 function closeQuestionModal() {
     const modal = document.getElementById('questionModal');
     if (modal) modal.style.display = 'none';
 }
 
+// ============================================
+// REFRESH QUESTIONS
+// ============================================
 function refreshQuestions() {
+    console.log('🔄 Refreshing questions...');
     loadExamsForQuestions();
+    showToast('🔄 Refreshing questions...', 'info');
 }
 
-// Override switchTab to handle questions tab
-const originalSwitchTab2 = window.switchTab || function() {};
-window.switchTab = function(tabName) {
-    if (typeof originalSwitchTab2 === 'function' && originalSwitchTab2 !== window.switchTab) {
-        originalSwitchTab2(tabName);
+// ============================================
+// INITIALIZE QUESTION FORM EVENT LISTENER
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('questionForm');
+    if (form) {
+        // Remove any existing listeners
+        const newForm = form.cloneNode(true);
+        form.parentNode.replaceChild(newForm, form);
+        
+        newForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            console.log('📝 Form submitted');
+            saveQuestion();
+        });
+        console.log('✅ Question form initialized');
     }
-    
-    if (tabName === 'questions') {
-        setTimeout(() => {
-            loadExamsForQuestions();
-        }, 100);
-    }
-};
+});
 
-// ✅ EXPOSE QUESTION BANK FUNCTIONS GLOBALLY
+// ============================================
+// ✅ EXPOSE FUNCTIONS GLOBALLY
+// ============================================
 window.loadExamsForQuestions = loadExamsForQuestions;
 window.loadQuestionsForExam = loadQuestionsForExam;
 window.renderQuestionsTable = renderQuestionsTable;
@@ -9335,4 +9429,6 @@ window.saveQuestion = saveQuestion;
 window.deleteQuestion = deleteQuestion;
 window.closeQuestionModal = closeQuestionModal;
 window.refreshQuestions = refreshQuestions;
+
+console.log('✅ Question Bank functions loaded and exposed!');
 })();
