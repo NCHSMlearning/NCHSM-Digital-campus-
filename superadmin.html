@@ -11795,7 +11795,7 @@
                 </div>
             </section>
                         <!-- ============================================================ -->
-<!-- STUDENT MANAGEMENT MODULE - CHANGE OF PROGRAM & READMISSION  -->
+<!-- STUDENT MANAGEMENT MODULE - CHANGE OF PROGRAM & READMISSION & SESSION REPORTING -->
 <!-- ============================================================ -->
 <section id="student-management" class="tab-content">
     <!-- Header -->
@@ -11807,7 +11807,8 @@
             <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
                 <i class="fas fa-exchange-alt"></i> Change of Program &nbsp;|&nbsp; 
                 <i class="fas fa-undo-alt"></i> Readmission &nbsp;|&nbsp;
-                <i class="fas fa-file-alt"></i> Admissions
+                <i class="fas fa-file-alt"></i> Admissions &nbsp;|&nbsp;
+                <i class="fas fa-calendar-check"></i> Session Reporting
             </p>
         </div>
         <div style="display: flex; gap: 10px; flex-wrap: wrap;">
@@ -11848,11 +11849,11 @@
         </div>
         <div class="card" style="border-top: 4px solid #3b82f6; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
-                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">New Admissions</span>
-                <i class="fas fa-user-plus" style="color: #3b82f6; opacity: 0.5;"></i>
+                <span style="font-size: 11px; color: #94a3b8; font-weight: 600; text-transform: uppercase;">Session Reports</span>
+                <i class="fas fa-calendar-check" style="color: #3b82f6; opacity: 0.5;"></i>
             </div>
-            <div style="font-size: 28px; font-weight: 800; color: #3b82f6; margin-top: 4px;" id="smNewAdmissionsCount">0</div>
-            <div style="font-size: 11px; color: #94a3b8;">This month</div>
+            <div style="font-size: 28px; font-weight: 800; color: #3b82f6; margin-top: 4px;" id="smSessionReportsCount">0</div>
+            <div style="font-size: 11px; color: #94a3b8;">Pending approval</div>
         </div>
         <div class="card" style="border-top: 4px solid #ef4444; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -11881,6 +11882,11 @@
             <i class="fas fa-undo-alt"></i> Readmission
             <span id="smReadmissionBadge" style="background: #fef3c7; padding: 0 10px; border-radius: 20px; font-size: 11px; color: #92400e;">0</span>
         </button>
+        <button onclick="showSMSubTab('session-reports')" id="smTabSessionReports" class="sm-tab-btn" 
+                style="padding: 10px 28px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-calendar-check"></i> Session Reports
+            <span id="smSessionReportsBadge" style="background: #fef3c7; padding: 0 10px; border-radius: 20px; font-size: 11px; color: #92400e;">0</span>
+        </button>
         <button onclick="showSMSubTab('history')" id="smTabHistory" class="sm-tab-btn" 
                 style="padding: 10px 28px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 14px; transition: all 0.3s; display: flex; align-items: center; gap: 8px;">
             <i class="fas fa-history"></i> History
@@ -11891,8 +11897,9 @@
         </button>
     </div>
 
-    <!-- TAB 1: ADMISSIONS -->
+    <!-- TAB 1: ADMISSIONS (unchanged) -->
     <div id="smAdmissionsTab" class="sm-tab-content">
+        <!-- ... keep existing admissions content ... -->
         <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <div style="position: relative; flex: 1; min-width: 160px;">
                 <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
@@ -11966,8 +11973,9 @@
         </div>
     </div>
 
-    <!-- TAB 2: CHANGE OF PROGRAM -->
+    <!-- TAB 2: CHANGE OF PROGRAM (unchanged) -->
     <div id="smChangeProgramTab" class="sm-tab-content" style="display: none;">
+        <!-- ... keep existing change program content ... -->
         <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <div style="position: relative; flex: 1; min-width: 160px;">
                 <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
@@ -12022,8 +12030,9 @@
         </div>
     </div>
 
-    <!-- TAB 3: READMISSION -->
+    <!-- TAB 3: READMISSION (unchanged) -->
     <div id="smReadmissionTab" class="sm-tab-content" style="display: none;">
+        <!-- ... keep existing readmission content ... -->
         <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <div style="position: relative; flex: 1; min-width: 160px;">
                 <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
@@ -12078,7 +12087,73 @@
         </div>
     </div>
 
-    <!-- TAB 4: HISTORY -->
+    <!-- ============================================================ -->
+    <!-- TAB 4: SESSION REPORTS (NEW - ADMIN VIEW)                    -->
+    <!-- ============================================================ -->
+    <div id="smSessionReportsTab" class="sm-tab-content" style="display: none;">
+        <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+            <div style="position: relative; flex: 1; min-width: 160px;">
+                <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+                <input type="text" id="smSessionReportSearch" placeholder="Search by name or ID..." onkeyup="filterSMRequests('session-reports')" 
+                       style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+            </div>
+            <select id="smSessionReportStatusFilter" onchange="filterSMRequests('session-reports')" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                <option value="all">All Status</option>
+                <option value="pending">⏳ Pending</option>
+                <option value="approved">✅ Approved</option>
+                <option value="rejected">❌ Rejected</option>
+            </select>
+            <select id="smSessionReportTypeFilter" onchange="filterSMRequests('session-reports')" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                <option value="all">All Types</option>
+                <option value="Nursing">🎓 Nursing (Block)</option>
+                <option value="TVET">📚 TVET (Year/Term)</option>
+            </select>
+            <button onclick="loadSessionReportsAdmin()" style="background: #3b82f6; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                <i class="fas fa-filter"></i> Filter
+            </button>
+        </div>
+
+        <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 12px 16px; text-align: center; width: 40px;">
+                                <input type="checkbox" id="smSelectAllSessionReports" onchange="toggleAllSMCheckboxes('session-reports')">
+                            </th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Student</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Session Reported</th>
+                            <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Status</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Submitted</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Approval</th>
+                            <th style="padding: 12px 16px; text-align: center; font-weight: 600; color: #475569;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="smSessionReportsBody">
+                        <tr><td colspan="8" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 12px; width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 0.8s linear infinite;"></div>
+                            <p>Loading session reports...</p>
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="padding: 12px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                <span style="font-size: 12px; color: #94a3b8;">Selected: <strong id="smSessionReportsSelectedCount">0</strong></span>
+                <button onclick="bulkApproveSessionReports()" class="btn-action" style="background: #10b981; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-check"></i> Approve Selected
+                </button>
+                <button onclick="bulkRejectSessionReports()" class="btn-action" style="background: #dc2626; padding: 6px 16px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-times"></i> Reject Selected
+                </button>
+                <span style="font-size: 11px; color: #94a3b8; margin-left: auto;">
+                    <i class="fas fa-info-circle"></i> Approval updates student's block/year/term
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 5: HISTORY (unchanged) -->
     <div id="smHistoryTab" class="sm-tab-content" style="display: none;">
         <div style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
             <select id="smHistoryType" onchange="loadSMHistory()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
@@ -12086,6 +12161,7 @@
                 <option value="admissions">Admissions</option>
                 <option value="change-program">Change of Program</option>
                 <option value="readmission">Readmission</option>
+                <option value="session-report">Session Report</option>
             </select>
             <select id="smHistoryStatus" onchange="loadSMHistory()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
                 <option value="all">All Status</option>
@@ -12125,11 +12201,12 @@
         </div>
     </div>
 
-    <!-- TAB 5: NEW REQUEST -->
+    <!-- TAB 6: NEW REQUEST (unchanged) -->
     <div id="smNewRequestTab" class="sm-tab-content" style="display: none;">
         <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; max-width: 700px; margin: 0 auto; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
             <h3 style="margin: 0 0 20px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-plus-circle" style="color: #4C1D95;"></i> Submit New Request            </h3>
+                <i class="fas fa-plus-circle" style="color: #4C1D95;"></i> Submit New Request
+            </h3>
 
             <form id="smRequestForm" onsubmit="event.preventDefault(); submitSMRequest();">
                 <div style="margin-bottom: 16px;">
@@ -12342,7 +12419,8 @@
     }
     #smAdmissionsBody tr:hover,
     #smChangeProgramBody tr:hover, 
-    #smReadmissionBody tr:hover, 
+    #smReadmissionBody tr:hover,
+    #smSessionReportsBody tr:hover,
     #smHistoryBody tr:hover {
         background: #f8fafc;
     }
@@ -12365,6 +12443,17 @@
     .eligibility-pass { background: #d1fae5; color: #065f46; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
     .eligibility-fail { background: #fee2e2; color: #991b1b; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
     .eligibility-pending { background: #fef3c7; color: #92400e; padding: 2px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block; }
+    
+    .sm-update-profile {
+        background: #dbeafe;
+        color: #1e40af;
+        padding: 2px 10px;
+        border-radius: 20px;
+        font-size: 10px;
+        font-weight: 500;
+        display: inline-block;
+        margin-left: 4px;
+    }
     
     @keyframes spin {
         to { transform: rotate(360deg); }
