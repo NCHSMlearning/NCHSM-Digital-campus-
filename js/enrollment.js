@@ -1,6 +1,6 @@
 // ============================================================
 // ENROLLMENT MODULE - Change of Program & Readmission & Session Reporting
-// STUDENT DASHBOARD VERSION
+// STUDENT DASHBOARD VERSION - FULLY FIXED
 // ============================================================
 
 // ============================================================
@@ -21,7 +21,8 @@ const ENR_STATE = {
         total: 0,
         pending: 0,
         approved: 0,
-        rejected: 0
+        rejected: 0,
+        pendingReports: 0
     }
 };
 
@@ -61,8 +62,12 @@ function initEnrollment() {
     loadStudentInfo();
     loadEnrollmentRequests();
     loadEnrollmentHistory();
-    loadSessionReports();
+    // Load session reports after a short delay
+    setTimeout(() => {
+        loadSessionReports();
+    }, 500);
     updateEnrollmentStats();
+    updateReportBadge();
     setupEnrollmentEventListeners();
 }
 
@@ -95,9 +100,13 @@ async function loadStudentInfo() {
             ENR_STATE.programType = detectProgramType(ENR_STATE.currentStudentProgram);
             
             // Update UI
-            document.getElementById('enrollmentStudentName').textContent = ENR_STATE.currentStudentName;
-            document.getElementById('enrollmentStudentId').textContent = ENR_STATE.currentStudentId || 'N/A';
-            document.getElementById('enrollmentProgram').textContent = ENR_STATE.currentStudentProgram;
+            const nameEl = document.getElementById('enrollmentStudentName');
+            const idEl = document.getElementById('enrollmentStudentId');
+            const programEl = document.getElementById('enrollmentProgram');
+            
+            if (nameEl) nameEl.textContent = ENR_STATE.currentStudentName;
+            if (idEl) idEl.textContent = ENR_STATE.currentStudentId || 'N/A';
+            if (programEl) programEl.textContent = ENR_STATE.currentStudentProgram;
             
             // Auto-populate current program in new request form
             const currentDisplay = document.getElementById('enrCurrentProgramDisplay');
@@ -113,11 +122,25 @@ async function loadStudentInfo() {
             if (document.getElementById('enrSessionReportingTab')) {
                 initializeSessionReporting();
             }
+            
+            console.log('✅ Student info loaded:', {
+                name: ENR_STATE.currentStudentName,
+                id: ENR_STATE.currentStudentId,
+                program: ENR_STATE.currentStudentProgram,
+                programType: ENR_STATE.programType,
+                block: ENR_STATE.currentBlock,
+                year: ENR_STATE.currentYear,
+                term: ENR_STATE.currentTerm
+            });
         } else {
             console.warn('⚠️ User not found');
-            document.getElementById('enrollmentStudentName').textContent = 'Student';
-            document.getElementById('enrollmentStudentId').textContent = 'N/A';
-            document.getElementById('enrollmentProgram').textContent = 'N/A';
+            const nameEl = document.getElementById('enrollmentStudentName');
+            const idEl = document.getElementById('enrollmentStudentId');
+            const programEl = document.getElementById('enrollmentProgram');
+            
+            if (nameEl) nameEl.textContent = 'Student';
+            if (idEl) idEl.textContent = 'N/A';
+            if (programEl) programEl.textContent = 'N/A';
         }
     } catch (error) {
         console.error('Error loading student info:', error);
@@ -128,6 +151,7 @@ async function loadStudentInfo() {
 // DETECT PROGRAM TYPE
 // ============================================================
 function detectProgramType(programCode) {
+    if (!programCode) return 'TVET';
     if (NURSING_PROGRAMS.includes(programCode)) {
         return 'Nursing';
     }
@@ -176,12 +200,16 @@ function getProgramDisplayName(programCode) {
 // ============================================================
 function initializeSessionReporting() {
     const program = ENR_STATE.currentStudentProgram;
-    const programType = detectProgramType(program);
+    const programType = ENR_STATE.programType || detectProgramType(program);
     const programDisplay = getProgramDisplayName(program);
+
+    console.log('🔄 Initializing Session Reporting for:', programDisplay, 'Type:', programType);
 
     // Update banner
     const currentProgramEl = document.getElementById('enrReportCurrentProgram');
     const programTypeEl = document.getElementById('enrReportProgramType');
+    const autoDetect = document.getElementById('enrReportAutoDetect');
+
     if (currentProgramEl) currentProgramEl.textContent = programDisplay;
     if (programTypeEl) {
         programTypeEl.textContent = programType;
@@ -194,9 +222,11 @@ function initializeSessionReporting() {
     const sessionLabel = document.getElementById('enrReportSessionLabel');
     const helpText = document.getElementById('enrReportSessionHelpText');
     const instructions = document.getElementById('enrReportInstructions');
-    const autoDetect = document.getElementById('enrReportAutoDetect');
 
-    if (!sessionSelect) return;
+    if (!sessionSelect) {
+        console.warn('⚠️ enrReportSession not found');
+        return;
+    }
 
     sessionSelect.innerHTML = '<option value="">-- Select --</option>';
 
@@ -281,33 +311,76 @@ async function submitSessionReport() {
             feedback.style.display = 'block';
             feedback.style.background = '#fee2e2';
             feedback.style.color = '#dc2626';
+            feedback.style.border = '1px solid #fecaca';
             feedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please select both Year and Session.';
         }
         return;
     }
 
+    // Get current user
+    let user = null;
+    if (window.currentUserProfile) {
+        user = window.currentUserProfile;
+    } else if (window.db && window.db.currentUserProfile) {
+        user = window.db.currentUserProfile;
+    } else if (window.currentUser) {
+        user = window.currentUser;
+    }
+
+    if (!user) {
+        if (feedback) {
+            feedback.style.display = 'block';
+            feedback.style.background = '#fee2e2';
+            feedback.style.color = '#dc2626';
+            feedback.innerHTML = '<i class="fas fa-exclamation-circle"></i> Please login first.';
+        }
+        return;
+    }
+
+    const studentId = ENR_STATE.currentStudentId || user.student_id || user.id || user.user_id;
+    const studentName = ENR_STATE.currentStudentName || user.full_name || user.name || 'Unknown';
+    const program = ENR_STATE.currentStudentProgram || user.program || 'N/A';
+    const programType = ENR_STATE.programType || detectProgramType(program);
+
+    console.log('📤 Preparing to submit session report...');
+    console.log('   Student ID:', studentId);
+    console.log('   Student Name:', studentName);
+    console.log('   Program:', program);
+    console.log('   Program Type:', programType);
+    console.log('   Year:', year);
+    console.log('   Session:', session);
+
     if (typeof showLoading === 'function') showLoading('Submitting session report...');
 
     try {
         const reportData = {
-            student_id: ENR_STATE.currentStudentId,
-            student_name: ENR_STATE.currentStudentName,
-            program: ENR_STATE.currentStudentProgram,
-            program_type: ENR_STATE.programType,
+            student_id: studentId,
+            student_name: studentName,
+            program: program,
+            program_type: programType,
             academic_year: year,
             session: session,
-            status: status,
+            status: status || 'Continuing',
             remarks: remarks || '',
             approval_status: 'pending',
-            submitted_at: new Date().toISOString()
+            submitted_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
+
+        console.log('📤 Inserting report data:', reportData);
 
         const { data, error } = await sb
             .from('session_reports')
             .insert(reportData)
             .select();
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Supabase insert error:', error);
+            throw error;
+        }
+
+        console.log('✅ Report inserted successfully:', data);
 
         if (typeof hideLoading === 'function') hideLoading();
 
@@ -330,26 +403,42 @@ async function submitSessionReport() {
         // Reset form
         document.getElementById('enrReportForm').reset();
 
-        // Refresh data
+        // Clear feedback after 5 seconds
         setTimeout(() => {
-            loadSessionReports();
-            updateReportBadge();
-            initializeSessionReporting();
-        }, 1000);
+            if (feedback) feedback.style.display = 'none';
+        }, 5000);
+
+        // 🔄 Refresh data immediately after submit
+        console.log('🔄 Refreshing session reports...');
+        await loadSessionReports();
+        updateReportBadge();
+        initializeSessionReporting();
+
+        console.log('✅ Session reports refreshed!');
 
     } catch (error) {
         if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error submitting session report:', error);
+        console.error('❌ Error submitting session report:', error);
 
         if (feedback) {
             feedback.style.display = 'block';
             feedback.style.background = '#fee2e2';
             feedback.style.color = '#991b1b';
             feedback.style.border = '1px solid #fecaca';
+            
+            let errorMessage = error.message || 'Unknown error';
+            if (errorMessage.includes('row-level security')) {
+                errorMessage = 'Permission denied. Please contact admin to set up RLS policies.';
+            }
+            
             feedback.innerHTML = `
                 <i class="fas fa-exclamation-circle"></i> 
                 <strong>Error submitting report:</strong><br>
-                <span style="font-size: 13px;">${escapeHtml(error.message)}</span>
+                <span style="font-size: 13px;">${escapeHtml(errorMessage)}</span>
+                <br><br>
+                <span style="font-size: 12px; color: #6b7280;">
+                    💡 Tip: Make sure you're logged in and the session_reports table has proper RLS policies.
+                </span>
             `;
         }
 
@@ -373,8 +462,19 @@ async function loadSessionReports() {
         const studentId = ENR_STATE.currentStudentId;
         if (!studentId) {
             console.warn('⚠️ No student ID found');
+            const tbody = document.getElementById('enrReportsBody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr><td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">
+                        <i class="fas fa-exclamation-triangle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                        Please login to view your reports.
+                    </td></tr>
+                `;
+            }
             return;
         }
+
+        console.log('📊 Fetching session reports for student:', studentId);
 
         const { data, error } = await sb
             .from('session_reports')
@@ -382,7 +482,12 @@ async function loadSessionReports() {
             .eq('student_id', studentId)
             .order('submitted_at', { ascending: false });
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Supabase error:', error);
+            throw error;
+        }
+
+        console.log(`✅ Found ${data?.length || 0} session reports:`, data);
 
         ENR_STATE.reports = data || [];
         renderSessionReportsTable();
@@ -395,9 +500,16 @@ async function loadSessionReports() {
             tbody.innerHTML = `
                 <tr><td colspan="5" style="padding: 30px; text-align: center; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 20px; display: block; margin-bottom: 8px;"></i>
-                    Error loading reports: ${error.message}
+                    Error loading reports: ${escapeHtml(error.message || 'Unknown error')}
+                    <br>
+                    <button onclick="loadSessionReports()" style="margin-top: 8px; padding: 6px 16px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
                 </td></tr>
             `;
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading session reports', 'error');
         }
     }
 }
@@ -407,9 +519,13 @@ async function loadSessionReports() {
 // ============================================================
 function renderSessionReportsTable() {
     const tbody = document.getElementById('enrReportsBody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.warn('⚠️ enrReportsBody not found');
+        return;
+    }
 
-    const reports = ENR_STATE.reports;
+    const reports = ENR_STATE.reports || [];
+    console.log(`📊 Rendering ${reports.length} session reports`);
 
     if (!reports || reports.length === 0) {
         tbody.innerHTML = `
@@ -427,65 +543,80 @@ function renderSessionReportsTable() {
         const statusClass = r.approval_status || 'pending';
         const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
         const statusColors = {
-            pending: { bg: '#fef3c7', color: '#92400e' },
-            approved: { bg: '#d1fae5', color: '#065f46' },
-            rejected: { bg: '#fee2e2', color: '#991b1b' }
+            pending: { bg: '#fef3c7', color: '#92400e', emoji: '⏳' },
+            approved: { bg: '#d1fae5', color: '#065f46', emoji: '✅' },
+            rejected: { bg: '#fee2e2', color: '#991b1b', emoji: '❌' }
         };
         const statusStyle = statusColors[statusClass] || statusColors.pending;
 
         const date = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : 'N/A';
+        const time = r.submitted_at ? new Date(r.submitted_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
         const sessionDisplay = r.session || 'N/A';
-        const statusDisplay = r.status || 'Continuing';
-
-        // Determine if this report updates the block/year/term
-        const isApproved = statusClass === 'approved';
-        const updateInfo = isApproved ? 
-            `<span style="color: #059669; font-size: 11px;">
-                <i class="fas fa-check-circle"></i> Profile updated
-            </span>` : 
-            '';
+        const academicYear = r.academic_year || 'N/A';
+        const studentStatus = r.status || 'Continuing';
+        const programType = r.program_type || 'TVET';
 
         html += `
             <tr style="border-bottom: 1px solid #f1f5f9; ${index % 2 === 0 ? 'background: #fafafa;' : ''}">
-                <td style="padding: 10px 14px;"><strong>${escapeHtml(r.academic_year || 'N/A')}</strong></td>
                 <td style="padding: 10px 14px;">
-                    <span style="background: #e0f2fe; padding: 2px 10px; border-radius: 12px; font-weight: 500; font-size: 12px;">
+                    <strong style="color: #0A3D62;">${escapeHtml(academicYear)}</strong>
+                </td>
+                <td style="padding: 10px 14px;">
+                    <span style="background: #e0f2fe; padding: 4px 12px; border-radius: 12px; font-weight: 500; font-size: 12px; color: #1e40af;">
                         ${escapeHtml(sessionDisplay)}
                     </span>
+                    ${programType === 'Nursing' ? '<span style="font-size: 10px; color: #94a3b8; margin-left: 4px;">(Block)</span>' : '<span style="font-size: 10px; color: #94a3b8; margin-left: 4px;">(Year/Term)</span>'}
                 </td>
                 <td style="padding: 10px 14px;">
-                    <span style="background: #d1fae5; padding: 2px 10px; border-radius: 12px; font-size: 12px;">
-                        ${escapeHtml(statusDisplay)}
+                    <span style="background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">
+                        ${escapeHtml(studentStatus)}
                     </span>
                 </td>
-                <td style="padding: 10px 14px; text-align: center; font-size: 12px; color: #64748b;">${date}</td>
+                <td style="padding: 10px 14px; text-align: center; font-size: 12px; color: #64748b;">
+                    ${date}<br><span style="font-size: 10px; color: #94a3b8;">${time}</span>
+                </td>
                 <td style="padding: 10px 14px; text-align: center;">
                     <span style="background: ${statusStyle.bg}; color: ${statusStyle.color}; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block;">
-                        ${statusLabel}
+                        ${statusStyle.emoji} ${statusLabel}
                     </span>
-                    ${updateInfo}
+                    ${statusClass === 'approved' ? '<br><span style="font-size: 10px; color: #059669;">✅ Profile Updated</span>' : ''}
+                    ${statusClass === 'pending' ? '<br><span style="font-size: 10px; color: #f59e0b;">⏳ Awaiting Review</span>' : ''}
                 </td>
             </tr>
         `;
     });
 
     tbody.innerHTML = html;
+    console.log('✅ Session reports table rendered');
 }
 
 // ============================================================
 // UPDATE REPORT BADGE
 // ============================================================
 function updateReportBadge() {
-    const pending = ENR_STATE.reports.filter(r => r.approval_status === 'pending').length;
+    const reports = ENR_STATE.reports || [];
+    const pending = reports.filter(r => r.approval_status === 'pending').length;
+    const total = reports.length;
+
+    console.log(`📊 Report stats: ${total} total, ${pending} pending`);
+
     const badge = document.getElementById('enrReportBadge');
-    const statsCard = document.getElementById('enrPendingReports');
     if (badge) {
         badge.textContent = pending;
-        badge.style.display = pending > 0 ? 'inline-block' : 'inline-block';
+        badge.style.display = 'inline-block';
+        badge.style.background = pending > 0 ? '#f59e0b' : '#94a3b8';
+        badge.style.color = 'white';
+        badge.style.padding = '0 10px';
+        badge.style.borderRadius = '20px';
+        badge.style.fontSize = '11px';
     }
+
+    const statsCard = document.getElementById('enrPendingReports');
     if (statsCard) {
         statsCard.textContent = pending;
     }
+
+    ENR_STATE.stats.pendingReports = pending;
 }
 
 // ============================================================
@@ -558,11 +689,19 @@ async function approveSessionReport(reportId) {
 
         // Update the student's profile
         const { error: profileError } = await sb
-            .from('students')
+            .from('consolidated_user_profiles_table')
             .update(updateData)
             .eq('student_id', studentId);
 
-        if (profileError) throw profileError;
+        if (profileError) {
+            // Try with just 'students' table if consolidated fails
+            const { error: altError } = await sb
+                .from('students')
+                .update(updateData)
+                .eq('student_id', studentId);
+            
+            if (altError) throw altError;
+        }
 
         // Also update in-memory state
         if (programType === 'Nursing') {
@@ -633,7 +772,7 @@ async function rejectSessionReport(reportId) {
 }
 
 // ============================================================
-// LOAD ENROLLMENT REQUESTS (EXISTING)
+// LOAD ENROLLMENT REQUESTS
 // ============================================================
 async function loadEnrollmentRequests() {
     const sb = getSupabaseClient();
@@ -692,7 +831,11 @@ async function loadEnrollmentRequests() {
             tbody.innerHTML = `
                 <tr><td colspan="5" style="padding: 30px; text-align: center; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 20px; display: block; margin-bottom: 8px;"></i>
-                    Error loading requests: ${error.message}
+                    Error loading requests: ${escapeHtml(error.message)}
+                    <br>
+                    <button onclick="loadEnrollmentRequests()" style="margin-top: 8px; padding: 6px 16px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
                 </td></tr>
             `;
         }
@@ -703,7 +846,7 @@ async function loadEnrollmentRequests() {
 }
 
 // ============================================================
-// RENDER ENROLLMENT REQUESTS TABLE (EXISTING)
+// RENDER ENROLLMENT REQUESTS TABLE
 // ============================================================
 function renderEnrollmentRequestsTable() {
     const tbody = document.getElementById('enrRequestsBody');
@@ -781,7 +924,7 @@ function renderEnrollmentRequestsTable() {
 }
 
 // ============================================================
-// VIEW ENROLLMENT REQUEST DETAILS (EXISTING)
+// VIEW ENROLLMENT REQUEST DETAILS
 // ============================================================
 async function viewEnrollmentRequest(requestId) {
     const sb = getSupabaseClient();
@@ -899,7 +1042,7 @@ async function viewEnrollmentRequest(requestId) {
 }
 
 // ============================================================
-// ENROLLMENT MODAL HELPER (EXISTING)
+// ENROLLMENT MODAL HELPER
 // ============================================================
 function showEnrollmentModal(content) {
     closeEnrollmentModal();
@@ -937,7 +1080,7 @@ function closeEnrollmentModal() {
 }
 
 // ============================================================
-// LOAD ENROLLMENT HISTORY (EXISTING)
+// LOAD ENROLLMENT HISTORY
 // ============================================================
 async function loadEnrollmentHistory() {
     const sb = getSupabaseClient();
@@ -984,7 +1127,7 @@ async function loadEnrollmentHistory() {
             tbody.innerHTML = `
                 <tr><td colspan="5" style="padding: 30px; text-align: center; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 20px; display: block; margin-bottom: 8px;"></i>
-                    Error loading history: ${error.message}
+                    Error loading history: ${escapeHtml(error.message)}
                 </td></tr>
             `;
         }
@@ -995,7 +1138,7 @@ async function loadEnrollmentHistory() {
 }
 
 // ============================================================
-// RENDER ENROLLMENT HISTORY TABLE (EXISTING)
+// RENDER ENROLLMENT HISTORY TABLE
 // ============================================================
 function renderEnrollmentHistoryTable() {
     const tbody = document.getElementById('enrHistoryBody');
@@ -1061,7 +1204,7 @@ function renderEnrollmentHistoryTable() {
 }
 
 // ============================================================
-// UPDATE ENROLLMENT STATS (UPDATED)
+// UPDATE ENROLLMENT STATS
 // ============================================================
 function updateEnrollmentStats() {
     const requests = ENR_STATE.requests;
@@ -1083,18 +1226,25 @@ function updateEnrollmentStats() {
     // Pending reports
     const pendingReports = ENR_STATE.reports.filter(r => r.approval_status === 'pending').length;
 
-    document.getElementById('enrTotalRequests').textContent = total;
-    document.getElementById('enrPendingCount').textContent = pending;
-    document.getElementById('enrApprovedCount').textContent = approved;
-    document.getElementById('enrRejectedCount').textContent = rejected;
-    document.getElementById('enrLastRequest').textContent = lastRequest;
-    document.getElementById('enrPendingReports').textContent = pendingReports;
+    const totalEl = document.getElementById('enrTotalRequests');
+    const pendingEl = document.getElementById('enrPendingCount');
+    const approvedEl = document.getElementById('enrApprovedCount');
+    const rejectedEl = document.getElementById('enrRejectedCount');
+    const lastEl = document.getElementById('enrLastRequest');
+    const reportsEl = document.getElementById('enrPendingReports');
+
+    if (totalEl) totalEl.textContent = total;
+    if (pendingEl) pendingEl.textContent = pending;
+    if (approvedEl) approvedEl.textContent = approved;
+    if (rejectedEl) rejectedEl.textContent = rejected;
+    if (lastEl) lastEl.textContent = lastRequest;
+    if (reportsEl) reportsEl.textContent = pendingReports;
 
     ENR_STATE.stats = { total, pending, approved, rejected, pendingReports };
 }
 
 // ============================================================
-// UPDATE ENROLLMENT BADGES (EXISTING)
+// UPDATE ENROLLMENT BADGES
 // ============================================================
 function updateEnrollmentBadges() {
     const pending = ENR_STATE.requests.filter(r => r.status === 'pending').length;
@@ -1102,18 +1252,19 @@ function updateEnrollmentBadges() {
     if (badge) {
         badge.textContent = pending;
         badge.style.display = pending > 0 ? 'inline-block' : 'inline-block';
+        badge.style.background = pending > 0 ? '#f59e0b' : 'rgba(255,255,255,0.2)';
     }
 }
 
 // ============================================================
-// FILTER ENROLLMENT REQUESTS (EXISTING)
+// FILTER ENROLLMENT REQUESTS
 // ============================================================
 function filterEnrRequests() {
     loadEnrollmentRequests();
 }
 
 // ============================================================
-// SHOW ENROLLMENT SUB TAB (UPDATED)
+// SHOW ENROLLMENT SUB TAB
 // ============================================================
 function showEnrSubTab(tab) {
     // Hide all tabs
@@ -1161,30 +1312,45 @@ function showEnrSubTab(tab) {
     if (tab === 'my-requests') {
         loadEnrollmentRequests();
     } else if (tab === 'session-reporting') {
+        console.log('🔄 Loading Session Reporting tab...');
         initializeSessionReporting();
-        loadSessionReports();
+        // Force refresh the reports after a short delay
+        setTimeout(() => {
+            loadSessionReports();
+        }, 200);
     } else if (tab === 'history') {
         loadEnrollmentHistory();
     } else if (tab === 'new-request') {
         // Reset form
-        document.getElementById('enrRequestForm')?.reset();
-        document.getElementById('enrFormFeedback').style.display = 'none';
-        document.getElementById('enrTypeError').style.display = 'none';
+        const form = document.getElementById('enrRequestForm');
+        if (form) form.reset();
+        const feedback = document.getElementById('enrFormFeedback');
+        if (feedback) feedback.style.display = 'none';
+        const error = document.getElementById('enrTypeError');
+        if (error) error.style.display = 'none';
         // Reset type selection
         document.querySelectorAll('#enrTypeChangeProgram, #enrTypeReadmission').forEach(btn => {
             btn.style.borderColor = '#e5e7eb';
             btn.style.background = 'white';
         });
-        document.getElementById('enrRequestType').value = '';
+        const typeInput = document.getElementById('enrRequestType');
+        if (typeInput) typeInput.value = '';
+        const currentSection = document.getElementById('enrCurrentProgramSection');
+        const previousSection = document.getElementById('enrPreviousProgramSection');
+        if (currentSection) currentSection.style.display = 'none';
+        if (previousSection) previousSection.style.display = 'none';
     }
 }
 
 // ============================================================
-// SELECT ENROLLMENT TYPE (EXISTING)
+// SELECT ENROLLMENT TYPE
 // ============================================================
 function selectEnrType(type) {
-    document.getElementById('enrRequestType').value = type;
-    document.getElementById('enrTypeError').style.display = 'none';
+    const typeInput = document.getElementById('enrRequestType');
+    if (typeInput) typeInput.value = type;
+    
+    const error = document.getElementById('enrTypeError');
+    if (error) error.style.display = 'none';
 
     // Update button styles
     document.querySelectorAll('#enrTypeChangeProgram, #enrTypeReadmission').forEach(btn => {
@@ -1201,20 +1367,22 @@ function selectEnrType(type) {
     // Show/hide sections
     const currentSection = document.getElementById('enrCurrentProgramSection');
     const previousSection = document.getElementById('enrPreviousProgramSection');
+    const currentDisplay = document.getElementById('enrCurrentProgramDisplay');
+    const previousDisplay = document.getElementById('enrPreviousProgramDisplay');
 
     if (type === 'change-program') {
-        currentSection.style.display = 'block';
-        previousSection.style.display = 'none';
-        document.getElementById('enrCurrentProgramDisplay').value = ENR_STATE.currentStudentProgram || 'N/A';
+        if (currentSection) currentSection.style.display = 'block';
+        if (previousSection) previousSection.style.display = 'none';
+        if (currentDisplay) currentDisplay.value = ENR_STATE.currentStudentProgram || 'N/A';
     } else {
-        currentSection.style.display = 'none';
-        previousSection.style.display = 'block';
-        document.getElementById('enrPreviousProgramDisplay').value = ENR_STATE.currentStudentProgram || 'N/A';
+        if (currentSection) currentSection.style.display = 'none';
+        if (previousSection) previousSection.style.display = 'block';
+        if (previousDisplay) previousDisplay.value = ENR_STATE.currentStudentProgram || 'N/A';
     }
 }
 
 // ============================================================
-// SUBMIT ENROLLMENT REQUEST (EXISTING)
+// SUBMIT ENROLLMENT REQUEST
 // ============================================================
 async function submitEnrollmentRequest() {
     const sb = getSupabaseClient();
@@ -1225,14 +1393,15 @@ async function submitEnrollmentRequest() {
         return;
     }
 
-    const requestType = document.getElementById('enrRequestType').value;
-    const requestedProgram = document.getElementById('enrRequestedProgram').value;
-    const reason = document.getElementById('enrReason').value.trim();
+    const requestType = document.getElementById('enrRequestType')?.value;
+    const requestedProgram = document.getElementById('enrRequestedProgram')?.value;
+    const reason = document.getElementById('enrReason')?.value?.trim();
     const docsInput = document.getElementById('enrSupportingDocs');
 
     // Validate
     if (!requestType) {
-        document.getElementById('enrTypeError').style.display = 'block';
+        const error = document.getElementById('enrTypeError');
+        if (error) error.style.display = 'block';
         if (typeof showNotification === 'function') {
             showNotification('Please select a request type', 'warning');
         }
@@ -1323,7 +1492,8 @@ async function submitEnrollmentRequest() {
         }
 
         // Reset form
-        document.getElementById('enrRequestForm').reset();
+        const form = document.getElementById('enrRequestForm');
+        if (form) form.reset();
         if (docsInput) docsInput.value = '';
 
         // Reset type selection
@@ -1331,9 +1501,12 @@ async function submitEnrollmentRequest() {
             btn.style.borderColor = '#e5e7eb';
             btn.style.background = 'white';
         });
-        document.getElementById('enrRequestType').value = '';
-        document.getElementById('enrCurrentProgramSection').style.display = 'none';
-        document.getElementById('enrPreviousProgramSection').style.display = 'none';
+        const typeInput = document.getElementById('enrRequestType');
+        if (typeInput) typeInput.value = '';
+        const currentSection = document.getElementById('enrCurrentProgramSection');
+        const previousSection = document.getElementById('enrPreviousProgramSection');
+        if (currentSection) currentSection.style.display = 'none';
+        if (previousSection) previousSection.style.display = 'none';
 
         // Refresh data
         setTimeout(() => {
@@ -1368,22 +1541,24 @@ async function submitEnrollmentRequest() {
 }
 
 // ============================================================
-// REFRESH ENROLLMENT (UPDATED)
+// REFRESH ENROLLMENT
 // ============================================================
 function refreshEnrollment() {
+    console.log('🔄 Refreshing all enrollment data...');
     loadStudentInfo();
     loadEnrollmentRequests();
     loadEnrollmentHistory();
     loadSessionReports();
     updateEnrollmentStats();
     updateEnrollmentBadges();
+    updateReportBadge();
     if (typeof showNotification === 'function') {
         showNotification('🔄 Data refreshed!', 'success');
     }
 }
 
 // ============================================================
-// EXPORT ENROLLMENT REQUESTS TO CSV (EXISTING)
+// EXPORT ENROLLMENT REQUESTS TO CSV
 // ============================================================
 function exportEnrollmentRequests() {
     const requests = ENR_STATE.requests;
@@ -1417,7 +1592,7 @@ function exportEnrollmentRequests() {
 }
 
 // ============================================================
-// DOWNLOAD CSV HELPER (EXISTING)
+// DOWNLOAD CSV HELPER
 // ============================================================
 function downloadCSV(csv, filename) {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
@@ -1433,7 +1608,7 @@ function downloadCSV(csv, filename) {
 }
 
 // ============================================================
-// ESCAPE HTML HELPER (EXISTING)
+// ESCAPE HTML HELPER
 // ============================================================
 function escapeHtml(str) {
     if (!str) return '';
@@ -1443,7 +1618,7 @@ function escapeHtml(str) {
 }
 
 // ============================================================
-// SETUP EVENT LISTENERS (UPDATED)
+// SETUP EVENT LISTENERS
 // ============================================================
 function setupEnrollmentEventListeners() {
     // Request type button clicks
@@ -1455,16 +1630,22 @@ function setupEnrollmentEventListeners() {
     });
 
     // Reset form feedback on input change
-    document.getElementById('enrRequestForm')?.addEventListener('change', function() {
-        const feedback = document.getElementById('enrFormFeedback');
-        if (feedback) feedback.style.display = 'none';
-    });
+    const form = document.getElementById('enrRequestForm');
+    if (form) {
+        form.addEventListener('change', function() {
+            const feedback = document.getElementById('enrFormFeedback');
+            if (feedback) feedback.style.display = 'none';
+        });
+    }
 
     // Session report form submission
-    document.getElementById('enrReportForm')?.addEventListener('submit', function(e) {
-        e.preventDefault();
-        submitSessionReport();
-    });
+    const reportForm = document.getElementById('enrReportForm');
+    if (reportForm) {
+        reportForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            submitSessionReport();
+        });
+    }
 }
 
 // ============================================================
@@ -1505,3 +1686,4 @@ console.log('   - ✅ Export to CSV');
 console.log('   - ✅ View request details');
 console.log('   - ✅ SESSION REPORTING: Auto-detects block (Nursing) or Year/Term (TVET)');
 console.log('   - ✅ SESSION REPORTING: Admin approval auto-updates student profile');
+console.log('   - ✅ SESSION REPORTING: Reports appear immediately after submission');
