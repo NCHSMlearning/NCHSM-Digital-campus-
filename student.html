@@ -5415,7 +5415,7 @@
 </section>
 <!-- END REVIEWS -->
 <!-- ============================================================ -->
-<!-- ENROLLMENT MODULE - Change of Program & Readmission          -->
+<!-- ENROLLMENT MODULE - Change of Program & Readmission & Session Reporting -->
 <!-- ============================================================ -->
 <section id="enrollment" class="tab-content" style="padding: 20px; max-width: 100%; overflow-x: hidden; display: none;">
 
@@ -5426,7 +5426,7 @@
                 <i class="fas fa-user-plus" style="color: #FDB913;"></i> Enrollment
             </h2>
             <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-                <i class="fas fa-exchange-alt"></i> Change of Program &nbsp;|&nbsp; <i class="fas fa-undo-alt"></i> Readmission
+                <i class="fas fa-exchange-alt"></i> Change of Program &nbsp;|&nbsp; <i class="fas fa-undo-alt"></i> Readmission &nbsp;|&nbsp; <i class="fas fa-calendar-check"></i> Session Reporting
             </p>
             <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px;">
                 <span style="background: rgba(255,255,255,0.12); padding: 2px 12px; border-radius: 12px; font-size: 10px; color: rgba(255,255,255,0.7);">
@@ -5469,8 +5469,8 @@
             <div style="font-size: 28px; font-weight: 700; color: #dc2626; margin-top: 2px;" id="enrRejectedCount">0</div>
         </div>
         <div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; border-top: 3px solid #3b82f6;">
-            <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Last Request</div>
-            <div style="font-size: 14px; font-weight: 700; color: #3b82f6; margin-top: 2px;" id="enrLastRequest">--</div>
+            <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Pending Reports</div>
+            <div style="font-size: 28px; font-weight: 700; color: #3b82f6; margin-top: 2px;" id="enrPendingReports">0</div>
         </div>
     </div>
 
@@ -5483,12 +5483,16 @@
         <button onclick="showEnrSubTab('new-request')" id="enrTabNewRequest" class="enr-tab-btn" style="padding: 10px 24px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s; display: flex; align-items: center; gap: 6px;">
             <i class="fas fa-plus-circle"></i> New Request
         </button>
+        <button onclick="showEnrSubTab('session-reporting')" id="enrTabSessionReporting" class="enr-tab-btn" style="padding: 10px 24px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s; display: flex; align-items: center; gap: 6px;">
+            <i class="fas fa-calendar-check"></i> Session Reporting
+            <span id="enrReportBadge" style="background: #f59e0b; color: white; padding: 0 10px; border-radius: 20px; font-size: 11px;">0</span>
+        </button>
         <button onclick="showEnrSubTab('history')" id="enrTabHistory" class="enr-tab-btn" style="padding: 10px 24px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s; display: flex; align-items: center; gap: 6px;">
             <i class="fas fa-history"></i> History
         </button>
     </div>
 
-    <!-- TAB 1: MY REQUESTS -->
+    <!-- TAB 1: MY REQUESTS (unchanged) -->
     <div id="enrMyRequestsTab" class="enr-tab-content">
         <div style="background: white; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
             <div style="position: relative; flex: 1; min-width: 160px;">
@@ -5535,7 +5539,7 @@
         </div>
     </div>
 
-    <!-- TAB 2: NEW REQUEST -->
+    <!-- TAB 2: NEW REQUEST (unchanged) -->
     <div id="enrNewRequestTab" class="enr-tab-content" style="display: none;">
         <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; max-width: 650px; margin: 0 auto;">
             <h3 style="margin: 0 0 16px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px; font-size: 17px;">
@@ -5583,20 +5587,16 @@
                     <input type="text" id="enrPreviousProgramDisplay" readonly style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #f8fafc; color: #1e293b;">
                 </div>
 
-                <!-- Requested Program - COMPLETE LIST -->
+                <!-- Requested Program -->
                 <div style="margin-bottom: 14px;">
                     <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
                         <i class="fas fa-graduation-cap"></i> Requested Program *
                     </label>
                     <select id="enrRequestedProgram" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
                         <option value="">-- Select Program --</option>
-                        
-                        <!-- KRCHN Nursing -->
                         <optgroup label="🎓 KRCHN Nursing">
                             <option value="KRCHN">KRCHN - Kenya Registered Community Health Nursing</option>
                         </optgroup>
-                        
-                        <!-- TVET Diploma Programs -->
                         <optgroup label="🎯 TVET Diploma Programs (6-24 months)">
                             <option value="DPOTT">DPOTT - Diploma in Perioperative Theatre Technology</option>
                             <option value="DCH">DCH - Diploma in Community Health</option>
@@ -5608,8 +5608,6 @@
                             <option value="DICT">DICT - Diploma in ICT</option>
                             <option value="DME">DME - Diploma in Medical Engineering</option>
                         </optgroup>
-                        
-                        <!-- TVET Certificate Programs -->
                         <optgroup label="📜 TVET Certificate Programs (3-12 months)">
                             <option value="CPOTT">CPOTT - Certificate in Perioperative Theatre Technology</option>
                             <option value="CCH">CCH - Certificate in Community Health</option>
@@ -5624,15 +5622,11 @@
                             <option value="CCG">CCG - Certificate in Caregiver</option>
                             <option value="COMT">COMT - Certificate in Orthopedic Trauma Medicine</option>
                         </optgroup>
-                        
-                        <!-- TVET Artisan Programs -->
                         <optgroup label="🔧 TVET Artisan Programs (2-12 months)">
                             <option value="ACH">ACH - Artisan in Community Health</option>
                             <option value="AAG">AAG - Artisan in Agriculture</option>
                             <option value="ASW">ASW - Artisan in Social Work & Community Development</option>
                         </optgroup>
-                        
-                        <!-- Other TVET Programs -->
                         <optgroup label="📊 Other TVET Programs">
                             <option value="CCA">CCA - Certificate in Computer Applications</option>
                             <option value="PTE">PTE - TVET/CDACC (PTE)</option>
@@ -5672,7 +5666,123 @@
         </div>
     </div>
 
-    <!-- TAB 3: HISTORY -->
+    <!-- ============================================================ -->
+    <!-- TAB 3: SESSION REPORTING (UPDATED WITH AUTO-DETECTION)       -->
+    <!-- ============================================================ -->
+    <div id="enrSessionReportingTab" class="enr-tab-content" style="display: none;">
+        <!-- Current Program Info Banner -->
+        <div id="enrProgramInfoBanner" style="background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <i class="fas fa-info-circle" style="color: #3b82f6; font-size: 20px;"></i>
+            <div>
+                <strong style="color: #1e293b;">Current Program:</strong>
+                <span id="enrReportCurrentProgram" style="color: #0A3D62; font-weight: 600;">Loading...</span>
+                <span id="enrReportProgramType" style="background: #dbeafe; padding: 2px 10px; border-radius: 12px; font-size: 11px; margin-left: 8px; color: #1e40af;">Loading...</span>
+            </div>
+            <div style="margin-left: auto; font-size: 13px; color: #64748b;">
+                <i class="fas fa-arrow-right"></i> 
+                <span id="enrReportAutoDetect">Auto-detecting reporting structure...</span>
+            </div>
+        </div>
+
+        <div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; max-width: 650px; margin: 0 auto;">
+            <h3 style="margin: 0 0 8px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px; font-size: 17px;">
+                <i class="fas fa-calendar-check" style="color: #059669;"></i> Report Back to Semester
+            </h3>
+            <p style="color: #94a3b8; font-size: 13px; margin: 0 0 16px 0;">
+                <i class="fas fa-info-circle"></i> 
+                <span id="enrReportInstructions">Select your current academic session.</span>
+            </p>
+
+            <form id="enrReportForm" onsubmit="event.preventDefault(); submitSessionReport();">
+                <!-- Academic Year (always visible) -->
+                <div style="margin-bottom: 14px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-calendar-alt"></i> Academic Year *
+                    </label>
+                    <select id="enrReportYear" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                        <option value="">-- Select Year --</option>
+                        <option value="2024/2025">2024/2025</option>
+                        <option value="2025/2026" selected>2025/2026</option>
+                        <option value="2026/2027">2026/2027</option>
+                    </select>
+                </div>
+
+                <!-- Session/Block/Term - DYNAMIC based on program type -->
+                <div style="margin-bottom: 14px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-layer-group"></i> <span id="enrReportSessionLabel">Session *</span>
+                    </label>
+                    <select id="enrReportSession" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                        <option value="">-- Select --</option>
+                    </select>
+                    <div id="enrReportSessionHelp" style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
+                        <i class="fas fa-info-circle"></i> 
+                        <span id="enrReportSessionHelpText">Select your current session</span>
+                    </div>
+                </div>
+
+                <!-- Current Status -->
+                <div style="margin-bottom: 14px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-user-graduate"></i> Current Status *
+                    </label>
+                    <select id="enrReportStatus" required style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
+                        <option value="Continuing">Continuing</option>
+                        <option value="Repeating">Repeating</option>
+                        <option value="Probation">Probation</option>
+                    </select>
+                </div>
+
+                <!-- Remarks -->
+                <div style="margin-bottom: 16px;">
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                        <i class="fas fa-comment"></i> Remarks (Optional)
+                    </label>
+                    <textarea id="enrReportRemarks" rows="3" placeholder="Any additional information..." style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
+                </div>
+
+                <!-- Submit -->
+                <div style="display: flex; gap: 12px;">
+                    <button type="submit" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #059669, #10b981); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px;">
+                        <i class="fas fa-paper-plane"></i> Submit Report
+                    </button>
+                    <button type="reset" style="padding: 12px 24px; background: #e5e7eb; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-times"></i> Clear
+                    </button>
+                </div>
+
+                <div id="enrReportFeedback" style="display: none; margin-top: 12px; padding: 12px 16px; border-radius: 8px;"></div>
+            </form>
+        </div>
+
+        <!-- My Session Reports Table -->
+        <div style="margin-top: 25px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
+            <div style="padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62;">
+                <i class="fas fa-list"></i> My Session Reports
+            </div>
+            <div style="overflow-x: auto;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
+                            <th style="padding: 10px 14px; text-align: left;">Year</th>
+                            <th style="padding: 10px 14px; text-align: left;">Session</th>
+                            <th style="padding: 10px 14px; text-align: left;">Status</th>
+                            <th style="padding: 10px 14px; text-align: center;">Date</th>
+                            <th style="padding: 10px 14px; text-align: center;">Approval</th>
+                        </tr>
+                    </thead>
+                    <tbody id="enrReportsBody">
+                        <tr><td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 10px;"></div>
+                            Loading reports...
+                        </td></tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- TAB 4: HISTORY (unchanged) -->
     <div id="enrHistoryTab" class="enr-tab-content" style="display: none;">
         <div style="background: white; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
             <select id="enrHistoryType" onchange="loadEnrollmentHistory()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
