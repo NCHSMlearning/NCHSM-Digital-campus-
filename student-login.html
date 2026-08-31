@@ -159,12 +159,12 @@
         <form id="loginForm">
             <div class="form-group">
                 <label for="email">Email Address or Student ID</label>
-                <input type="text" id="email" placeholder="Enter your email or student ID" required>
+                <input type="text" id="email" placeholder="Enter your email or student ID" required autocomplete="username">
             </div>
 
             <div class="form-group">
                 <label for="password">Password</label>
-                <input type="password" id="password" placeholder="Enter your password" required minlength="8">
+                <input type="password" id="password" placeholder="Enter your password" required minlength="8" autocomplete="current-password">
             </div>
 
             <button type="submit" class="btn-login" id="loginBtn">
@@ -189,15 +189,24 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
         // ============================================================
-        // INITIALIZE SUPABASE
+        // ✅ FIX: Check if supabase already exists before creating
         // ============================================================
-        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-            auth: {
-                persistSession: true,
-                autoRefreshToken: true,
-                detectSessionInUrl: false
-            }
-        });
+        let supabaseClient;
+
+        if (typeof window.supabaseClient !== 'undefined') {
+            supabaseClient = window.supabaseClient;
+            console.log('✅ Using existing Supabase client');
+        } else {
+            supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+                auth: {
+                    persistSession: true,
+                    autoRefreshToken: true,
+                    detectSessionInUrl: false
+                }
+            });
+            window.supabaseClient = supabaseClient;
+            console.log('✅ Created new Supabase client');
+        }
 
         // ============================================================
         // DOM ELEMENTS
@@ -249,7 +258,7 @@
                 if (!identifier.includes('@')) {
                     console.log('🔍 Searching by student_id:', identifier);
 
-                    const { data: profileByStudentId, error: studentIdError } = await supabase
+                    const { data: profileByStudentId, error: studentIdError } = await supabaseClient
                         .from('consolidated_user_profiles_table')
                         .select('email')
                         .eq('student_id', identifier)
@@ -273,7 +282,7 @@
                 // Step 2: Sign in with Supabase Auth
                 console.log('🔐 Signing in with email:', emailToUse);
 
-                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                const { data: authData, error: authError } = await supabaseClient.auth.signInWithPassword({
                     email: emailToUse,
                     password: password
                 });
@@ -296,7 +305,7 @@
                 console.log('✅ Auth successful for:', authData.user.email);
 
                 // Step 3: Get user profile
-                const { data: profile, error: profileError } = await supabase
+                const { data: profile, error: profileError } = await supabaseClient
                     .from('consolidated_user_profiles_table')
                     .select('*')
                     .eq('user_id', authData.user.id)
@@ -357,7 +366,7 @@
                 localStorage.setItem('session_expires', authData.session?.expires_at);
 
                 // Step 7: Track login
-                await supabase
+                await supabaseClient
                     .from('consolidated_user_profiles_table')
                     .update({
                         last_login: new Date().toISOString(),
@@ -400,12 +409,12 @@
         // ============================================================
         async function checkExistingSession() {
             try {
-                const { data: { session }, error } = await supabase.auth.getSession();
+                const { data: { session }, error } = await supabaseClient.auth.getSession();
 
                 if (session) {
                     console.log('✅ Existing session found');
                     // Check if user is a student
-                    const { data: profile } = await supabase
+                    const { data: profile } = await supabaseClient
                         .from('consolidated_user_profiles_table')
                         .select('role')
                         .eq('user_id', session.user.id)
