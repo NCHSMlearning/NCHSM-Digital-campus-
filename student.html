@@ -4,15 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>NCHSM Digital Student Dashboard | Unified Learning Hub</title>
- <!-- ===== GOOGLE ANALYTICS ===== -->
-    <!-- Google tag (gtag.js) -->
-    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WTZRYGB8PE"></script>
-    <script>
-      window.dataLayer = window.dataLayer || [];
-      function gtag(){dataLayer.push(arguments);}
-      gtag('js', new Date());
-      gtag('config', 'G-KBYGBSYY2S');
-    </script>
+
     <!-- External Libraries -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
@@ -5715,9 +5707,7 @@
 
 </section>
 <!-- END ENROLLMENT -->
-<!-- ============================================================ -->
-<!-- FINANCE TAB - STUDENT VIEW WITH COMPLETE WORKING MODAL        -->
-<!-- ============================================================ -->
+<!-- ==================== FINANCE TAB - STUDENT VIEW ==================== -->
 <section id="finance" class="tab-content" style="padding: 12px; max-width: 100%; overflow-x: hidden;">
 
     <!-- ========== NOSCRIPT FALLBACK ========== -->
@@ -5835,6 +5825,28 @@
         </div>
     </div>
 
+    <!-- ========== STK PAYMENT STATUS (Visible during payment) ========== -->
+    <div id="finance-stkStatusDisplay" style="display: none; padding: 12px 16px; background: #f0f7ff; border-radius: 8px; border: 1px solid #bfdbfe; margin-bottom: 16px;">
+        <div style="display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+            <div style="width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite; flex-shrink: 0;"></div>
+            <div style="flex: 1; min-width: 150px;">
+                <p style="margin: 0; font-weight: 600; color: #0A3D62; font-size: 13px;">Processing STK Push</p>
+                <p id="finance-stkStatusMessage" style="margin: 2px 0 0 0; font-size: 12px; color: #64748b;">⏳ Waiting for confirmation...</p>
+                <p style="margin: 2px 0 0 0; font-size: 10px; color: #94a3b8;">Ref: <span id="finance-stkReference">-</span></p>
+            </div>
+            <button onclick="cancelSTKPush()" style="background: #fee2e2; color: #dc2626; border: none; padding: 4px 14px; border-radius: 4px; cursor: pointer; font-size: 11px; font-weight: 600; flex-shrink: 0;">
+                <i class="fas fa-times"></i> Cancel
+            </button>
+        </div>
+    </div>
+
+    <!-- ========== PAYMENT PROCESSING (During initiation) ========== -->
+    <div id="finance-paymentProcessing" style="display: none; padding: 12px 16px; background: #f8fafc; border-radius: 8px; border: 1px solid #e5e7eb; margin-bottom: 16px; text-align: center;">
+        <div style="display: inline-block; width: 28px; height: 28px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
+        <p style="margin: 6px 0 2px 0; font-weight: 600; color: #0A3D62; font-size: 13px;">Initiating STK Push...</p>
+        <p style="font-size: 12px; color: #64748b; margin: 0;">Amount: <span id="finance-processingAmount">KES 0</span></p>
+    </div>
+
     <!-- ========== QUICK STATS ========== -->
     <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; margin-bottom: 16px;">
         <div style="border-top: 3px solid #059669; background: linear-gradient(135deg, #ffffff, #ecfdf5); padding: 12px 16px; border-radius: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
@@ -5884,6 +5896,7 @@
     <!-- ========== FILTERS ========== -->
     <div style="background: white; border-radius: 10px; padding: 10px 14px; margin-bottom: 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
         <div style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+            <label for="finance-paymentFilter" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Filter by payment status</label>
             <select id="finance-paymentFilter" onchange="filterStudentPayments()" style="padding: 7px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; background: #f8fafc; min-width: 120px;">
                 <option value="all">📊 All Payments</option>
                 <option value="completed">✅ Completed</option>
@@ -5891,12 +5904,14 @@
                 <option value="failed">❌ Failed</option>
             </select>
             
+            <label for="finance-periodFilter" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Filter by period</label>
             <select id="finance-periodFilter" onchange="filterStudentPayments()" style="padding: 7px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; background: #f8fafc; min-width: 120px;">
                 <option value="all">📅 All Periods</option>
             </select>
             
             <div style="flex: 1; min-width: 120px; position: relative;">
                 <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8; font-size: 12px;"></i>
+                <label for="finance-search" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Search payments</label>
                 <input type="text" id="finance-search" placeholder="Search..." onkeyup="filterStudentPayments()" style="width: 100%; padding: 7px 12px 7px 32px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 12px; background: #f8fafc;">
             </div>
         </div>
@@ -5946,12 +5961,30 @@
                     <i class="fas fa-info-circle"></i> <span id="finance-feeStructureLabel">Semester</span>
                 </span>
             </div>
-            <button onclick="toggleFeeStructure()" aria-expanded="false" aria-controls="finance-studentFeeStructureDisplay" style="background: #4C1D95; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;">
+            <button onclick="toggleFeeStructure()" aria-expanded="false" aria-controls="finance-studentFeeStructureDisplay" style="background: #4C1D95; color: white; border: none; padding: 6px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; display: flex; align-items: center; gap: 6px; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-1px)'" onmouseout="this.style.transform='none'">
                 <i class="fas fa-eye"></i> <span id="finance-toggleFeeText">View</span>
             </button>
         </div>
         
         <div id="finance-studentFeeStructureDisplay" style="padding: 14px 16px; display: none;">
+            <!-- Filter Bar -->
+            <div style="margin-bottom: 10px; padding: 8px 12px; background: #f8fafc; border-radius: 6px; border: 1px solid #e5e7eb; display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
+                <span style="font-weight: 600; color: #475569; font-size: 11px;">
+                    <i class="fas fa-filter" style="color: #4C1D95;"></i> Filter:
+                </span>
+                <label for="finance-feeYearFilter" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Filter by year</label>
+                <select id="finance-feeYearFilter" onchange="applyFeeFilters()" style="padding: 4px 10px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 11px; background: white; min-width: 100px;">
+                    <option value="all">All Years</option>
+                </select>
+                <label for="finance-feePeriodFilter" style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); border: 0;">Filter by period</label>
+                <select id="finance-feePeriodFilter" onchange="applyFeeFilters()" style="padding: 4px 10px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 11px; background: white; min-width: 100px;">
+                    <option value="all">All Periods</option>
+                </select>
+                <button onclick="resetFeeFilters()" style="background: transparent; color: #64748b; border: 1px solid #e2e8f0; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 10px; font-weight: 500;">
+                    <i class="fas fa-times"></i> Reset
+                </button>
+            </div>
+            
             <div id="finance-feeLoadingState" style="text-align: center; padding: 20px; color: #94a3b8; font-size: 12px;" role="status">
                 <div style="width: 24px; height: 24px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite; margin: 0 auto 8px;"></div>
                 <p style="margin: 0;">Loading...</p>
@@ -5966,13 +5999,13 @@
 
     <!-- ========== QUICK ACTIONS ========== -->
     <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 16px;">
-        <button onclick="openPaymentModal()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(76,29,149,0.3);">
+        <button onclick="openPaymentModal()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 10px; cursor: pointer; font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 4px 20px rgba(76,29,149,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 20px rgba(76,29,149,0.3)'">
             <i class="fas fa-credit-card"></i> Make Payment
         </button>
-        <button onclick="downloadStudentStatement()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 12px 24px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease;">
+        <button onclick="downloadStudentStatement()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 12px 24px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease;" onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#4C1D95'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='transparent'; this.style.borderColor='#e2e8f0'; this.style.transform='none'">
             <i class="fas fa-file-pdf"></i> Statement
         </button>
-        <button onclick="viewStudentInvoice()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 12px 24px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease;">
+        <button onclick="viewStudentInvoice()" style="background: transparent; color: #475569; border: 1px solid #e2e8f0; padding: 12px 24px; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 13px; display: inline-flex; align-items: center; gap: 8px; transition: all 0.3s ease;" onmouseover="this.style.background='#f8fafc'; this.style.borderColor='#4C1D95'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='transparent'; this.style.borderColor='#e2e8f0'; this.style.transform='none'">
             <i class="fas fa-receipt"></i> Invoices
         </button>
     </div>
@@ -5984,149 +6017,176 @@
         <span><i class="fas fa-shield-alt" style="color: #4C1D95;"></i> Encrypted</span>
     </div>
 
-  <!-- ============================================================ -->
-<!-- PAYMENT MODAL - COMPLETE WITH ALL ELEMENTS                   -->
-<!-- ============================================================ -->
-<div class="modal-overlay" id="finance-paymentModal">
-    <div class="modal" style="max-width: 640px; width: 95%; max-height: 95vh; overflow-y: auto; background: #FFFFFF; border-radius: 20px; padding: 32px 36px; border: 1px solid #E2E8F0; box-shadow: 0 25px 80px rgba(0,0,0,0.2);">
-        
-        <!-- Modal Header -->
-        <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #f1f5f9;">
-            <h3 id="finance-paymentModalTitle" style="font-size: 22px; font-weight: 800; color: #0F172A; margin: 0; display: flex; align-items: center; gap: 10px;">
-                <i class="fas fa-credit-card" style="color: #4C1D95;"></i> Make Payment
-            </h3>
-            <button class="close" onclick="closePaymentModal()" style="width: 40px; height: 40px; border-radius: 50%; border: none; background: #f1f5f9; color: #64748b; font-size: 20px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all 0.3s ease;">&times;</button>
-        </div>
-        
-        <!-- ✅ PAYMENT CONTENT - THIS WAS MISSING! -->
-        <div id="finance-paymentContent" class="payment-status" style="display: none; text-align: center; padding: 30px 0;">
-            <div class="spinner" style="display: inline-block; width: 60px; height: 60px; border: 5px solid #E2E8F0; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 0.8s linear infinite; margin: 15px auto;"></div>
-            <p class="status-text" style="font-size: 20px; font-weight: 700; color: #0F172A; margin: 16px 0 6px 0;">⏳ Sending STK Push...</p>
-            <p class="status-sub" id="finance-paymentDetails" style="font-size: 16px; color: #64748b; margin: 4px 0;">Amount: KES 0.00</p>
-            <p class="status-sub" style="font-size: 14px; color: #94A3B8; margin-top: 10px;">📱 Check your phone and enter your PIN</p>
-            <button class="btn btn-danger" onclick="cancelStudentPayment()" style="margin-top: 18px; width: 100%; max-width: 320px; padding: 14px; border-radius: 12px; font-size: 16px; font-weight: 700; background: linear-gradient(135deg, #EF4444, #DC2626); color: #fff; border: none; cursor: pointer; transition: all 0.3s ease;">
-                <i class="fas fa-times"></i> Cancel Payment
-            </button>
-        </div>
-        
-        <!-- Payment Form -->
-        <div id="finance-paymentFormContainer">
+    <!-- ============================================================ -->
+    <!-- PAYMENT MODAL ================================================ -->
+    <!-- ============================================================ -->
+    <div id="finance-paymentModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9999; justify-content: center; align-items: center; backdrop-filter: blur(4px);">
+        <div style="background: white; border-radius: 16px; padding: 24px; max-width: 520px; width: 92%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: finance-slideInUp 0.3s ease;" role="dialog" aria-labelledby="finance-paymentModalTitle" aria-modal="true">
+            
+            <!-- Modal Header -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; border-bottom: 2px solid #f1f5f9; padding-bottom: 12px;">
+                <h3 id="finance-paymentModalTitle" style="margin: 0; color: #0A3D62; font-size: 18px; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-credit-card" style="color: #4C1D95;"></i> Make Payment
+                </h3>
+                <button onclick="closePaymentModal()" aria-label="Close payment modal" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #94a3b8; transition: all 0.3s ease;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#94a3b8'">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <!-- Payment Form -->
             <form id="finance-paymentForm" novalidate>
+                <input type="hidden" id="finance-csrfToken" value="">
                 
-                <!-- Period + Amount Row -->
-                <div class="form-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 16px;">
-                    
-                    <!-- Period -->
-                    <div class="finance-form-group" style="margin-bottom: 0;">
-                        <label for="finance-paymentPeriodSelect" style="font-weight: 700; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
-                            <i class="fas fa-calendar" style="color: #4C1D95;"></i> Payment Period <span style="color: #dc2626;">*</span>
-                        </label>
-                        <select id="finance-paymentPeriodSelect" required style="width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 15px; background: #f8fafc; font-family: inherit; transition: all 0.3s ease;">
-                            <option value="">Select period...</option>
-                        </select>
-                        <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 12px; margin-top: 4px;">Please select a period</span>
-                    </div>
-                    
-                    <!-- Amount -->
-                    <div class="finance-form-group" style="margin-bottom: 0;">
-                        <label for="finance-paymentAmountInput" style="font-weight: 700; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
-                            <i class="fas fa-coins" style="color: #4C1D95;"></i> Amount (KES) <span style="color: #dc2626;">*</span>
-                        </label>
-                        <input type="number" id="finance-paymentAmountInput" placeholder="Enter amount" required min="1" step="0.01" style="width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 15px; background: #f8fafc; font-family: inherit; transition: all 0.3s ease;">
-                        <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 12px; margin-top: 4px;">Enter valid amount (min KES 1)</span>
-                    </div>
-                    
-                </div>
-                
-                <!-- Payment Methods -->
-                <div class="finance-form-group" style="margin-bottom: 16px;">
-                    <label style="font-weight: 700; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
-                        <i class="fas fa-wallet" style="color: #4C1D95;"></i> Payment Method <span style="color: #dc2626;">*</span>
+                <!-- Period Selection -->
+                <div style="margin-bottom: 12px;">
+                    <label for="finance-paymentPeriodSelect" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                        <i class="fas fa-calendar"></i> Payment Period <span style="color: #dc2626;">*</span>
                     </label>
-                    <div id="finance-paymentMethodsContainer" style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
-                        <div role="button" tabindex="0" onclick="selectPaymentMethod('mpesa')" id="finance-method-mpesa" class="payment-method-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
-                            <i class="fas fa-mobile-alt" style="font-size: 28px; display: block; margin-bottom: 4px; color: #4C1D95;"></i>
-                            <span style="font-size: 13px; font-weight: 700; display: block; color: #0F172A;">M-Pesa</span>
-                            <small style="font-size: 10px; color: #94A3B8; display: block;">STK Push</small>
-                        </div>
-                        <div role="button" tabindex="0" onclick="selectPaymentMethod('paypal')" id="finance-method-paypal" class="payment-method-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
-                            <i class="fab fa-paypal" style="font-size: 28px; display: block; margin-bottom: 4px; color: #003087;"></i>
-                            <span style="font-size: 13px; font-weight: 700; display: block; color: #0F172A;">PayPal</span>
-                            <small style="font-size: 10px; color: #94A3B8; display: block;">International</small>
-                        </div>
-                        <div role="button" tabindex="0" onclick="selectPaymentMethod('card')" id="finance-method-card" class="payment-method-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
-                            <i class="fas fa-credit-card" style="font-size: 28px; display: block; margin-bottom: 4px; color: #059669;"></i>
-                            <span style="font-size: 13px; font-weight: 700; display: block; color: #0F172A;">Card</span>
-                            <small style="font-size: 10px; color: #94A3B8; display: block;">Visa/Mastercard</small>
-                        </div>
-                        <div role="button" tabindex="0" onclick="selectPaymentMethod('bank')" id="finance-method-bank" class="payment-method-item" style="border: 2px solid #e2e8f0; border-radius: 12px; padding: 16px 8px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;">
-                            <i class="fas fa-university" style="font-size: 28px; display: block; margin-bottom: 4px; color: #d97706;"></i>
-                            <span style="font-size: 13px; font-weight: 700; display: block; color: #0F172A;">Bank</span>
-                            <small style="font-size: 10px; color: #94A3B8; display: block;">Transfer</small>
-                        </div>
-                    </div>
-                    <span class="finance-validation-error" id="finance-methodError" style="display: none; color: #dc2626; font-size: 12px; margin-top: 4px;">Please select a payment method</span>
+                    <select id="finance-paymentPeriodSelect" required style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                        <option value="">Select period...</option>
+                    </select>
+                    <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Please select a period</span>
                 </div>
                 
-                <!-- Method Details -->
-                <div id="finance-paymentMethodDetails" style="display: none; background: #f1f5f9; border-radius: 10px; padding: 14px 18px; margin-bottom: 16px; border-left: 4px solid #4C1D95;">
+                <!-- Amount -->
+                <div style="margin-bottom: 12px;">
+                    <label for="finance-paymentAmountInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                        <i class="fas fa-coins"></i> Amount (KES) <span style="color: #dc2626;">*</span>
+                    </label>
+                    <input type="number" id="finance-paymentAmountInput" placeholder="Enter amount" required min="1" step="0.01" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
+                    <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Enter valid amount (min KES 1)</span>
+                </div>
+                
+                <!-- Payment Method Selection -->
+                <div style="margin-bottom: 12px;">
+                    <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                        <i class="fas fa-wallet"></i> Payment Method <span style="color: #dc2626;">*</span>
+                    </label>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;" id="finance-paymentMethodsContainer">
+                        <div role="button" tabindex="0" onclick="selectPaymentMethod('mpesa')" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectPaymentMethod('mpesa'); }" id="finance-method-mpesa" style="border: 2px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
+                            <i class="fas fa-mobile-alt" style="font-size: 20px; color: #4C1D95; display: block; margin-bottom: 2px;"></i>
+                            <span style="font-size: 12px; font-weight: 600; color: #0A3D62;">M-Pesa</span>
+                            <div style="font-size: 9px; color: #94a3b8;">STK Push</div>
+                        </div>
+                        <div role="button" tabindex="0" onclick="selectPaymentMethod('paypal')" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectPaymentMethod('paypal'); }" id="finance-method-paypal" style="border: 2px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
+                            <i class="fab fa-paypal" style="font-size: 20px; color: #003087; display: block; margin-bottom: 2px;"></i>
+                            <span style="font-size: 12px; font-weight: 600; color: #0A3D62;">PayPal</span>
+                            <div style="font-size: 9px; color: #94a3b8;">International</div>
+                        </div>
+                        <div role="button" tabindex="0" onclick="selectPaymentMethod('card')" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectPaymentMethod('card'); }" id="finance-method-card" style="border: 2px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
+                            <i class="fas fa-credit-card" style="font-size: 20px; color: #059669; display: block; margin-bottom: 2px;"></i>
+                            <span style="font-size: 12px; font-weight: 600; color: #0A3D62;">Card</span>
+                            <div style="font-size: 9px; color: #94a3b8;">Visa/Mastercard</div>
+                        </div>
+                        <div role="button" tabindex="0" onclick="selectPaymentMethod('bank')" onkeydown="if(event.key === 'Enter' || event.key === ' ') { event.preventDefault(); selectPaymentMethod('bank'); }" id="finance-method-bank" style="border: 2px solid #e2e8f0; border-radius: 8px; padding: 10px; text-align: center; cursor: pointer; transition: all 0.3s ease; background: #f8fafc;" onmouseover="this.style.borderColor='#4C1D95'" onmouseout="this.style.borderColor='#e2e8f0'">
+                            <i class="fas fa-university" style="font-size: 20px; color: #d97706; display: block; margin-bottom: 2px;"></i>
+                            <span style="font-size: 12px; font-weight: 600; color: #0A3D62;">Bank</span>
+                            <div style="font-size: 9px; color: #94a3b8;">Transfer</div>
+                        </div>
+                    </div>
+                    <span class="finance-validation-error" id="finance-methodError" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Please select a payment method</span>
+                </div>
+                
+                <!-- Selected Method Details -->
+                <div id="finance-paymentMethodDetails" style="display: none; background: #f1f5f9; border-radius: 6px; padding: 10px 14px; margin-bottom: 12px; border-left: 3px solid #4C1D95;">
                     <div id="finance-methodDetailsContent"></div>
                 </div>
                 
                 <!-- Description -->
-                <div class="finance-form-group" style="margin-bottom: 16px;">
-                    <label for="finance-paymentDescriptionInput" style="font-weight: 700; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
-                        <i class="fas fa-pencil-alt" style="color: #4C1D95;"></i> Description
+                <div style="margin-bottom: 12px;">
+                    <label for="finance-paymentDescriptionInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                        <i class="fas fa-pencil-alt"></i> Description
                     </label>
-                    <input type="text" id="finance-paymentDescriptionInput" placeholder="e.g., Tuition Fees Payment" style="width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 15px; background: #f8fafc; font-family: inherit; transition: all 0.3s ease;">
+                    <input type="text" id="finance-paymentDescriptionInput" placeholder="e.g., Tuition Fees Payment" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
                 </div>
                 
-                <!-- M-Pesa Phone -->
-                <div id="finance-mpesaFields" style="display: none;">
-                    <div class="finance-form-group" style="margin-bottom: 16px;">
-                        <label for="finance-mpesaPhoneInput" style="font-weight: 700; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
-                            <i class="fas fa-phone" style="color: #4C1D95;"></i> M-Pesa Phone <span style="color: #dc2626;">*</span>
+                <!-- M-Pesa Fields -->
+                <div id="finance-mpesaFields" style="display: none; margin-top: 12px; padding: 12px 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 8px;">
+                        <label for="finance-mpesaPhoneInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                            <i class="fas fa-phone"></i> M-Pesa Phone <span style="color: #dc2626;">*</span>
                         </label>
-                        <input type="tel" id="finance-mpesaPhoneInput" placeholder="0712345678" pattern="[0-9]{10,12}" style="width: 100%; padding: 12px 16px; border: 2px solid #e2e8f0; border-radius: 10px; font-size: 15px; background: #f8fafc; font-family: inherit; transition: all 0.3s ease;">
-                        <small style="font-size: 12px; color: #94A3B8; display: block; margin-top: 4px;">You'll receive a prompt on your phone</small>
-                        <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 12px; margin-top: 4px;">Enter valid M-Pesa phone number</span>
+                        <input type="tel" id="finance-mpesaPhoneInput" placeholder="0712345678" pattern="[0-9]{10,12}" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                        <p style="font-size: 10px; color: #94a3b8; margin-top: 3px;">You'll receive a prompt on your phone</p>
+                        <span class="finance-validation-error" style="display: none; color: #dc2626; font-size: 11px; margin-top: 3px;">Enter valid M-Pesa phone number</span>
+                    </div>
+                </div>
+                
+                <!-- Card Fields -->
+                <div id="finance-cardFields" style="display: none; margin-top: 12px; padding: 12px 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 8px;">
+                        <label for="finance-cardNumberInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                            <i class="fas fa-credit-card"></i> Card Number <span style="color: #dc2626;">*</span>
+                        </label>
+                        <input type="text" id="finance-cardNumberInput" placeholder="1234 5678 9012 3456" maxlength="19" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div>
+                            <label for="finance-cardExpiryInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">Expiry <span style="color: #dc2626;">*</span></label>
+                            <input type="text" id="finance-cardExpiryInput" placeholder="MM/YY" maxlength="5" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                        </div>
+                        <div>
+                            <label for="finance-cardCvvInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">CVV <span style="color: #dc2626;">*</span></label>
+                            <input type="password" id="finance-cardCvvInput" placeholder="123" maxlength="4" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Bank Transfer Fields -->
+                <div id="finance-bankFields" style="display: none; margin-top: 12px; padding: 12px 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div style="margin-bottom: 8px;">
+                        <label for="finance-bankAccountNameInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                            <i class="fas fa-user"></i> Account Name <span style="color: #dc2626;">*</span>
+                        </label>
+                        <input type="text" id="finance-bankAccountNameInput" placeholder="Full name" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                    </div>
+                    <div style="margin-bottom: 8px;">
+                        <label for="finance-bankAccountNumberInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                            <i class="fas fa-hashtag"></i> Account Number <span style="color: #dc2626;">*</span>
+                        </label>
+                        <input type="text" id="finance-bankAccountNumberInput" placeholder="Account number" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                    </div>
+                    <div>
+                        <label for="finance-bankNameInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                            <i class="fas fa-building"></i> Bank Name <span style="color: #dc2626;">*</span>
+                        </label>
+                        <input type="text" id="finance-bankNameInput" placeholder="e.g., Equity Bank" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                    </div>
+                </div>
+                
+                <!-- PayPal Fields -->
+                <div id="finance-paypalFields" style="display: none; margin-top: 12px; padding: 12px 14px; background: #f8fafc; border-radius: 6px; border: 1px solid #e2e8f0;">
+                    <div>
+                        <label for="finance-paypalEmailInput" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">
+                            <i class="fas fa-envelope"></i> PayPal Email <span style="color: #dc2626;">*</span>
+                        </label>
+                        <input type="email" id="finance-paypalEmailInput" placeholder="your-email@example.com" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: white;">
+                        <p style="font-size: 10px; color: #94a3b8; margin-top: 3px;">You'll be redirected to PayPal</p>
                     </div>
                 </div>
                 
                 <!-- Action Buttons -->
-                <div class="modal-actions" style="display: flex; gap: 12px; margin-top: 20px; border-top: 2px solid #f1f5f9; padding-top: 20px;">
-                    <button type="button" onclick="closePaymentModal()" class="btn btn-outline" style="flex: 1; padding: 14px 20px; border: 2px solid #E2E8F0; border-radius: 12px; background: transparent; color: #475569; cursor: pointer; font-weight: 700; font-size: 15px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; font-family: inherit; transition: all 0.3s ease;">
-                        <i class="fas fa-times"></i> Cancel
+                <div style="display: flex; gap: 10px; margin-top: 16px; border-top: 1px solid #f1f5f9; padding-top: 16px;">
+                    <button type="button" onclick="closePaymentModal()" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid #e2e8f0; background: white; cursor: pointer; font-weight: 600; color: #475569; font-size: 13px; transition: all 0.3s ease;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                        Cancel
                     </button>
-                    <button type="submit" id="finance-processPaymentBtn" class="btn btn-primary" style="flex: 2; padding: 14px 20px; border: none; border-radius: 12px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: #fff; cursor: pointer; font-weight: 800; font-size: 16px; display: inline-flex; align-items: center; justify-content: center; gap: 10px; box-shadow: 0 6px 24px rgba(76,29,149,0.35); font-family: inherit; transition: all 0.3s ease;">
-                        <i class="fas fa-check-circle"></i> Pay Now
+                    <button type="submit" id="finance-processPaymentBtn" style="flex: 2; padding: 10px; border-radius: 8px; border: none; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; cursor: pointer; font-weight: 700; font-size: 14px; transition: all 0.3s ease; box-shadow: 0 4px 15px rgba(76,29,149,0.3);" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.4)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 4px 15px rgba(76,29,149,0.3)'">
+                        <i class="fas fa-check"></i> Pay Now
                     </button>
                 </div>
-                
             </form>
         </div>
-        
     </div>
-</div>
 
-    <!-- ============================================================ -->
-    <!-- STYLES - POS STYLE MODAL                                      -->
-    <!-- ============================================================ -->
+    <!-- ========== STYLES ========== -->
     <style>
-        /* ===== ANIMATIONS ===== */
         @keyframes finance-spin {
             to { transform: rotate(360deg); }
         }
-        @keyframes slideUp {
+        @keyframes finance-slideInUp {
             from { transform: translateY(30px); opacity: 0; }
             to { transform: translateY(0); opacity: 1; }
         }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
-        }
-
-        /* ===== SCROLLBAR ===== */
         ::-webkit-scrollbar {
             height: 4px;
             width: 4px;
@@ -6142,364 +6202,18 @@
         ::-webkit-scrollbar-thumb:hover {
             background: #94a3b8;
         }
-
-        /* ===== MODAL OVERLAY ===== */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(8px);
-            z-index: 99999;
-            justify-content: center;
-            align-items: center;
-            padding: 20px;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        /* ===== MODAL CONTAINER ===== */
-        .modal {
-            background: #FFFFFF;
-            border-radius: 16px;
-            max-width: 560px;
-            width: 95%;
-            max-height: 95vh;
-            overflow-y: auto;
-            padding: 24px 28px;
-            border: 1px solid #E2E8F0;
-            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
-            animation: slideUp 0.3s ease;
-        }
-
-        /* ===== MODAL HEADER ===== */
-        .modal-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 16px;
-            padding-bottom: 12px;
-            border-bottom: 2px solid #f1f5f9;
-        }
-
-        .modal-header h3 {
-            font-size: 18px;
-            font-weight: 700;
-            color: #0F172A;
-            margin: 0;
-        }
-
-        .modal-header .close {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            border: none;
-            background: #f1f5f9;
-            color: #64748b;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-header .close:hover {
-            background: #EF4444;
-            color: #fff;
-        }
-
-        /* ===== PAYMENT STATUS ===== */
-        .payment-status {
-            text-align: center;
-            padding: 20px 0;
-        }
-
-        /* ===== SPINNER ===== */
-        .spinner {
-            display: inline-block;
-            width: 50px;
-            height: 50px;
-            border: 4px solid #E2E8F0;
-            border-top-color: #4C1D95;
-            border-radius: 50%;
-            animation: finance-spin 0.8s linear infinite;
-            margin: 10px auto;
-        }
-
-        /* ===== STATUS TEXT ===== */
-        .status-text {
-            font-size: 16px;
-            font-weight: 600;
-            color: #0F172A;
-            margin: 12px 0 4px 0;
-        }
-
-        .status-sub {
-            font-size: 14px;
-            color: #94A3B8;
-            margin: 4px 0;
-        }
-
-        /* ===== STATUS ICONS ===== */
-        .status-icon {
-            font-size: 48px;
-            margin-bottom: 12px;
-        }
-
-        .status-icon.success {
-            color: #10B981;
-        }
-
-        .status-icon.failed {
-            color: #EF4444;
-        }
-
-        .status-icon.warning {
-            color: #F59E0B;
-        }
-
-        /* ===== BUTTONS ===== */
-        .btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 10px;
-            font-weight: 600;
-            font-size: 14px;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            font-family: inherit;
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-        }
-
-        .btn-primary {
-            background: linear-gradient(135deg, #6C3CE1, #8B5CF6);
-            color: #fff;
-            box-shadow: 0 4px 16px rgba(108, 60, 225, 0.3);
-        }
-
-        .btn-primary:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(108, 60, 225, 0.4);
-        }
-
-        .btn-danger {
-            background: linear-gradient(135deg, #EF4444, #DC2626);
-            color: #fff;
-            box-shadow: 0 4px 16px rgba(239, 68, 68, 0.3);
-        }
-
-        .btn-danger:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
-        }
-
-        .btn-success {
-            background: linear-gradient(135deg, #10B981, #059669);
-            color: #fff;
-            box-shadow: 0 4px 16px rgba(16, 185, 129, 0.3);
-        }
-
-        .btn-success:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 24px rgba(16, 185, 129, 0.4);
-        }
-
-        .btn-outline {
-            background: transparent;
-            color: #475569;
-            border: 1px solid #E2E8F0;
-        }
-
-        .btn-outline:hover {
-            border-color: #4C1D95;
-            color: #4C1D95;
-        }
-
-        .payment-method-item.selected {
+        
+        #finance .finance-payment-method-selected {
             border-color: #4C1D95 !important;
             background: #ede9fe !important;
-            box-shadow: 0 0 0 2px rgba(76, 29, 149, 0.1);
+            box-shadow: 0 0 0 2px rgba(76,29,149,0.1);
         }
-
-        /* ===== DARK MODE SUPPORT ===== */
-        [data-theme="dark"] .modal {
-            background: #1E293B;
-            border-color: #334155;
-        }
-
-        [data-theme="dark"] .modal-header h3 {
-            color: #F1F5F9;
-        }
-
-        [data-theme="dark"] .modal-header .close {
-            background: #334155;
-            color: #94A3B8;
-        }
-
-        [data-theme="dark"] .modal-header .close:hover {
-            background: #EF4444;
-            color: #fff;
-        }
-
-        [data-theme="dark"] .status-text {
-            color: #F1F5F9;
-        }
-
-        [data-theme="dark"] .status-sub {
-            color: #94A3B8;
-        }
-
-        [data-theme="dark"] .spinner {
-            border-color: #334155;
-            border-top-color: #8B5CF6;
-        }
-
-        [data-theme="dark"] .btn-outline {
-            color: #94A3B8;
-            border-color: #334155;
-        }
-
-        [data-theme="dark"] .btn-outline:hover {
-            border-color: #8B5CF6;
-            color: #8B5CF6;
-        }
-
-        /* ===== RESPONSIVE ===== */
+        
         @media (max-width: 480px) {
-            .modal {
-                padding: 20px;
+            #finance .finance-payment-method-selected {
+                border-color: #4C1D95 !important;
+                background: #ede9fe !important;
             }
-            .status-text {
-                font-size: 14px;
-            }
-            .status-sub {
-                font-size: 12px;
-            }
-            .spinner {
-                width: 40px;
-                height: 40px;
-                border-width: 3px;
-            }
-            .btn {
-                font-size: 12px;
-                padding: 8px 16px;
-            }
-            #finance-paymentMethodsContainer {
-                grid-template-columns: repeat(2, 1fr) !important;
-            }
-        }
-
-        /* ===== FORM GROUP ===== */
-        .finance-form-group {
-            margin-bottom: 14px;
-        }
-
-        .finance-form-group label {
-            font-weight: 600;
-            font-size: 13px;
-            color: #475569;
-            display: block;
-            margin-bottom: 4px;
-        }
-
-        .finance-form-group select,
-        .finance-form-group input {
-            width: 100%;
-            padding: 10px 14px;
-            border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            font-size: 14px;
-            background: #f8fafc;
-            transition: all 0.3s ease;
-            font-family: inherit;
-        }
-
-        .finance-form-group select:focus,
-        .finance-form-group input:focus {
-            border-color: #4C1D95;
-            outline: none;
-            box-shadow: 0 0 0 3px rgba(76, 29, 149, 0.1);
-        }
-
-        .finance-form-group small {
-            font-size: 11px;
-            color: #94a3b8;
-            display: block;
-            margin-top: 3px;
-        }
-
-        .finance-validation-error {
-            display: none;
-            color: #dc2626;
-            font-size: 11px;
-            margin-top: 3px;
-        }
-
-        /* ===== PAYMENT METHODS GRID ===== */
-        #finance-paymentMethodsContainer {
-            display: grid;
-            grid-template-columns: repeat(4, 1fr);
-            gap: 10px;
-        }
-
-        .payment-method-item {
-            border: 2px solid #e2e8f0;
-            border-radius: 10px;
-            padding: 12px 8px;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            background: #f8fafc;
-        }
-
-        .payment-method-item:hover {
-            border-color: #4C1D95;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(76, 29, 149, 0.1);
-        }
-
-        .payment-method-item i {
-            font-size: 22px;
-            display: block;
-            margin-bottom: 2px;
-        }
-
-        .payment-method-item span {
-            font-size: 12px;
-            font-weight: 600;
-            display: block;
-            color: #0F172A;
-        }
-
-        .payment-method-item small {
-            font-size: 9px;
-            color: #94A3B8;
-            display: block;
-        }
-
-        /* ===== MODAL ACTIONS ===== */
-        .modal-actions {
-            display: flex;
-            gap: 10px;
-            margin-top: 16px;
-            border-top: 1px solid #f1f5f9;
-            padding-top: 16px;
-        }
-
-        .modal-actions .btn {
-            flex: 1;
-        }
-
-        .modal-actions .btn-primary {
-            flex: 2;
         }
     </style>
 
