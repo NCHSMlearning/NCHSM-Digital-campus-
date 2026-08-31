@@ -277,27 +277,25 @@
                         <!-- ✅ FIXED: Changed ID from "csrfToken" to "csrf_token" -->
                         <input type="hidden" name="csrf_token" id="csrf_token" value="">
                         
-                        <!-- Email -->
-                        <div class="form-group">
-                            <label for="email" class="form-label">
-                                <i data-feather="mail"></i>
-                                Email Address
-                            </label>
-                            <div class="input-wrapper">
-                                <i data-feather="mail" class="input-icon"></i>
-                                                           <input type="email" 
-                                   id="email" 
-                                   class="form-input" 
-                                   placeholder="student@nchsm.ac.ke" 
-                                   required
-                                   autocomplete="email"
-                                   aria-describedby="emailHelp"
-                                   maxlength="100"
-                                   pattern="[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}">
+                                                   <!-- Email -->
+                            <div class="form-group">
+                                <label for="email" class="form-label">
+                                    <i data-feather="mail"></i>
+                                    Email Address
+                                </label>
+                                <div class="input-wrapper">
+                                    <i data-feather="mail" class="input-icon"></i>
+                                    <input type="email" 
+                                           id="email" 
+                                           class="form-input" 
+                                           placeholder="student@nchsm.ac.ke" 
+                                           required
+                                           autocomplete="email"
+                                           aria-describedby="emailHelp"
+                                           maxlength="100">
+                                </div>
+                                <small id="emailHelp" class="sr-only">Enter your college email address</small>
                             </div>
-                            <small id="emailHelp" class="sr-only">Enter your college email address</small>
-                        </div>
-                        
                         <!-- Password -->
                         <div class="form-group">
                             <label for="password" class="form-label">
