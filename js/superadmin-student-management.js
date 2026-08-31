@@ -1,6 +1,7 @@
 // ============================================================
 // SUPER ADMIN STUDENT MANAGEMENT MODULE
-// CHANGE OF PROGRAM, READMISSION & ADMISSIONS - FULLY FIXED
+// CHANGE OF PROGRAM, READMISSION, ADMISSIONS & SESSION REPORTS
+// FULLY INTEGRATED WITH consolidated_user_profiles_table
 // ============================================================
 
 // ============================================================
@@ -10,21 +11,30 @@ const SM_STATE = {
     changeRequests: [],
     readmissionRequests: [],
     admissionRequests: [],
+    sessionReports: [],
     history: [],
     currentRequestId: null,
     currentType: null,
     selectedChange: new Set(),
     selectedReadmission: new Set(),
     selectedAdmissions: new Set(),
+    selectedSessionReports: new Set(),
     stats: {
         total: 0,
         change: 0,
         readmission: 0,
         admissions: 0,
+        sessionReports: 0,
         approved: 0,
         rejected: 0
     }
 };
+
+// Nursing/Block programs
+const NURSING_PROGRAMS = ['KRCHN', 'DCHN'];
+const BLOCK_OPTIONS = ['Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Block 7', 'Block 8'];
+const TVET_YEARS = ['Year 1', 'Year 2', 'Year 3'];
+const TVET_TERMS = ['Term 1', 'Term 2', 'Term 3'];
 
 // ============================================================
 // GET SUPABASE CLIENT
@@ -65,6 +75,63 @@ function escapeHtml(str) {
 function closeModal(modalId) {
     const modal = document.getElementById(modalId);
     if (modal) modal.style.display = 'none';
+}
+
+// ============================================================
+// DETECT PROGRAM TYPE
+// ============================================================
+function detectProgramType(programCode) {
+    if (!programCode) return 'TVET';
+    if (NURSING_PROGRAMS.includes(programCode)) {
+        return 'Nursing';
+    }
+    return 'TVET';
+}
+
+// ============================================================
+// GET STUDENT PROFILE FROM consolidated_user_profiles_table
+// ============================================================
+async function getStudentProfile(studentId) {
+    const sb = getSupabaseClient();
+    if (!sb) return null;
+    
+    try {
+        const { data, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('student_id', studentId)
+            .single();
+        
+        if (error) throw error;
+        return data;
+    } catch (error) {
+        console.error('Error fetching student profile:', error);
+        return null;
+    }
+}
+
+// ============================================================
+// UPDATE STUDENT PROFILE IN consolidated_user_profiles_table
+// ============================================================
+async function updateStudentProfile(studentId, updateData) {
+    const sb = getSupabaseClient();
+    if (!sb) return false;
+    
+    try {
+        const { error } = await sb
+            .from('consolidated_user_profiles_table')
+            .update({
+                ...updateData,
+                updated_at: new Date().toISOString()
+            })
+            .eq('student_id', studentId);
+        
+        if (error) throw error;
+        return true;
+    } catch (error) {
+        console.error('Error updating student profile:', error);
+        return false;
+    }
 }
 
 // ============================================================
@@ -130,6 +197,7 @@ function initStudentManagement() {
         loadAdmissions(),
         loadChangeProgramRequests(),
         loadReadmissionRequests(),
+        loadSessionReportsAdmin(),
         loadSMHistory()
     ]).then(() => {
         updateSMStats();
@@ -142,7 +210,7 @@ function initStudentManagement() {
 }
 
 // ============================================================
-// LOAD STUDENTS FOR DROPDOWN
+// LOAD STUDENTS FOR DROPDOWN (FROM consolidated_user_profiles_table)
 // ============================================================
 async function loadStudentsForDropdown() {
     const sb = getSupabaseClient();
@@ -153,7 +221,7 @@ async function loadStudentsForDropdown() {
         
         const { data, error } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, program, block, intake_year, intake_month, email')
+            .select('student_id, full_name, program, block, current_block, current_year, current_term, intake_year, intake_month, email')
             .eq('role', 'student')
             .eq('status', 'approved')
             .order('full_name', { ascending: true });
@@ -174,8 +242,11 @@ async function loadStudentsForDropdown() {
                 opt.value = student.student_id || '';
                 opt.textContent = `${student.full_name} (${student.student_id || 'N/A'}) - ${student.program || 'No Program'}`;
                 opt.dataset.program = student.program || '';
-                opt.dataset.block = student.block || '';
+                opt.dataset.block = student.current_block || student.block || '';
+                opt.dataset.year = student.current_year || '';
+                opt.dataset.term = student.current_term || '';
                 opt.dataset.email = student.email || '';
+                opt.dataset.studentId = student.student_id || '';
                 select.appendChild(opt);
             });
         }
@@ -570,750 +641,624 @@ function renderReadmissionTable() {
 }
 
 // ============================================================
-// LOAD HISTORY
+// SESSION REPORTS - ADMIN VIEW
 // ============================================================
-async function loadSMHistory() {
+
+async function loadSessionReportsAdmin() {
     const sb = getSupabaseClient();
     if (!sb) return;
     
     try {
-        const type = document.getElementById('smHistoryType')?.value || 'all';
-        const status = document.getElementById('smHistoryStatus')?.value || 'all';
-        const dateFrom = document.getElementById('smHistoryDateFrom')?.value || '';
-        const dateTo = document.getElementById('smHistoryDateTo')?.value || '';
-        
-        let allHistory = [];
-        
-        // Get from student_requests
-        let query = sb
-            .from('student_requests')
-            .select('*')
-            .in('status', ['approved', 'rejected'])
-            .order('updated_at', { ascending: false });
+        const search = document.getElementById('smSessionReportSearch')?.value?.toLowerCase() || '';
+        const status = document.getElementById('smSessionReportStatusFilter')?.value || 'all';
+        const type = document.getElementById('smSessionReportTypeFilter')?.value || 'all';
 
-        if (type !== 'all' && type !== 'admissions') {
-            query = query.eq('request_type', type);
-        }
-        
+        let query = sb
+            .from('session_reports')
+            .select('*')
+            .order('submitted_at', { ascending: false });
+
         if (status !== 'all') {
-            query = query.eq('status', status);
+            query = query.eq('approval_status', status);
         }
-        
-        const { data: requestData, error: requestError } = await query;
-        if (!requestError && requestData) {
-            allHistory = [...allHistory, ...requestData];
+        if (type !== 'all') {
+            query = query.eq('program_type', type);
         }
-        
-        // Get from applications (admissions)
-        if (type === 'all' || type === 'admissions') {
-            let appQuery = sb
-                .from('applications')
-                .select('*')
-                .in('status', ['approved', 'rejected'])
-                .order('updated_at', { ascending: false });
-            
-            if (status !== 'all') {
-                appQuery = appQuery.eq('status', status);
-            }
-            
-            if (dateFrom) {
-                appQuery = appQuery.gte('updated_at', dateFrom);
-            }
-            if (dateTo) {
-                appQuery = appQuery.lte('updated_at', dateTo + 'T23:59:59');
-            }
-            
-            const { data: appData, error: appError } = await appQuery;
-            if (!appError && appData) {
-                allHistory = [...allHistory, ...appData.map(a => ({
-                    ...a,
-                    request_type: 'admission',
-                    student_name: a.full_name,
-                    student_id: a.application_number,
-                    current_program: a.program_name,
-                    requested_program: a.program_name,
-                    approved_by: a.updated_by || 'System'
-                }))];
-            }
+
+        const { data, error } = await query;
+
+        if (error) throw error;
+
+        let filtered = data || [];
+        if (search) {
+            filtered = filtered.filter(r => 
+                (r.student_name || '').toLowerCase().includes(search) ||
+                (r.student_id || '').toLowerCase().includes(search)
+            );
         }
-        
-        allHistory.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
-        
-        SM_STATE.history = allHistory;
-        renderHistoryTable();
+
+        SM_STATE.sessionReports = filtered;
+        renderSessionReportsAdminTable();
+        updateSMStats();
+        updateSMBadges();
 
     } catch (error) {
-        console.error('Error loading history:', error);
-        const tbody = document.getElementById('smHistoryBody');
-        if (tbody) {
-            tbody.innerHTML = `
-                <tr><td colspan="6" style="padding: 40px; text-align: center; color: #dc2626;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-                    Error loading history: ${error.message || 'Unknown error'}
-                </td></tr>
-            `;
+        console.error('Error loading session reports:', error);
+        // If table doesn't exist, use mock data for demo
+        if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
+            console.warn('⚠️ session_reports table not found, using mock data');
+            const mockReports = [
+                {
+                    id: 'mock-1',
+                    student_name: 'Jane Mwangi',
+                    student_id: 'KRCHN/0001/2026',
+                    program: 'KRCHN',
+                    program_type: 'Nursing',
+                    academic_year: '2025/2026',
+                    session: 'Block 3',
+                    status: 'Continuing',
+                    remarks: 'Ready to proceed to next block',
+                    approval_status: 'pending',
+                    submitted_at: new Date().toISOString()
+                },
+                {
+                    id: 'mock-2',
+                    student_name: 'Peter Ochieng',
+                    student_id: 'DPOTT/0002/2026',
+                    program: 'DPOTT',
+                    program_type: 'TVET',
+                    academic_year: '2025/2026',
+                    session: 'Year 2 - Term 1',
+                    status: 'Repeating',
+                    remarks: 'Repeating after medical leave',
+                    approval_status: 'pending',
+                    submitted_at: new Date(Date.now() - 86400000).toISOString()
+                }
+            ];
+            SM_STATE.sessionReports = mockReports;
+            renderSessionReportsAdminTable();
+            updateSMStats();
+            updateSMBadges();
+        } else {
+            const tbody = document.getElementById('smSessionReportsBody');
+            if (tbody) {
+                tbody.innerHTML = `
+                    <tr><td colspan="8" style="padding: 40px; text-align: center; color: #dc2626;">
+                        <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                        Error loading session reports: ${error.message || 'Unknown error'}
+                    </td></tr>
+                `;
+            }
         }
     }
 }
 
-// ============================================================
-// RENDER HISTORY TABLE
-// ============================================================
-function renderHistoryTable() {
-    const tbody = document.getElementById('smHistoryBody');
+function renderSessionReportsAdminTable() {
+    const tbody = document.getElementById('smSessionReportsBody');
     if (!tbody) return;
-    
-    const history = SM_STATE.history;
-    
-    if (!history || history.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
-            <i class="fas fa-history" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-            No history found.
-        </td></tr>`;
+
+    const reports = SM_STATE.sessionReports;
+
+    if (!reports || reports.length === 0) {
+        tbody.innerHTML = `
+            <tr><td colspan="8" style="padding: 40px; text-align: center; color: #94a3b8;">
+                <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                No session reports found.
+            </td></tr>
+        `;
         return;
     }
-    
-    const typeLabels = {
-        'change_program': 'Change of Program',
-        'readmission': 'Readmission',
-        'admission': 'Admission'
-    };
-    
+
     let html = '';
-    history.forEach((r, index) => {
-        const typeLabel = typeLabels[r.request_type] || r.request_type || 'Unknown';
-        const statusClass = r.status || 'approved';
+    reports.forEach((r, index) => {
+        const statusClass = r.approval_status || 'pending';
         const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
-        const date = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : 'N/A';
-        const studentName = r.student_name || r.full_name || 'Unknown';
-        const studentId = r.student_id || r.application_number || 'N/A';
-        const fromProgram = r.current_program || r.previous_program || 'N/A';
-        const toProgram = r.requested_program || r.program_name || 'N/A';
-        const approvedBy = r.approved_by || r.updated_by || 'System';
-        
+        const statusColors = {
+            pending: { bg: '#fef3c7', color: '#92400e' },
+            approved: { bg: '#d1fae5', color: '#065f46' },
+            rejected: { bg: '#fee2e2', color: '#991b1b' }
+        };
+        const statusStyle = statusColors[statusClass] || statusColors.pending;
+
+        const date = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : 'N/A';
+        const programType = r.program_type || 'TVET';
+        const sessionDisplay = r.session || 'N/A';
+        const academicYear = r.academic_year || 'N/A';
+
+        // Determine what gets updated on approval
+        const updateLabel = programType === 'Nursing' ? 
+            `Block → ${sessionDisplay}` : 
+            `Year/Term → ${sessionDisplay}`;
+
+        const isApproved = statusClass === 'approved';
+        const isPending = statusClass === 'pending';
+
         html += `
         <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
-            <td style="padding: 12px 16px;">
-                <strong>${escapeHtml(studentName)}</strong>
-                <div style="font-size: 11px; color: #94a3b8;">${escapeHtml(studentId)}</div>
+            <td style="text-align: center; padding: 12px 8px;">
+                <input type="checkbox" class="sm-checkbox session-reports-checkbox" data-id="${r.id}" onchange="updateSMCounter('session-reports')" style="width: 16px; height: 16px; cursor: pointer;">
             </td>
             <td style="padding: 12px 16px;">
-                <span style="background: #e0e7ff; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #4C1D95;">${escapeHtml(typeLabel)}</span>
+                <strong>${escapeHtml(r.student_name || 'Unknown')}</strong>
+                <div style="font-size: 11px; color: #94a3b8;">${escapeHtml(r.student_id || 'N/A')}</div>
             </td>
-            <td style="padding: 12px 16px; font-size: 13px;">
-                ${escapeHtml(fromProgram)} <i class="fas fa-arrow-right" style="color: #94a3b8; margin: 0 6px;"></i> ${escapeHtml(toProgram)}
+            <td style="padding: 12px 16px;">
+                <span style="background: #dbeafe; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">${escapeHtml(r.program || 'N/A')}</span>
+                <br>
+                <span style="background: ${programType === 'Nursing' ? '#dbeafe' : '#fef3c7'}; padding: 2px 8px; border-radius: 12px; font-size: 10px; color: ${programType === 'Nursing' ? '#1e40af' : '#92400e'};">
+                    ${programType}
+                </span>
+            </td>
+            <td style="padding: 12px 16px;">
+                <div style="font-weight: 500; color: #0A3D62;">${escapeHtml(academicYear)}</div>
+                <div style="font-size: 12px; color: #475569;">
+                    <i class="fas fa-arrow-right" style="color: #94a3b8; font-size: 10px;"></i>
+                    ${escapeHtml(sessionDisplay)}
+                </div>
+                ${isPending ? `<div style="font-size: 10px; color: #3b82f6; margin-top: 2px;">
+                    <i class="fas fa-sync-alt"></i> Will update: ${updateLabel}
+                </div>` : ''}
+                ${isApproved ? `<div style="font-size: 10px; color: #059669; margin-top: 2px;">
+                    <i class="fas fa-check-circle"></i> Profile updated to: ${sessionDisplay}
+                </div>` : ''}
+            </td>
+            <td style="padding: 12px 16px;">
+                <span style="background: #d1fae5; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #065f46;">
+                    ${escapeHtml(r.status || 'Continuing')}
+                </span>
             </td>
             <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">${date}</td>
             <td style="padding: 12px 16px; text-align: center;">
-                <span class="sm-status-badge ${statusClass}">${statusLabel}</span>
+                <span style="background: ${statusStyle.bg}; color: ${statusStyle.color}; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block;">
+                    ${statusLabel}
+                </span>
             </td>
-            <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">${escapeHtml(approvedBy)}</td>
+            <td style="padding: 12px 16px; text-align: center;">
+                <button onclick="viewSMRequest('${r.id}', 'session-report')" style="padding: 4px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; transition: 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
+                    <i class="fas fa-eye"></i> View
+                </button>
+                ${isPending ? `
+                <button onclick="approveSessionReportAdmin('${r.id}')" style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-top: 4px; transition: 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
+                    <i class="fas fa-check"></i> Approve
+                </button>
+                <button onclick="rejectSessionReportAdmin('${r.id}')" style="padding: 4px 10px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-top: 4px; transition: 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
+                    <i class="fas fa-times"></i>
+                </button>
+                ` : ''}
+            </td>
         </tr>
     `});
     
     tbody.innerHTML = html;
+    updateSMCounter('session-reports');
 }
 
 // ============================================================
-// APPROVE ADMISSION - CREATES PROFILE!
+// APPROVE SESSION REPORT - UPDATES consolidated_user_profiles_table
 // ============================================================
-async function approveAdmission(requestId) {
+async function approveSessionReportAdmin(reportId) {
     const sb = getSupabaseClient();
-    if (!sb) return;
-    
-    if (!confirm('✅ Approve this admission? This will create the student profile.')) return;
-    
-    if (typeof showLoading === 'function') showLoading('Approving admission...');
-    
+    if (!sb) {
+        if (typeof showNotification === 'function') {
+            showNotification('Supabase client not available', 'error');
+        }
+        return;
+    }
+
+    if (!confirm('✅ Approve this session report?\n\nThis will update the student\'s profile in consolidated_user_profiles_table.')) return;
+
+    if (typeof showLoading === 'function') showLoading('Approving session report...');
+
     try {
-        // Get application data
-        const { data: appData, error: fetchError } = await sb
-            .from('applications')
+        // 1. Get the report
+        const { data: report, error: fetchError } = await sb
+            .from('session_reports')
             .select('*')
-            .eq('id', requestId)
+            .eq('id', reportId)
             .single();
-        
+
         if (fetchError) throw fetchError;
-        if (!appData) throw new Error('Application not found');
-        
-        // 1. Generate student ID
-        const studentId = await generateStudentId(appData.program, appData.intake_year || '2026');
-        
-        // 2. ✅ CREATE consolidated_user_profiles_table entry (NOW!)
-        const { error: profileError } = await sb
-            .from('consolidated_user_profiles_table')
-            .insert([{
-                user_id: appData.user_id,
-                email: appData.email || appData.user_email,
-                full_name: appData.full_name,
-                phone: appData.phone || '',
-                alt_phone: appData.alt_phone || '',
-                national_id: appData.national_id || '',
-                dob: appData.dob || null,
-                gender: appData.gender || '',
-                address: appData.address || '',
-                role: 'student',
-                status: 'approved',
-                student_id: studentId,
-                program: appData.program,
-                program_name: appData.program_name || appData.program,
-                intake_month: appData.intake_month || '03',
-                intake_year: appData.intake_year || '2026',
-                current_block: 'Introductory',
-                guardian_name: appData.guardian_name || '',
-                guardian_phone: appData.guardian_phone || '',
-                emergency_name: appData.emergency_name || '',
-                emergency_phone: appData.emergency_phone || '',
-                emergency_relation: appData.emergency_relation || '',
-                created_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }]);
-        
-        if (profileError) {
-            console.error('Profile creation error:', profileError);
-            throw new Error('Failed to create student profile: ' + profileError.message);
-        }
-        
-        // 3. Update application
-        await sb
-            .from('applications')
-            .update({
-                status: 'approved',
-                student_id: studentId,
-                updated_at: new Date().toISOString(),
-                updated_by: window.currentUser?.id || 'system'
-            })
-            .eq('id', requestId);
-        
-        // 4. Send admission letter email
-        const emailSent = await sendAdmissionLetter(
-            appData.email || appData.user_email,
-            appData.full_name,
-            appData.program_name || appData.program,
-            studentId
-        );
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        closeModal('smRequestModal');
-        
-        if (typeof showNotification === 'function') {
-            const msg = emailSent 
-                ? `✅ ${appData.full_name} approved! Student ID: ${studentId}. Email sent!`
-                : `✅ ${appData.full_name} approved! Student ID: ${studentId}`;
-            showNotification(msg, 'success');
-        }
-        
-        loadAdmissions();
-        loadSMHistory();
-        updateSMStats();
-        updateSMBadges();
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error approving admission:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error approving: ' + error.message, 'error');
-        }
-    }
-}
+        if (!report) throw new Error('Report not found');
 
-// ============================================================
-// APPROVE REQUEST - Unified
-// ============================================================
-async function approveSMRequest(requestId) {
-    const sb = getSupabaseClient();
-    if (!sb) return;
-    
-    if (!requestId) {
-        if (typeof showNotification === 'function') {
-            showNotification('Invalid request ID', 'error');
+        // 2. Get the student's current profile from consolidated_user_profiles_table
+        const studentProfile = await getStudentProfile(report.student_id);
+        if (!studentProfile) {
+            throw new Error(`Student profile not found for ID: ${report.student_id}`);
         }
-        return;
-    }
-    
-    // Check if it's an admission (check applications table first)
-    try {
-        const { data: appData, error: appError } = await sb
-            .from('applications')
-            .select('*')
-            .eq('id', requestId)
-            .single();
-        
-        if (appData) {
-            // It's an admission - use the full profile creation
-            await approveAdmission(requestId);
-            return;
-        }
-    } catch (e) {
-        // Not an admission, continue to student_requests
-    }
-    
-    // Check student_requests (change program or readmission)
-    if (!confirm('✅ Approve this request?')) return;
-    
-    if (typeof showLoading === 'function') showLoading('Approving request...');
-    
-    try {
-        const { data: request, error: fetchError } = await sb
-            .from('student_requests')
-            .select('*')
-            .eq('id', requestId)
-            .single();
-        
-        if (fetchError) throw fetchError;
-        if (!request) throw new Error('Request not found');
-        
-        await sb
-            .from('student_requests')
-            .update({
-                status: 'approved',
-                approved_at: new Date().toISOString(),
-                approved_by: window.currentUser?.id || 'system',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', requestId);
-        
-        // Update student program
-        if (request.student_id && request.requested_program) {
-            await sb
-                .from('consolidated_user_profiles_table')
-                .update({
-                    program: request.requested_program,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('student_id', request.student_id);
-        }
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        closeModal('smRequestModal');
-        
-        if (typeof showNotification === 'function') {
-            showNotification('✅ Request approved successfully!', 'success');
-        }
-        
-        loadChangeProgramRequests();
-        loadReadmissionRequests();
-        loadSMHistory();
-        updateSMStats();
-        updateSMBadges();
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error approving request:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error approving: ' + error.message, 'error');
-        }
-    }
-}
 
-// ============================================================
-// REJECT REQUEST
-// ============================================================
-async function rejectSMRequest(requestId) {
-    const sb = getSupabaseClient();
-    if (!sb) return;
-    
-    if (!requestId) {
-        if (typeof showNotification === 'function') {
-            showNotification('Invalid request ID', 'error');
-        }
-        return;
-    }
-    
-    if (!confirm('❌ Reject this request?\n\nThis action cannot be undone.')) return;
-    
-    if (typeof showLoading === 'function') showLoading('Rejecting request...');
-    
-    try {
-        // Check if it's an admission request
-        const { data: appData, error: appError } = await sb
-            .from('applications')
-            .select('*')
-            .eq('id', requestId)
-            .single();
-        
-        if (appData) {
-            await sb
-                .from('applications')
-                .update({
-                    status: 'rejected',
-                    updated_at: new Date().toISOString(),
-                    updated_by: window.currentUser?.id || 'system'
-                })
-                .eq('id', requestId);
-            
-            if (typeof hideLoading === 'function') hideLoading();
-            closeModal('smRequestModal');
-            
-            if (typeof showNotification === 'function') {
-                showNotification('❌ Admission rejected.', 'error');
-            }
-            
-            loadAdmissions();
-            loadSMHistory();
-            updateSMStats();
-            updateSMBadges();
-            return;
-        }
-        
-        // Student request
-        await sb
-            .from('student_requests')
-            .update({
-                status: 'rejected',
-                rejected_at: new Date().toISOString(),
-                rejected_by: window.currentUser?.id || 'system',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', requestId);
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        closeModal('smRequestModal');
-        
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Request rejected.', 'error');
-        }
-        
-        loadChangeProgramRequests();
-        loadReadmissionRequests();
-        loadSMHistory();
-        updateSMStats();
-        updateSMBadges();
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error rejecting request:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error rejecting: ' + error.message, 'error');
-        }
-    }
-}
+        console.log('📋 Current Student Profile:', studentProfile);
 
-// ============================================================
-// QUICK APPROVE (with profile creation for admissions)
-// ============================================================
-async function quickApproveSM(requestId, type) {
-    const sb = getSupabaseClient();
-    if (!sb) return;
-    
-    if (!requestId) {
-        if (typeof showNotification === 'function') {
-            showNotification('Invalid request ID', 'warning');
-        }
-        return;
-    }
-    
-    if (type === 'admission') {
-        // Use the full admission approval with profile creation
-        await approveAdmission(requestId);
-        return;
-    }
-    
-    // Change program or readmission - quick approval
-    if (!confirm('✅ Quick approve this request?')) return;
-    
-    if (typeof showLoading === 'function') showLoading('Approving...');
-    
-    try {
-        const { data: request, error: fetchError } = await sb
-            .from('student_requests')
-            .select('*')
-            .eq('id', requestId)
-            .single();
-        
-        if (fetchError) throw fetchError;
-        if (!request) throw new Error('Request not found');
-        
-        await sb
-            .from('student_requests')
-            .update({
-                status: 'approved',
-                approved_at: new Date().toISOString(),
-                approved_by: window.currentUser?.id || 'system',
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', requestId);
-        
-        if (request.student_id && request.requested_program) {
-            await sb
-                .from('consolidated_user_profiles_table')
-                .update({
-                    program: request.requested_program,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('student_id', request.student_id);
-        }
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        
-        if (typeof showNotification === 'function') {
-            showNotification('✅ Request approved!', 'success');
-        }
-        
-        if (type === 'change') {
-            loadChangeProgramRequests();
-        } else if (type === 'readmission') {
-            loadReadmissionRequests();
-        }
-        loadSMHistory();
-        updateSMStats();
-        updateSMBadges();
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error quick approving:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error: ' + error.message, 'error');
-        }
-    }
-}
+        // 3. Determine what to update based on program type
+        const programType = report.program_type || detectProgramType(report.program);
+        const session = report.session;
+        const academicYear = report.academic_year;
 
-// ============================================================
-// BULK APPROVE
-// ============================================================
-async function bulkApproveSM(type) {
-    const sb = getSupabaseClient();
-    if (!sb) return;
-    
-    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : `${type}-checkbox`;
-    const checkboxes = document.querySelectorAll(`.${checkboxClass}:checked`);
-    
-    if (checkboxes.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select at least one request', 'warning');
-        }
-        return;
-    }
-    
-    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
-    const typeLabel = type === 'admissions' ? 'admission' : (type === 'change' ? 'change of program' : 'readmission');
-    
-    if (!confirm(`✅ Approve ${ids.length} selected ${typeLabel} requests?`)) return;
-    
-    if (typeof showLoading === 'function') showLoading(`Approving ${ids.length} requests...`);
-    
-    try {
-        let successCount = 0;
-        let errorCount = 0;
-        let emailSentCount = 0;
-        
-        for (const id of ids) {
-            try {
-                if (type === 'admissions') {
-                    // Use the full approval with profile creation
-                    await approveAdmission(id);
-                    // Check if email was sent (approveAdmission sends it)
-                    emailSentCount++;
-                } else {
-                    const { data: request, error: fetchError } = await sb
-                        .from('student_requests')
-                        .select('*')
-                        .eq('id', id)
-                        .single();
-                    
-                    if (fetchError) throw fetchError;
-                    
-                    await sb
-                        .from('student_requests')
-                        .update({
-                            status: 'approved',
-                            approved_at: new Date().toISOString(),
-                            approved_by: window.currentUser?.id || 'system',
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', id);
-                    
-                    if (request.student_id && request.requested_program) {
-                        await sb
-                            .from('consolidated_user_profiles_table')
-                            .update({
-                                program: request.requested_program,
-                                updated_at: new Date().toISOString()
-                            })
-                            .eq('student_id', request.student_id);
-                    }
+        let updateData = {};
+
+        if (programType === 'Nursing') {
+            // Update block for Nursing students
+            updateData = {
+                current_block: session,
+                current_academic_year: academicYear,
+                block: session  // Also update the legacy block field
+            };
+            console.log(`🔄 Updating Nursing student ${report.student_name}: Block → ${session}`);
+        } else {
+            // TVET - Parse Year and Term from session string
+            const parts = session.split(' - ');
+            if (parts.length === 2) {
+                const year = parts[0].trim();
+                const term = parts[1].trim();
+                updateData = {
+                    current_year: year,
+                    current_term: term,
+                    current_academic_year: academicYear,
+                    year: year,   // Also update legacy fields
+                    term: term
+                };
+                console.log(`🔄 Updating TVET student ${report.student_name}: ${year} - ${term}`);
+            } else {
+                // Fallback: try to parse differently
+                const yearMatch = session.match(/Year\s*(\d+)/i);
+                const termMatch = session.match(/Term\s*(\d+)/i);
+                if (yearMatch) {
+                    const year = `Year ${yearMatch[1]}`;
+                    updateData.current_year = year;
+                    updateData.year = year;
                 }
-                successCount++;
-            } catch (err) {
-                console.error(`Error approving ${id}:`, err);
-                errorCount++;
-            }
-        }
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        
-        if (typeof showNotification === 'function') {
-            let msg = `✅ ${successCount} requests approved`;
-            if (emailSentCount > 0) msg += `, ${emailSentCount} admission letters sent`;
-            if (errorCount > 0) msg += `, ${errorCount} errors`;
-            showNotification(msg, errorCount > 0 ? 'warning' : 'success');
-        }
-        
-        loadAdmissions();
-        loadChangeProgramRequests();
-        loadReadmissionRequests();
-        loadSMHistory();
-        updateSMStats();
-        updateSMBadges();
-        
-    } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error bulk approving:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error: ' + error.message, 'error');
-        }
-    }
-}
-
-// ============================================================
-// BULK REJECT
-// ============================================================
-async function bulkRejectSM(type) {
-    const sb = getSupabaseClient();
-    if (!sb) return;
-    
-    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : `${type}-checkbox`;
-    const checkboxes = document.querySelectorAll(`.${checkboxClass}:checked`);
-    
-    if (checkboxes.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select at least one request', 'warning');
-        }
-        return;
-    }
-    
-    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
-    const typeLabel = type === 'admissions' ? 'admission' : (type === 'change' ? 'change of program' : 'readmission');
-    
-    if (!confirm(`❌ Reject ${ids.length} selected ${typeLabel} requests?`)) return;
-    
-    if (typeof showLoading === 'function') showLoading(`Rejecting ${ids.length} requests...`);
-    
-    try {
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const id of ids) {
-            try {
-                if (type === 'admissions') {
-                    await sb
-                        .from('applications')
-                        .update({
-                            status: 'rejected',
-                            updated_at: new Date().toISOString(),
-                            updated_by: window.currentUser?.id || 'system'
-                        })
-                        .eq('id', id);
-                } else {
-                    await sb
-                        .from('student_requests')
-                        .update({
-                            status: 'rejected',
-                            rejected_at: new Date().toISOString(),
-                            rejected_by: window.currentUser?.id || 'system',
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('id', id);
+                if (termMatch) {
+                    const term = `Term ${termMatch[1]}`;
+                    updateData.current_term = term;
+                    updateData.term = term;
                 }
-                successCount++;
-            } catch (err) {
-                console.error(`Error rejecting ${id}:`, err);
-                errorCount++;
+                updateData.current_academic_year = academicYear;
+                console.log(`🔄 Updating TVET student ${report.student_name} (fallback):`, updateData);
             }
         }
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        
-        if (typeof showNotification === 'function') {
-            const msg = errorCount === 0 ? `❌ ${successCount} requests rejected.` : `⚠️ ${successCount} rejected, ${errorCount} errors`;
-            showNotification(msg, errorCount > 0 ? 'warning' : 'error');
+
+        // 4. Update the report status first
+        const { error: updateReportError } = await sb
+            .from('session_reports')
+            .update({
+                approval_status: 'approved',
+                approved_at: new Date().toISOString(),
+                approved_by: 'Admin'
+            })
+            .eq('id', reportId);
+
+        if (updateReportError) throw updateReportError;
+
+        // 5. Update the student's profile in consolidated_user_profiles_table
+        const profileUpdated = await updateStudentProfile(report.student_id, updateData);
+
+        if (!profileUpdated) {
+            throw new Error('Failed to update student profile');
         }
-        
-        loadAdmissions();
-        loadChangeProgramRequests();
-        loadReadmissionRequests();
-        loadSMHistory();
+
+        // 6. Get updated profile to confirm
+        const updatedProfile = await getStudentProfile(report.student_id);
+        console.log('✅ Updated Student Profile:', updatedProfile);
+
+        if (typeof hideLoading === 'function') hideLoading();
+
+        if (typeof showNotification === 'function') {
+            const updateType = programType === 'Nursing' ? 'Block' : 'Year/Term';
+            showNotification(`✅ Session report approved! Student's ${updateType} updated to "${session}"`, 'success');
+        }
+
+        // Refresh data
+        await loadSessionReportsAdmin();
+        await loadStudentsForDropdown();
         updateSMStats();
         updateSMBadges();
-        
+
     } catch (error) {
         if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error bulk rejecting:', error);
+        console.error('Error approving session report:', error);
         if (typeof showNotification === 'function') {
-            showNotification('❌ Error: ' + error.message, 'error');
+            showNotification('❌ Error approving report: ' + error.message, 'error');
         }
     }
 }
 
 // ============================================================
-// BULK REVIEW (for admissions)
+// REJECT SESSION REPORT
 // ============================================================
-async function bulkReviewSM(type) {
-    if (type !== 'admissions') return;
-    
+async function rejectSessionReportAdmin(reportId) {
     const sb = getSupabaseClient();
-    if (!sb) return;
-    
-    const checkboxes = document.querySelectorAll('.admissions-checkbox:checked');
-    
-    if (checkboxes.length === 0) {
+    if (!sb) {
         if (typeof showNotification === 'function') {
-            showNotification('Please select at least one application', 'warning');
+            showNotification('Supabase client not available', 'error');
         }
         return;
     }
-    
-    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
-    
-    if (!confirm(`🔄 Mark ${ids.length} applications as reviewing?`)) return;
-    
-    if (typeof showLoading === 'function') showLoading(`Updating ${ids.length} applications...`);
-    
+
+    if (!confirm('❌ Reject this session report?')) return;
+
+    if (typeof showLoading === 'function') showLoading('Rejecting session report...');
+
     try {
-        let successCount = 0;
-        let errorCount = 0;
-        
-        for (const id of ids) {
-            try {
-                await sb
-                    .from('applications')
-                    .update({
-                        status: 'reviewing',
-                        updated_at: new Date().toISOString(),
-                        updated_by: window.currentUser?.id || 'system'
-                    })
-                    .eq('id', id);
-                successCount++;
-            } catch (err) {
-                console.error(`Error updating ${id}:`, err);
-                errorCount++;
-            }
-        }
-        
+        const { error } = await sb
+            .from('session_reports')
+            .update({
+                approval_status: 'rejected',
+                approved_at: new Date().toISOString(),
+                approved_by: 'Admin'
+            })
+            .eq('id', reportId);
+
+        if (error) throw error;
+
         if (typeof hideLoading === 'function') hideLoading();
-        
+
         if (typeof showNotification === 'function') {
-            const msg = errorCount === 0 ? `✅ ${successCount} applications marked as reviewing.` : `⚠️ ${successCount} updated, ${errorCount} errors`;
-            showNotification(msg, errorCount > 0 ? 'warning' : 'success');
+            showNotification('❌ Session report rejected', 'warning');
         }
-        
-        loadAdmissions();
+
+        await loadSessionReportsAdmin();
         updateSMStats();
         updateSMBadges();
-        
+
     } catch (error) {
         if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error bulk reviewing:', error);
+        console.error('Error rejecting session report:', error);
         if (typeof showNotification === 'function') {
-            showNotification('❌ Error: ' + error.message, 'error');
+            showNotification('❌ Error rejecting report', 'error');
         }
     }
 }
 
 // ============================================================
-// VIEW REQUEST DETAILS
+// BULK APPROVE SESSION REPORTS
+// ============================================================
+async function bulkApproveSessionReports() {
+    const checkboxes = document.querySelectorAll('.session-reports-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select reports to approve', 'warning');
+        }
+        return;
+    }
+
+    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+    if (!confirm(`✅ Approve ${ids.length} session report(s)?\n\nThis will update each student's profile in consolidated_user_profiles_table.`)) return;
+
+    if (typeof showLoading === 'function') showLoading(`Approving ${ids.length} reports...`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const id of ids) {
+        try {
+            await approveSessionReportAdmin(id);
+            successCount++;
+        } catch (error) {
+            console.error(`Error approving ${id}:`, error);
+            errorCount++;
+        }
+    }
+
+    if (typeof hideLoading === 'function') hideLoading();
+
+    if (typeof showNotification === 'function') {
+        showNotification(`✅ ${successCount} approved, ${errorCount} failed`, successCount > 0 ? 'success' : 'error');
+    }
+
+    await loadSessionReportsAdmin();
+    updateSMStats();
+    updateSMBadges();
+}
+
+// ============================================================
+// BULK REJECT SESSION REPORTS
+// ============================================================
+async function bulkRejectSessionReports() {
+    const checkboxes = document.querySelectorAll('.session-reports-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select reports to reject', 'warning');
+        }
+        return;
+    }
+
+    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+    if (!confirm(`❌ Reject ${ids.length} session report(s)?`)) return;
+
+    if (typeof showLoading === 'function') showLoading(`Rejecting ${ids.length} reports...`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const id of ids) {
+        try {
+            await rejectSessionReportAdmin(id);
+            successCount++;
+        } catch (error) {
+            console.error(`Error rejecting ${id}:`, error);
+            errorCount++;
+        }
+    }
+
+    if (typeof hideLoading === 'function') hideLoading();
+
+    if (typeof showNotification === 'function') {
+        showNotification(`✅ ${successCount} rejected, ${errorCount} failed`, successCount > 0 ? 'success' : 'error');
+    }
+
+    await loadSessionReportsAdmin();
+    updateSMStats();
+    updateSMBadges();
+}
+
+// ============================================================
+// VIEW SESSION REPORT DETAILS
+// ============================================================
+async function viewSessionReportDetails(reportId) {
+    const sb = getSupabaseClient();
+    if (!sb) return;
+    
+    try {
+        const { data: report, error } = await sb
+            .from('session_reports')
+            .select('*')
+            .eq('id', reportId)
+            .single();
+
+        if (error) throw error;
+        if (!report) throw new Error('Report not found');
+
+        // Get student's current profile
+        const studentProfile = await getStudentProfile(report.student_id);
+
+        const modalBody = document.getElementById('smModalBody');
+        const modalTitle = document.getElementById('smModalTitle');
+        const modalActions = document.getElementById('smModalActions');
+
+        modalTitle.textContent = 'Session Report Details';
+
+        const programType = report.program_type || 'TVET';
+        const statusColors = {
+            pending: { bg: '#fef3c7', color: '#92400e' },
+            approved: { bg: '#d1fae5', color: '#065f46' },
+            rejected: { bg: '#fee2e2', color: '#991b1b' }
+        };
+        const statusStyle = statusColors[report.approval_status || 'pending'] || statusColors.pending;
+        const isPending = report.approval_status === 'pending';
+
+        // Show current profile info
+        let profileInfo = '';
+        if (studentProfile) {
+            const currentBlock = studentProfile.current_block || studentProfile.block || 'Not set';
+            const currentYear = studentProfile.current_year || studentProfile.year || 'Not set';
+            const currentTerm = studentProfile.current_term || studentProfile.term || 'Not set';
+            
+            profileInfo = `
+                <div style="margin-bottom: 16px; padding: 16px; background: #f0f9ff; border-radius: 10px; border-left: 4px solid #3b82f6;">
+                    <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600; margin-bottom: 6px;">
+                        <i class="fas fa-user-graduate"></i> Current Profile (consolidated_user_profiles_table)
+                    </div>
+                    <div style="display: grid; grid-template-columns: ${programType === 'Nursing' ? '1fr' : '1fr 1fr'}; gap: 8px; font-size: 13px;">
+                        ${programType === 'Nursing' ? `
+                            <div><strong>Current Block:</strong> ${escapeHtml(currentBlock)}</div>
+                        ` : `
+                            <div><strong>Current Year:</strong> ${escapeHtml(currentYear)}</div>
+                            <div><strong>Current Term:</strong> ${escapeHtml(currentTerm)}</div>
+                        `}
+                        <div><strong>Program:</strong> ${escapeHtml(studentProfile.program || 'N/A')}</div>
+                    </div>
+                    ${isPending ? `
+                        <div style="margin-top: 8px; padding: 8px 12px; background: #fef3c7; border-radius: 6px; font-size: 12px; color: #92400e;">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>Will be updated to:</strong> ${escapeHtml(report.session)}
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+
+        modalBody.innerHTML = `
+            <div style="margin-bottom: 16px; padding: 16px; background: #f8fafc; border-radius: 10px; display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div>
+                    <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Student</div>
+                    <div style="font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(report.student_name)}</div>
+                    <div style="font-size: 12px; color: #94a3b8;">ID: ${escapeHtml(report.student_id)}</div>
+                </div>
+                <div>
+                    <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Program</div>
+                    <div style="font-size: 15px; font-weight: 600; color: #0A3D62;">${escapeHtml(report.program)}</div>
+                    <span style="background: ${programType === 'Nursing' ? '#dbeafe' : '#fef3c7'}; padding: 2px 10px; border-radius: 12px; font-size: 11px; color: ${programType === 'Nursing' ? '#1e40af' : '#92400e'};">
+                        ${programType}
+                    </span>
+                </div>
+            </div>
+
+            ${profileInfo}
+
+            <div style="margin-bottom: 16px; padding: 16px; background: #dbeafe; border-radius: 10px; border-left: 4px solid #3b82f6;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                    <div>
+                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Academic Year</div>
+                        <div style="font-size: 15px; font-weight: 600; color: #1e293b;">${escapeHtml(report.academic_year)}</div>
+                    </div>
+                    <div>
+                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">${programType === 'Nursing' ? 'Block' : 'Year/Term'}</div>
+                        <div style="font-size: 15px; font-weight: 600; color: #4C1D95;">${escapeHtml(report.session)}</div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Status</div>
+                <div style="margin-top: 4px;">
+                    <span style="background: #d1fae5; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">
+                        ${escapeHtml(report.status || 'Continuing')}
+                    </span>
+                    <span style="margin-left: 8px; background: ${statusStyle.bg}; color: ${statusStyle.color}; padding: 2px 12px; border-radius: 12px; font-size: 12px; font-weight: 600;">
+                        ${(report.approval_status || 'pending').charAt(0).toUpperCase() + (report.approval_status || 'pending').slice(1)}
+                    </span>
+                </div>
+            </div>
+
+            <div style="margin-bottom: 16px;">
+                <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Remarks</div>
+                <div style="background: #f1f5f9; padding: 10px 14px; border-radius: 8px; font-size: 14px; color: #334155; margin-top: 4px; border-left: 3px solid #4C1D95;">
+                    ${escapeHtml(report.remarks || 'No remarks')}
+                </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 12px; color: #94a3b8; border-top: 1px solid #e5e7eb; padding-top: 14px;">
+                <div><i class="fas fa-clock"></i> Submitted: ${new Date(report.submitted_at).toLocaleString()}</div>
+                ${report.approved_at ? `<div><i class="fas fa-check-circle"></i> Approved: ${new Date(report.approved_at).toLocaleString()}</div>` : ''}
+            </div>
+        `;
+
+        // Show actions for pending requests
+        if (isPending) {
+            modalActions.style.display = 'flex';
+            modalActions.innerHTML = `
+                <button onclick="approveSessionReportAdmin('${reportId}')" style="padding: 10px 24px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-check"></i> Approve & Update Profile
+                </button>
+                <button onclick="rejectSessionReportAdmin('${reportId}')" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-times"></i> Reject
+                </button>
+                <button onclick="closeModal('smRequestModal')" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    Close
+                </button>
+            `;
+        } else {
+            modalActions.style.display = 'flex';
+            modalActions.innerHTML = `
+                <button onclick="closeModal('smRequestModal')" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    Close
+                </button>
+            `;
+        }
+
+        document.getElementById('smRequestModal').style.display = 'flex';
+
+    } catch (error) {
+        console.error('Error viewing session report:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('Error loading report details', 'error');
+        }
+    }
+}
+
+// ============================================================
+// UPDATE viewSMRequest to handle session reports
 // ============================================================
 async function viewSMRequest(requestId, type) {
+    if (type === 'session-report') {
+        await viewSessionReportDetails(requestId);
+        return;
+    }
+    
+    // Original code for other types...
     const sb = getSupabaseClient();
     if (!sb) return;
     
@@ -1424,6 +1369,32 @@ async function viewSMRequest(requestId, type) {
         
         const isPending = status === 'pending' || status === 'submitted' || status === 'reviewing';
         
+        // Get student profile from consolidated_user_profiles_table for context
+        let profileInfo = '';
+        if (studentId && studentId !== 'N/A') {
+            const profile = await getStudentProfile(studentId);
+            if (profile) {
+                const currentBlock = profile.current_block || profile.block || 'Not set';
+                const currentYear = profile.current_year || profile.year || 'Not set';
+                const currentTerm = profile.current_term || profile.term || 'Not set';
+                const programType = detectProgramType(profile.program);
+                profileInfo = `
+                    <div style="grid-column: 1 / -1; background: #f0f9ff; padding: 10px 16px; border-radius: 8px; border-left: 3px solid #3b82f6;">
+                        <span style="font-weight: 600; color: #1e40af; font-size: 11px; text-transform: uppercase;">Current Profile</span>
+                        <div style="font-size: 13px; margin-top: 4px; display: flex; gap: 16px; flex-wrap: wrap;">
+                            ${programType === 'Nursing' ? `
+                                <span><strong>Block:</strong> ${escapeHtml(currentBlock)}</span>
+                            ` : `
+                                <span><strong>Year:</strong> ${escapeHtml(currentYear)}</span>
+                                <span><strong>Term:</strong> ${escapeHtml(currentTerm)}</span>
+                            `}
+                            <span><strong>Program:</strong> ${escapeHtml(profile.program || 'N/A')}</span>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+        
         let html = `
             <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px;">
                 <div style="grid-column: 1 / -1; background: #f8fafc; padding: 12px 16px; border-radius: 8px; margin-bottom: 8px;">
@@ -1438,6 +1409,8 @@ async function viewSMRequest(requestId, type) {
                         ${email !== 'N/A' ? `<span><i class="fas fa-envelope"></i> ${escapeHtml(email)}</span>` : ''}
                     </div>
                 </div>
+                
+                ${profileInfo}
                 
                 <div style="grid-column: 1 / -1; background: #f0f9ff; padding: 12px 16px; border-radius: 8px;">
                     <span style="font-weight: 600; color: #1e40af;">📋 Request Type:</span>
@@ -1498,16 +1471,20 @@ async function viewSMRequest(requestId, type) {
         // Show actions for pending requests
         if (isPending) {
             document.getElementById('smModalActions').style.display = 'flex';
-            document.getElementById('smApproveBtn').style.display = 'inline-flex';
-            document.getElementById('smRejectBtn').style.display = 'inline-flex';
-            document.getElementById('smApproveBtn').onclick = function() { approveSMRequest(requestId); };
-            document.getElementById('smRejectBtn').onclick = function() { rejectSMRequest(requestId); };
+            document.getElementById('smModalActions').innerHTML = `
+                <button onclick="approveSMRequest('${requestId}')" style="padding: 10px 24px; background: #10b981; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-check"></i> Approve
+                </button>
+                <button onclick="rejectSMRequest('${requestId}')" style="padding: 10px 24px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-times"></i> Reject
+                </button>
+                <button onclick="closeModal('smRequestModal')" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
+                    Close
+                </button>
+            `;
         } else {
             document.getElementById('smModalActions').style.display = 'flex';
-            document.getElementById('smApproveBtn').style.display = 'none';
-            document.getElementById('smRejectBtn').style.display = 'none';
-            const actions = document.getElementById('smModalActions');
-            actions.innerHTML = `
+            document.getElementById('smModalActions').innerHTML = `
                 <button onclick="closeModal('smRequestModal')" style="padding: 10px 24px; background: #6b7280; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;">
                     Close
                 </button>
@@ -1529,203 +1506,274 @@ async function viewSMRequest(requestId, type) {
 }
 
 // ============================================================
-// SUBMIT NEW REQUEST
+// LOAD HISTORY (UPDATED to include session reports)
 // ============================================================
-async function submitSMRequest() {
+async function loadSMHistory() {
     const sb = getSupabaseClient();
     if (!sb) return;
     
-    const studentSelect = document.getElementById('smStudentSelect');
-    const typeRadio = document.querySelector('input[name="requestType"]:checked');
-    const reason = document.getElementById('smReason');
-    const requestedProgram = document.getElementById('smRequestedProgram');
-    const currentProgram = document.getElementById('smCurrentProgram');
-    const previousProgram = document.getElementById('smPreviousProgram');
-    const docsInput = document.getElementById('smSupportingDocs');
-    
-    if (!studentSelect || !studentSelect.value) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select a student', 'warning');
-        }
-        return;
-    }
-    
-    if (!typeRadio) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select a request type', 'warning');
-        }
-        return;
-    }
-    
-    if (!reason || !reason.value.trim()) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please provide a reason', 'warning');
-        }
-        return;
-    }
-    
-    if (!requestedProgram || !requestedProgram.value) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select a requested program', 'warning');
-        }
-        return;
-    }
-    
-    const requestType = typeRadio.value;
-    let programFrom = '';
-    
-    if (requestType === 'change_program') {
-        if (!currentProgram || !currentProgram.value) {
-            if (typeof showNotification === 'function') {
-                showNotification('Please select the current program', 'warning');
-            }
-            return;
-        }
-        programFrom = currentProgram.value;
-    } else if (requestType === 'readmission') {
-        if (!previousProgram || !previousProgram.value) {
-            if (typeof showNotification === 'function') {
-                showNotification('Please select the previous program', 'warning');
-            }
-            return;
-        }
-        programFrom = previousProgram.value;
-    }
-    
-    if (typeof showLoading === 'function') showLoading('Submitting request...');
-    
     try {
-        const { data: student, error: studentError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, program, block, email')
-            .eq('student_id', studentSelect.value)
-            .single();
+        const type = document.getElementById('smHistoryType')?.value || 'all';
+        const status = document.getElementById('smHistoryStatus')?.value || 'all';
+        const dateFrom = document.getElementById('smHistoryDateFrom')?.value || '';
+        const dateTo = document.getElementById('smHistoryDateTo')?.value || '';
         
-        if (studentError) throw studentError;
+        let allHistory = [];
         
-        let documents = [];
-        if (docsInput && docsInput.files && docsInput.files.length > 0) {
-            for (const file of docsInput.files) {
-                documents.push({
-                    name: file.name,
-                    size: file.size,
-                    type: file.type
-                });
+        // Get from student_requests
+        let query = sb
+            .from('student_requests')
+            .select('*')
+            .in('status', ['approved', 'rejected'])
+            .order('updated_at', { ascending: false });
+
+        if (type !== 'all' && type !== 'admissions' && type !== 'session-report') {
+            query = query.eq('request_type', type);
+        }
+        
+        if (status !== 'all') {
+            query = query.eq('status', status);
+        }
+        
+        const { data: requestData, error: requestError } = await query;
+        if (!requestError && requestData) {
+            allHistory = [...allHistory, ...requestData];
+        }
+        
+        // Get from applications (admissions)
+        if (type === 'all' || type === 'admissions') {
+            let appQuery = sb
+                .from('applications')
+                .select('*')
+                .in('status', ['approved', 'rejected'])
+                .order('updated_at', { ascending: false });
+            
+            if (status !== 'all') {
+                appQuery = appQuery.eq('status', status);
+            }
+            
+            if (dateFrom) {
+                appQuery = appQuery.gte('updated_at', dateFrom);
+            }
+            if (dateTo) {
+                appQuery = appQuery.lte('updated_at', dateTo + 'T23:59:59');
+            }
+            
+            const { data: appData, error: appError } = await appQuery;
+            if (!appError && appData) {
+                allHistory = [...allHistory, ...appData.map(a => ({
+                    ...a,
+                    request_type: 'admission',
+                    student_name: a.full_name,
+                    student_id: a.application_number,
+                    current_program: a.program_name,
+                    requested_program: a.program_name,
+                    approved_by: a.updated_by || 'System'
+                }))];
             }
         }
         
-        const requestData = {
-            student_id: student.student_id,
-            student_name: student.full_name,
-            request_type: requestType,
-            current_program: requestType === 'change_program' ? programFrom : null,
-            previous_program: requestType === 'readmission' ? programFrom : null,
-            requested_program: requestedProgram.value,
-            reason: reason.value.trim(),
-            status: 'pending',
-            documents: documents,
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
-        
-        const { data, error } = await sb
-            .from('student_requests')
-            .insert(requestData)
-            .select();
-        
-        if (error) throw error;
-        
-        if (typeof hideLoading === 'function') hideLoading();
-        
-        if (typeof showNotification === 'function') {
-            showNotification('✅ Request submitted successfully!', 'success');
+        // Get from session_reports (NEW)
+        if (type === 'all' || type === 'session-report') {
+            let sessionQuery = sb
+                .from('session_reports')
+                .select('*')
+                .in('approval_status', ['approved', 'rejected'])
+                .order('approved_at', { ascending: false });
+            
+            if (status !== 'all') {
+                sessionQuery = sessionQuery.eq('approval_status', status);
+            }
+            
+            if (dateFrom) {
+                sessionQuery = sessionQuery.gte('approved_at', dateFrom);
+            }
+            if (dateTo) {
+                sessionQuery = sessionQuery.lte('approved_at', dateTo + 'T23:59:59');
+            }
+            
+            const { data: sessionData, error: sessionError } = await sessionQuery;
+            if (!sessionError && sessionData) {
+                allHistory = [...allHistory, ...sessionData.map(s => ({
+                    ...s,
+                    request_type: 'session-report',
+                    student_name: s.student_name,
+                    student_id: s.student_id,
+                    current_program: s.program,
+                    requested_program: s.session,
+                    approved_by: s.approved_by || 'System',
+                    status: s.approval_status,
+                    updated_at: s.approved_at
+                }))];
+            }
         }
         
-        document.getElementById('smRequestForm').reset();
-        if (docsInput) docsInput.value = '';
+        allHistory.sort((a, b) => new Date(b.updated_at) - new Date(a.updated_at));
         
-        showSMSubTab('change-program');
-        
-        loadChangeProgramRequests();
-        loadReadmissionRequests();
-        updateSMStats();
-        updateSMBadges();
-        
+        SM_STATE.history = allHistory;
+        renderHistoryTable();
+
     } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error submitting request:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error submitting: ' + error.message, 'error');
+        console.error('Error loading history:', error);
+        const tbody = document.getElementById('smHistoryBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr><td colspan="6" style="padding: 40px; text-align: center; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                    Error loading history: ${error.message || 'Unknown error'}
+                </td></tr>
+            `;
         }
     }
 }
 
 // ============================================================
-// UTILITY FUNCTIONS
+// RENDER HISTORY TABLE (UPDATED)
 // ============================================================
-
-function toggleSMRequestFields() {
-    const type = document.querySelector('input[name="requestType"]:checked');
-    if (!type) return;
+function renderHistoryTable() {
+    const tbody = document.getElementById('smHistoryBody');
+    if (!tbody) return;
     
-    const currentSection = document.getElementById('smCurrentProgramSection');
-    const previousSection = document.getElementById('smPreviousProgramSection');
+    const history = SM_STATE.history;
     
-    if (type.value === 'change_program') {
-        if (currentSection) {
-            currentSection.style.display = 'block';
-            document.getElementById('smCurrentProgram').required = true;
-        }
-        if (previousSection) {
-            previousSection.style.display = 'none';
-            document.getElementById('smPreviousProgram').required = false;
-        }
-    } else if (type.value === 'readmission') {
-        if (currentSection) {
-            currentSection.style.display = 'none';
-            document.getElementById('smCurrentProgram').required = false;
-        }
-        if (previousSection) {
-            previousSection.style.display = 'block';
-            document.getElementById('smPreviousProgram').required = true;
-        }
-    } else {
-        // Admission - hide both
-        if (currentSection) {
-            currentSection.style.display = 'none';
-            document.getElementById('smCurrentProgram').required = false;
-        }
-        if (previousSection) {
-            previousSection.style.display = 'none';
-            document.getElementById('smPreviousProgram').required = false;
-        }
+    if (!history || history.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
+            <i class="fas fa-history" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+            No history found.
+        </td></tr>`;
+        return;
     }
-}
-
-function toggleAllSMCheckboxes(type) {
-    const selectAllMap = {
-        'admissions': 'smSelectAllAdmissions',
-        'change': 'smSelectAllChange',
-        'readmission': 'smSelectAllReadmission'
+    
+    const typeLabels = {
+        'change_program': 'Change of Program',
+        'readmission': 'Readmission',
+        'admission': 'Admission',
+        'session-report': 'Session Report'
     };
     
-    const selectAll = document.getElementById(selectAllMap[type]);
-    if (!selectAll) return;
+    let html = '';
+    history.forEach((r, index) => {
+        const typeLabel = typeLabels[r.request_type] || r.request_type || 'Unknown';
+        const statusClass = r.status || 'approved';
+        const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
+        const date = r.updated_at ? new Date(r.updated_at).toLocaleDateString() : 'N/A';
+        const studentName = r.student_name || r.full_name || 'Unknown';
+        const studentId = r.student_id || r.application_number || 'N/A';
+        
+        // For session reports, show different details
+        let details = '';
+        if (r.request_type === 'session-report') {
+            details = `${r.academic_year || ''} → ${r.session || ''}`;
+        } else {
+            const fromProgram = r.current_program || r.previous_program || 'N/A';
+            const toProgram = r.requested_program || r.program_name || 'N/A';
+            details = `${fromProgram} <i class="fas fa-arrow-right" style="color: #94a3b8; margin: 0 6px;"></i> ${toProgram}`;
+        }
+        
+        const approvedBy = r.approved_by || r.updated_by || 'System';
+        
+        html += `
+        <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
+            <td style="padding: 12px 16px;">
+                <strong>${escapeHtml(studentName)}</strong>
+                <div style="font-size: 11px; color: #94a3b8;">${escapeHtml(studentId)}</div>
+            </td>
+            <td style="padding: 12px 16px;">
+                <span style="background: ${r.request_type === 'session-report' ? '#dbeafe' : '#e0e7ff'}; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #4C1D95;">${escapeHtml(typeLabel)}</span>
+            </td>
+            <td style="padding: 12px 16px; font-size: 13px;">
+                ${details}
+            </td>
+            <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">${date}</td>
+            <td style="padding: 12px 16px; text-align: center;">
+                <span class="sm-status-badge ${statusClass}">${statusLabel}</span>
+            </td>
+            <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">${escapeHtml(approvedBy)}</td>
+        </tr>
+    `});
     
-    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : `${type}-checkbox`;
-    const checkboxes = document.querySelectorAll(`.${checkboxClass}`);
-    checkboxes.forEach(cb => cb.checked = selectAll.checked);
-    updateSMCounter(type);
+    tbody.innerHTML = html;
 }
 
+// ============================================================
+// UPDATE SM STATS (UPDATED)
+// ============================================================
+function updateSMStats() {
+    const totalEl = document.getElementById('smTotalRequests');
+    const changeEl = document.getElementById('smChangeProgramCount');
+    const readmissionEl = document.getElementById('smReadmissionCount');
+    const admissionsEl = document.getElementById('smNewAdmissionsCount');
+    const sessionReportsEl = document.getElementById('smSessionReportsCount');
+    const rejectedEl = document.getElementById('smRejectedCount');
+
+    const changePending = SM_STATE.changeRequests?.filter(r => r.status === 'pending').length || 0;
+    const readmissionPending = SM_STATE.readmissionRequests?.filter(r => r.status === 'pending').length || 0;
+    const admissionPending = SM_STATE.admissionRequests?.filter(r => r.status === 'submitted' || r.status === 'reviewing').length || 0;
+    const sessionPending = SM_STATE.sessionReports?.filter(r => r.approval_status === 'pending').length || 0;
+    
+    const totalRequests = (SM_STATE.changeRequests?.length || 0) + 
+                         (SM_STATE.readmissionRequests?.length || 0) + 
+                         (SM_STATE.admissionRequests?.length || 0) +
+                         (SM_STATE.sessionReports?.length || 0);
+
+    const allRequests = [...(SM_STATE.changeRequests || []), 
+                         ...(SM_STATE.readmissionRequests || []), 
+                         ...(SM_STATE.admissionRequests || []),
+                         ...(SM_STATE.sessionReports || [])];
+    const rejectedCount = allRequests.filter(r => r.status === 'rejected' || r.approval_status === 'rejected').length;
+
+    if (totalEl) totalEl.textContent = totalRequests;
+    if (changeEl) changeEl.textContent = changePending;
+    if (readmissionEl) readmissionEl.textContent = readmissionPending;
+    if (admissionsEl) admissionsEl.textContent = admissionPending;
+    if (sessionReportsEl) sessionReportsEl.textContent = sessionPending;
+    if (rejectedEl) rejectedEl.textContent = rejectedCount;
+}
+
+// ============================================================
+// UPDATE SM BADGES (UPDATED)
+// ============================================================
+function updateSMBadges() {
+    const changePending = SM_STATE.changeRequests?.filter(r => r.status === 'pending').length || 0;
+    const readmissionPending = SM_STATE.readmissionRequests?.filter(r => r.status === 'pending').length || 0;
+    const admissionPending = SM_STATE.admissionRequests?.filter(r => r.status === 'submitted' || r.status === 'reviewing').length || 0;
+    const sessionPending = SM_STATE.sessionReports?.filter(r => r.approval_status === 'pending').length || 0;
+
+    const changeBadge = document.getElementById('smChangePendingBadge');
+    const readmissionBadge = document.getElementById('smReadmissionBadge');
+    const admissionBadge = document.getElementById('smAdmissionsBadge');
+    const sessionBadge = document.getElementById('smSessionReportsBadge');
+
+    if (changeBadge) changeBadge.textContent = changePending;
+    if (readmissionBadge) readmissionBadge.textContent = readmissionPending;
+    if (admissionBadge) admissionBadge.textContent = admissionPending;
+    if (sessionBadge) sessionBadge.textContent = sessionPending;
+}
+
+// ============================================================
+// UPDATE SMCounter (UPDATED)
+// ============================================================
 function updateSMCounter(type) {
-    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : `${type}-checkbox`;
+    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : 
+                          type === 'change' ? 'change-checkbox' :
+                          type === 'readmission' ? 'readmission-checkbox' :
+                          'session-reports-checkbox';
     const checkboxes = document.querySelectorAll(`.${checkboxClass}:checked`);
-    const countElId = type === 'admissions' ? 'smAdmissionsSelectedCount' : `sm${type.charAt(0).toUpperCase() + type.slice(1)}SelectedCount`;
-    const countEl = document.getElementById(countElId);
+    
+    const countMap = {
+        'admissions': 'smAdmissionsSelectedCount',
+        'change': 'smChangeSelectedCount',
+        'readmission': 'smReadmissionSelectedCount',
+        'session-reports': 'smSessionReportsSelectedCount'
+    };
+    
+    const countEl = document.getElementById(countMap[type]);
     if (countEl) countEl.textContent = checkboxes.length;
 }
 
+// ============================================================
+// FILTER SM REQUESTS (UPDATED)
+// ============================================================
 function filterSMRequests(type) {
     if (type === 'admissions') {
         loadAdmissions();
@@ -1733,9 +1781,14 @@ function filterSMRequests(type) {
         loadChangeProgramRequests();
     } else if (type === 'readmission') {
         loadReadmissionRequests();
+    } else if (type === 'session-reports') {
+        loadSessionReportsAdmin();
     }
 }
 
+// ============================================================
+// SHOW SM SUB TAB (UPDATED)
+// ============================================================
 function showSMSubTab(tab) {
     document.querySelectorAll('.sm-tab-content').forEach(el => el.style.display = 'none');
     
@@ -1743,6 +1796,7 @@ function showSMSubTab(tab) {
         'admissions': 'smAdmissionsTab',
         'change-program': 'smChangeProgramTab',
         'readmission': 'smReadmissionTab',
+        'session-reports': 'smSessionReportsTab',
         'history': 'smHistoryTab',
         'new-request': 'smNewRequestTab'
     };
@@ -1763,6 +1817,7 @@ function showSMSubTab(tab) {
         'admissions': 'smTabAdmissions',
         'change-program': 'smTabChangeProgram',
         'readmission': 'smTabReadmission',
+        'session-reports': 'smTabSessionReports',
         'history': 'smTabHistory',
         'new-request': 'smTabNewRequest'
     };
@@ -1780,63 +1835,42 @@ function showSMSubTab(tab) {
     if (tab === 'admissions') loadAdmissions();
     else if (tab === 'change-program') loadChangeProgramRequests();
     else if (tab === 'readmission') loadReadmissionRequests();
+    else if (tab === 'session-reports') loadSessionReportsAdmin();
     else if (tab === 'history') loadSMHistory();
     else if (tab === 'new-request') loadStudentsForDropdown();
 }
 
 // ============================================================
-// UPDATE SM STATS
+// TOGGLE ALL CHECKBOXES (UPDATED)
 // ============================================================
-function updateSMStats() {
-    const totalEl = document.getElementById('smTotalRequests');
-    const changeEl = document.getElementById('smChangeProgramCount');
-    const readmissionEl = document.getElementById('smReadmissionCount');
-    const admissionsEl = document.getElementById('smNewAdmissionsCount');
-    const approvedEl = document.getElementById('smApprovedToday');
-    const rejectedEl = document.getElementById('smRejectedCount');
-
-    const changePending = SM_STATE.changeRequests?.filter(r => r.status === 'pending').length || 0;
-    const readmissionPending = SM_STATE.readmissionRequests?.filter(r => r.status === 'pending').length || 0;
-    const admissionPending = SM_STATE.admissionRequests?.filter(r => r.status === 'submitted' || r.status === 'reviewing').length || 0;
-    const totalRequests = (SM_STATE.changeRequests?.length || 0) + (SM_STATE.readmissionRequests?.length || 0) + (SM_STATE.admissionRequests?.length || 0);
-
-    const today = new Date().toISOString().split('T')[0];
-    const allRequests = [...(SM_STATE.changeRequests || []), ...(SM_STATE.readmissionRequests || []), ...(SM_STATE.admissionRequests || [])];
-    const approvedToday = allRequests.filter(r => 
-        r.status === 'approved' && (r.approved_at || r.updated_at) && 
-        (r.approved_at || r.updated_at).startsWith(today)
-    ).length;
-    const rejectedCount = allRequests.filter(r => r.status === 'rejected').length;
-
-    if (totalEl) totalEl.textContent = totalRequests;
-    if (changeEl) changeEl.textContent = changePending;
-    if (readmissionEl) readmissionEl.textContent = readmissionPending;
-    if (admissionsEl) admissionsEl.textContent = admissionPending;
-    if (approvedEl) approvedEl.textContent = approvedToday;
-    if (rejectedEl) rejectedEl.textContent = rejectedCount;
+function toggleAllSMCheckboxes(type) {
+    const selectAllMap = {
+        'admissions': 'smSelectAllAdmissions',
+        'change': 'smSelectAllChange',
+        'readmission': 'smSelectAllReadmission',
+        'session-reports': 'smSelectAllSessionReports'
+    };
+    
+    const selectAll = document.getElementById(selectAllMap[type]);
+    if (!selectAll) return;
+    
+    const checkboxClass = type === 'admissions' ? 'admissions-checkbox' : 
+                          type === 'change' ? 'change-checkbox' :
+                          type === 'readmission' ? 'readmission-checkbox' :
+                          'session-reports-checkbox';
+    const checkboxes = document.querySelectorAll(`.${checkboxClass}`);
+    checkboxes.forEach(cb => cb.checked = selectAll.checked);
+    updateSMCounter(type);
 }
 
 // ============================================================
-// UPDATE SM BADGES
+// REFRESH STUDENT MANAGEMENT (UPDATED)
 // ============================================================
-function updateSMBadges() {
-    const changePending = SM_STATE.changeRequests?.filter(r => r.status === 'pending').length || 0;
-    const readmissionPending = SM_STATE.readmissionRequests?.filter(r => r.status === 'pending').length || 0;
-    const admissionPending = SM_STATE.admissionRequests?.filter(r => r.status === 'submitted' || r.status === 'reviewing').length || 0;
-
-    const changeBadge = document.getElementById('smChangePendingBadge');
-    const readmissionBadge = document.getElementById('smReadmissionBadge');
-    const admissionBadge = document.getElementById('smAdmissionsBadge');
-
-    if (changeBadge) changeBadge.textContent = changePending;
-    if (readmissionBadge) readmissionBadge.textContent = readmissionPending;
-    if (admissionBadge) admissionBadge.textContent = admissionPending;
-}
-
 function refreshStudentManagement() {
     loadAdmissions();
     loadChangeProgramRequests();
     loadReadmissionRequests();
+    loadSessionReportsAdmin();
     loadSMHistory();
     updateSMStats();
     updateSMBadges();
@@ -1845,8 +1879,11 @@ function refreshStudentManagement() {
     }
 }
 
+// ============================================================
+// EXPORT STUDENT REQUESTS (UPDATED)
+// ============================================================
 function exportStudentRequests() {
-    const allRequests = [...SM_STATE.changeRequests, ...SM_STATE.readmissionRequests, ...SM_STATE.admissionRequests];
+    const allRequests = [...SM_STATE.changeRequests, ...SM_STATE.readmissionRequests, ...SM_STATE.admissionRequests, ...SM_STATE.sessionReports];
     
     if (!allRequests || allRequests.length === 0) {
         if (typeof showNotification === 'function') {
@@ -1857,16 +1894,35 @@ function exportStudentRequests() {
     
     const headers = ['ID', 'Student Name', 'Student ID', 'Email', 'Type', 'From Program', 'To Program', 'Status', 'Date', 'Approved By'];
     const rows = allRequests.map(r => {
-        const type = r.request_type === 'admission' ? 'Admission' : 
-                     r.request_type === 'change_program' ? 'Change of Program' : 
-                     r.request_type === 'readmission' ? 'Readmission' : 'Unknown';
-        const fromProgram = r.current_program || r.previous_program || 'N/A';
-        const toProgram = r.requested_program || r.program_name || r.program || 'N/A';
-        const status = r.status || 'pending';
-        const date = r.created_at ? new Date(r.created_at).toLocaleDateString() : 'N/A';
-        const approvedBy = r.approved_by || r.updated_by || 'System';
-        const email = r.email || r.user_email || 'N/A';
-        return [r.id, r.student_name || r.full_name || 'Unknown', r.student_id || r.application_number || 'N/A', email, type, fromProgram, toProgram, status, date, approvedBy];
+        let type = 'Unknown';
+        let fromProgram = 'N/A';
+        let toProgram = 'N/A';
+        let status = r.status || r.approval_status || 'pending';
+        let date = r.created_at || r.submitted_at ? new Date(r.created_at || r.submitted_at).toLocaleDateString() : 'N/A';
+        let approvedBy = r.approved_by || r.updated_by || 'System';
+        let email = r.email || r.user_email || 'N/A';
+        let studentName = r.student_name || r.full_name || 'Unknown';
+        let studentId = r.student_id || r.application_number || 'N/A';
+        
+        if (r.request_type === 'admission') {
+            type = 'Admission';
+            fromProgram = r.program_name || r.program || 'N/A';
+            toProgram = r.program_name || r.program || 'N/A';
+        } else if (r.request_type === 'change_program') {
+            type = 'Change of Program';
+            fromProgram = r.current_program || 'N/A';
+            toProgram = r.requested_program || 'N/A';
+        } else if (r.request_type === 'readmission') {
+            type = 'Readmission';
+            fromProgram = r.previous_program || 'N/A';
+            toProgram = r.requested_program || 'N/A';
+        } else if (r.request_type === 'session-report') {
+            type = 'Session Report';
+            fromProgram = r.program || 'N/A';
+            toProgram = r.session || 'N/A';
+        }
+        
+        return [r.id, studentName, studentId, email, type, fromProgram, toProgram, status, date, approvedBy];
     });
     
     let csv = headers.join(',') + '\n';
@@ -1893,13 +1949,14 @@ function downloadCSV(csv, filename) {
 }
 
 // ============================================================
-// GLOBAL REGISTRATION
+// GLOBAL REGISTRATION (UPDATED)
 // ============================================================
 window.initStudentManagement = initStudentManagement;
 window.loadStudentsForDropdown = loadStudentsForDropdown;
 window.loadAdmissions = loadAdmissions;
 window.loadChangeProgramRequests = loadChangeProgramRequests;
 window.loadReadmissionRequests = loadReadmissionRequests;
+window.loadSessionReportsAdmin = loadSessionReportsAdmin;
 window.loadSMHistory = loadSMHistory;
 window.viewSMRequest = viewSMRequest;
 window.approveSMRequest = approveSMRequest;
@@ -1908,6 +1965,10 @@ window.quickApproveSM = quickApproveSM;
 window.bulkApproveSM = bulkApproveSM;
 window.bulkRejectSM = bulkRejectSM;
 window.bulkReviewSM = bulkReviewSM;
+window.approveSessionReportAdmin = approveSessionReportAdmin;
+window.rejectSessionReportAdmin = rejectSessionReportAdmin;
+window.bulkApproveSessionReports = bulkApproveSessionReports;
+window.bulkRejectSessionReports = bulkRejectSessionReports;
 window.submitSMRequest = submitSMRequest;
 window.toggleSMRequestFields = toggleSMRequestFields;
 window.toggleAllSMCheckboxes = toggleAllSMCheckboxes;
@@ -1920,13 +1981,16 @@ window.sendAdmissionLetter = sendAdmissionLetter;
 window.escapeHtml = escapeHtml;
 window.closeModal = closeModal;
 window.downloadCSV = downloadCSV;
+window.getStudentProfile = getStudentProfile;
+window.updateStudentProfile = updateStudentProfile;
 
 console.log('✅ Student Management Module Loaded!');
 console.log('📋 Features:');
-console.log('   - ✅ Admissions management with profile creation on approval');
+console.log('   - ✅ Admissions management with profile creation');
 console.log('   - ✅ Change of Program requests');
 console.log('   - ✅ Readmission requests');
-console.log('   - ✅ Automated admission letter emails');
+console.log('   - ✅ SESSION REPORTS: Auto-detects Nursing (Block) vs TVET (Year/Term)');
+console.log('   - ✅ SESSION REPORTS: Admin approval updates consolidated_user_profiles_table');
 console.log('   - ✅ Request history with filters');
 console.log('   - ✅ Bulk approve/reject');
 console.log('   - ✅ Student data from consolidated_user_profiles_table');
