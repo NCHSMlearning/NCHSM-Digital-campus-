@@ -1,23 +1,83 @@
 // ============================================
 // NCHSM SECURE LOGIN SYSTEM - ULTIMATE
-// Version: 5.1 - FIXED FOR VARCHAR COLUMNS
+// Version: 5.1 - SESSION PRESERVATION FIX
 // Copyright © 2026 Nakuru College of Health Sciences and Management
 // ============================================
 
 // ============================================
-// FORCE CACHE CLEAR IF VERSION MISMATCH
+// ✅ VERSION CHECK - WITHOUT CLEARING SESSION
 // ============================================
 (function() {
     const VERSION = '5.1';
     const storedVersion = localStorage.getItem('nchsm_js_version');
     
     if (storedVersion !== VERSION) {
-        console.log('🔄 Clearing cache for new version...');
-        localStorage.clear();
-        sessionStorage.clear();
+        console.log('🔄 Version mismatch detected. Updating version...');
+        console.log('   Current stored version:', storedVersion);
+        console.log('   New version:', VERSION);
+        
+        // ✅ ONLY clear non-essential data
+        // Keep user session data!
+        const userProfile = localStorage.getItem('userProfile');
+        const userId = localStorage.getItem('currentUserId');
+        const sessionId = localStorage.getItem('session_id');
+        const sessionExpires = localStorage.getItem('session_expires');
+        const userEmail = localStorage.getItem('userEmail');
+        
+        // Clear old cache items (not session!)
+        const itemsToRemove = [
+            'nchsm_js_version',
+            'csrf_token',
+            'trusted_devices',
+            'failedAttempts',
+            'lastFailedTime',
+            'brevo_api_key'
+        ];
+        
+        itemsToRemove.forEach(item => {
+            localStorage.removeItem(item);
+            sessionStorage.removeItem(item);
+        });
+        
+        // ✅ Restore important session data
+        if (userProfile) localStorage.setItem('userProfile', userProfile);
+        if (userId) localStorage.setItem('currentUserId', userId);
+        if (sessionId) localStorage.setItem('session_id', sessionId);
+        if (sessionExpires) localStorage.setItem('session_expires', sessionExpires);
+        if (userEmail) localStorage.setItem('userEmail', userEmail);
+        
+        // Set new version
         localStorage.setItem('nchsm_js_version', VERSION);
+        
+        console.log('✅ Version updated. Session data preserved.');
+        console.log('   User ID preserved:', userId || 'None');
+    } else {
+        console.log('✅ Version check passed. Version:', VERSION);
     }
 })();
+
+// ============================================
+// ✅ SESSION VERIFICATION ON PAGE LOAD
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if user is already logged in
+    const userId = localStorage.getItem('currentUserId');
+    const userProfile = localStorage.getItem('userProfile');
+    
+    if (userId && userId !== 'null' && userProfile) {
+        console.log('✅ User is logged in. User ID:', userId);
+        
+        // Check if on login page, redirect to dashboard
+        const isLoginPage = window.location.pathname.includes('login.html') || 
+                           window.location.pathname.includes('exam_login.html');
+        if (isLoginPage) {
+            console.log('🔄 Already logged in, redirecting to dashboard...');
+            window.location.replace('student.html');
+        }
+    } else {
+        console.log('ℹ️ No active session found.');
+    }
+});
 
 // ============================================
 // 🚀 HIDE .html EXTENSION IN URL
