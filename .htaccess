@@ -1,5 +1,5 @@
 # ============================================================
-# NCHSM DIGITAL CAMPUS - ENHANCED PROTECTION (FINAL)
+# NCHSM DIGITAL CAMPUS - ENHANCED PROTECTION (FIXED)
 # ============================================================
 
 RewriteEngine On
@@ -32,6 +32,17 @@ RewriteRule ^(.*)/$ /$1 [L,R=301]
 </FilesMatch>
 
 # ------------------------------------------------------------------
+# 🔥 FIX: ALLOW LOGIN PAGES DIRECT ACCESS
+# ------------------------------------------------------------------
+RewriteRule ^login\.html$ - [L]
+RewriteRule ^login$ /login.html [L,QSA]
+RewriteRule ^exam_login\.html$ - [L]
+RewriteRule ^student\.html$ - [L]
+RewriteRule ^admin\.html$ - [L]
+RewriteRule ^superadmin\.html$ - [L]
+RewriteRule ^lecturer\.html$ - [L]
+
+# ------------------------------------------------------------------
 # CUSTOM ROUTES
 # ------------------------------------------------------------------
 RewriteRule ^home$ /student.html [L,QSA]
@@ -59,8 +70,10 @@ RewriteCond %{REQUEST_FILENAME} -d
 RewriteRule ^ - [L]
 
 # ------------------------------------------------------------------
-# SPA ROUTING
+# 🔥 FIXED: SPA ROUTING - Only if file doesn't exist
 # ------------------------------------------------------------------
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ student.html [L,QSA]
 
 # ------------------------------------------------------------------
@@ -102,9 +115,9 @@ Options +FollowSymLinks
 AddDefaultCharset UTF-8
 
 # ------------------------------------------------------------------
-# ERROR DOCUMENTS
+# 🔥 FIXED: ERROR DOCUMENTS - Use 404.html, NOT student.html
 # ------------------------------------------------------------------
-ErrorDocument 404 /student.html
+ErrorDocument 404 /404.html
 ErrorDocument 403 /error/403.html
 
 # ------------------------------------------------------------------
