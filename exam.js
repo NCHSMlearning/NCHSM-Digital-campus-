@@ -3348,14 +3348,36 @@ document.addEventListener('DOMContentLoaded', function() {
     console.log('✅ exam.js loaded with Retake/Continuation support');
     
     const params = new URLSearchParams(window.location.search);
-    AppState.studentId = params.get('user_id') || localStorage.getItem('currentUserId');
+    let studentId = params.get('user_id') || localStorage.getItem('currentUserId');
+    
+    // ✅ FIX: Try to get student ID from userProfile if missing
+    if (!studentId) {
+        const userProfile = localStorage.getItem('userProfile');
+        if (userProfile) {
+            try {
+                const profile = JSON.parse(userProfile);
+                if (profile.user_id) {
+                    studentId = profile.user_id;
+                    localStorage.setItem('currentUserId', studentId);
+                    console.log('✅ Found student ID from userProfile:', studentId);
+                }
+            } catch (e) {
+                console.warn('Could not parse userProfile:', e);
+            }
+        }
+    }
+    
+    AppState.studentId = studentId;
     AppState.examId = params.get('exam_id');
     const isRetake = params.get('retake') === 'true';
 
+    // ✅ FIX: Redirect to student dashboard instead of exam_login
     if (!AppState.studentId) {
-        window.location.href = 'exam_login.html';
+        console.warn('⚠️ No student ID found, redirecting to dashboard');
+        window.location.href = 'student.html';
         return;
     }
+    
     localStorage.setItem('currentUserId', AppState.studentId);
 
     if (!AppState.examId) {
