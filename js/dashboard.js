@@ -1,4 +1,4 @@
-// dashboard.js - COMPLETE WORKING VERSION WITH ALL POINTS FIXED
+// dashboard.js - COMPLETE WORKING VERSION WITH GOOGLE ANALYTICS
 // ============================================================
 // FIXES APPLIED:
 // 1. ✅ TOTAL POINTS now includes Gamification Bonus from RPC
@@ -10,6 +10,7 @@
 // 7. ✅ My Units support
 // 8. ✅ Uses total_points from RPC
 // 9. ✅ NURSEIQ POINTS DISPLAY FIXED - Shows 34 instead of 0
+// 10. ✅ GOOGLE ANALYTICS INTEGRATION - Full tracking
 // ============================================================
 
 class DashboardModule {
@@ -43,6 +44,11 @@ class DashboardModule {
             totalPoints: 0,
             nurseiqPoints: 0
         };
+        
+        // ============================================================
+        // 📊 GOOGLE ANALYTICS CONFIG
+        // ============================================================
+        this.GA_MEASUREMENT_ID = 'G-KBYGBSYY2S'; // Your Measurement ID
         
         this.cacheElements();
         this.setupEventListeners();
@@ -300,6 +306,10 @@ class DashboardModule {
     navigateTo(section) {
         console.log(`📍 Navigating to: ${section}`);
         
+        // ✅ Track navigation with Google Analytics
+        this.trackPageView(section);
+        this.trackFeatureUsage('tab_' + section);
+        
         const tabMap = {
             'attendance': 'attendance',
             'cats': 'cats',
@@ -373,11 +383,18 @@ class DashboardModule {
                 };
                 this.updateUIFromMetrics();
                 this.saveToCache();
+                
+                // ✅ Track NurseIQ activity
+                this.trackNurseIQActivity('practice', e.detail.correct || 0, e.detail.totalQuestions || 0);
             }
         });
         
-        document.addEventListener('attendanceCheckedIn', () => {
+        document.addEventListener('attendanceCheckedIn', (e) => {
             this.loadAllMetrics();
+            // ✅ Track attendance check-in
+            if (e.detail) {
+                this.trackAttendanceCheckin(e.detail.sessionType || 'class', e.detail.location || 'unknown');
+            }
         });
         
         document.addEventListener('reviewsUpdated', () => {
@@ -396,6 +413,241 @@ class DashboardModule {
                 this.loadLeaderboardData(period);
             });
         });
+        
+        // ✅ Track when user leaves the page
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.trackEngagement('session_end', Date.now());
+            }
+        });
+    }
+    
+    // ============================================================
+    // 📊 GOOGLE ANALYTICS TRACKING METHODS
+    // ============================================================
+    
+    /**
+     * Initialize Google Analytics tracking
+     * Call this after user login
+     */
+    initAnalytics() {
+        // Check if gtag is loaded
+        if (typeof gtag === 'undefined') {
+            console.warn('⚠️ Google Analytics not loaded');
+            return;
+        }
+        
+        // Set user ID for cross-device tracking
+        if (this.userId) {
+            gtag('config', this.GA_MEASUREMENT_ID, {
+                'user_id': this.userId
+            });
+        }
+        
+        console.log('📊 Google Analytics initialized for user:', this.userId);
+    }
+
+    /**
+     * Track page/tab views
+     * Call this when user navigates between tabs
+     */
+    trackPageView(tabName) {
+        if (typeof gtag === 'undefined') return;
+        
+        const pageTitle = tabName.charAt(0).toUpperCase() + tabName.slice(1);
+        gtag('event', 'page_view', {
+            'page_title': pageTitle,
+            'page_path': '/tab/' + tabName,
+            'engagement_time_msec': 100
+        });
+        
+        console.log(`📊 Page view tracked: ${pageTitle}`);
+    }
+
+    /**
+     * Track user login
+     * Call this when user successfully logs in
+     */
+    trackUserLogin(email) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'login', {
+            'method': 'email',
+            'user_id': this.userId
+        });
+        
+        console.log('📊 User login tracked');
+    }
+
+    /**
+     * Track exam completions
+     * Call this when a student completes an exam
+     */
+    trackExamCompletion(courseName, score, totalMarks) {
+        if (typeof gtag === 'undefined') return;
+        
+        const percentage = totalMarks > 0 ? Math.round((score / totalMarks) * 100) : 0;
+        
+        gtag('event', 'exam_completed', {
+            'event_category': 'Assessment',
+            'event_label': courseName,
+            'value': percentage
+        });
+        
+        console.log(`📊 Exam tracked: ${courseName} - ${percentage}%`);
+    }
+
+    /**
+     * Track attendance check-in
+     * Call this when a student checks in
+     */
+    trackAttendanceCheckin(sessionType, location) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'attendance_checkin', {
+            'event_category': 'Attendance',
+            'event_label': sessionType,
+            'value': 1
+        });
+        
+        console.log(`📊 Attendance tracked: ${sessionType}`);
+    }
+
+    /**
+     * Track resource views/downloads
+     * Call this when a student views or downloads a resource
+     */
+    trackResourceAction(action, resourceName, resourceType) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'resource_' + action, {
+            'event_category': 'Resources',
+            'event_label': resourceName,
+            'resource_type': resourceType || 'unknown'
+        });
+        
+        console.log(`📊 Resource tracked: ${action} - ${resourceName}`);
+    }
+
+    /**
+     * Track finance/payment activity
+     * Call this when a student makes a payment
+     */
+    trackPayment(amount, method, period) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'payment', {
+            'event_category': 'Finance',
+            'event_label': method,
+            'value': amount,
+            'period': period || 'current'
+        });
+        
+        console.log(`📊 Payment tracked: KES ${amount} via ${method}`);
+    }
+
+    /**
+     * Track course registration
+     * Call this when a student registers for units
+     */
+    trackCourseRegistration(units, count) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'course_registration', {
+            'event_category': 'Enrollment',
+            'event_label': units.join(', '),
+            'value': count
+        });
+        
+        console.log(`📊 Course registration tracked: ${count} units`);
+    }
+
+    /**
+     * Track NurseIQ activity
+     * Call this when a student answers questions
+     */
+    trackNurseIQActivity(action, correct, total) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'nurseiq_' + action, {
+            'event_category': 'NurseIQ',
+            'event_label': `${correct}/${total} correct`,
+            'value': Math.round((correct/total) * 100)
+        });
+        
+        console.log(`📊 NurseIQ tracked: ${action} - ${correct}/${total}`);
+    }
+
+    /**
+     * Track user engagement (time spent on page)
+     * Call this periodically or on tab switches
+     */
+    trackEngagement(action, duration) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'engagement', {
+            'event_category': 'User Activity',
+            'event_label': action,
+            'value': duration || 0
+        });
+    }
+
+    /**
+     * Track errors/exceptions
+     * Call this when errors occur
+     */
+    trackError(errorMessage, errorSource) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'exception', {
+            'description': errorMessage,
+            'fatal': false,
+            'source': errorSource || 'dashboard'
+        });
+    }
+
+    /**
+     * Track feature usage
+     * Call this for any feature a student uses
+     */
+    trackFeatureUsage(featureName) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'feature_used', {
+            'event_category': 'Features',
+            'event_label': featureName,
+            'value': 1
+        });
+        
+        console.log(`📊 Feature tracked: ${featureName}`);
+    }
+
+    /**
+     * Track newsletter subscription
+     */
+    trackNewsletterAction(action) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'newsletter_' + action, {
+            'event_category': 'Newsletter'
+        });
+        
+        console.log(`📊 Newsletter action tracked: ${action}`);
+    }
+
+    /**
+     * Track review submission
+     */
+    trackReviewSubmission(category, rating) {
+        if (typeof gtag === 'undefined') return;
+        
+        gtag('event', 'review_submitted', {
+            'event_category': 'Reviews',
+            'event_label': category,
+            'value': rating
+        });
+        
+        console.log(`📊 Review tracked: ${category} - ${rating} stars`);
     }
     
     // ============================================================
@@ -433,6 +685,14 @@ class DashboardModule {
             this.elements.dashboardStudentId.innerText = userProfile.student_id || userProfile.user_id?.substring(0, 8) || 'N/A';
         }
         
+        // ============================================================
+        // 🔥 GOOGLE ANALYTICS INITIALIZATION
+        // ============================================================
+        this.initAnalytics();
+        this.trackUserLogin(userProfile.email || userId);
+        this.trackFeatureUsage('dashboard_view');
+        console.log('📊 Google Analytics tracking enabled for user:', userId);
+        
         await this.loadAllMetrics();
         this.startAutoRefresh();
         
@@ -445,105 +705,101 @@ class DashboardModule {
     }
     
     // ============================================================
-    // 🔧 FIX NURSEIQ POINTS DISPLAY - ADD THIS METHOD
+    // 🔧 FIX NURSEIQ POINTS DISPLAY
     // ============================================================
     
-   // ============================================================
-// 🔧 FIX NURSEIQ POINTS DISPLAY - UPDATED
-// ============================================================
-
-async fixNurseIQDisplay() {
-    console.log('🔧 Fixing NurseIQ display...');
-    
-    try {
-        if (!this.userId || !this.sb) {
-            console.warn('⚠️ Cannot fix NurseIQ: No userId or Supabase client');
-            return;
-        }
+    async fixNurseIQDisplay() {
+        console.log('🔧 Fixing NurseIQ display...');
         
-        // Get NurseIQ points from database directly
-        const { data, error } = await this.sb
-            .from('consolidated_user_profiles_table')
-            .select('nurseiq_points, total_points, gamification_points, login_count')
-            .eq('user_id', this.userId)
-            .single();
-        
-        if (error) {
-            console.error('Error fetching NurseIQ:', error);
-            // Try fallback from RPC
-            const { data: rpcData } = await this.sb.rpc('get_student_dashboard', {
-                p_user_id: this.userId
-            });
-            if (rpcData) {
-                const points = rpcData?.nurseiq?.points || 0;
-                this.nurseIQPoints = points;
-                this.metrics.nurseiq.points = points;
-                if (this.elements.nurseiqPoints) {
-                    this.elements.nurseiqPoints.innerText = points;
-                }
-                console.log(`✅ NurseIQ points from RPC: ${points}`);
+        try {
+            if (!this.userId || !this.sb) {
+                console.warn('⚠️ Cannot fix NurseIQ: No userId or Supabase client');
                 return;
             }
-            return;
+            
+            // Get NurseIQ points from database directly
+            const { data, error } = await this.sb
+                .from('consolidated_user_profiles_table')
+                .select('nurseiq_points, total_points, gamification_points, login_count')
+                .eq('user_id', this.userId)
+                .single();
+            
+            if (error) {
+                console.error('Error fetching NurseIQ:', error);
+                // Try fallback from RPC
+                const { data: rpcData } = await this.sb.rpc('get_student_dashboard', {
+                    p_user_id: this.userId
+                });
+                if (rpcData) {
+                    const points = rpcData?.nurseiq?.points || 0;
+                    this.nurseIQPoints = points;
+                    this.metrics.nurseiq.points = points;
+                    if (this.elements.nurseiqPoints) {
+                        this.elements.nurseiqPoints.innerText = points;
+                    }
+                    console.log(`✅ NurseIQ points from RPC: ${points}`);
+                    return;
+                }
+                return;
+            }
+            
+            const nurseiqPoints = data?.nurseiq_points || 0;
+            const totalPoints = data?.total_points || 0;
+            const gamificationPoints = data?.gamification_points || 0;
+            const loginCount = data?.login_count || 0;
+            
+            console.log(`📊 Database NurseIQ: ${nurseiqPoints}`);
+            console.log(`📊 Database Total: ${totalPoints}`);
+            console.log(`🏆 Gamification: ${gamificationPoints}`);
+            
+            // Store in metrics
+            this.nurseIQPoints = nurseiqPoints;
+            this.metrics.nurseiqPoints = nurseiqPoints;
+            this.metrics.totalPoints = totalPoints;
+            this.gamificationPoints = gamificationPoints;
+            
+            if (this.metrics.nurseiq) {
+                this.metrics.nurseiq.points = nurseiqPoints;
+            }
+            
+            // ✅ Update the UI elements directly
+            if (this.elements.nurseiqPoints) {
+                this.elements.nurseiqPoints.innerText = nurseiqPoints;
+                console.log(`✅ NurseIQ points set to: ${nurseiqPoints}`);
+            } else {
+                console.warn('⚠️ NurseIQ points element not found');
+            }
+            
+            if (this.elements.totalPointsDisplay) {
+                this.elements.totalPointsDisplay.innerText = totalPoints;
+                console.log(`✅ Total points set to: ${totalPoints}`);
+            }
+            
+            if (this.elements.gamificationPointsDisplay) {
+                this.elements.gamificationPointsDisplay.innerText = gamificationPoints;
+            }
+            
+            // ✅ Update login count display
+            if (this.elements.loginCountDisplay) {
+                this.elements.loginCountDisplay.innerText = loginCount;
+            }
+            
+            // ✅ Update login points (10 per login)
+            const loginPoints = loginCount * 10;
+            if (this.elements.loginPointsDisplay) {
+                this.elements.loginPointsDisplay.innerText = loginPoints;
+            }
+            
+            // ✅ Update the XP stats
+            this.updateNurseIQStats(nurseiqPoints);
+            
+            // ✅ Update leaderboard
+            this.loadLeaderboardData('all');
+            
+        } catch (error) {
+            console.error('Error fixing NurseIQ display:', error);
         }
-        
-        const nurseiqPoints = data?.nurseiq_points || 0;
-        const totalPoints = data?.total_points || 0;
-        const gamificationPoints = data?.gamification_points || 0;
-        const loginCount = data?.login_count || 0;
-        
-        console.log(`📊 Database NurseIQ: ${nurseiqPoints}`);
-        console.log(`📊 Database Total: ${totalPoints}`);
-        console.log(`🏆 Gamification: ${gamificationPoints}`);
-        
-        // Store in metrics
-        this.nurseIQPoints = nurseiqPoints;
-        this.metrics.nurseiqPoints = nurseiqPoints;
-        this.metrics.totalPoints = totalPoints;
-        this.gamificationPoints = gamificationPoints;
-        
-        if (this.metrics.nurseiq) {
-            this.metrics.nurseiq.points = nurseiqPoints;
-        }
-        
-        // ✅ Update the UI elements directly
-        if (this.elements.nurseiqPoints) {
-            this.elements.nurseiqPoints.innerText = nurseiqPoints;
-            console.log(`✅ NurseIQ points set to: ${nurseiqPoints}`);
-        } else {
-            console.warn('⚠️ NurseIQ points element not found');
-        }
-        
-        if (this.elements.totalPointsDisplay) {
-            this.elements.totalPointsDisplay.innerText = totalPoints;
-            console.log(`✅ Total points set to: ${totalPoints}`);
-        }
-        
-        if (this.elements.gamificationPointsDisplay) {
-            this.elements.gamificationPointsDisplay.innerText = gamificationPoints;
-        }
-        
-        // ✅ Update login count display
-        if (this.elements.loginCountDisplay) {
-            this.elements.loginCountDisplay.innerText = loginCount;
-        }
-        
-        // ✅ Update login points (10 per login)
-        const loginPoints = loginCount * 10;
-        if (this.elements.loginPointsDisplay) {
-            this.elements.loginPointsDisplay.innerText = loginPoints;
-        }
-        
-        // ✅ Update the XP stats
-        this.updateNurseIQStats(nurseiqPoints);
-        
-        // ✅ Update leaderboard
-        this.loadLeaderboardData('all');
-        
-    } catch (error) {
-        console.error('Error fixing NurseIQ display:', error);
     }
-}
     
     // ============================================================
     // 📊 UPDATE NURSEIQ STATS IN THE UI
@@ -1040,8 +1296,8 @@ async fixNurseIQDisplay() {
                 score: data?.nurseiq?.score || 0,
                 accuracy: data?.nurseiq?.accuracy || 0,
                 progress: data?.nurseiq?.progress || 0,
-                points: data?.nurseiq?.points || 0  // ✅ This is the key fix!
-};
+                points: data?.nurseiq?.points || 0
+            };
             
             // Store NurseIQ points separately for easy access
             this.nurseIQPoints = this.metrics.nurseiq.points;
@@ -2011,35 +2267,34 @@ async fixNurseIQDisplay() {
             this.elements.gamificationPointsDisplay.innerText = points;
         }
         
-       // In dashboard.js, find the updateUIFromMetrics method and update this section:
-
-// ✅ FIXED: NurseIQ - Show ALL fields correctly
-if (this.elements.nurseiqProgress) {
-    this.elements.nurseiqProgress.innerText = (m.nurseiq?.progress || 0) + '%';
-}
-if (this.elements.nurseiqAccuracy) {
-    this.elements.nurseiqAccuracy.innerText = (m.nurseiq?.accuracy || 0) + '%';
-}
-if (this.elements.nurseiqQuestions) {
-    this.elements.nurseiqQuestions.innerText = m.nurseiq?.questions || 0;
-}
-if (this.elements.nurseiqPoints) {
-    // ✅ Get points from nurseiq.points (this is the fix!)
-    let points = m.nurseiq?.points || 0;
-    
-    // If points is 0 but score has value, calculate from score
-    if (points === 0 && m.nurseiq?.score > 0) {
-        points = m.nurseiq.score * 2;
-    }
-    
-    // If still 0, try from this.nurseIQPoints
-    if (points === 0 && this.nurseIQPoints > 0) {
-        points = this.nurseIQPoints;
-    }
-    
-    this.elements.nurseiqPoints.innerText = points;
-    console.log(`📊 NurseIQ Points set to: ${points}`);
-}
+        // ✅ FIXED: NurseIQ - Show ALL fields correctly
+        if (this.elements.nurseiqProgress) {
+            this.elements.nurseiqProgress.innerText = (m.nurseiq?.progress || 0) + '%';
+        }
+        if (this.elements.nurseiqAccuracy) {
+            this.elements.nurseiqAccuracy.innerText = (m.nurseiq?.accuracy || 0) + '%';
+        }
+        if (this.elements.nurseiqQuestions) {
+            this.elements.nurseiqQuestions.innerText = m.nurseiq?.questions || 0;
+        }
+        if (this.elements.nurseiqPoints) {
+            // ✅ Get points from nurseiq.points (this is the fix!)
+            let points = m.nurseiq?.points || 0;
+            
+            // If points is 0 but score has value, calculate from score
+            if (points === 0 && m.nurseiq?.score > 0) {
+                points = m.nurseiq.score * 2;
+            }
+            
+            // If still 0, try from this.nurseIQPoints
+            if (points === 0 && this.nurseIQPoints > 0) {
+                points = this.nurseIQPoints;
+            }
+            
+            this.elements.nurseiqPoints.innerText = points;
+            console.log(`📊 NurseIQ Points set to: ${points}`);
+        }
+        
         // Attendance color coding
         const rate = m.attendance.rate || 0;
         const percentEl = document.querySelector('.attendance-percent');
@@ -2232,3 +2487,5 @@ console.log('   - ✅ Time greeting fixed for Kenya time');
 console.log('   - ✅ Navigation working');
 console.log('   - ✅ My Units support');
 console.log('   - ✅ NURSEIQ POINTS DISPLAY FIXED!');
+console.log('   - ✅ GOOGLE ANALYTICS INTEGRATED!');
+console.log('   - ✅ Measurement ID: G-WTZRYGB8PE');
