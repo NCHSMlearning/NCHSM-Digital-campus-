@@ -5,6 +5,23 @@
 // ============================================
 
 // ============================================
+// 📊 GOOGLE ANALYTICS TRACKING FUNCTIONS
+// ============================================
+
+function trackGALogin(eventName, eventData) {
+    try {
+        if (typeof gtag !== 'undefined') {
+            gtag('event', eventName, eventData);
+            console.log(`📊 GA Event: ${eventName}`, eventData);
+        } else {
+            console.warn('⚠️ Google Analytics not loaded');
+        }
+    } catch (error) {
+        console.warn('⚠️ GA tracking error:', error);
+    }
+}
+
+// ============================================
 // ✅ VERSION CHECK - WITHOUT CLEARING SESSION
 // ============================================
 (function() {
@@ -66,6 +83,10 @@ document.addEventListener('DOMContentLoaded', function() {
     
     if (userId && userId !== 'null' && userProfile) {
         console.log('✅ User is logged in. User ID:', userId);
+        trackGALogin('session_restored', {
+            'event_category': 'Authentication',
+            'user_id': userId
+        });
         
         // Check if on login page, redirect to dashboard
         const isLoginPage = window.location.pathname.includes('login.html') || 
@@ -108,7 +129,7 @@ const LoginQueue = {
 };
 
 // ============================================
-// MAIN LOGIN SYSTEM - v5.1 WITH 2FA
+// MAIN LOGIN SYSTEM - v5.1 WITH 2FA + GA
 // ============================================
 window.NCHSMLogin = {
     // ===== STATE =====
@@ -193,6 +214,7 @@ window.NCHSMLogin = {
         console.log('🚀 Initializing NCHSMLogin v5.1...');
         console.log('🛡️ Ultimate Security Edition + 2FA');
         console.log('🔐 Authenticator App Support Enabled');
+        console.log('📊 Google Analytics Tracking Enabled');
         
         this.disableDeveloperTools();
         
@@ -263,7 +285,7 @@ window.NCHSMLogin = {
         console.log('✅ NCHSMLogin v5.1 initialized');
         console.log('🔐 2FA enforcement: ENABLED');
         console.log(`🕐 ${new Date().toLocaleString()}`);
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // UPDATE 2FA BUTTON STATUS
@@ -305,7 +327,7 @@ window.NCHSMLogin = {
         } catch (e) {
             console.log('⚠️ Could not update 2FA button status');
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // THEME TOGGLE
@@ -329,7 +351,7 @@ window.NCHSMLogin = {
             this.applyTheme(newTheme);
             localStorage.setItem('nchsm_theme', newTheme);
         });
-    }, // ✅ COMMA ADDED
+    },
     
     applyTheme: function(theme) {
         const themeIcon = document.getElementById('themeIcon');
@@ -348,7 +370,7 @@ window.NCHSMLogin = {
         }
         
         if (typeof feather !== 'undefined') feather.replace();
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // LOAD BREVO API KEY
@@ -385,7 +407,7 @@ window.NCHSMLogin = {
             console.error('❌ Failed to load Brevo API key:', error);
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // 2FA FUNCTIONS - AUTHENTICATOR APP SUPPORT
@@ -410,7 +432,7 @@ window.NCHSMLogin = {
         } catch (e) {
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     generate2FASecret: async function(userId) {
         try {
@@ -451,7 +473,7 @@ window.NCHSMLogin = {
             console.error('Error generating 2FA secret:', error);
             return null;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     get2FASecret: async function(userId) {
         try {
@@ -469,7 +491,7 @@ window.NCHSMLogin = {
             console.error('Error getting 2FA secret:', error);
             return null;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     verifyTOTP: function(secret, token) {
         try {
@@ -483,7 +505,7 @@ window.NCHSMLogin = {
             console.error('Error verifying TOTP:', error);
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     show2FASetup: async function(userId, email) {
         try {
@@ -516,11 +538,16 @@ window.NCHSMLogin = {
             sessionStorage.setItem('2fa_setup_secret', secret);
             sessionStorage.setItem('2fa_setup_user', userId);
             
+            trackGALogin('2fa_setup_started', {
+                'event_category': 'Security',
+                'user_id': userId
+            });
+            
         } catch (error) {
             console.error('Error showing 2FA setup:', error);
             this.showError('Error setting up 2FA');
         }
-    }, // ✅ COMMA ADDED
+    },
 
     enable2FA: async function(userId, token) {
         try {
@@ -545,6 +572,11 @@ window.NCHSMLogin = {
                     })
                     .eq('user_id', userId);
                 
+                trackGALogin('2fa_enabled', {
+                    'event_category': 'Security',
+                    'user_id': userId
+                });
+                
                 this.showSuccess('✅ Two-factor authentication enabled!');
                 this.closeModal('twoFactorSetupModal');
                 
@@ -562,7 +594,7 @@ window.NCHSMLogin = {
             this.showError('Error enabling 2FA');
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     show2FAModal: function() {
         this.openModal('twoFactorModal');
@@ -577,7 +609,7 @@ window.NCHSMLogin = {
         if (verifyBtn) {
             verifyBtn.onclick = () => this.handle2FAVerification();
         }
-    }, // ✅ COMMA ADDED
+    },
 
     handle2FAVerification: async function() {
         const digits = document.querySelectorAll('#twoFactorModal .otp-digit');
@@ -606,6 +638,12 @@ window.NCHSMLogin = {
             const isValid = this.verifyTOTP(result.two_factor_secret, code);
             
             if (isValid) {
+                trackGALogin('2fa_verified', {
+                    'event_category': 'Security',
+                    'user_id': pendingData.profile.user_id,
+                    'success': true
+                });
+                
                 this.closeModal('twoFactorModal');
                 this.showSuccess('✅ 2FA verified successfully!');
                 
@@ -618,6 +656,12 @@ window.NCHSMLogin = {
                 
                 sessionStorage.removeItem('pending_login_data');
             } else {
+                trackGALogin('2fa_failed', {
+                    'event_category': 'Security',
+                    'user_id': pendingData.profile.user_id,
+                    'success': false
+                });
+                
                 this.showError('Invalid code. Please try again.');
                 document.querySelectorAll('#twoFactorModal .otp-digit').forEach(input => {
                     input.value = '';
@@ -628,7 +672,7 @@ window.NCHSMLogin = {
             console.error('2FA verification error:', error);
             this.showError('Error verifying 2FA code');
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // SESSION TRACKING
@@ -691,105 +735,131 @@ window.NCHSMLogin = {
             console.error('❌ Session tracking error:', error);
             return null;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
-// COMPLETE LOGIN - FIXED
-// ============================================
-completeLogin: async function(profileData, sessionToken, isStaff = false) {
-    console.log('🎉 Completing login for:', profileData.email);
-    
-    try {
-        let userIdForSession = profileData.user_id;
+    // COMPLETE LOGIN - FIXED WITH GA TRACKING
+    // ============================================
+    completeLogin: async function(profileData, sessionToken, isStaff = false) {
+        console.log('🎉 Completing login for:', profileData.email);
         
-        if (isStaff && typeof profileData.user_id === 'string' && profileData.user_id.startsWith('STAFF')) {
-            try {
-                if (!this.supabase) return;
-                
-                const { data: profile, error } = await this.supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id')
-                    .eq('email', profileData.email)
-                    .single();
-                
-                if (!error && profile?.user_id) {
-                    userIdForSession = profile.user_id;
-                }
-            } catch (e) {}
-        }
-        
-        if (!isStaff) {
-            await this.updateLastLogin(profileData.user_id, profileData.email);
-        }
-        
-        await this.trackUserSession(
-            userIdForSession,
-            profileData.email,
-            sessionToken,
-            navigator.userAgent,
-            isStaff
-        );
-        
-        const safeProfile = {
-            user_id: userIdForSession || profileData.user_id || null,
-            staff_id: profileData.staff_id || profileData.id || null,
-            email: profileData.email || '',
-            full_name: profileData.full_name || 'User',
-            role: profileData.role || 'student',
-            program: profileData.program || profileData.department || '',
-            is_staff: isStaff || false,
-            two_factor_enabled: profileData.two_factor_enabled || false,
-            two_factor_verified: profileData.two_factor_verified || false
-        };
-        
-        Object.keys(safeProfile).forEach(key => {
-            if (safeProfile[key] === undefined) {
-                safeProfile[key] = null;
-            }
+        // ✅ Track login attempt with Google Analytics
+        trackGALogin('login_attempt', {
+            'event_category': 'Authentication',
+            'event_label': profileData.email,
+            'user_id': profileData.user_id,
+            'is_staff': isStaff
         });
         
-        // ✅ SAVE userProfile
-        localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-        console.log('✅ userProfile saved');
-        
-        // ✅ FIX: SAVE currentUserId - THIS WAS MISSING!
-        if (safeProfile.user_id) {
-            localStorage.setItem('currentUserId', safeProfile.user_id);
-            console.log('✅ currentUserId saved:', safeProfile.user_id);
-        } else {
-            console.warn('⚠️ No user_id to save!');
-        }
-        
-        // ✅ Also save to sessionStorage (backup)
-        sessionStorage.setItem('currentUserId', safeProfile.user_id);
-        sessionStorage.setItem('userProfile', JSON.stringify(safeProfile));
-        
-        if (!isStaff && this.supabase) {
-            try {
-                const { data: { session } } = await this.supabase.auth.getSession();
-                if (session) {
-                    localStorage.setItem('session_expires', session.expires_at);
+        try {
+            let userIdForSession = profileData.user_id;
+            
+            if (isStaff && typeof profileData.user_id === 'string' && profileData.user_id.startsWith('STAFF')) {
+                try {
+                    if (!this.supabase) return;
+                    
+                    const { data: profile, error } = await this.supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id')
+                        .eq('email', profileData.email)
+                        .single();
+                    
+                    if (!error && profile?.user_id) {
+                        userIdForSession = profile.user_id;
+                    }
+                } catch (e) {}
+            }
+            
+            if (!isStaff) {
+                await this.updateLastLogin(profileData.user_id, profileData.email);
+            }
+            
+            await this.trackUserSession(
+                userIdForSession,
+                profileData.email,
+                sessionToken,
+                navigator.userAgent,
+                isStaff
+            );
+            
+            const safeProfile = {
+                user_id: userIdForSession || profileData.user_id || null,
+                staff_id: profileData.staff_id || profileData.id || null,
+                email: profileData.email || '',
+                full_name: profileData.full_name || 'User',
+                role: profileData.role || 'student',
+                program: profileData.program || profileData.department || '',
+                is_staff: isStaff || false,
+                two_factor_enabled: profileData.two_factor_enabled || false,
+                two_factor_verified: profileData.two_factor_verified || false
+            };
+            
+            Object.keys(safeProfile).forEach(key => {
+                if (safeProfile[key] === undefined) {
+                    safeProfile[key] = null;
                 }
-            } catch (err) {}
+            });
+            
+            // ✅ SAVE userProfile
+            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+            console.log('✅ userProfile saved');
+            
+            // ✅ FIX: SAVE currentUserId - THIS WAS MISSING!
+            if (safeProfile.user_id) {
+                localStorage.setItem('currentUserId', safeProfile.user_id);
+                console.log('✅ currentUserId saved:', safeProfile.user_id);
+            } else {
+                console.warn('⚠️ No user_id to save!');
+            }
+            
+            // ✅ Also save to sessionStorage (backup)
+            sessionStorage.setItem('currentUserId', safeProfile.user_id);
+            sessionStorage.setItem('userProfile', JSON.stringify(safeProfile));
+            
+            if (!isStaff && this.supabase) {
+                try {
+                    const { data: { session } } = await this.supabase.auth.getSession();
+                    if (session) {
+                        localStorage.setItem('session_expires', session.expires_at);
+                    }
+                } catch (err) {}
+            }
+            
+            this.updateLastLoginInfo();
+            
+            if (profileData.role === 'student' && !isStaff) {
+                this.sendLoginNotification(profileData).catch(() => {});
+            }
+            
+            setTimeout(() => {
+                this.update2FAButtonStatus();
+            }, 500);
+            
+            // ✅ Track successful login with Google Analytics
+            trackGALogin('login_success', {
+                'event_category': 'Authentication',
+                'event_label': profileData.email,
+                'user_id': profileData.user_id,
+                'role': profileData.role || 'student',
+                'is_staff': isStaff
+            });
+            
+            this.redirectToDashboard(profileData);
+            
+        } catch (error) {
+            console.error('❌ Complete login error:', error);
+            
+            // ✅ Track failed login with Google Analytics
+            trackGALogin('login_failed', {
+                'event_category': 'Authentication',
+                'event_label': profileData.email,
+                'error': error.message
+            });
+            
+            this.showError('Error completing login: ' + error.message);
         }
-        
-        this.updateLastLoginInfo();
-        
-        if (profileData.role === 'student' && !isStaff) {
-            this.sendLoginNotification(profileData).catch(() => {});
-        }
-        
-        setTimeout(() => {
-            this.update2FAButtonStatus();
-        }, 500);
-        
-        this.redirectToDashboard(profileData);
-        
-    } catch (error) {
-        console.error('❌ Complete login error:', error);
-        this.showError('Error completing login: ' + error.message);
-    }
-}, // 
+    },
+
     // ============================================
     // FORCE UPDATE LOGIN COUNT
     // ============================================
@@ -829,7 +899,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             console.error('❌ Force update error:', error);
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // SEND LOGIN NOTIFICATION
@@ -900,7 +970,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         } catch(e) {
             console.warn('⚠️ Login notification error:', e);
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // HIDE SKELETON LOADER
@@ -912,7 +982,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 skeleton.classList.remove('active');
             }, 1000);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // RIPPLE EFFECT
@@ -935,7 +1005,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 }, 600);
             });
         });
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // 2FA OTP INPUT
@@ -1042,7 +1112,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         });
         
         console.log('✅ 2FA OTP Inputs initialized');
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // LOAD STAFF RECORDS
@@ -1064,7 +1134,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         } catch (error) {
             console.error('Error loading staff records:', error);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // DISABLE DEVELOPER TOOLS
@@ -1105,7 +1175,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             }
             originalConsoleTable.apply(console, args);
         };
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // CSRF TOKEN MANAGEMENT - FIXED
@@ -1128,7 +1198,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 csrfInput.value = this.csrfToken;
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     validateCSRFToken: function(token) {
         if (!this.security.csrfProtection) return true;
@@ -1139,7 +1209,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             return false;
         }
         return true;
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // CLEAR URL PARAMETERS
@@ -1150,7 +1220,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 window.location.host + window.location.pathname;
             window.history.replaceState({}, document.title, cleanUrl);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // HONEYPOT
@@ -1167,7 +1237,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             `;
             form.appendChild(honeypot.firstElementChild);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // RATE LIMITING
@@ -1195,11 +1265,11 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         }
         
         return false;
-    }, // ✅ COMMA ADDED
+    },
     
     addRateLimitRequest: function() {
         this.rateLimit.requests.push(Date.now());
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // FAILED ATTEMPTS
@@ -1222,7 +1292,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             }
         }
         return false;
-    }, // ✅ COMMA ADDED
+    },
     
     recordFailedAttempt: function() {
         this.state.failedAttempts++;
@@ -1231,7 +1301,13 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         
         sessionStorage.setItem('failedAttempts', this.state.failedAttempts);
         sessionStorage.setItem('lastFailedTime', this.state.lastFailedTime);
-    }, // ✅ COMMA ADDED
+        
+        // ✅ Track failed attempt with Google Analytics
+        trackGALogin('login_failed_attempt', {
+            'event_category': 'Authentication',
+            'event_label': 'Failed attempt'
+        });
+    },
     
     resetFailedAttempts: function() {
         this.state.failedAttempts = 0;
@@ -1239,7 +1315,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         this.updateAttemptsDisplay(this.state.maxAttempts);
         sessionStorage.removeItem('failedAttempts');
         sessionStorage.removeItem('lastFailedTime');
-    }, // ✅ COMMA ADDED
+    },
     
     updateAttemptsDisplay: function(remaining) {
         const attemptsInfo = document.getElementById('attemptsInfo');
@@ -1264,7 +1340,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 }
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // SECURE TOKEN
@@ -1273,7 +1349,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         const array = new Uint8Array(32);
         crypto.getRandomValues(array);
         return Array.from(array, byte => byte.toString(16).padStart(2, '0')).join('');
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // SUPABASE INIT
@@ -1303,7 +1379,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         } catch (error) {
             console.error('❌ Supabase error:', error);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // PASSWORD TOGGLE
@@ -1334,7 +1410,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 toggleButton.click();
             }
         });
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // PASSWORD STRENGTH METER
@@ -1389,7 +1465,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 strengthText.style.color = result.color;
             }
         });
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // LOGIN FORM
@@ -1440,7 +1516,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 }
             });
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // RESET FORM
@@ -1466,7 +1542,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             this.showSuccess('Form reset successfully');
             setTimeout(() => this.clearSuccess(), 3000);
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // VALIDATION
@@ -1474,7 +1550,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
     validateEmail: function(email) {
         const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
         return re.test(email);
-    }, // ✅ COMMA ADDED
+    },
     
     validateField: function(e) {
         const input = e.target;
@@ -1492,12 +1568,12 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         
         input.classList.remove('error');
         return true;
-    }, // ✅ COMMA ADDED
+    },
     
     clearFieldError: function(e) {
         e.target.classList.remove('error');
         this.clearError();
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // MODALS
@@ -1518,7 +1594,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 }
             });
         });
-    }, // ✅ COMMA ADDED
+    },
     
     openModal: function(modalId) {
         const modal = document.getElementById(modalId);
@@ -1531,7 +1607,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 setTimeout(() => firstInput.focus(), 100);
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     closeModal: function(modalId) {
         const modal = document.getElementById(modalId);
@@ -1540,7 +1616,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             modal.classList.remove('active');
             document.body.style.overflow = '';
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // FOCUS MANAGEMENT
@@ -1551,7 +1627,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 this.trapFocus(e);
             }
         });
-    }, // ✅ COMMA ADDED
+    },
     
     trapFocus: function(e) {
         const modal = document.querySelector('.modal-overlay.active');
@@ -1574,7 +1650,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 firstFocusable.focus();
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // VIRTUAL KEYBOARD
@@ -1596,7 +1672,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 document.body.style.paddingBottom = '0';
             }
         });
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // NETWORK STATUS
@@ -1605,7 +1681,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         this.updateOnlineStatus();
         window.addEventListener('online', () => this.updateOnlineStatus());
         window.addEventListener('offline', () => this.updateOnlineStatus());
-    }, // ✅ COMMA ADDED
+    },
     
     updateOnlineStatus: function() {
         const isOnline = navigator.onLine;
@@ -1614,7 +1690,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         if (!isOnline) {
             this.showError('You are offline. Please check your connection.');
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // TRUSTED DEVICE
@@ -1630,7 +1706,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 this.redirectToDashboard(profile);
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     generateDeviceId: function() {
         const data = [
@@ -1647,7 +1723,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             hash |= 0;
         }
         return Math.abs(hash).toString(16);
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // STAFF LOGIN - FIXED
@@ -1710,7 +1786,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             console.error('❌ Staff verification error:', error);
             return null;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // EXECUTE LOGIN - FIXED (NO AUTO-CREATE)
@@ -1730,10 +1806,24 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             console.log('✅ Staff login successful:', staffProfile.email);
             profileData = staffProfile;
             isStaff = true;
+            
+            // ✅ Track staff login
+            trackGALogin('staff_login', {
+                'event_category': 'Authentication',
+                'event_label': identifier,
+                'role': staffProfile.role
+            });
+            
             return { profileData, isStaff };
         }
         
         console.log('🔐 Checking student login for:', identifier);
+        
+        // ✅ Track student login attempt
+        trackGALogin('student_login_attempt', {
+            'event_category': 'Authentication',
+            'event_label': identifier
+        });
         
         try {
             const { data: authData, error: authError } = await this.supabase.auth
@@ -1744,6 +1834,15 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             
             if (authError) {
                 this.recordFailedAttempt();
+                
+                // ✅ Track failed login
+                trackGALogin('login_failed', {
+                    'event_category': 'Authentication',
+                    'event_label': identifier,
+                    'error': authError.message,
+                    'reason': 'invalid_credentials'
+                });
+                
                 if (authError.message.includes('Invalid login credentials')) {
                     throw new Error('Invalid email or password');
                 } else if (authError.message.includes('Email not confirmed')) {
@@ -1799,9 +1898,18 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             };
         } catch (error) {
             console.error('❌ Student login error:', error);
+            
+            // ✅ Track login failure with error message
+            trackGALogin('login_failed', {
+                'event_category': 'Authentication',
+                'event_label': identifier,
+                'error': error.message,
+                'reason': 'exception'
+            });
+            
             throw error;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // LOGIN HANDLER - WITH 2FA SUPPORT
@@ -1832,6 +1940,13 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             this.showError('Please enter email or staff ID');
             this.recordFailedAttempt();
             this.addRateLimitRequest();
+            
+            // ✅ Track empty login attempt
+            trackGALogin('login_attempt_empty', {
+                'event_category': 'Authentication',
+                'event_label': 'empty_identifier',
+                'reason': 'empty_email'
+            });
             return;
         }
         
@@ -1839,6 +1954,13 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             this.showError('Password must be at least 8 characters');
             this.recordFailedAttempt();
             this.addRateLimitRequest();
+            
+            // ✅ Track weak password attempt
+            trackGALogin('login_attempt', {
+                'event_category': 'Authentication',
+                'event_label': identifier,
+                'reason': 'weak_password'
+            });
             return;
         }
         
@@ -1855,6 +1977,13 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         
         this.addRateLimitRequest();
         
+        // ✅ Track login attempt
+        trackGALogin('login_attempt', {
+            'event_category': 'Authentication',
+            'event_label': identifier,
+            'method': 'password'
+        });
+        
         try {
             console.log(`🔐 Logging in: ${identifier}`);
             
@@ -1870,6 +1999,13 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                     isStaff: result.isStaff
                 }));
                 
+                // ✅ Track 2FA required
+                trackGALogin('login_2fa_required', {
+                    'event_category': 'Authentication',
+                    'event_label': identifier,
+                    'user_id': result.profileData.user_id
+                });
+                
                 this.show2FAModal();
                 loginButton.disabled = false;
                 buttonText.textContent = 'Sign In';
@@ -1882,6 +2018,13 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             
         } catch (error) {
             console.error('💥 Login error:', error);
+            
+            // ✅ Track login failure
+            trackGALogin('login_failed', {
+                'event_category': 'Authentication',
+                'event_label': identifier,
+                'error': error.message
+            });
             
             if (this.supabase && !error.message.includes('staff')) {
                 try {
@@ -1900,7 +2043,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             loginButton.disabled = false;
             buttonText.textContent = 'Sign In';
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // SESSION MANAGEMENT
@@ -1909,7 +2052,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         this.sessionCheckInterval = setInterval(() => {
             this.checkSessionHealth();
         }, 30000);
-    }, // ✅ COMMA ADDED
+    },
     
     checkSessionHealth: function() {
         const sessionExpires = localStorage.getItem('session_expires');
@@ -1925,7 +2068,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 this.forceLogout('Your session has expired');
             }
         }
-    }, // ✅ COMMA ADDED
+    },
     
     showSessionWarning: function() {
         const warning = document.getElementById('sessionWarning');
@@ -1940,7 +2083,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             timer.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
             warning.style.display = 'block';
         }
-    }, // ✅ COMMA ADDED
+    },
     
     extendSession: function() {
         const expires = new Date();
@@ -1964,13 +2107,19 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 })
                 .catch(() => {});
         }
-    }, // ✅ COMMA ADDED
+    },
     
     forceLogout: function(message) {
         localStorage.removeItem('userProfile');
         localStorage.removeItem('session_id');
         localStorage.removeItem('session_expires');
         sessionStorage.clear();
+        
+        // ✅ Track logout with Google Analytics
+        trackGALogin('logout', {
+            'event_category': 'Authentication',
+            'reason': message || 'manual_logout'
+        });
         
         if (message) {
             this.showError(message);
@@ -1979,7 +2128,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         setTimeout(() => {
             window.location.href = 'login.html';
         }, 2000);
-    }, // ✅ COMMA ADDED
+    },
     
     hashToken: async function(token) {
         const encoder = new TextEncoder();
@@ -1987,7 +2136,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         const hashBuffer = await crypto.subtle.digest('SHA-256', data);
         const hashArray = Array.from(new Uint8Array(hashBuffer));
         return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
-    }, // ✅ COMMA ADDED
+    },
     
     parseUserAgent: function(userAgent) {
         if (!userAgent) return 'Unknown';
@@ -2012,7 +2161,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         else if (ua.includes('tablet')) device = 'Tablet';
         
         return `${browser} on ${os} (${device})`;
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // UPDATE LAST LOGIN
@@ -2058,7 +2207,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             console.error('❌ updateLastLogin exception:', error);
             return false;
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // UPDATE LAST LOGIN INFO - FIXED
@@ -2145,7 +2294,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             `;
             if (typeof feather !== 'undefined') feather.replace();
         }
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // REDIRECT TO DASHBOARD
@@ -2170,13 +2319,20 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         
         console.log(`🎯 Role: ${role} -> ${redirectFile}`);
         
+        // ✅ Track redirect with Google Analytics
+        trackGALogin('redirect_to_dashboard', {
+            'event_category': 'Navigation',
+            'event_label': redirectFile,
+            'role': role
+        });
+        
         document.body.style.opacity = '0';
         document.body.style.transition = 'opacity 0.3s ease';
         
         setTimeout(() => {
             window.location.replace(redirectFile);
         }, 300);
-    }, // ✅ COMMA ADDED
+    },
     
     // ============================================
     // MESSAGE HELPERS
@@ -2191,14 +2347,14 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             element.style.display = 'flex';
             this.clearSuccess();
         }
-    }, // ✅ COMMA ADDED
+    },
     
     clearError: function() {
         const element = document.getElementById('errorMsg');
         if (element) {
             element.style.display = 'none';
         }
-    }, // ✅ COMMA ADDED
+    },
     
     showSuccess: function(message) {
         const element = document.getElementById('successMsg');
@@ -2210,14 +2366,14 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             element.style.display = 'flex';
             this.clearError();
         }
-    }, // ✅ COMMA ADDED
+    },
     
     clearSuccess: function() {
         const element = document.getElementById('successMsg');
         if (element) {
             element.style.display = 'none';
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // GOOGLE LOGIN
@@ -2257,6 +2413,12 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                     e.preventDefault();
                     console.log('🔑 Google button clicked...');
                     google.accounts.id.prompt();
+                    
+                    // ✅ Track Google login button click
+                    trackGALogin('google_login_click', {
+                        'event_category': 'Authentication',
+                        'method': 'google'
+                    });
                 });
                 console.log('✅ Google button attached');
             } else {
@@ -2268,7 +2430,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         } catch (error) {
             console.error('❌ Google init error:', error);
         }
-    }, // ✅ COMMA ADDED
+    },
 
     listenForGoogleRedirect: function() {
         var self = this;
@@ -2286,7 +2448,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 self.handleGoogleCredential({ credential: event.detail.credential });
             }
         });
-    }, // ✅ COMMA ADDED
+    },
 
     handleGoogleCredential: function(response) {
         console.log('🎯 Google credential received');
@@ -2304,7 +2466,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             console.error('❌ Error decoding JWT:', error);
             this.showError('Invalid Google response');
         }
-    }, // ✅ COMMA ADDED
+    },
 
     decodeJWT: function(token) {
         const base64Url = token.split('.')[1];
@@ -2315,7 +2477,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             ).join('')
         );
         return JSON.parse(jsonPayload);
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // PROCESS GOOGLE LOGIN - FIXED (NO AUTO-CREATE)
@@ -2335,6 +2497,13 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             loginButton.disabled = true;
             buttonText.innerHTML = '<span class="spinner"></span> Signing in...';
         }
+        
+        // ✅ Track Google login attempt
+        trackGALogin('google_login_attempt', {
+            'event_category': 'Authentication',
+            'event_label': email,
+            'method': 'google'
+        });
         
         try {
             const { data: profile, error: profileError } = await this.supabase
@@ -2383,6 +2552,14 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                     isStaff: isStaff
                 }));
                 
+                // ✅ Track 2FA required for Google login
+                trackGALogin('google_login_2fa_required', {
+                    'event_category': 'Authentication',
+                    'event_label': email,
+                    'user_id': userId,
+                    'method': 'google'
+                });
+                
                 this.show2FAModal();
                 if (loginButton) {
                     loginButton.disabled = false;
@@ -2416,6 +2593,15 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             
             await this.updateLastLogin(userId, email);
             
+            // ✅ Track Google login success
+            trackGALogin('google_login_success', {
+                'event_category': 'Authentication',
+                'event_label': email,
+                'user_id': userId,
+                'method': 'google',
+                'role': safeProfile.role
+            });
+            
             this.showSuccess(`✅ Welcome back, ${safeProfile.full_name}!`);
             this.updateLastLoginInfo();
             
@@ -2427,6 +2613,15 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
             
         } catch (error) {
             console.error('❌ Google login error:', error);
+            
+            // ✅ Track Google login failure
+            trackGALogin('google_login_failed', {
+                'event_category': 'Authentication',
+                'event_label': email,
+                'error': error.message,
+                'method': 'google'
+            });
+            
             this.showError('Login failed. Please try again.');
         } finally {
             if (loginButton) {
@@ -2434,7 +2629,7 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
                 buttonText.textContent = 'Sign In';
             }
         }
-    }, // ✅ COMMA ADDED
+    },
 
     // ============================================
     // CLEANUP
@@ -2449,8 +2644,8 @@ completeLogin: async function(profileData, sessionToken, isStaff = false) {
         sessionStorage.removeItem('redirect_token');
         
         console.log('🧹 Cleaned up NCHSMLogin');
-    } // ✅ NO COMMA NEEDED HERE (end of object)
-}; // ✅ END OF NCHSMLogin OBJECT
+    }
+};
 
 // ============================================
 // GLOBAL FUNCTIONS
@@ -2547,6 +2742,12 @@ window.showQRCode = async function() {
         
         sessionStorage.setItem('2fa_setup_secret', secret);
         sessionStorage.setItem('2fa_setup_user', userProfile.user_id);
+        
+        // ✅ Track 2FA setup
+        trackGALogin('2fa_setup_started', {
+            'event_category': 'Security',
+            'user_id': userProfile.user_id
+        });
         
     } catch (error) {
         console.error('Error showing QR code:', error);
@@ -2646,6 +2847,12 @@ window.verifyAndEnable2FA = async function() {
             return;
         }
         
+        // ✅ Track 2FA enabled
+        trackGALogin('2fa_enabled', {
+            'event_category': 'Security',
+            'user_id': userProfile.user_id
+        });
+        
         window.NCHSMLogin.closeModal('twoFactorSetupModal');
         
         const statusEl = document.getElementById('twoFAStatus');
@@ -2671,6 +2878,12 @@ window.verifyAndEnable2FA = async function() {
         alert('✅ Two-Factor Authentication enabled successfully!');
         
     } else {
+        // ✅ Track 2FA setup failure
+        trackGALogin('2fa_setup_failed', {
+            'event_category': 'Security',
+            'user_id': userProfile.user_id
+        });
+        
         const statusEl = document.getElementById('setupStatus');
         if (statusEl) {
             statusEl.style.display = 'block';
@@ -2704,6 +2917,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     console.log('✅ Secure application ready');
     console.log('🔐 2FA support: ENABLED');
+    console.log('📊 Google Analytics: ENABLED');
     console.log(`📱 Device ID: ${window.NCHSMLogin.generateDeviceId()}`);
 });
 
@@ -2742,4 +2956,5 @@ window.forceClearCache = function() {
 
 console.log('📦 NCHSM Login v5.1 loaded - Full 2FA Support');
 console.log('🔐 Google Authenticator, Microsoft Authenticator, Authy ready');
+console.log('📊 Google Analytics Tracking Integrated');
 console.log(`🕐 ${new Date().toLocaleString()}`);
