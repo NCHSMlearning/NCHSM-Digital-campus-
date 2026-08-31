@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Student Login - NCHSM</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+        .login-container {
+            background: white;
+            border-radius: 16px;
+            padding: 40px;
+            max-width: 420px;
+            width: 100%;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        }
+        .logo {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .logo img {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+        }
+        .logo h1 {
+            color: #0A3D62;
+            font-size: 24px;
+            margin-top: 10px;
+        }
+        .logo p {
+            color: #64748b;
+            font-size: 14px;
+        }
+        .form-group {
+            margin-bottom: 16px;
+        }
+        .form-group label {
+            display: block;
+            font-weight: 600;
+            font-size: 13px;
+            color: #475569;
+            margin-bottom: 4px;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+        }
+        .form-group input:focus {
+            border-color: #4C1D95;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+        }
+        .btn-login {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #4C1D95, #7c3aed);
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        .btn-login:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(76,29,149,0.3);
+        }
+        .btn-login:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .error-msg {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+            margin-bottom: 12px;
+        }
+        .success-msg {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 13px;
+            display: none;
+            margin-bottom: 12px;
+        }
+        .footer-links {
+            text-align: center;
+            margin-top: 16px;
+            font-size: 13px;
+            color: #94a3b8;
+        }
+        .footer-links a {
+            color: #4C1D95;
+            text-decoration: none;
+        }
+        .footer-links a:hover {
+            text-decoration: underline;
+        }
+        .spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="login-container">
+        <!-- Logo -->
+        <div class="logo">
+            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
+            <h1>NCHSM</h1>
+            <p>Student Login</p>
+        </div>
+
+        <!-- Error Message -->
+        <div class="error-msg" id="errorMsg">
+            <span id="errorText">Invalid credentials</span>
+        </div>
+
+        <!-- Success Message -->
+        <div class="success-msg" id="successMsg">
+            <span id="successText">Login successful!</span>
+        </div>
+
+        <!-- Login Form -->
+        <form id="loginForm">
+            <div class="form-group">
+                <label for="email">Email Address or Student ID</label>
+                <input type="text" id="email" placeholder="Enter your email or student ID" required>
+            </div>
+
+            <div class="form-group">
+                <label for="password">Password</label>
+                <input type="password" id="password" placeholder="Enter your password" required minlength="8">
+            </div>
+
+            <button type="submit" class="btn-login" id="loginBtn">
+                Sign In
+            </button>
+        </form>
+
+        <div class="footer-links">
+            <a href="/forgot-password.html">Forgot Password?</a> · 
+            <a href="/register.html">Register</a>
+        </div>
+    </div>
+
+    <!-- Supabase Library -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+    <script>
+        // ============================================================
+        // CONFIGURATION
+        // ============================================================
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+
+        // ============================================================
+        // INITIALIZE SUPABASE
+        // ============================================================
+        const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: false
+            }
+        });
+
+        // ============================================================
+        // DOM ELEMENTS
+        // ============================================================
+        const form = document.getElementById('loginForm');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('loginBtn');
+        const errorMsg = document.getElementById('errorMsg');
+        const errorText = document.getElementById('errorText');
+        const successMsg = document.getElementById('successMsg');
+        const successText = document.getElementById('successText');
+
+        // ============================================================
+        // LOGIN FUNCTION
+        // ============================================================
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+
+            // Reset messages
+            errorMsg.style.display = 'none';
+            successMsg.style.display = 'none';
+
+            const identifier = emailInput.value.trim();
+            const password = passwordInput.value;
+
+            // Validation
+            if (!identifier) {
+                showError('Please enter your email or student ID');
+                return;
+            }
+
+            if (!password || password.length < 8) {
+                showError('Password must be at least 8 characters');
+                return;
+            }
+
+            // Show loading
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<span class="spinner"></span> Logging in...';
+
+            try {
+                console.log('🔍 Attempting login for:', identifier);
+
+                // Step 1: Try to find user by email or student_id
+                let emailToUse = identifier;
+
+                // If not an email format, try to find by student_id
+                if (!identifier.includes('@')) {
+                    console.log('🔍 Searching by student_id:', identifier);
+
+                    const { data: profileByStudentId, error: studentIdError } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('email')
+                        .eq('student_id', identifier)
+                        .maybeSingle();
+
+                    if (studentIdError) {
+                        console.warn('Student ID search error:', studentIdError);
+                    }
+
+                    if (profileByStudentId?.email) {
+                        emailToUse = profileByStudentId.email;
+                        console.log('✅ Found email by student_id:', emailToUse);
+                    } else {
+                        showError('Student ID not found. Please use your email address.');
+                        loginBtn.disabled = false;
+                        loginBtn.innerHTML = 'Sign In';
+                        return;
+                    }
+                }
+
+                // Step 2: Sign in with Supabase Auth
+                console.log('🔐 Signing in with email:', emailToUse);
+
+                const { data: authData, error: authError } = await supabase.auth.signInWithPassword({
+                    email: emailToUse,
+                    password: password
+                });
+
+                if (authError) {
+                    console.error('❌ Auth error:', authError);
+                    showError(authError.message || 'Invalid credentials');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'Sign In';
+                    return;
+                }
+
+                if (!authData.user) {
+                    showError('No user found');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'Sign In';
+                    return;
+                }
+
+                console.log('✅ Auth successful for:', authData.user.email);
+
+                // Step 3: Get user profile
+                const { data: profile, error: profileError } = await supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('user_id', authData.user.id)
+                    .maybeSingle();
+
+                if (profileError) {
+                    console.error('❌ Profile error:', profileError);
+                    showError('Error loading profile: ' + profileError.message);
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'Sign In';
+                    return;
+                }
+
+                if (!profile) {
+                    showError('Profile not found. Please contact support.');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'Sign In';
+                    return;
+                }
+
+                console.log('👤 Profile loaded:', profile.full_name);
+
+                // Step 4: Check if student is approved
+                const validStatuses = ['approved', 'active'];
+                if (!validStatuses.includes(profile.status?.toLowerCase())) {
+                    showError('Account pending approval. Please wait.');
+                    loginBtn.disabled = false;
+                    loginBtn.innerHTML = 'Sign In';
+                    return;
+                }
+
+                // Step 5: Check required fields
+                const requiredFields = ['program', 'block', 'intake_year'];
+                const missingFields = requiredFields.filter(f => !profile[f]);
+
+                if (missingFields.length > 0) {
+                    console.warn('⚠️ Profile incomplete. Missing:', missingFields.join(', '));
+                    // Still login, but show warning
+                    showSuccess('Login successful! Your profile is incomplete. Please contact support.');
+                } else {
+                    showSuccess('✅ Login successful! Redirecting...');
+                }
+
+                // Step 6: Store profile in localStorage
+                const safeProfile = {
+                    user_id: profile.user_id,
+                    email: profile.email,
+                    full_name: profile.full_name || 'Student',
+                    role: profile.role || 'student',
+                    program: profile.program,
+                    block: profile.block,
+                    intake_year: profile.intake_year,
+                    student_id: profile.student_id,
+                    is_staff: false
+                };
+
+                localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+                localStorage.setItem('session_expires', authData.session?.expires_at);
+
+                // Step 7: Track login
+                await supabase
+                    .from('consolidated_user_profiles_table')
+                    .update({
+                        last_login: new Date().toISOString(),
+                        login_count: (profile.login_count || 0) + 1,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('user_id', profile.user_id);
+
+                // Step 8: Redirect to student dashboard
+                setTimeout(() => {
+                    window.location.href = '/student.html';
+                }, 1500);
+
+            } catch (error) {
+                console.error('💥 Login error:', error);
+                showError(error.message || 'Login failed. Please try again.');
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = 'Sign In';
+            }
+        });
+
+        // ============================================================
+        // HELPER FUNCTIONS
+        // ============================================================
+
+        function showError(message) {
+            errorText.textContent = message;
+            errorMsg.style.display = 'block';
+            successMsg.style.display = 'none';
+        }
+
+        function showSuccess(message) {
+            successText.textContent = message;
+            successMsg.style.display = 'block';
+            errorMsg.style.display = 'none';
+        }
+
+        // ============================================================
+        // CHECK IF ALREADY LOGGED IN
+        // ============================================================
+        async function checkExistingSession() {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+
+                if (session) {
+                    console.log('✅ Existing session found');
+                    // Check if user is a student
+                    const { data: profile } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('role')
+                        .eq('user_id', session.user.id)
+                        .maybeSingle();
+
+                    if (profile?.role === 'student') {
+                        window.location.href = '/student.html';
+                    }
+                }
+            } catch (error) {
+                console.warn('Session check error:', error);
+            }
+        }
+
+        // Run on page load
+        document.addEventListener('DOMContentLoaded', checkExistingSession);
+    </script>
+
+</body>
+</html>
