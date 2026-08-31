@@ -1260,31 +1260,41 @@ function resendPaymentEmail() {
 }
 
 // ============================================================
-// 💳 PAYMENT MODAL - POS STYLE
+// 💳 PAYMENT MODAL - POS STYLE (FIXED FOR YOUR HTML)
 // ============================================================
 
 function openPaymentModal() {
-    const modal = document.getElementById('finance-paymentModal');
-    if (!modal) return;
+    console.log('💰 Opening payment modal...');
     
-    // Reset modal to POS style
+    // Get modal
+    const modal = document.getElementById('finance-paymentModal');
+    if (!modal) {
+        console.error('❌ Modal not found');
+        showToast('Payment system error. Please refresh the page.', 'error');
+        return;
+    }
+    
+    // Get content elements
     const content = document.getElementById('finance-paymentContent');
     const title = document.getElementById('finance-paymentModalTitle');
+    const formContainer = document.getElementById('finance-paymentFormContainer');
+    const periodSelect = document.getElementById('finance-paymentPeriodSelect');
+    const amountInput = document.getElementById('finance-paymentAmountInput');
+    const descInput = document.getElementById('finance-paymentDescriptionInput');
     
-    // Set initial POS style content
-    title.textContent = '⏳ Processing Payment';
-    content.innerHTML = `
-        <div class="spinner"></div>
-        <p class="status-text">⏳ Sending STK Push...</p>
-        <p class="status-sub" id="finance-paymentDetails">Amount: KES ${studentFinanceState.balance?.toLocaleString() || '0.00'}</p>
-        <p class="status-sub" style="font-size:12px;margin-top:8px;">📱 Check your phone and enter your PIN</p>
-        <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
-            <i class="fas fa-times"></i> Cancel Payment
-        </button>
-    `;
+    // Check if elements exist
+    if (!content || !title || !formContainer) {
+        console.error('❌ Modal elements missing:', { content, title, formContainer });
+        showToast('Payment system error. Please refresh the page.', 'error');
+        return;
+    }
+    
+    // Reset modal to POS style - show form, hide status
+    title.textContent = '💳 Make Payment';
+    content.style.display = 'none';
+    formContainer.style.display = 'block';
     
     // Populate period dropdown
-    const periodSelect = document.getElementById('finance-paymentPeriodSelect');
     if (periodSelect) {
         const programType = studentFinanceState.programType || 'TVET';
         const programLevel = studentFinanceState.programLevel || 'certificate';
@@ -1300,48 +1310,71 @@ function openPaymentModal() {
             periodSelect.appendChild(option);
         });
         
-        periodSelect.onchange = function() {
-            const selectedPeriod = this.value;
+        // Trigger change to set default values
+        if (periodSelect.onchange) {
+            periodSelect.onchange();
+        } else {
+            // Simulate change
+            const selectedPeriod = periodSelect.value;
             if (selectedPeriod) {
                 const index = periods.indexOf(selectedPeriod);
-                if (index !== -1) {
+                if (index !== -1 && amountInput) {
                     const amount = getFeeAmount(programType, index, programLevel);
-                    const amountInput = document.getElementById('finance-paymentAmountInput');
-                    if (amountInput && !amountInput.value) amountInput.value = amount;
-                    const descInput = document.getElementById('finance-paymentDescriptionInput');
-                    if (descInput) descInput.value = `${selectedPeriod} Tuition Fees`;
+                    if (!amountInput.value) amountInput.value = amount;
+                }
+                if (descInput) {
+                    descInput.value = `${selectedPeriod} Tuition Fees`;
                 }
             }
-        };
+        }
     }
     
-    const amountInput = document.getElementById('finance-paymentAmountInput');
+    // Set suggested amount
     if (amountInput) {
         const balance = studentFinanceState.balance || 0;
         if (balance > 0) {
             amountInput.placeholder = `Suggested: KES ${balance.toLocaleString()}`;
-            amountInput.value = balance;
+            if (!amountInput.value) amountInput.value = balance;
         }
     }
     
-    const descInput = document.getElementById('finance-paymentDescriptionInput');
+    // Set description
     if (descInput && studentFinanceState.currentPeriod) {
-        descInput.value = `${studentFinanceState.currentPeriod} Tuition Fees`;
+        if (!descInput.value) {
+            descInput.value = `${studentFinanceState.currentPeriod} Tuition Fees`;
+        }
     }
     
-    document.querySelectorAll('#finance-paymentMethodsContainer > div').forEach(el => {
-        el.classList.remove('finance-payment-method-selected');
+    // Reset payment method selections
+    document.querySelectorAll('.payment-method-item').forEach(el => {
+        el.classList.remove('selected');
     });
-    document.getElementById('finance-paymentMethodDetails').style.display = 'none';
-    document.getElementById('finance-mpesaFields').style.display = 'none';
-    document.getElementById('finance-cardFields').style.display = 'none';
-    document.getElementById('finance-bankFields').style.display = 'none';
-    document.getElementById('finance-paypalFields').style.display = 'none';
+    
+    const methodDetails = document.getElementById('finance-paymentMethodDetails');
+    if (methodDetails) methodDetails.style.display = 'none';
+    
+    const mpesaFields = document.getElementById('finance-mpesaFields');
+    if (mpesaFields) mpesaFields.style.display = 'none';
+    
+    const cardFields = document.getElementById('finance-cardFields');
+    if (cardFields) cardFields.style.display = 'none';
+    
+    const bankFields = document.getElementById('finance-bankFields');
+    if (bankFields) bankFields.style.display = 'none';
+    
+    const paypalFields = document.getElementById('finance-paypalFields');
+    if (paypalFields) paypalFields.style.display = 'none';
+    
     document.querySelectorAll('.finance-validation-error').forEach(el => el.style.display = 'none');
     
+    // Default to M-Pesa
     selectPaymentMethod('mpesa');
+    
+    // Show modal
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
+    
+    console.log('✅ Payment modal opened successfully');
 }
 
 function closePaymentModal() {
@@ -1349,10 +1382,17 @@ function closePaymentModal() {
     if (modal) {
         modal.classList.remove('active');
         document.body.style.overflow = 'auto';
+        
+        // Reset to form view
+        const content = document.getElementById('finance-paymentContent');
+        const formContainer = document.getElementById('finance-paymentFormContainer');
+        if (content) content.style.display = 'none';
+        if (formContainer) formContainer.style.display = 'block';
     }
     pendingPayment.isProcessing = false;
     pendingPayment.cancelled = false;
 }
+
 // ============================================================
 // 📋 POPULATE PERIOD DROPDOWN
 // ============================================================
@@ -1398,6 +1438,7 @@ function populatePeriodDropdown() {
         }
     };
 }
+
 // ============================================================
 // 🎯 POS STYLE PAYMENT FUNCTIONS
 // ============================================================
@@ -1410,14 +1451,19 @@ function cancelStudentPayment() {
         
         const content = document.getElementById('finance-paymentContent');
         const title = document.getElementById('finance-paymentModalTitle');
+        const formContainer = document.getElementById('finance-paymentFormContainer');
         
-        title.textContent = '⛔ Payment Cancelled';
-        content.innerHTML = `
-            <div class="status-icon warning">⛔</div>
-            <p class="status-text">Payment Cancelled</p>
-            <p class="status-sub">You cancelled the payment.</p>
-            <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
-        `;
+        if (title) title.textContent = '⛔ Payment Cancelled';
+        if (content) {
+            content.style.display = 'block';
+            content.innerHTML = `
+                <div class="status-icon warning">⛔</div>
+                <p class="status-text">Payment Cancelled</p>
+                <p class="status-sub">You cancelled the payment.</p>
+                <button class="btn btn-success" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
+            `;
+        }
+        if (formContainer) formContainer.style.display = 'none';
         showToast('⛔ Payment cancelled', 'warning');
     } else {
         closePaymentModal();
@@ -1427,38 +1473,50 @@ function cancelStudentPayment() {
 
 function updateStudentSTKStatus(attempt, maxAttempts, message) {
     const content = document.getElementById('finance-paymentContent');
-    const remaining = Math.round((maxAttempts - attempt) * 1.5);
+    const formContainer = document.getElementById('finance-paymentFormContainer');
+    const title = document.getElementById('finance-paymentModalTitle');
     
-    content.innerHTML = `
-        <div class="spinner"></div>
-        <p class="status-text">⏳ Waiting for payment confirmation... (${attempt}/${maxAttempts})</p>
-        <p class="status-sub">${message || 'Please check your phone and enter your PIN'}</p>
-        <p class="status-sub" style="font-size:12px;color:var(--text-muted);margin-top:8px;">
-            ⏱️ ${remaining} seconds remaining
-        </p>
-        <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
-            <i class="fas fa-times"></i> Cancel Payment
-        </button>
-    `;
+    if (title) title.textContent = '⏳ Processing Payment';
+    if (content) {
+        content.style.display = 'block';
+        const remaining = Math.round((maxAttempts - attempt) * 1.5);
+        content.innerHTML = `
+            <div class="spinner"></div>
+            <p class="status-text">⏳ Waiting for payment confirmation... (${attempt}/${maxAttempts})</p>
+            <p class="status-sub">${message || 'Please check your phone and enter your PIN'}</p>
+            <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:8px;">
+                ⏱️ ${remaining} seconds remaining
+            </p>
+            <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
+                <i class="fas fa-times"></i> Cancel Payment
+            </button>
+        `;
+    }
+    if (formContainer) formContainer.style.display = 'none';
 }
 
 function showStudentPaymentSuccess(amount, reference, period) {
     const content = document.getElementById('finance-paymentContent');
     const title = document.getElementById('finance-paymentModalTitle');
+    const formContainer = document.getElementById('finance-paymentFormContainer');
     
-    title.textContent = '✅ Payment Successful! 🎉';
-    content.innerHTML = `
-        <div class="status-icon success">✅</div>
-        <p class="status-text">Payment Successful! 🎉</p>
-        <p class="status-sub">${period || 'Tuition Fees'}</p>
-        <p class="status-sub" style="font-size:18px;font-weight:700;color:#10B981;margin-top:8px;">
-            KES ${amount.toLocaleString()}
-        </p>
-        <p class="status-sub" style="font-size:12px;color:var(--text-muted);">
-            Reference: ${reference}
-        </p>
-        <button class="btn btn-success" style="margin-top:12px;" onclick="closePaymentModal()">Done</button>
-    `;
+    if (title) title.textContent = '✅ Payment Successful! 🎉';
+    if (content) {
+        content.style.display = 'block';
+        content.innerHTML = `
+            <div class="status-icon success">✅</div>
+            <p class="status-text">Payment Successful! 🎉</p>
+            <p class="status-sub">${period || 'Tuition Fees'}</p>
+            <p class="status-sub" style="font-size:18px;font-weight:700;color:#10B981;margin-top:8px;">
+                KES ${amount.toLocaleString()}
+            </p>
+            <p class="status-sub" style="font-size:12px;color:#94A3B8;">
+                Reference: ${reference}
+            </p>
+            <button class="btn btn-success" style="margin-top:12px;" onclick="closePaymentModal()">Done</button>
+        `;
+    }
+    if (formContainer) formContainer.style.display = 'none';
     
     // Auto close after 3 seconds
     setTimeout(() => {
@@ -1472,30 +1530,40 @@ function showStudentPaymentSuccess(amount, reference, period) {
 function showStudentPaymentFailure(message) {
     const content = document.getElementById('finance-paymentContent');
     const title = document.getElementById('finance-paymentModalTitle');
+    const formContainer = document.getElementById('finance-paymentFormContainer');
     
-    title.textContent = '❌ Payment Failed';
-    content.innerHTML = `
-        <div class="status-icon failed">❌</div>
-        <p class="status-text">Payment Failed</p>
-        <p class="status-sub">${message || 'Transaction was not completed'}</p>
-        <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">Try Again</button>
-    `;
+    if (title) title.textContent = '❌ Payment Failed';
+    if (content) {
+        content.style.display = 'block';
+        content.innerHTML = `
+            <div class="status-icon failed">❌</div>
+            <p class="status-text">Payment Failed</p>
+            <p class="status-sub">${message || 'Transaction was not completed'}</p>
+            <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">Try Again</button>
+        `;
+    }
+    if (formContainer) formContainer.style.display = 'none';
 }
 
 function showStudentPaymentTimeout() {
     const content = document.getElementById('finance-paymentContent');
     const title = document.getElementById('finance-paymentModalTitle');
+    const formContainer = document.getElementById('finance-paymentFormContainer');
     
-    title.textContent = '⏰ Payment Timeout';
-    content.innerHTML = `
-        <div class="status-icon warning">⏰</div>
-        <p class="status-text">Payment Timeout</p>
-        <p class="status-sub">The payment took too long to complete.</p>
-        <p class="status-sub" style="font-size:12px;color:var(--text-muted);margin-top:8px;">
-            Please check your M-Pesa transactions and try again.
-        </p>
-        <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
-    `;
+    if (title) title.textContent = '⏰ Payment Timeout';
+    if (content) {
+        content.style.display = 'block';
+        content.innerHTML = `
+            <div class="status-icon warning">⏰</div>
+            <p class="status-text">Payment Timeout</p>
+            <p class="status-sub">The payment took too long to complete.</p>
+            <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:8px;">
+                Please check your M-Pesa transactions and try again.
+            </p>
+            <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
+        `;
+    }
+    if (formContainer) formContainer.style.display = 'none';
 }
 
 // ============================================================
@@ -1507,22 +1575,23 @@ function validatePaymentForm() {
     document.querySelectorAll('.finance-validation-error').forEach(err => err.style.display = 'none');
     
     const period = document.getElementById('finance-paymentPeriodSelect');
-    if (!period.value) {
-        const errorEl = period.nextElementSibling;
+    if (!period || !period.value) {
+        const errorEl = period?.nextElementSibling;
         if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
         isValid = false;
     }
     
     const amount = document.getElementById('finance-paymentAmountInput');
-    if (!amount.value || parseFloat(amount.value) < 1) {
-        const errorEl = amount.nextElementSibling;
+    if (!amount || !amount.value || parseFloat(amount.value) < 1) {
+        const errorEl = amount?.nextElementSibling;
         if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
         isValid = false;
     }
     
-    const selectedMethod = document.querySelector('.finance-payment-method-selected');
+    const selectedMethod = document.querySelector('.payment-method-item.selected');
     if (!selectedMethod) {
-        document.getElementById('finance-methodError').style.display = 'block';
+        const errorEl = document.getElementById('finance-methodError');
+        if (errorEl) errorEl.style.display = 'block';
         isValid = false;
     }
     
@@ -1531,8 +1600,8 @@ function validatePaymentForm() {
     
     if (method === 'mpesa') {
         const phone = document.getElementById('finance-mpesaPhoneInput');
-        if (!phone.value || phone.value.replace(/\D/g, '').length < 10) {
-            const errorEl = phone.nextElementSibling?.nextElementSibling;
+        if (!phone || !phone.value || phone.value.replace(/\D/g, '').length < 10) {
+            const errorEl = phone?.nextElementSibling?.nextElementSibling;
             if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
             isValid = false;
         }
@@ -1547,12 +1616,12 @@ function validatePaymentForm() {
 // ============================================================
 
 function selectPaymentMethod(method) {
-    document.querySelectorAll('#finance-paymentMethodsContainer > div').forEach(el => {
-        el.classList.remove('finance-payment-method-selected');
+    document.querySelectorAll('.payment-method-item').forEach(el => {
+        el.classList.remove('selected');
     });
     
     const selectedEl = document.getElementById(`finance-method-${method}`);
-    if (selectedEl) selectedEl.classList.add('finance-payment-method-selected');
+    if (selectedEl) selectedEl.classList.add('selected');
     
     document.getElementById('finance-mpesaFields').style.display = 'none';
     document.getElementById('finance-cardFields').style.display = 'none';
@@ -1571,14 +1640,16 @@ function selectPaymentMethod(method) {
         bank: 'Pay via bank transfer.'
     };
     
-    detailsContent.innerHTML = `
-        <div style="display: flex; align-items: center; gap: 4px;">
-            <span style="font-size: 14px;">${methodIcons[method]}</span>
-            <strong style="color: #0A3D62; font-size: 12px;">${methodNames[method]}</strong>
-        </div>
-        <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">${methodDescriptions[method]}</p>
-    `;
-    detailsContainer.style.display = 'block';
+    if (detailsContent) {
+        detailsContent.innerHTML = `
+            <div style="display: flex; align-items: center; gap: 4px;">
+                <span style="font-size: 14px;">${methodIcons[method]}</span>
+                <strong style="color: #0A3D62; font-size: 12px;">${methodNames[method]}</strong>
+            </div>
+            <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">${methodDescriptions[method]}</p>
+        `;
+    }
+    if (detailsContainer) detailsContainer.style.display = 'block';
     
     if (method === 'mpesa') {
         document.getElementById('finance-mpesaFields').style.display = 'block';
@@ -1601,7 +1672,8 @@ function selectPaymentMethod(method) {
     }
     
     studentFinanceState.selectedPaymentMethod = method;
-    document.getElementById('finance-methodError').style.display = 'none';
+    const methodError = document.getElementById('finance-methodError');
+    if (methodError) methodError.style.display = 'none';
 }
 
 // ============================================================
@@ -1633,8 +1705,25 @@ async function processPayment() {
         pendingPayment.isProcessing = true;
         pendingPayment.cancelled = false;
         
-        // Open payment modal (POS style)
-        openPaymentModal();
+        // Show processing state
+        const content = document.getElementById('finance-paymentContent');
+        const formContainer = document.getElementById('finance-paymentFormContainer');
+        const title = document.getElementById('finance-paymentModalTitle');
+        
+        if (title) title.textContent = '⏳ Processing Payment';
+        if (content) {
+            content.style.display = 'block';
+            content.innerHTML = `
+                <div class="spinner"></div>
+                <p class="status-text">⏳ Sending STK Push...</p>
+                <p class="status-sub" id="finance-paymentDetails">Amount: KES ${amount.toLocaleString()}</p>
+                <p class="status-sub" style="font-size:12px;margin-top:8px;">📱 Check your phone and enter your PIN</p>
+                <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
+                    <i class="fas fa-times"></i> Cancel Payment
+                </button>
+            `;
+        }
+        if (formContainer) formContainer.style.display = 'none';
         
         const result = await initiatePayHeroSTK(amount, phone, reference, period, user?.full_name);
         
@@ -2100,9 +2189,7 @@ document.addEventListener('DOMContentLoaded', function() {
             @keyframes pulse-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
             @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
-            .finance-payment-method-selected { border: 2px solid #4C1D95 !important; background: rgba(76, 29, 149, 0.08) !important; }
-            .finance-action-btn { transition: all 0.2s ease; }
-            .finance-action-btn:hover { transform: scale(1.05); }
+            .payment-method-item.selected { border: 2px solid #4C1D95 !important; background: #ede9fe !important; box-shadow: 0 0 0 2px rgba(76, 29, 149, 0.1); }
         `;
         document.head.appendChild(style);
     }
