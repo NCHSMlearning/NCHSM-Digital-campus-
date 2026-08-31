@@ -103,203 +103,219 @@
     })();
     </script>
     
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+   <style>
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    
+    body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: #f1f5f9;
+    }
+    
+    /* ===== ANIMATIONS ===== */
+    @keyframes floatParticle {
+        0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
+        25% { transform: translateY(-30px) translateX(15px); opacity: 0.6; }
+        50% { transform: translateY(0) translateX(30px); opacity: 0.3; }
+        75% { transform: translateY(30px) translateX(15px); opacity: 0.6; }
+    }
+    
+    @keyframes spin {
+        to { transform: rotate(360deg); }
+    }
+    
+    @keyframes slideIn {
+        from { opacity: 0; transform: translateY(20px) scale(0.95); }
+        to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    
+    @keyframes shimmer {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
+    
+    @keyframes pulseIcon {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+    }
+    
+    @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        20%, 60% { transform: translateX(-10px); }
+        40%, 80% { transform: translateX(10px); }
+    }
+    
+    @keyframes glowPulse {
+        0%, 100% { box-shadow: 0 0 0 3px rgba(13, 107, 62, 0.1); }
+        50% { box-shadow: 0 0 0 6px rgba(13, 107, 62, 0.05); }
+    }
+    
+    @keyframes fadeInUp {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    /* ===== SKELETON LOADER ===== */
+    #skeletonLoader {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(10, 61, 98, 0.95);
+        z-index: 9999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        gap: 20px;
+        transition: opacity 0.8s ease;
+    }
+    
+    #skeletonLoader .spinner {
+        width: 60px;
+        height: 60px;
+        border: 4px solid rgba(253, 185, 19, 0.1);
+        border-top-color: #FDB913;
+        border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    
+    #skeletonLoader .loader-text {
+        color: rgba(255,255,255,0.7);
+        font-family: 'Inter', sans-serif;
+        font-size: 14px;
+        letter-spacing: 2px;
+    }
+    
+    /* ============================================================
+       ✅ RESPONSIVE - LEFT PANEL HIDDEN ON MOBILE
+       ============================================================ */
+    
+    @media (max-width: 1024px) {
+        .right-panel {
+            flex: 0 0 420px;
+            padding: 30px 25px;
         }
-        
+        .left-panel .college-name {
+            font-size: 22px;
+        }
+    }
+    
+    @media (max-width: 768px) {
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-            background: #f1f5f9;
+            padding: 0;
         }
         
-        /* ===== ANIMATIONS ===== */
-        @keyframes floatParticle {
-            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
-            25% { transform: translateY(-30px) translateX(15px); opacity: 0.6; }
-            50% { transform: translateY(0) translateX(30px); opacity: 0.3; }
-            75% { transform: translateY(30px) translateX(15px); opacity: 0.6; }
+        .login-wrapper {
+            flex-direction: column !important;
+            border-radius: 0 !important;
+            min-height: auto !important;
         }
         
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+        /* ✅ FIX: HIDE LEFT PANEL ON MOBILE */
+        .left-panel {
+            display: none !important;  /* ← KEY FIX: HIDDEN */
         }
         
-        @keyframes slideIn {
-            from { opacity: 0; transform: translateY(20px) scale(0.95); }
-            to { opacity: 1; transform: translateY(0) scale(1); }
+        .right-panel {
+            flex: 1 1 100% !important;
+            padding: 25px 20px !important;
+            min-height: auto !important;
+            order: 1 !important;  /* Right panel moves to top */
+            background: #ffffff !important;
+            border-left: none !important;
         }
         
-        @keyframes shimmer {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
+        .right-content {
+            max-width: 100% !important;
         }
         
-        @keyframes pulseIcon {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.05); }
+        .mobile-header {
+            display: block !important;
         }
         
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            20%, 60% { transform: translateX(-10px); }
-            40%, 80% { transform: translateX(10px); }
+        .top-controls {
+            justify-content: center !important;
         }
         
-        @keyframes glowPulse {
-            0%, 100% { box-shadow: 0 0 0 3px rgba(13, 107, 62, 0.1); }
-            50% { box-shadow: 0 0 0 6px rgba(13, 107, 62, 0.05); }
+        .sso-grid {
+            grid-template-columns: 1fr 1fr 1fr !important;
         }
         
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
+        .welcome-title {
+            font-size: 20px !important;
         }
         
-        /* ===== SKELETON LOADER ===== */
-        #skeletonLoader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(10, 61, 98, 0.95);
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            gap: 20px;
-            transition: opacity 0.8s ease;
+        /* Hide left panel elements on mobile just in case */
+        .left-panel .logo-img,
+        .left-panel .college-name,
+        .left-panel .motto,
+        .left-panel .welcome-title-left,
+        .left-panel .tagline,
+        .left-panel .features-grid,
+        .left-panel .badges-container,
+        .left-panel .stats-row,
+        .left-panel .left-footer {
+            display: none !important;
+        }
+    }
+    
+    @media (max-width: 480px) {
+        .right-panel {
+            padding: 18px 14px !important;
         }
         
-        #skeletonLoader .spinner {
-            width: 60px;
-            height: 60px;
-            border: 4px solid rgba(253, 185, 19, 0.1);
-            border-top-color: #FDB913;
-            border-radius: 50%;
-            animation: spin 0.8s linear infinite;
+        .sso-grid {
+            grid-template-columns: 1fr !important;  /* SSO buttons stack */
         }
         
-        #skeletonLoader .loader-text {
-            color: rgba(255,255,255,0.7);
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            letter-spacing: 2px;
+        .form-options {
+            flex-direction: column !important;
+            align-items: flex-start !important;
         }
         
-        /* ===== RESPONSIVE ===== */
-        @media (max-width: 768px) {
-            body {
-                padding: 0;
-            }
-            .login-wrapper {
-                flex-direction: column !important;
-                border-radius: 0 !important;
-                min-height: auto !important;
-            }
-            .left-panel {
-                flex: 1 1 100% !important;
-                padding: 25px 20px !important;
-                min-height: auto !important;
-                order: 1 !important;
-                display: block !important;
-            }
-            .right-panel {
-                flex: 1 1 100% !important;
-                padding: 25px 20px !important;
-                min-height: auto !important;
-                order: 2 !important;
-            }
-            .right-content {
-                max-width: 100% !important;
-            }
-            .logo-img {
-                width: 70px !important;
-                height: 70px !important;
-                padding: 8px !important;
-            }
-            .college-name {
-                font-size: 20px !important;
-            }
-            .features-grid {
-                grid-template-columns: 1fr 1fr !important;
-                gap: 8px !important;
-            }
-            .stats-row {
-                grid-template-columns: repeat(3, 1fr) !important;
-                gap: 10px !important;
-            }
-            .stat-number {
-                font-size: 20px !important;
-            }
-            .top-controls {
-                justify-content: center !important;
-            }
-            .sso-grid {
-                grid-template-columns: 1fr 1fr 1fr !important;
-            }
-            .welcome-title {
-                font-size: 20px !important;
-            }
-            .badges-container {
-                gap: 6px !important;
-            }
-            .badge {
-                font-size: 9px !important;
-                padding: 3px 8px !important;
-            }
+        .top-controls {
+            gap: 6px !important;
         }
         
-        @media (max-width: 480px) {
-            .left-panel {
-                padding: 18px 14px !important;
-            }
-            .right-panel {
-                padding: 18px 14px !important;
-            }
-            .features-grid {
-                grid-template-columns: 1fr !important;
-            }
-            .sso-grid {
-                grid-template-columns: 1fr !important;
-            }
-            .stats-row {
-                grid-template-columns: 1fr 1fr !important;
-            }
-            .form-options {
-                flex-direction: column !important;
-                align-items: flex-start !important;
-            }
-            .top-controls {
-                gap: 6px !important;
-            }
-            .top-btn {
-                font-size: 11px !important;
-                padding: 6px 10px !important;
-            }
-            .college-name {
-                font-size: 17px !important;
-            }
-            .welcome-title {
-                font-size: 18px !important;
-            }
-            .feature-item h4 {
-                font-size: 11px !important;
-            }
-            .feature-item p {
-                font-size: 10px !important;
-            }
+        .top-btn {
+            font-size: 11px !important;
+            padding: 6px 10px !important;
         }
-    </style>
+        
+        .welcome-title {
+            font-size: 18px !important;
+        }
+        
+        .welcome-subtitle {
+            font-size: 13px !important;
+        }
+        
+        .login-btn {
+            font-size: 14px !important;
+            padding: 12px !important;
+        }
+        
+        .footer-section .links {
+            flex-direction: column !important;
+            gap: 6px !important;
+        }
+        
+        .keyboard-hints {
+            flex-wrap: wrap !important;
+            gap: 8px !important;
+        }
+    }
+</style>
 </head>
 <body>
 
