@@ -694,89 +694,102 @@ window.NCHSMLogin = {
     }, // ✅ COMMA ADDED
 
     // ============================================
-    // COMPLETE LOGIN - FIXED
-    // ============================================
-    completeLogin: async function(profileData, sessionToken, isStaff = false) {
-        console.log('🎉 Completing login for:', profileData.email);
+// COMPLETE LOGIN - FIXED
+// ============================================
+completeLogin: async function(profileData, sessionToken, isStaff = false) {
+    console.log('🎉 Completing login for:', profileData.email);
+    
+    try {
+        let userIdForSession = profileData.user_id;
         
-        try {
-            let userIdForSession = profileData.user_id;
-            
-            if (isStaff && typeof profileData.user_id === 'string' && profileData.user_id.startsWith('STAFF')) {
-                try {
-                    if (!this.supabase) return;
-                    
-                    const { data: profile, error } = await this.supabase
-                        .from('consolidated_user_profiles_table')
-                        .select('user_id')
-                        .eq('email', profileData.email)
-                        .single();
-                    
-                    if (!error && profile?.user_id) {
-                        userIdForSession = profile.user_id;
-                    }
-                } catch (e) {}
-            }
-            
-            if (!isStaff) {
-                await this.updateLastLogin(profileData.user_id, profileData.email);
-            }
-            
-            await this.trackUserSession(
-                userIdForSession,
-                profileData.email,
-                sessionToken,
-                navigator.userAgent,
-                isStaff
-            );
-            
-            const safeProfile = {
-                user_id: userIdForSession || profileData.user_id || null,
-                staff_id: profileData.staff_id || profileData.id || null,
-                email: profileData.email || '',
-                full_name: profileData.full_name || 'User',
-                role: profileData.role || 'student',
-                program: profileData.program || profileData.department || '',
-                is_staff: isStaff || false,
-                two_factor_enabled: profileData.two_factor_enabled || false,
-                two_factor_verified: profileData.two_factor_verified || false
-            };
-            
-            Object.keys(safeProfile).forEach(key => {
-                if (safeProfile[key] === undefined) {
-                    safeProfile[key] = null;
+        if (isStaff && typeof profileData.user_id === 'string' && profileData.user_id.startsWith('STAFF')) {
+            try {
+                if (!this.supabase) return;
+                
+                const { data: profile, error } = await this.supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id')
+                    .eq('email', profileData.email)
+                    .single();
+                
+                if (!error && profile?.user_id) {
+                    userIdForSession = profile.user_id;
                 }
-            });
-            
-            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-            
-            if (!isStaff && this.supabase) {
-                try {
-                    const { data: { session } } = await this.supabase.auth.getSession();
-                    if (session) {
-                        localStorage.setItem('session_expires', session.expires_at);
-                    }
-                } catch (err) {}
-            }
-            
-            this.updateLastLoginInfo();
-            
-            if (profileData.role === 'student' && !isStaff) {
-                this.sendLoginNotification(profileData).catch(() => {});
-            }
-            
-            setTimeout(() => {
-                this.update2FAButtonStatus();
-            }, 500);
-            
-            this.redirectToDashboard(profileData);
-            
-        } catch (error) {
-            console.error('❌ Complete login error:', error);
-            this.showError('Error completing login: ' + error.message);
+            } catch (e) {}
         }
-    }, // ✅ COMMA ADDED
-
+        
+        if (!isStaff) {
+            await this.updateLastLogin(profileData.user_id, profileData.email);
+        }
+        
+        await this.trackUserSession(
+            userIdForSession,
+            profileData.email,
+            sessionToken,
+            navigator.userAgent,
+            isStaff
+        );
+        
+        const safeProfile = {
+            user_id: userIdForSession || profileData.user_id || null,
+            staff_id: profileData.staff_id || profileData.id || null,
+            email: profileData.email || '',
+            full_name: profileData.full_name || 'User',
+            role: profileData.role || 'student',
+            program: profileData.program || profileData.department || '',
+            is_staff: isStaff || false,
+            two_factor_enabled: profileData.two_factor_enabled || false,
+            two_factor_verified: profileData.two_factor_verified || false
+        };
+        
+        Object.keys(safeProfile).forEach(key => {
+            if (safeProfile[key] === undefined) {
+                safeProfile[key] = null;
+            }
+        });
+        
+        // ✅ SAVE userProfile
+        localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+        console.log('✅ userProfile saved');
+        
+        // ✅ FIX: SAVE currentUserId - THIS WAS MISSING!
+        if (safeProfile.user_id) {
+            localStorage.setItem('currentUserId', safeProfile.user_id);
+            console.log('✅ currentUserId saved:', safeProfile.user_id);
+        } else {
+            console.warn('⚠️ No user_id to save!');
+        }
+        
+        // ✅ Also save to sessionStorage (backup)
+        sessionStorage.setItem('currentUserId', safeProfile.user_id);
+        sessionStorage.setItem('userProfile', JSON.stringify(safeProfile));
+        
+        if (!isStaff && this.supabase) {
+            try {
+                const { data: { session } } = await this.supabase.auth.getSession();
+                if (session) {
+                    localStorage.setItem('session_expires', session.expires_at);
+                }
+            } catch (err) {}
+        }
+        
+        this.updateLastLoginInfo();
+        
+        if (profileData.role === 'student' && !isStaff) {
+            this.sendLoginNotification(profileData).catch(() => {});
+        }
+        
+        setTimeout(() => {
+            this.update2FAButtonStatus();
+        }, 500);
+        
+        this.redirectToDashboard(profileData);
+        
+    } catch (error) {
+        console.error('❌ Complete login error:', error);
+        this.showError('Error completing login: ' + error.message);
+    }
+}, // 
     // ============================================
     // FORCE UPDATE LOGIN COUNT
     // ============================================
