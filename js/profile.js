@@ -10,8 +10,6 @@
 // ✅ FIXED: SUPABASE_URL error
 // ✅ FIXED: Mobile fields populated
 // ✅ FIXED: Dynamic labels for TVET (Terms) vs Nursing (Blocks)
-// ✅ FIXED: TVET Certificate (1 Year - 3 Terms) vs Diploma (2 Years - 6 Terms)
-// ✅ FIXED: No "Introductory" or "Final" for TVET
 // ============================================================
 
 // ============================================================
@@ -476,7 +474,7 @@ class ProfileModule {
         const blockOrTerm = isTVET ? p.term || p.block : p.block || p.current_block;
         
         const blockInput = document.getElementById('profile-block-input');
-        if (blockInput) blockInput.value = blockOrTerm || (isTVET ? 'Year 1 Term 1' : 'Introductory');
+        if (blockInput) blockInput.value = blockOrTerm || 'Introductory';
         
         const intakeYearInput = document.getElementById('profile-intake-year-input');
         if (intakeYearInput) intakeYearInput.value = p.intake_year || p.year_of_intake || '';
@@ -532,7 +530,7 @@ class ProfileModule {
         if (mobileProgram) mobileProgram.value = p.program || '';
         
         const mobileBlock = document.getElementById('profile-block-input-mobile');
-        if (mobileBlock) mobileBlock.value = blockOrTerm || (isTVET ? 'Year 1 Term 1' : 'Introductory');
+        if (mobileBlock) mobileBlock.value = blockOrTerm || 'Introductory';
         
         const mobileIntakeYear = document.getElementById('profile-intake-year-input-mobile');
         if (mobileIntakeYear) mobileIntakeYear.value = p.intake_year || p.year_of_intake || '';
@@ -583,8 +581,6 @@ class ProfileModule {
     
     updateDynamicLabels() {
         const isTVET = this.isTVETStudent();
-        const duration = this.getTVETDuration();
-        const durationText = duration === 'certificate' ? '1 Year' : '2 Years';
         
         // ============================================
         // 📊 DESKTOP LABELS
@@ -606,7 +602,7 @@ class ProfileModule {
         // Update "Current Block" status text
         const currentStatusEl = document.getElementById('current-block-status');
         if (currentStatusEl) {
-            const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Year 1 Term 1' : 'Introductory');
+            const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Term 1' : 'Introductory');
             currentStatusEl.textContent = `Current: ${currentBlock}`;
         }
         
@@ -635,7 +631,7 @@ class ProfileModule {
         // Update mobile "Current Block" status text
         const currentStatusMobileEl = document.getElementById('current-block-status-mobile');
         if (currentStatusMobileEl) {
-            const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Year 1 Term 1' : 'Introductory');
+            const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Term 1' : 'Introductory');
             currentStatusMobileEl.textContent = `Current: ${currentBlock}`;
         }
         
@@ -646,13 +642,7 @@ class ProfileModule {
             progressTextMobileEl.textContent = `${progress}% Complete`;
         }
         
-        // Update duration display
-        const durationDisplay = document.getElementById('profile-duration');
-        if (durationDisplay) {
-            durationDisplay.textContent = durationText;
-        }
-        
-        console.log(`🏷️ Labels updated: ${isTVET ? 'TVET (Terms)' : 'Nursing (Blocks)'} - ${durationText}`);
+        console.log(`🏷️ Labels updated: ${isTVET ? 'TVET (Terms)' : 'Nursing (Blocks)'}`);
     }
     
     // ============================================================
@@ -1001,84 +991,20 @@ class ProfileModule {
         return tvetPrograms.includes(program) || program === 'TVET';
     }
     
-    getTVETDuration() {
-        const program = this.userProfile?.program || '';
-        // Certificate programs (1 year - 3 terms)
-        const certificatePrograms = [
-            'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
-            'ACH', 'AAG', 'ASW', 'CCA', 'PTE'
-        ];
-        // Diploma programs (2 years - 6 terms)
-        const diplomaPrograms = [
-            'DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'
-        ];
-        
-        if (certificatePrograms.includes(program)) {
-            return 'certificate'; // 1 year
-        } else if (diplomaPrograms.includes(program) || program === 'TVET') {
-            return 'diploma'; // 2 years
-        }
-        return 'diploma'; // Default to diploma
-    }
-    
-    getTotalTerms() {
-        const duration = this.getTVETDuration();
-        if (duration === 'certificate') {
-            return 3; // 1 year = 3 terms
-        } else {
-            return 6; // 2 years = 6 terms
-        }
-    }
-    
-    generateTVETBlocks() {
-        const totalTerms = this.getTotalTerms();
-        const blocks = [];
-        const years = totalTerms === 3 ? 1 : 2;
-        let termCounter = 1;
-        for (let year = 1; year <= years; year++) {
-            for (let term = 1; term <= 3; term++) {
-                if (termCounter <= totalTerms) {
-                    blocks.push(`Year ${year} Term ${term}`);
-                    termCounter++;
-                }
-            }
-        }
-        return blocks;
-    }
-    
-    generateTVETBlockOrder() {
-        const totalTerms = this.getTotalTerms();
-        const blockOrder = {};
-        let termCounter = 1;
-        const years = totalTerms === 3 ? 1 : 2;
-        for (let year = 1; year <= years; year++) {
-            for (let term = 1; term <= 3; term++) {
-                if (termCounter <= totalTerms) {
-                    blockOrder[`Year ${year} Term ${term}`] = termCounter;
-                    termCounter++;
-                }
-            }
-        }
-        return blockOrder;
-    }
-    
     // ============================================================
     // 📊 BLOCK PROGRESS
     // ============================================================
     
     getCurrentBlockNumber() {
         const isTVET = this.isTVETStudent();
-        const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Year 1 Term 1' : 'Introductory');
-        
-        let blockOrder;
-        if (isTVET) {
-            blockOrder = this.generateTVETBlockOrder();
-        } else {
-            blockOrder = {
-                'Introductory': 1, 'Block 1': 2, 'Block 2': 3, 'Block 3': 4,
-                'Block 4': 5, 'Block 5': 6, 'Final': 7
-            };
-        }
+        const currentBlock = this.userProfile?.block || this.userProfile?.current_block || (isTVET ? 'Term 1' : 'Introductory');
+        const blockOrder = isTVET ? {
+            'Introductory': 1, 'Term 1': 1, 'Term 2': 2, 'Term 3': 3,
+            'Term 4': 4, 'Term 5': 5, 'Term 6': 6, 'Final': 7
+        } : {
+            'Introductory': 1, 'Block 1': 2, 'Block 2': 3, 'Block 3': 4,
+            'Block 4': 5, 'Block 5': 6, 'Final': 7
+        };
         return blockOrder[currentBlock] || 1;
     }
     
@@ -1087,20 +1013,21 @@ class ProfileModule {
     }
     
     getProgressPercent() {
-        const isTVET = this.isTVETStudent();
-        const totalBlocks = isTVET ? this.getTotalTerms() : 7;
-        return Math.round((this.getCompletedBlocksCount() / totalBlocks) * 100);
+        return Math.round((this.getCompletedBlocksCount() / 7) * 100);
     }
     
     updateBlockProgress() {
         if (!this.userProfile) return;
         
         const isTVET = this.isTVETStudent();
-        const currentBlock = this.userProfile.block || this.userProfile.current_block || (isTVET ? 'Year 1 Term 1' : 'Introductory');
+        const currentBlock = this.userProfile.block || this.userProfile.current_block || (isTVET ? 'Term 1' : 'Introductory');
         
         let blockOrder;
         if (isTVET) {
-            blockOrder = this.generateTVETBlockOrder();
+            blockOrder = {
+                'Introductory': 1, 'Term 1': 1, 'Term 2': 2, 'Term 3': 3,
+                'Term 4': 4, 'Term 5': 5, 'Term 6': 6, 'Final': 7
+            };
         } else {
             blockOrder = {
                 'Introductory': 1, 'Block 1': 2, 'Block 2': 3, 'Block 3': 4,
@@ -1108,7 +1035,7 @@ class ProfileModule {
             };
         }
         
-        const totalBlocks = isTVET ? this.getTotalTerms() : 7;
+        const totalBlocks = 7;
         const currentBlockNumber = blockOrder[currentBlock] || 1;
         const completedBlocksCount = currentBlockNumber - 1;
         const progressPercent = Math.round((completedBlocksCount / totalBlocks) * 100);
@@ -1165,7 +1092,7 @@ class ProfileModule {
     buildTimelineHTML(currentBlock, isTVET) {
         let blocks;
         if (isTVET) {
-            blocks = this.generateTVETBlocks();
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Final'];
         } else {
             blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Final'];
         }
@@ -1214,9 +1141,7 @@ class ProfileModule {
     buildCompletedBlocksHTML(completedCount, isTVET) {
         let blocks;
         if (isTVET) {
-            const allBlocks = this.generateTVETBlocks();
-            // Remove the last one (current/incomplete term)
-            blocks = allBlocks.slice(0, -1);
+            blocks = ['Introductory', 'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5'];
         } else {
             blocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5'];
         }
@@ -2891,5 +2816,4 @@ console.log('📸 Photo handling fixed - uses user-documents bucket');
 console.log('🔐 2FA fully integrated with profile (STANDALONE - NO NCHSMLOGIN)');
 console.log('📱 Mobile fields now populated');
 console.log('🏷️ Dynamic labels for TVET (Terms) vs Nursing (Blocks)');
-console.log('📚 TVET Certificate (1 Year - 3 Terms) vs Diploma (2 Years - 6 Terms)');
 console.log('🔄 Admin refresh available via refreshStudentProfile(userId)');
