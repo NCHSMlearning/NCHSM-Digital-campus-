@@ -339,11 +339,12 @@ async function loadExams(showLoading = true) {
     
     currentUserId = localStorage.getItem('currentUserId');
     
-    if (!currentUserId || currentUserId === 'null') {
-        window.location.href = 'exam_login.html';
-        return;
-    }
-    
+   if (!currentUserId || currentUserId === 'null') {
+    console.warn('⚠️ No user ID found, redirecting to student dashboard');
+    // ✅ Redirect to student dashboard instead of exam_login
+    window.location.href = 'student.html';
+    return;
+}
     try {
         // ============================================
         // 1. FETCH USER PROFILE
