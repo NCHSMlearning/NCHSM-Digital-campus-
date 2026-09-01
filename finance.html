@@ -2580,41 +2580,109 @@ openPaymentModal = function(studentId) {
             }
         }
 
-        function renderFeeStructures(fees) {
-            const container = document.getElementById('feeStructureCardsContainer');
-            if (!fees || fees.length === 0) {
-                container.innerHTML = `
-                        <div style="text-align:center;padding:60px;color:#94a3b8;">
-                            <i class="fas fa-file-invoice" style="font-size:48px;display:block;margin-bottom:16px;"></i>
-                            <p>No fee structures found. Click "New Fee Structure" to create one.</p>
-                        </div>
-                    `;
-                return;
-            }
+    function renderFeeStructures(fees) {
+    const container = document.getElementById('feeStructureCardsContainer');
+    if (!fees || fees.length === 0) {
+        container.innerHTML = `
+            <div style="text-align:center;padding:60px;color:#94a3b8;">
+                <i class="fas fa-file-invoice" style="font-size:48px;display:block;margin-bottom:16px;"></i>
+                <p>No fee structures found. Click "New Fee Structure" to create one.</p>
+            </div>
+        `;
+        return;
+    }
 
-            container.innerHTML = fees.map(f => `
-                    <div style="background:white;border-radius:12px;padding:20px;border:1px solid #e5e7eb;margin-bottom:16px;border-left:4px solid ${f.is_active ? '#059669' : '#dc2626'};">
-                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                            <div>
-                                <h4 style="margin:0;color:#0A3D62;">${f.program}</h4>
-                                <p style="margin:4px 0 0 0;font-size:13px;color:#64748b;">${f.level || 'N/A'} | ${f.duration || 'N/A'} | ${f.mode || 'N/A'}</p>
-                            </div>
-                            <div>
-                                <span class="badge ${f.is_active ? 'badge-success' : 'badge-danger'}">${f.is_active ? 'Active' : 'Inactive'}</span>
-                                <span style="font-size:18px;font-weight:700;color:#059669;margin-left:12px;">${formatCurrency(f.total)}</span>
-                            </div>
-                        </div>
-                        ${f.components ? `
-                            <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
-                                ${f.components.map(c => `<span class="badge" style="background:#f1f5f9;color:#475569;">${c.name}: ${formatCurrency(c.amount)}</span>`).join('')}
-                            </div>
-                        ` : ''}
-                        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;">
-                            <i class="fas fa-calendar"></i> Intake: ${f.intake_year || '2026'} | <i class="fas fa-credit-card"></i> ${f.payment?.mpesa || 'M-Pesa: 247247'}
+    container.innerHTML = fees.map(f => {
+        // ✅ Calculate total from components
+        let total = 0;
+        const components = f.components || [];
+        components.forEach(c => {
+            total += parseFloat(c.amount) || 0;
+        });
+        // Add hostel if exists
+        if (f.hostel) {
+            total += parseFloat(f.hostel) || 0;
+        }
+
+        return `
+            <div style="background:white;border-radius:12px;padding:20px;border:1px solid #e5e7eb;margin-bottom:16px;border-left:4px solid ${f.is_active ? '#059669' : '#dc2626'};">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                    <div>
+                        <h4 style="margin:0;color:#0A3D62;font-size:16px;">
+                            ${f.program || 'N/A'}
+                            <span style="font-size:12px;color:#94a3b8;font-weight:normal;">
+                                ${f.block_term || ''}
+                            </span>
+                        </h4>
+                        <p style="margin:4px 0 0 0;font-size:13px;color:#64748b;">
+                            ${f.level || 'N/A'} | ${f.duration || 'N/A'} | ${f.mode || 'N/A'}
+                        </p>
+                    </div>
+                    <div style="text-align:right;">
+                        <span class="badge ${f.is_active ? 'badge-success' : 'badge-danger'}">
+                            ${f.is_active ? '✅ Active' : '❌ Inactive'}
+                        </span>
+                        <div style="font-size:20px;font-weight:700;color:#059669;margin-top:4px;">
+                            ${formatCurrency(total)}
                         </div>
                     </div>
-                `).join('');
-        }
+                </div>
+                
+                <!-- ✅ FIXED: Use 'label' instead of 'name' -->
+                ${components.length > 0 ? `
+                    <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 20px;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e5e7eb;">
+                        ${components.map(c => `
+                            <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;border-bottom:1px solid #f1f5f9;">
+                                <span style="color:#475569;">${c.label || c.name || 'Component'}</span>
+                                <span style="font-weight:600;color:#0A3D62;">${formatCurrency(c.amount)}</span>
+                            </div>
+                        `).join('')}
+                        ${f.hostel ? `
+                            <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;border-bottom:1px solid #f1f5f9;grid-column:1/-1;color:#d97706;font-weight:600;">
+                                <span>🏠 HOSTEL FEE (Optional)</span>
+                                <span>${formatCurrency(f.hostel)}</span>
+                            </div>
+                        ` : ''}
+                        <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-top:2px solid #4C1D95;grid-column:1/-1;font-weight:700;">
+                            <span style="color:#0A3D62;">TOTAL</span>
+                            <span style="color:#059669;">${formatCurrency(total)}</span>
+                        </div>
+                    </div>
+                ` : '<div style="color:#94a3b8;font-size:13px;margin-top:8px;">No components defined</div>'}
+
+                <!-- Payment Info -->
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12px;color:#64748b;">
+                    <span><i class="fas fa-calendar"></i> Intake: ${f.intake_year || '2026'}</span>
+                    ${f.payment?.mpesa ? `<span><i class="fas fa-phone"></i> M-Pesa: ${f.payment.mpesa.substring(0, 30)}${f.payment.mpesa.length > 30 ? '...' : ''}</span>` : ''}
+                    ${f.payment?.bank ? `<span><i class="fas fa-university"></i> Bank: ${f.payment.bank.substring(0, 30)}${f.payment.bank.length > 30 ? '...' : ''}</span>` : ''}
+                </div>
+                
+                <!-- Terms -->
+                ${f.terms && f.terms.length > 0 ? `
+                    <div style="margin-top:8px;padding-top:8px;border-top:1px solid #f1f5f9;font-size:11px;color:#94a3b8;">
+                        <i class="fas fa-file-contract"></i> Terms: ${f.terms.length} terms defined
+                    </div>
+                ` : ''}
+
+                <!-- Actions -->
+                <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #f1f5f9;padding-top:12px;">
+                    <button onclick="openEditFeeModal('${f.id}')" class="btn-action btn-primary btn-sm" style="padding:4px 12px;font-size:12px;">
+                        <i class="fas fa-edit"></i> Edit
+                    </button>
+                    <button onclick="duplicateFeeStructure('${f.id}')" class="btn-action btn-outline btn-sm" style="padding:4px 12px;font-size:12px;">
+                        <i class="fas fa-copy"></i> Duplicate
+                    </button>
+                    <button onclick="toggleFeeStructure('${f.id}')" class="btn-action ${f.is_active ? 'btn-warning' : 'btn-success'} btn-sm" style="padding:4px 12px;font-size:12px;">
+                        <i class="fas ${f.is_active ? 'fa-pause' : 'fa-play'}"></i> ${f.is_active ? 'Deactivate' : 'Activate'}
+                    </button>
+                    <button onclick="deleteFeeStructure('${f.id}')" class="btn-action btn-danger btn-sm" style="padding:4px 12px;font-size:12px;">
+                        <i class="fas fa-trash"></i> Delete
+                    </button>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
 
         function openAddFeeModal() {
             showToast('Opening fee structure editor...', 'info');
