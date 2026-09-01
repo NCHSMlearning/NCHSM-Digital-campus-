@@ -659,7 +659,7 @@
                 </div>
             </section>
 
-           <!-- ============================================================ -->
+          <!-- ============================================================ -->
 <!-- TAB 3: PAYMENTS                                              -->
 <!-- ============================================================ -->
 <section id="tab-payments" class="tab-content">
@@ -1190,60 +1190,101 @@
             </div>
         </div>
     </div>
-
-    <!-- ===== PAYMENT MODAL ===== -->
-    <div id="paymentModal" class="modal-overlay">
-        <div class="modal-content payment-modal-content">
-            <button class="modal-close" onclick="closePaymentModal()">&times;</button>
-            <h3 style="color: #0A3D62; margin-bottom: 16px;"><i class="fas fa-receipt"></i> Record Payment</h3>
-            <div id="paymentStudentInfo" class="student-info-card" style="display: none;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                    <h4 style="margin:0;color:#0A3D62;font-size:15px;"><i class="fas fa-user-graduate"></i> Student Details</h4>
-                    <span id="studentStatusBadge" class="badge badge-info">Active</span>
+<!-- Payment Modal -->
+<div id="paymentModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 700px;">
+        <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+        <h3 style="color: #0A3D62; margin: 0 0 20px 0;" id="paymentModalTitle">
+            <i class="fas fa-credit-card"></i> Record Payment
+        </h3>
+        
+        <form id="paymentModalForm" onsubmit="event.preventDefault(); processPayment();">
+            <!-- Searchable Student Dropdown -->
+            <div class="finance-form-group">
+                <label for="modalPaymentStudent">👤 Select Student *</label>
+                <div style="position: relative;">
+                    <input 
+                        type="text" 
+                        id="modalPaymentStudentSearch" 
+                        placeholder="🔍 Search student by name, ID, or program..." 
+                        oninput="filterStudentDropdown()"
+                        style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; transition: all 0.3s;"
+                        autocomplete="off"
+                    >
+                    <div id="studentDropdownList" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.15); margin-top: 4px;">
+                        <!-- Student options will be populated here -->
+                    </div>
                 </div>
-                <div class="info-row"><span class="label">Student Name:</span><span class="value" id="modalStudentName">-</span></div>
-                <div class="info-row"><span class="label">Student ID:</span><span class="value" id="modalStudentId">-</span></div>
-                <div class="info-row"><span class="label">Program:</span><span class="value" id="modalStudentProgram">-</span></div>
-                <div class="info-row"><span class="label">Balance:</span><span class="value" id="modalBalance">KES 0</span></div>
+                <select id="modalPaymentStudent" style="display: none;">
+                    <option value="">-- Select Student --</option>
+                </select>
+                <div id="selectedStudentDisplay" style="display: none; margin-top: 8px; padding: 10px 14px; background: #dbeafe; border-radius: 6px; border-left: 4px solid #4C1D95;">
+                    <span style="font-weight: 600; color: #0A3D62;" id="selectedStudentName"></span>
+                    <span style="color: #64748b; font-size: 13px; margin-left: 10px;" id="selectedStudentId"></span>
+                    <span style="color: #64748b; font-size: 13px; margin-left: 10px;" id="selectedStudentProgram"></span>
+                </div>
             </div>
-            <form id="paymentModalForm" onsubmit="event.preventDefault(); recordPaymentFromModal();">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                    <div class="finance-form-group" style="grid-column:1/-1;">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Select Student *</label>
-                        <select id="modalPaymentStudent" class="form-control" required onchange="updateStudentInfo()">
-                            <option value="">-- Select Student --</option>
-                        </select>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Amount (KES) *</label>
-                        <input type="number" id="modalPaymentAmount" class="form-control" placeholder="0.00" required step="0.01" min="0">
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Payment Method *</label>
-                        <select id="modalPaymentMethod" class="form-control" required>
-                            <option value="Cash">Cash</option>
-                            <option value="M-Pesa">M-Pesa</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Cheque">Cheque</option>
-                            <option value="Card">Card</option>
-                        </select>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Payment Date *</label>
-                        <input type="date" id="modalPaymentDate" class="form-control" required>
-                    </div>
-                    <div class="finance-form-group" style="grid-column:1/-1;">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Notes</label>
-                        <textarea id="modalPaymentNotes" class="form-control" rows="2" placeholder="Additional notes (optional)"></textarea>
-                    </div>
+
+            <!-- Payment Details -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="finance-form-group">
+                    <label for="modalPaymentAmount">💰 Amount (KES) *</label>
+                    <input type="number" id="modalPaymentAmount" class="form-control" placeholder="0.00" step="0.01" min="0" required>
                 </div>
-                <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
-                    <button type="button" onclick="closePaymentModal()" class="btn-action btn-outline"><i class="fas fa-times"></i> Cancel</button>
-                    <button type="submit" class="btn-action btn-success"><i class="fas fa-save"></i> Record Payment</button>
+                <div class="finance-form-group">
+                    <label for="modalPaymentMethod">💳 Payment Method *</label>
+                    <select id="modalPaymentMethod" class="form-control" required>
+                        <option value="M-Pesa">📱 M-Pesa</option>
+                        <option value="Cash">💵 Cash</option>
+                        <option value="Bank Transfer">🏦 Bank Transfer</option>
+                        <option value="Cheque">📄 Cheque</option>
+                    </select>
                 </div>
-            </form>
-        </div>
+            </div>
+
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <div class="finance-form-group">
+                    <label for="modalPaymentDate">📅 Payment Date *</label>
+                    <input type="date" id="modalPaymentDate" class="form-control" required>
+                </div>
+                <div class="finance-form-group">
+                    <label for="modalPaymentPeriod">📋 Period</label>
+                    <input type="text" id="modalPaymentPeriod" class="form-control" placeholder="e.g., Term 1, 2026">
+                </div>
+            </div>
+
+            <div class="finance-form-group">
+                <label for="modalPaymentReference">🔑 Reference Number</label>
+                <input type="text" id="modalPaymentReference" class="form-control" placeholder="Auto-generated or manual reference">
+            </div>
+
+            <div class="finance-form-group">
+                <label for="modalPaymentNotes">📝 Notes</label>
+                <textarea id="modalPaymentNotes" class="form-control" rows="2" placeholder="Optional notes about this payment"></textarea>
+            </div>
+
+            <!-- Student Info Display -->
+            <div id="paymentStudentInfo" style="display: none; background: #f8fafc; padding: 12px 16px; border-radius: 8px; margin: 12px 0; border: 1px solid #e5e7eb;">
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 13px;">
+                    <div><strong>Student:</strong> <span id="modalStudentName">-</span></div>
+                    <div><strong>ID:</strong> <span id="modalStudentId">-</span></div>
+                    <div><strong>Program:</strong> <span id="modalStudentProgram">-</span></div>
+                    <div><strong>Balance:</strong> <span id="modalBalance">KES 0</span></div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                <button type="submit" class="btn-action btn-success" style="flex: 1; padding: 12px; font-size: 15px; min-width: 120px;">
+                    <i class="fas fa-check-circle"></i> Record Payment
+                </button>
+                <button type="button" onclick="closePaymentModal()" class="btn-action btn-outline" style="flex: 1; padding: 12px; font-size: 15px; min-width: 120px;">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
     </div>
+</div>
 
     <!-- ===== BULK IMPORT MODAL ===== -->
     <div id="bulkImportModal" class="modal-overlay">
