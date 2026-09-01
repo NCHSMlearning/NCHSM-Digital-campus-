@@ -1056,8 +1056,6 @@ function refreshPayments() {
 // PAYMENT MODAL - WITH SEARCHABLE STUDENT DROPDOWN
 // ============================================================
 
-let allStudents = [];
-let selectedStudentForPayment = null;
 let studentDropdownVisible = false;
 
 // Load students for dropdown
@@ -3120,5 +3118,68 @@ function loadAuditLog() { document.getElementById('auditLogContainer').innerHTML
 // ============================================================
 // FINAL LOG
 // ============================================================
+// ============================================================
+// EXPOSE FUNCTIONS TO GLOBAL SCOPE
+// ============================================================
 
-console.log('✅ Finance Module fully loaded!');
+// Payment Modal Functions
+window.openPaymentModal = openPaymentModal;
+window.closePaymentModal = closePaymentModal;
+window.processPayment = processPayment;
+window.recordPaymentFromModal = recordPaymentFromModal;
+window.recordPayment = recordPayment;
+window.togglePaymentMethodFields = togglePaymentMethodFields;
+window.processSTKPayment = processSTKPayment;
+window.cancelPaymentRequest = cancelPaymentRequest;
+window.filterStudentDropdown = filterStudentDropdown;
+window.selectStudentByUserId = selectStudentByUserId;
+window.clearSelectedStudent = clearSelectedStudent;
+
+// Staff Functions
+window.openAddStaffModal = openAddStaffModal;
+window.saveStaffToDatabase = saveStaffToDatabase;
+window.editStaffMember = editStaffMember;
+window.deleteStaffMember = deleteStaffMember;
+window.loadStaffData = loadStaffData;
+window.filterStaffTable = filterStaffTable;
+window.resetStaffFilters = resetStaffFilters;
+window.openBulkStaffImport = openBulkStaffImport;
+window.exportStaffData = exportStaffData;
+window.processPayrollAction = processPayrollAction;
+window.calculateStaffPay = calculateStaffPay;
+
+// Fee Structure Functions
+window.openAddFeeModal = openAddFeeModal;
+window.openEditFeeModal = openEditFeeModal;
+window.saveFeeStructureFull = saveFeeStructureFull;
+window.closeFeeStructureModal = closeFeeStructureModal;
+window.toggleFeeStructure = toggleFeeStructure;
+window.duplicateFeeStructure = duplicateFeeStructure;
+window.deleteFeeStructure = deleteFeeStructure;
+window.filterFeeStructures = filterFeeStructures;
+window.resetFeeStructureFilters = resetFeeStructureFilters;
+window.refreshFeeStructure = refreshFeeStructure;
+window.addFeeComponentRow = addFeeComponentRow;
+window.removeFeeComponentRow = removeFeeComponentRow;
+window.addFeeTermRow = addFeeTermRow;
+window.removeFeeTermRow = removeFeeTermRow;
+window.updateFeeTotalPreview = updateFeeTotalPreview;
+
+// General Functions
+window.refreshAllData = refreshAllData;
+window.exportAllData = exportAllData;
+window.sendPaymentReminders = sendPaymentReminders;
+window.openBulkPaymentModal = openBulkPaymentModal;
+window.handleBulkFileUpload = handleBulkFileUpload;
+window.downloadTemplate = downloadTemplate;
+window.processBulkImport = processBulkImport;
+window.loadAuditLog = loadAuditLog;
+window.showToast = showToast;
+window.closeModal = closeModal;
+window.toggleSidebar = toggleSidebar;
+window.logoutFinance = logoutFinance;
+window.goToMainDashboard = goToMainDashboard;
+window.formatCurrency = formatCurrency;
+window.formatDate = formatDate;
+
+console.log('✅ All functions exposed to global scope');
