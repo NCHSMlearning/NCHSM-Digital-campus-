@@ -2110,7 +2110,7 @@ async function pollStudentPaymentStatus(transactionId, amount, period) {
     }
 }
 // ============================================================
-//  PROCESS PAYMENT - FIXED REFERENCE MATCHING
+//  PROCESS PAYMENT - FIXED (DOES NOT OVERWRITE REFERENCE)
 // ============================================================
 
 async function processPayment() {
@@ -2276,13 +2276,12 @@ async function processPayment() {
             
             pendingPayment.transactionId = stkData.transaction_id;
             
-            // ✅ Update payment with checkout ID but KEEP the original reference
+            // ✅ CRITICAL FIX: Update checkout_id but KEEP the original reference!
             await supabase
                 .from('finance_payments')
                 .update({
                     checkout_request_id: stkData.transaction_id,
-                    // ✅ DO NOT overwrite reference_number with transaction ID
-                    // reference_number stays as 'STU-xxx'
+                    // ✅ DO NOT update reference_number - keep STU-xxx format!
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', savedPayment.id);
@@ -2308,7 +2307,6 @@ async function processPayment() {
         }, 2000);
     }
 }
-
 // ============================================================
 // 🔄 UPDATE STK STATUS - STUDENT FINANCE
 // ============================================================
