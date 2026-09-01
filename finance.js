@@ -1,60 +1,528 @@
-/**
- * FINANCE MODULE - MAIN APPLICATION
- * Core application logic for the finance dashboard
- * Uses financeAPI for all Supabase operations
- */
+// ============================================================
+// FINANCE MODULE - COMPLETE JAVASCRIPT
+// ============================================================
+
+// ============================================================
+// CONFIGURATION
+// ============================================================
+
+const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
 // ============================================================
 // GLOBALS
 // ============================================================
-let monthlyChart = null;
-let statusChart = null;
-let allAccounts = [];
+
+let sbClient = null;
+let allStudents = [];
 let allPayments = [];
 let allTransactions = [];
 let allFeeStructures = [];
-let filteredPayments = [];
-let filteredFeeStructures = [];
-let filteredTransactions = [];
+let staffData = [];
+let allAccounts = [];
+let selectedStudentForPayment = null;
+let monthlyChart = null;
+let statusChart = null;
+let allInvoices = [];
+
+// ============================================================
+// INJECT CSS
+// ============================================================
+
+(function injectStyles() {
+    const styles = `
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f0f4ff;
+            min-height: 100vh;
+        }
+        .tab-content { display: none; animation: fadeIn 0.3s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-spinner {
+            display: inline-block;
+            width: 30px;
+            height: 30px;
+            border: 3px solid #e5e7eb;
+            border-top-color: #4C1D95;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        .finance-container { display: flex; min-height: 100vh; }
+        .finance-sidebar {
+            width: 260px;
+            background: linear-gradient(180deg, #0A3D62, #1a5a7a);
+            color: white;
+            padding: 20px 0;
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 1000;
+            transition: transform 0.3s ease;
+        }
+        .finance-sidebar-header {
+            padding: 0 20px 20px 20px;
+            border-bottom: 1px solid rgba(255,255,255,0.1);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        .finance-sidebar-header img {
+            width: 45px;
+            height: 45px;
+            border-radius: 50%;
+            object-fit: cover;
+        }
+        .finance-sidebar-header h2 {
+            font-size: 16px;
+            font-weight: 700;
+            margin: 0;
+        }
+        .finance-sidebar-header span {
+            font-size: 11px;
+            opacity: 0.7;
+        }
+        .finance-nav {
+            list-style: none;
+            padding: 10px 0;
+            margin: 0;
+        }
+        .finance-nav li a {
+            display: flex;
+            align-items: center;
+            padding: 12px 20px;
+            color: rgba(255,255,255,0.7);
+            text-decoration: none;
+            transition: all 0.2s;
+            gap: 12px;
+            font-size: 14px;
+            position: relative;
+        }
+        .finance-nav li a:hover {
+            background: rgba(255,255,255,0.1);
+            color: white;
+        }
+        .finance-nav li a.active {
+            background: rgba(255,255,255,0.15);
+            color: white;
+            border-right: 3px solid #FDB913;
+        }
+        .finance-nav li a i { width: 20px; text-align: center; }
+        .finance-nav li a .badge {
+            background: #dc2626;
+            color: white;
+            font-size: 10px;
+            padding: 2px 8px;
+            border-radius: 12px;
+            margin-left: auto;
+        }
+        .finance-sidebar-footer {
+            padding: 20px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+            margin-top: auto;
+        }
+        .finance-sidebar-footer a {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            color: rgba(255,255,255,0.6);
+            text-decoration: none;
+            padding: 8px 0;
+            font-size: 13px;
+            transition: color 0.2s;
+        }
+        .finance-sidebar-footer a:hover { color: white; }
+        .finance-main {
+            margin-left: 260px;
+            flex: 1;
+            padding: 25px 30px;
+            min-height: 100vh;
+        }
+        .finance-mobile-toggle {
+            display: none;
+            position: fixed;
+            top: 15px;
+            left: 15px;
+            z-index: 1001;
+            background: #0A3D62;
+            color: white;
+            border: none;
+            padding: 10px 14px;
+            border-radius: 8px;
+            font-size: 20px;
+            cursor: pointer;
+        }
+        .btn-action {
+            padding: 8px 18px;
+            border-radius: 8px;
+            border: none;
+            cursor: pointer;
+            font-weight: 600;
+            font-size: 13px;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-action:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
+        .btn-primary { background: #4C1D95; color: white; }
+        .btn-success { background: #059669; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-warning { background: #f59e0b; color: #0A3D62; }
+        .btn-outline { background: transparent; color: #475569; border: 1px solid #e2e8f0; }
+        .btn-sm { padding: 5px 12px; font-size: 12px; }
+        .btn-xs { padding: 2px 8px; font-size: 11px; }
+        .cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 16px;
+            margin-bottom: 25px;
+        }
+        .card {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-top: 4px solid #4C1D95;
+            transition: all 0.2s;
+            cursor: pointer;
+        }
+        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
+        .card h3 { font-size: 12px; color: #64748b; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
+        .card .data { font-size: 28px; font-weight: 700; margin: 0; color: #0b1124; }
+        .card .minor-data { font-size: 12px; color: #94a3b8; margin: 4px 0 0 0; }
+        .payroll-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+        .payroll-summary-card {
+            border-radius: 10px;
+            padding: 14px 18px;
+            border: 1px solid #e5e7eb;
+            background: white;
+        }
+        .payroll-summary-card .label { font-size: 12px; font-weight: 600; color: #475569; }
+        .payroll-summary-card .value { font-size: 22px; font-weight: 700; }
+        .payroll-summary-card .sub { font-size: 11px; color: #94a3b8; }
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #e5e7eb;
+            margin-bottom: 20px;
+        }
+        .table-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        .table-header h4 { margin: 0; color: #0A3D62; }
+        .modern-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        .modern-table th {
+            background: #f8fafc;
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+        .modern-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .modern-table tr:hover td { background: #f8fafc; }
+        .filter-bar {
+            background: white;
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-bottom: 20px;
+            border: 1px solid #e5e7eb;
+            display: flex;
+            gap: 12px;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+        .filter-bar input, .filter-bar select {
+            padding: 8px 14px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
+            background: #f8fafc;
+            min-width: 150px;
+        }
+        .filter-bar input:focus, .filter-bar select:focus {
+            border-color: #4C1D95;
+            outline: none;
+        }
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 8px 14px 8px 36px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
+            background: #f8fafc;
+            transition: all 0.3s;
+        }
+        .search-box input:focus {
+            border-color: #4C1D95;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+        }
+        .search-box .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+        }
+        .badge {
+            display: inline-block;
+            padding: 3px 12px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .badge-success { background: #d1fae5; color: #059669; }
+        .badge-warning { background: #fef3c7; color: #d97706; }
+        .badge-danger { background: #fee2e2; color: #dc2626; }
+        .badge-info { background: #dbeafe; color: #2563eb; }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 99998;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(4px);
+        }
+        .modal-overlay.active { display: flex; }
+        .modal-content {
+            background: white;
+            border-radius: 16px;
+            padding: 30px;
+            max-width: 850px;
+            width: 95%;
+            max-height: 90vh;
+            overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            position: relative;
+        }
+        .modal-close {
+            position: absolute;
+            top: 14px;
+            right: 18px;
+            background: none;
+            border: none;
+            font-size: 26px;
+            color: #94a3b8;
+            cursor: pointer;
+        }
+        .modal-close:hover { color: #1e293b; }
+        .finance-form-group { margin-bottom: 12px; }
+        .finance-form-group label {
+            font-weight: 600;
+            font-size: 13px;
+            color: #475569;
+            display: block;
+            margin-bottom: 4px;
+        }
+        .form-control {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 8px;
+            font-size: 13px;
+        }
+        .form-control:focus {
+            border-color: #4C1D95;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+        }
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 14px 24px;
+            border-radius: 10px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            animation: slideIn 0.3s ease;
+            max-width: 400px;
+        }
+        .toast-success { background: #059669; }
+        .toast-error { background: #dc2626; }
+        .toast-warning { background: #f59e0b; color: #0A3D62; }
+        .toast-info { background: #3b82f6; }
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+        @media (max-width: 768px) {
+            .finance-sidebar { transform: translateX(-100%); width: 280px; }
+            .finance-sidebar.open { transform: translateX(0); }
+            .finance-main { margin-left: 0; padding: 20px; }
+            .finance-mobile-toggle { display: block; }
+            .cards { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
+            .filter-bar { flex-direction: column; align-items: stretch; }
+            .filter-bar input, .filter-bar select { min-width: 100%; }
+            .payroll-summary-grid { grid-template-columns: 1fr 1fr; }
+            .search-box { min-width: 100%; }
+        }
+        @media (max-width: 480px) {
+            .finance-main { padding: 14px; }
+            .cards { grid-template-columns: 1fr 1fr; }
+            .modal-content { padding: 20px; }
+            .payroll-summary-grid { grid-template-columns: 1fr 1fr; }
+        }
+        .table-scroll { max-height: 500px; overflow-y: auto; position: relative; }
+        .highlight { background: #fef3c7; padding: 0 2px; border-radius: 2px; font-weight: 600; }
+        .quick-stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        .quick-stats span { color: #475569; }
+        .quick-stats strong { color: #0A3D62; }
+        .no-results { text-align: center; padding: 40px; color: #94a3b8; }
+        .no-results i { font-size: 48px; display: block; margin-bottom: 16px; }
+    `;
+    
+    const styleTag = document.createElement('style');
+    styleTag.textContent = styles;
+    document.head.appendChild(styleTag);
+})();
 
 // ============================================================
 // INITIALIZATION
 // ============================================================
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('💰 Finance Module starting...');
-    
-    // HIDE .html EXTENSION
-    if (window.location.pathname.endsWith('.html')) {
-        const cleanPath = window.location.pathname.replace(/\.html$/, '');
-        window.history.replaceState({}, '', cleanPath);
-    }
-    
-    // Set current date
     updateCurrentDate();
-    
-    // Initialize tabs
-    initFinanceTabs();
-    
-    // Set default payment date
-    const paymentDate = document.getElementById('paymentDate');
-    if (paymentDate) {
-        const today = new Date().toISOString().split('T')[0];
-        paymentDate.value = today;
-    }
-    
-    // Load student dropdown for payment form
+    initSupabase();
+    setupTabs();
     loadStudentDropdown();
-    
-    // Load all data
-    setTimeout(loadAllData, 500);
-    
-    // Load balance alerts
-    setTimeout(loadBalanceAlerts, 1000);
+    setTimeout(() => { showTab('dashboard'); }, 500);
+    updateLastUpdated();
+    setInterval(updateLastUpdated, 30000);
+    document.querySelectorAll('.modal-overlay').forEach(modal => {
+        modal.addEventListener('click', function(e) {
+            if (e.target === this) this.classList.remove('active');
+        });
+    });
+    console.log('✅ Finance Module initialized');
 });
 
 // ============================================================
-// DATE HELPERS
+// SUPABASE
 // ============================================================
+
+function initSupabase() {
+    if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
+        sbClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sb = sbClient;
+        console.log('✅ Supabase initialized');
+        return true;
+    }
+    console.warn('⚠️ Supabase not loaded');
+    return false;
+}
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
+function formatCurrency(amount) {
+    if (amount === null || amount === undefined || isNaN(amount)) return 'KES 0';
+    const num = parseFloat(amount);
+    if (isNaN(num)) return 'KES 0';
+    return 'KES ' + num.toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+}
+
+function formatDate(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+function formatDateTime(dateString) {
+    if (!dateString) return '-';
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return dateString;
+    return date.toLocaleDateString('en-KE', { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+}
+
+function showToast(message, type = 'info') {
+    const container = document.getElementById('financeToastContainer');
+    if (!container) return;
+    const toast = document.createElement('div');
+    toast.className = `toast toast-${type}`;
+    const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+    toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i> ${message}`;
+    container.appendChild(toast);
+    setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateX(20px)';
+        toast.style.transition = 'all 0.3s ease';
+        setTimeout(() => toast.remove(), 300);
+    }, 4000);
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.classList.remove('active');
+}
+
+function toggleSidebar() {
+    document.getElementById('financeSidebar')?.classList.toggle('open');
+}
+
+function logoutFinance() {
+    if (confirm('Are you sure you want to logout?')) {
+        localStorage.removeItem('finance_user');
+        sessionStorage.removeItem('finance_user');
+        showToast('Logging out...', 'info');
+        setTimeout(() => { window.location.href = 'financelogin.html'; }, 500);
+    }
+}
+
+function goToMainDashboard() {
+    window.location.href = '/home';
+}
 
 function updateCurrentDate() {
     const dateDisplay = document.getElementById('currentDate');
@@ -65,205 +533,55 @@ function updateCurrentDate() {
     }
 }
 
-function formatDate(dateString) {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const options = { day: '2-digit', month: 'short', year: 'numeric' };
-    return date.toLocaleDateString('en-KE', options);
-}
-
-function formatDateTime(dateString) {
-    if (!dateString) return '-';
-    const date = new Date(dateString);
-    if (isNaN(date.getTime())) return dateString;
-    const options = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
-    return date.toLocaleDateString('en-KE', options);
-}
-
-function formatCurrency(amount) {
-    if (amount === null || amount === undefined) return 'KES 0';
-    return 'KES ' + parseFloat(amount).toLocaleString();
-}
-
-// ============================================================
-// USER AUTHENTICATION
-// ============================================================
-
-function getFinanceUser() {
-    try {
-        let user = JSON.parse(localStorage.getItem('finance_user') || 'null');
-        if (user) return user;
-        user = JSON.parse(sessionStorage.getItem('finance_user') || 'null');
-        if (user) return user;
-        return null;
-    } catch (e) {
-        console.error('Error getting user:', e);
-        return null;
-    }
-}
-
-function isFinanceAuthenticated() {
-    const user = getFinanceUser();
-    if (!user) return false;
-    if (!user.token) return false;
-    return true;
+function updateLastUpdated() {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+    const el = document.getElementById('lastUpdatedTime');
+    if (el) el.textContent = timeStr;
 }
 
 // ============================================================
 // TAB NAVIGATION
 // ============================================================
 
-function initFinanceTabs() {
-    console.log('🔧 Initializing tabs...');
-    
-    const tabLinks = document.querySelectorAll('.finance-nav a[data-tab]');
-    console.log('📋 Found nav links:', tabLinks.length);
-    
-    tabLinks.forEach(link => {
-        const newLink = link.cloneNode(true);
-        link.parentNode.replaceChild(newLink, link);
-        
-        const tabId = newLink.getAttribute('data-tab');
-        newLink.addEventListener('click', function(e) {
+function setupTabs() {
+    document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
+        link.addEventListener('click', function(e) {
             e.preventDefault();
-            e.stopPropagation();
-            console.log('🔗 Nav link clicked:', tabId);
-            showFinanceTab(tabId);
+            const tabId = this.dataset.tab;
+            showTab(tabId);
+            if (window.innerWidth <= 768) {
+                document.getElementById('financeSidebar')?.classList.remove('open');
+            }
         });
-        console.log('✅ Nav link attached:', tabId);
     });
-    
-    setTimeout(() => {
-        showFinanceTab('dashboard');
-    }, 100);
 }
 
-function showFinanceTab(tabId) {
-    console.log('📂 Opening tab:', tabId);
-    
+function showTab(tabId) {
     document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
         link.classList.remove('active');
-        if (link.getAttribute('data-tab') === tabId) {
-            link.classList.add('active');
-        }
+        if (link.dataset.tab === tabId) link.classList.add('active');
     });
-    
-    document.querySelectorAll('.finance-tab-content, .tab-content').forEach(tab => {
+    document.querySelectorAll('.tab-content').forEach(tab => {
         tab.style.display = 'none';
         tab.classList.remove('active');
     });
-    
-    const target = document.getElementById(`tab-${tabId}`);
+    const target = document.getElementById('tab-' + tabId);
     if (target) {
         target.style.display = 'block';
         target.classList.add('active');
-        console.log('✅ Tab opened:', tabId);
-    } else {
-        console.warn('⚠️ Tab not found:', tabId);
     }
-    
-    loadTabData(tabId);
-}
-
-function loadTabData(tabId) {
-    switch(tabId) {
-        case 'dashboard':
-            loadDashboardData();
-            break;
-        case 'accounts':
-            loadAccounts();
-            break;
-        case 'payments':
-            loadPayments();
-            break;
-        case 'fee-structure':
-            loadFeeStructure();
-            break;
-        case 'reports':
-            break;
-        case 'transactions':
-            loadTransactions();
-            break;
-        case 'settings':
-            loadSettings();
-            break;
-    }
-}
-
-// ============================================================
-// SIDEBAR
-// ============================================================
-
-function toggleSidebar() {
-    const sidebar = document.getElementById('financeSidebar');
-    if (sidebar) {
-        sidebar.classList.toggle('open');
-        console.log('Sidebar open?', sidebar.classList.contains('open'));
-    }
-}
-
-function logoutFinance() {
-    if (confirm('Are you sure you want to logout?')) {
-        localStorage.removeItem('finance_user');
-        sessionStorage.removeItem('finance_user');
-        showToast('Logging out...', 'info');
-        setTimeout(function() {
-            window.location.href = 'financelogin.html';
-        }, 500);
-    }
-}
-
-function goToMainDashboard() {
-    window.location.href = '/home';
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    const toggleBtn = document.querySelector('.finance-mobile-toggle');
-    if (toggleBtn) {
-        toggleBtn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            toggleSidebar();
-        });
-        console.log('✅ Toggle button attached');
-    }
-});
-
-document.addEventListener('click', function(e) {
-    const sidebar = document.getElementById('financeSidebar');
-    const toggle = document.querySelector('.finance-mobile-toggle');
-    if (window.innerWidth <= 768 && sidebar && sidebar.classList.contains('open')) {
-        if (!sidebar.contains(e.target) && !toggle?.contains(e.target)) {
-            sidebar.classList.remove('open');
+    setTimeout(() => {
+        switch(tabId) {
+            case 'dashboard': loadDashboardData(); break;
+            case 'accounts': loadAccounts(); break;
+            case 'payments': loadPayments(); break;
+            case 'fee-structure': loadFeeStructure(); break;
+            case 'payroll': loadStaffData(); break;
+            case 'transactions': loadTransactions(); break;
+            case 'settings': loadSettings(); break;
         }
-    }
-});
-
-// ============================================================
-// LOAD ALL DATA
-// ============================================================
-
-async function loadAllData() {
-    try {
-        if (typeof window.financeAPI === 'undefined') {
-            console.warn('⚠️ financeAPI not loaded yet, waiting...');
-            setTimeout(loadAllData, 500);
-            return;
-        }
-        
-        console.log('📊 Loading all data...');
-        await loadDashboardData();
-        await loadAccounts();
-        await loadPayments();
-        await loadFeeStructure();
-        await loadTransactions();
-        await loadPaymentSummary();
-        console.log('✅ All data loaded');
-    } catch (error) {
-        console.error('❌ Error loading data:', error);
-        showToast('Error loading data. Please refresh.', 'error');
-    }
+    }, 300);
 }
 
 // ============================================================
@@ -271,348 +589,186 @@ async function loadAllData() {
 // ============================================================
 
 async function loadDashboardData() {
-    console.log('📊 Loading dashboard data...');
-    
     try {
-        if (typeof window.financeAPI === 'undefined') {
-            throw new Error('financeAPI not available');
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { count: totalStudents } = await sbClient
+            .from('consolidated_user_profiles_table')
+            .select('*', { count: 'exact', head: true })
+            .eq('role', 'student');
+        document.getElementById('totalStudents').textContent = totalStudents || 0;
+        document.getElementById('accountsBadge').textContent = totalStudents || 0;
+        const { data: payments } = await sbClient
+            .from('finance_payments')
+            .select('*')
+            .order('payment_date', { ascending: false });
+        if (payments) {
+            const totalCollected = payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + (p.amount || 0), 0);
+            document.getElementById('totalCollected').textContent = formatCurrency(totalCollected);
+            const today = new Date().toISOString().split('T')[0];
+            const todayPayments = payments.filter(p => p.payment_date === today && p.status === 'completed');
+            const todayTotal = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            document.getElementById('todayPayments').textContent = formatCurrency(todayTotal);
+            document.getElementById('totalTransactions').textContent = payments.length;
+            const recentTbody = document.getElementById('recentTransactions');
+            if (payments.length === 0) {
+                recentTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">No transactions found</td></tr>`;
+            } else {
+                recentTbody.innerHTML = payments.slice(0, 10).map(p => `
+                    <tr>
+                        <td>${formatDate(p.payment_date)}</td>
+                        <td><strong>${p.student_name || 'N/A'}</strong></td>
+                        <td>${p.program || '-'}</td>
+                        <td><strong>${formatCurrency(p.amount)}</strong></td>
+                        <td>${p.payment_method || '-'}</td>
+                        <td><span class="badge ${p.status === 'completed' ? 'badge-success' : p.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${p.status || 'Pending'}</span></td>
+                    </tr>
+                `).join('');
+            }
         }
-        
-        const stats = await window.financeAPI.getDashboardStats();
-        console.log('📊 Stats received:', stats);
-        
-        document.getElementById('totalStudents').textContent = stats.totalStudents || 0;
-        document.getElementById('totalCollected').textContent = formatCurrency(stats.totalCollected || 0);
-        document.getElementById('outstandingBalance').textContent = formatCurrency(stats.outstandingBalance || 0);
-        document.getElementById('overdueAccounts').textContent = stats.overdueAccounts || 0;
-        document.getElementById('todayPayments').textContent = formatCurrency(stats.todayPayments || 0);
-        document.getElementById('totalTransactions').textContent = stats.totalTransactions || 0;
-        document.getElementById('pendingApprovals').textContent = stats.pendingPayments || 0;
-        
-        // This month collections
-        const thisMonth = await calculateThisMonthCollections();
-        document.getElementById('thisMonthCollections').textContent = formatCurrency(thisMonth);
-        
-        document.getElementById('dashboardBadge').textContent = stats.overdueAccounts || 0;
-        document.getElementById('accountsBadge').textContent = stats.totalStudents || 0;
-        
-        await loadRecentTransactions();
-        await loadCharts();
-        
-        console.log('✅ Dashboard loaded');
-        
+        const { data: accounts } = await sbClient
+            .from('finance_student_accounts')
+            .select('balance')
+            .gt('balance', 0);
+        if (accounts) {
+            const outstanding = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
+            document.getElementById('outstandingBalance').textContent = formatCurrency(outstanding);
+            document.getElementById('overdueAccounts').textContent = accounts.length || 0;
+            document.getElementById('dashboardBadge').textContent = accounts.length || 0;
+        }
+        loadCharts(payments || []);
     } catch (error) {
-        console.error('❌ Error loading dashboard:', error);
-        showToast('Error loading dashboard data', 'error');
+        console.error('Error loading dashboard:', error);
     }
 }
 
-async function calculateThisMonthCollections() {
-    try {
-        const now = new Date();
-        const month = now.getMonth() + 1;
-        const year = now.getFullYear();
-        const startDate = `${year}-${String(month).padStart(2, '0')}-01`;
-        
-        const payments = await window.financeAPI.getPayments({ 
-            status: 'completed',
-            limit: 1000 
-        });
-        
-        return payments
-            .filter(p => p.payment_date && p.payment_date >= startDate)
-            .reduce((sum, p) => sum + (parseFloat(p.amount) || 0), 0);
-    } catch (e) {
-        console.error('Error calculating month collections:', e);
-        return 0;
-    }
-}
-
-async function loadRecentTransactions() {
-    try {
-        if (typeof window.financeAPI === 'undefined') {
-            return;
-        }
-        
-        const transactions = await window.financeAPI.getPayments({ limit: 10 });
-        renderRecentTransactions(transactions || []);
-    } catch (error) {
-        console.error('❌ Error loading recent transactions:', error);
-    }
-}
-
-function renderRecentTransactions(transactions) {
-    const tbody = document.getElementById('recentTransactions');
-    if (!tbody) return;
-
-    if (!transactions || transactions.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="6" style="text-align: center; padding: 30px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> No recent transactions
-                </td>
-            </tr>
-        `;
-        return;
-    }
-
-    tbody.innerHTML = transactions.map(t => {
-        const statusClass = t.status === 'completed' ? 'finance-badge-success' :
-                           t.status === 'pending' ? 'finance-badge-warning' : 'finance-badge-danger';
-        const statusLabel = t.status ? t.status.charAt(0).toUpperCase() + t.status.slice(1) : 'Pending';
-        
-        return `
-            <tr>
-                <td>${formatDate(t.payment_date)}</td>
-                <td><strong>${t.student_name || 'N/A'}</strong></td>
-                <td>${t.program || '-'}</td>
-                <td><strong>${formatCurrency(t.amount)}</strong></td>
-                <td>${t.payment_method || '-'}</td>
-                <td>
-                    <span class="finance-badge ${statusClass}">${statusLabel}</span>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-async function loadCharts() {
-    try {
-        if (monthlyChart) {
-            monthlyChart.destroy();
-            monthlyChart = null;
-        }
-        if (statusChart) {
-            statusChart.destroy();
-            statusChart = null;
-        }
-
-        let payments = [];
-        if (typeof window.financeAPI !== 'undefined') {
-            payments = await window.financeAPI.getPayments({ limit: 500 });
-        }
-        
+function loadCharts(payments) {
+    const monthlyCtx = document.getElementById('monthlyCollectionsChart');
+    if (monthlyCtx) {
+        if (monthlyChart) monthlyChart.destroy();
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const monthlyTotals = new Array(12).fill(0);
-        
-        payments.forEach(p => {
+        payments.filter(p => p.status === 'completed').forEach(p => {
             if (p.payment_date) {
                 const date = new Date(p.payment_date);
                 const month = date.getMonth();
-                monthlyTotals[month] += parseFloat(p.amount) || 0;
+                monthlyTotals[month] += p.amount || 0;
             }
         });
-
-        const monthlyCtx = document.getElementById('monthlyCollectionsChart');
-        if (monthlyCtx) {
-            monthlyChart = new Chart(monthlyCtx, {
-                type: 'bar',
-                data: {
-                    labels: months,
-                    datasets: [{
-                        label: 'Monthly Collections (KES)',
-                        data: monthlyTotals,
-                        backgroundColor: 'rgba(76, 29, 149, 0.7)',
-                        borderColor: '#4C1D95',
-                        borderWidth: 2,
-                        borderRadius: 4,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: { legend: { display: false } },
-                    scales: {
-                        y: {
-                            beginAtZero: true,
-                            ticks: { callback: function(value) { return 'KES ' + (value / 1000).toFixed(0) + 'k'; } }
-                        }
-                    }
-                }
-            });
-        }
-
-        const statusCounts = { completed: 0, pending: 0, failed: 0, refunded: 0 };
-        payments.forEach(p => {
-            if (statusCounts[p.status] !== undefined) statusCounts[p.status]++;
+        monthlyChart = new Chart(monthlyCtx, {
+            type: 'bar',
+            data: {
+                labels: months,
+                datasets: [{
+                    label: 'Monthly Collections (KES)',
+                    data: monthlyTotals,
+                    backgroundColor: 'rgba(76, 29, 149, 0.7)',
+                    borderColor: '#4C1D95',
+                    borderWidth: 2,
+                    borderRadius: 4,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { display: false } },
+                scales: { y: { beginAtZero: true, ticks: { callback: v => 'KES ' + (v/1000).toFixed(0) + 'k' } } }
+            }
         });
-
-        const statusCtx = document.getElementById('paymentStatusChart');
-        if (statusCtx) {
-            statusChart = new Chart(statusCtx, {
-                type: 'doughnut',
-                data: {
-                    labels: ['Completed', 'Pending', 'Failed', 'Refunded'],
-                    datasets: [{
-                        data: [statusCounts.completed, statusCounts.pending, statusCounts.failed, statusCounts.refunded],
-                        backgroundColor: ['#10b981', '#f59e0b', '#ef4444', '#8b5cf6'],
-                        borderWidth: 0,
-                    }]
-                },
-                options: {
-                    responsive: true,
-                    maintainAspectRatio: true,
-                    plugins: {
-                        legend: {
-                            position: 'bottom',
-                            labels: { padding: 15, usePointStyle: true, pointStyle: 'circle' }
-                        }
-                    },
-                    cutout: '60%'
-                }
-            });
-        }
-
-        console.log('✅ Charts loaded');
-
-    } catch (error) {
-        console.error('❌ Error loading charts:', error);
+    }
+    const statusCtx = document.getElementById('paymentStatusChart');
+    if (statusCtx) {
+        if (statusChart) statusChart.destroy();
+        const statusCounts = { completed: 0, pending: 0, failed: 0 };
+        payments.forEach(p => { if (statusCounts[p.status] !== undefined) statusCounts[p.status]++; });
+        statusChart = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Completed', 'Pending', 'Failed'],
+                datasets: [{
+                    data: [statusCounts.completed, statusCounts.pending, statusCounts.failed],
+                    backgroundColor: ['#10b981', '#f59e0b', '#ef4444'],
+                    borderWidth: 0,
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: { legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true } } },
+                cutout: '60%'
+            }
+        });
     }
 }
 
-function refreshFinanceData() {
-    showToast('Refreshing data...', 'info');
-    loadAllData();
-    setTimeout(() => {
-        showToast('Data refreshed successfully!', 'success');
-    }, 1000);
-}
+// ============================================================
+// STUDENT ACCOUNTS
+// ============================================================
 
 async function loadAccounts() {
-    console.log('📊 Loading student accounts with display IDs...');
-    
     try {
-        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
-        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
-        
-        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-        
-        // Get students directly from consolidated table
-        const { data, error } = await sb
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { data, error } = await sbClient
             .from('consolidated_user_profiles_table')
             .select('*')
             .eq('role', 'student')
             .eq('status', 'approved')
             .order('full_name', { ascending: true });
-        
-        if (error) {
-            console.error('❌ Error fetching students:', error);
-            showToast('Error loading student accounts', 'error');
-            return;
-        }
-        
-        // Map the data to include display_id
+        if (error) throw error;
         allAccounts = (data || []).map(s => ({
-            id: s.id,
+            ...s,
             student_id: s.user_id,
             student_name: s.full_name,
-            student_email: s.email,
-            // ✅ Use student_id as display_id (this is the human-readable ID)
             display_id: s.student_id || s.user_id,
-            program: s.program,
-            intake_year: s.intake_year,
-            current_block: s.current_block,
             balance: 0,
             total_fees_due: 0,
             total_paid: 0,
-            payment_status: 'active',
-            status: s.status,
-            phone: s.phone,
-            admission_number: s.student_id
+            payment_status: 'active'
         }));
-        
         renderAccounts(allAccounts);
-        
-        // Update account count
-        const countEl = document.getElementById('accountCount');
-        if (countEl) {
-            countEl.textContent = `Showing ${allAccounts.length} students`;
-        }
-        
-        // Load balance alerts
+        updateAccountCount(allAccounts.length);
         loadBalanceAlerts();
-        
-        console.log('✅ Student accounts loaded:', allAccounts.length);
-        console.log('✅ First student display_id:', allAccounts[0]?.display_id);
-        
+        populateProgramFilter();
+        updateQuickStats(allAccounts);
     } catch (error) {
-        console.error('❌ Error loading accounts:', error);
+        console.error('Error loading accounts:', error);
         showToast('Error loading student accounts', 'error');
-    }
-}
-function loadBalanceAlerts() {
-    const highBalanceStudents = allAccounts.filter(acc => {
-        const balance = parseFloat(acc.balance) || 0;
-        return balance > 100000;
-    });
-    
-    const banner = document.getElementById('balanceAlertBanner');
-    const countEl = document.getElementById('highBalanceCount');
-    
-    if (highBalanceStudents.length > 0 && banner) {
-        banner.style.display = 'block';
-        if (countEl) {
-            countEl.textContent = highBalanceStudents.length;
-        }
-    } else if (banner) {
-        banner.style.display = 'none';
     }
 }
 
 function renderAccounts(accounts) {
     const tbody = document.getElementById('accountsTableBody');
     if (!tbody) return;
-
     if (!accounts || accounts.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> No student accounts found
-                </td>
-            </tr>
-        `;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-info-circle"></i> No student accounts found</td></tr>`;
         return;
     }
-
+    const searchTerm = document.getElementById('accountSearch')?.value?.toLowerCase() || '';
     tbody.innerHTML = accounts.map(acc => {
-        const displayId = acc.display_id || acc.student_id || '-';
         const balance = parseFloat(acc.balance) || 0;
-        const totalFeesDue = parseFloat(acc.total_fees_due) || 0;
-        const totalPaid = parseFloat(acc.total_paid) || 0;
-        
-        let status = 'outstanding';
-        let statusLabel = '🔴 Outstanding';
-        let statusClass = 'finance-badge-danger';
-        
-        if (balance === 0) {
-            status = 'paid';
-            statusLabel = '✅ Paid';
-            statusClass = 'finance-badge-success';
-        } else if (balance > 0 && balance <= 10000) {
-            status = 'partial';
-            statusLabel = '⚠️ Partial';
-            statusClass = 'finance-badge-warning';
+        const status = balance === 0 ? 'paid' : balance > 0 && balance <= 10000 ? 'partial' : 'outstanding';
+        const statusLabel = status === 'paid' ? '✅ Paid' : status === 'partial' ? '⚠️ Partial' : '🔴 Outstanding';
+        const statusClass = status === 'paid' ? 'badge-success' : status === 'partial' ? 'badge-warning' : 'badge-danger';
+        const displayId = acc.display_id || acc.student_id || '-';
+        let highlightedName = acc.full_name || acc.student_name || 'N/A';
+        let highlightedId = displayId;
+        if (searchTerm) {
+            const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+            highlightedName = highlightedName.replace(regex, '<span class="highlight">$1</span>');
+            highlightedId = highlightedId.replace(regex, '<span class="highlight">$1</span>');
         }
-
-        const originalId = acc.student_id || acc.id || '';
-
         return `
             <tr>
-                <td><strong>${acc.student_name || 'N/A'}</strong></td>
-                <td>${displayId}</td>
+                <td><strong>${highlightedName}</strong></td>
+                <td>${highlightedId}</td>
                 <td>${acc.program || '-'}</td>
                 <td>${acc.intake_year || '-'}</td>
-                <td>${formatCurrency(totalFeesDue)}</td>
-                <td>${formatCurrency(totalPaid)}</td>
+                <td>${formatCurrency(acc.total_fees_due)}</td>
+                <td>${formatCurrency(acc.total_paid)}</td>
                 <td><strong>${formatCurrency(balance)}</strong></td>
-                <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
+                <td><span class="badge ${statusClass}">${statusLabel}</span></td>
                 <td>
-                    <button onclick="viewStudentAccount('${originalId}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button onclick="openPaymentModal('${originalId}')" class="finance-btn btn-success btn-sm" style="background: #059669; color: white; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
-                        <i class="fas fa-credit-card"></i>
-                    </button>
+                    <button onclick="openPaymentModal('${acc.user_id}')" class="btn-action btn-success btn-xs" title="Record Payment"><i class="fas fa-plus"></i></button>
+                    <button onclick="viewStudentAccount('${acc.user_id}')" class="btn-action btn-primary btn-xs" title="View Details"><i class="fas fa-eye"></i></button>
                 </td>
             </tr>
         `;
@@ -623,18 +779,14 @@ function filterAccounts() {
     const search = document.getElementById('accountSearch')?.value?.toLowerCase() || '';
     const statusFilter = document.getElementById('accountStatusFilter')?.value || 'all';
     const programFilter = document.getElementById('accountProgramFilter')?.value || 'all';
-    
     let filtered = allAccounts;
-
     if (search) {
         filtered = filtered.filter(acc => 
-            (acc.student_name || '').toLowerCase().includes(search) ||
+            (acc.full_name || acc.student_name || '').toLowerCase().includes(search) ||
             (acc.display_id || '').toLowerCase().includes(search) ||
-            (acc.student_id || '').toLowerCase().includes(search) ||
             (acc.program || '').toLowerCase().includes(search)
         );
     }
-
     if (statusFilter !== 'all') {
         filtered = filtered.filter(acc => {
             const balance = parseFloat(acc.balance) || 0;
@@ -644,17 +796,12 @@ function filterAccounts() {
             return true;
         });
     }
-
     if (programFilter !== 'all') {
         filtered = filtered.filter(acc => (acc.program || '') === programFilter);
     }
-
     renderAccounts(filtered);
-    
-    const countEl = document.getElementById('accountCount');
-    if (countEl) {
-        countEl.textContent = `Showing ${filtered.length} students`;
-    }
+    updateAccountCount(filtered.length);
+    updateQuickStats(filtered);
 }
 
 function resetAccountFilters() {
@@ -662,16 +809,95 @@ function resetAccountFilters() {
     document.getElementById('accountStatusFilter').value = 'all';
     document.getElementById('accountProgramFilter').value = 'all';
     renderAccounts(allAccounts);
-    const countEl = document.getElementById('accountCount');
-    if (countEl) {
-        countEl.textContent = `Showing ${allAccounts.length} students`;
-    }
+    updateAccountCount(allAccounts.length);
+    updateQuickStats(allAccounts);
     showToast('Filters reset!', 'info');
 }
 
-function refreshAccounts() {
-    loadAccounts();
-    showToast('Accounts refreshed with display IDs!', 'success');
+function updateAccountCount(count) {
+    const el = document.getElementById('accountCount');
+    if (el) el.textContent = `Showing ${count} students`;
+}
+
+function updateQuickStats(students) {
+    const total = students.length;
+    const paid = students.filter(s => (parseFloat(s.balance) || 0) === 0).length;
+    const partial = students.filter(s => { const b = parseFloat(s.balance) || 0; return b > 0 && b <= 10000; }).length;
+    const outstanding = students.filter(s => (parseFloat(s.balance) || 0) > 10000).length;
+    document.getElementById('statTotal').textContent = total;
+    document.getElementById('statPaid').textContent = paid;
+    document.getElementById('statPartial').textContent = partial;
+    document.getElementById('statOutstanding').textContent = outstanding;
+}
+
+function populateProgramFilter() {
+    const programs = [...new Set(allAccounts.map(s => s.program).filter(p => p))];
+    const select = document.getElementById('accountProgramFilter');
+    if (!select) return;
+    select.innerHTML = '<option value="all">All Programs</option>';
+    programs.sort().forEach(p => {
+        const option = document.createElement('option');
+        option.value = p;
+        option.textContent = p;
+        select.appendChild(option);
+    });
+}
+
+function loadBalanceAlerts() {
+    const highBalance = allAccounts.filter(acc => (parseFloat(acc.balance) || 0) > 100000);
+    const banner = document.getElementById('balanceAlertBanner');
+    if (highBalance.length > 0 && banner) {
+        banner.style.display = 'block';
+        document.getElementById('highBalanceCount').textContent = highBalance.length;
+    } else if (banner) {
+        banner.style.display = 'none';
+    }
+}
+
+function viewStudentAccount(studentId) {
+    const modal = document.getElementById('studentAccountModal');
+    if (!modal) return;
+    modal.classList.add('active');
+    document.getElementById('studentAccountBody').innerHTML = `<div style="text-align:center;padding:40px;"><div class="loading-spinner"></div><p style="margin-top:10px;color:#94a3b8;">Loading...</p></div>`;
+    const student = allAccounts.find(acc => acc.user_id === studentId);
+    setTimeout(() => {
+        if (student) {
+            const balance = parseFloat(student.balance) || 0;
+            const displayId = student.display_id || student.student_id || '-';
+            document.getElementById('studentAccountBody').innerHTML = `
+                <div style="padding:10px 0;">
+                    <h4 style="color:#0A3D62;">${student.full_name || student.student_name}</h4>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;background:#f8fafc;padding:16px;border-radius:8px;">
+                        <div><strong>ID:</strong> ${displayId}</div>
+                        <div><strong>Program:</strong> ${student.program || '-'}</div>
+                        <div><strong>Intake:</strong> ${student.intake_year || '-'}</div>
+                        <div><strong>Balance:</strong> ${formatCurrency(balance)}</div>
+                    </div>
+                    <div style="margin-top:12px;">
+                        <button onclick="closeModal('studentAccountModal'); openPaymentModal('${studentId}')" class="btn-action btn-success" style="width:100%;">
+                            <i class="fas fa-credit-card"></i> Record Payment
+                        </button>
+                    </div>
+                </div>
+            `;
+        } else {
+            document.getElementById('studentAccountBody').innerHTML = `<div style="text-align:center;padding:20px;color:#dc2626;"><i class="fas fa-exclamation-circle" style="font-size:24px;display:block;margin-bottom:10px;"></i><p>Student not found</p></div>`;
+        }
+    }, 500);
+}
+
+function viewStudentPayments(studentId) {
+    showToast('Viewing payments for student...', 'info');
+    showTab('payments');
+    setTimeout(() => {
+        const filtered = allPayments.filter(p => p.student_id === studentId);
+        if (filtered.length > 0) {
+            renderPayments(filtered);
+            showToast(`Found ${filtered.length} payments`, 'success');
+        } else {
+            showToast('No payments found for this student', 'info');
+        }
+    }, 300);
 }
 
 function showHighBalanceStudents() {
@@ -680,157 +906,42 @@ function showHighBalanceStudents() {
     document.getElementById('balanceAlertBanner').style.display = 'none';
 }
 
-function viewStudentAccount(studentId) {
-    const modal = document.getElementById('studentAccountModal');
-    if (!modal) return;
-    
-    modal.classList.add('active');
-    document.getElementById('studentAccountBody').innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div class="loading-spinner"></div>
-            <p style="margin-top: 10px; color: #94a3b8;">Loading student account...</p>
-        </div>
-    `;
-    
-    const student = allAccounts.find(acc => acc.student_id === studentId);
-    
-    setTimeout(() => {
-        if (student) {
-            const balance = parseFloat(student.balance) || 0;
-            const status = balance === 0 ? '✅ Paid in Full' :
-                          balance > 0 && balance <= 10000 ? '⚠️ Partial Payment' : '🔴 Outstanding Balance';
-            const statusColor = balance === 0 ? '#059669' :
-                               balance > 0 && balance <= 10000 ? '#d97706' : '#dc2626';
-            
-            const displayId = student.display_id || student.student_id || '-';
-            
-            document.getElementById('studentAccountBody').innerHTML = `
-                <div style="padding: 10px 0;">
-                    <h4 style="color: #0A3D62; margin-bottom: 15px;">Student: ${student.student_name || 'N/A'}</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; background: #f8fafc; padding: 16px; border-radius: 8px;">
-                        <div><strong>Student ID:</strong> ${displayId}</div>
-                        <div><strong>Program:</strong> ${student.program || '-'}</div>
-                        <div><strong>Intake:</strong> ${student.intake_year || '-'}</div>
-                        <div><strong>Balance:</strong> <strong style="color: ${statusColor}">${formatCurrency(balance)}</strong></div>
-                        <div><strong>Total Fees Due:</strong> ${formatCurrency(student.total_fees_due)}</div>
-                        <div><strong>Total Paid:</strong> ${formatCurrency(student.total_paid)}</div>
-                        <div style="grid-column: 1 / -1;"><strong>Status:</strong> <span style="color: ${statusColor}">${status}</span></div>
-                    </div>
-                    <div style="margin-top: 16px;">
-                        <button onclick="closeModal('studentAccountModal'); openPaymentModal('${studentId}')" class="btn-action btn-success" style="width: 100%;">
-                            <i class="fas fa-credit-card"></i> Record Payment
-                        </button>
-                    </div>
-                    <hr style="margin: 15px 0;">
-                    <h5 style="margin-bottom: 10px;">Recent Payments</h5>
-                    ${allPayments.filter(p => p.student_id === studentId).length > 0 ? `
-                        <ul style="list-style: none; padding: 0;">
-                            ${allPayments.filter(p => p.student_id === studentId).slice(0, 5).map(p => `
-                                <li style="padding: 8px 0; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between;">
-                                    <span>${formatDate(p.payment_date)} - ${p.payment_method || 'N/A'}</span>
-                                    <span><strong>${formatCurrency(p.amount)}</strong></span>
-                                </li>
-                            `).join('')}
-                        </ul>
-                    ` : '<p style="color: #94a3b8;">No payments found</p>'}
-                </div>
-            `;
-        } else {
-            document.getElementById('studentAccountBody').innerHTML = `
-                <div style="text-align: center; padding: 20px; color: #dc2626;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-                    <p>Student not found</p>
-                </div>
-            `;
-        }
-    }, 500);
-}
-
-function viewStudentPayments(studentId) {
-    showToast('Viewing payments for student...', 'info');
-    showFinanceTab('payments');
-    
-    setTimeout(() => {
-        const filtered = allPayments.filter(p => p.student_id === studentId);
-        if (filtered.length > 0) {
-            renderPayments(filtered);
-            showToast(`Found ${filtered.length} payments for this student`, 'success');
-        } else {
-            showToast('No payments found for this student', 'info');
-        }
-    }, 300);
+function refreshAccounts() {
+    loadAccounts();
+    showToast('Accounts refreshed!', 'success');
 }
 
 // ============================================================
 // PAYMENTS
 // ============================================================
 
-async function loadStudentDropdown() {
-    try {
-        if (typeof window.financeAPI === 'undefined') {
-            return;
-        }
-        
-        const students = await window.financeAPI.getStudents();
-        
-        const select = document.getElementById('paymentStudent');
-        if (!select) return;
-
-        select.innerHTML = '<option value="">-- Select Student --</option>';
-
-        students.forEach(student => {
-            const option = document.createElement('option');
-            option.value = student.id;
-            option.textContent = `${student.full_name || 'Student'} (${student.student_id || student.email})`;
-            select.appendChild(option);
-        });
-
-        console.log('✅ Student dropdown loaded:', students.length);
-
-    } catch (error) {
-        console.error('❌ Error loading student dropdown:', error);
-    }
-}
-
 async function loadPayments() {
-    console.log('💳 Loading payments...');
-    
     try {
-        if (typeof window.financeAPI === 'undefined') {
-            return;
-        }
-        
-        const payments = await window.financeAPI.getPayments();
-        allPayments = payments || [];
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { data, error } = await sbClient
+            .from('finance_payments')
+            .select('*')
+            .order('payment_date', { ascending: false });
+        if (error) throw error;
+        allPayments = data || [];
         renderPayments(allPayments);
         updatePaymentCount(allPayments.length);
-        console.log('✅ Payments loaded:', allPayments.length);
+        updatePaymentSummary(allPayments);
     } catch (error) {
-        console.error('❌ Error loading payments:', error);
-        showToast('Error loading payment history', 'error');
+        console.error('Error loading payments:', error);
+        showToast('Error loading payments', 'error');
     }
 }
 
 function renderPayments(payments) {
     const tbody = document.getElementById('paymentsTableBody');
     if (!tbody) return;
-
     if (!payments || payments.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> No payments found
-                </td>
-            </tr>
-        `;
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-info-circle"></i> No payments found</td></tr>`;
         return;
     }
-
     tbody.innerHTML = payments.map(p => {
-        const statusClass = p.status === 'completed' ? 'finance-badge-success' :
-                           p.status === 'pending' ? 'finance-badge-warning' : 'finance-badge-danger';
-        const statusLabel = p.status ? p.status.charAt(0).toUpperCase() + p.status.slice(1) : 'Pending';
-
+        const statusClass = p.status === 'completed' ? 'badge-success' : p.status === 'pending' ? 'badge-warning' : 'badge-danger';
         return `
             <tr>
                 <td>${formatDate(p.payment_date)}</td>
@@ -840,47 +951,24 @@ function renderPayments(payments) {
                 <td>${p.payment_method || '-'}</td>
                 <td>${p.reference_number || '-'}</td>
                 <td>${p.period || '-'}</td>
-                <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
+                <td><span class="badge ${statusClass}">${p.status || 'Pending'}</span></td>
                 <td>
-                    <button onclick="viewPaymentDetails('${p.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    <button onclick="deletePayment('${p.id}')" class="finance-btn finance-btn-danger finance-btn-sm">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <button onclick="viewPaymentDetail('${p.id}')" class="btn-action btn-primary btn-xs"><i class="fas fa-eye"></i></button>
+                    <button onclick="deletePaymentRecord('${p.id}')" class="btn-action btn-danger btn-xs"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
         `;
     }).join('');
 }
 
-// ============================================================
-// PAYMENT FILTER FUNCTIONS
-// ============================================================
-
-function filterPaymentTable() {
+function filterPayments() {
     const search = document.getElementById('paymentSearch')?.value?.toLowerCase() || '';
-    const statusFilter = document.getElementById('paymentStatusFilter')?.value || 'all';
-    const methodFilter = document.getElementById('paymentMethodFilter')?.value || 'all';
-    
-    let filtered = allPayments || [];
-
-    if (search) {
-        filtered = filtered.filter(p => 
-            (p.student_name || '').toLowerCase().includes(search) ||
-            (p.reference_number || '').toLowerCase().includes(search) ||
-            (p.student_id || '').toLowerCase().includes(search)
-        );
-    }
-
-    if (statusFilter !== 'all') {
-        filtered = filtered.filter(p => p.status === statusFilter);
-    }
-
-    if (methodFilter !== 'all') {
-        filtered = filtered.filter(p => p.payment_method === methodFilter);
-    }
-
+    const status = document.getElementById('paymentStatusFilter')?.value || 'all';
+    let filtered = allPayments.filter(p => {
+        const matchSearch = (p.student_name || '').toLowerCase().includes(search) || (p.reference_number || '').toLowerCase().includes(search);
+        const matchStatus = status === 'all' || p.status === status;
+        return matchSearch && matchStatus;
+    });
     renderPayments(filtered);
     updatePaymentCount(filtered.length);
 }
@@ -888,15 +976,61 @@ function filterPaymentTable() {
 function resetPaymentFilters() {
     document.getElementById('paymentSearch').value = '';
     document.getElementById('paymentStatusFilter').value = 'all';
-    document.getElementById('paymentMethodFilter').value = 'all';
-    filterPaymentTable();
+    renderPayments(allPayments);
+    updatePaymentCount(allPayments.length);
     showToast('Payment filters reset!', 'info');
 }
 
 function updatePaymentCount(count) {
-    const countEl = document.getElementById('paymentCount');
-    if (countEl) {
-        countEl.textContent = `Showing ${count} payments`;
+    const el = document.getElementById('paymentCount');
+    if (el) el.textContent = `Showing ${count} payments`;
+}
+
+function updatePaymentSummary(payments) {
+    const today = new Date().toISOString().split('T')[0];
+    const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+    const weekAgoStr = weekAgo.toISOString().split('T')[0];
+    const monthAgo = new Date(); monthAgo.setMonth(monthAgo.getMonth() - 1);
+    const monthAgoStr = monthAgo.toISOString().split('T')[0];
+    let todayTotal = 0, todayCount = 0, weekTotal = 0, weekCount = 0, monthTotal = 0, monthCount = 0, pendingTotal = 0, pendingCount = 0;
+    payments.forEach(p => {
+        const date = p.payment_date;
+        if (date === today && p.status === 'completed') { todayTotal += p.amount || 0; todayCount++; }
+        if (date >= weekAgoStr && p.status === 'completed') { weekTotal += p.amount || 0; weekCount++; }
+        if (date >= monthAgoStr && p.status === 'completed') { monthTotal += p.amount || 0; monthCount++; }
+        if (p.status === 'pending') { pendingTotal += p.amount || 0; pendingCount++; }
+    });
+    document.getElementById('todayPaymentSummary').textContent = formatCurrency(todayTotal);
+    document.getElementById('todayPaymentCount').textContent = todayCount;
+    document.getElementById('weekPaymentSummary').textContent = formatCurrency(weekTotal);
+    document.getElementById('weekPaymentCount').textContent = weekCount;
+    document.getElementById('monthPaymentSummary').textContent = formatCurrency(monthTotal);
+    document.getElementById('monthPaymentCount').textContent = monthCount;
+    document.getElementById('pendingPaymentSummary').textContent = formatCurrency(pendingTotal);
+    document.getElementById('pendingPaymentCount').textContent = pendingCount;
+}
+
+function viewPaymentDetail(paymentId) {
+    const payment = allPayments.find(p => p.id === paymentId);
+    if (payment) {
+        showToast(`💳 Payment: ${formatCurrency(payment.amount)} - ${payment.student_name} (${payment.status})`, 'info');
+    } else {
+        showToast('Payment not found', 'error');
+    }
+}
+
+async function deletePaymentRecord(paymentId) {
+    if (!confirm('Delete this payment?')) return;
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { error } = await sbClient.from('finance_payments').delete().eq('id', paymentId);
+        if (error) throw error;
+        showToast('Payment deleted!', 'success');
+        await loadPayments();
+        await loadDashboardData();
+    } catch (error) {
+        console.error('Error deleting payment:', error);
+        showToast('Error deleting payment', 'error');
     }
 }
 
@@ -906,238 +1040,143 @@ function refreshPayments() {
 }
 
 // ============================================================
-// PAYMENT SUMMARY
+// PAYMENT MODAL
 // ============================================================
 
-async function loadPaymentSummary() {
+async function loadStudentDropdown() {
     try {
-        const payments = await window.financeAPI.getPayments({ limit: 1000 });
-        const now = new Date();
-        const today = now.toISOString().split('T')[0];
-        
-        // Get week start (Monday)
-        const weekStart = new Date(now);
-        weekStart.setDate(now.getDate() - now.getDay() + 1);
-        const weekStartStr = weekStart.toISOString().split('T')[0];
-        
-        // Get month start
-        const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
-        
-        let todayTotal = 0, todayCount = 0;
-        let weekTotal = 0, weekCount = 0;
-        let monthTotal = 0, monthCount = 0;
-        let pendingTotal = 0, pendingCount = 0;
-        
-        payments.forEach(p => {
-            const amount = parseFloat(p.amount) || 0;
-            const date = p.payment_date;
-            
-            if (date === today && p.status === 'completed') {
-                todayTotal += amount;
-                todayCount++;
-            }
-            
-            if (date >= weekStartStr && p.status === 'completed') {
-                weekTotal += amount;
-                weekCount++;
-            }
-            
-            if (date >= monthStart && p.status === 'completed') {
-                monthTotal += amount;
-                monthCount++;
-            }
-            
-            if (p.status === 'pending') {
-                pendingTotal += amount;
-                pendingCount++;
-            }
-        });
-        
-        document.getElementById('todayPaymentSummary').textContent = formatCurrency(todayTotal);
-        document.getElementById('todayPaymentCount').textContent = todayCount;
-        document.getElementById('weekPaymentSummary').textContent = formatCurrency(weekTotal);
-        document.getElementById('weekPaymentCount').textContent = weekCount;
-        document.getElementById('monthPaymentSummary').textContent = formatCurrency(monthTotal);
-        document.getElementById('monthPaymentCount').textContent = monthCount;
-        document.getElementById('pendingPaymentSummary').textContent = formatCurrency(pendingTotal);
-        document.getElementById('pendingPaymentCount').textContent = pendingCount;
-        
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { data, error } = await sbClient
+            .from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, program, email')
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .order('full_name', { ascending: true });
+        if (error) throw error;
+        allStudents = data || [];
+        const select = document.getElementById('modalPaymentStudent');
+        if (select) {
+            select.innerHTML = '<option value="">-- Select Student --</option>';
+            allStudents.forEach(s => {
+                const option = document.createElement('option');
+                option.value = s.user_id;
+                const displayId = s.student_id || s.user_id;
+                option.textContent = `${s.full_name} (${displayId})`;
+                option.dataset.student = JSON.stringify({
+                    ...s,
+                    display_id: displayId,
+                    student_name: s.full_name,
+                    student_id: s.user_id,
+                    balance: 0
+                });
+                select.appendChild(option);
+            });
+        }
+        console.log('✅ Student dropdown loaded:', allStudents.length);
     } catch (error) {
-        console.error('Error loading payment summary:', error);
+        console.error('Error loading student dropdown:', error);
     }
 }
-
-// ============================================================
-// PAYMENT MODAL FUNCTIONS
-// ============================================================
-
-let selectedStudentForPayment = null;
 
 function openPaymentModal(studentId) {
     const modal = document.getElementById('paymentModal');
-    const studentSelect = document.getElementById('modalPaymentStudent');
-    
-    if (!modal) {
-        showToast('Payment modal not found', 'error');
-        return;
-    }
-    
-    // Reset form
     document.getElementById('paymentModalForm').reset();
     document.getElementById('modalPaymentDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('paymentStudentInfo').style.display = 'none';
-    
-    // Populate student dropdown
-    if (allAccounts && allAccounts.length > 0) {
-        studentSelect.innerHTML = '<option value="">-- Select Student --</option>';
-        allAccounts.forEach(student => {
-            const option = document.createElement('option');
-            option.value = student.student_id || student.id;
-            option.textContent = `${student.student_name} (${student.display_id || student.student_id || 'N/A'})`;
-            option.dataset.student = JSON.stringify(student);
-            studentSelect.appendChild(option);
-        });
-        
-        // If studentId provided, select that student
-        if (studentId) {
-            studentSelect.value = studentId;
-            updateStudentInfo();
-        }
+    if (allStudents.length === 0) {
+        loadStudentDropdown().then(() => populatePaymentDropdown(studentId));
+    } else {
+        populatePaymentDropdown(studentId);
     }
-    
     modal.classList.add('active');
 }
 
-function closePaymentModal() {
-    document.getElementById('paymentModal').classList.remove('active');
-    document.getElementById('paymentStudentInfo').style.display = 'none';
-    selectedStudentForPayment = null;
+function populatePaymentDropdown(studentId) {
+    const select = document.getElementById('modalPaymentStudent');
+    select.innerHTML = '<option value="">-- Select Student --</option>';
+    allStudents.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s.user_id;
+        const displayId = s.student_id || s.user_id;
+        option.textContent = `${s.full_name} (${displayId})`;
+        option.dataset.student = JSON.stringify({
+            ...s,
+            display_id: displayId,
+            student_name: s.full_name,
+            student_id: s.user_id,
+            balance: 0
+        });
+        select.appendChild(option);
+    });
+    if (studentId) {
+        select.value = studentId;
+        updateStudentInfo();
+    }
 }
 
 function updateStudentInfo() {
     const select = document.getElementById('modalPaymentStudent');
-    const selectedOption = select.options[select.selectedIndex];
-    
-    if (!selectedOption || !selectedOption.value) {
+    const option = select.options[select.selectedIndex];
+    if (!option || !option.value) {
         document.getElementById('paymentStudentInfo').style.display = 'none';
         selectedStudentForPayment = null;
         return;
     }
-    
     try {
-        const student = JSON.parse(selectedOption.dataset.student);
-        selectedStudentForPayment = student;
-        
+        selectedStudentForPayment = JSON.parse(option.dataset.student);
         document.getElementById('paymentStudentInfo').style.display = 'block';
-        document.getElementById('modalStudentName').textContent = student.student_name || 'N/A';
-        document.getElementById('modalStudentId').textContent = student.display_id || student.student_id || 'N/A';
-        document.getElementById('modalStudentProgram').textContent = student.program || 'N/A';
-        document.getElementById('modalStudentIntake').textContent = student.intake_year || 'N/A';
-        
-        const totalDue = parseFloat(student.total_fees_due) || 0;
-        const totalPaid = parseFloat(student.total_paid) || 0;
-        const balance = parseFloat(student.balance) || 0;
-        
-        document.getElementById('modalTotalDue').textContent = formatCurrency(totalDue);
-        document.getElementById('modalTotalPaid').textContent = formatCurrency(totalPaid);
-        
-        const balanceEl = document.getElementById('modalBalance');
-        balanceEl.textContent = formatCurrency(balance);
-        balanceEl.className = 'value ' + (balance > 0 ? 'negative' : balance < 0 ? 'positive' : '');
-        
-        const statusEl = document.getElementById('modalPaymentStatus');
-        if (balance === 0) {
-            statusEl.textContent = '✅ Paid in Full';
-            statusEl.style.color = '#059669';
-        } else if (balance < 10000) {
-            statusEl.textContent = '⚠️ Partial Payment';
-            statusEl.style.color = '#d97706';
-        } else {
-            statusEl.textContent = '🔴 Outstanding';
-            statusEl.style.color = '#dc2626';
-        }
-        
-        document.getElementById('studentStatusBadge').textContent = student.payment_status || 'Active';
-        document.getElementById('studentStatusBadge').className = 'badge ' + 
-            (student.payment_status === 'paid' ? 'badge-success' : 
-             student.payment_status === 'partial' ? 'badge-warning' : 'badge-danger');
-        
+        document.getElementById('modalStudentName').textContent = selectedStudentForPayment.full_name || 'N/A';
+        document.getElementById('modalStudentId').textContent = selectedStudentForPayment.display_id || 'N/A';
+        document.getElementById('modalStudentProgram').textContent = selectedStudentForPayment.program || 'N/A';
+        document.getElementById('modalBalance').textContent = formatCurrency(0);
     } catch (e) {
         console.error('Error parsing student data:', e);
-        document.getElementById('paymentStudentInfo').style.display = 'none';
     }
 }
 
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.remove('active');
+    selectedStudentForPayment = null;
+}
+
 async function recordPaymentFromModal() {
-    const student = selectedStudentForPayment;
-    const amount = parseFloat(document.getElementById('modalPaymentAmount').value);
-    const method = document.getElementById('modalPaymentMethod').value;
-    const reference = document.getElementById('modalPaymentReference').value || null;
-    const date = document.getElementById('modalPaymentDate').value;
-    const period = document.getElementById('modalPaymentPeriod').value;
-    const notes = document.getElementById('modalPaymentNotes').value || null;
-    
-    if (!student) {
-        showToast('Please select a student', 'warning');
-        return;
-    }
-    
-    if (!amount || amount <= 0) {
-        showToast('Please enter a valid amount', 'warning');
-        return;
-    }
-    
-    if (!date) {
-        showToast('Please select a payment date', 'warning');
-        return;
-    }
-    
     try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        const student = selectedStudentForPayment;
+        const amount = parseFloat(document.getElementById('modalPaymentAmount').value);
+        const method = document.getElementById('modalPaymentMethod').value;
+        const date = document.getElementById('modalPaymentDate').value;
+        const notes = document.getElementById('modalPaymentNotes').value || null;
+        if (!student) { showToast('Please select a student', 'warning'); return; }
+        if (!amount || amount <= 0) { showToast('Please enter a valid amount', 'warning'); return; }
         const paymentData = {
-            studentId: student.student_id || student.id,
-            studentName: student.student_name,
-            studentEmail: student.student_email || '',
+            student_id: student.student_id,
+            student_name: student.full_name,
+            student_email: student.email || null,
             program: student.program || 'KRCHN',
             amount: amount,
-            method: method,
-            reference: reference,
-            date: date,
-            period: period,
-            notes: notes
+            payment_method: method,
+            reference_number: 'TXN-' + Date.now().toString().slice(-8),
+            payment_date: date,
+            period: 'Term 1',
+            status: 'completed',
+            notes: notes,
+            recorded_by_name: 'Admin',
+            created_at: new Date().toISOString()
         };
-        
-        await window.financeAPI.recordPayment(paymentData);
-        
-        showToast(`Payment of ${formatCurrency(amount)} recorded successfully for ${student.student_name}!`, 'success');
-        
+        const { error } = await sbClient.from('finance_payments').insert([paymentData]);
+        if (error) throw error;
+        showToast(`Payment of ${formatCurrency(amount)} recorded for ${student.full_name}`, 'success');
         closePaymentModal();
-        loadAllData();
-        
+        await loadPayments();
+        await loadAccounts();
     } catch (error) {
         console.error('Error recording payment:', error);
         showToast('Error recording payment: ' + error.message, 'error');
     }
 }
 
-// Click outside modal to close
-document.addEventListener('click', function(e) {
-    const modal = document.getElementById('paymentModal');
-    if (e.target === modal) {
-        closePaymentModal();
-    }
-});
-
-// ESC key to close modal
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        const modal = document.getElementById('paymentModal');
-        if (modal && modal.classList.contains('active')) {
-            closePaymentModal();
-        }
-    }
-});
-
-async function recordPayment() {
+function recordPayment() {
     const studentId = document.getElementById('paymentStudent')?.value;
     const amount = parseFloat(document.getElementById('paymentAmount')?.value);
     const method = document.getElementById('paymentMethod')?.value;
@@ -1145,420 +1184,292 @@ async function recordPayment() {
     const date = document.getElementById('paymentDate')?.value;
     const period = document.getElementById('paymentPeriod')?.value;
     const notes = document.getElementById('paymentNotes')?.value || null;
-
     if (!studentId || !amount || !date) {
         showToast('Please fill in all required fields.', 'warning');
         return;
     }
-
     if (amount <= 0) {
         showToast('Please enter a valid amount.', 'warning');
         return;
     }
-
-    try {
-        if (typeof window.financeAPI === 'undefined') {
-            showToast('Finance API not available', 'error');
-            return;
-        }
-
-        const student = allAccounts.find(a => a.student_id === studentId);
-        if (!student) {
-            showToast('Student not found. Please select a valid student.', 'error');
-            return;
-        }
-
-        const paymentData = {
-            studentId: studentId,
-            studentName: student.student_name || 'Student',
-            studentEmail: student.student_email || '',
-            program: student.program || 'KRCHN',
-            amount: amount,
-            method: method,
-            reference: reference,
-            date: date,
-            period: period,
-            notes: notes
-        };
-
-        await window.financeAPI.recordPayment(paymentData);
-
-        showToast(`Payment of ${formatCurrency(amount)} recorded successfully!`, 'success');
-        
-        document.getElementById('paymentForm')?.reset();
-        document.getElementById('paymentDate').value = new Date().toISOString().split('T')[0];
-        
-        loadAllData();
-
-    } catch (error) {
-        console.error('❌ Error recording payment:', error);
-        showToast('Error recording payment: ' + error.message, 'error');
-    }
-}
-
-function viewPaymentDetails(paymentId) {
-    const modal = document.getElementById('paymentDetailModal');
-    if (!modal) return;
-    
-    modal.classList.add('active');
-    document.getElementById('paymentDetailBody').innerHTML = `
-        <div style="text-align: center; padding: 40px;">
-            <div class="loading-spinner"></div>
-            <p style="margin-top: 10px; color: #94a3b8;">Loading payment details...</p>
-        </div>
-    `;
-    
-    const payment = allPayments.find(p => p.id === paymentId);
-    
-    setTimeout(() => {
-        if (payment) {
-            const statusClass = payment.status === 'completed' ? 'finance-badge-success' :
-                               payment.status === 'pending' ? 'finance-badge-warning' : 'finance-badge-danger';
-            const statusLabel = payment.status ? payment.status.charAt(0).toUpperCase() + payment.status.slice(1) : 'Pending';
-            
-            document.getElementById('paymentDetailBody').innerHTML = `
-                <div style="padding: 10px 0;">
-                    <h4 style="color: #0A3D62; margin-bottom: 15px;">Payment Receipt</h4>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; background: #f8fafc; padding: 16px; border-radius: 8px;">
-                        <div><strong>Transaction ID:</strong> ${payment.id}</div>
-                        <div><strong>Date:</strong> ${formatDate(payment.payment_date)}</div>
-                        <div><strong>Student:</strong> ${payment.student_name}</div>
-                        <div><strong>Amount:</strong> <strong>${formatCurrency(payment.amount)}</strong></div>
-                        <div><strong>Method:</strong> ${payment.payment_method}</div>
-                        <div><strong>Reference:</strong> ${payment.reference_number || '-'}</div>
-                        <div><strong>Period:</strong> ${payment.period || '-'}</div>
-                        <div><strong>Status:</strong> <span class="finance-badge ${statusClass}">${statusLabel}</span></div>
-                    </div>
-                    ${payment.notes ? `<div style="margin-top: 12px;"><strong>Notes:</strong> ${payment.notes}</div>` : ''}
-                </div>
-            `;
-        } else {
-            document.getElementById('paymentDetailBody').innerHTML = `
-                <div style="text-align: center; padding: 20px; color: #dc2626;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-                    <p>Payment not found</p>
-                </div>
-            `;
-        }
-    }, 500);
-}
-
-async function deletePayment(paymentId) {
-    if (!confirm('Are you sure you want to delete this payment? This action cannot be undone.')) {
+    const student = allAccounts.find(a => a.student_id === studentId || a.user_id === studentId);
+    if (!student) {
+        showToast('Student not found.', 'error');
         return;
     }
-
-    try {
-        if (typeof window.financeAPI !== 'undefined') {
-            await window.financeAPI.deletePayment(paymentId);
-        }
-        showToast('Payment deleted successfully.', 'success');
-        loadAllData();
-    } catch (error) {
-        console.error('Error deleting payment:', error);
-        showToast('Error deleting payment: ' + error.message, 'error');
-    }
+    selectedStudentForPayment = student;
+    document.getElementById('modalPaymentAmount').value = amount;
+    document.getElementById('modalPaymentMethod').value = method || 'Cash';
+    document.getElementById('modalPaymentDate').value = date;
+    document.getElementById('modalPaymentNotes').value = notes || '';
+    recordPaymentFromModal();
 }
 
 // ============================================================
-// BULK IMPORT FUNCTIONS
-// ============================================================
-
-function openBulkPaymentModal() {
-    document.getElementById('bulkImportModal').classList.add('active');
-}
-
-function handleBulkFileUpload(event) {
-    const file = event.target.files[0];
-    if (file) {
-        showToast(`File selected: ${file.name}`, 'success');
-    }
-}
-
-function downloadTemplate() {
-    showToast('Downloading template...', 'info');
-    const headers = 'student_id,amount,payment_method,reference,payment_date,period\n';
-    const sample = 'STU001,5000,M-Pesa,TXN123,2026-01-01,Term 1\n';
-    const blob = new Blob([headers + sample], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'bulk_payment_template.csv';
-    a.click();
-    URL.revokeObjectURL(url);
-}
-
-function processBulkImport() {
-    showToast('Processing bulk import...', 'info');
-}
-
-// ============================================================
-// SEND REMINDERS
-// ============================================================
-
-function sendPaymentReminders() {
-    showToast('Sending payment reminders...', 'info');
-}
-
-// ============================================================
-// LOAD AUDIT LOG
-// ============================================================
-
-function loadAuditLog() {
-    const container = document.getElementById('auditLogContainer');
-    if (!container) return;
-    
-    container.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading audit log...</div>`;
-    
-    const recentPayments = allPayments.slice(0, 10);
-    
-    if (recentPayments.length === 0) {
-        container.innerHTML = `
-            <div style="text-align:center;padding:20px;color:#94a3b8;">
-                <i class="fas fa-info-circle"></i> No recent activities
-            </div>
-        `;
-        return;
-    }
-    
-    container.innerHTML = recentPayments.map(p => `
-        <div style="padding:10px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13px;">
-            <span>
-                <i class="fas fa-${p.status === 'completed' ? 'check-circle' : 'clock'}" style="color: ${p.status === 'completed' ? '#059669' : '#f59e0b'};"></i>
-                ${p.status === 'completed' ? 'Payment recorded' : 'Payment pending'} for <strong>${p.student_name || 'Unknown'}</strong>
-                ${p.amount ? `- ${formatCurrency(p.amount)}` : ''}
-            </span>
-            <span style="color:#94a3b8;font-size:11px;">${formatDate(p.payment_date)}</span>
-        </div>
-    `).join('');
-}
-
-// ============================================================
-// FEE STRUCTURE - COMPLETE WITH WORKING CALCULATION
+// FEE STRUCTURE
 // ============================================================
 
 async function loadFeeStructure() {
-    console.log('📋 Loading fee structure...');
-    
     try {
-        if (typeof window.financeAPI === 'undefined') {
-            console.warn('⚠️ financeAPI not available');
-            showToast('Finance API not available', 'error');
-            return;
-        }
-        
-        const fees = await window.financeAPI.getFeeStructure();
-        console.log('📊 Raw fee data:', fees);
-        
-        if (!fees || fees.length === 0) {
-            console.warn('⚠️ No fee structures found');
-            const container = document.getElementById('feeStructureCardsContainer');
-            if (container) {
-                container.innerHTML = `
-                    <div style="text-align:center;padding:60px;color:#94a3b8;">
-                        <i class="fas fa-file-invoice" style="font-size:48px;display:block;margin-bottom:16px;"></i>
-                        <h3>No Fee Structures Found</h3>
-                        <p>Click "New Fee Structure" to create one</p>
-                        <button onclick="openAddFeeModal()" class="btn-action btn-primary" style="margin-top:12px;">
-                            <i class="fas fa-plus"></i> Create Fee Structure
-                        </button>
-                    </div>
-                `;
-            }
-            return;
-        }
-        
-        allFeeStructures = fees;
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { data, error } = await sbClient
+            .from('finance_fee_structure')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        allFeeStructures = data || [];
         renderFeeStructureCards(allFeeStructures);
         updateFeeStructureCount(allFeeStructures.length);
-        console.log('✅ Fee structure loaded:', allFeeStructures.length);
-        
     } catch (error) {
-        console.error('❌ Error loading fee structure:', error);
-        showToast('Error loading fee structure: ' + error.message, 'error');
-        
-        const container = document.getElementById('feeStructureCardsContainer');
-        if (container) {
-            container.innerHTML = `
-                <div style="text-align:center;padding:60px;color:#dc2626;">
-                    <i class="fas fa-exclamation-circle" style="font-size:48px;display:block;margin-bottom:16px;"></i>
-                    <h3>Error Loading Fee Structures</h3>
-                    <p>${error.message}</p>
-                    <button onclick="loadFeeStructure()" class="btn-action btn-primary" style="margin-top:12px;">
-                        <i class="fas fa-sync"></i> Retry
-                    </button>
-                </div>
-            `;
-        }
+        console.error('Error loading fee structures:', error);
+        showToast('Error loading fee structures', 'error');
+        document.getElementById('feeStructureCardsContainer').innerHTML = `<div style="text-align:center;padding:40px;color:#dc2626;"><i class="fas fa-exclamation-circle" style="font-size:32px;display:block;margin-bottom:10px;"></i>Error loading fee structures</div>`;
     }
 }
 
 function renderFeeStructureCards(fees) {
     const container = document.getElementById('feeStructureCardsContainer');
-    if (!container) {
-        console.warn('⚠️ Container not found: feeStructureCardsContainer');
-        return;
-    }
-    
-    console.log('📊 Rendering fee structures:', fees.length);
-    
+    if (!container) return;
     if (!fees || fees.length === 0) {
-        container.innerHTML = `
-            <div style="text-align:center;padding:60px;color:#94a3b8;">
-                <i class="fas fa-file-invoice" style="font-size:48px;display:block;margin-bottom:16px;"></i>
-                <h3>No Fee Structures</h3>
-                <p>Click "New Fee Structure" to create one</p>
-                <button onclick="openAddFeeModal()" class="btn-action btn-primary" style="margin-top:12px;">
-                    <i class="fas fa-plus"></i> Create Fee Structure
-                </button>
-            </div>
-        `;
+        container.innerHTML = `<div style="text-align:center;padding:60px;color:#94a3b8;"><i class="fas fa-file-invoice" style="font-size:48px;display:block;margin-bottom:16px;"></i><p>No fee structures found. Click "New Fee Structure" to create one.</p></div>`;
         return;
     }
-    
-    let html = '';
-    
-    fees.forEach(fee => {
+    container.innerHTML = fees.map(fee => {
         const components = fee.components || [];
-        const terms = fee.terms || [];
-        const payment = fee.payment || {};
-        
-        // ✅ Calculate total from components + hostel
         let total = 0;
-        components.forEach(c => {
-            total += parseFloat(c.amount) || 0;
-        });
-        if (fee.hostel) {
-            total += parseFloat(fee.hostel) || 0;
-        }
-        
-        html += `
-            <div class="fee-structure-pdf-card" style="background:white;border-radius:12px;border:1px solid #e5e7eb;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
-                <!-- HEADER -->
-                <div style="background:linear-gradient(135deg, #0A3D62, #1a5a7a);padding:20px 24px;color:white;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:15px;">
+        components.forEach(c => { total += parseFloat(c.amount) || 0; });
+        if (fee.hostel) total += parseFloat(fee.hostel) || 0;
+        return `
+            <div style="background:white;border-radius:12px;padding:20px;border:1px solid #e5e7eb;margin-bottom:16px;border-left:4px solid ${fee.is_active ? '#059669' : '#dc2626'};">
+                <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
                     <div>
-                        <div style="font-size:18px;font-weight:700;">${fee.program || 'N/A'}</div>
-                        <div style="font-size:13px;color:rgba(255,255,255,0.8);margin-top:4px;">
-                            ${fee.level || ''} ${fee.program_code ? '· ' + fee.program_code : ''}
-                            ${fee.duration ? '· ' + fee.duration : ''}
-                            ${fee.mode ? '· ' + fee.mode : ''}
-                        </div>
+                        <h4 style="margin:0;color:#0A3D62;font-size:16px;">${fee.program || 'N/A'} <span style="font-size:12px;color:#94a3b8;font-weight:normal;">${fee.block_term || ''}</span></h4>
+                        <p style="margin:4px 0 0 0;font-size:13px;color:#64748b;">${fee.level || 'N/A'} | ${fee.duration || 'N/A'} | ${fee.mode || 'N/A'}</p>
                     </div>
-                    <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;">
-                        <span style="background:rgba(255,255,255,0.15);padding:4px 14px;border-radius:20px;font-size:12px;">
-                            📅 ${fee.intake_year || '2026'}
-                        </span>
-                        <span style="background:rgba(255,255,255,0.15);padding:4px 14px;border-radius:20px;font-size:12px;">
-                            ${fee.block_term || 'Term 1'}
-                        </span>
-                        <span style="background:${fee.is_active !== false ? 'rgba(16,185,129,0.3)' : 'rgba(239,68,68,0.3)'};padding:4px 14px;border-radius:20px;font-size:12px;font-weight:600;">
-                            ${fee.is_active !== false ? '✅ Active' : '❌ Inactive'}
-                        </span>
+                    <div style="text-align:right;">
+                        <span class="badge ${fee.is_active ? 'badge-success' : 'badge-danger'}">${fee.is_active ? '✅ Active' : '❌ Inactive'}</span>
+                        <div style="font-size:20px;font-weight:700;color:#059669;margin-top:4px;">${formatCurrency(total)}</div>
                     </div>
                 </div>
-                
-                <!-- BODY -->
-                <div style="padding:20px 24px;">
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
-                        <!-- Left Column: Components -->
-                        <div>
-                            <h5 style="color:#0A3D62;margin:0 0 12px 0;font-size:14px;">
-                                <i class="fas fa-list" style="color:#4C1D95;"></i> Fee Components
-                            </h5>
-                            ${components.length > 0 ? components.map(c => `
-                                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;">
-                                    <span style="color:#475569;">${c.label || c.name || 'N/A'}</span>
-                                    <span style="font-weight:600;color:#0A3D62;">KES ${(c.amount || 0).toLocaleString()}</span>
-                                </div>
-                            `).join('') : '<div style="color:#94a3b8;font-size:13px;">No components defined</div>'}
-                            
-                            ${fee.hostel ? `
-                                <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #f1f5f9;font-size:13px;background:#fef3c7;margin-top:4px;border-radius:4px;padding:6px 10px;">
-                                    <span style="color:#92400e;">🏠 Hostel Fee (Optional)</span>
-                                    <span style="font-weight:600;color:#92400e;">KES ${(fee.hostel || 0).toLocaleString()}</span>
-                                </div>
-                            ` : ''}
-                            
-                            <div style="display:flex;justify-content:space-between;padding:8px 0;border-top:2px solid #4C1D95;margin-top:8px;font-size:15px;font-weight:700;">
-                                <span style="color:#0A3D62;">TOTAL</span>
-                                <span style="color:#4C1D95;">KES ${(total || 0).toLocaleString()}</span>
+                ${components.length > 0 ? `
+                    <div style="margin-top:12px;display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:6px 20px;background:#f8fafc;padding:12px;border-radius:8px;border:1px solid #e5e7eb;">
+                        ${components.map(c => `
+                            <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;border-bottom:1px solid #f1f5f9;">
+                                <span style="color:#475569;">${c.label || c.name || 'Component'}</span>
+                                <span style="font-weight:600;color:#0A3D62;">${formatCurrency(c.amount)}</span>
                             </div>
-                        </div>
-                        
-                        <!-- Right Column: Payment Info & Terms -->
-                        <div>
-                            <h5 style="color:#0A3D62;margin:0 0 12px 0;font-size:14px;">
-                                <i class="fas fa-credit-card" style="color:#4C1D95;"></i> Payment Information
-                            </h5>
-                            <div style="font-size:13px;color:#475569;line-height:1.8;">
-                                <div><strong>📱 M-Pesa:</strong> ${payment.mpesa || 'N/A'}</div>
-                                <div><strong>🏦 Bank:</strong> ${payment.bank || 'N/A'}</div>
-                                <div><strong>📧 Email:</strong> ${payment.email || 'N/A'}</div>
-                                <div><strong>📱 WhatsApp:</strong> ${payment.whatsapp || 'N/A'}</div>
+                        `).join('')}
+                        ${fee.hostel ? `
+                            <div style="display:flex;justify-content:space-between;font-size:13px;padding:2px 0;border-bottom:1px solid #f1f5f9;grid-column:1/-1;color:#d97706;font-weight:600;">
+                                <span>🏠 HOSTEL FEE (Optional)</span>
+                                <span>${formatCurrency(fee.hostel)}</span>
                             </div>
-                            
-                            <h5 style="color:#0A3D62;margin:16px 0 8px 0;font-size:14px;">
-                                <i class="fas fa-file-contract" style="color:#4C1D95;"></i> Terms
-                            </h5>
-                            <ul style="font-size:12px;color:#64748b;padding-left:16px;margin:0;line-height:1.8;">
-                                ${terms.length > 0 ? terms.slice(0, 3).map(t => `<li>${t}</li>`).join('') : '<li>No terms defined</li>'}
-                                ${terms.length > 3 ? `<li>+${terms.length - 3} more</li>` : ''}
-                            </ul>
+                        ` : ''}
+                        <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-top:2px solid #4C1D95;grid-column:1/-1;font-weight:700;">
+                            <span style="color:#0A3D62;">TOTAL</span>
+                            <span style="color:#059669;">${formatCurrency(total)}</span>
                         </div>
                     </div>
+                ` : '<div style="color:#94a3b8;font-size:13px;margin-top:8px;">No components defined</div>'}
+                <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12px;color:#64748b;">
+                    <span><i class="fas fa-calendar"></i> Intake: ${fee.intake_year || '2026'}</span>
+                    ${fee.payment?.mpesa ? `<span><i class="fas fa-phone"></i> M-Pesa: ${fee.payment.mpesa.substring(0, 30)}${fee.payment.mpesa.length > 30 ? '...' : ''}</span>` : ''}
                 </div>
-                
-                <!-- FOOTER -->
-                <div style="background:#f8fafc;padding:12px 24px;border-top:1px solid #e5e7eb;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                    <span style="font-size:11px;color:#94a3b8;">
-                        <i class="fas fa-lock" style="color:#10b981;"></i> Secure Payment
-                    </span>
-                    <div style="display:flex;gap:8px;">
-                        <button onclick="openEditFeeModal('${fee.id}')" class="btn-action btn-primary btn-sm" style="background:#4C1D95;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;">
-                            <i class="fas fa-edit"></i> Edit
-                        </button>
-                        <button onclick="duplicateFeeStructure('${fee.id}')" class="btn-action btn-outline btn-sm" style="background:transparent;color:#475569;border:1px solid #e2e8f0;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;">
-                            <i class="fas fa-copy"></i> Duplicate
-                        </button>
-                        <button onclick="deleteFeeStructure('${fee.id}')" class="btn-action btn-danger btn-sm" style="background:#dc2626;color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:12px;">
-                            <i class="fas fa-trash"></i> Delete
-                        </button>
-                    </div>
+                <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;border-top:1px solid #f1f5f9;padding-top:12px;">
+                    <button onclick="openEditFeeModal('${fee.id}')" class="btn-action btn-primary btn-sm" style="padding:4px 12px;font-size:12px;"><i class="fas fa-edit"></i> Edit</button>
+                    <button onclick="duplicateFeeStructure('${fee.id}')" class="btn-action btn-outline btn-sm" style="padding:4px 12px;font-size:12px;"><i class="fas fa-copy"></i> Duplicate</button>
+                    <button onclick="toggleFeeStructure('${fee.id}')" class="btn-action ${fee.is_active ? 'btn-warning' : 'btn-success'} btn-sm" style="padding:4px 12px;font-size:12px;"><i class="fas ${fee.is_active ? 'fa-pause' : 'fa-play'}"></i> ${fee.is_active ? 'Deactivate' : 'Activate'}</button>
+                    <button onclick="deleteFeeStructure('${fee.id}')" class="btn-action btn-danger btn-sm" style="padding:4px 12px;font-size:12px;"><i class="fas fa-trash"></i> Delete</button>
                 </div>
             </div>
         `;
-    });
-    
-    container.innerHTML = html;
+    }).join('');
 }
-// ============================================================
-// FEE STRUCTURE - TOGGLE ACTIVE/INACTIVE
-// ============================================================
+
+function updateFeeStructureCount(count) {
+    const el = document.getElementById('feeStructureCount');
+    if (el) el.textContent = `Showing ${count} fee structures`;
+}
+
+function updateFeeTotalPreview() {
+    const compAmounts = document.querySelectorAll('.comp-amount');
+    let total = 0;
+    compAmounts.forEach(input => { const val = parseFloat(input.value) || 0; total += val; });
+    const hostel = parseFloat(document.getElementById('fee_hostel')?.value) || 0;
+    total += hostel;
+    const previewEl = document.getElementById('feeTotalPreview');
+    if (previewEl) previewEl.textContent = 'KES ' + total.toLocaleString();
+}
+
+function addFeeComponentRow() {
+    const container = document.getElementById('feeComponentsContainer');
+    const row = document.createElement('div');
+    row.className = 'fee-component-row';
+    row.style.cssText = 'display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;';
+    row.innerHTML = `
+        <input type="text" class="form-control comp-name" placeholder="Component name" oninput="updateFeeTotalPreview()">
+        <input type="number" class="form-control comp-amount" placeholder="Amount" oninput="updateFeeTotalPreview()">
+        <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(row);
+    updateFeeTotalPreview();
+}
+
+function removeFeeComponentRow(button) {
+    const row = button.closest('.fee-component-row');
+    if (row) { row.remove(); updateFeeTotalPreview(); }
+}
+
+function addFeeTermRow() {
+    const container = document.getElementById('feeTermsContainer');
+    const row = document.createElement('div');
+    row.className = 'fee-term-row';
+    row.style.cssText = 'display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;';
+    row.innerHTML = `
+        <input type="text" class="form-control term-text" placeholder="Enter term">
+        <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs"><i class="fas fa-times"></i></button>
+    `;
+    container.appendChild(row);
+}
+
+function removeFeeTermRow(button) {
+    const row = button.closest('.fee-term-row');
+    if (row) row.remove();
+}
+
+function openAddFeeModal() {
+    const modal = document.getElementById('feeStructureModal');
+    document.getElementById('feeStructureForm').reset();
+    document.getElementById('feeStructureId').value = '';
+    document.getElementById('feeModalTitle').innerHTML = '<i class="fas fa-plus-circle"></i> Add Fee Structure';
+    modal.classList.add('active');
+    updateFeeTotalPreview();
+}
+
+function openEditFeeModal(feeId) {
+    const fee = allFeeStructures.find(f => f.id === feeId);
+    if (!fee) { showToast('Fee structure not found', 'error'); return; }
+    const modal = document.getElementById('feeStructureModal');
+    document.getElementById('feeModalTitle').innerHTML = '<i class="fas fa-edit"></i> Edit Fee Structure';
+    document.getElementById('feeStructureId').value = feeId;
+    document.getElementById('fee_program_name').value = fee.program || '';
+    document.getElementById('fee_program_code').value = fee.program_code || '';
+    document.getElementById('fee_level').value = fee.level || 'Diploma';
+    document.getElementById('fee_duration').value = fee.duration || '';
+    document.getElementById('fee_mode').value = fee.mode || 'Physical/Online';
+    document.getElementById('fee_block_term').value = fee.block_term || 'Term 1';
+    document.getElementById('fee_intake_year').value = fee.intake_year || '2026';
+    document.getElementById('fee_hostel').value = fee.hostel || 18000;
+    document.getElementById('fee_status').value = fee.is_active ? 'active' : 'inactive';
+    const payment = fee.payment || {};
+    document.getElementById('fee_mpesa').value = payment.mpesa || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo';
+    document.getElementById('fee_bank').value = payment.bank || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036';
+    document.getElementById('fee_email').value = payment.email || 'nchsmfinance@gmail.com';
+    document.getElementById('fee_whatsapp').value = payment.whatsapp || '+254 103614355 | +254 703345771';
+    const compContainer = document.getElementById('feeComponentsContainer');
+    compContainer.innerHTML = '';
+    const components = fee.components || [];
+    if (components.length > 0) {
+        components.forEach(comp => {
+            compContainer.innerHTML += `
+                <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-control comp-name" placeholder="Component name" value="${(comp.label || comp.name || '').replace(/"/g, '&quot;')}" oninput="updateFeeTotalPreview()">
+                    <input type="number" class="form-control comp-amount" placeholder="Amount" value="${comp.amount || 0}" oninput="updateFeeTotalPreview()">
+                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs"><i class="fas fa-times"></i></button>
+                </div>
+            `;
+        });
+    }
+    const termContainer = document.getElementById('feeTermsContainer');
+    termContainer.innerHTML = '';
+    const terms = fee.terms || [];
+    if (terms.length > 0) {
+        terms.forEach(term => {
+            termContainer.innerHTML += `
+                <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
+                    <input type="text" class="form-control term-text" placeholder="Enter term" value="${term.replace(/"/g, '&quot;')}">
+                    <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs"><i class="fas fa-times"></i></button>
+                </div>
+            `;
+        });
+    }
+    modal.classList.add('active');
+    updateFeeTotalPreview();
+}
+
+function closeFeeStructureModal() {
+    document.getElementById('feeStructureModal').classList.remove('active');
+}
+
+async function saveFeeStructureFull() {
+    console.log('📝 Saving fee structure...');
+    const feeId = document.getElementById('feeStructureId').value || null;
+    const program = document.getElementById('fee_program_name').value.trim();
+    const programCode = document.getElementById('fee_program_code').value.trim();
+    const level = document.getElementById('fee_level').value;
+    const duration = document.getElementById('fee_duration').value.trim();
+    const mode = document.getElementById('fee_mode').value;
+    const blockTerm = document.getElementById('fee_block_term').value.trim();
+    const intakeYear = document.getElementById('fee_intake_year').value;
+    const hostel = parseFloat(document.getElementById('fee_hostel').value) || 0;
+    const status = document.getElementById('fee_status').value;
+    if (!program || !blockTerm) { showToast('Please fill in all required fields', 'warning'); return; }
+    const compNames = document.querySelectorAll('.comp-name');
+    const compAmounts = document.querySelectorAll('.comp-amount');
+    const components = [];
+    let total = 0;
+    compNames.forEach((input, index) => {
+        const name = input.value.trim();
+        const amount = parseFloat(compAmounts[index]?.value) || 0;
+        if (name) { components.push({ label: name, amount: amount }); total += amount; }
+    });
+    if (components.length === 0) { showToast('Please add at least one fee component', 'warning'); return; }
+    total += hostel;
+    const termInputs = document.querySelectorAll('.term-text');
+    const terms = [];
+    termInputs.forEach(input => { const text = input.value.trim(); if (text) terms.push(text); });
+    const payment = {
+        mpesa: document.getElementById('fee_mpesa').value.trim() || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo',
+        bank: document.getElementById('fee_bank').value.trim() || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036',
+        email: document.getElementById('fee_email').value.trim() || 'nchsmfinance@gmail.com',
+        whatsapp: document.getElementById('fee_whatsapp').value.trim() || '+254 103614355 | +254 703345771'
+    };
+    const feeData = {
+        program, program_code: programCode, level, duration, mode,
+        block_term: blockTerm, intake_year: intakeYear, total, hostel,
+        components, terms, payment,
+        is_active: status === 'active',
+        description: `${program} - ${level} Fees (${blockTerm})`
+    };
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        if (feeId) {
+            const { error } = await sbClient.from('finance_fee_structure').update({ ...feeData, updated_at: new Date().toISOString() }).eq('id', feeId);
+            if (error) throw error;
+            showToast('Fee structure updated!', 'success');
+        } else {
+            const { error } = await sbClient.from('finance_fee_structure').insert([{ ...feeData, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]);
+            if (error) throw error;
+            showToast('Fee structure added!', 'success');
+        }
+        closeFeeStructureModal();
+        await loadFeeStructure();
+    } catch (error) {
+        console.error('Error saving fee structure:', error);
+        showToast('Error saving: ' + error.message, 'error');
+    }
+}
 
 async function toggleFeeStructure(feeId) {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
-        
-        const { data, error } = await sbClient
-            .from('finance_fee_structure')
-            .select('is_active')
-            .eq('id', feeId)
-            .single();
-        
+        const { data, error } = await sbClient.from('finance_fee_structure').select('is_active').eq('id', feeId).single();
         if (error) throw error;
-        
         const newStatus = !data.is_active;
-        
-        const { error: updateError } = await sbClient
-            .from('finance_fee_structure')
-            .update({ is_active: newStatus, updated_at: new Date().toISOString() })
-            .eq('id', feeId);
-        
+        const { error: updateError } = await sbClient.from('finance_fee_structure').update({ is_active: newStatus, updated_at: new Date().toISOString() }).eq('id', feeId);
         if (updateError) throw updateError;
-        
         showToast(`Fee structure ${newStatus ? 'activated' : 'deactivated'}!`, 'success');
         await loadFeeStructure();
-        
     } catch (error) {
         console.error('Error toggling fee structure:', error);
         showToast('Error toggling fee structure', 'error');
@@ -1568,89 +1479,39 @@ async function toggleFeeStructure(feeId) {
 async function duplicateFeeStructure(feeId) {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
-        
-        const { data, error } = await sbClient
-            .from('finance_fee_structure')
-            .select('*')
-            .eq('id', feeId)
-            .single();
-        
+        const { data, error } = await sbClient.from('finance_fee_structure').select('*').eq('id', feeId).single();
         if (error) throw error;
-        
-        delete data.id;
-        delete data.created_at;
-        delete data.updated_at;
-        
+        delete data.id; delete data.created_at; delete data.updated_at;
         data.program = data.program + ' (Copy)';
         data.is_active = true;
-        
-        const { error: insertError } = await sbClient
-            .from('finance_fee_structure')
-            .insert([data]);
-        
+        const { error: insertError } = await sbClient.from('finance_fee_structure').insert([data]);
         if (insertError) throw insertError;
-        
-        showToast('Fee structure duplicated successfully!', 'success');
+        showToast('Fee structure duplicated!', 'success');
         await loadFeeStructure();
-        
     } catch (error) {
-        console.error('Error duplicating fee structure:', error);
+        console.error('Error duplicating:', error);
         showToast('Error duplicating fee structure', 'error');
     }
 }
 
 async function deleteFeeStructure(feeId) {
-    if (!confirm('Are you sure you want to delete this fee structure?')) return;
-    
+    if (!confirm('Delete this fee structure?')) return;
     try {
         if (!sbClient) { if (!initSupabase()) return; }
-        
-        const { error } = await sbClient
-            .from('finance_fee_structure')
-            .delete()
-            .eq('id', feeId);
-        
+        const { error } = await sbClient.from('finance_fee_structure').delete().eq('id', feeId);
         if (error) throw error;
-        
         showToast('Fee structure deleted!', 'success');
         await loadFeeStructure();
-        
     } catch (error) {
-        console.error('Error deleting fee structure:', error);
+        console.error('Error deleting:', error);
         showToast('Error deleting fee structure', 'error');
     }
 }
-// ============================================================
-// FEE STRUCTURE CALCULATION FUNCTIONS
-// ============================================================
-
-function updateFeeTotalPreview() {
-    const compAmounts = document.querySelectorAll('.comp-amount');
-    let total = 0;
-    compAmounts.forEach(input => {
-        const val = parseFloat(input.value) || 0;
-        total += val;
-    });
-    
-    const hostel = parseFloat(document.getElementById('fee_hostel')?.value) || 0;
-    total += hostel;
-    
-    const previewEl = document.getElementById('feeTotalPreview');
-    if (previewEl) {
-        previewEl.textContent = 'KES ' + total.toLocaleString();
-    }
-}
-
-// ============================================================
-// FEE STRUCTURE FILTER FUNCTIONS
-// ============================================================
 
 function filterFeeStructures() {
     const search = document.getElementById('feeStructureSearch')?.value?.toLowerCase() || '';
     const statusFilter = document.getElementById('feeStructureStatusFilter')?.value || 'all';
-    
     let filtered = allFeeStructures || [];
-
     if (search) {
         filtered = filtered.filter(f => 
             (f.program || '').toLowerCase().includes(search) ||
@@ -1658,12 +1519,10 @@ function filterFeeStructures() {
             (f.level || '').toLowerCase().includes(search)
         );
     }
-
     if (statusFilter !== 'all') {
         const isActive = statusFilter === 'active';
         filtered = filtered.filter(f => f.is_active === isActive);
     }
-
     renderFeeStructureCards(filtered);
     updateFeeStructureCount(filtered.length);
 }
@@ -1675,439 +1534,197 @@ function resetFeeStructureFilters() {
     showToast('Fee structure filters reset!', 'info');
 }
 
-function updateFeeStructureCount(count) {
-    const countEl = document.getElementById('feeStructureCount');
-    if (countEl) {
-        countEl.textContent = `Showing ${count} fee structures`;
-    }
-}
-
-// ============================================================
-// FEE STRUCTURE MODAL FUNCTIONS
-// ============================================================
-
-function openAddFeeModal() {
-    const modal = document.getElementById('feeStructureModal');
-    const title = document.getElementById('feeModalTitle');
-    const form = document.getElementById('feeStructureForm');
-    
-    if (form) form.reset();
-    document.getElementById('feeStructureId').value = '';
-    title.innerHTML = '<i class="fas fa-plus-circle"></i> Add Fee Structure';
-    
-    const setValue = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) el.value = value;
-    };
-    
-    setValue('fee_program_name', '');
-    setValue('fee_program_code', '');
-    setValue('fee_level', 'Diploma');
-    setValue('fee_duration', '');
-    setValue('fee_mode', 'Physical/Online');
-    setValue('fee_block_term', 'Term 1');
-    setValue('fee_intake_year', '2026');
-    setValue('fee_hostel', 18000);
-    setValue('fee_status', 'active');
-    setValue('fee_mpesa', 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo');
-    setValue('fee_bank', 'Equity Bank | Branch: Nakuru | A/C: 0130200214036');
-    setValue('fee_email', 'nchsmfinance@gmail.com');
-    setValue('fee_whatsapp', '+254 103614355 | +254 703345771');
-    
-    // Reset components with default values and oninput
-    const compContainer = document.getElementById('feeComponentsContainer');
-    if (compContainer) {
-        compContainer.innerHTML = `
-            <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE" oninput="updateFeeTotalPreview()">
-                <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000" oninput="updateFeeTotalPreview()">
-                <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE" oninput="updateFeeTotalPreview()">
-                <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000" oninput="updateFeeTotalPreview()">
-                <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE" oninput="updateFeeTotalPreview()">
-                <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000" oninput="updateFeeTotalPreview()">
-                <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        `;
-    }
-    
-    // Reset terms
-    const termContainer = document.getElementById('feeTermsContainer');
-    if (termContainer) {
-        termContainer.innerHTML = `
-            <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
-                <input type="text" class="form-control term-text" placeholder="Enter term" value="All fees are non-refundable once a student has commenced training.">
-                <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-            <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
-                <input type="text" class="form-control term-text" placeholder="Enter term" value="Payments must be made via M-Pesa Pay bill or bank deposit only. CASH NOT ACCEPTED.">
-                <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                    <i class="fas fa-times"></i>
-                </button>
-            </div>
-        `;
-    }
-    
-    updateFeeTotalPreview();
-    modal.classList.add('active');
-}
-
-function openEditFeeModal(feeId) {
-    const fee = allFeeStructures.find(f => f.id === feeId);
-    if (!fee) {
-        showToast('Fee structure not found', 'error');
-        return;
-    }
-    
-    const modal = document.getElementById('feeStructureModal');
-    const title = document.getElementById('feeModalTitle');
-    
-    title.innerHTML = '<i class="fas fa-edit"></i> Edit Fee Structure';
-    document.getElementById('feeStructureId').value = feeId;
-    
-    const setValue = (id, value) => {
-        const el = document.getElementById(id);
-        if (el) el.value = value || '';
-    };
-    
-    setValue('fee_program_name', fee.program);
-    setValue('fee_program_code', fee.program_code);
-    setValue('fee_level', fee.level || 'Diploma');
-    setValue('fee_duration', fee.duration);
-    setValue('fee_mode', fee.mode || 'Physical/Online');
-    setValue('fee_block_term', fee.block_term || 'Term 1');
-    setValue('fee_intake_year', fee.intake_year || '2026');
-    setValue('fee_hostel', fee.hostel || 18000);
-    setValue('fee_status', fee.is_active !== false ? 'active' : 'inactive');
-    
-    const payment = fee.payment || {};
-    setValue('fee_mpesa', payment.mpesa || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo');
-    setValue('fee_bank', payment.bank || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036');
-    setValue('fee_email', payment.email || 'nchsmfinance@gmail.com');
-    setValue('fee_whatsapp', payment.whatsapp || '+254 103614355 | +254 703345771');
-    
-    // Populate components with oninput
-    const compContainer = document.getElementById('feeComponentsContainer');
-    if (compContainer) {
-        compContainer.innerHTML = '';
-        const components = fee.components || [];
-        if (components.length > 0) {
-            components.forEach(comp => {
-                compContainer.innerHTML += `
-                    <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                        <input type="text" class="form-control comp-name" placeholder="Component name" value="${(comp.label || comp.name || '').replace(/"/g, '&quot;')}" oninput="updateFeeTotalPreview()">
-                        <input type="number" class="form-control comp-amount" placeholder="Amount" value="${comp.amount || 0}" oninput="updateFeeTotalPreview()">
-                        <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `;
-            });
-        } else {
-            compContainer.innerHTML = `
-                <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                    <input type="text" class="form-control comp-name" placeholder="Component name" value="TUITION FEE" oninput="updateFeeTotalPreview()">
-                    <input type="number" class="form-control comp-amount" placeholder="Amount" value="30000" oninput="updateFeeTotalPreview()">
-                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                    <input type="text" class="form-control comp-name" placeholder="Component name" value="ADMISSION FEE" oninput="updateFeeTotalPreview()">
-                    <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000" oninput="updateFeeTotalPreview()">
-                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="fee-component-row" style="display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;">
-                    <input type="text" class="form-control comp-name" placeholder="Component name" value="CAUTION FEE" oninput="updateFeeTotalPreview()">
-                    <input type="number" class="form-control comp-amount" placeholder="Amount" value="3000" oninput="updateFeeTotalPreview()">
-                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-        }
-    }
-    
-    // Populate terms
-    const termContainer = document.getElementById('feeTermsContainer');
-    if (termContainer) {
-        termContainer.innerHTML = '';
-        const terms = fee.terms || [];
-        if (terms.length > 0) {
-            terms.forEach(term => {
-                termContainer.innerHTML += `
-                    <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
-                        <input type="text" class="form-control term-text" placeholder="Enter term" value="${term.replace(/"/g, '&quot;')}">
-                        <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                            <i class="fas fa-times"></i>
-                        </button>
-                    </div>
-                `;
-            });
-        } else {
-            termContainer.innerHTML = `
-                <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
-                    <input type="text" class="form-control term-text" placeholder="Enter term" value="All fees are non-refundable once a student has commenced training.">
-                    <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-                <div class="fee-term-row" style="display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;">
-                    <input type="text" class="form-control term-text" placeholder="Enter term" value="Payments must be made via M-Pesa Pay bill or bank deposit only. CASH NOT ACCEPTED.">
-                    <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-                        <i class="fas fa-times"></i>
-                    </button>
-                </div>
-            `;
-        }
-    }
-    
-    updateFeeTotalPreview();
-    modal.classList.add('active');
-}
-
-function closeFeeStructureModal() {
-    document.getElementById('feeStructureModal').classList.remove('active');
-}
-
-// ============================================================
-// FEE COMPONENT ROW FUNCTIONS
-// ============================================================
-
-function addFeeComponentRow() {
-    const container = document.getElementById('feeComponentsContainer');
-    const row = document.createElement('div');
-    row.className = 'fee-component-row';
-    row.style.cssText = 'display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;';
-    row.innerHTML = `
-        <input type="text" class="form-control comp-name" placeholder="Component name" oninput="updateFeeTotalPreview()">
-        <input type="number" class="form-control comp-amount" placeholder="Amount" oninput="updateFeeTotalPreview()">
-        <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    container.appendChild(row);
-    updateFeeTotalPreview();
-}
-
-function removeFeeComponentRow(button) {
-    const row = button.closest('.fee-component-row');
-    if (row) {
-        row.remove();
-        updateFeeTotalPreview();
-    }
-}
-
-function addFeeTermRow() {
-    const container = document.getElementById('feeTermsContainer');
-    const row = document.createElement('div');
-    row.className = 'fee-term-row';
-    row.style.cssText = 'display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;';
-    row.innerHTML = `
-        <input type="text" class="form-control term-text" placeholder="Enter term">
-        <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
-            <i class="fas fa-times"></i>
-        </button>
-    `;
-    container.appendChild(row);
-}
-
-function removeFeeTermRow(button) {
-    const row = button.closest('.fee-term-row');
-    if (row) {
-        row.remove();
-    }
-}
-
-// ============================================================
-// SAVE FEE STRUCTURE (Full) - FIXED VERSION
-// ============================================================
-
-async function saveFeeStructureFull() {
-    console.log('📝 Saving fee structure...');
-    
-    const feeId = document.getElementById('feeStructureId').value || null;
-    
-    // Get form values
-    const program = document.getElementById('fee_program_name').value.trim();
-    const programCode = document.getElementById('fee_program_code').value.trim();
-    const level = document.getElementById('fee_level').value;
-    const duration = document.getElementById('fee_duration').value.trim();
-    const mode = document.getElementById('fee_mode').value;
-    const blockTerm = document.getElementById('fee_block_term').value.trim();
-    const intakeYear = document.getElementById('fee_intake_year').value;
-    const hostel = parseFloat(document.getElementById('fee_hostel').value) || 0;
-    const status = document.getElementById('fee_status').value;
-    
-    // Validate
-    if (!program) {
-        showToast('Please enter the program name', 'warning');
-        return;
-    }
-    
-    if (!blockTerm) {
-        showToast('Please enter the block/term', 'warning');
-        return;
-    }
-    
-    // Get components
-    const compNames = document.querySelectorAll('.comp-name');
-    const compAmounts = document.querySelectorAll('.comp-amount');
-    const components = [];
-    let total = 0;
-    
-    compNames.forEach((input, index) => {
-        const name = input.value.trim();
-        const amount = parseFloat(compAmounts[index]?.value) || 0;
-        if (name) {
-            components.push({ label: name, amount: amount });
-            total += amount;
-        }
-    });
-    
-    if (components.length === 0) {
-        showToast('Please add at least one fee component', 'warning');
-        return;
-    }
-    
-    // Add hostel to total
-    total += hostel;
-    
-    // Get terms
-    const termInputs = document.querySelectorAll('.term-text');
-    const terms = [];
-    termInputs.forEach(input => {
-        const text = input.value.trim();
-        if (text) {
-            terms.push(text);
-        }
-    });
-    
-    // Get payment info
-    const payment = {
-        mpesa: document.getElementById('fee_mpesa').value.trim() || 'BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo',
-        bank: document.getElementById('fee_bank').value.trim() || 'Equity Bank | Branch: Nakuru | A/C: 0130200214036',
-        email: document.getElementById('fee_email').value.trim() || 'nchsmfinance@gmail.com',
-        whatsapp: document.getElementById('fee_whatsapp').value.trim() || '+254 103614355 | +254 703345771'
-    };
-    
-    const feeData = {
-        program: program,
-        program_code: programCode,
-        level: level,
-        duration: duration,
-        mode: mode,
-        block_term: blockTerm,
-        intake_year: intakeYear,
-        total: total,
-        hostel: hostel,
-        components: components,
-        terms: terms,
-        payment: payment,
-        is_active: status === 'active',
-        description: `${program} - ${level} Fees (${blockTerm})`
-    };
-    
-    console.log('📤 Sending fee data:', feeData);
-    console.log('🔑 Fee ID:', feeId || 'New');
-    
-    try {
-        let result;
-        
-        if (feeId) {
-            // UPDATE existing
-            console.log('🔄 Updating fee structure...');
-            result = await window.financeAPI.updateFeeStructure(feeId, feeData);
-            console.log('✅ Update result:', result);
-            showToast('Fee structure updated successfully!', 'success');
-        } else {
-            // CREATE new
-            console.log('➕ Creating new fee structure...');
-            result = await window.financeAPI.createFeeStructure(feeData);
-            console.log('✅ Create result:', result);
-            showToast('Fee structure added successfully!', 'success');
-        }
-        
-        // Close modal
-        closeFeeStructureModal();
-        
-        // Reload fee structure data
-        await loadFeeStructure();
-        
-    } catch (error) {
-        console.error('❌ Error saving fee structure:', error);
-        showToast('Error saving: ' + error.message, 'error');
-    }
-}
-
-// ============================================================
-// DUPLICATE FEE STRUCTURE
-// ============================================================
-
-async function duplicateFeeStructure(feeId) {
-    const fee = allFeeStructures.find(f => f.id === feeId);
-    if (!fee) {
-        showToast('Fee structure not found', 'error');
-        return;
-    }
-    
-    try {
-        const newFee = {
-            ...fee,
-            program: fee.program + ' (Copy)',
-            program_code: fee.program_code + '_copy',
-            is_active: true
-        };
-        delete newFee.id;
-        delete newFee.created_at;
-        delete newFee.updated_at;
-        
-        await window.financeAPI.createFeeStructure(newFee);
-        showToast('Fee structure duplicated successfully!', 'success');
-        await loadFeeStructure();
-    } catch (error) {
-        console.error('❌ Error duplicating fee structure:', error);
-        showToast('Error duplicating: ' + error.message, 'error');
-    }
-}
-
-// ============================================================
-// DELETE FEE STRUCTURE
-// ============================================================
-
-async function deleteFeeStructure(feeId) {
-    if (!confirm('Are you sure you want to delete this fee structure? This action cannot be undone.')) {
-        return;
-    }
-    
-    try {
-        await window.financeAPI.deleteFeeStructure(feeId);
-        showToast('Fee structure deleted successfully!', 'success');
-        await loadFeeStructure();
-    } catch (error) {
-        console.error('❌ Error deleting fee structure:', error);
-        showToast('Error deleting: ' + error.message, 'error');
-    }
-}
-
 function refreshFeeStructure() {
     loadFeeStructure();
     showToast('Fee structure refreshed!', 'success');
+}
+
+// ============================================================
+// STAFF PAYROLL
+// ============================================================
+
+async function loadStaffData() {
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { data, error } = await sbClient
+            .from('finance_staff')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        staffData = data || [];
+        renderStaffTable();
+        updatePayrollSummary();
+        document.getElementById('staffCount').textContent = `${staffData.length} staff members`;
+    } catch (error) {
+        console.error('Error loading staff:', error);
+        showToast('Error loading staff data', 'error');
+    }
+}
+
+function renderStaffTable() {
+    const tbody = document.getElementById('staffTableBody');
+    if (!tbody) return;
+    if (staffData.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No staff records found</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = staffData.map(s => `
+        <tr>
+            <td><strong>${s.staff_id || '-'}</strong></td>
+            <td>${s.full_name || 'N/A'}</td>
+            <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
+            <td>${s.position || '-'}</td>
+            <td>${formatCurrency(s.basic_salary)}</td>
+            <td>${formatCurrency(s.allowances)}</td>
+            <td><strong>${formatCurrency(s.total_pay)}</strong></td>
+            <td><span class="badge ${s.status === 'active' ? 'badge-success' : s.status === 'on leave' ? 'badge-warning' : 'badge-danger'}">${s.status || 'Active'}</span></td>
+            <td>
+                <button onclick="editStaffMember('${s.id}')" class="btn-action btn-primary btn-xs"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteStaffMember('${s.id}')" class="btn-action btn-danger btn-xs"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function filterStaffTable() {
+    const search = document.getElementById('staffSearch').value.toLowerCase();
+    const dept = document.getElementById('staffDepartmentFilter').value;
+    const status = document.getElementById('staffStatusFilter').value;
+    let filtered = staffData.filter(s => {
+        const matchSearch = (s.full_name || '').toLowerCase().includes(search) || (s.staff_id || '').toLowerCase().includes(search) || (s.position || '').toLowerCase().includes(search);
+        const matchDept = dept === 'all' || s.department === dept;
+        const matchStatus = status === 'all' || s.status === status;
+        return matchSearch && matchDept && matchStatus;
+    });
+    const tbody = document.getElementById('staffTableBody');
+    if (filtered.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No staff match your filters</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = filtered.map(s => `
+        <tr>
+            <td><strong>${s.staff_id || '-'}</strong></td>
+            <td>${s.full_name || 'N/A'}</td>
+            <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
+            <td>${s.position || '-'}</td>
+            <td>${formatCurrency(s.basic_salary)}</td>
+            <td>${formatCurrency(s.allowances)}</td>
+            <td><strong>${formatCurrency(s.total_pay)}</strong></td>
+            <td><span class="badge ${s.status === 'active' ? 'badge-success' : s.status === 'on leave' ? 'badge-warning' : 'badge-danger'}">${s.status || 'Active'}</span></td>
+            <td>
+                <button onclick="editStaffMember('${s.id}')" class="btn-action btn-primary btn-xs"><i class="fas fa-edit"></i></button>
+                <button onclick="deleteStaffMember('${s.id}')" class="btn-action btn-danger btn-xs"><i class="fas fa-trash"></i></button>
+            </td>
+        </tr>
+    `).join('');
+    document.getElementById('staffCount').textContent = `${filtered.length} staff members (filtered)`;
+}
+
+function resetStaffFilters() {
+    document.getElementById('staffSearch').value = '';
+    document.getElementById('staffDepartmentFilter').value = 'all';
+    document.getElementById('staffStatusFilter').value = 'all';
+    renderStaffTable();
+    document.getElementById('staffCount').textContent = `${staffData.length} staff members`;
+    showToast('Staff filters reset!', 'info');
+}
+
+function updatePayrollSummary() {
+    const total = staffData.reduce((sum, s) => sum + (s.total_pay || 0), 0);
+    const active = staffData.filter(s => s.status === 'active');
+    const pending = staffData.filter(s => s.status === 'on leave' || s.status === 'inactive');
+    const avg = staffData.length > 0 ? total / staffData.length : 0;
+    document.getElementById('totalStaffCount').textContent = staffData.length;
+    document.getElementById('monthlyPayrollTotal').textContent = formatCurrency(total);
+    document.getElementById('payrollStaffCount').textContent = `${active.length} active staff`;
+    document.getElementById('pendingPayrollCount').textContent = formatCurrency(pending.reduce((sum, s) => sum + (s.total_pay || 0), 0));
+    document.getElementById('pendingPayrollStaff').textContent = `${pending.length} pending`;
+    document.getElementById('avgSalary').textContent = formatCurrency(avg);
+}
+
+function openAddStaffModal() {
+    document.getElementById('addStaffModal').classList.add('active');
+    document.getElementById('addStaffForm').reset();
+    document.getElementById('staffId').value = 'STF-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+    document.getElementById('addStaffForm').dataset.editId = '';
+}
+
+async function saveStaffToDatabase() {
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        const editId = document.getElementById('addStaffForm').dataset.editId;
+        const data = {
+            full_name: document.getElementById('staffFullName').value.trim(),
+            staff_id: document.getElementById('staffId').value.trim(),
+            department: document.getElementById('staffDepartment').value,
+            position: document.getElementById('staffPosition').value.trim(),
+            basic_salary: parseFloat(document.getElementById('staffBasicSalary').value) || 0,
+            allowances: parseFloat(document.getElementById('staffAllowances').value) || 0,
+            email: document.getElementById('staffEmail').value.trim(),
+            phone: document.getElementById('staffPhone').value.trim(),
+            status: document.getElementById('staffStatus').value
+        };
+        if (!data.full_name || !data.staff_id || !data.department || !data.position) {
+            showToast('Please fill in all required fields', 'warning');
+            return;
+        }
+        data.total_pay = data.basic_salary + data.allowances;
+        if (editId) {
+            const { error } = await sbClient.from('finance_staff').update({ ...data, updated_at: new Date().toISOString() }).eq('id', editId);
+            if (error) throw error;
+            showToast('Staff updated!', 'success');
+        } else {
+            const { error } = await sbClient.from('finance_staff').insert([{ ...data, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]);
+            if (error) throw error;
+            showToast('Staff added!', 'success');
+        }
+        closeModal('addStaffModal');
+        await loadStaffData();
+    } catch (error) {
+        console.error('Error saving staff:', error);
+        showToast('Error saving staff', 'error');
+    }
+}
+
+async function editStaffMember(id) {
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { data, error } = await sbClient.from('finance_staff').select('*').eq('id', id).single();
+        if (error) throw error;
+        document.getElementById('staffFullName').value = data.full_name || '';
+        document.getElementById('staffId').value = data.staff_id || '';
+        document.getElementById('staffDepartment').value = data.department || '';
+        document.getElementById('staffPosition').value = data.position || '';
+        document.getElementById('staffBasicSalary').value = data.basic_salary || 0;
+        document.getElementById('staffAllowances').value = data.allowances || 0;
+        document.getElementById('staffEmail').value = data.email || '';
+        document.getElementById('staffPhone').value = data.phone || '';
+        document.getElementById('staffStatus').value = data.status || 'active';
+        document.getElementById('addStaffForm').dataset.editId = id;
+        document.getElementById('addStaffModal').classList.add('active');
+        document.querySelector('#addStaffModal h3').textContent = 'Edit Staff Member';
+    } catch (error) {
+        console.error('Error loading staff for edit:', error);
+        showToast('Error loading staff data', 'error');
+    }
+}
+
+async function deleteStaffMember(id) {
+    if (!confirm('Delete this staff member?')) return;
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { error } = await sbClient.from('finance_staff').delete().eq('id', id);
+        if (error) throw error;
+        showToast('Staff member deleted', 'success');
+        await loadStaffData();
+    } catch (error) {
+        console.error('Error deleting staff:', error);
+        showToast('Error deleting staff member', 'error');
+    }
+}
+
+async function processPayrollAction() {
+    showToast('Processing payroll...', 'info');
 }
 
 // ============================================================
@@ -2115,20 +1732,18 @@ function refreshFeeStructure() {
 // ============================================================
 
 async function loadTransactions() {
-    console.log('📋 Loading transactions...');
-    
     try {
-        if (typeof window.financeAPI === 'undefined') {
-            return;
-        }
-        
-        const transactions = await window.financeAPI.getTransactions();
-        allTransactions = transactions || [];
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { data, error } = await sbClient
+            .from('finance_payments')
+            .select('*')
+            .order('payment_date', { ascending: false });
+        if (error) throw error;
+        allTransactions = data || [];
         renderTransactions(allTransactions);
-        updateTransactionCount(allTransactions.length);
-        console.log('✅ Transactions loaded:', allTransactions.length);
+        document.getElementById('transactionCount').textContent = `${allTransactions.length} transactions`;
     } catch (error) {
-        console.error('❌ Error loading transactions:', error);
+        console.error('Error loading transactions:', error);
         showToast('Error loading transactions', 'error');
     }
 }
@@ -2136,38 +1751,21 @@ async function loadTransactions() {
 function renderTransactions(transactions) {
     const tbody = document.getElementById('transactionsTableBody');
     if (!tbody) return;
-
     if (!transactions || transactions.length === 0) {
-        tbody.innerHTML = `
-            <tr>
-                <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                    <i class="fas fa-info-circle"></i> No transactions found
-                </td>
-            </tr>
-        `;
+        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">No transactions found</td></tr>`;
         return;
     }
-
     tbody.innerHTML = transactions.map(t => {
-        const statusClass = t.status === 'completed' ? 'finance-badge-success' :
-                           t.status === 'pending' ? 'finance-badge-warning' : 'finance-badge-danger';
-        const statusLabel = t.status ? t.status.charAt(0).toUpperCase() + t.status.slice(1) : 'Pending';
-
+        const statusClass = t.status === 'completed' ? 'badge-success' : t.status === 'pending' ? 'badge-warning' : 'badge-danger';
         return `
             <tr>
-                <td><strong>${t.id || '-'}</strong></td>
-                <td>${formatDateTime(t.payment_date)}</td>
+                <td>${t.reference_number || '-'}</td>
+                <td>${formatDate(t.payment_date)}</td>
                 <td><strong>${t.student_name || 'N/A'}</strong></td>
                 <td>${t.program || '-'}</td>
                 <td><strong>${formatCurrency(t.amount)}</strong></td>
                 <td>${t.payment_method || '-'}</td>
-                <td>${t.reference_number || '-'}</td>
-                <td><span class="finance-badge ${statusClass}">${statusLabel}</span></td>
-                <td>
-                    <button onclick="viewTransaction('${t.id}')" class="finance-btn finance-btn-primary finance-btn-sm">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                </td>
+                <td><span class="badge ${statusClass}">${t.status || 'Pending'}</span></td>
             </tr>
         `;
     }).join('');
@@ -2175,55 +1773,21 @@ function renderTransactions(transactions) {
 
 function filterTransactions() {
     const search = document.getElementById('transactionSearch')?.value?.toLowerCase() || '';
-    const statusFilter = document.getElementById('transactionStatusFilter')?.value || 'all';
-    const dateFrom = document.getElementById('transactionDateFrom')?.value;
-    const dateTo = document.getElementById('transactionDateTo')?.value;
-    
-    let filtered = allTransactions;
-
-    if (search) {
-        filtered = filtered.filter(t => 
-            (t.student_name || '').toLowerCase().includes(search) ||
-            (t.id || '').toLowerCase().includes(search) ||
-            (t.reference_number || '').toLowerCase().includes(search)
-        );
-    }
-
-    if (statusFilter !== 'all') {
-        filtered = filtered.filter(t => t.status === statusFilter);
-    }
-
-    if (dateFrom) {
-        filtered = filtered.filter(t => t.payment_date >= dateFrom);
-    }
-
-    if (dateTo) {
-        filtered = filtered.filter(t => t.payment_date <= dateTo);
-    }
-
+    const status = document.getElementById('transactionStatusFilter')?.value || 'all';
+    let filtered = allTransactions.filter(t => {
+        const matchSearch = (t.student_name || '').toLowerCase().includes(search) || (t.reference_number || '').toLowerCase().includes(search);
+        const matchStatus = status === 'all' || t.status === status;
+        return matchSearch && matchStatus;
+    });
     renderTransactions(filtered);
-    updateTransactionCount(filtered.length);
+    document.getElementById('transactionCount').textContent = `${filtered.length} transactions (filtered)`;
 }
 
 function resetTransactionFilters() {
     document.getElementById('transactionSearch').value = '';
     document.getElementById('transactionStatusFilter').value = 'all';
-    document.getElementById('transactionDateFrom').value = '';
-    document.getElementById('transactionDateTo').value = '';
     renderTransactions(allTransactions);
-    updateTransactionCount(allTransactions.length);
-    showToast('Transaction filters reset!', 'info');
-}
-
-function updateTransactionCount(count) {
-    const countEl = document.getElementById('transactionCount');
-    if (countEl) {
-        countEl.textContent = `Showing ${count} transactions`;
-    }
-}
-
-function viewTransaction(transactionId) {
-    showToast('Viewing transaction: ' + transactionId, 'info');
+    document.getElementById('transactionCount').textContent = `${allTransactions.length} transactions`;
 }
 
 // ============================================================
@@ -2231,182 +1795,71 @@ function viewTransaction(transactionId) {
 // ============================================================
 
 function loadSettings() {
-    const status = localStorage.getItem('finance_module_status') || 'active';
-    const currency = localStorage.getItem('finance_currency') || 'KES';
-    const terms = localStorage.getItem('finance_terms') || '30';
-    const lateFee = localStorage.getItem('finance_late_fee') || '5';
-    
-    const statusEl = document.getElementById('moduleStatus');
-    const currencyEl = document.getElementById('defaultCurrency');
-    const termsEl = document.getElementById('paymentTerms');
-    const lateFeeEl = document.getElementById('lateFee');
-    
-    if (statusEl) statusEl.value = status;
-    if (currencyEl) currencyEl.value = currency;
-    if (termsEl) termsEl.value = terms;
-    if (lateFeeEl) lateFeeEl.value = lateFee;
+    document.getElementById('moduleStatus').value = localStorage.getItem('finance_module_status') || 'active';
+    document.getElementById('defaultCurrency').value = localStorage.getItem('finance_currency') || 'KES';
+    document.getElementById('lateFee').value = localStorage.getItem('finance_late_fee') || '5';
 }
 
 function saveSettings() {
-    const status = document.getElementById('moduleStatus')?.value || 'active';
-    const currency = document.getElementById('defaultCurrency')?.value || 'KES';
-    const terms = document.getElementById('paymentTerms')?.value || '30';
-    const lateFee = document.getElementById('lateFee')?.value || '5';
-    
-    localStorage.setItem('finance_module_status', status);
-    localStorage.setItem('finance_currency', currency);
-    localStorage.setItem('finance_terms', terms);
-    localStorage.setItem('finance_late_fee', lateFee);
-    
-    showToast('Settings saved successfully!', 'success');
+    localStorage.setItem('finance_module_status', document.getElementById('moduleStatus').value);
+    localStorage.setItem('finance_currency', document.getElementById('defaultCurrency').value);
+    localStorage.setItem('finance_late_fee', document.getElementById('lateFee').value);
+    showToast('Settings saved!', 'success');
 }
 
 // ============================================================
 // REPORTS
 // ============================================================
 
-function generateReport(type = 'summary') {
-    showToast(`Generating ${type} report...`, 'info');
-    document.getElementById('reportContent').innerHTML = `
-        <div style="padding: 30px; text-align: center;">
-            <i class="fas fa-file-alt" style="font-size: 32px; color: #4C1D95; margin-bottom: 10px; display: block;"></i>
-            <h3 style="color: #0A3D62;">${type.charAt(0).toUpperCase() + type.slice(1)} Financial Report</h3>
-            <p style="color: #64748b;">Report generated successfully. Use export buttons to download.</p>
-            <div style="margin-top: 20px; display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; text-align: left;">
-                <div><strong>Total Students:</strong> ${document.getElementById('totalStudents')?.textContent || '0'}</div>
-                <div><strong>Total Collected:</strong> ${document.getElementById('totalCollected')?.textContent || 'KES 0'}</div>
-                <div><strong>Outstanding:</strong> ${document.getElementById('outstandingBalance')?.textContent || 'KES 0'}</div>
-                <div><strong>Overdue:</strong> ${document.getElementById('overdueAccounts')?.textContent || '0'}</div>
-                <div><strong>Pending Approvals:</strong> ${document.getElementById('pendingApprovals')?.textContent || '0'}</div>
+function generateReport() {
+    const type = document.getElementById('reportType').value;
+    const content = document.getElementById('reportContent');
+    content.innerHTML = `
+        <div style="padding:20px;">
+            <h3 style="color:#0A3D62;">${type.charAt(0).toUpperCase() + type.slice(1)} Report</h3>
+            <div style="background:#f8fafc;border-radius:8px;padding:20px;margin-top:12px;">
+                <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+                <hr style="margin:12px 0;">
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                    <div><strong>Total Students:</strong> ${allAccounts.length}</div>
+                    <div><strong>Total Staff:</strong> ${staffData.length}</div>
+                    <div><strong>Total Payments:</strong> ${allPayments.length}</div>
+                    <div><strong>Total Collections:</strong> ${formatCurrency(allPayments.filter(p => p.status === 'completed').reduce((s, p) => s + (p.amount || 0), 0))}</div>
+                </div>
             </div>
         </div>
     `;
+    showToast(`Generated ${type} report`, 'success');
 }
 
-function exportReportToPDF() {
-    showToast('Exporting PDF...', 'info');
+function exportReportToPDF() { showToast('Exporting PDF...', 'info'); }
+function exportReportToCSV() { showToast('Exporting CSV...', 'info'); }
+
+// ============================================================
+// OTHER FUNCTIONS
+// ============================================================
+
+function refreshAllData() {
+    showToast('Refreshing all data...', 'info');
+    loadDashboardData();
+    loadAccounts();
+    loadPayments();
+    loadStaffData();
+    loadFeeStructure();
+    loadTransactions();
+    setTimeout(() => showToast('All data refreshed!', 'success'), 2000);
 }
 
-function exportReportToCSV() {
-    showToast('Exporting CSV...', 'info');
-}
+function exportAllData() { showToast('Exporting all data...', 'info'); }
+function sendPaymentReminders() { showToast('Sending payment reminders...', 'info'); }
+function openBulkPaymentModal() { document.getElementById('bulkImportModal').classList.add('active'); }
+function handleBulkFileUpload(event) { if (event.target.files[0]) showToast(`File selected: ${event.target.files[0].name}`, 'success'); }
+function downloadTemplate() { showToast('Template downloaded!', 'success'); }
+function processBulkImport() { showToast('Processing bulk import...', 'info'); }
+function loadAuditLog() { document.getElementById('auditLogContainer').innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;">Audit log loaded</div>`; }
 
 // ============================================================
-// EXPORT FUNCTIONS
+// FINAL LOG
 // ============================================================
 
-function exportAccountsToCSV() {
-    showToast('Exporting accounts to CSV...', 'info');
-}
-
-function exportPaymentsToCSV() {
-    showToast('Exporting payments to CSV...', 'info');
-}
-
-function exportAllData() {
-    showToast('Exporting all data...', 'info');
-}
-
-function backupData() {
-    showToast('Backup created!', 'success');
-}
-
-function clearCache() {
-    showToast('Cache cleared!', 'success');
-}
-
-function resetModule() {
-    if (confirm('Are you sure you want to reset the module? This cannot be undone!')) {
-        showToast('Module reset!', 'warning');
-    }
-}
-
-// ============================================================
-// FEE TEMPLATE MODAL
-// ============================================================
-
-function openFeeTemplateModal() {
-    showToast('Fee templates feature coming soon!', 'info');
-}
-
-// ============================================================
-// TOAST NOTIFICATIONS
-// ============================================================
-
-function showToast(message, type = 'info') {
-    const container = document.getElementById('financeToastContainer');
-    if (!container) return;
-    
-    const toast = document.createElement('div');
-    toast.className = `toast toast-${type}`;
-    toast.innerHTML = `<i class="fas ${type === 'success' ? 'fa-check-circle' : type === 'error' ? 'fa-exclamation-circle' : type === 'warning' ? 'fa-exclamation-triangle' : 'fa-info-circle'}"></i> ${message}`;
-    container.appendChild(toast);
-    
-    setTimeout(() => {
-        toast.style.opacity = '0';
-        toast.style.transform = 'translateX(20px)';
-        toast.style.transition = 'all 0.3s ease';
-        setTimeout(() => toast.remove(), 300);
-    }, 4000);
-}
-
-// ============================================================
-// MODAL HELPERS
-// ============================================================
-
-function closeModal(modalId) {
-    const modal = document.getElementById(modalId);
-    if (modal) modal.classList.remove('active');
-}
-
-document.addEventListener('click', function(e) {
-    document.querySelectorAll('.modal-overlay.active').forEach(modal => {
-        if (e.target === modal) {
-            modal.classList.remove('active');
-        }
-    });
-});
-
-document.addEventListener('keydown', function(e) {
-    if (e.key === 'Escape') {
-        document.querySelectorAll('.modal-overlay.active').forEach(modal => {
-            modal.classList.remove('active');
-        });
-    }
-});
-
-// ============================================================
-// UPDATE LAST UPDATED TIME
-// ============================================================
-
-function updateLastUpdated() {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
-    const el = document.getElementById('lastUpdatedTime');
-    if (el) {
-        el.textContent = timeStr;
-    }
-}
-setInterval(updateLastUpdated, 30000);
-updateLastUpdated();
-
-// ============================================================
-// ADD INPUT EVENT LISTENERS FOR REAL-TIME CALCULATION
-// ============================================================
-
-document.addEventListener('DOMContentLoaded', function() {
-    // Listen for changes on component amounts and hostel fee
-    document.addEventListener('input', function(e) {
-        if (e.target.classList.contains('comp-amount') || e.target.id === 'fee_hostel') {
-            updateFeeTotalPreview();
-        }
-    });
-});
-
-// ============================================================
-// INITIALIZATION COMPLETE
-// ============================================================
-
-console.log('✅ Finance Module initialized successfully!');
-console.log('📊 Version:', window.FINANCE_CONFIG?.APP?.VERSION || '2.0.0');
-console.log('🔐 User authenticated:', isFinanceAuthenticated());
+console.log('✅ Finance Module fully loaded!');
