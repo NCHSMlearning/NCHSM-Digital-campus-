@@ -94,11 +94,14 @@ function initEnrollment() {
     setTimeout(() => {
         loadSessionReports();
     }, 500);
-    updateEnrollmentStats();
-    updateReportBadge();
+    // Stats will be updated after both requests and reports load
+    // So call it after both are loaded
+    setTimeout(() => {
+        updateEnrollmentStats();
+        updateReportBadge();
+    }, 1000);
     setupEnrollmentEventListeners();
 }
-
 // ============================================================
 // LOAD STUDENT INFO
 // ============================================================
@@ -281,7 +284,7 @@ function initializeSessionReporting() {
 }
 
 // ============================================================
-// SUBMIT SESSION REPORT
+// SUBMIT SESSION REPORT - WITH DUPLICATE CHECK
 // ============================================================
 async function submitSessionReport() {
     const sb = getSupabaseClient();
@@ -335,7 +338,64 @@ async function submitSessionReport() {
 
     console.log('📤 Submitting session report for:', studentName);
 
+    // 🔍 CHECK FOR EXISTING REPORT FIRST
+    try {
+        const { data: existing, error: checkError } = await sb
+            .from('session_reports')
+            .select('id, submitted_at, approval_status')
+            .eq('student_id', studentId)
+            .eq('academic_year', year)
+            .eq('session', session);
+
+        if (checkError) throw checkError;
+
+        if (existing && existing.length > 0) {
+            const existingReport = existing[0];
+            const dateStr = existingReport.submitted_at ? new Date(existingReport.submitted_at).toLocaleString() : 'unknown date';
+            const statusStr = existingReport.approval_status || 'pending';
+            
+            if (feedback) {
+                feedback.style.display = 'block';
+                feedback.style.background = '#fef3c7';
+                feedback.style.color = '#92400e';
+                feedback.style.border = '1px solid #fcd34d';
+                feedback.innerHTML = `
+                    <i class="fas fa-exclamation-triangle"></i> 
+                    <strong>⚠️ You have already submitted this report!</strong><br>
+                    <span style="font-size: 13px;">
+                        Submitted on: ${dateStr}<br>
+                        Status: <strong>${statusStr.toUpperCase()}</strong>
+                    </span>
+                `;
+            }
+            
+            if (typeof showNotification === 'function') {
+                showNotification('⚠️ You have already submitted a report for this academic year and session.', 'warning');
+            }
+            
+            // Re-enable submit button if it exists
+            const submitBtn = document.querySelector('#enrReportForm button[type="submit"]');
+            if (submitBtn) {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Report';
+            }
+            
+            return; // 🛑 STOP - don't submit
+        }
+    } catch (error) {
+        console.error('Error checking for existing report:', error);
+        // Continue with submission if check fails (fail open)
+    }
+
+    // ✅ PROCEED WITH SUBMISSION
     if (typeof showLoading === 'function') showLoading('Submitting session report...');
+
+    // Disable submit button to prevent double clicks
+    const submitBtn = document.querySelector('#enrReportForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.textContent = 'Submitting...';
+    }
 
     try {
         const reportData = {
@@ -358,7 +418,27 @@ async function submitSessionReport() {
             .insert(reportData)
             .select();
 
-        if (error) throw error;
+        if (error) {
+            // Handle unique constraint violation
+            if (error.code === '23505') {
+                if (feedback) {
+                    feedback.style.display = 'block';
+                    feedback.style.background = '#fef3c7';
+                    feedback.style.color = '#92400e';
+                    feedback.style.border = '1px solid #fcd34d';
+                    feedback.innerHTML = `
+                        <i class="fas fa-exclamation-triangle"></i> 
+                        <strong>⚠️ Duplicate Report!</strong><br>
+                        <span style="font-size: 13px;">You already have a report for ${year} - ${session}. Please check your reports list.</span>
+                    `;
+                }
+                if (typeof showNotification === 'function') {
+                    showNotification('⚠️ Duplicate report - you already submitted this', 'warning');
+                }
+                return;
+            }
+            throw error;
+        }
 
         if (typeof hideLoading === 'function') hideLoading();
 
@@ -369,7 +449,7 @@ async function submitSessionReport() {
             feedback.style.border = '1px solid #86efac';
             feedback.innerHTML = `
                 <i class="fas fa-check-circle"></i> 
-                <strong>Report submitted successfully!</strong><br>
+                <strong>✅ Report submitted successfully!</strong><br>
                 <span style="font-size: 13px;">Your session report has been submitted. Admin will review and update your profile.</span>
             `;
         }
@@ -378,12 +458,16 @@ async function submitSessionReport() {
             showNotification('✅ Session report submitted successfully!', 'success');
         }
 
+        // Clear form but keep the feedback
         const form = safeGetElement('enrReportForm');
-        if (form) form.reset();
+        if (form) {
+            // Don't reset if we want to keep values
+            // form.reset();
+        }
 
         setTimeout(() => {
             if (feedback) feedback.style.display = 'none';
-        }, 5000);
+        }, 8000);
 
         await loadSessionReports();
         updateReportBadge();
@@ -411,6 +495,12 @@ async function submitSessionReport() {
 
         if (typeof showNotification === 'function') {
             showNotification('❌ Error submitting session report', 'error');
+        }
+    } finally {
+        // Re-enable submit button
+        if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.textContent = 'Submit Report';
         }
     }
 }
@@ -1102,46 +1192,97 @@ function renderEnrollmentHistoryTable() {
 }
 
 // ============================================================
-// UPDATE ENROLLMENT STATS
+// UPDATE ENROLLMENT STATS (INCLUDES SESSION REPORTS)
 // ============================================================
 function updateEnrollmentStats() {
     const requests = ENR_STATE.requests || [];
+    const reports = ENR_STATE.reports || [];
 
+    // Enrollment requests stats
     const total = requests.length;
     const pending = requests.filter(r => r.status === 'pending').length;
     const approved = requests.filter(r => r.status === 'approved').length;
     const rejected = requests.filter(r => r.status === 'rejected').length;
 
+    // Session reports stats
+    const totalReports = reports.length;
+    const pendingReports = reports.filter(r => r.approval_status === 'pending').length;
+    const approvedReports = reports.filter(r => r.approval_status === 'approved').length;
+    const rejectedReports = reports.filter(r => r.approval_status === 'rejected').length;
+
+    // Combined stats for "My Requests" section
+    const combinedTotal = total + totalReports;
+    const combinedPending = pending + pendingReports;
+    const combinedApproved = approved + approvedReports;
+    const combinedRejected = rejected + rejectedReports;
+
     let lastRequest = '--';
-    if (requests.length > 0) {
-        const latest = requests.reduce((a, b) => 
-            new Date(a.created_at) > new Date(b.created_at) ? a : b
-        );
-        lastRequest = new Date(latest.created_at).toLocaleDateString();
+    const allItems = [...requests, ...reports];
+    if (allItems.length > 0) {
+        const latest = allItems.reduce((a, b) => {
+            const dateA = a.submitted_at || a.created_at || a.updated_at;
+            const dateB = b.submitted_at || b.created_at || b.updated_at;
+            return new Date(dateA) > new Date(dateB) ? a : b;
+        });
+        const lastDate = latest.submitted_at || latest.created_at || latest.updated_at;
+        if (lastDate) {
+            lastRequest = new Date(lastDate).toLocaleDateString();
+        }
     }
 
-    const pendingReports = (ENR_STATE.reports || []).filter(r => r.approval_status === 'pending').length;
-
-    safeSetText('enrTotalRequests', total);
-    safeSetText('enrPendingCount', pending);
-    safeSetText('enrApprovedCount', approved);
-    safeSetText('enrRejectedCount', rejected);
+    // Update DOM elements
+    safeSetText('enrTotalRequests', combinedTotal);
+    safeSetText('enrPendingCount', combinedPending);
+    safeSetText('enrApprovedCount', combinedApproved);
+    safeSetText('enrRejectedCount', combinedRejected);
     safeSetText('enrLastRequest', lastRequest);
     safeSetText('enrPendingReports', pendingReports);
 
-    ENR_STATE.stats = { total, pending, approved, rejected, pendingReports };
-}
+    // Store in state
+    ENR_STATE.stats = { 
+        total, pending, approved, rejected,
+        totalReports, pendingReports, approvedReports, rejectedReports,
+        combinedTotal, combinedPending, combinedApproved, combinedRejected
+    };
 
+    // Update badges
+    updateEnrollmentBadges();
+    updateReportBadge();
+
+    console.log('📊 Stats updated:', {
+        'Requests': { total, pending, approved, rejected },
+        'Reports': { totalReports, pendingReports, approvedReports, rejectedReports },
+        'Combined': { combinedTotal, combinedPending, combinedApproved, combinedRejected }
+    });
+}
 // ============================================================
-// UPDATE ENROLLMENT BADGES
+// UPDATE ENROLLMENT BADGES (INCLUDES SESSION REPORTS)
 // ============================================================
 function updateEnrollmentBadges() {
-    const pending = (ENR_STATE.requests || []).filter(r => r.status === 'pending').length;
+    const requests = ENR_STATE.requests || [];
+    const reports = ENR_STATE.reports || [];
+    
+    const pendingRequests = requests.filter(r => r.status === 'pending').length;
+    const pendingReports = reports.filter(r => r.approval_status === 'pending').length;
+    const totalPending = pendingRequests + pendingReports;
+    
     const badge = safeGetElement('enrPendingBadge');
     if (badge) {
-        badge.textContent = pending;
+        badge.textContent = totalPending;
         badge.style.display = 'inline-block';
-        badge.style.background = pending > 0 ? '#f59e0b' : 'rgba(255,255,255,0.2)';
+        badge.style.background = totalPending > 0 ? '#f59e0b' : 'rgba(255,255,255,0.2)';
+    }
+
+    // Also update individual report badge
+    const reportBadge = safeGetElement('enrReportBadge');
+    if (reportBadge) {
+        reportBadge.textContent = pendingReports;
+        reportBadge.style.display = 'inline-block';
+        reportBadge.style.background = pendingReports > 0 ? '#f59e0b' : '#94a3b8';
+        reportBadge.style.color = 'white';
+        reportBadge.style.padding = '0 10px';
+        reportBadge.style.borderRadius = '20px';
+        reportBadge.style.fontSize = '11px';
     }
 }
 
