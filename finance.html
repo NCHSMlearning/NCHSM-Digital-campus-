@@ -659,78 +659,114 @@
                 </div>
             </section>
 
-            <!-- ============================================================ -->
-            <!-- TAB 3: PAYMENTS                                              -->
-            <!-- ============================================================ -->
-            <section id="tab-payments" class="tab-content">
-                <div style="background: linear-gradient(135deg, #059669, #10b981); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                    <div>
-                        <h3 style="color: white; margin: 0; font-weight: 600;"><i class="fas fa-credit-card"></i> Payment Processing</h3>
-                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">Record and manage all student payments</p>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="openPaymentModal()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
-                            <i class="fas fa-plus-circle"></i> New Payment
-                        </button>
-                        <button onclick="loadPayments()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                    </div>
-                </div>
+           <!-- ============================================================ -->
+<!-- TAB 3: PAYMENTS                                              -->
+<!-- ============================================================ -->
+<section id="tab-payments" class="tab-content">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #059669, #10b981); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h3 style="color: white; margin: 0; font-weight: 600;"><i class="fas fa-credit-card"></i> Payment Processing</h3>
+            <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">Record and manage all student payments</p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="openPaymentModal()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
+                <i class="fas fa-plus-circle"></i> New Payment
+            </button>
+            <button onclick="openBulkPaymentModal()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: 1px solid rgba(255,255,255,0.2); transition: all 0.2s;">
+                <i class="fas fa-file-import"></i> Bulk Import
+            </button>
+            <button onclick="loadPayments()" class="btn-action" style="background: rgba(255,255,255,0.12); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none; transition: all 0.2s;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="exportPaymentData()" class="btn-action" style="background: rgba(255,255,255,0.12); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none; transition: all 0.2s;">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
 
-                <div class="payroll-summary-grid">
-                    <div class="payroll-summary-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-color: #86efac;">
-                        <div class="label" style="color: #065f46;">Today</div>
-                        <div class="value" style="color: #065f46;" id="todayPaymentSummary">KES 0</div>
-                        <div class="sub" style="color: #047858;"><span id="todayPaymentCount">0</span> transactions</div>
-                    </div>
-                    <div class="payroll-summary-card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-color: #93c5fd;">
-                        <div class="label" style="color: #1e40af;">This Week</div>
-                        <div class="value" style="color: #1e40af;" id="weekPaymentSummary">KES 0</div>
-                        <div class="sub" style="color: #1e40af;"><span id="weekPaymentCount">0</span> transactions</div>
-                    </div>
-                    <div class="payroll-summary-card" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); border-color: #f9a8d4;">
-                        <div class="label" style="color: #9d174d;">This Month</div>
-                        <div class="value" style="color: #9d174d;" id="monthPaymentSummary">KES 0</div>
-                        <div class="sub" style="color: #9d174d;"><span id="monthPaymentCount">0</span> transactions</div>
-                    </div>
-                    <div class="payroll-summary-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #f59e0b;">
-                        <div class="label" style="color: #92400e;">Pending</div>
-                        <div class="value" style="color: #92400e;" id="pendingPaymentSummary">KES 0</div>
-                        <div class="sub" style="color: #92400e;"><span id="pendingPaymentCount">0</span> awaiting approval</div>
-                    </div>
-                </div>
+    <!-- Summary Cards -->
+    <div class="payroll-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div class="payroll-summary-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-color: #86efac; border-radius: 10px; padding: 14px 18px; border: 1px solid #e5e7eb;">
+            <div class="label" style="color: #065f46; font-size: 12px; font-weight: 600;">📅 Today</div>
+            <div class="value" style="color: #065f46; font-size: 22px; font-weight: 700;" id="todayPaymentSummary">KES 0</div>
+            <div class="sub" style="color: #047858; font-size: 11px;"><span id="todayPaymentCount">0</span> transactions</div>
+        </div>
+        <div class="payroll-summary-card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-color: #93c5fd; border-radius: 10px; padding: 14px 18px; border: 1px solid #e5e7eb;">
+            <div class="label" style="color: #1e40af; font-size: 12px; font-weight: 600;">📊 This Week</div>
+            <div class="value" style="color: #1e40af; font-size: 22px; font-weight: 700;" id="weekPaymentSummary">KES 0</div>
+            <div class="sub" style="color: #1e40af; font-size: 11px;"><span id="weekPaymentCount">0</span> transactions</div>
+        </div>
+        <div class="payroll-summary-card" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); border-color: #f9a8d4; border-radius: 10px; padding: 14px 18px; border: 1px solid #e5e7eb;">
+            <div class="label" style="color: #9d174d; font-size: 12px; font-weight: 600;">📈 This Month</div>
+            <div class="value" style="color: #9d174d; font-size: 22px; font-weight: 700;" id="monthPaymentSummary">KES 0</div>
+            <div class="sub" style="color: #9d174d; font-size: 11px;"><span id="monthPaymentCount">0</span> transactions</div>
+        </div>
+        <div class="payroll-summary-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #f59e0b; border-radius: 10px; padding: 14px 18px; border: 1px solid #e5e7eb;">
+            <div class="label" style="color: #92400e; font-size: 12px; font-weight: 600;">⏳ Pending</div>
+            <div class="value" style="color: #92400e; font-size: 22px; font-weight: 700;" id="pendingPaymentSummary">KES 0</div>
+            <div class="sub" style="color: #92400e; font-size: 11px;"><span id="pendingPaymentCount">0</span> awaiting approval</div>
+        </div>
+    </div>
 
-                <div class="filter-bar">
-                    <div class="search-box">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="paymentSearch" placeholder="🔍 Search payments..." onkeyup="filterPayments()">
-                    </div>
-                    <select id="paymentStatusFilter" onchange="filterPayments()">
-                        <option value="all">All Status</option>
-                        <option value="completed">✅ Completed</option>
-                        <option value="pending">⏳ Pending</option>
-                        <option value="failed">❌ Failed</option>
-                    </select>
-                    <button onclick="filterPayments()" class="btn-action btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
-                    <button onclick="resetPaymentFilters()" class="btn-action btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</button>
-                    <span id="paymentCount" style="font-size: 13px; color: #64748b; margin-left: auto;"></span>
-                </div>
+    <!-- Filter Bar -->
+    <div class="filter-bar" style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+        <div class="search-box" style="position: relative; flex: 1; min-width: 200px;">
+            <i class="fas fa-search search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+            <input type="text" id="paymentSearch" placeholder="Search by student, reference..." onkeyup="filterPayments()" style="width: 100%; padding: 8px 14px 8px 36px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.3s;">
+        </div>
+        <select id="paymentStatusFilter" onchange="filterPayments()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <option value="all">📋 All Status</option>
+            <option value="completed">✅ Completed</option>
+            <option value="pending">⏳ Pending</option>
+            <option value="failed">❌ Failed</option>
+            <option value="overdue">🔴 Overdue</option>
+        </select>
+        <select id="paymentMethodFilter" onchange="filterPayments()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <option value="all">💳 All Methods</option>
+            <option value="M-Pesa">📱 M-Pesa</option>
+            <option value="Cash">💵 Cash</option>
+            <option value="Bank Transfer">🏦 Bank Transfer</option>
+            <option value="Cheque">📄 Cheque</option>
+        </select>
+        <button onclick="filterPayments()" class="btn-action btn-primary btn-sm" style="padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; background: #4C1D95; color: white;">
+            <i class="fas fa-filter"></i> Apply
+        </button>
+        <button onclick="resetPaymentFilters()" class="btn-action btn-outline btn-sm" style="padding: 8px 18px; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer; font-weight: 600; font-size: 13px; background: transparent; color: #475569;">
+            <i class="fas fa-undo"></i> Reset
+        </button>
+        <span id="paymentCount" style="font-size: 13px; color: #64748b; margin-left: auto; font-weight: 500;"></span>
+    </div>
 
-                <div class="table-container">
-                    <div style="overflow-x: auto;">
-                        <table class="modern-table">
-                            <thead>
-                                <tr><th>Date</th><th>Student</th><th>Program</th><th>Amount</th><th>Method</th><th>Reference</th><th>Period</th><th>Status</th><th>Actions</th></tr>
-                            </thead>
-                            <tbody id="paymentsTableBody">
-                                <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;"><div class="loading-spinner"></div><p style="margin-top:10px;">Loading payments...</p></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
-
+    <!-- Payments Table -->
+    <div class="table-container" style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+        <div style="overflow-x: auto; max-height: 600px; overflow-y: auto;">
+            <table class="modern-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="position: sticky; top: 0; z-index: 10;">
+                    <tr>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">📅 Date</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">👤 Student</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">📚 Program</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: right; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">💰 Amount</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">💳 Method</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">🔑 Reference</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">📋 Period</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: center; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">📊 Status</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: center; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">⚡ Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="paymentsTableBody">
+                    <tr>
+                        <td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">
+                            <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p style="margin-top:10px;">Loading payments...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
             <!-- ============================================================ -->
             <!-- TAB 4: FEE STRUCTURE                                         -->
             <!-- ============================================================ -->
@@ -818,90 +854,122 @@
                 </div>
             </section>
 
-            <!-- ============================================================ -->
-            <!-- TAB 6: STAFF PAYROLL                                         -->
-            <!-- ============================================================ -->
-            <section id="tab-payroll" class="tab-content">
-                <div style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-                    <div>
-                        <h3 style="color: white; margin: 0; font-weight: 600;"><i class="fas fa-wallet"></i> Staff Payroll Management</h3>
-                        <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">Manage staff salaries, allowances, and payroll processing</p>
-                    </div>
-                    <div style="display: flex; gap: 10px;">
-                        <button onclick="openAddStaffModal()" class="btn-action" style="background: white; color: #7c3aed; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
-                            <i class="fas fa-user-plus"></i> Add Staff
-                        </button>
-                        <button onclick="processPayrollAction()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px;">
-                            <i class="fas fa-calculator"></i> Process Payroll
-                        </button>
-                        <button onclick="loadStaffData()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none;">
-                            <i class="fas fa-sync-alt"></i> Refresh
-                        </button>
-                    </div>
-                </div>
+          <!-- ============================================================ -->
+<!-- TAB 6: STAFF PAYROLL                                         -->
+<!-- ============================================================ -->
+<section id="tab-payroll" class="tab-content">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #7c3aed, #8b5cf6); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
+        <div>
+            <h3 style="color: white; margin: 0; font-weight: 600;"><i class="fas fa-wallet"></i> Staff Payroll Management</h3>
+            <p style="color: rgba(255,255,255,0.8); margin: 2px 0 0 0; font-size: 13px;">Manage staff salaries, allowances, and payroll processing</p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="openAddStaffModal()" class="btn-action" style="background: white; color: #7c3aed; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none; transition: all 0.2s;">
+                <i class="fas fa-user-plus"></i> Add Staff
+            </button>
+            <button onclick="openBulkStaffImport()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: 1px solid rgba(255,255,255,0.2); transition: all 0.2s;">
+                <i class="fas fa-file-import"></i> Bulk Import
+            </button>
+            <button onclick="processPayrollAction()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.2s;">
+                <i class="fas fa-calculator"></i> Process Payroll
+            </button>
+            <button onclick="loadStaffData()" class="btn-action" style="background: rgba(255,255,255,0.12); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none; transition: all 0.2s;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+            <button onclick="exportStaffData()" class="btn-action" style="background: rgba(255,255,255,0.12); color: white; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 13px; border: none; transition: all 0.2s;">
+                <i class="fas fa-file-export"></i> Export
+            </button>
+        </div>
+    </div>
 
-                <div class="payroll-summary-grid">
-                    <div class="payroll-summary-card" style="border-left: 4px solid #7c3aed;">
-                        <div class="label">Total Staff</div>
-                        <div class="value" style="color: #7c3aed;" id="totalStaffCount">0</div>
-                        <div class="sub">Active employees</div>
-                    </div>
-                    <div class="payroll-summary-card" style="border-left: 4px solid #059669;">
-                        <div class="label">This Month's Payroll</div>
-                        <div class="value" style="color: #059669;" id="monthlyPayrollTotal">KES 0</div>
-                        <div class="sub" id="payrollStaffCount">0 staff</div>
-                    </div>
-                    <div class="payroll-summary-card" style="border-left: 4px solid #f59e0b;">
-                        <div class="label">Pending Payments</div>
-                        <div class="value" style="color: #d97706;" id="pendingPayrollCount">KES 0</div>
-                        <div class="sub" id="pendingPayrollStaff">0 pending</div>
-                    </div>
-                    <div class="payroll-summary-card" style="border-left: 4px solid #3b82f6;">
-                        <div class="label">Average Salary</div>
-                        <div class="value" style="color: #3b82f6;" id="avgSalary">KES 0</div>
-                        <div class="sub">Per staff member</div>
-                    </div>
-                </div>
+    <!-- Summary Cards -->
+    <div class="payroll-summary-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 20px;">
+        <div class="payroll-summary-card" style="border-left: 4px solid #7c3aed; border-radius: 10px; padding: 14px 18px; border: 1px solid #e5e7eb; background: white;">
+            <div class="label" style="font-size: 12px; font-weight: 600; color: #475569;">👥 Total Staff</div>
+            <div class="value" style="color: #7c3aed; font-size: 22px; font-weight: 700;" id="totalStaffCount">0</div>
+            <div class="sub" style="font-size: 11px; color: #94a3b8;">Active employees</div>
+        </div>
+        <div class="payroll-summary-card" style="border-left: 4px solid #059669; border-radius: 10px; padding: 14px 18px; border: 1px solid #e5e7eb; background: white;">
+            <div class="label" style="font-size: 12px; font-weight: 600; color: #475569;">💰 Gross Payroll</div>
+            <div class="value" style="color: #059669; font-size: 22px; font-weight: 700;" id="grossPayrollTotal">KES 0</div>
+            <div class="sub" style="font-size: 11px; color: #94a3b8;" id="grossPayrollStaffCount">0 staff</div>
+        </div>
+        <div class="payroll-summary-card" style="border-left: 4px solid #3b82f6; border-radius: 10px; padding: 14px 18px; border: 1px solid #e5e7eb; background: white;">
+            <div class="label" style="font-size: 12px; font-weight: 600; color: #475569;">📊 Net Payroll</div>
+            <div class="value" style="color: #3b82f6; font-size: 22px; font-weight: 700;" id="netPayrollTotal">KES 0</div>
+            <div class="sub" style="font-size: 11px; color: #94a3b8;">After deductions</div>
+        </div>
+        <div class="payroll-summary-card" style="border-left: 4px solid #f59e0b; border-radius: 10px; padding: 14px 18px; border: 1px solid #e5e7eb; background: white;">
+            <div class="label" style="font-size: 12px; font-weight: 600; color: #475569;">⏳ Pending Payments</div>
+            <div class="value" style="color: #d97706; font-size: 22px; font-weight: 700;" id="pendingPayrollCount">KES 0</div>
+            <div class="sub" style="font-size: 11px; color: #94a3b8;" id="pendingPayrollStaff">0 pending</div>
+        </div>
+    </div>
 
-                <div class="filter-bar">
-                    <div class="search-box">
-                        <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="staffSearch" placeholder="🔍 Search staff..." onkeyup="filterStaffTable()">
-                    </div>
-                    <select id="staffDepartmentFilter" onchange="filterStaffTable()">
-                        <option value="all">All Departments</option>
-                        <option value="Academic">Academic</option>
-                        <option value="Administration">Administration</option>
-                        <option value="Finance">Finance</option>
-                        <option value="ICT">ICT</option>
-                        <option value="Human Resources">Human Resources</option>
-                        <option value="Student Affairs">Student Affairs</option>
-                        <option value="Other">Other</option>
-                    </select>
-                    <select id="staffStatusFilter" onchange="filterStaffTable()">
-                        <option value="all">All Status</option>
-                        <option value="active">🟢 Active</option>
-                        <option value="inactive">🔴 Inactive</option>
-                        <option value="on leave">🟡 On Leave</option>
-                    </select>
-                    <button onclick="filterStaffTable()" class="btn-action btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
-                    <button onclick="resetStaffFilters()" class="btn-action btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</button>
-                    <span id="staffCount" style="font-size: 13px; color: #64748b; margin-left: auto;"></span>
-                </div>
+    <!-- Filter Bar -->
+    <div class="filter-bar" style="background: white; border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+        <div class="search-box" style="position: relative; flex: 1; min-width: 200px;">
+            <i class="fas fa-search search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
+            <input type="text" id="staffSearch" placeholder="Search by name, ID, or position..." onkeyup="filterStaffTable()" style="width: 100%; padding: 8px 14px 8px 36px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.3s;">
+        </div>
+        <select id="staffDepartmentFilter" onchange="filterStaffTable()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <option value="all">🏛️ All Departments</option>
+            <option value="Academic">📚 Academic</option>
+            <option value="Administration">📋 Administration</option>
+            <option value="Finance">💰 Finance</option>
+            <option value="ICT">💻 ICT</option>
+            <option value="Human Resources">👔 Human Resources</option>
+            <option value="Student Affairs">🎓 Student Affairs</option>
+            <option value="Other">📌 Other</option>
+        </select>
+        <select id="staffStatusFilter" onchange="filterStaffTable()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
+            <option value="all">📊 All Status</option>
+            <option value="active">🟢 Active</option>
+            <option value="inactive">🔴 Inactive</option>
+            <option value="on leave">🟡 On Leave</option>
+            <option value="suspended">⚫ Suspended</option>
+        </select>
+        <button onclick="filterStaffTable()" class="btn-action btn-primary btn-sm" style="padding: 8px 18px; border-radius: 8px; border: none; cursor: pointer; font-weight: 600; font-size: 13px; background: #7c3aed; color: white; transition: all 0.2s;">
+            <i class="fas fa-filter"></i> Apply
+        </button>
+        <button onclick="resetStaffFilters()" class="btn-action btn-outline btn-sm" style="padding: 8px 18px; border-radius: 8px; border: 1px solid #e2e8f0; cursor: pointer; font-weight: 600; font-size: 13px; background: transparent; color: #475569; transition: all 0.2s;">
+            <i class="fas fa-undo"></i> Reset
+        </button>
+        <span id="staffCount" style="font-size: 13px; color: #64748b; margin-left: auto; font-weight: 500;"></span>
+    </div>
 
-                <div class="table-container">
-                    <div style="overflow-x: auto;">
-                        <table class="modern-table">
-                            <thead>
-                                <tr><th>Staff ID</th><th>Full Name</th><th>Department</th><th>Position</th><th>Basic Salary</th><th>Allowances</th><th>Total Pay</th><th>Status</th><th>Actions</th></tr>
-                            </thead>
-                            <tbody id="staffTableBody">
-                                <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;"><div class="loading-spinner"></div><p style="margin-top:10px;">Loading staff data...</p></td></tr>
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </section>
+    <!-- Staff Table -->
+    <div class="table-container" style="background: white; border-radius: 12px; padding: 20px; border: 1px solid #e5e7eb; margin-bottom: 20px;">
+        <div style="overflow-x: auto; max-height: 600px; overflow-y: auto;">
+            <table class="modern-table" style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                <thead style="position: sticky; top: 0; z-index: 10;">
+                    <tr>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">🆔 Staff ID</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">👤 Full Name</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">🏛️ Department</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: left; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">💼 Position</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: right; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">💰 Basic Salary</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: right; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">➕ Allowances</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: right; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">💵 Gross Pay</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: right; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">📉 Deductions</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: right; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">💰 Net Pay</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: center; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">📊 Status</th>
+                        <th style="background: #f8fafc; padding: 10px 12px; text-align: center; font-weight: 600; color: #475569; border-bottom: 2px solid #e5e7eb;">⚡ Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="staffTableBody">
+                    <tr>
+                        <td colspan="11" style="text-align:center;padding:40px;color:#94a3b8;">
+                            <div class="loading-spinner" style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #7c3aed; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p style="margin-top:10px;">Loading staff data...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+</section>
 
             <!-- ============================================================ -->
             <!-- TAB 7: REPORTS                                               -->
