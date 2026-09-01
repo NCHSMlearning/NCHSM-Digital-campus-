@@ -124,7 +124,7 @@ const LecturerProfile = {
             // Detect program type from profile
             const program = profile.program || profile.department || 'KRCHN';
             this.currentProgram = program;
-            this.isTVET = window.IS_TVET || program !== 'KRCHN';
+            this.isTVET = window.IS_TVET || program === 'DPOTT' || program === 'CPOTT' || program === 'TVET';
             
             this.profile = profile;
             this.renderProfile();
@@ -166,6 +166,16 @@ const LecturerProfile = {
         const typeLabel = this.getProgramTypeLabel();
         const emoji = this.getProgramEmoji();
         
+        // ✅ FIX: Determine display department
+        // For TVET lecturers, show program name instead of department
+        let displayDepartment = p.department || 'N/A';
+        let displayProgram = p.program || p.department || 'N/A';
+        
+        // If this is a TVET program (DPOTT, CPOTT, etc.), show program as department
+        if (this.isTVET || displayProgram === 'DPOTT' || displayProgram === 'CPOTT' || displayProgram === 'TVET') {
+            displayDepartment = displayProgram; // Show DPOTT, CPOTT, etc.
+        }
+        
         // Avatar
         const avatar = document.getElementById('profileImg');
         if (avatar) {
@@ -202,19 +212,16 @@ const LecturerProfile = {
             'profileId': p.staff_id || p.employee_id || p.user_id || 'N/A',
             'profileEmail': p.email || 'N/A',
             'profilePhone': p.phone || p.phone_number || 'N/A',
-            'profileDept': p.department || 'N/A',
+            // ✅ FIX: Show program as department for TVET
+            'profileDept': displayDepartment,  // ← FIXED: Shows DPOTT/CPOTT instead of Nursing
             'profileJoinDate': p.join_date ? this.formatDate(p.join_date) : p.created_at ? this.formatDate(p.created_at) : 'N/A',
-            'profileProgramFocus': p.program || p.department || 'N/A'
+            'profileProgramFocus': `${displayProgram} (${typeLabel})`
         };
         
         Object.keys(fields).forEach(id => {
             const el = document.getElementById(id);
             if (el) {
                 el.textContent = fields[id];
-                // Add program type indicator for program field
-                if (id === 'profileProgramFocus') {
-                    el.textContent = `${fields[id]} (${typeLabel})`;
-                }
             }
         });
         
@@ -223,7 +230,8 @@ const LecturerProfile = {
             'editFullName': p.full_name || '',
             'editEmail': p.email || '',
             'editPhone': p.phone || '',
-            'editDepartment': p.department || ''
+            // ✅ FIX: Show program in edit department field
+            'editDepartment': displayDepartment || p.department || ''
         };
         
         Object.keys(editFields).forEach(id => {
@@ -235,7 +243,8 @@ const LecturerProfile = {
         const settingsFields = {
             'settingsFullName': p.full_name || 'N/A',
             'settingsEmail': p.email || 'N/A',
-            'settingsProgram': `${p.program || p.department || 'N/A'} (${typeLabel})`,
+            // ✅ FIX: Show program as department
+            'settingsProgram': `${displayDepartment} (${typeLabel})`,
             'settingsStaffId': p.staff_id || p.employee_id || 'N/A',
             'settingsRole': `${p.role || 'Lecturer'} • ${typeLabel}`
         };
@@ -251,7 +260,7 @@ const LecturerProfile = {
         // Update program badge in sidebar
         const programBadge = document.getElementById('userProgramBadge');
         if (programBadge) {
-            programBadge.textContent = `${this.currentProgram} (${typeLabel})`;
+            programBadge.textContent = `${displayDepartment} (${typeLabel})`;
             programBadge.style.background = this.isTVET ? 'rgba(139,92,246,0.3)' : 'rgba(76,29,149,0.3)';
             programBadge.style.border = this.isTVET ? '1px solid #8b5cf6' : '1px solid #4C1D95';
         }
@@ -264,8 +273,8 @@ const LecturerProfile = {
         const coursesEl = document.getElementById('profileCoursesCount');
         if (coursesEl) coursesEl.textContent = courses.length || 0;
         
-        // Get students count
-        const students = window.LecturerStudents?.students || [];
+        // Get students count - use filtered or all students
+        const students = window.LecturerStudents?.filteredStudents || window.LecturerStudents?.students || [];
         const studentsEl = document.getElementById('profileStudentsCount');
         if (studentsEl) studentsEl.textContent = students.length || 0;
         
