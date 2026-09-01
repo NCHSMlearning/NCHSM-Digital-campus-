@@ -1767,44 +1767,68 @@ async function loadStaffData() {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
         const { data, error } = await sbClient
-            .from('finance_staff')
+            .from('staff_records')
             .select('*')
             .order('created_at', { ascending: false });
+        
         if (error) throw error;
         staffData = data || [];
         renderStaffTable();
         updatePayrollSummary();
-        document.getElementById('staffCount').textContent = `${staffData.length} staff members`;
+        
+        const count = document.getElementById('staffCount');
+        if (count) count.textContent = `${staffData.length} staff members`;
+        
         console.log('✅ Staff data loaded:', staffData.length);
     } catch (error) {
         console.error('Error loading staff:', error);
-        showToast('Error loading staff data', 'error');
+        showToast('Error loading staff data: ' + error.message, 'error');
     }
 }
 
 function renderStaffTable() {
     const tbody = document.getElementById('staffTableBody');
     if (!tbody) return;
-    if (staffData.length === 0) {
+    
+    if (!staffData || staffData.length === 0) {
         tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No staff records found</td></tr>`;
         return;
     }
-    tbody.innerHTML = staffData.map(s => `
-        <tr>
-            <td><strong>${s.staff_id || '-'}</strong></td>
-            <td>${s.full_name || 'N/A'}</td>
-            <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
-            <td>${s.position || '-'}</td>
-            <td>${formatCurrency(s.basic_salary)}</td>
-            <td>${formatCurrency(s.allowances)}</td>
-            <td><strong>${formatCurrency(s.total_pay)}</strong></td>
-            <td><span class="badge ${s.status === 'active' ? 'badge-success' : s.status === 'on leave' ? 'badge-warning' : 'badge-danger'}">${s.status || 'Active'}</span></td>
-            <td>
-                <button onclick="editStaffMember('${s.id}')" class="btn-action btn-primary btn-xs"><i class="fas fa-edit"></i></button>
-                <button onclick="deleteStaffMember('${s.id}')" class="btn-action btn-danger btn-xs"><i class="fas fa-trash"></i></button>
-            </td>
-        </tr>
-    `).join('');
+    
+    tbody.innerHTML = staffData.map(s => {
+        // Use designation as position
+        const position = s.designation || s.position || '-';
+        // Calculate full name
+        const fullName = [s.title, s.first_name, s.other_names].filter(Boolean).join(' ').trim() || s.full_name || 'N/A';
+        // Use id as staff_id if staff_id doesn't exist
+        const staffId = s.staff_id || s.id || '-';
+        // Get salary info if available
+        const basicSalary = s.basic_salary || 0;
+        const allowances = s.allowances || 0;
+        const totalPay = basicSalary + allowances;
+        
+        const statusClass = s.status === 'active' ? 'badge-success' : 
+                           s.status === 'on leave' ? 'badge-warning' : 'badge-danger';
+        const statusLabel = s.status === 'active' ? '🟢 Active' : 
+                           s.status === 'on leave' ? '🟡 On Leave' : '🔴 Inactive';
+        
+        return `
+            <tr>
+                <td><strong>${staffId}</strong></td>
+                <td>${fullName}</td>
+                <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
+                <td>${position}</td>
+                <td style="text-align:right;">${formatCurrency(basicSalary)}</td>
+                <td style="text-align:right;">${formatCurrency(allowances)}</td>
+                <td style="text-align:right;"><strong>${formatCurrency(totalPay)}</strong></td>
+                <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+                <td>
+                    <button onclick="editStaffMember('${s.id}')" class="btn-action btn-primary btn-xs" title="Edit"><i class="fas fa-edit"></i></button>
+                    <button onclick="deleteStaffMember('${s.id}')" class="btn-action btn-danger btn-xs" title="Delete"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
 function filterStaffTable() {
@@ -1874,62 +1898,139 @@ async function saveStaffToDatabase() {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
         const editId = document.getElementById('addStaffForm').dataset.editId;
+        
+        // Get field values
+        const title = document.getElementById('staffTitle')?.value || '';
+        const firstName = document.getElementById('staffFirstName').value.trim();
+        const otherNames = document.getElementById('staffOtherNames').value.trim();
+        const department = document.getElementById('staffDepartment').value;
+        const designation = document.getElementById('staffPosition').value.trim(); // Position = Designation
+        const email = document.getElementById('staffEmail').value.trim();
+        const phone = document.getElementById('staffPhone').value.trim();
+        const nationalId = document.getElementById('staffNationalId').value.trim();
+        const gender = document.getElementById('staffGender')?.value || '';
+        const bankName = document.getElementById('staffBankName')?.value || '';
+        const bankAccount = document.getElementById('staffBankAccount')?.value || '';
+        const shifNumber = document.getElementById('staffShifNumber')?.value || '';
+        const nsrfNumber = document.getElementById('staffNsrfNumber')?.value || '';
+        const taxPin = document.getElementById('staffTaxPin')?.value || '';
+        const program = document.getElementById('staffProgram')?.value || '';
+        const status = document.getElementById('staffStatus').value;
+        
+        // Validate required fields
+        if (!firstName) { showToast('Please enter first name', 'warning'); return; }
+        if (!department) { showToast('Please select department', 'warning'); return; }
+        if (!email) { showToast('Please enter email', 'warning'); return; }
+        if (!phone) { showToast('Please enter phone number', 'warning'); return; }
+        
+        // Build full name
+        const fullName = [title, firstName, otherNames].filter(Boolean).join(' ').trim();
+        
+        // Generate staff ID if not exists
+        const staffId = document.getElementById('staffId')?.value || 
+                       'STF-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+        
+        // Build data object for staff_records table
         const data = {
-            full_name: document.getElementById('staffFullName').value.trim(),
-            staff_id: document.getElementById('staffId').value.trim(),
-            department: document.getElementById('staffDepartment').value,
-            position: document.getElementById('staffPosition').value.trim(),
-            basic_salary: parseFloat(document.getElementById('staffBasicSalary').value) || 0,
-            allowances: parseFloat(document.getElementById('staffAllowances').value) || 0,
-            email: document.getElementById('staffEmail').value.trim(),
-            phone: document.getElementById('staffPhone').value.trim(),
-            status: document.getElementById('staffStatus').value
+            id: editId || crypto.randomUUID ? crypto.randomUUID() : `staff_${Date.now()}`,
+            title: title,
+            first_name: firstName,
+            other_names: otherNames || null,
+            department: department,
+            designation: designation || null,  // ← This is the POSITION column
+            email: email,
+            phone: phone,
+            national_id: nationalId || null,
+            gender: gender || null,
+            bank_name: bankName || null,
+            bank_account: bankAccount || null,
+            shif_number: shifNumber || null,
+            nsrf_number: nsrfNumber || null,
+            tax_pin: taxPin || null,
+            program: program || null,
+            status: status || 'active',
+            updated_at: new Date().toISOString()
         };
-        if (!data.full_name || !data.staff_id || !data.department || !data.position) {
-            showToast('Please fill in all required fields', 'warning');
-            return;
-        }
-        data.total_pay = data.basic_salary + data.allowances;
+        
+        console.log('📝 Saving staff data:', data);
+        
         if (editId) {
-            const { error } = await sbClient.from('finance_staff').update({ ...data, updated_at: new Date().toISOString() }).eq('id', editId);
+            // Update existing staff
+            const { error } = await sbClient
+                .from('staff_records')
+                .update(data)
+                .eq('id', editId);
+            
             if (error) throw error;
-            showToast('Staff updated!', 'success');
+            showToast('✅ Staff updated successfully!', 'success');
         } else {
-            const { error } = await sbClient.from('finance_staff').insert([{ ...data, created_at: new Date().toISOString(), updated_at: new Date().toISOString() }]);
+            // Insert new staff
+            data.created_at = new Date().toISOString();
+            data.created_by = 'admin';
+            data.login_enabled = false;
+            
+            const { error } = await sbClient
+                .from('staff_records')
+                .insert([data]);
+            
             if (error) throw error;
-            showToast('Staff added!', 'success');
+            showToast('✅ Staff added successfully!', 'success');
         }
+        
         closeModal('addStaffModal');
         await loadStaffData();
+        
     } catch (error) {
-        console.error('Error saving staff:', error);
-        showToast('Error saving staff', 'error');
+        console.error('❌ Error saving staff:', error);
+        showToast('Error saving staff: ' + error.message, 'error');
     }
 }
-
 async function editStaffMember(id) {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
-        const { data, error } = await sbClient.from('finance_staff').select('*').eq('id', id).single();
+        const { data, error } = await sbClient
+            .from('staff_records')
+            .select('*')
+            .eq('id', id)
+            .single();
+        
         if (error) throw error;
-        document.getElementById('staffFullName').value = data.full_name || '';
-        document.getElementById('staffId').value = data.staff_id || '';
+        if (!data) {
+            showToast('Staff member not found', 'error');
+            return;
+        }
+        
+        // Populate form fields
+        document.getElementById('staffId').value = data.id || '';
+        document.getElementById('staffTitle').value = data.title || '';
+        document.getElementById('staffFirstName').value = data.first_name || '';
+        document.getElementById('staffOtherNames').value = data.other_names || '';
         document.getElementById('staffDepartment').value = data.department || '';
-        document.getElementById('staffPosition').value = data.position || '';
-        document.getElementById('staffBasicSalary').value = data.basic_salary || 0;
-        document.getElementById('staffAllowances').value = data.allowances || 0;
+        document.getElementById('staffPosition').value = data.designation || ''; // Position = Designation
         document.getElementById('staffEmail').value = data.email || '';
         document.getElementById('staffPhone').value = data.phone || '';
+        document.getElementById('staffNationalId').value = data.national_id || '';
+        document.getElementById('staffGender').value = data.gender || '';
+        document.getElementById('staffBankName').value = data.bank_name || '';
+        document.getElementById('staffBankAccount').value = data.bank_account || '';
+        document.getElementById('staffShifNumber').value = data.shif_number || '';
+        document.getElementById('staffNsrfNumber').value = data.nsrf_number || '';
+        document.getElementById('staffTaxPin').value = data.tax_pin || '';
+        document.getElementById('staffProgram').value = data.program || '';
         document.getElementById('staffStatus').value = data.status || 'active';
+        
+        // Set edit mode
         document.getElementById('addStaffForm').dataset.editId = id;
+        document.querySelector('#addStaffModal h3').textContent = '✏️ Edit Staff Member';
+        document.querySelector('#addStaffModal .modal-close').textContent = '×';
+        
         document.getElementById('addStaffModal').classList.add('active');
-        document.querySelector('#addStaffModal h3').textContent = 'Edit Staff Member';
+        
     } catch (error) {
-        console.error('Error loading staff for edit:', error);
-        showToast('Error loading staff data', 'error');
+        console.error('❌ Error loading staff for edit:', error);
+        showToast('Error loading staff data: ' + error.message, 'error');
     }
 }
-
 async function deleteStaffMember(id) {
     if (!confirm('Delete this staff member?')) return;
     try {
