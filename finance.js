@@ -1252,7 +1252,12 @@ function renderFeeStructureCards(fees) {
         const components = fee.components || [];
         let total = 0;
         components.forEach(c => { total += parseFloat(c.amount) || 0; });
-        if (fee.hostel) total += parseFloat(fee.hostel) || 0;
+        // ✅ HOSTEL REMOVED FROM TOTAL - NO LONGER ADDED
+        // if (fee.hostel) total += parseFloat(fee.hostel) || 0;
+        
+        // Calculate total with hostel for display separately
+        const totalWithHostel = total + (parseFloat(fee.hostel) || 0);
+        
         return `
             <div style="background:white;border-radius:12px;padding:20px;border:1px solid #e5e7eb;margin-bottom:16px;border-left:4px solid ${fee.is_active ? '#059669' : '#dc2626'};">
                 <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
@@ -1283,6 +1288,12 @@ function renderFeeStructureCards(fees) {
                             <span style="color:#0A3D62;">TOTAL</span>
                             <span style="color:#059669;">${formatCurrency(total)}</span>
                         </div>
+                        ${fee.hostel ? `
+                            <div style="display:flex;justify-content:space-between;font-size:14px;padding:6px 0;border-top:1px solid #e5e7eb;grid-column:1/-1;font-weight:700;color:#d97706;">
+                                <span style="color:#0A3D62;">TOTAL WITH HOSTEL</span>
+                                <span style="color:#d97706;">${formatCurrency(totalWithHostel)}</span>
+                            </div>
+                        ` : ''}
                     </div>
                 ` : '<div style="color:#94a3b8;font-size:13px;margin-top:8px;">No components defined</div>'}
                 <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;display:flex;flex-wrap:wrap;gap:8px 20px;font-size:12px;color:#64748b;">
@@ -1299,7 +1310,6 @@ function renderFeeStructureCards(fees) {
         `;
     }).join('');
 }
-
 function updateFeeStructureCount(count) {
     const el = document.getElementById('feeStructureCount');
     if (el) el.textContent = `Showing ${count} fee structures`;
@@ -1438,7 +1448,9 @@ async function saveFeeStructureFull() {
         if (name) { components.push({ label: name, amount: amount }); total += amount; }
     });
     if (components.length === 0) { showToast('Please add at least one fee component', 'warning'); return; }
-    total += hostel;
+    // ✅ REMOVE THIS LINE - DO NOT ADD HOSTEL TO TOTAL
+    // total += hostel;
+    
     const termInputs = document.querySelectorAll('.term-text');
     const terms = [];
     termInputs.forEach(input => { const text = input.value.trim(); if (text) terms.push(text); });
@@ -1473,7 +1485,6 @@ async function saveFeeStructureFull() {
         showToast('Error saving: ' + error.message, 'error');
     }
 }
-
 async function toggleFeeStructure(feeId) {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
