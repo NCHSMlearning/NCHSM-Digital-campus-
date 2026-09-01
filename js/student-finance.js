@@ -1959,7 +1959,140 @@ async function updateStudentBalanceAfterPayment(amount) {
         console.error('❌ Error updating balance:', error);
     }
 }
+// ============================================================
+// 🔍 POLL STUDENT PAYMENT STATUS - ADD THIS FUNCTION
+// ============================================================
 
+async function pollStudentPaymentStatus(transactionId, amount, period) {
+    let attempts = 0;
+    const maxAttempts = 30;
+    let paymentConfirmed = false;
+    let paymentData = null;
+    
+    updateStudentSTKStatus(0, maxAttempts, 'Waiting for payment confirmation...');
+    
+    while (attempts < maxAttempts && !paymentConfirmed) {
+        if (pendingPayment.cancelled) {
+            pendingPayment.isProcessing = false;
+            showStudentPaymentFailure('Payment was cancelled by user');
+            return;
+        }
+        
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        attempts++;
+        
+        updateStudentSTKStatus(attempts, maxAttempts, 'Please check your phone and enter your PIN');
+        
+        try {
+            // ✅ Check status via Edge Function
+            const supabase = getSupabaseClient();
+            if (!supabase) {
+                console.log('⚠️ No Supabase client');
+                continue;
+            }
+            
+            const { data: statusData, error: statusError } = await supabase.functions.invoke('payhero', {
+                body: {
+                    action: 'status',
+                    transaction_id: transactionId
+                }
+            });
+            
+            if (statusError) {
+                console.log('⚠️ Status check error:', statusError);
+                continue;
+            }
+            
+            console.log(`📊 Attempt ${attempts}/${maxAttempts}: Status = ${statusData?.status}`);
+            
+            if (statusData?.status === 'completed') {
+                paymentConfirmed = true;
+                paymentData = statusData;
+                console.log('✅ Payment confirmed!');
+                console.log('📱 Receipt:', statusData.receipt_number);
+                break;
+            } else if (statusData?.status === 'failed') {
+                paymentConfirmed = true;
+                paymentData = statusData;
+                console.log('❌ Payment failed');
+                break;
+            }
+            
+            // Also check database directly
+            const { data: dbCheck } = await supabase
+                .from('finance_payments')
+                .select('status, receipt_number, checkout_request_id, updated_at')
+                .eq('checkout_request_id', transactionId)
+                .maybeSingle();
+            
+            if (dbCheck?.status === 'completed') {
+                paymentConfirmed = true;
+                paymentData = dbCheck;
+                console.log('✅ Payment confirmed (DB)!');
+                console.log('📱 Receipt:', dbCheck.receipt_number);
+                break;
+            }
+            
+        } catch (pollError) {
+            console.log('⚠️ Polling error:', pollError);
+        }
+    }
+    
+    // Process result
+    if (paymentConfirmed) {
+        pendingPayment.isProcessing = false;
+        
+        // Update payment status in database
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                await supabase
+                    .from('finance_payments')
+                    .update({
+                        status: 'completed',
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('checkout_request_id', transactionId);
+            }
+        } catch (e) {}
+        
+        const receiptNumber = paymentData?.receipt_number || paymentData?.mpesa_receipt_number || 'N/A';
+        showStudentPaymentSuccess(amount, receiptNumber, period);
+        await updateStudentBalanceAfterPayment(amount);
+        setTimeout(loadStudentFinance, 1000);
+        showToast('✅ Payment successful!', 'success');
+        
+    } else if (pendingPayment.cancelled) {
+        pendingPayment.isProcessing = false;
+        showStudentPaymentFailure('Payment was cancelled');
+        
+    } else {
+        pendingPayment.isProcessing = false;
+        
+        // Final check
+        try {
+            const supabase = getSupabaseClient();
+            if (supabase) {
+                const { data: finalCheck } = await supabase
+                    .from('finance_payments')
+                    .select('status, receipt_number')
+                    .eq('checkout_request_id', transactionId)
+                    .maybeSingle();
+                
+                if (finalCheck && finalCheck.status === 'completed') {
+                    showStudentPaymentSuccess(amount, finalCheck.receipt_number || 'N/A', period);
+                    await updateStudentBalanceAfterPayment(amount);
+                    setTimeout(loadStudentFinance, 1000);
+                    showToast('✅ Payment successful!', 'success');
+                    return;
+                }
+            }
+        } catch (e) {}
+        
+        showStudentPaymentTimeout();
+        showToast('⏰ Payment timeout. Please check your M-Pesa transactions.', 'warning');
+    }
+}
 // ============================================================
 //  PROCESS PAYMENT - FIXED REFERENCE MATCHING
 // ============================================================
