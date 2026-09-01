@@ -1114,27 +1114,28 @@ window.NCHSMLogin = {
         console.log('✅ 2FA OTP Inputs initialized');
     },
 
-    // ============================================
-    // LOAD STAFF RECORDS
-    // ============================================
-    loadStaffRecords: async function() {
-        try {
-            if (!this.supabase) return;
-            
-            const { data, error } = await this.supabase
-                .from('staff_records')
-                .select('id, email, first_name, other_names, department, designation, login_enabled, status, password_hash')
-                .eq('login_enabled', true)
-                .eq('status', 'active');
-            
-            if (!error && data) {
-                this.staffRecords = data;
-                console.log(`📋 Loaded ${this.staffRecords.length} staff records`);
-            }
-        } catch (error) {
-            console.error('Error loading staff records:', error);
+   // ============================================
+// LOAD STAFF RECORDS - FIXED (load ALL staff)
+// ============================================
+loadStaffRecords: async function() {
+    try {
+        if (!this.supabase) return;
+        
+        // ✅ Load ALL staff, not just login_enabled=true
+        const { data, error } = await this.supabase
+            .from('staff_records')
+            .select('id, email, first_name, other_names, department, designation, login_enabled, status, password_hash');
+        
+        if (!error && data) {
+            this.staffRecords = data;
+            console.log(`📋 Loaded ${this.staffRecords.length} staff records`);
+            console.log(`   ✅ Login enabled: ${data.filter(s => s.login_enabled).length}`);
+            console.log(`   ❌ Login disabled: ${data.filter(s => !s.login_enabled).length}`);
         }
-    },
+    } catch (error) {
+        console.error('Error loading staff records:', error);
+    }
+},
     
     // ============================================
     // DISABLE DEVELOPER TOOLS
@@ -1725,192 +1726,233 @@ window.NCHSMLogin = {
         return Math.abs(hash).toString(16);
     },
     
-    // ============================================
-    // STAFF LOGIN - FIXED
-    // ============================================
-    verifyStaffLogin: async function(identifier, password) {
-        try {
-            const staff = this.staffRecords.find(s => 
-                s.email === identifier || s.id === identifier
-            );
-            
-            if (!staff) {
-                console.log('❌ Staff not found:', identifier);
-                return null;
-            }
-            
-            let storedPassword = staff.password_hash;
-            
-            try {
-                const decoded = atob(storedPassword);
-                storedPassword = decoded;
-            } catch (e) {
-                console.log('📝 Password not base64 encoded, using raw');
-            }
-            
-            if (storedPassword !== password) {
-                console.log('❌ Password mismatch for:', identifier);
-                return null;
-            }
-            
-            let uuid = staff.id;
-            try {
-                if (this.supabase) {
-                    const { data: profile } = await this.supabase
-                        .from('consolidated_user_profiles_table')
-                        .select('user_id')
-                        .eq('email', staff.email)
-                        .single();
-                    
-                    if (profile?.user_id) {
-                        uuid = profile.user_id;
-                        console.log('✅ Found UUID for staff:', uuid);
-                    }
-                }
-            } catch (e) {
-                console.log('⚠️ Could not get UUID, using staff ID:', staff.id);
-            }
-            
-            return {
-                user_id: uuid,
-                staff_id: staff.id,
-                id: staff.id,
-                email: staff.email,
-                full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
-                role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
-                program: staff.department,
-                is_staff: true,
-                staff_record: staff
-            };
-        } catch (error) {
-            console.error('❌ Staff verification error:', error);
+   // ============================================
+// STAFF LOGIN - FIXED WITH login_enabled CHECK
+// ============================================
+verifyStaffLogin: async function(identifier, password) {
+    try {
+        // ✅ RELOAD staff records to get latest login_enabled status
+        await this.loadStaffRecords();
+        
+        const staff = this.staffRecords.find(s => 
+            s.email === identifier || s.id === identifier
+        );
+        
+        if (!staff) {
+            console.log('❌ Staff not found:', identifier);
             return null;
         }
-    },
-
-    // ============================================
-    // EXECUTE LOGIN - FIXED (NO AUTO-CREATE)
-    // ============================================
-    executeLogin: async function(identifier, password) {
-        if (!this.supabase) {
-            throw new Error('Authentication service not available');
-        }
         
-        await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
-        
-        let profileData = null;
-        let isStaff = false;
-        
-        const staffProfile = await this.verifyStaffLogin(identifier, password);
-        if (staffProfile) {
-            console.log('✅ Staff login successful:', staffProfile.email);
-            profileData = staffProfile;
-            isStaff = true;
+        // ============================================
+        // ✅ CRITICAL FIX: Check login_enabled FIRST
+        // ============================================
+        if (!staff.login_enabled) {
+            console.log('🚫 Login blocked: Account disabled for', staff.email);
+            this.showError('❌ Your account has been disabled. Please contact administration.');
             
-            // ✅ Track staff login
-            trackGALogin('staff_login', {
+            // ✅ Track disabled login attempt
+            trackGALogin('login_blocked_disabled', {
                 'event_category': 'Authentication',
-                'event_label': identifier,
-                'role': staffProfile.role
+                'event_label': staff.email,
+                'reason': 'account_disabled'
             });
             
-            return { profileData, isStaff };
+            return null;
         }
         
-        console.log('🔐 Checking student login for:', identifier);
+        // ✅ Check if status is active
+        if (staff.status !== 'active') {
+            console.log('🚫 Login blocked: Account inactive for', staff.email);
+            this.showError(`❌ Your account is not active. Status: ${staff.status}`);
+            return null;
+        }
         
-        // ✅ Track student login attempt
-        trackGALogin('student_login_attempt', {
-            'event_category': 'Authentication',
-            'event_label': identifier
-        });
-        
+        // ✅ Check password
+        let storedPassword = staff.password_hash;
         try {
-            const { data: authData, error: authError } = await this.supabase.auth
-                .signInWithPassword({ 
-                    email: identifier, 
-                    password 
-                });
-            
-            if (authError) {
-                this.recordFailedAttempt();
+            const decoded = atob(storedPassword);
+            storedPassword = decoded;
+        } catch (e) {
+            console.log('📝 Password not base64 encoded, using raw');
+        }
+        
+        if (storedPassword !== password) {
+            console.log('❌ Password mismatch for:', identifier);
+            return null;
+        }
+        
+        // ✅ Get UUID
+        let uuid = staff.id;
+        try {
+            if (this.supabase) {
+                const { data: profile } = await this.supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('user_id')
+                    .eq('email', staff.email)
+                    .single();
                 
-                // ✅ Track failed login
-                trackGALogin('login_failed', {
-                    'event_category': 'Authentication',
-                    'event_label': identifier,
-                    'error': authError.message,
-                    'reason': 'invalid_credentials'
-                });
-                
-                if (authError.message.includes('Invalid login credentials')) {
-                    throw new Error('Invalid email or password');
-                } else if (authError.message.includes('Email not confirmed')) {
-                    throw new Error('Please verify your email');
-                } else {
-                    throw new Error('Login failed. Please try again.');
+                if (profile?.user_id) {
+                    uuid = profile.user_id;
+                    console.log('✅ Found UUID for staff:', uuid);
                 }
             }
+        } catch (e) {
+            console.log('⚠️ Could not get UUID, using staff ID:', staff.id);
+        }
+        
+        // ✅ Track successful staff login
+        trackGALogin('staff_login_success', {
+            'event_category': 'Authentication',
+            'event_label': staff.email,
+            'staff_id': staff.id
+        });
+        
+        return {
+            user_id: uuid,
+            staff_id: staff.id,
+            id: staff.id,
+            email: staff.email,
+            full_name: `${staff.first_name} ${staff.other_names || ''}`.trim(),
+            role: staff.designation === 'Lecturer' || staff.designation === 'Senior Lecturer' ? 'lecturer' : 'staff',
+            program: staff.department,
+            is_staff: true,
+            login_enabled: staff.login_enabled,
+            status: staff.status,
+            staff_record: staff
+        };
+    } catch (error) {
+        console.error('❌ Staff verification error:', error);
+        return null;
+    }
+},
+  // ============================================
+// EXECUTE LOGIN - FIXED (WITH STAFF REFRESH)
+// ============================================
+executeLogin: async function(identifier, password) {
+    if (!this.supabase) {
+        throw new Error('Authentication service not available');
+    }
+    
+    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
+    
+    let profileData = null;
+    let isStaff = false;
+    
+    // ============================================
+    // ✅ CRITICAL FIX: Reload staff records FIRST
+    // ============================================
+    await this.loadStaffRecords();
+    console.log('🔄 Staff records reloaded before login check');
+    
+    const staffProfile = await this.verifyStaffLogin(identifier, password);
+    if (staffProfile) {
+        console.log('✅ Staff login successful:', staffProfile.email);
+        profileData = staffProfile;
+        isStaff = true;
+        
+        // ✅ Track staff login
+        trackGALogin('staff_login', {
+            'event_category': 'Authentication',
+            'event_label': identifier,
+            'role': staffProfile.role
+        });
+        
+        return { profileData, isStaff };
+    }
+    
+    console.log('🔐 Checking student login for:', identifier);
+    
+    // ✅ Track student login attempt
+    trackGALogin('student_login_attempt', {
+        'event_category': 'Authentication',
+        'event_label': identifier
+    });
+    
+    try {
+        const { data: authData, error: authError } = await this.supabase.auth
+            .signInWithPassword({ 
+                email: identifier, 
+                password 
+            });
+        
+        if (authError) {
+            this.recordFailedAttempt();
             
-            if (!authData.user) {
-                throw new Error('No user found');
-            }
-            
-            console.log('✅ Supabase Auth successful for:', identifier);
-            
-            const { data: profile, error: profileError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
-                .eq('email', identifier)
-                .maybeSingle();
-            
-            if (profileError) {
-                console.error('❌ Profile error:', profileError);
-                await this.supabase.auth.signOut();
-                throw new Error('Error loading profile: ' + profileError.message);
-            }
-            
-            if (!profile) {
-                console.error('❌ No profile found for:', identifier);
-                await this.supabase.auth.signOut();
-                throw new Error('Account not found. Please contact support or register first.');
-            }
-            
-            const validStatuses = ['approved', 'active'];
-            if (!validStatuses.includes(profile.status?.toLowerCase())) {
-                await this.supabase.auth.signOut();
-                throw new Error('Account pending approval. Please wait.');
-            }
-            
-            return { 
-                profileData: {
-                    user_id: profile.user_id,
-                    email: profile.email,
-                    full_name: profile.full_name || 'Student',
-                    role: profile.role || 'student',
-                    program: profile.program || profile.department,
-                    staff_id: profile.staff_id || null,
-                    is_staff: false,
-                    two_factor_enabled: profile.two_factor_enabled || false,
-                    two_factor_verified: profile.two_factor_verified || false
-                }, 
-                isStaff: false 
-            };
-        } catch (error) {
-            console.error('❌ Student login error:', error);
-            
-            // ✅ Track login failure with error message
+            // ✅ Track failed login
             trackGALogin('login_failed', {
                 'event_category': 'Authentication',
                 'event_label': identifier,
-                'error': error.message,
-                'reason': 'exception'
+                'error': authError.message,
+                'reason': 'invalid_credentials'
             });
             
-            throw error;
+            if (authError.message.includes('Invalid login credentials')) {
+                throw new Error('Invalid email or password');
+            } else if (authError.message.includes('Email not confirmed')) {
+                throw new Error('Please verify your email');
+            } else {
+                throw new Error('Login failed. Please try again.');
+            }
         }
-    },
-
+        
+        if (!authData.user) {
+            throw new Error('No user found');
+        }
+        
+        console.log('✅ Supabase Auth successful for:', identifier);
+        
+        const { data: profile, error: profileError } = await this.supabase
+            .from('consolidated_user_profiles_table')
+            .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
+            .eq('email', identifier)
+            .maybeSingle();
+        
+        if (profileError) {
+            console.error('❌ Profile error:', profileError);
+            await this.supabase.auth.signOut();
+            throw new Error('Error loading profile: ' + profileError.message);
+        }
+        
+        if (!profile) {
+            console.error('❌ No profile found for:', identifier);
+            await this.supabase.auth.signOut();
+            throw new Error('Account not found. Please contact support or register first.');
+        }
+        
+        const validStatuses = ['approved', 'active'];
+        if (!validStatuses.includes(profile.status?.toLowerCase())) {
+            await this.supabase.auth.signOut();
+            throw new Error('Account pending approval. Please wait.');
+        }
+        
+        return { 
+            profileData: {
+                user_id: profile.user_id,
+                email: profile.email,
+                full_name: profile.full_name || 'Student',
+                role: profile.role || 'student',
+                program: profile.program || profile.department,
+                staff_id: profile.staff_id || null,
+                is_staff: false,
+                two_factor_enabled: profile.two_factor_enabled || false,
+                two_factor_verified: profile.two_factor_verified || false
+            }, 
+            isStaff: false 
+        };
+    } catch (error) {
+        console.error('❌ Student login error:', error);
+        
+        // ✅ Track login failure with error message
+        trackGALogin('login_failed', {
+            'event_category': 'Authentication',
+            'event_label': identifier,
+            'error': error.message,
+            'reason': 'exception'
+        });
+        
+        throw error;
+    }
+},
     // ============================================
     // LOGIN HANDLER - WITH 2FA SUPPORT
     // ============================================
