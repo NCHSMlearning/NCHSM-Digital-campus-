@@ -20,10 +20,10 @@ let allTransactions = [];
 let allFeeStructures = [];
 let staffData = [];
 let allAccounts = [];
+let allInvoices = [];
 let selectedStudentForPayment = null;
 let monthlyChart = null;
 let statusChart = null;
-let allInvoices = [];
 
 // ============================================================
 // INJECT CSS
@@ -556,6 +556,7 @@ function setupTabs() {
         });
     });
 }
+
 function showTab(tabId) {
     document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
         link.classList.remove('active');
@@ -576,7 +577,7 @@ function showTab(tabId) {
             case 'accounts': loadAccounts(); break;
             case 'payments': loadPayments(); break;
             case 'fee-structure': loadFeeStructure(); break;
-            case 'invoices': loadInvoices(); break;   // ✅ ADD THIS LINE
+            case 'invoices': loadInvoices(); break;
             case 'payroll': loadStaffData(); break;
             case 'transactions': loadTransactions(); break;
             case 'settings': loadSettings(); break;
@@ -591,24 +592,30 @@ function showTab(tabId) {
 async function loadDashboardData() {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
+        
         const { count: totalStudents } = await sbClient
             .from('consolidated_user_profiles_table')
             .select('*', { count: 'exact', head: true })
             .eq('role', 'student');
+        
         document.getElementById('totalStudents').textContent = totalStudents || 0;
         document.getElementById('accountsBadge').textContent = totalStudents || 0;
+
         const { data: payments } = await sbClient
             .from('finance_payments')
             .select('*')
             .order('payment_date', { ascending: false });
+
         if (payments) {
             const totalCollected = payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + (p.amount || 0), 0);
             document.getElementById('totalCollected').textContent = formatCurrency(totalCollected);
+
             const today = new Date().toISOString().split('T')[0];
             const todayPayments = payments.filter(p => p.payment_date === today && p.status === 'completed');
             const todayTotal = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
             document.getElementById('todayPayments').textContent = formatCurrency(todayTotal);
             document.getElementById('totalTransactions').textContent = payments.length;
+
             const recentTbody = document.getElementById('recentTransactions');
             if (payments.length === 0) {
                 recentTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">No transactions found</td></tr>`;
@@ -625,19 +632,24 @@ async function loadDashboardData() {
                 `).join('');
             }
         }
+
         const { data: accounts } = await sbClient
             .from('finance_student_accounts')
             .select('balance')
             .gt('balance', 0);
+        
         if (accounts) {
             const outstanding = accounts.reduce((sum, a) => sum + (a.balance || 0), 0);
             document.getElementById('outstandingBalance').textContent = formatCurrency(outstanding);
             document.getElementById('overdueAccounts').textContent = accounts.length || 0;
             document.getElementById('dashboardBadge').textContent = accounts.length || 0;
         }
+
         loadCharts(payments || []);
+
     } catch (error) {
         console.error('Error loading dashboard:', error);
+        showToast('Error loading dashboard data', 'error');
     }
 }
 
@@ -927,6 +939,7 @@ async function loadPayments() {
         renderPayments(allPayments);
         updatePaymentCount(allPayments.length);
         updatePaymentSummary(allPayments);
+        console.log('✅ Payments loaded:', allPayments.length);
     } catch (error) {
         console.error('Error loading payments:', error);
         showToast('Error loading payments', 'error');
@@ -1220,6 +1233,7 @@ async function loadFeeStructure() {
         allFeeStructures = data || [];
         renderFeeStructureCards(allFeeStructures);
         updateFeeStructureCount(allFeeStructures.length);
+        console.log('✅ Fee structure loaded:', allFeeStructures.length);
     } catch (error) {
         console.error('Error loading fee structures:', error);
         showToast('Error loading fee structures', 'error');
@@ -1540,6 +1554,201 @@ function refreshFeeStructure() {
 }
 
 // ============================================================
+// INVOICES
+// ============================================================
+
+async function loadInvoices() {
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { data, error } = await sbClient
+            .from('finance_invoices')
+            .select('*')
+            .order('created_at', { ascending: false });
+        if (error) throw error;
+        allInvoices = data || [];
+        renderInvoices(allInvoices);
+        document.getElementById('invoiceCount').textContent = `${allInvoices.length} invoices`;
+        document.getElementById('invoicesBadge').textContent = allInvoices.filter(i => i.status === 'pending' || i.status === 'overdue').length;
+        console.log('✅ Invoices loaded:', allInvoices.length);
+    } catch (error) {
+        console.error('Error loading invoices:', error);
+        showToast('Error loading invoices', 'error');
+    }
+}
+
+function renderInvoices(invoices) {
+    const tbody = document.getElementById('invoicesTableBody');
+    if (!tbody) return;
+    if (!invoices || invoices.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-file-invoice" style="font-size:32px;display:block;margin-bottom:10px;"></i>No invoices found</td></tr>`;
+        return;
+    }
+    tbody.innerHTML = invoices.map(inv => {
+        const balance = parseFloat(inv.balance) || 0;
+        const total = parseFloat(inv.total_amount) || 0;
+        const paid = parseFloat(inv.amount_paid) || 0;
+        let statusLabel = '⏳ Pending';
+        let statusClass = 'badge-warning';
+        if (inv.status === 'paid' || balance === 0) { statusLabel = '✅ Paid'; statusClass = 'badge-success'; }
+        else if (inv.status === 'overdue' || (inv.due_date && new Date(inv.due_date) < new Date())) { statusLabel = '🔴 Overdue'; statusClass = 'badge-danger'; }
+        else if (balance > 0 && balance < total) { statusLabel = '⚠️ Partial'; statusClass = 'badge-warning'; }
+        return `
+            <tr>
+                <td><strong>${inv.invoice_number || 'N/A'}</strong></td>
+                <td><strong>${inv.student_name || 'N/A'}</strong></td>
+                <td>${inv.program || '-'}</td>
+                <td>${formatDate(inv.invoice_date)}</td>
+                <td>${formatDate(inv.due_date)}</td>
+                <td><strong>${formatCurrency(total)}</strong></td>
+                <td>${formatCurrency(paid)}</td>
+                <td><strong style="color: ${balance > 0 ? '#dc2626' : '#059669'}">${formatCurrency(balance)}</strong></td>
+                <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+                <td>
+                    <button onclick="viewInvoice('${inv.id}')" class="btn-action btn-primary btn-xs" title="View"><i class="fas fa-eye"></i></button>
+                    <button onclick="printInvoice('${inv.id}')" class="btn-action btn-success btn-xs" title="Print"><i class="fas fa-print"></i></button>
+                    <button onclick="deleteInvoice('${inv.id}')" class="btn-action btn-danger btn-xs" title="Delete"><i class="fas fa-trash"></i></button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function filterInvoices() {
+    const search = document.getElementById('invoiceSearch')?.value?.toLowerCase() || '';
+    const status = document.getElementById('invoiceStatusFilter')?.value || 'all';
+    let filtered = allInvoices;
+    if (search) {
+        filtered = filtered.filter(inv => 
+            (inv.invoice_number || '').toLowerCase().includes(search) ||
+            (inv.student_name || '').toLowerCase().includes(search) ||
+            (inv.program || '').toLowerCase().includes(search)
+        );
+    }
+    if (status !== 'all') {
+        filtered = filtered.filter(inv => inv.status === status);
+    }
+    renderInvoices(filtered);
+    document.getElementById('invoiceCount').textContent = `${filtered.length} invoices (filtered)`;
+}
+
+function resetInvoiceFilters() {
+    document.getElementById('invoiceSearch').value = '';
+    document.getElementById('invoiceStatusFilter').value = 'all';
+    renderInvoices(allInvoices);
+    document.getElementById('invoiceCount').textContent = `${allInvoices.length} invoices`;
+}
+
+function openCreateInvoiceModal() {
+    const student = allAccounts.find(s => s.status === 'approved');
+    if (!student) { showToast('No approved students found!', 'warning'); return; }
+    const amount = prompt('Enter invoice amount (KES):');
+    if (!amount || isNaN(amount)) return;
+    const dueDate = prompt('Enter due date (YYYY-MM-DD):');
+    if (!dueDate) return;
+    createInvoice(student, parseFloat(amount), dueDate);
+}
+
+async function createInvoice(student, amount, dueDate) {
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        const invoiceData = {
+            student_id: student.user_id || student.student_id,
+            student_name: student.full_name || student.student_name,
+            student_email: student.email,
+            program: student.program,
+            intake_year: student.intake_year,
+            due_date: dueDate,
+            period: 'Term 1, 2026',
+            total_amount: amount,
+            amount_paid: 0,
+            balance: amount,
+            status: 'pending',
+            items: [{ description: 'Tuition Fee', amount: amount }],
+            notes: 'Auto-generated invoice',
+            created_at: new Date().toISOString()
+        };
+        const { error } = await sbClient.from('finance_invoices').insert([invoiceData]);
+        if (error) throw error;
+        showToast(`✅ Invoice created for ${student.full_name}`, 'success');
+        await loadInvoices();
+    } catch (error) {
+        console.error('Error creating invoice:', error);
+        showToast('Error creating invoice: ' + error.message, 'error');
+    }
+}
+
+function viewInvoice(invoiceId) {
+    const invoice = allInvoices.find(i => i.id === invoiceId);
+    if (!invoice) { showToast('Invoice not found', 'error'); return; }
+    showToast(`📄 Invoice ${invoice.invoice_number}: ${formatCurrency(invoice.total_amount)}`, 'info');
+}
+
+function printInvoice(invoiceId) {
+    const invoice = allInvoices.find(i => i.id === invoiceId);
+    if (!invoice) { showToast('Invoice not found', 'error'); return; }
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html><head><title>Invoice ${invoice.invoice_number}</title>
+        <style>
+            body { font-family: Arial, sans-serif; padding: 40px; }
+            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #4C1D95; padding-bottom: 20px; margin-bottom: 20px; }
+            .invoice-title { font-size: 28px; color: #4C1D95; }
+            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
+            th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
+            th { background: #f0f4ff; }
+            .total { font-size: 20px; font-weight: bold; text-align: right; margin-top: 20px; padding-top: 20px; border-top: 2px solid #4C1D95; }
+            .footer { margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #ddd; padding-top: 20px; }
+        </style>
+        </head><body>
+            <div class="header">
+                <div><h1 class="invoice-title">INVOICE</h1><p><strong>NCHSM Finance Department</strong></p></div>
+                <div>
+                    <p><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
+                    <p><strong>Date:</strong> ${formatDate(invoice.invoice_date)}</p>
+                    <p><strong>Due Date:</strong> ${formatDate(invoice.due_date)}</p>
+                </div>
+            </div>
+            <div><p><strong>Student:</strong> ${invoice.student_name}</p><p><strong>Program:</strong> ${invoice.program || 'N/A'}</p></div>
+            <table>
+                <thead><tr><th>Description</th><th style="text-align:right;">Amount (KES)</th></tr></thead>
+                <tbody>
+                    ${(invoice.items || [{description: 'Tuition Fee', amount: invoice.total_amount}]).map(item => `
+                        <tr><td>${item.description || 'Fee'}</td><td style="text-align:right;">${(item.amount || 0).toLocaleString()}</td></tr>
+                    `).join('')}
+                    <tr style="font-weight:bold;border-top:2px solid #4C1D95;">
+                        <td>TOTAL</td>
+                        <td style="text-align:right;">${invoice.total_amount.toLocaleString()}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div class="total"><p>Balance Due: <span style="color:#dc2626;">KES ${(invoice.balance || 0).toLocaleString()}</span></p></div>
+            <div style="margin-top:20px;padding:16px;background:#f8fafc;border-radius:8px;">
+                <p><strong>Payment Instructions:</strong></p>
+                <p>M-Pesa Paybill: <strong>247247</strong> | Account: <strong>219337#AdmNo</strong></p>
+                <p>Equity Bank: <strong>0130200214036</strong> | Branch: Nakuru</p>
+            </div>
+            <div class="footer"><p>NCHSM Finance Module | nchsmfinance@gmail.com | +254 103614355</p></div>
+            <script>setTimeout(function(){ window.print(); window.close(); }, 1000);<\/script>
+        </body></html>
+    `);
+    printWindow.document.close();
+}
+
+async function deleteInvoice(invoiceId) {
+    if (!confirm('Delete this invoice?')) return;
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        const { error } = await sbClient.from('finance_invoices').delete().eq('id', invoiceId);
+        if (error) throw error;
+        showToast('Invoice deleted!', 'success');
+        await loadInvoices();
+    } catch (error) {
+        console.error('Error deleting invoice:', error);
+        showToast('Error deleting invoice', 'error');
+    }
+}
+
+// ============================================================
 // STAFF PAYROLL
 // ============================================================
 
@@ -1555,6 +1764,7 @@ async function loadStaffData() {
         renderStaffTable();
         updatePayrollSummary();
         document.getElementById('staffCount').textContent = `${staffData.length} staff members`;
+        console.log('✅ Staff data loaded:', staffData.length);
     } catch (error) {
         console.error('Error loading staff:', error);
         showToast('Error loading staff data', 'error');
@@ -1742,6 +1952,7 @@ async function loadTransactions() {
         allTransactions = data || [];
         renderTransactions(allTransactions);
         document.getElementById('transactionCount').textContent = `${allTransactions.length} transactions`;
+        console.log('✅ Transactions loaded:', allTransactions.length);
     } catch (error) {
         console.error('Error loading transactions:', error);
         showToast('Error loading transactions', 'error');
@@ -1789,206 +2000,7 @@ function resetTransactionFilters() {
     renderTransactions(allTransactions);
     document.getElementById('transactionCount').textContent = `${allTransactions.length} transactions`;
 }
-// ============================================================
-// INVOICES - Add these functions at the end of finance.js
-// ============================================================
 
-let allInvoices = [];
-
-async function loadInvoices() {
-    try {
-        if (!sbClient) { if (!initSupabase()) return; }
-        const { data, error } = await sbClient
-            .from('finance_invoices')
-            .select('*')
-            .order('created_at', { ascending: false });
-        if (error) throw error;
-        allInvoices = data || [];
-        renderInvoices(allInvoices);
-        document.getElementById('invoiceCount').textContent = `${allInvoices.length} invoices`;
-        document.getElementById('invoicesBadge').textContent = allInvoices.filter(i => i.status === 'pending' || i.status === 'overdue').length;
-    } catch (error) {
-        console.error('Error loading invoices:', error);
-        showToast('Error loading invoices', 'error');
-    }
-}
-
-function renderInvoices(invoices) {
-    const tbody = document.getElementById('invoicesTableBody');
-    if (!tbody) return;
-    if (!invoices || invoices.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;padding:40px;color:#94a3b8;"><i class="fas fa-file-invoice" style="font-size:32px;display:block;margin-bottom:10px;"></i>No invoices found</td></tr>`;
-        return;
-    }
-    tbody.innerHTML = invoices.map(inv => {
-        const balance = parseFloat(inv.balance) || 0;
-        const total = parseFloat(inv.total_amount) || 0;
-        const paid = parseFloat(inv.amount_paid) || 0;
-        let statusLabel = '⏳ Pending';
-        let statusClass = 'badge-warning';
-        if (inv.status === 'paid' || balance === 0) { statusLabel = '✅ Paid'; statusClass = 'badge-success'; }
-        else if (inv.status === 'overdue' || (inv.due_date && new Date(inv.due_date) < new Date())) { statusLabel = '🔴 Overdue'; statusClass = 'badge-danger'; }
-        else if (balance > 0 && balance < total) { statusLabel = '⚠️ Partial'; statusClass = 'badge-warning'; }
-        return `
-            <tr>
-                <td><strong>${inv.invoice_number || 'N/A'}</strong></td>
-                <td><strong>${inv.student_name || 'N/A'}</strong></td>
-                <td>${inv.program || '-'}</td>
-                <td>${formatDate(inv.invoice_date)}</td>
-                <td>${formatDate(inv.due_date)}</td>
-                <td><strong>${formatCurrency(total)}</strong></td>
-                <td>${formatCurrency(paid)}</td>
-                <td><strong style="color: ${balance > 0 ? '#dc2626' : '#059669'}">${formatCurrency(balance)}</strong></td>
-                <td><span class="badge ${statusClass}">${statusLabel}</span></td>
-                <td>
-                    <button onclick="viewInvoice('${inv.id}')" class="btn-action btn-primary btn-xs" title="View"><i class="fas fa-eye"></i></button>
-                    <button onclick="printInvoice('${inv.id}')" class="btn-action btn-success btn-xs" title="Print"><i class="fas fa-print"></i></button>
-                    <button onclick="deleteInvoice('${inv.id}')" class="btn-action btn-danger btn-xs" title="Delete"><i class="fas fa-trash"></i></button>
-                </td>
-            </tr>
-        `;
-    }).join('');
-}
-
-function filterInvoices() {
-    const search = document.getElementById('invoiceSearch')?.value?.toLowerCase() || '';
-    const status = document.getElementById('invoiceStatusFilter')?.value || 'all';
-    let filtered = allInvoices;
-    if (search) {
-        filtered = filtered.filter(inv => 
-            (inv.invoice_number || '').toLowerCase().includes(search) ||
-            (inv.student_name || '').toLowerCase().includes(search) ||
-            (inv.program || '').toLowerCase().includes(search)
-        );
-    }
-    if (status !== 'all') {
-        filtered = filtered.filter(inv => inv.status === status);
-    }
-    renderInvoices(filtered);
-    document.getElementById('invoiceCount').textContent = `${filtered.length} invoices (filtered)`;
-}
-
-function resetInvoiceFilters() {
-    document.getElementById('invoiceSearch').value = '';
-    document.getElementById('invoiceStatusFilter').value = 'all';
-    renderInvoices(allInvoices);
-    document.getElementById('invoiceCount').textContent = `${allInvoices.length} invoices`;
-}
-
-function openCreateInvoiceModal() {
-    // Get the first approved student
-    const student = allAccounts.find(s => s.status === 'approved');
-    if (!student) { showToast('No approved students found!', 'warning'); return; }
-    const amount = prompt('Enter invoice amount (KES):');
-    if (!amount || isNaN(amount)) return;
-    const dueDate = prompt('Enter due date (YYYY-MM-DD):');
-    if (!dueDate) return;
-    createInvoice(student, parseFloat(amount), dueDate);
-}
-
-async function createInvoice(student, amount, dueDate) {
-    try {
-        if (!sbClient) { if (!initSupabase()) return; }
-        const invoiceData = {
-            student_id: student.user_id || student.student_id,
-            student_name: student.full_name || student.student_name,
-            student_email: student.email,
-            program: student.program,
-            intake_year: student.intake_year,
-            due_date: dueDate,
-            period: 'Term 1, 2026',
-            total_amount: amount,
-            amount_paid: 0,
-            balance: amount,
-            status: 'pending',
-            items: [{ description: 'Tuition Fee', amount: amount }],
-            notes: 'Auto-generated invoice',
-            created_at: new Date().toISOString()
-        };
-        const { error } = await sbClient.from('finance_invoices').insert([invoiceData]);
-        if (error) throw error;
-        showToast(`✅ Invoice created for ${student.full_name}`, 'success');
-        await loadInvoices();
-    } catch (error) {
-        console.error('Error creating invoice:', error);
-        showToast('Error creating invoice: ' + error.message, 'error');
-    }
-}
-
-function viewInvoice(invoiceId) {
-    const invoice = allInvoices.find(i => i.id === invoiceId);
-    if (!invoice) { showToast('Invoice not found', 'error'); return; }
-    showToast(`📄 Invoice ${invoice.invoice_number}: ${formatCurrency(invoice.total_amount)}`, 'info');
-}
-
-function printInvoice(invoiceId) {
-    const invoice = allInvoices.find(i => i.id === invoiceId);
-    if (!invoice) { showToast('Invoice not found', 'error'); return; }
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <html><head><title>Invoice ${invoice.invoice_number}</title>
-        <style>
-            body { font-family: Arial, sans-serif; padding: 40px; }
-            .header { display: flex; justify-content: space-between; border-bottom: 2px solid #4C1D95; padding-bottom: 20px; margin-bottom: 20px; }
-            .invoice-title { font-size: 28px; color: #4C1D95; }
-            table { width: 100%; border-collapse: collapse; margin: 20px 0; }
-            th, td { padding: 12px; border: 1px solid #ddd; text-align: left; }
-            th { background: #f0f4ff; }
-            .total { font-size: 20px; font-weight: bold; text-align: right; margin-top: 20px; padding-top: 20px; border-top: 2px solid #4C1D95; }
-            .footer { margin-top: 40px; font-size: 12px; color: #94a3b8; text-align: center; border-top: 1px solid #ddd; padding-top: 20px; }
-        </style>
-        </head><body>
-            <div class="header">
-                <div><h1 class="invoice-title">INVOICE</h1><p><strong>NCHSM Finance Department</strong></p></div>
-                <div>
-                    <p><strong>Invoice #:</strong> ${invoice.invoice_number}</p>
-                    <p><strong>Date:</strong> ${formatDate(invoice.invoice_date)}</p>
-                    <p><strong>Due Date:</strong> ${formatDate(invoice.due_date)}</p>
-                </div>
-            </div>
-            <div><p><strong>Student:</strong> ${invoice.student_name}</p><p><strong>Program:</strong> ${invoice.program || 'N/A'}</p></div>
-            <table>
-                <thead><tr><th>Description</th><th style="text-align:right;">Amount (KES)</th></tr></thead>
-                <tbody>
-                    ${(invoice.items || [{description: 'Tuition Fee', amount: invoice.total_amount}]).map(item => `
-                        <tr><td>${item.description || 'Fee'}</td><td style="text-align:right;">${(item.amount || 0).toLocaleString()}</td></tr>
-                    `).join('')}
-                    <tr style="font-weight:bold;border-top:2px solid #4C1D95;">
-                        <td>TOTAL</td>
-                        <td style="text-align:right;">${invoice.total_amount.toLocaleString()}</td>
-                    </tr>
-                </tbody>
-            </table>
-            <div class="total"><p>Balance Due: <span style="color:#dc2626;">KES ${(invoice.balance || 0).toLocaleString()}</span></p></div>
-            <div style="margin-top:20px;padding:16px;background:#f8fafc;border-radius:8px;">
-                <p><strong>Payment Instructions:</strong></p>
-                <p>M-Pesa Paybill: <strong>247247</strong> | Account: <strong>219337#AdmNo</strong></p>
-                <p>Equity Bank: <strong>0130200214036</strong> | Branch: Nakuru</p>
-            </div>
-            <div class="footer"><p>NCHSM Finance Module | nchsmfinance@gmail.com | +254 103614355</p></div>
-            <script>setTimeout(function(){ window.print(); window.close(); }, 1000);<\/script>
-        </body></html>
-    `);
-    printWindow.document.close();
-}
-
-async function deleteInvoice(invoiceId) {
-    if (!confirm('Delete this invoice?')) return;
-    try {
-        if (!sbClient) { if (!initSupabase()) return; }
-        const { error } = await sbClient.from('finance_invoices').delete().eq('id', invoiceId);
-        if (error) throw error;
-        showToast('Invoice deleted!', 'success');
-        await loadInvoices();
-    } catch (error) {
-        console.error('Error deleting invoice:', error);
-        showToast('Error deleting invoice', 'error');
-    }
-}
-
-// Add 'invoices' to showTab switch
-// Find the showTab function and add this case:
-// case 'invoices': loadInvoices(); break;
 // ============================================================
 // SETTINGS
 // ============================================================
@@ -2046,6 +2058,7 @@ function refreshAllData() {
     loadStaffData();
     loadFeeStructure();
     loadTransactions();
+    loadInvoices();
     setTimeout(() => showToast('All data refreshed!', 'success'), 2000);
 }
 
