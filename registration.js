@@ -245,41 +245,56 @@ function isValidEmail(email) {
 }
 
 // ============================================
-// 6. PASSWORD VALIDATION
+// 6. PASSWORD VALIDATION - SIMPLIFIED
 // ============================================
 function validatePassword(password) {
     if (!password) {
         return { valid: false, message: 'Password is required' };
     }
     
-    const requirements = [];
-    
-    if (password.length < 8) {
-        requirements.push('at least 8 characters');
-    }
-    if (!/[A-Z]/.test(password)) {
-        requirements.push('at least one uppercase letter');
-    }
-    if (!/[a-z]/.test(password)) {
-        requirements.push('at least one lowercase letter');
-    }
-    if (!/[0-9]/.test(password)) {
-        requirements.push('at least one number');
-    }
-    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-        requirements.push('at least one special character');
-    }
-    
-    if (requirements.length > 0) {
+    // Simple: just check minimum length
+    if (password.length < 6) {
         return { 
             valid: false, 
-            message: `Password must have ${requirements.join(', ')}` 
+            message: 'Password must be at least 6 characters long' 
         };
     }
     
-    return { valid: true, message: 'Password is strong' };
+    return { valid: true, message: 'Password is valid' };
+}// ============================================
+// 6. PASSWORD VALIDATION - MIXTURE OF LETTERS & NUMBERS
+// ============================================
+function validatePassword(password) {
+    if (!password) {
+        return { valid: false, message: 'Password is required' };
+    }
+    
+    // Check minimum length
+    if (password.length < 6) {
+        return { 
+            valid: false, 
+            message: 'Password must be at least 6 characters long' 
+        };
+    }
+    
+    // Check for at least one letter
+    if (!/[A-Za-z]/.test(password)) {
+        return { 
+            valid: false, 
+            message: 'Password must contain at least one letter' 
+        };
+    }
+    
+    // Check for at least one number
+    if (!/[0-9]/.test(password)) {
+        return { 
+            valid: false, 
+            message: 'Password must contain at least one number' 
+        };
+    }
+    
+    return { valid: true, message: 'Password is valid' };
 }
-
 // ============================================
 // 7. FILE VALIDATION
 // ============================================
@@ -688,6 +703,23 @@ function getDocLabel(docType) {
     return labels[docType] || docType;
 }
 
+// ============================================
+// PASSWORD VISIBILITY TOGGLE
+// ============================================
+function togglePasswordVisibility(inputId, button) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    
+    if (input.type === 'password') {
+        input.type = 'text';
+        button.textContent = '🙈';  // Change to "hide" icon
+        button.setAttribute('aria-label', 'Hide password');
+    } else {
+        input.type = 'password';
+        button.textContent = '👁️';  // Change back to "show" icon
+        button.setAttribute('aria-label', 'Show password');
+    }
+}
 // ============================================
 // ============================================
 // VALIDATION MODAL
@@ -2017,54 +2049,50 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }, 500);
     });
+   // ============================================
+// PASSWORD STRENGTH - WITH LETTERS & NUMBERS CHECK
+// ============================================
+document.getElementById('password').addEventListener('input', function() {
+    const password = this.value;
+    const length = password.length;
+    const hasLetter = /[A-Za-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasBoth = hasLetter && hasNumber;
     
-    // ============================================
-    // PASSWORD STRENGTH
-    // ============================================
-    document.getElementById('password').addEventListener('input', function() {
-        const password = this.value;
-        let strength = 0;
-        if (password.length >= 8) strength++;
-        if (password.length >= 12) strength++;
-        if (/[A-Z]/.test(password)) strength++;
-        if (/[a-z]/.test(password)) strength++;
-        if (/[0-9]/.test(password)) strength++;
-        if (/[^A-Za-z0-9]/.test(password)) strength++;
-        
-        const levels = [
-            { text: 'Very Weak', class: 'text-weak', bar: 'strength-weak' },
-            { text: 'Weak', class: 'text-weak', bar: 'strength-weak' },
-            { text: 'Fair', class: 'text-fair', bar: 'strength-fair' },
-            { text: 'Good', class: 'text-good', bar: 'strength-good' },
-            { text: 'Strong', class: 'text-strong', bar: 'strength-strong' },
-            { text: 'Very Strong', class: 'text-strong', bar: 'strength-strong' }
-        ];
-        
-        const level = Math.min(Math.floor(strength / 1), 5);
-        const result = levels[level] || levels[0];
-        
-        document.getElementById('strengthBar').className = `strength-bar ${result.bar}`;
-        const textEl = document.getElementById('strengthText');
-        textEl.textContent = password.length > 0 ? `Strength: ${result.text}` : 'Enter a password';
-        textEl.className = `strength-text ${password.length > 0 ? result.class : ''}`;
-    });
+    let text = '';
+    let barClass = '';
     
-    document.getElementById('confirm_password').addEventListener('input', function() {
-        const password = document.getElementById('password').value;
-        const confirm = this.value;
-        const matchEl = document.getElementById('passwordMatch');
-        
-        if (confirm.length === 0) {
-            matchEl.textContent = '';
-            matchEl.style.color = '#5b6e8c';
-        } else if (password === confirm) {
-            matchEl.textContent = '✅ Passwords match!';
-            matchEl.style.color = '#10b981';
+    if (length === 0) {
+        text = 'Enter a password';
+        barClass = '';
+    } else if (length < 6) {
+        text = '❌ Too short (min 6 characters)';
+        barClass = 'strength-weak';
+    } else if (!hasBoth) {
+        if (!hasLetter) {
+            text = '⚠️ Add a letter';
+        } else if (!hasNumber) {
+            text = '⚠️ Add a number';
         } else {
-            matchEl.textContent = '❌ Passwords do not match';
-            matchEl.style.color = '#DC2626';
+            text = '⚠️ Mix letters and numbers';
         }
-    });
+        barClass = 'strength-weak';
+    } else if (length < 8) {
+        text = '👍 Good (letters + numbers)';
+        barClass = 'strength-fair';
+    } else if (length < 10) {
+        text = '💪 Strong';
+        barClass = 'strength-good';
+    } else {
+        text = '🔥 Very Strong';
+        barClass = 'strength-strong';
+    }
+    
+    document.getElementById('strengthBar').className = `strength-bar ${barClass}`;
+    const textEl = document.getElementById('strengthText');
+    textEl.textContent = text;
+    textEl.className = `strength-text ${length > 0 ? 'text-show' : ''}`;
+});
     
     // ============================================
     // INTAKE PREVIEW UPDATES
