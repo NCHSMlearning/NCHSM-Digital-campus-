@@ -1896,7 +1896,7 @@ async function checkPaymentStatus(reference) {
 }
 
 // ============================================================
-// 📱 PROCESS PAYMENT - WITH POS STYLE MODAL
+// 📱 PROCESS PAYMENT - FIXED (Save FIRST, then STK)
 // ============================================================
 
 async function processPayment() {
@@ -1959,7 +1959,60 @@ async function processPayment() {
         }
         if (formContainer) formContainer.style.display = 'none';
         
-        // ✅ CALL EDGE FUNCTION (LIKE VIEWPOINT)
+        // ✅ STEP 1: SAVE PAYMENT RECORD FIRST
+        const dbPeriod = mapPeriodToDatabase(period);
+        const paymentRecord = {
+            student_id: user?.user_id || user?.id || 'student_001',
+            student_name: user?.full_name || user?.name || 'Student',
+            student_email: user?.email || '',
+            program: user?.program || 'KRCHN',
+            amount: parseFloat(amount),
+            payment_method: 'M-Pesa STK Push',
+            reference_number: reference,
+            payment_date: new Date().toISOString().split('T')[0],
+            period: dbPeriod || period,
+            status: 'pending',
+            notes: `${period} Tuition Fees - M-Pesa Payment`,
+            phone_number: formattedPhone,
+            program_type: studentFinanceState.programType || 'KRCHN',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        
+        console.log('📝 Saving payment record FIRST:', paymentRecord);
+        
+        let savedPayment = null;
+        try {
+            const supabase = getSupabaseClient();
+            if (!supabase) {
+                throw new Error('Supabase client not available');
+            }
+            
+            const { data, error } = await supabase
+                .from('finance_payments')
+                .insert([paymentRecord])
+                .select()
+                .single();
+            
+            if (error) {
+                console.error('❌ Error saving payment:', error);
+                showStudentPaymentFailure('Could not save payment record');
+                pendingPayment.isProcessing = false;
+                return;
+            }
+            
+            savedPayment = data;
+            pendingPayment.paymentId = savedPayment.id;
+            console.log('✅ Payment record saved:', savedPayment.id);
+            
+        } catch (saveError) {
+            console.error('❌ Save error:', saveError);
+            showStudentPaymentFailure('Could not save payment record');
+            pendingPayment.isProcessing = false;
+            return;
+        }
+        
+        // ✅ STEP 2: SEND STK PUSH (with the payment ID)
         try {
             const supabase = getSupabaseClient();
             if (!supabase) {
@@ -1972,6 +2025,7 @@ async function processPayment() {
                     phone: formattedPhone,
                     amount: Math.round(amount),
                     order_id: reference,
+                    payment_id: savedPayment.id, // ✅ Pass the payment ID
                     customer_name: user.full_name || user.name || 'Student',
                     description: `${period} Tuition Fees Payment`
                 }
@@ -1979,15 +2033,43 @@ async function processPayment() {
             
             if (stkError) {
                 console.error('❌ STK Push error:', stkError);
+                // Update payment status to failed
+                await supabase
+                    .from('finance_payments')
+                    .update({ 
+                        status: 'failed',
+                        notes: `STK Push failed: ${stkError.message}`,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', savedPayment.id);
                 throw new Error('STK Push failed: ' + stkError.message);
             }
             
             if (!stkData.success) {
+                // Update payment status to failed
+                await supabase
+                    .from('finance_payments')
+                    .update({ 
+                        status: 'failed',
+                        notes: `STK Push failed: ${stkData.message}`,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', savedPayment.id);
                 throw new Error(stkData.message || 'STK Push failed');
             }
             
             console.log('✅ STK Push sent:', stkData);
             console.log('📱 Transaction ID:', stkData.transaction_id);
+            
+            // ✅ Update payment with transaction ID
+            await supabase
+                .from('finance_payments')
+                .update({
+                    checkout_request_id: stkData.transaction_id,
+                    reference_number: stkData.transaction_id,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', savedPayment.id);
             
             pendingPayment.transactionId = stkData.transaction_id;
             
@@ -2009,7 +2091,6 @@ async function processPayment() {
         }, 2000);
     }
 }
-
 // ============================================================
 // 🔍 POLL STUDENT PAYMENT STATUS - FIXED
 // ============================================================
