@@ -1053,20 +1053,30 @@ function refreshPayments() {
 }
 
 // ============================================================
-// PAYMENT MODAL
+// PAYMENT MODAL - WITH SEARCHABLE STUDENT DROPDOWN
 // ============================================================
 
+let allStudents = [];
+let selectedStudentForPayment = null;
+let studentDropdownVisible = false;
+
+// Load students for dropdown
 async function loadStudentDropdown() {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
+        
         const { data, error } = await sbClient
             .from('consolidated_user_profiles_table')
             .select('user_id, full_name, student_id, program, email')
             .eq('role', 'student')
             .eq('status', 'approved')
             .order('full_name', { ascending: true });
+        
         if (error) throw error;
+        
         allStudents = data || [];
+        
+        // Populate the hidden select
         const select = document.getElementById('modalPaymentStudent');
         if (select) {
             select.innerHTML = '<option value="">-- Select Student --</option>';
@@ -1085,48 +1095,251 @@ async function loadStudentDropdown() {
                 select.appendChild(option);
             });
         }
+        
+        // Populate the searchable dropdown list
+        populateStudentDropdownList(allStudents);
+        
         console.log('✅ Student dropdown loaded:', allStudents.length);
     } catch (error) {
         console.error('Error loading student dropdown:', error);
+        showToast('Error loading students', 'error');
     }
 }
 
+// Populate the searchable dropdown list
+function populateStudentDropdownList(students) {
+    const list = document.getElementById('studentDropdownList');
+    if (!list) return;
+    
+    list.innerHTML = '';
+    
+    if (!students || students.length === 0) {
+        list.innerHTML = `
+            <div style="padding: 12px; text-align: center; color: #94a3b8; font-size: 13px;">
+                <i class="fas fa-info-circle"></i> No students found
+            </div>
+        `;
+        return;
+    }
+    
+    students.forEach(s => {
+        const displayId = s.student_id || s.user_id;
+        const item = document.createElement('div');
+        item.className = 'student-dropdown-item';
+        item.style.cssText = `
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 1px solid #f1f5f9;
+            transition: background 0.15s ease;
+            font-size: 13px;
+        `;
+        item.innerHTML = `
+            <div style="font-weight: 600; color: #0A3D62;">${s.full_name}</div>
+            <div style="display: flex; gap: 12px; font-size: 11px; color: #94a3b8; margin-top: 2px; flex-wrap: wrap;">
+                <span>🆔 ${displayId}</span>
+                <span>📚 ${s.program || 'N/A'}</span>
+                ${s.email ? `<span>📧 ${s.email}</span>` : ''}
+            </div>
+        `;
+        item.onmouseenter = () => { item.style.background = '#f1f5f9'; };
+        item.onmouseleave = () => { item.style.background = 'transparent'; };
+        item.onclick = () => {
+            selectStudentByUserId(s.user_id);
+        };
+        list.appendChild(item);
+    });
+}
+
+// Filter students in dropdown
+function filterStudentDropdown() {
+    const search = document.getElementById('modalPaymentStudentSearch');
+    const list = document.getElementById('studentDropdownList');
+    
+    if (!search || !list) return;
+    
+    const searchTerm = search.value.toLowerCase().trim();
+    const items = list.querySelectorAll('.student-dropdown-item');
+    
+    let hasVisible = false;
+    items.forEach(item => {
+        const text = item.textContent.toLowerCase();
+        if (text.includes(searchTerm) || searchTerm === '') {
+            item.style.display = 'block';
+            hasVisible = true;
+        } else {
+            item.style.display = 'none';
+        }
+    });
+    
+    // Show/hide dropdown based on search
+    if (searchTerm.length > 0 || hasVisible) {
+        list.style.display = hasVisible ? 'block' : 'none';
+        if (!hasVisible && searchTerm.length > 0) {
+            // Show "no results" message if no matches
+            let noResults = list.querySelector('.no-results-message');
+            if (!noResults) {
+                noResults = document.createElement('div');
+                noResults.className = 'no-results-message';
+                noResults.style.cssText = 'padding: 20px; text-align: center; color: #94a3b8; font-size: 13px;';
+                noResults.innerHTML = '<i class="fas fa-search"></i> No students found matching "<strong>' + searchTerm + '</strong>"';
+                list.appendChild(noResults);
+            }
+        } else {
+            const noResults = list.querySelector('.no-results-message');
+            if (noResults) noResults.remove();
+        }
+    } else {
+        list.style.display = 'none';
+    }
+}
+
+// Select student by user ID
+function selectStudentByUserId(userId) {
+    const select = document.getElementById('modalPaymentStudent');
+    const search = document.getElementById('modalPaymentStudentSearch');
+    const list = document.getElementById('studentDropdownList');
+    const display = document.getElementById('selectedStudentDisplay');
+    const nameDisplay = document.getElementById('selectedStudentName');
+    const idDisplay = document.getElementById('selectedStudentId');
+    const programDisplay = document.getElementById('selectedStudentProgram');
+    
+    // Find and select the option
+    let selectedOption = null;
+    let selectedStudent = null;
+    
+    for (let i = 0; i < select.options.length; i++) {
+        if (select.options[i].value === userId) {
+            select.selectedIndex = i;
+            selectedOption = select.options[i];
+            break;
+        }
+    }
+    
+    if (!selectedOption || !selectedOption.value) {
+        list.style.display = 'none';
+        return;
+    }
+    
+    try {
+        selectedStudent = JSON.parse(selectedOption.dataset.student);
+        
+        // Update search input
+        search.value = `${selectedStudent.full_name} (${selectedStudent.display_id})`;
+        list.style.display = 'none';
+        
+        // Show selected student badge
+        display.style.display = 'block';
+        nameDisplay.textContent = selectedStudent.full_name;
+        idDisplay.textContent = selectedStudent.display_id;
+        programDisplay.textContent = selectedStudent.program || 'N/A';
+        
+        // Update student info section
+        selectedStudentForPayment = selectedStudent;
+        document.getElementById('paymentStudentInfo').style.display = 'block';
+        document.getElementById('modalStudentName').textContent = selectedStudent.full_name;
+        document.getElementById('modalStudentId').textContent = selectedStudent.display_id;
+        document.getElementById('modalStudentProgram').textContent = selectedStudent.program || 'N/A';
+        document.getElementById('modalBalance').textContent = formatCurrency(0);
+        
+        // Update the hidden select for form submission
+        select.value = selectedStudent.user_id;
+        
+    } catch (e) {
+        console.error('Error parsing student data:', e);
+        showToast('Error selecting student', 'error');
+    }
+}
+
+// Clear selected student
+function clearSelectedStudent() {
+    const search = document.getElementById('modalPaymentStudentSearch');
+    const display = document.getElementById('selectedStudentDisplay');
+    const select = document.getElementById('modalPaymentStudent');
+    
+    if (search) search.value = '';
+    if (display) display.style.display = 'none';
+    if (select) select.selectedIndex = 0;
+    
+    selectedStudentForPayment = null;
+    document.getElementById('paymentStudentInfo').style.display = 'none';
+    
+    const list = document.getElementById('studentDropdownList');
+    if (list) list.style.display = 'none';
+}
+
+// Open payment modal with searchable dropdown
 function openPaymentModal(studentId) {
     const modal = document.getElementById('paymentModal');
+    if (!modal) {
+        showToast('Payment modal not found', 'error');
+        return;
+    }
+    
+    // Reset form
     document.getElementById('paymentModalForm').reset();
     document.getElementById('modalPaymentDate').value = new Date().toISOString().split('T')[0];
     document.getElementById('paymentStudentInfo').style.display = 'none';
-    if (allStudents.length === 0) {
-        loadStudentDropdown().then(() => populatePaymentDropdown(studentId));
-    } else {
-        populatePaymentDropdown(studentId);
-    }
-    modal.classList.add('active');
-}
-
-function populatePaymentDropdown(studentId) {
+    document.getElementById('selectedStudentDisplay').style.display = 'none';
+    document.getElementById('modalPaymentStudentSearch').value = '';
+    document.getElementById('studentDropdownList').style.display = 'none';
+    
+    // Clear selection
+    selectedStudentForPayment = null;
     const select = document.getElementById('modalPaymentStudent');
-    select.innerHTML = '<option value="">-- Select Student --</option>';
-    allStudents.forEach(s => {
-        const option = document.createElement('option');
-        option.value = s.user_id;
-        const displayId = s.student_id || s.user_id;
-        option.textContent = `${s.full_name} (${displayId})`;
-        option.dataset.student = JSON.stringify({
-            ...s,
-            display_id: displayId,
-            student_name: s.full_name,
-            student_id: s.user_id,
-            balance: 0
+    if (select) select.selectedIndex = 0;
+    
+    // Load students if not loaded
+    if (allStudents.length === 0) {
+        loadStudentDropdown().then(() => {
+            populateStudentDropdownList(allStudents);
+            if (studentId) {
+                setTimeout(() => selectStudentByUserId(studentId), 100);
+            }
         });
-        select.appendChild(option);
-    });
-    if (studentId) {
-        select.value = studentId;
-        updateStudentInfo();
+    } else {
+        populateStudentDropdownList(allStudents);
+        if (studentId) {
+            setTimeout(() => selectStudentByUserId(studentId), 100);
+        }
     }
+    
+    modal.classList.add('active');
+    document.body.style.overflow = 'hidden';
+    
+    // Focus search input
+    setTimeout(() => {
+        const search = document.getElementById('modalPaymentStudentSearch');
+        if (search) search.focus();
+    }, 300);
+    
+    // Close dropdown on outside click
+    setTimeout(() => {
+        document.addEventListener('click', function closeDropdown(e) {
+            const search = document.getElementById('modalPaymentStudentSearch');
+            const list = document.getElementById('studentDropdownList');
+            if (search && list && !search.contains(e.target) && !list.contains(e.target)) {
+                list.style.display = 'none';
+                document.removeEventListener('click', closeDropdown);
+            }
+        });
+    }, 100);
 }
 
+// Close payment modal
+function closePaymentModal() {
+    const modal = document.getElementById('paymentModal');
+    if (modal) {
+        modal.classList.remove('active');
+        document.body.style.overflow = 'auto';
+    }
+    
+    const list = document.getElementById('studentDropdownList');
+    if (list) list.style.display = 'none';
+    
+    selectedStudentForPayment = null;
+}
+
+// Update student info from dropdown selection (kept for compatibility)
 function updateStudentInfo() {
     const select = document.getElementById('modalPaymentStudent');
     const option = select.options[select.selectedIndex];
@@ -1147,48 +1360,75 @@ function updateStudentInfo() {
     }
 }
 
-function closePaymentModal() {
-    document.getElementById('paymentModal').classList.remove('active');
-    selectedStudentForPayment = null;
-}
-
+// Record payment from modal
 async function recordPaymentFromModal() {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
-        const student = selectedStudentForPayment;
+        
+        // Get selected student from either the searchable dropdown or the select
+        let student = selectedStudentForPayment;
+        
+        // If no student selected via search, try the select
+        if (!student) {
+            const select = document.getElementById('modalPaymentStudent');
+            const option = select.options[select.selectedIndex];
+            if (option && option.value) {
+                try {
+                    student = JSON.parse(option.dataset.student);
+                } catch (e) {
+                    student = null;
+                }
+            }
+        }
+        
         const amount = parseFloat(document.getElementById('modalPaymentAmount').value);
         const method = document.getElementById('modalPaymentMethod').value;
         const date = document.getElementById('modalPaymentDate').value;
+        const reference = document.getElementById('modalPaymentReference')?.value || null;
+        const period = document.getElementById('modalPaymentPeriod')?.value || 'Term 1';
         const notes = document.getElementById('modalPaymentNotes').value || null;
-        if (!student) { showToast('Please select a student', 'warning'); return; }
-        if (!amount || amount <= 0) { showToast('Please enter a valid amount', 'warning'); return; }
+        
+        if (!student) { 
+            showToast('Please select a student', 'warning'); 
+            return; 
+        }
+        
+        if (!amount || amount <= 0) { 
+            showToast('Please enter a valid amount', 'warning'); 
+            return; 
+        }
+        
         const paymentData = {
-            student_id: student.student_id,
-            student_name: student.full_name,
+            student_id: student.student_id || student.user_id,
+            student_name: student.full_name || student.student_name,
             student_email: student.email || null,
             program: student.program || 'KRCHN',
             amount: amount,
             payment_method: method,
-            reference_number: 'TXN-' + Date.now().toString().slice(-8),
+            reference_number: reference || 'TXN-' + Date.now().toString().slice(-8),
             payment_date: date,
-            period: 'Term 1',
+            period: period,
             status: 'completed',
             notes: notes,
             recorded_by_name: 'Admin',
             created_at: new Date().toISOString()
         };
+        
         const { error } = await sbClient.from('finance_payments').insert([paymentData]);
         if (error) throw error;
+        
         showToast(`Payment of ${formatCurrency(amount)} recorded for ${student.full_name}`, 'success');
         closePaymentModal();
         await loadPayments();
         await loadAccounts();
+        
     } catch (error) {
         console.error('Error recording payment:', error);
         showToast('Error recording payment: ' + error.message, 'error');
     }
 }
 
+// Record payment (legacy function - kept for compatibility)
 function recordPayment() {
     const studentId = document.getElementById('paymentStudent')?.value;
     const amount = parseFloat(document.getElementById('paymentAmount')?.value);
@@ -1197,19 +1437,23 @@ function recordPayment() {
     const date = document.getElementById('paymentDate')?.value;
     const period = document.getElementById('paymentPeriod')?.value;
     const notes = document.getElementById('paymentNotes')?.value || null;
+    
     if (!studentId || !amount || !date) {
         showToast('Please fill in all required fields.', 'warning');
         return;
     }
+    
     if (amount <= 0) {
         showToast('Please enter a valid amount.', 'warning');
         return;
     }
+    
     const student = allAccounts.find(a => a.student_id === studentId || a.user_id === studentId);
     if (!student) {
         showToast('Student not found.', 'error');
         return;
     }
+    
     selectedStudentForPayment = student;
     document.getElementById('modalPaymentAmount').value = amount;
     document.getElementById('modalPaymentMethod').value = method || 'Cash';
@@ -1217,7 +1461,6 @@ function recordPayment() {
     document.getElementById('modalPaymentNotes').value = notes || '';
     recordPaymentFromModal();
 }
-
 // ============================================================
 // FEE STRUCTURE
 // ============================================================
