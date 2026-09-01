@@ -914,15 +914,42 @@
             <input type="text" id="staffSearch" placeholder="Search by name, ID, or position..." onkeyup="filterStaffTable()" style="width: 100%; padding: 8px 14px 8px 36px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; transition: all 0.3s;">
         </div>
         <select id="staffDepartmentFilter" onchange="filterStaffTable()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
-            <option value="all">🏛️ All Departments</option>
-            <option value="Academic">📚 Academic</option>
-            <option value="Administration">📋 Administration</option>
-            <option value="Finance">💰 Finance</option>
-            <option value="ICT">💻 ICT</option>
-            <option value="Human Resources">👔 Human Resources</option>
-            <option value="Student Affairs">🎓 Student Affairs</option>
-            <option value="Other">📌 Other</option>
-        </select>
+    <option value="all">🏛️ All Departments</option>
+    
+    <!-- Academic Departments -->
+    <option value="Academic">📚 Academic</option>
+    <option value="TVET">🔧 TVET</option>
+    <option value="Nursing">🩺 Nursing</option>
+    <option value="Health Sciences">🏥 Health Sciences</option>
+    <option value="Clinical Medicine">💊 Clinical Medicine</option>
+    <option value="Pharmacy">💉 Pharmacy</option>
+    <option value="Medical Laboratory">🔬 Medical Laboratory</option>
+    
+    <!-- Administrative Departments -->
+    <option value="Administration">📋 Administration</option>
+    <option value="Finance">💰 Finance</option>
+    <option value="ICT">💻 ICT</option>
+    <option value="Human Resources">👔 Human Resources</option>
+    <option value="Student Affairs">🎓 Student Affairs</option>
+    <option value="Library">📖 Library</option>
+    
+    <!-- Support Departments -->
+    <option value="Health Services">🏥 Health Services</option>
+    <option value="Maintenance">🔧 Maintenance</option>
+    <option value="Security">🛡️ Security</option>
+    <option value="Transport">🚌 Transport</option>
+    <option value="Sports & Recreation">⚽ Sports & Recreation</option>
+    
+    <!-- Research & Quality -->
+    <option value="Research & Development">🔬 Research & Development</option>
+    <option value="Quality Assurance">✅ Quality Assurance</option>
+    
+    <!-- Marketing & Communications -->
+    <option value="Marketing & Communications">📢 Marketing & Communications</option>
+    
+    <!-- Other -->
+    <option value="Other">📌 Other</option>
+</select>
         <select id="staffStatusFilter" onchange="filterStaffTable()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc; min-width: 150px;">
             <option value="all">📊 All Status</option>
             <option value="active">🟢 Active</option>
@@ -1379,26 +1406,53 @@
                 </div>
             </div>
 
-            <!-- Employment Details -->
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
-                <div class="finance-form-group">
-                    <label for="staffDepartment">Department *</label>
-                    <select id="staffDepartment" class="form-control" required>
-                        <option value="">Select Department</option>
-                        <option value="Academic">📚 Academic</option>
-                        <option value="Administration">📋 Administration</option>
-                        <option value="Finance">💰 Finance</option>
-                        <option value="ICT">💻 ICT</option>
-                        <option value="Human Resources">👔 Human Resources</option>
-                        <option value="Student Affairs">🎓 Student Affairs</option>
-                        <option value="Other">📌 Other</option>
-                    </select>
-                </div>
-                <div class="finance-form-group">
-                    <label for="staffPosition">Position / Designation *</label>
-                    <input type="text" id="staffPosition" class="form-control" placeholder="e.g., Lecturer, Accountant" required>
-                </div>
-            </div>
+           <!-- Employment Details -->
+<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+    <div class="finance-form-group">
+        <label for="staffDepartment">Department *</label>
+        <select id="staffDepartment" class="form-control" required>
+            <option value="">Select Department</option>
+            
+            <!-- Academic Departments -->
+            <option value="Academic">📚 Academic</option>
+            <option value="TVET">🔧 TVET</option>
+            <option value="Nursing">🩺 Nursing</option>
+            <option value="Health Sciences">🏥 Health Sciences</option>
+            <option value="Clinical Medicine">💊 Clinical Medicine</option>
+            <option value="Pharmacy">💉 Pharmacy</option>
+            <option value="Medical Laboratory">🔬 Medical Laboratory</option>
+            
+            <!-- Administrative Departments -->
+            <option value="Administration">📋 Administration</option>
+            <option value="Finance">💰 Finance</option>
+            <option value="ICT">💻 ICT</option>
+            <option value="Human Resources">👔 Human Resources</option>
+            <option value="Student Affairs">🎓 Student Affairs</option>
+            <option value="Library">📖 Library</option>
+            
+            <!-- Support Departments -->
+            <option value="Health Services">🏥 Health Services</option>
+            <option value="Maintenance">🔧 Maintenance</option>
+            <option value="Security">🛡️ Security</option>
+            <option value="Transport">🚌 Transport</option>
+            <option value="Sports & Recreation">⚽ Sports & Recreation</option>
+            
+            <!-- Research & Quality -->
+            <option value="Research & Development">🔬 Research & Development</option>
+            <option value="Quality Assurance">✅ Quality Assurance</option>
+            
+            <!-- Marketing & Communications -->
+            <option value="Marketing & Communications">📢 Marketing & Communications</option>
+            
+            <!-- Other -->
+            <option value="Other">📌 Other</option>
+        </select>
+    </div>
+    <div class="finance-form-group">
+        <label for="staffPosition">Position / Designation *</label>
+        <input type="text" id="staffPosition" class="form-control" placeholder="e.g., Lecturer, Accountant, Nurse" required>
+    </div>
+</div>
 
             <!-- Salary Information -->
             <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
