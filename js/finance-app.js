@@ -478,20 +478,49 @@ function refreshFinanceData() {
     }, 1000);
 }
 
-// ============================================================
-// STUDENT ACCOUNTS
-// ============================================================
-
 async function loadAccounts() {
-    console.log('📊 Loading student accounts...');
+    console.log('📊 Loading student accounts with display IDs...');
     
     try {
-        if (typeof window.financeAPI === 'undefined') {
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+        
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        
+        // Get students directly from consolidated table
+        const { data, error } = await sb
+            .from('consolidated_user_profiles_table')
+            .select('*')
+            .eq('role', 'student')
+            .eq('status', 'approved')
+            .order('full_name', { ascending: true });
+        
+        if (error) {
+            console.error('❌ Error fetching students:', error);
+            showToast('Error loading student accounts', 'error');
             return;
         }
         
-        const accounts = await window.financeAPI.getStudentAccounts();
-        allAccounts = accounts || [];
+        // Map the data to include display_id
+        allAccounts = (data || []).map(s => ({
+            id: s.id,
+            student_id: s.user_id,
+            student_name: s.full_name,
+            student_email: s.email,
+            // ✅ Use student_id as display_id (this is the human-readable ID)
+            display_id: s.student_id || s.user_id,
+            program: s.program,
+            intake_year: s.intake_year,
+            current_block: s.current_block,
+            balance: 0,
+            total_fees_due: 0,
+            total_paid: 0,
+            payment_status: 'active',
+            status: s.status,
+            phone: s.phone,
+            admission_number: s.student_id
+        }));
+        
         renderAccounts(allAccounts);
         
         // Update account count
@@ -504,12 +533,13 @@ async function loadAccounts() {
         loadBalanceAlerts();
         
         console.log('✅ Student accounts loaded:', allAccounts.length);
+        console.log('✅ First student display_id:', allAccounts[0]?.display_id);
+        
     } catch (error) {
         console.error('❌ Error loading accounts:', error);
         showToast('Error loading student accounts', 'error');
     }
 }
-
 function loadBalanceAlerts() {
     const highBalanceStudents = allAccounts.filter(acc => {
         const balance = parseFloat(acc.balance) || 0;
@@ -641,7 +671,7 @@ function resetAccountFilters() {
 
 function refreshAccounts() {
     loadAccounts();
-    showToast('Accounts refreshed!', 'success');
+    showToast('Accounts refreshed with display IDs!', 'success');
 }
 
 function showHighBalanceStudents() {
