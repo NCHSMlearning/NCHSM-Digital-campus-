@@ -1,13 +1,9 @@
 // ============================================================
-// 📊 STUDENT FINANCE MODULE - COMPLETE WITH POS STYLE MODAL
-// ✅ Works with actual database structure
-// ✅ Supports KRCHN (Semesters) and TVET (Terms with Years)
-// ✅ M-Pesa STK Push Integration with PayHero Edge Function
-// ✅ POS Style Payment Modal with ALL states
-// ✅ Real-time payment status updates
-// ✅ Mobile responsive with compact layout
-// ✅ All payments processed on the same page - NO REDIRECTS
-// ✅ Uses ViewPoint's working payment pattern
+// 📊 STUDENT FINANCE MODULE - COMPLETE WITH ALL FIXES
+// ✅ FULL ORIGINAL CODE + NEW EMAIL RECEIPT + SUCCESS POPUP
+// ✅ Handles cancellation, insufficient funds, timeout
+// ✅ Stops polling immediately on failure
+// ✅ Sends email receipt after successful payment
 // ============================================================
 
 // ============================================================
@@ -81,22 +77,19 @@ const pendingPayment = {
     paymentId: null,
     transactionId: null,
     isProcessing: false,
-    cancelled: false
+    cancelled: false,
+    status: 'idle'
 };
 
 // ============================================================
 // 🔧 UTILITY FUNCTIONS - FIXED FOR DATABASE STRUCTURE
 // ============================================================
 
-// Map database period names to display format
 function mapPeriodToDisplay(dbPeriod) {
     if (!dbPeriod) return dbPeriod;
-    
-    // Already in correct format
     if (/^Y\d+\s+[ST]\d+$/.test(dbPeriod)) return dbPeriod;
     if (/^Y\d+[ST]\d+$/.test(dbPeriod)) return dbPeriod;
     
-    // Handle "Term X" format
     const termMatch = dbPeriod.match(/Term\s*(\d+)/i);
     if (termMatch) {
         const termNum = parseInt(termMatch[1]);
@@ -105,7 +98,6 @@ function mapPeriodToDisplay(dbPeriod) {
         return `Y${year} T${termInYear}`;
     }
     
-    // Handle "Year X - Term Y" format
     const yearTermMatch = dbPeriod.match(/Year\s*(\d+)\s*[-–]\s*Term\s*(\d+)/i);
     if (yearTermMatch) {
         const year = parseInt(yearTermMatch[1]);
@@ -113,7 +105,6 @@ function mapPeriodToDisplay(dbPeriod) {
         return `Y${year} T${term}`;
     }
     
-    // Handle "Semester X" format for KRCHN
     const semMatch = dbPeriod.match(/Semester\s*(\d+)/i);
     if (semMatch) {
         const semNum = parseInt(semMatch[1]);
@@ -125,11 +116,9 @@ function mapPeriodToDisplay(dbPeriod) {
     return dbPeriod;
 }
 
-// Map display period to database format
 function mapPeriodToDatabase(displayPeriod) {
     if (!displayPeriod) return displayPeriod;
     
-    // Handle "Y1 T1" format
     const match = displayPeriod.match(/^Y(\d+)\s*([ST])(\d+)$/i);
     if (match) {
         const year = parseInt(match[1]);
@@ -137,11 +126,9 @@ function mapPeriodToDatabase(displayPeriod) {
         const num = parseInt(match[3]);
         
         if (type === 'T') {
-            // TVET: Calculate term number
             const termNum = (year - 1) * 3 + num;
             return `Term ${termNum}`;
         } else if (type === 'S') {
-            // KRCHN: Calculate semester number
             const semNum = (year - 1) * 3 + num;
             return `Semester ${semNum}`;
         }
@@ -150,7 +137,6 @@ function mapPeriodToDatabase(displayPeriod) {
     return displayPeriod;
 }
 
-// Map program code to full name
 function mapProgramCodeToFullName(programCode) {
     if (!programCode) return programCode;
     
@@ -175,7 +161,6 @@ function mapProgramCodeToFullName(programCode) {
     return programMap[programCode] || programCode;
 }
 
-// Map program full name to code
 function mapProgramFullNameToCode(fullName) {
     if (!fullName) return fullName;
     
@@ -323,6 +308,366 @@ function formatPhoneNumber(phone) {
     return clean;
 }
 
+function getSupabaseClient() {
+    if (window.sb) return window.sb;
+    if (window.supabase) return window.supabase;
+    if (typeof supabase !== 'undefined') return supabase;
+    console.error('❌ No Supabase client found');
+    return null;
+}
+
+// ============================================================
+// 📧 SEND PAYMENT RECEIPT EMAIL - NEW FUNCTION
+// ============================================================
+
+async function sendPaymentReceiptEmail(paymentData) {
+    try {
+        console.log('📧 Sending payment receipt email...');
+        
+        const supabase = getSupabaseClient();
+        if (!supabase) {
+            console.warn('⚠️ No Supabase client, cannot send email');
+            return false;
+        }
+        
+        const user = window.currentUserProfile || window.currentUser;
+        if (!user) {
+            console.warn('⚠️ No user found');
+            return false;
+        }
+        
+        const studentEmail = user.email || paymentData.student_email;
+        const studentName = user.full_name || user.name || 'Student';
+        
+        if (!studentEmail) {
+            console.warn('⚠️ No student email found');
+            return false;
+        }
+        
+        const amount = paymentData.amount || 0;
+        const receiptNumber = paymentData.receipt_number || paymentData.reference_number || 'N/A';
+        const period = paymentData.period || 'N/A';
+        const transactionId = paymentData.transaction_id || paymentData.checkout_request_id || 'N/A';
+        const date = new Date().toLocaleDateString('en-KE', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        const time = new Date().toLocaleTimeString('en-KE', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        const receiptHTML = generateReceiptHTML(paymentData, receiptNumber, studentName, date, time);
+        
+        const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+                to: studentEmail,
+                subject: `💰 Payment Receipt - ${receiptNumber}`,
+                html: receiptHTML,
+                from: 'NCHSM Finance <finance@nchsm.co.ke>'
+            })
+        });
+        
+        const data = await response.json();
+        console.log('📥 Email response:', data);
+        
+        if (data.success) {
+            console.log(`✅ Receipt email sent to ${studentEmail}`);
+            
+            await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+                method: 'POST',
+                headers: {
+                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    to: 'finance@nchsm.co.ke',
+                    subject: `📋 Payment Receipt - ${receiptNumber} (Admin Copy)`,
+                    html: receiptHTML,
+                    from: 'NCHSM Finance <finance@nchsm.co.ke>'
+                })
+            });
+            
+            return true;
+        } else {
+            console.error('❌ Email failed:', data.error);
+            return false;
+        }
+        
+    } catch (error) {
+        console.error('❌ Email error:', error);
+        return false;
+    }
+}
+
+// ============================================================
+// 📄 GENERATE RECEIPT HTML - NEW FUNCTION
+// ============================================================
+
+function generateReceiptHTML(payment, receiptNumber, studentName, date, time) {
+    const amount = parseFloat(payment.amount).toFixed(2);
+    const period = payment.period || 'N/A';
+    const method = payment.payment_method || 'M-Pesa';
+    const transactionId = payment.transaction_id || payment.checkout_request_id || 'N/A';
+    const reference = payment.reference_number || 'N/A';
+    const program = payment.program || 'KRCHN';
+    
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt - ${receiptNumber}</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
+        .receipt-container { max-width: 700px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px 25px; text-align: center; color: white; }
+        .header .logo { font-size: 28px; font-weight: 700; letter-spacing: 1px; }
+        .header .logo span { color: #f1c40f; }
+        .header .subtitle { font-size: 14px; opacity: 0.85; margin-top: 4px; font-weight: 300; }
+        .header .receipt-badge { display: inline-block; background: rgba(255,255,255,0.15); padding: 6px 24px; border-radius: 20px; margin-top: 12px; font-size: 13px; font-weight: 600; letter-spacing: 1px; border: 1px solid rgba(255,255,255,0.2); }
+        .body { padding: 30px 35px 20px; }
+        .greeting { font-size: 15px; color: #2c3e50; margin-bottom: 20px; }
+        .greeting strong { color: #0A3D62; }
+        .status-banner { background: #d4edda; border-radius: 10px; padding: 14px 20px; text-align: center; margin-bottom: 22px; border-left: 4px solid #28a745; }
+        .status-banner .status-icon { font-size: 20px; margin-right: 8px; }
+        .status-banner .status-text { font-weight: 700; color: #155724; font-size: 16px; }
+        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; background: #f8f9fa; border-radius: 12px; padding: 18px 22px; margin-bottom: 20px; }
+        .details-grid .item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #e9ecef; }
+        .details-grid .item:last-child { border-bottom: none; }
+        .details-grid .label { color: #6c757d; font-size: 13px; font-weight: 500; }
+        .details-grid .value { color: #2c3e50; font-size: 13px; font-weight: 600; text-align: right; }
+        .amount-box { background: linear-gradient(135deg, #eaf2f8, #d6eaf8); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; border: 2px solid #0A3D62; }
+        .amount-box .label { font-size: 13px; color: #2c3e50; font-weight: 500; }
+        .amount-box .amount { font-size: 38px; font-weight: 800; color: #0A3D62; letter-spacing: 1px; }
+        .mpesa-confirm { background: #fef9e7; border-radius: 10px; padding: 14px 18px; border-left: 4px solid #f39c12; margin-bottom: 20px; }
+        .mpesa-confirm p { margin: 0; font-size: 13px; color: #7d6608; display: flex; justify-content: space-between; align-items: center; }
+        .mpesa-confirm .code { font-weight: 700; font-family: monospace; font-size: 15px; color: #0A3D62; }
+        .footer { background: #f8f9fa; padding: 20px 35px 25px; text-align: center; border-top: 1px solid #e9ecef; }
+        .footer .thanks { font-size: 18px; font-weight: 700; color: #0A3D62; margin-bottom: 4px; }
+        .footer .contact { font-size: 12px; color: #6c757d; margin: 4px 0; }
+        .footer .secure { display: inline-block; background: #28a745; color: white; font-size: 11px; padding: 3px 16px; border-radius: 20px; font-weight: 600; margin-top: 8px; }
+        @media print { body { background: white; padding: 0; } .receipt-container { box-shadow: none; border-radius: 0; } .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .status-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .amount-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .mpesa-confirm { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
+        @media (max-width: 480px) { .body { padding: 20px; } .header { padding: 20px; } .details-grid { grid-template-columns: 1fr; gap: 4px; } .amount-box .amount { font-size: 28px; } }
+    </style>
+</head>
+<body>
+    <div class="receipt-container">
+        <div class="header">
+            <div class="logo">NCH<span>SM</span></div>
+            <div class="subtitle">Nakuru College of Health Sciences and Management</div>
+            <div class="receipt-badge">📋 OFFICIAL PAYMENT RECEIPT</div>
+        </div>
+        
+        <div class="body">
+            <div class="greeting">Dear <strong>${studentName}</strong>,</div>
+            
+            <div class="status-banner">
+                <span class="status-icon">✅</span>
+                <span class="status-text">PAYMENT CONFIRMED &amp; COMPLETED</span>
+            </div>
+            
+            <div class="details-grid">
+                <div class="item"><span class="label">Receipt Number</span><span class="value">${receiptNumber}</span></div>
+                <div class="item"><span class="label">Student Name</span><span class="value">${studentName}</span></div>
+                <div class="item"><span class="label">Program</span><span class="value">${program}</span></div>
+                <div class="item"><span class="label">Payment Date</span><span class="value">${date} at ${time}</span></div>
+                <div class="item"><span class="label">Payment Method</span><span class="value">${method}</span></div>
+                <div class="item"><span class="label">Transaction ID</span><span class="value" style="font-size:11px;font-family:monospace;">${transactionId}</span></div>
+                <div class="item"><span class="label">Reference</span><span class="value" style="font-size:11px;font-family:monospace;">${reference}</span></div>
+                <div class="item"><span class="label">Period</span><span class="value">${period}</span></div>
+                <div class="item"><span class="label">Status</span><span class="value" style="color:#28a745;">✅ COMPLETED</span></div>
+            </div>
+            
+            <div class="amount-box">
+                <div class="label">AMOUNT PAID</div>
+                <div class="amount">KES ${amount}</div>
+            </div>
+            
+            <div class="mpesa-confirm">
+                <p>
+                    <span>📱 M-Pesa Confirmation Code</span>
+                    <span class="code">${receiptNumber}</span>
+                </p>
+            </div>
+        </div>
+        
+        <div class="footer">
+            <div class="thanks">🙏 Thank You for Your Payment!</div>
+            <div class="contact">📞 +254 790 969 743 &nbsp;|&nbsp; 📧 finance@nchsm.ac.ke</div>
+            <span class="secure">🔒 Secure Payment Receipt</span>
+        </div>
+    </div>
+</body>
+</html>`;
+}
+
+// ============================================================
+// 🎉 SHOW SUCCESS POPUP WITH EMAIL STATUS - NEW FUNCTION
+// ============================================================
+
+function showSuccessPopup(amount, receiptNumber, period, emailSent = false) {
+    const existingOverlay = document.getElementById('payment-success-overlay');
+    if (existingOverlay) existingOverlay.remove();
+    
+    const overlay = document.createElement('div');
+    overlay.id = 'payment-success-overlay';
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background: rgba(0,0,0,0.6);
+        backdrop-filter: blur(8px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 10000;
+        animation: fadeInOverlay 0.3s ease;
+    `;
+    
+    const popup = document.createElement('div');
+    popup.style.cssText = `
+        background: white;
+        border-radius: 20px;
+        padding: 40px;
+        max-width: 450px;
+        width: 90%;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+        animation: popIn 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        position: relative;
+        max-height: 90vh;
+        overflow-y: auto;
+    `;
+    
+    const checkmark = document.createElement('div');
+    checkmark.style.cssText = `
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, #10b981, #059669);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 20px;
+        font-size: 40px;
+        color: white;
+        box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
+    `;
+    checkmark.textContent = '✅';
+    
+    const content = document.createElement('div');
+    content.innerHTML = `
+        <h2 style="color: #0A3D62; margin: 0 0 8px 0; font-size: 24px;">Payment Successful! 🎉</h2>
+        <p style="color: #64748b; margin: 0 0 16px 0; font-size: 14px;">${period || 'Tuition Fees'}</p>
+        <div style="background: #f0fdf4; border-radius: 12px; padding: 16px; margin: 16px 0; border: 1px solid #86efac;">
+            <div style="font-size: 12px; color: #64748b;">Amount Paid</div>
+            <div style="font-size: 32px; font-weight: 800; color: #0A3D62;">KES ${parseFloat(amount).toLocaleString()}</div>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 20px; margin: 12px 0;">
+            <div style="text-align: center;">
+                <div style="font-size: 11px; color: #94a3b8;">Receipt Number</div>
+                <div style="font-size: 13px; font-weight: 600; color: #0A3D62; font-family: monospace;">${receiptNumber}</div>
+            </div>
+        </div>
+        <div id="email-status-container" style="margin: 12px 0; padding: 12px; background: ${emailSent ? '#f0fdf4' : '#fef3c7'}; border-radius: 8px; border: 1px solid ${emailSent ? '#86efac' : '#fcd34d'};">
+            <div style="font-size: 13px; color: ${emailSent ? '#065f46' : '#92400e'};">
+                ${emailSent ? '📧 Receipt sent to your email' : '📧 Sending receipt to your email...'}
+            </div>
+        </div>
+        <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
+            <button onclick="closeSuccessPopupAndRefresh()" style="flex:1; padding: 12px 20px; background: linear-gradient(135deg, #0A3D62, #1a5276); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s; min-width: 100px;">
+                Done
+            </button>
+            <button onclick="downloadReceipt()" style="flex:1; padding: 12px 20px; background: #f1f5f9; color: #0A3D62; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s; min-width: 100px;">
+                📥 Download
+            </button>
+        </div>
+    `;
+    
+    popup.appendChild(checkmark);
+    popup.appendChild(content);
+    overlay.appendChild(popup);
+    document.body.appendChild(overlay);
+    
+    if (!document.getElementById('payment-popup-styles')) {
+        const style = document.createElement('style');
+        style.id = 'payment-popup-styles';
+        style.textContent = `
+            @keyframes fadeInOverlay {
+                from { opacity: 0; }
+                to { opacity: 1; }
+            }
+            @keyframes popIn {
+                0% { transform: scale(0.5); opacity: 0; }
+                100% { transform: scale(1); opacity: 1; }
+            }
+        `;
+        document.head.appendChild(style);
+    }
+    
+    window._lastReceiptData = { amount, receiptNumber, period };
+}
+
+function closeSuccessPopupAndRefresh() {
+    const overlay = document.getElementById('payment-success-overlay');
+    if (overlay) {
+        overlay.style.transition = 'opacity 0.3s ease';
+        overlay.style.opacity = '0';
+        setTimeout(() => {
+            overlay.remove();
+            if (typeof loadStudentFinance === 'function') {
+                loadStudentFinance();
+            }
+        }, 300);
+    }
+}
+
+function downloadReceipt() {
+    const data = window._lastReceiptData;
+    if (!data) {
+        showToast('❌ No receipt data available', 'error');
+        return;
+    }
+    
+    const receiptHTML = generateReceiptHTML(
+        { 
+            amount: data.amount, 
+            period: data.period,
+            receipt_number: data.receiptNumber,
+            payment_method: 'M-Pesa',
+            reference_number: data.receiptNumber,
+            program: studentFinanceState.student?.program || 'KRCHN'
+        },
+        data.receiptNumber,
+        studentFinanceState.student?.full_name || studentFinanceState.student?.name || 'Student',
+        new Date().toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' }),
+        new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
+    );
+    
+    const blob = new Blob([receiptHTML], { type: 'text/html' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `receipt-${data.receiptNumber}.html`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast('📥 Receipt downloaded!', 'success');
+}
+
 // ============================================================
 // 📊 FETCH FINANCE DATA FROM SUPABASE - FIXED
 // ============================================================
@@ -331,14 +676,12 @@ async function fetchFinanceDataFromSupabase(user) {
     try {
         if (typeof supabase === 'undefined' || !supabase) return null;
         
-        // Get the user ID
         const userId = user?.user_id || user?.id;
         if (!userId) {
             console.warn('⚠️ No user ID found');
             return null;
         }
         
-        // ✅ Get the PROFILE ID (this is the correct student_id)
         const { data: profile, error: profileError } = await supabase
             .from('consolidated_user_profiles_table')
             .select('id, student_id, full_name, program')
@@ -347,7 +690,6 @@ async function fetchFinanceDataFromSupabase(user) {
         
         if (profileError || !profile) {
             console.warn('⚠️ Could not find profile:', profileError);
-            // Fallback to auth user ID
             var profileId = userId;
             var studentName = user?.full_name || user?.name || 'Student';
             var program = user?.program || 'KRCHN';
@@ -367,7 +709,6 @@ async function fetchFinanceDataFromSupabase(user) {
         console.log('📚 Program:', program);
         console.log('🏷️ Program Type:', programType);
         
-        // 1. Get student account data using PROFILE ID
         let accountData = null;
         try {
             const { data, error } = await supabase
@@ -386,11 +727,9 @@ async function fetchFinanceDataFromSupabase(user) {
             console.log('ℹ️ Account table error:', e.message);
         }
         
-        // 2. Get payments data using PROFILE ID
         let paymentsData = [];
         try {
-            const { data, error } = await supabase
-                .from('finance_payments')
+            const { data, error } = await supabase                .from('finance_payments')
                 .select('*')
                 .eq('student_id', profileId)
                 .order('payment_date', { ascending: false });
@@ -405,7 +744,6 @@ async function fetchFinanceDataFromSupabase(user) {
             console.log('ℹ️ Payments table error:', e.message);
         }
         
-        // 3. Get fee structure
         let feeStructureData = null;
         try {
             const programFullName = mapProgramCodeToFullName(program);
@@ -439,7 +777,6 @@ async function fetchFinanceDataFromSupabase(user) {
             console.log('ℹ️ Fee structure table error:', e.message);
         }
         
-        // Process fee structure
         let processedFeeStructure = [];
         let voteHeads = [];
         let periodTotals = [];
@@ -492,11 +829,9 @@ async function fetchFinanceDataFromSupabase(user) {
             });
         }
         
-        // Calculate current period
         const currentPeriod = accountData?.current_period || periods[0] || 'Term 1';
         const currentPeriodIndex = periods.indexOf(currentPeriod) >= 0 ? periods.indexOf(currentPeriod) : 0;
         
-        // Get values from account data or calculate
         let balance, totalPaid, outstanding, totalDue;
         if (accountData) {
             balance = parseFloat(accountData.balance) || 0;
@@ -504,7 +839,6 @@ async function fetchFinanceDataFromSupabase(user) {
             outstanding = parseFloat(accountData.outstanding) || 0;
             totalDue = parseFloat(accountData.total_due) || 0;
         } else {
-            // Calculate from payments
             const allPayments = paymentsData.filter(p => p.status === 'completed');
             totalPaid = allPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
             totalDue = getFeeAmount(programType, currentPeriodIndex, programLevel);
@@ -512,7 +846,6 @@ async function fetchFinanceDataFromSupabase(user) {
             outstanding = balance;
         }
         
-        // Calculate paid this semester
         const paidThisSemester = paymentsData
             .filter(p => {
                 const pPeriod = mapPeriodToDisplay(p.period);
@@ -522,7 +855,6 @@ async function fetchFinanceDataFromSupabase(user) {
         
         const semesterFee = totalDue > 0 ? totalDue : getFeeAmount(programType, currentPeriodIndex, programLevel);
         
-        // Format payments
         const formattedPayments = paymentsData.map(p => ({
             date: p.payment_date || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
             description: p.notes || `${mapPeriodToDisplay(p.period)} Fees`,
@@ -535,7 +867,6 @@ async function fetchFinanceDataFromSupabase(user) {
             payment_method: p.payment_method || 'Cash'
         }));
         
-        // Format fee structure for timeline
         const formattedFees = processedFeeStructure.map((f, index) => ({
             block: f.name,
             amount: f.amount,
@@ -576,6 +907,7 @@ async function fetchFinanceDataFromSupabase(user) {
         return null;
     }
 }
+
 // ============================================================
 // 📊 MAIN LOAD FUNCTION - FIXED
 // ============================================================
@@ -584,7 +916,6 @@ async function loadStudentFinance() {
     try {
         console.log('💰 Loading student finance...');
         
-        // Get user from multiple possible sources
         const user = window.currentUserProfile || window.currentUser || window.userData;
         if (!user) {
             console.warn('No user found');
@@ -592,7 +923,6 @@ async function loadStudentFinance() {
             return;
         }
 
-        // Log user info for debugging
         console.log('👤 User:', user.full_name || user.name);
         console.log('📚 Program:', user.program);
         console.log('🆔 User ID:', user.user_id || user.id);
@@ -610,11 +940,9 @@ async function loadStudentFinance() {
         updateProgramInfo(user, programType, programLevel);
         showFinanceLoading();
 
-        // Fetch data from Supabase
         const financeData = await fetchFinanceDataFromSupabase(user);
         
         if (financeData) {
-            // Store fee structure data
             if (financeData.feeStructureRaw) {
                 studentFinanceState.feeStructureRaw = financeData.feeStructureRaw;
                 studentFinanceState.voteHeads = financeData.voteHeads || [];
@@ -710,7 +1038,6 @@ function updateFinanceUI(data) {
     renderPayments(data.payments || []);
     renderPaymentTimeline(data.feeStructure || []);
     
-    // Render fee structure if visible
     const container = document.getElementById('finance-studentFeeStructureDisplay');
     if (container && container.style.display !== 'none') renderFeeStructureData();
     
@@ -1277,13 +1604,12 @@ function resendPaymentEmail() {
 }
 
 // ============================================================
-// 💳 PAYMENT MODAL - POS STYLE (FIXED FOR YOUR HTML)
+// 💳 PAYMENT MODAL - POS STYLE
 // ============================================================
 
 function openPaymentModal() {
     console.log('💰 Opening payment modal...');
     
-    // Get modal
     const modal = document.getElementById('finance-paymentModal');
     if (!modal) {
         console.error('❌ Modal not found');
@@ -1291,7 +1617,6 @@ function openPaymentModal() {
         return;
     }
     
-    // Get content elements - THESE EXIST IN YOUR HTML
     const content = document.getElementById('finance-paymentContent');
     const title = document.getElementById('finance-paymentModalTitle');
     const formContainer = document.getElementById('finance-paymentFormContainer');
@@ -1301,17 +1626,10 @@ function openPaymentModal() {
     const mpesaFields = document.getElementById('finance-mpesaFields');
     const methodDetails = document.getElementById('finance-paymentMethodDetails');
     
-    // Check if critical elements exist
-    if (!content) console.warn('⚠️ finance-paymentContent not found');
-    if (!title) console.warn('⚠️ finance-paymentModalTitle not found');
-    if (!formContainer) console.warn('⚠️ finance-paymentFormContainer not found');
-    
-    // Reset modal to POS style - show form, hide status
     if (title) title.textContent = '💳 Make Payment';
     if (content) content.style.display = 'none';
     if (formContainer) formContainer.style.display = 'block';
     
-    // Populate period dropdown
     if (periodSelect) {
         const programType = studentFinanceState.programType || 'TVET';
         const programLevel = studentFinanceState.programLevel || 'certificate';
@@ -1327,7 +1645,6 @@ function openPaymentModal() {
             periodSelect.appendChild(option);
         });
         
-        // Trigger change to set default values
         const selectedPeriod = periodSelect.value;
         if (selectedPeriod) {
             const index = periods.indexOf(selectedPeriod);
@@ -1341,7 +1658,6 @@ function openPaymentModal() {
         }
     }
     
-    // Set suggested amount
     if (amountInput) {
         const balance = studentFinanceState.balance || 0;
         if (balance > 0) {
@@ -1350,28 +1666,23 @@ function openPaymentModal() {
         }
     }
     
-    // Set description
     if (descInput && studentFinanceState.currentPeriod) {
         if (!descInput.value) {
             descInput.value = `${studentFinanceState.currentPeriod} Tuition Fees`;
         }
     }
     
-    // Reset payment method selections
     document.querySelectorAll('.payment-method-item').forEach(el => {
         el.classList.remove('selected');
     });
     
-    // Hide M-Pesa fields
     if (mpesaFields) mpesaFields.style.display = 'none';
     if (methodDetails) methodDetails.style.display = 'none';
     
     document.querySelectorAll('.finance-validation-error').forEach(el => el.style.display = 'none');
     
-    // Default to M-Pesa
     selectPaymentMethod('mpesa');
     
-    // Show modal
     modal.classList.add('active');
     document.body.style.overflow = 'hidden';
     
@@ -1384,7 +1695,6 @@ function closePaymentModal() {
         modal.classList.remove('active');
         document.body.style.overflow = 'auto';
         
-        // Reset to form view
         const content = document.getElementById('finance-paymentContent');
         const formContainer = document.getElementById('finance-paymentFormContainer');
         if (content) content.style.display = 'none';
@@ -1394,88 +1704,23 @@ function closePaymentModal() {
     pendingPayment.cancelled = false;
 }
 
-// ============================================================
-// 📋 POPULATE PERIOD DROPDOWN
-// ============================================================
-
-function populatePeriodDropdown() {
-    const select = document.getElementById('finance-paymentPeriodSelect');
-    if (!select) {
-        console.warn('⚠️ Period select not found');
-        return;
-    }
-    
-    const programType = studentFinanceState.programType || 'KRCHN';
-    const programLevel = studentFinanceState.programLevel || 'diploma';
-    const periods = getPeriods(programType, programLevel);
-    const currentPeriod = studentFinanceState.currentPeriod || periods[0];
-    
-    select.innerHTML = '<option value="">Select period...</option>';
-    periods.forEach(p => {
-        const option = document.createElement('option');
-        option.value = p;
-        option.textContent = p;
-        if (p === currentPeriod) option.selected = true;
-        select.appendChild(option);
-    });
-    console.log('✅ Period dropdown populated with:', periods.length, 'periods');
-    
-    // Trigger change to set default amount
-    select.onchange = function() {
-        const selectedPeriod = this.value;
-        if (selectedPeriod) {
-            const index = periods.indexOf(selectedPeriod);
-            if (index !== -1) {
-                const amount = getFeeAmount(programType, index, programLevel);
-                const amountInput = document.getElementById('finance-paymentAmountInput');
-                if (amountInput) {
-                    amountInput.value = amount;
-                }
-                const descInput = document.getElementById('finance-paymentDescriptionInput');
-                if (descInput) {
-                    descInput.value = `${selectedPeriod} Tuition Fees`;
-                }
-            }
-        }
-    };
-}
-
-// ============================================================
-// 📱 PAYMENT PROCESSING FUNCTIONS - FIXED FOR YOUR HTML
-// ============================================================
-
 function selectPaymentMethod(method) {
     console.log('📱 Selecting payment method:', method);
     
-    // Remove selected class from all method items
     document.querySelectorAll('.payment-method-item').forEach(el => {
         el.classList.remove('selected');
     });
     
-    // Add selected class to the chosen method
     const selectedEl = document.getElementById(`finance-method-${method}`);
     if (selectedEl) {
         selectedEl.classList.add('selected');
-        console.log('✅ Selected element found:', selectedEl.id);
-    } else {
-        console.warn('⚠️ Element not found: finance-method-' + method);
     }
     
-    // Only M-Pesa fields exist in your HTML - hide them initially
     const mpesaFields = document.getElementById('finance-mpesaFields');
     if (mpesaFields) {
         mpesaFields.style.display = 'none';
     }
     
-    // These don't exist in your HTML, but safe to try
-    const cardFields = document.getElementById('finance-cardFields');
-    const bankFields = document.getElementById('finance-bankFields');
-    const paypalFields = document.getElementById('finance-paypalFields');
-    if (cardFields) cardFields.style.display = 'none';
-    if (bankFields) bankFields.style.display = 'none';
-    if (paypalFields) paypalFields.style.display = 'none';
-    
-    // Update method details
     const detailsContent = document.getElementById('finance-methodDetailsContent');
     const detailsContainer = document.getElementById('finance-paymentMethodDetails');
     
@@ -1498,7 +1743,6 @@ function selectPaymentMethod(method) {
         bank: 'Pay via bank transfer.'
     };
     
-    // Update method details if containers exist
     if (detailsContent) {
         detailsContent.innerHTML = `
             <div style="display: flex; align-items: center; gap: 4px;">
@@ -1512,36 +1756,14 @@ function selectPaymentMethod(method) {
         detailsContainer.style.display = 'block';
     }
     
-    // Show M-Pesa fields only if method is mpesa
     if (method === 'mpesa') {
         if (mpesaFields) {
             mpesaFields.style.display = 'block';
-            console.log('✅ M-Pesa fields shown');
         }
-        // Auto-fill phone number if available
         const user = window.currentUserProfile || window.currentUser;
         if (user?.phone) {
             const phoneInput = document.getElementById('finance-mpesaPhoneInput');
             if (phoneInput) phoneInput.value = user.phone;
-        }
-    } else {
-        // For other methods, show an informational message
-        if (detailsContent) {
-            detailsContent.innerHTML = `
-                <div style="display: flex; align-items: center; gap: 4px;">
-                    <span style="font-size: 14px;">${methodIcons[method] || '💳'}</span>
-                    <strong style="color: #0A3D62; font-size: 12px;">${methodNames[method] || method}</strong>
-                </div>
-                <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">
-                    ${methodDescriptions[method] || 'Select this payment method'}
-                </p>
-                <p style="margin: 6px 0 0 0; font-size: 11px; color: #f59e0b; background: #fffbeb; padding: 6px 10px; border-radius: 6px; border-left: 3px solid #f59e0b;">
-                    <i class="fas fa-info-circle"></i> 
-                    ${method === 'paypal' ? 'PayPal payments are processed securely. You will be redirected to PayPal to complete your payment.' : 
-                      method === 'card' ? 'Card payments are processed securely via our payment gateway. You will be redirected to complete your payment.' : 
-                      'Bank transfer details will be provided after confirmation. Please check your email for instructions.'}
-                </p>
-            `;
         }
     }
     
@@ -1551,7 +1773,7 @@ function selectPaymentMethod(method) {
 }
 
 // ============================================================
-// 📝 VALIDATE PAYMENT FORM (FIXED FOR YOUR HTML)
+// 📝 VALIDATE PAYMENT FORM
 // ============================================================
 
 function validatePaymentForm() {
@@ -1585,11 +1807,9 @@ function validatePaymentForm() {
         method = id.replace('finance-method-', '');
     }
     
-    // Only validate M-Pesa phone since that's the only method with fields
     if (method === 'mpesa') {
         const phone = document.getElementById('finance-mpesaPhoneInput');
         if (!phone || !phone.value || phone.value.replace(/\D/g, '').length < 10) {
-            // Find the validation error within mpesa fields
             const mpesaContainer = document.getElementById('finance-mpesaFields');
             if (mpesaContainer) {
                 const errorEl = mpesaContainer.querySelector('.finance-validation-error');
@@ -1604,7 +1824,7 @@ function validatePaymentForm() {
 }
 
 // ============================================================
-// 💰 GET SUPABASE CLIENT - FIXED
+// 💰 GET SUPABASE CLIENT
 // ============================================================
 
 function getSupabaseClient() {
@@ -1663,7 +1883,6 @@ async function saveSTKPaymentRecord(amount, period, result) {
         
         console.log('📝 Saving payment record:', paymentRecord);
 
-        // ✅ FIXED: Use try/catch instead of .catch()
         try {
             const { data, error } = await supabase
                 .from('finance_payments')
@@ -1715,7 +1934,7 @@ function savePaymentLocally(paymentRecord) {
 }
 
 // ============================================================
-// 🔍 CHECK PAYMENT STATUS - FIXED (NO .catch())
+// 🔍 CHECK PAYMENT STATUS - FIXED
 // ============================================================
 
 async function checkPaymentStatusDB(reference) {
@@ -1730,7 +1949,6 @@ async function checkPaymentStatusDB(reference) {
         
         let payment = null;
         
-        // ✅ Try checkout_request_id first
         try {
             const { data, error } = await supabase
                 .from('finance_payments')
@@ -1746,7 +1964,6 @@ async function checkPaymentStatusDB(reference) {
             console.log('⚠️ Check by checkout_request_id failed:', e.message);
         }
         
-        // ✅ Try reference_number
         if (!payment) {
             try {
                 const { data, error } = await supabase
@@ -1790,7 +2007,7 @@ function checkLocalPayment(reference) {
 }
 
 // ============================================================
-// 💰 INITIATE STK PUSH - USING EDGE FUNCTION (LIKE VIEWPOINT)
+// 💰 INITIATE STK PUSH - USING EDGE FUNCTION
 // ============================================================
 
 async function initiatePayHeroSTK(amount, phoneNumber, reference, period, customerName = '') {
@@ -1809,7 +2026,6 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
         console.log('💰 Amount:', amount);
         console.log('📋 Reference:', reference);
 
-        // ✅ CALL EDGE FUNCTION (LIKE VIEWPOINT)
         const supabase = getSupabaseClient();
         if (!supabase) {
             throw new Error('Supabase client not available');
@@ -1837,7 +2053,6 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
         if (data.success) {
             console.log('✅ STK Push initiated!');
             
-            // ✅ Save payment record
             const result = {
                 transactionId: data.transaction_id,
                 checkoutRequestID: data.transaction_id,
@@ -1871,7 +2086,7 @@ async function initiatePayHeroSTK(amount, phoneNumber, reference, period, custom
 }
 
 // ============================================================
-// 🔍 CHECK PAYMENT STATUS - USING EDGE FUNCTION (LIKE VIEWPOINT)
+// 🔍 CHECK PAYMENT STATUS - USING EDGE FUNCTION
 // ============================================================
 
 async function checkPaymentStatus(reference) {
@@ -1901,6 +2116,7 @@ async function checkPaymentStatus(reference) {
                 reference_number: reference,
                 receipt_number: data.receipt_number,
                 checkout_request_id: reference,
+                result_description: data.result_description,
                 ...data
             };
         }
@@ -1975,8 +2191,42 @@ async function updateStudentBalanceAfterPayment(amount) {
         console.error('❌ Error updating balance:', error);
     }
 }
+
 // ============================================================
-// 🔍 POLL STUDENT PAYMENT STATUS - ADD THIS FUNCTION
+// 🔄 UPDATE STK STATUS - STUDENT FINANCE
+// ============================================================
+
+function updateStudentSTKStatus(attempt, maxAttempts, message) {
+    const content = document.getElementById('finance-paymentContent');
+    const formContainer = document.getElementById('finance-paymentFormContainer');
+    const title = document.getElementById('finance-paymentModalTitle');
+    
+    if (title) title.textContent = '⏳ Processing Payment';
+    if (content) {
+        content.style.display = 'block';
+        const remaining = Math.round((maxAttempts - attempt) * 2);
+        const progress = Math.min(Math.round((attempt / maxAttempts) * 100), 100);
+        
+        content.innerHTML = `
+            <div class="spinner"></div>
+            <p class="status-text">⏳ Waiting for payment confirmation... (${attempt}/${maxAttempts})</p>
+            <div style="width:100%;max-width:300px;margin:8px auto;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden;">
+                <div style="height:100%;background:linear-gradient(90deg,#4C1D95,#7c3aed);border-radius:2px;width:${progress}%;transition:width 0.5s ease;"></div>
+            </div>
+            <p class="status-sub">${message || 'Please check your phone and enter your PIN'}</p>
+            <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:8px;">
+                ⏱️ ${remaining} seconds remaining
+            </p>
+            <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
+                <i class="fas fa-times"></i> Cancel Payment
+            </button>
+        `;
+    }
+    if (formContainer) formContainer.style.display = 'none';
+}
+
+// ============================================================
+// 🔍 POLL STUDENT PAYMENT STATUS - FIXED WITH CANCELLATION & INSUFFICIENT FUNDS
 // ============================================================
 
 async function pollStudentPaymentStatus(transactionId, amount, period) {
@@ -1984,13 +2234,36 @@ async function pollStudentPaymentStatus(transactionId, amount, period) {
     const maxAttempts = 30;
     let paymentConfirmed = false;
     let paymentData = null;
+    let shouldStopPolling = false;
     
     updateStudentSTKStatus(0, maxAttempts, 'Waiting for payment confirmation...');
     
-    while (attempts < maxAttempts && !paymentConfirmed) {
+    while (attempts < maxAttempts && !paymentConfirmed && !shouldStopPolling) {
+        // ✅ Check if user cancelled
         if (pendingPayment.cancelled) {
             pendingPayment.isProcessing = false;
-            showStudentPaymentFailure('Payment was cancelled by user');
+            shouldStopPolling = true;
+            
+            try {
+                const supabase = getSupabaseClient();
+                if (supabase) {
+                    await supabase
+                        .from('finance_payments')
+                        .update({
+                            status: 'cancelled',
+                            notes: 'Payment cancelled by user',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('checkout_request_id', transactionId);
+                    
+                    console.log('✅ Payment marked as CANCELLED in database');
+                }
+            } catch (e) {
+                console.log('⚠️ Could not update cancelled status:', e);
+            }
+            
+            showStudentPaymentFailure('You cancelled the payment');
+            showToast('⛔ Payment cancelled', 'warning');
             return;
         }
         
@@ -2000,7 +2273,6 @@ async function pollStudentPaymentStatus(transactionId, amount, period) {
         updateStudentSTKStatus(attempts, maxAttempts, 'Please check your phone and enter your PIN');
         
         try {
-            // ✅ Check status via Edge Function
             const supabase = getSupabaseClient();
             if (!supabase) {
                 console.log('⚠️ No Supabase client');
@@ -2020,33 +2292,79 @@ async function pollStudentPaymentStatus(transactionId, amount, period) {
             }
             
             console.log(`📊 Attempt ${attempts}/${maxAttempts}: Status = ${statusData?.status}`);
+            console.log(`📊 Result Description: ${statusData?.result_description || 'N/A'}`);
             
+            // ✅ Check for FAILED status (includes cancellation, insufficient funds, etc.)
+            if (statusData?.status === 'failed') {
+                paymentConfirmed = true;
+                paymentData = statusData;
+                shouldStopPolling = true;
+                
+                try {
+                    await supabase
+                        .from('finance_payments')
+                        .update({
+                            status: 'failed',
+                            notes: `Payment failed: ${statusData?.result_description || 'Transaction declined'}`,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('checkout_request_id', transactionId);
+                    
+                    console.log('✅ Payment marked as FAILED in database');
+                } catch (e) {
+                    console.log('⚠️ Could not update failed status:', e);
+                }
+                
+                const failReason = statusData?.result_description || statusData?.message || 'Transaction failed';
+                showStudentPaymentFailure(failReason);
+                showToast(`❌ Payment failed: ${failReason}`, 'error');
+                return;
+            }
+            
+            // ✅ Check for COMPLETED status
             if (statusData?.status === 'completed') {
                 paymentConfirmed = true;
                 paymentData = statusData;
                 console.log('✅ Payment confirmed!');
                 console.log('📱 Receipt:', statusData.receipt_number);
                 break;
-            } else if (statusData?.status === 'failed') {
-                paymentConfirmed = true;
-                paymentData = statusData;
-                console.log('❌ Payment failed');
-                break;
             }
             
-            // Also check database directly
+            // ✅ Also check database directly
             const { data: dbCheck } = await supabase
                 .from('finance_payments')
-                .select('status, receipt_number, checkout_request_id, updated_at')
+                .select('status, receipt_number, checkout_request_id, updated_at, notes, amount, period, payment_method, reference_number, program')
                 .eq('checkout_request_id', transactionId)
                 .maybeSingle();
             
-            if (dbCheck?.status === 'completed') {
-                paymentConfirmed = true;
-                paymentData = dbCheck;
-                console.log('✅ Payment confirmed (DB)!');
-                console.log('📱 Receipt:', dbCheck.receipt_number);
-                break;
+            if (dbCheck) {
+                console.log(`📊 DB Status: ${dbCheck.status}`);
+                
+                if (dbCheck.status === 'completed') {
+                    paymentConfirmed = true;
+                    paymentData = dbCheck;
+                    console.log('✅ Payment confirmed (DB)!');
+                    console.log('📱 Receipt:', dbCheck.receipt_number);
+                    break;
+                }
+                
+                if (dbCheck.status === 'failed') {
+                    paymentConfirmed = true;
+                    paymentData = dbCheck;
+                    shouldStopPolling = true;
+                    showStudentPaymentFailure(dbCheck.notes || 'Transaction failed');
+                    showToast('❌ Payment failed', 'error');
+                    return;
+                }
+                
+                if (dbCheck.status === 'cancelled') {
+                    paymentConfirmed = true;
+                    paymentData = dbCheck;
+                    shouldStopPolling = true;
+                    showStudentPaymentFailure('Payment was cancelled');
+                    showToast('⛔ Payment cancelled', 'warning');
+                    return;
+                }
             }
             
         } catch (pollError) {
@@ -2054,11 +2372,11 @@ async function pollStudentPaymentStatus(transactionId, amount, period) {
         }
     }
     
-    // Process result
-    if (paymentConfirmed) {
+    // ✅ Process result
+    if (paymentConfirmed && !shouldStopPolling) {
         pendingPayment.isProcessing = false;
+        pendingPayment.status = 'completed';
         
-        // Update payment status in database
         try {
             const supabase = getSupabaseClient();
             if (supabase) {
@@ -2073,19 +2391,54 @@ async function pollStudentPaymentStatus(transactionId, amount, period) {
         } catch (e) {}
         
         const receiptNumber = paymentData?.receipt_number || paymentData?.mpesa_receipt_number || 'N/A';
-        showStudentPaymentSuccess(amount, receiptNumber, period);
+        
+        closePaymentModal();
+        
+        showSuccessPopup(amount, receiptNumber, period, false);
+        
+        try {
+            const emailSent = await sendPaymentReceiptEmail({
+                amount: amount,
+                receipt_number: receiptNumber,
+                period: period,
+                transaction_id: transactionId,
+                reference_number: paymentData?.reference_number || 'N/A',
+                payment_method: 'M-Pesa',
+                program: studentFinanceState.student?.program || 'KRCHN'
+            });
+            
+            if (emailSent) {
+                const emailContainer = document.querySelector('#email-status-container');
+                if (emailContainer) {
+                    emailContainer.style.background = '#f0fdf4';
+                    emailContainer.style.border = '1px solid #86efac';
+                    emailContainer.innerHTML = `
+                        <div style="font-size: 13px; color: #065f46;">
+                            ✅ Receipt sent to your email
+                        </div>
+                    `;
+                }
+            }
+        } catch (emailError) {
+            console.error('❌ Email error:', emailError);
+        }
+        
         await updateStudentBalanceAfterPayment(amount);
         setTimeout(loadStudentFinance, 1000);
-        showToast('✅ Payment successful!', 'success');
+        showToast('✅ Payment successful! Receipt sent to your email.', 'success');
         
     } else if (pendingPayment.cancelled) {
         pendingPayment.isProcessing = false;
-        showStudentPaymentFailure('Payment was cancelled');
+        pendingPayment.status = 'cancelled';
+        
+    } else if (shouldStopPolling) {
+        pendingPayment.isProcessing = false;
+        pendingPayment.status = 'failed';
         
     } else {
         pendingPayment.isProcessing = false;
+        pendingPayment.status = 'failed';
         
-        // Final check
         try {
             const supabase = getSupabaseClient();
             if (supabase) {
@@ -2096,21 +2449,213 @@ async function pollStudentPaymentStatus(transactionId, amount, period) {
                     .maybeSingle();
                 
                 if (finalCheck && finalCheck.status === 'completed') {
-                    showStudentPaymentSuccess(amount, finalCheck.receipt_number || 'N/A', period);
+                    closePaymentModal();
+                    showSuccessPopup(amount, finalCheck.receipt_number || 'N/A', period, false);
                     await updateStudentBalanceAfterPayment(amount);
                     setTimeout(loadStudentFinance, 1000);
                     showToast('✅ Payment successful!', 'success');
                     return;
                 }
+                
+                if (finalCheck && finalCheck.status === 'pending') {
+                    await supabase
+                        .from('finance_payments')
+                        .update({
+                            status: 'failed',
+                            notes: 'Payment timeout - user did not complete transaction',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('checkout_request_id', transactionId);
+                    console.log('✅ Payment marked as FAILED due to timeout');
+                }
             }
         } catch (e) {}
         
         showStudentPaymentTimeout();
-        showToast('⏰ Payment timeout. Please check your M-Pesa transactions.', 'warning');
+        showToast('⏰ Payment timeout. Please check your M-Pesa transactions and try again.', 'warning');
     }
 }
+
 // ============================================================
-//  PROCESS PAYMENT - FIXED (DOES NOT OVERWRITE REFERENCE)
+// ❌ CANCEL PAYMENT - STUDENT FINANCE
+// ============================================================
+
+function cancelStudentPayment() {
+    if (pendingPayment && pendingPayment.isProcessing) {
+        pendingPayment.cancelled = true;
+        pendingPayment.isProcessing = false;
+        pendingPayment.status = 'cancelled';
+        console.log('⛔ Student payment cancellation triggered');
+        
+        (async function updateCancelledStatus() {
+            try {
+                const supabase = getSupabaseClient();
+                if (supabase && pendingPayment.transactionId) {
+                    await supabase
+                        .from('finance_payments')
+                        .update({
+                            status: 'cancelled',
+                            notes: 'Payment cancelled by user',
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('checkout_request_id', pendingPayment.transactionId);
+                    
+                    console.log('✅ Payment marked as CANCELLED in database');
+                }
+            } catch (e) {
+                console.log('⚠️ Could not update cancelled status:', e);
+            }
+        })();
+        
+        const content = document.getElementById('finance-paymentContent');
+        const title = document.getElementById('finance-paymentModalTitle');
+        const formContainer = document.getElementById('finance-paymentFormContainer');
+        
+        if (title) title.textContent = '⛔ Payment Cancelled';
+        if (content) {
+            content.style.display = 'block';
+            content.innerHTML = `
+                <div class="status-icon warning">⛔</div>
+                <p class="status-text">Payment Cancelled</p>
+                <p class="status-sub">You cancelled the payment.</p>
+                <button class="btn btn-success" style="margin-top:12px;width:100%;" onclick="closePaymentModal()">OK</button>
+            `;
+        }
+        if (formContainer) formContainer.style.display = 'none';
+        showToast('⛔ Payment cancelled', 'warning');
+    } else {
+        closePaymentModal();
+        showToast('Payment cancelled', 'warning');
+    }
+}
+
+// ============================================================
+// ❌ SHOW PAYMENT FAILURE - STUDENT FINANCE (UPDATED)
+// ============================================================
+
+function showStudentPaymentFailure(message) {
+    const content = document.getElementById('finance-paymentContent');
+    const title = document.getElementById('finance-paymentModalTitle');
+    const formContainer = document.getElementById('finance-paymentFormContainer');
+    
+    if (title) title.textContent = '❌ Payment Failed';
+    if (content) {
+        content.style.display = 'block';
+        
+        let icon = '❌';
+        let buttonText = 'Try Again';
+        let buttonAction = 'closePaymentModal()';
+        let subMessage = message || 'Transaction was not completed';
+        let extraInfo = '';
+        
+        if (message && message.toLowerCase().includes('cancel')) {
+            icon = '⛔';
+            buttonText = 'OK';
+            subMessage = 'You cancelled the payment';
+        } else if (message && (message.toLowerCase().includes('insufficient') || message.toLowerCase().includes('balance'))) {
+            icon = '💰';
+            subMessage = 'Insufficient funds. Please check your M-Pesa balance and try again.';
+            buttonText = 'Try Again';
+            extraInfo = '💡 Ensure you have enough money in your M-Pesa account.';
+        } else if (message && (message.toLowerCase().includes('pin') || message.toLowerCase().includes('incorrect'))) {
+            icon = '🔐';
+            subMessage = 'Incorrect PIN. Please try again with the correct PIN.';
+            buttonText = 'Try Again';
+            extraInfo = '💡 Make sure you enter the correct M-Pesa PIN.';
+        } else if (message && (message.toLowerCase().includes('network') || message.toLowerCase().includes('timeout'))) {
+            icon = '📡';
+            subMessage = 'Network issue. Please check your connection and try again.';
+            buttonText = 'Retry';
+            extraInfo = '💡 Ensure you have a stable network connection.';
+        } else if (message && (message.toLowerCase().includes('declined') || message.toLowerCase().includes('rejected'))) {
+            icon = '🚫';
+            subMessage = 'Transaction declined by M-Pesa.';
+            buttonText = 'Try Again';
+            extraInfo = '💡 Contact your bank or M-Pesa support for assistance.';
+        }
+        
+        content.innerHTML = `
+            <div class="status-icon failed">${icon}</div>
+            <p class="status-text">${icon} Payment Failed</p>
+            <p class="status-sub">${subMessage}</p>
+            ${extraInfo ? `<p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:4px;">${extraInfo}</p>` : ''}
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary" style="flex:1;min-width:80px;" onclick="${buttonAction}">${buttonText}</button>
+                <button class="btn btn-outline" style="flex:1;min-width:80px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;" onclick="closePaymentModal()">Close</button>
+            </div>
+        `;
+    }
+    if (formContainer) formContainer.style.display = 'none';
+}
+
+// ============================================================
+// ⏰ SHOW PAYMENT TIMEOUT - STUDENT FINANCE
+// ============================================================
+
+function showStudentPaymentTimeout() {
+    const content = document.getElementById('finance-paymentContent');
+    const title = document.getElementById('finance-paymentModalTitle');
+    const formContainer = document.getElementById('finance-paymentFormContainer');
+    
+    if (title) title.textContent = '⏰ Payment Timeout';
+    if (content) {
+        content.style.display = 'block';
+        content.innerHTML = `
+            <div class="status-icon warning">⏰</div>
+            <p class="status-text">Payment Timeout</p>
+            <p class="status-sub">The payment took too long to complete.</p>
+            <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:8px;">
+                Possible reasons:<br>
+                • You didn't enter your PIN<br>
+                • You didn't confirm the payment<br>
+                • Network issues
+            </p>
+            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
+                <button class="btn btn-primary" style="flex:1;min-width:80px;" onclick="closePaymentModal()">Try Again</button>
+                <button class="btn btn-outline" style="flex:1;min-width:80px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;" onclick="closePaymentModal()">Close</button>
+            </div>
+        `;
+    }
+    if (formContainer) formContainer.style.display = 'none';
+}
+
+// ============================================================
+// ✅ SHOW PAYMENT SUCCESS - STUDENT FINANCE (UPDATED)
+// ============================================================
+
+function showStudentPaymentSuccess(amount, reference, period) {
+    const content = document.getElementById('finance-paymentContent');
+    const title = document.getElementById('finance-paymentModalTitle');
+    const formContainer = document.getElementById('finance-paymentFormContainer');
+    
+    if (title) title.textContent = '✅ Payment Successful! 🎉';
+    if (content) {
+        content.style.display = 'block';
+        content.innerHTML = `
+            <div class="status-icon success">✅</div>
+            <p class="status-text">Payment Successful! 🎉</p>
+            <p class="status-sub">${period || 'Tuition Fees'}</p>
+            <p class="status-sub" style="font-size:18px;font-weight:700;color:#10B981;margin-top:8px;">
+                KES ${amount.toLocaleString()}
+            </p>
+            <p class="status-sub" style="font-size:12px;color:#94A3B8;">
+                Reference: ${reference}
+            </p>
+            <button class="btn btn-success" style="margin-top:12px;" onclick="closePaymentModal()">Done</button>
+        `;
+    }
+    if (formContainer) formContainer.style.display = 'none';
+    
+    setTimeout(() => {
+        const modal = document.getElementById('finance-paymentModal');
+        if (modal && modal.classList.contains('active')) {
+            closePaymentModal();
+        }
+    }, 3000);
+}
+
+// ============================================================
+// 💰 PROCESS PAYMENT - FIXED (DOES NOT OVERWRITE REFERENCE)
 // ============================================================
 
 async function processPayment() {
@@ -2129,7 +2674,6 @@ async function processPayment() {
         return;
     }
     
-    // ✅ Use STU- prefix for reference (matches webhook User_Reference format)
     const reference = 'STU-' + Date.now();
     
     if (method === 'mpesa') {
@@ -2140,19 +2684,17 @@ async function processPayment() {
             return;
         }
         
-        // Format phone number
-        let formattedPhone = phone.replace(/\s/g, '');
-        if (formattedPhone.startsWith('0')) {
-            formattedPhone = '254' + formattedPhone.substring(1);
-        } else if (formattedPhone.startsWith('7')) {
-            formattedPhone = '254' + formattedPhone;
+        let formattedPhone = formatPhoneNumber(phone);
+        if (!formattedPhone) {
+            showToast('❌ Invalid phone number', 'error');
+            return;
         }
         
-        // Set pending payment state
         pendingPayment.isProcessing = true;
         pendingPayment.cancelled = false;
+        pendingPayment.transactionId = null;
+        pendingPayment.status = 'processing';
         
-        // Show processing state
         const content = document.getElementById('finance-paymentContent');
         const formContainer = document.getElementById('finance-paymentFormContainer');
         const title = document.getElementById('finance-paymentModalTitle');
@@ -2173,7 +2715,6 @@ async function processPayment() {
         }
         if (formContainer) formContainer.style.display = 'none';
         
-        // Get Supabase client
         const supabase = getSupabaseClient();
         if (!supabase) {
             showToast('❌ Supabase client not available', 'error');
@@ -2181,7 +2722,6 @@ async function processPayment() {
             return;
         }
         
-        // Get profile ID
         const { data: profile } = await supabase
             .from('consolidated_user_profiles_table')
             .select('id')
@@ -2197,7 +2737,6 @@ async function processPayment() {
         const profileId = profile.id;
         const dbPeriod = mapPeriodToDatabase(period);
         
-        // ✅ Create payment with STU- prefix reference
         const paymentRecord = {
             student_id: profileId,
             student_name: user?.full_name || user?.name || 'Student',
@@ -2205,7 +2744,7 @@ async function processPayment() {
             program: user?.program || 'KRCHN',
             amount: amount,
             payment_method: 'M-Pesa',
-            reference_number: reference,  // ✅ STU- prefix
+            reference_number: reference,
             payment_date: new Date().toISOString().split('T')[0],
             period: dbPeriod || period,
             status: 'pending',
@@ -2244,10 +2783,8 @@ async function processPayment() {
             return;
         }
         
-        // Send STK Push
         console.log('📱 Sending STK Push...');
         console.log('📤 External Reference:', reference);
-        console.log('📤 This must match webhook User_Reference');
         
         try {
             const { data: stkData, error: stkError } = await supabase.functions.invoke('payhero', {
@@ -2255,7 +2792,7 @@ async function processPayment() {
                     action: 'stk_push',
                     phone: formattedPhone,
                     amount: Math.round(amount),
-                    order_id: reference,  // ✅ Same reference as payment
+                    order_id: reference,
                     payment_id: savedPayment.id,
                     customer_name: user?.full_name || user?.name || 'Student',
                     description: `${period} Tuition Fees Payment`
@@ -2276,12 +2813,10 @@ async function processPayment() {
             
             pendingPayment.transactionId = stkData.transaction_id;
             
-            // ✅ CRITICAL FIX: Update checkout_id but KEEP the original reference!
             await supabase
                 .from('finance_payments')
                 .update({
                     checkout_request_id: stkData.transaction_id,
-                    // ✅ DO NOT update reference_number - keep STU-xxx format!
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', savedPayment.id);
@@ -2289,12 +2824,24 @@ async function processPayment() {
             console.log('✅ Payment updated with checkout ID');
             console.log('📋 Reference (unchanged):', savedPayment.reference_number);
             
-            // Start polling for status
             await pollStudentPaymentStatus(stkData.transaction_id, amount, period);
             
         } catch (stkError) {
             console.error('❌ STK Error:', stkError);
             pendingPayment.isProcessing = false;
+            pendingPayment.status = 'failed';
+            
+            try {
+                await supabase
+                    .from('finance_payments')
+                    .update({
+                        status: 'failed',
+                        notes: `STK Push failed: ${stkError.message}`,
+                        updated_at: new Date().toISOString()
+                    })
+                    .eq('id', savedPayment.id);
+            } catch (e) {}
+            
             showStudentPaymentFailure(stkError.message || 'Payment initiation failed');
             showToast('❌ Payment failed: ' + (stkError.message || 'Please try again'), 'error');
         }
@@ -2305,152 +2852,6 @@ async function processPayment() {
             showToast('✅ Payment recorded', 'success');
             loadStudentFinance();
         }, 2000);
-    }
-}
-// ============================================================
-// 🔄 UPDATE STK STATUS - STUDENT FINANCE
-// ============================================================
-
-function updateStudentSTKStatus(attempt, maxAttempts, message) {
-    const content = document.getElementById('finance-paymentContent');
-    const formContainer = document.getElementById('finance-paymentFormContainer');
-    const title = document.getElementById('finance-paymentModalTitle');
-    
-    if (title) title.textContent = '⏳ Processing Payment';
-    if (content) {
-        content.style.display = 'block';
-        const remaining = Math.round((maxAttempts - attempt) * 2);
-        const progress = Math.round((attempt / maxAttempts) * 100);
-        
-        content.innerHTML = `
-            <div class="spinner"></div>
-            <p class="status-text">⏳ Waiting for payment confirmation... (${attempt}/${maxAttempts})</p>
-            <div style="width:100%;max-width:300px;margin:8px auto;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden;">
-                <div style="height:100%;background:linear-gradient(90deg,#4C1D95,#7c3aed);border-radius:2px;width:${progress}%;transition:width 0.5s ease;"></div>
-            </div>
-            <p class="status-sub">${message || 'Please check your phone and enter your PIN'}</p>
-            <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:8px;">
-                ⏱️ ${remaining} seconds remaining
-            </p>
-            <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
-                <i class="fas fa-times"></i> Cancel Payment
-            </button>
-        `;
-    }
-    if (formContainer) formContainer.style.display = 'none';
-}
-
-// ============================================================
-// ✅ SHOW PAYMENT SUCCESS - STUDENT FINANCE
-// ============================================================
-
-function showStudentPaymentSuccess(amount, reference, period) {
-    const content = document.getElementById('finance-paymentContent');
-    const title = document.getElementById('finance-paymentModalTitle');
-    const formContainer = document.getElementById('finance-paymentFormContainer');
-    
-    if (title) title.textContent = '✅ Payment Successful! 🎉';
-    if (content) {
-        content.style.display = 'block';
-        content.innerHTML = `
-            <div class="status-icon success">✅</div>
-            <p class="status-text">Payment Successful! 🎉</p>
-            <p class="status-sub">${period || 'Tuition Fees'}</p>
-            <p class="status-sub" style="font-size:18px;font-weight:700;color:#10B981;margin-top:8px;">
-                KES ${amount.toLocaleString()}
-            </p>
-            <p class="status-sub" style="font-size:12px;color:#94A3B8;">
-                Reference: ${reference}
-            </p>
-            <button class="btn btn-success" style="margin-top:12px;" onclick="closePaymentModal()">Done</button>
-        `;
-    }
-    if (formContainer) formContainer.style.display = 'none';
-    
-    setTimeout(() => {
-        const modal = document.getElementById('finance-paymentModal');
-        if (modal && modal.classList.contains('active')) {
-            closePaymentModal();
-        }
-    }, 3000);
-}
-
-// ============================================================
-// ❌ SHOW PAYMENT FAILURE - STUDENT FINANCE
-// ============================================================
-
-function showStudentPaymentFailure(message) {
-    const content = document.getElementById('finance-paymentContent');
-    const title = document.getElementById('finance-paymentModalTitle');
-    const formContainer = document.getElementById('finance-paymentFormContainer');
-    
-    if (title) title.textContent = '❌ Payment Failed';
-    if (content) {
-        content.style.display = 'block';
-        content.innerHTML = `
-            <div class="status-icon failed">❌</div>
-            <p class="status-text">Payment Failed</p>
-            <p class="status-sub">${message || 'Transaction was not completed'}</p>
-            <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">Try Again</button>
-        `;
-    }
-    if (formContainer) formContainer.style.display = 'none';
-}
-
-// ============================================================
-// ⏰ SHOW PAYMENT TIMEOUT - STUDENT FINANCE
-// ============================================================
-
-function showStudentPaymentTimeout() {
-    const content = document.getElementById('finance-paymentContent');
-    const title = document.getElementById('finance-paymentModalTitle');
-    const formContainer = document.getElementById('finance-paymentFormContainer');
-    
-    if (title) title.textContent = '⏰ Payment Timeout';
-    if (content) {
-        content.style.display = 'block';
-        content.innerHTML = `
-            <div class="status-icon warning">⏰</div>
-            <p class="status-text">Payment Timeout</p>
-            <p class="status-sub">The payment took too long to complete.</p>
-            <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:8px;">
-                Please check your M-Pesa transactions and try again.
-            </p>
-            <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
-        `;
-    }
-    if (formContainer) formContainer.style.display = 'none';
-}
-
-// ============================================================
-// ❌ CANCEL PAYMENT - STUDENT FINANCE
-// ============================================================
-
-function cancelStudentPayment() {
-    if (pendingPayment && pendingPayment.isProcessing) {
-        pendingPayment.cancelled = true;
-        pendingPayment.isProcessing = false;
-        console.log('⛔ Student payment cancellation triggered');
-        
-        const content = document.getElementById('finance-paymentContent');
-        const title = document.getElementById('finance-paymentModalTitle');
-        const formContainer = document.getElementById('finance-paymentFormContainer');
-        
-        if (title) title.textContent = '⛔ Payment Cancelled';
-        if (content) {
-            content.style.display = 'block';
-            content.innerHTML = `
-                <div class="status-icon warning">⛔</div>
-                <p class="status-text">Payment Cancelled</p>
-                <p class="status-sub">You cancelled the payment.</p>
-                <button class="btn btn-success" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
-            `;
-        }
-        if (formContainer) formContainer.style.display = 'none';
-        showToast('⛔ Payment cancelled', 'warning');
-    } else {
-        closePaymentModal();
-        showToast('Payment cancelled', 'warning');
     }
 }
 
@@ -2596,7 +2997,6 @@ async function sendPaymentConfirmationEmail(studentId, paymentData) {
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    // Add styles if not exists
     if (!document.getElementById('financeSpinStyle')) {
         const style = document.createElement('style');
         style.id = 'financeSpinStyle';
@@ -2606,12 +3006,13 @@ document.addEventListener('DOMContentLoaded', function() {
             @keyframes pulse-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
             @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
             @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
+            @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
+            @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
             .payment-method-item.selected { border: 2px solid #4C1D95 !important; background: #ede9fe !important; box-shadow: 0 0 0 2px rgba(76, 29, 149, 0.1); }
         `;
         document.head.appendChild(style);
     }
     
-    // Tab activation
     const financeTab = document.querySelector('a[data-tab="finance"]');
     if (financeTab) {
         financeTab.addEventListener('click', function() {
@@ -2624,7 +3025,6 @@ document.addEventListener('DOMContentLoaded', function() {
         setTimeout(loadStudentFinance, 800);
     });
     
-    // Filter listeners
     const paymentFilter = document.getElementById('finance-paymentFilter');
     if (paymentFilter) paymentFilter.addEventListener('change', filterStudentPayments);
     
@@ -2634,7 +3034,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const searchInput = document.getElementById('finance-search');
     if (searchInput) searchInput.addEventListener('keyup', filterStudentPayments);
     
-    // Payment form
     const paymentForm = document.getElementById('finance-paymentForm');
     if (paymentForm) {
         paymentForm.addEventListener('submit', function(e) {
@@ -2646,7 +3045,7 @@ document.addEventListener('DOMContentLoaded', function() {
     listenForAdminEvents();
     
     notifySuperAdmin('module_ready', {
-        version: '2.3.0',
+        version: '2.4.0',
         timestamp: new Date().toISOString()
     });
     
@@ -2679,6 +3078,10 @@ document.addEventListener('DOMContentLoaded', function() {
     window.mapPeriodToDisplay = mapPeriodToDisplay;
     window.mapPeriodToDatabase = mapPeriodToDatabase;
     window.mapProgramCodeToFullName = mapProgramCodeToFullName;
+    window.sendPaymentReceiptEmail = sendPaymentReceiptEmail;
+    window.showSuccessPopup = showSuccessPopup;
+    window.closeSuccessPopupAndRefresh = closeSuccessPopupAndRefresh;
+    window.downloadReceipt = downloadReceipt;
 });
 
 console.log('✅ Student Finance module loaded successfully!');
@@ -2687,3 +3090,7 @@ console.log('📋 Vote heads loaded from database');
 console.log('💳 PayHero Edge Function integration enabled - No redirects!');
 console.log('🔧 POS Style Payment Modal with ALL states');
 console.log('✅ Processing, Success, Failure, Timeout, Cancelled');
+console.log('📧 Email receipt sending enabled');
+console.log('🎉 Success popup with download option');
+console.log('⛔ Handles cancellation - stops polling immediately');
+console.log('💰 Handles insufficient funds - stops polling immediately');
