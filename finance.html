@@ -1344,70 +1344,162 @@
         </div>
     </div>
 
-    <!-- ===== ADD STAFF MODAL ===== -->
-    <div id="addStaffModal" class="modal-overlay">
-        <div class="modal-content" style="max-width:600px;">
-            <button class="modal-close" onclick="closeModal('addStaffModal')">&times;</button>
-            <h3 style="color:#0A3D62;margin-bottom:16px;"><i class="fas fa-user-plus"></i> Add Staff Member</h3>
-            <form id="addStaffForm" onsubmit="event.preventDefault(); saveStaffToDatabase();">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Full Name *</label>
-                        <input type="text" id="staffFullName" class="form-control" placeholder="e.g., Jane Doe" required>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Staff ID *</label>
-                        <input type="text" id="staffId" class="form-control" placeholder="e.g., STF-001" required>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Department *</label>
-                        <select id="staffDepartment" class="form-control" required>
-                            <option value="">Select Department</option>
-                            <option value="Academic">Academic</option>
-                            <option value="Administration">Administration</option>
-                            <option value="Finance">Finance</option>
-                            <option value="ICT">ICT</option>
-                            <option value="Human Resources">Human Resources</option>
-                            <option value="Student Affairs">Student Affairs</option>
-                            <option value="Other">Other</option>
-                        </select>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Position *</label>
-                        <input type="text" id="staffPosition" class="form-control" placeholder="e.g., Senior Lecturer" required>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Basic Salary (KES) *</label>
-                        <input type="number" id="staffBasicSalary" class="form-control" placeholder="0" required min="0">
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Allowances (KES)</label>
-                        <input type="number" id="staffAllowances" class="form-control" placeholder="0" min="0" value="0">
-                    </div>
-                    <div class="finance-form-group" style="grid-column:1/-1;">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Email</label>
-                        <input type="email" id="staffEmail" class="form-control" placeholder="staff@nchsm.ac.ke">
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Phone</label>
-                        <input type="text" id="staffPhone" class="form-control" placeholder="+254 700 000 000">
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Status</label>
-                        <select id="staffStatus" class="form-control">
-                            <option value="active">🟢 Active</option>
-                            <option value="inactive">🔴 Inactive</option>
-                            <option value="on leave">🟡 On Leave</option>
-                        </select>
-                    </div>
+   <!-- ============================================================ -->
+<!-- ADD STAFF MODAL                                               -->
+<!-- ============================================================ -->
+<div id="addStaffModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 700px;">
+        <button class="modal-close" onclick="closeModal('addStaffModal')">&times;</button>
+        <h3 style="color: #0A3D62; margin: 0 0 20px 0;"><i class="fas fa-user-plus"></i> Add Staff Member</h3>
+        
+        <form id="addStaffForm" onsubmit="event.preventDefault(); saveStaffToDatabase();">
+            <!-- Hidden field for edit ID -->
+            <input type="hidden" id="staffId" value="">
+            
+            <!-- Personal Information -->
+            <div style="display: grid; grid-template-columns: 1fr 2fr 2fr; gap: 12px;">
+                <div class="finance-form-group">
+                    <label for="staffTitle">Title</label>
+                    <select id="staffTitle" class="form-control">
+                        <option value="">Select</option>
+                        <option value="Mr.">Mr.</option>
+                        <option value="Mrs.">Mrs.</option>
+                        <option value="Ms.">Ms.</option>
+                        <option value="Dr.">Dr.</option>
+                        <option value="Prof.">Prof.</option>
+                    </select>
                 </div>
-                <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
-                    <button type="button" onclick="closeModal('addStaffModal')" class="btn-action btn-outline">Cancel</button>
-                    <button type="submit" class="btn-action btn-success"><i class="fas fa-save"></i> Save Staff</button>
+                <div class="finance-form-group">
+                    <label for="staffFirstName">First Name *</label>
+                    <input type="text" id="staffFirstName" class="form-control" placeholder="First name" required>
                 </div>
-            </form>
-        </div>
+                <div class="finance-form-group">
+                    <label for="staffOtherNames">Other Names</label>
+                    <input type="text" id="staffOtherNames" class="form-control" placeholder="Middle and last name">
+                </div>
+            </div>
+
+            <!-- Employment Details -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="finance-form-group">
+                    <label for="staffDepartment">Department *</label>
+                    <select id="staffDepartment" class="form-control" required>
+                        <option value="">Select Department</option>
+                        <option value="Academic">📚 Academic</option>
+                        <option value="Administration">📋 Administration</option>
+                        <option value="Finance">💰 Finance</option>
+                        <option value="ICT">💻 ICT</option>
+                        <option value="Human Resources">👔 Human Resources</option>
+                        <option value="Student Affairs">🎓 Student Affairs</option>
+                        <option value="Other">📌 Other</option>
+                    </select>
+                </div>
+                <div class="finance-form-group">
+                    <label for="staffPosition">Position / Designation *</label>
+                    <input type="text" id="staffPosition" class="form-control" placeholder="e.g., Lecturer, Accountant" required>
+                </div>
+            </div>
+
+            <!-- Salary Information -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                <div class="finance-form-group">
+                    <label for="staffBasicSalary">💰 Basic Salary</label>
+                    <input type="number" id="staffBasicSalary" class="form-control" placeholder="0.00" step="0.01" min="0" oninput="calculateStaffPay()">
+                </div>
+                <div class="finance-form-group">
+                    <label for="staffAllowances">➕ Allowances</label>
+                    <input type="number" id="staffAllowances" class="form-control" placeholder="0.00" step="0.01" min="0" oninput="calculateStaffPay()">
+                </div>
+                <div class="finance-form-group">
+                    <label for="staffTotalPay">💵 Total Pay (Auto-calculated)</label>
+                    <input type="text" id="staffTotalPay" class="form-control" readonly style="background: #f3f4f6; font-weight: 600; color: #0A3D62;">
+                </div>
+            </div>
+
+            <!-- Contact Information -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="finance-form-group">
+                    <label for="staffEmail">📧 Email *</label>
+                    <input type="email" id="staffEmail" class="form-control" placeholder="email@example.com" required>
+                </div>
+                <div class="finance-form-group">
+                    <label for="staffPhone">📱 Phone *</label>
+                    <input type="tel" id="staffPhone" class="form-control" placeholder="0712345678" required>
+                </div>
+            </div>
+
+            <!-- Additional Information -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                <div class="finance-form-group">
+                    <label for="staffNationalId">🆔 National ID</label>
+                    <input type="text" id="staffNationalId" class="form-control" placeholder="ID Number">
+                </div>
+                <div class="finance-form-group">
+                    <label for="staffGender">⚥ Gender</label>
+                    <select id="staffGender" class="form-control">
+                        <option value="">Select</option>
+                        <option value="Male">Male</option>
+                        <option value="Female">Female</option>
+                        <option value="Other">Other</option>
+                    </select>
+                </div>
+                <div class="finance-form-group">
+                    <label for="staffProgram">📚 Program</label>
+                    <input type="text" id="staffProgram" class="form-control" placeholder="Assigned program">
+                </div>
+            </div>
+
+            <!-- Bank Details -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                <div class="finance-form-group">
+                    <label for="staffBankName">🏦 Bank Name</label>
+                    <input type="text" id="staffBankName" class="form-control" placeholder="Bank name">
+                </div>
+                <div class="finance-form-group">
+                    <label for="staffBankAccount">🔢 Bank Account</label>
+                    <input type="text" id="staffBankAccount" class="form-control" placeholder="Account number">
+                </div>
+            </div>
+
+            <!-- SHIF & Tax Information -->
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px;">
+                <div class="finance-form-group">
+                    <label for="staffShifNumber">🏥 SHIF Number</label>
+                    <input type="text" id="staffShifNumber" class="form-control" placeholder="SHIF number">
+                </div>
+                <div class="finance-form-group">
+                    <label for="staffNsrfNumber">📋 NSRF Number</label>
+                    <input type="text" id="staffNsrfNumber" class="form-control" placeholder="NSRF number">
+                </div>
+                <div class="finance-form-group">
+                    <label for="staffTaxPin">📄 Tax PIN</label>
+                    <input type="text" id="staffTaxPin" class="form-control" placeholder="KRA PIN">
+                </div>
+            </div>
+
+            <!-- Status -->
+            <div class="finance-form-group">
+                <label for="staffStatus">📊 Status</label>
+                <select id="staffStatus" class="form-control">
+                    <option value="active">🟢 Active</option>
+                    <option value="inactive">🔴 Inactive</option>
+                    <option value="on leave">🟡 On Leave</option>
+                    <option value="suspended">⚫ Suspended</option>
+                </select>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+                <button type="submit" class="btn-action btn-success" style="flex: 1; padding: 12px; font-size: 15px; min-width: 120px;">
+                    <i class="fas fa-save"></i> Save Staff
+                </button>
+                <button type="button" onclick="closeModal('addStaffModal')" class="btn-action btn-outline" style="flex: 1; padding: 12px; font-size: 15px; min-width: 120px;">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+        </form>
     </div>
+</div>
 
     <!-- ===== EXTERNAL JAVASCRIPT ===== -->
     <script src="finance.js"></script>
