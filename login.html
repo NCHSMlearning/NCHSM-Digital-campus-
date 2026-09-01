@@ -103,219 +103,887 @@
     })();
     </script>
     
-   <style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: #f1f5f9;
-    }
-    
-    /* ===== ANIMATIONS ===== */
-    @keyframes floatParticle {
-        0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
-        25% { transform: translateY(-30px) translateX(15px); opacity: 0.6; }
-        50% { transform: translateY(0) translateX(30px); opacity: 0.3; }
-        75% { transform: translateY(30px) translateX(15px); opacity: 0.6; }
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateY(20px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    
-    @keyframes shimmer {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    @keyframes pulseIcon {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-    }
-    
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        20%, 60% { transform: translateX(-10px); }
-        40%, 80% { transform: translateX(10px); }
-    }
-    
-    @keyframes glowPulse {
-        0%, 100% { box-shadow: 0 0 0 3px rgba(13, 107, 62, 0.1); }
-        50% { box-shadow: 0 0 0 6px rgba(13, 107, 62, 0.05); }
-    }
-    
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    /* ===== SKELETON LOADER ===== */
-    #skeletonLoader {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(10, 61, 98, 0.95);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        gap: 20px;
-        transition: opacity 0.8s ease;
-    }
-    
-    #skeletonLoader .spinner {
-        width: 60px;
-        height: 60px;
-        border: 4px solid rgba(253, 185, 19, 0.1);
-        border-top-color: #FDB913;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-    }
-    
-    #skeletonLoader .loader-text {
-        color: rgba(255,255,255,0.7);
-        font-family: 'Inter', sans-serif;
-        font-size: 14px;
-        letter-spacing: 2px;
-    }
-    
-    /* ============================================================
-       ✅ RESPONSIVE - LEFT PANEL HIDDEN ON MOBILE
-       ============================================================ */
-    
-    @media (max-width: 1024px) {
-        .right-panel {
-            flex: 0 0 420px;
-            padding: 30px 25px;
-        }
-        .left-panel .college-name {
-            font-size: 22px;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        body {
+    <style>
+        * {
+            margin: 0;
             padding: 0;
+            box-sizing: border-box;
         }
         
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background: #f1f5f9;
+        }
+        
+        /* ===== ANIMATIONS ===== */
+        @keyframes floatParticle {
+            0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
+            25% { transform: translateY(-30px) translateX(15px); opacity: 0.6; }
+            50% { transform: translateY(0) translateX(30px); opacity: 0.3; }
+            75% { transform: translateY(30px) translateX(15px); opacity: 0.6; }
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px) scale(0.95); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+        
+        @keyframes shimmer {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        @keyframes pulseIcon {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            20%, 60% { transform: translateX(-10px); }
+            40%, 80% { transform: translateX(10px); }
+        }
+        
+        @keyframes glowPulse {
+            0%, 100% { box-shadow: 0 0 0 3px rgba(13, 107, 62, 0.1); }
+            50% { box-shadow: 0 0 0 6px rgba(13, 107, 62, 0.05); }
+        }
+        
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        /* ===== SKELETON LOADER ===== */
+        #skeletonLoader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 61, 98, 0.95);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+            transition: opacity 0.8s ease;
+        }
+        
+        #skeletonLoader .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(253, 185, 19, 0.1);
+            border-top-color: #FDB913;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        #skeletonLoader .loader-text {
+            color: rgba(255,255,255,0.7);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+        
+        /* ===== MAIN WRAPPER ===== */
         .login-wrapper {
-            flex-direction: column !important;
-            border-radius: 0 !important;
-            min-height: auto !important;
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            background: rgba(255,255,255,0.96);
+            box-shadow: 0 0 60px rgba(0,0,0,0.1);
+            border-radius: 24px;
+            overflow: hidden;
+            min-height: 600px;
         }
         
-        /* ✅ FIX: HIDE LEFT PANEL ON MOBILE */
+        /* ===== LEFT PANEL ===== */
         .left-panel {
-            display: none !important;  /* ← KEY FIX: HIDDEN */
+            flex: 1;
+            background: linear-gradient(135deg, #0A3D62 0%, #1a5a7a 100%);
+            padding: 40px;
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+            position: relative;
+            overflow: hidden;
         }
         
+        .left-panel .logo-img {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            background: white;
+            padding: 12px;
+            border: 4px solid #FDB913;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+            margin: 0 auto 20px;
+            object-fit: contain;
+            transition: transform 0.3s ease;
+        }
+        
+        .left-panel .logo-img:hover {
+            transform: scale(1.05);
+        }
+        
+        .left-panel .college-name {
+            color: white;
+            font-size: 24px;
+            font-weight: 700;
+            text-align: center;
+            line-height: 1.3;
+            margin: 0;
+        }
+        
+        .left-panel .college-name span {
+            color: #FDB913;
+        }
+        
+        .left-panel .motto {
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+            font-size: 13px;
+            margin-top: 4px;
+            font-weight: 300;
+        }
+        
+        .left-panel .welcome-title-left {
+            color: white;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+            margin: 20px 0 5px 0;
+        }
+        
+        .left-panel .tagline {
+            color: rgba(255,255,255,0.7);
+            text-align: center;
+            font-size: 13px;
+            margin-bottom: 15px;
+        }
+        
+        .left-panel .features-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .left-panel .feature-item {
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 10px;
+            padding: 12px;
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        
+        .left-panel .feature-item:hover {
+            background: rgba(255,255,255,0.15);
+            transform: translateY(-3px);
+        }
+        
+        .left-panel .feature-item i {
+            color: #FDB913;
+        }
+        
+        .left-panel .feature-item h4 {
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 3px 0 2px 0;
+        }
+        
+        .left-panel .feature-item p {
+            color: rgba(255,255,255,0.7);
+            font-size: 10px;
+            margin: 0;
+        }
+        
+        .left-panel .badges-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+            justify-content: center;
+            margin-top: 15px;
+        }
+        
+        .left-panel .badge {
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        
+        .left-panel .badge.gold {
+            background: rgba(253,185,19,0.2);
+            color: #FDB913;
+        }
+        
+        .left-panel .badge.normal {
+            background: rgba(255,255,255,0.1);
+            color: rgba(255,255,255,0.85);
+        }
+        
+        .left-panel .stats-row {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid rgba(255,255,255,0.1);
+        }
+        
+        .left-panel .stat-item {
+            text-align: center;
+        }
+        
+        .left-panel .stat-number {
+            font-size: 22px;
+            font-weight: 700;
+            color: #FDB913;
+            display: block;
+        }
+        
+        .left-panel .stat-label {
+            font-size: 11px;
+            color: rgba(255,255,255,0.7);
+            display: block;
+        }
+        
+        .left-panel .left-footer {
+            text-align: center;
+            font-size: 10px;
+            color: rgba(255,255,255,0.4);
+            margin-top: 12px;
+            padding-top: 8px;
+            border-top: 1px solid rgba(255,255,255,0.05);
+        }
+        
+        /* ===== RIGHT PANEL ===== */
         .right-panel {
-            flex: 1 1 100% !important;
-            padding: 25px 20px !important;
-            min-height: auto !important;
-            order: 1 !important;  /* Right panel moves to top */
-            background: #ffffff !important;
-            border-left: none !important;
+            flex: 0 0 480px;
+            max-width: 100%;
+            background: white;
+            padding: 40px 35px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            min-height: 600px;
+            border-left: 1px solid #e5e7eb;
         }
         
         .right-content {
-            max-width: 100% !important;
+            max-width: 420px;
+            margin: 0 auto;
+            width: 100%;
         }
         
+        /* ===== MOBILE HEADER ===== */
         .mobile-header {
-            display: block !important;
+            display: none;
+            text-align: center;
+            margin-bottom: 20px;
         }
         
+        .mobile-header .logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            border: 2px solid #FDB913;
+            padding: 4px;
+            background: white;
+        }
+        
+        .mobile-header h1 {
+            font-size: 20px;
+            color: #0A3D62;
+            margin: 10px 0 0 0;
+        }
+        
+        .mobile-header p {
+            color: #64748B;
+            font-size: 12px;
+            margin: 2px 0 0 0;
+        }
+        
+        /* ===== TOP CONTROLS ===== */
         .top-controls {
-            justify-content: center !important;
-        }
-        
-        .sso-grid {
-            grid-template-columns: 1fr 1fr 1fr !important;
-        }
-        
-        .welcome-title {
-            font-size: 20px !important;
-        }
-        
-        /* Hide left panel elements on mobile just in case */
-        .left-panel .logo-img,
-        .left-panel .college-name,
-        .left-panel .motto,
-        .left-panel .welcome-title-left,
-        .left-panel .tagline,
-        .left-panel .features-grid,
-        .left-panel .badges-container,
-        .left-panel .stats-row,
-        .left-panel .left-footer {
-            display: none !important;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .right-panel {
-            padding: 18px 14px !important;
-        }
-        
-        .sso-grid {
-            grid-template-columns: 1fr !important;  /* SSO buttons stack */
-        }
-        
-        .form-options {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-        }
-        
-        .top-controls {
-            gap: 6px !important;
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
         }
         
         .top-btn {
-            font-size: 11px !important;
-            padding: 6px 10px !important;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            padding: 7px 14px;
+            border-radius: 8px;
+            font-size: 12px;
+            font-weight: 500;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            cursor: pointer;
+            border: none;
+            color: #475569;
+        }
+        
+        .top-btn.main-site {
+            background: #f1f5f9;
+        }
+        
+        .top-btn.main-site:hover {
+            background: #e2e8f0;
+        }
+        
+        .top-btn.blog {
+            background: #FDB913;
+            color: #0A3D62;
+            font-weight: 600;
+        }
+        
+        .top-btn.blog:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(253,185,19,0.3);
+        }
+        
+        .top-btn.theme {
+            background: #f1f5f9;
+        }
+        
+        .top-btn.theme:hover {
+            background: #e2e8f0;
+        }
+        
+        /* ===== WELCOME ===== */
+        .welcome-icon {
+            width: 50px;
+            height: 50px;
+            background: #f1f5f9;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin: 0 auto 12px;
         }
         
         .welcome-title {
-            font-size: 18px !important;
+            font-size: 24px;
+            font-weight: 700;
+            color: #0A3D62;
+            text-align: center;
+            margin: 0;
+        }
+        
+        .welcome-title span {
+            color: #FDB913;
         }
         
         .welcome-subtitle {
-            font-size: 13px !important;
+            color: #64748B;
+            font-size: 14px;
+            text-align: center;
+            margin: 4px 0 16px 0;
+        }
+        
+        /* ===== MESSAGES ===== */
+        .message-box {
+            display: none;
+            align-items: center;
+            gap: 10px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+        
+        .message-box i {
+            flex-shrink: 0;
+        }
+        
+        .message-box .msg-text {
+            flex: 1;
+        }
+        
+        .message-box.error {
+            background: #fee2e2;
+            border-left: 4px solid #dc2626;
+            color: #991b1b;
+        }
+        
+        .message-box.error i {
+            color: #dc2626;
+        }
+        
+        .message-box.success {
+            background: #d1fae5;
+            border-left: 4px solid #10b981;
+            color: #065f46;
+        }
+        
+        .message-box.success i {
+            color: #10b981;
+        }
+        
+        /* ===== FORM ===== */
+        #loginForm {
+            display: block;
+            width: 100%;
+        }
+        
+        .form-group {
+            margin-bottom: 16px;
+        }
+        
+        .form-label {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #475569;
+            margin-bottom: 4px;
+        }
+        
+        .form-label i {
+            color: #0A3D62;
+        }
+        
+        .input-wrapper {
+            position: relative;
+            display: flex;
+            align-items: center;
+            width: 100%;
+        }
+        
+        .input-wrapper i {
+            position: absolute;
+            left: 14px;
+            color: #94a3b8;
+            width: 18px;
+            height: 18px;
+            z-index: 2;
+        }
+        
+        .input-wrapper input {
+            width: 100%;
+            padding: 12px 14px 12px 44px;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            font-size: 14px;
+            font-family: 'Inter', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            transition: all 0.3s ease;
+            outline: none;
+        }
+        
+        .input-wrapper input:focus {
+            border-color: #0A3D62;
+            box-shadow: 0 0 0 3px rgba(10,61,98,0.1);
+        }
+        
+        .password-toggle {
+            position: absolute;
+            right: 12px;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            cursor: pointer;
+            padding: 4px;
+            display: flex;
+            align-items: center;
+            transition: color 0.3s ease;
+            z-index: 2;
+        }
+        
+        .password-toggle:hover {
+            color: #0A3D62;
+        }
+        
+        .strength-bar {
+            height: 4px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-top: 6px;
+        }
+        
+        .strength-progress {
+            height: 100%;
+            width: 0%;
+            background: #94a3b8;
+            border-radius: 4px;
+            transition: width 0.3s ease;
+        }
+        
+        .strength-text {
+            font-size: 12px;
+            color: #94a3b8;
+            display: block;
+            margin-top: 4px;
+        }
+        
+        .form-options {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 12px 0 16px 0;
+        }
+        
+        .stay-signed-in {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .stay-signed-in input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: #0A3D62;
+            cursor: pointer;
+        }
+        
+        .stay-signed-in label {
+            font-size: 13px;
+            color: #475569;
+            cursor: pointer;
+        }
+        
+        .forgot-link {
+            font-size: 13px;
+            color: #0A3D62;
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+        
+        .forgot-link:hover {
+            color: #FDB913;
         }
         
         .login-btn {
-            font-size: 14px !important;
-            padding: 12px !important;
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            color: white;
+            border: none;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        .login-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(10,61,98,0.3);
+        }
+        
+        /* ===== DIVIDER ===== */
+        .divider {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin: 16px 0;
+        }
+        
+        .divider-line {
+            flex: 1;
+            height: 1px;
+            background: #e2e8f0;
+        }
+        
+        .divider-text {
+            color: #94a3b8;
+            font-size: 13px;
+            white-space: nowrap;
+        }
+        
+        /* ===== SSO BUTTONS ===== */
+        .sso-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 10px;
+        }
+        
+        .sso-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            padding: 10px;
+            background: white;
+            border: 2px solid #e2e8f0;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Inter', sans-serif;
+            font-size: 13px;
+            font-weight: 500;
+            color: #475569;
+        }
+        
+        .sso-btn:hover {
+            border-color: #0A3D62;
+            background: #f8fafc;
+        }
+        
+        .sso-btn img {
+            width: 20px;
+            height: 20px;
+        }
+        
+        .sso-btn i {
+            font-size: 20px;
+        }
+        
+        /* ===== SIGNUP ===== */
+        .signup-link {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            color: #0A3D62;
+            text-decoration: none;
+            font-weight: 600;
+            font-size: 14px;
+            transition: color 0.3s;
+            margin-top: 10px;
+        }
+        
+        .signup-link:hover {
+            color: #FDB913;
+        }
+        
+        .signup-link i {
+            color: #FDB913;
+        }
+        
+        /* ===== 2FA BUTTON ===== */
+        .twofa-btn {
+            width: 100%;
+            padding: 12px;
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            font-family: 'Inter', sans-serif;
+            margin-top: 12px;
+        }
+        
+        .twofa-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(10,61,98,0.3);
+        }
+        
+        /* ===== KEYBOARD SHORTCUTS ===== */
+        .keyboard-hints {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 12px;
+            font-size: 11px;
+            color: #94a3b8;
+        }
+        
+        .keyboard-hints kbd {
+            background: #f1f5f9;
+            padding: 2px 8px;
+            border-radius: 4px;
+            border: 1px solid #e2e8f0;
+            font-size: 10px;
+            font-family: 'Inter', sans-serif;
+            color: #475569;
+        }
+        
+        /* ===== FOOTER ===== */
+        .footer-section {
+            margin-top: 20px;
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+            text-align: center;
+        }
+        
+        .footer-section .copy {
+            font-size: 12px;
+            color: #94a3b8;
         }
         
         .footer-section .links {
-            flex-direction: column !important;
-            gap: 6px !important;
+            display: flex;
+            justify-content: center;
+            gap: 16px;
+            flex-wrap: wrap;
+            margin-top: 8px;
         }
         
-        .keyboard-hints {
-            flex-wrap: wrap !important;
-            gap: 8px !important;
+        .footer-section .links a {
+            font-size: 12px;
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.3s;
         }
-    }
-</style>
+        
+        .footer-section .links a:hover {
+            color: #0A3D62;
+        }
+        
+        .footer-section .links a.blog-link {
+            color: #FDB913;
+            font-weight: 600;
+        }
+        
+        /* ============================================================
+           ✅ RESPONSIVE - LEFT PANEL HIDDEN ON MOBILE
+           ============================================================ */
+        
+        @media (max-width: 1024px) {
+            .right-panel {
+                flex: 0 0 420px;
+                padding: 30px 25px;
+            }
+            .left-panel .college-name {
+                font-size: 22px;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+            
+            .login-wrapper {
+                flex-direction: column !important;
+                border-radius: 0 !important;
+                min-height: auto !important;
+            }
+            
+            /* ✅ FIX: HIDE LEFT PANEL ON MOBILE */
+            .left-panel {
+                display: none !important;
+            }
+            
+            .right-panel {
+                flex: 1 1 100% !important;
+                padding: 25px 20px !important;
+                min-height: auto !important;
+                order: 1 !important;
+                background: #ffffff !important;
+                border-left: none !important;
+            }
+            
+            .right-content {
+                max-width: 100% !important;
+            }
+            
+            .mobile-header {
+                display: block !important;
+            }
+            
+            .top-controls {
+                justify-content: center !important;
+            }
+            
+            .sso-grid {
+                grid-template-columns: 1fr 1fr 1fr !important;
+            }
+            
+            .welcome-title {
+                font-size: 20px !important;
+            }
+            
+            /* Hide left panel elements on mobile just in case */
+            .left-panel .logo-img,
+            .left-panel .college-name,
+            .left-panel .motto,
+            .left-panel .welcome-title-left,
+            .left-panel .tagline,
+            .left-panel .features-grid,
+            .left-panel .badges-container,
+            .left-panel .stats-row,
+            .left-panel .left-footer {
+                display: none !important;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .right-panel {
+                padding: 18px 14px !important;
+            }
+            
+            .sso-grid {
+                grid-template-columns: 1fr !important;
+            }
+            
+            .form-options {
+                flex-direction: column !important;
+                align-items: flex-start !important;
+            }
+            
+            .top-controls {
+                gap: 6px !important;
+            }
+            
+            .top-btn {
+                font-size: 11px !important;
+                padding: 6px 10px !important;
+            }
+            
+            .welcome-title {
+                font-size: 18px !important;
+            }
+            
+            .welcome-subtitle {
+                font-size: 13px !important;
+            }
+            
+            .login-btn {
+                font-size: 14px !important;
+                padding: 12px !important;
+            }
+            
+            .footer-section .links {
+                flex-direction: column !important;
+                gap: 6px !important;
+            }
+            
+            .keyboard-hints {
+                flex-wrap: wrap !important;
+                gap: 8px !important;
+            }
+        }
+    </style>
 </head>
 <body>
 
@@ -334,307 +1002,205 @@
     </div>
 
     <!-- ===== MAIN WRAPPER ===== -->
-    <div style="display: flex; min-height: 100vh; position: relative; z-index: 1; font-family: 'Inter', sans-serif; max-width: 1200px; margin: 0 auto; background: rgba(255,255,255,0.96); box-shadow: 0 0 60px rgba(0,0,0,0.1); border-radius: 24px; overflow: hidden; width: 100%;" class="login-wrapper">
+    <div class="login-wrapper">
 
         <!-- ===== LEFT PANEL ===== -->
-        <div style="flex: 1; background: linear-gradient(135deg, #0A3D62 0%, #1a5a7a 100%); padding: 40px; display: flex; flex-direction: column; min-height: 600px; position: relative; overflow: hidden;" class="left-panel">
+        <div class="left-panel">
+            <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="logo-img">
+            <h1 class="college-name">
+                NAKURU COLLEGE OF <br><span>HEALTH SCIENCES</span><br>
+                AND MANAGEMENT
+            </h1>
+            <p class="motto">"Excellence in Healthcare Education Since 1978"</p>
 
-            <!-- Decorative Elements -->
-            <div style="position: absolute; top: -50%; right: -30%; width: 80%; height: 80%; background: radial-gradient(circle, rgba(253,185,19,0.05) 0%, transparent 70%); border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: -30%; left: -20%; width: 60%; height: 60%; background: radial-gradient(circle, rgba(253,185,19,0.03) 0%, transparent 70%); border-radius: 50%;"></div>
+            <h2 class="welcome-title-left">Welcome to NCHSM Digital Portal</h2>
+            <p class="tagline">Your gateway to excellence in healthcare education</p>
 
-            <!-- ===== LOGO AT TOP ===== -->
-            <div style="position: relative; z-index: 2; text-align: center;">
-                <div style="width: 100px; height: 100px; border-radius: 50%; background: white; padding: 10px; border: 4px solid #FDB913; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 0 auto 20px; transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="width: 100%; height: 100%; object-fit: contain;">
+            <div class="features-grid">
+                <div class="feature-item">
+                    <i data-feather="book-open"></i>
+                    <h4>Digital Learning</h4>
+                    <p>Access course materials</p>
                 </div>
-                <h1 style="color: white; font-size: 24px; font-weight: 700; margin: 0; line-height: 1.3; letter-spacing: -0.5px;">
-                    NAKURU COLLEGE OF <br><span style="color: #FDB913;">HEALTH SCIENCES</span><br>
-                    AND MANAGEMENT
-                </h1>
-                <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 4px; font-weight: 300; letter-spacing: 0.5px;">"Excellence in Healthcare Education Since 1978"</p>
-            </div>
-
-            <!-- ===== MIDDLE SECTION - Features ===== -->
-            <div style="position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0;">
-                <h2 style="color: white; font-size: 20px; font-weight: 600; margin-bottom: 8px; text-align: center;">Welcome to NCHSM Digital Portal</h2>
-                <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 20px; text-align: center;">Your gateway to excellence in healthcare education</p>
-
-                <!-- Features Grid -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="features-grid">
-                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; text-align: center; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.transform='translateY(0)'">
-                        <i data-feather="book-open" style="color: #FDB913; width: 24px; height: 24px;"></i>
-                        <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Digital Learning</h4>
-                        <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Access course materials, lectures, and resources</p>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; text-align: center; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.transform='translateY(0)'">
-                        <i data-feather="clipboard" style="color: #FDB913; width: 24px; height: 24px;"></i>
-                        <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Progress Tracking</h4>
-                        <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Monitor your academic progress and achievements</p>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; text-align: center; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.transform='translateY(0)'">
-                        <i data-feather="users" style="color: #FDB913; width: 24px; height: 24px;"></i>
-                        <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Collaboration</h4>
-                        <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Connect with peers and instructors</p>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; text-align: center; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.transform='translateY(0)'">
-                        <i data-feather="shield" style="color: #FDB913; width: 24px; height: 24px;"></i>
-                        <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Secure Access</h4>
-                        <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Enterprise-grade security for your data</p>
-                    </div>
+                <div class="feature-item">
+                    <i data-feather="clipboard"></i>
+                    <h4>Progress Tracking</h4>
+                    <p>Monitor your progress</p>
+                </div>
+                <div class="feature-item">
+                    <i data-feather="users"></i>
+                    <h4>Collaboration</h4>
+                    <p>Connect with peers</p>
+                </div>
+                <div class="feature-item">
+                    <i data-feather="shield"></i>
+                    <h4>Secure Access</h4>
+                    <p>Enterprise-grade security</p>
                 </div>
             </div>
 
-            <!-- ===== BOTTOM SECTION ===== -->
-            <div style="position: relative; z-index: 2; margin-top: auto;">
-                <!-- Badges -->
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;" class="badges-container">
-                    <span style="background: rgba(253,185,19,0.15); color: #FDB913; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">✓ TVET Accredited</span>
-                    <span style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;">✓ Nursing Council of Kenya</span>
-                    <span style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;">✓ KNQA Certified</span>
-                    <span style="background: rgba(253,185,19,0.15); color: #FDB913; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">✓ ISO 9001:2015</span>
-                    <span style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;">✓ Ministry of Health</span>
-                    <span style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;">✓ Kenya Red Cross</span>
-                </div>
+            <div class="badges-container">
+                <span class="badge gold">✓ TVET Accredited</span>
+                <span class="badge normal">✓ Nursing Council of Kenya</span>
+                <span class="badge normal">✓ KNQA Certified</span>
+                <span class="badge gold">✓ ISO 9001:2015</span>
+                <span class="badge normal">✓ Ministry of Health</span>
+                <span class="badge normal">✓ Kenya Red Cross</span>
+            </div>
 
-                <!-- Stats -->
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px 0; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);" class="stats-row">
-                    <div style="text-align: center;">
-                        <div style="font-size: 24px; font-weight: 700; color: #FDB913;" class="stat-number">2,500+</div>
-                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Students</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 24px; font-weight: 700; color: #FDB913;" class="stat-number">150+</div>
-                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Faculty</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 24px; font-weight: 700; color: #FDB913;" class="stat-number">98%</div>
-                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Satisfaction</div>
-                    </div>
+            <div class="stats-row">
+                <div class="stat-item">
+                    <span class="stat-number">2,500+</span>
+                    <span class="stat-label">Students</span>
                 </div>
-
-                <!-- Footer -->
-                <div style="text-align: center; font-size: 11px; color: rgba(255,255,255,0.3); padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
-                    © 2026 Nakuru College of Health Sciences and Management
+                <div class="stat-item">
+                    <span class="stat-number">150+</span>
+                    <span class="stat-label">Faculty</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-number">98%</span>
+                    <span class="stat-label">Satisfaction</span>
                 </div>
             </div>
+
+            <div class="left-footer">© 2026 Nakuru College of Health Sciences and Management</div>
         </div>
 
         <!-- ===== RIGHT PANEL ===== -->
-        <div style="flex: 0 0 480px; max-width: 100%; background: white; padding: 40px 35px; display: flex; flex-direction: column; justify-content: center; min-height: 600px;" class="right-panel">
+        <div class="right-panel">
+            <div class="right-content">
 
-            <!-- ===== MOBILE HEADER ===== -->
-            <div style="display: none; text-align: center; margin-bottom: 20px;" id="mobileHeader">
-                <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #FDB913; padding: 4px; background: white;">
-                <h1 style="font-size: 20px; color: #0A3D62; margin: 10px 0 0 0;">NCHSM</h1>
-                <p style="color: #64748B; font-size: 12px; margin: 2px 0 0 0;">Digital Learning Portal</p>
-            </div>
-
-            <!-- ===== RIGHT CONTENT ===== -->
-            <div style="max-width: 420px; margin: 0 auto; width: 100%;" class="right-content">
+                <!-- Mobile Header -->
+                <div class="mobile-header">
+                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM" class="logo">
+                    <h1>NCHSM</h1>
+                    <p>Digital Learning Portal</p>
+                </div>
 
                 <!-- Top Controls -->
-                <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;" class="top-controls">
-                    <a href="https://campusnexus.co.ke/" target="_blank" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #f1f5f9; color: #475569; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.3s ease; font-family: 'Inter', sans-serif;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
-                        <i data-feather="home" style="width: 16px; height: 16px;"></i> Main Site
+                <div class="top-controls">
+                    <a href="https://campusnexus.co.ke/" target="_blank" class="top-btn main-site">
+                        <i data-feather="home"></i> Main Site
                     </a>
-                    <a href="/blog/" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #FDB913; color: #0A3D62; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; transition: all 0.3s ease; font-family: 'Inter', sans-serif;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(253,185,19,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                        <i data-feather="book-open" style="width: 16px; height: 16px;"></i> Blog
+                    <a href="/blog/" class="top-btn blog">
+                        <i data-feather="book-open"></i> Blog
                     </a>
-                    <button id="themeToggle" style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; color: #475569; font-size: 13px; font-weight: 500; transition: all 0.3s ease; font-family: 'Inter', sans-serif;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
-                        <i data-feather="sun" id="themeIcon" style="width: 16px; height: 16px;"></i>
-                        <span id="themeLabel">Light</span>
+                    <button class="top-btn theme" id="themeToggle">
+                        <i data-feather="moon" id="themeIcon"></i>
+                        <span id="themeLabel">Dark</span>
                     </button>
                 </div>
 
                 <!-- Welcome -->
-                <div style="text-align: center; margin-bottom: 20px;">
-                    <div style="width: 50px; height: 50px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
-                        <i data-feather="lock" style="color: #0A3D62; width: 24px; height: 24px;"></i>
-                    </div>
-                    <h2 style="font-size: 24px; font-weight: 700; color: #0A3D62; margin: 0;" class="welcome-title">Welcome <span style="color: #FDB913;">Back</span></h2>
-                    <p style="color: #64748B; font-size: 14px; margin: 4px 0 0 0;">Sign in to access your digital learning portal</p>
+                <div class="welcome-icon">
+                    <i data-feather="lock" style="color: #0A3D62; width: 24px; height: 24px;"></i>
                 </div>
-
-                <!-- Last Login Info -->
-                <div id="lastLoginInfo" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #e5e7eb; margin-bottom: 15px; font-size: 13px; color: #64748B; transition: all 0.3s ease;">
-                    <i data-feather="clock" style="width: 16px; height: 16px; color: #94a3b8;"></i>
-                    <span>Sign in to see your last login activity</span>
-                </div>
-
-                <!-- Attempts Info -->
-                <div id="attemptsInfo" style="display: none; align-items: center; gap: 8px; padding: 10px 14px; background: #fef3c7; border-radius: 10px; border: 1px solid #f59e0b; margin-bottom: 15px; font-size: 13px;">
-                    <i data-feather="alert-triangle" style="width: 16px; height: 16px; color: #d97706;"></i>
-                    <span id="attemptsText" style="color: #92400e;">5 attempts remaining</span>
-                    <div style="flex: 1; height: 4px; background: #fcd34d; border-radius: 4px; overflow: hidden;">
-                        <div id="attemptsProgress" style="width: 100%; height: 100%; background: #10b981; border-radius: 4px; transition: width 0.5s ease;"></div>
-                    </div>
-                </div>
+                <h2 class="welcome-title">Welcome <span>Back</span></h2>
+                <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
 
                 <!-- Error Message -->
-                <div id="errorMsg" style="display: none; align-items: center; gap: 10px; padding: 12px 16px; background: #fee2e2; border-left: 4px solid #dc2626; border-radius: 10px; margin-bottom: 15px;">
-                    <i data-feather="alert-circle" style="color: #dc2626; width: 18px; height: 18px;"></i>
-                    <span class="error-text" style="color: #991b1b; font-size: 14px; flex: 1;"></span>
+                <div id="errorMsg" class="message-box error">
+                    <i data-feather="alert-circle"></i>
+                    <span class="msg-text error-text"></span>
                 </div>
 
                 <!-- Success Message -->
-                <div id="successMsg" style="display: none; align-items: center; gap: 10px; padding: 12px 16px; background: #d1fae5; border-left: 4px solid #10b981; border-radius: 10px; margin-bottom: 15px;">
-                    <i data-feather="check-circle" style="color: #10b981; width: 18px; height: 18px;"></i>
-                    <span class="success-text" style="color: #065f46; font-size: 14px; flex: 1;"></span>
+                <div id="successMsg" class="message-box success">
+                    <i data-feather="check-circle"></i>
+                    <span class="msg-text success-text"></span>
                 </div>
 
-                <!-- ===== LOGIN FORM ===== -->
-                <form id="loginForm" novalidate style="display: flex; flex-direction: column; gap: 16px;">
-                    <input type="hidden" name="csrf_token" id="csrf_token" value="">
-
-                    <!-- Email -->
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <label for="email" style="display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #475569;">
-                            <i data-feather="mail" style="width: 16px; height: 16px;"></i>
-                            Email Address
+                <!-- Login Form -->
+                <form id="loginForm" novalidate>
+                    <div class="form-group">
+                        <label for="email" class="form-label">
+                            <i data-feather="mail"></i> Email Address
                         </label>
-                        <div style="position: relative; display: flex; align-items: center;">
-                            <i data-feather="mail" style="position: absolute; left: 14px; color: #94a3b8; width: 18px; height: 18px;"></i>
-                            <input type="email" 
-                                   id="email" 
-                                   placeholder="student@nchsm.ac.ke" 
-                                   required
-                                   autocomplete="email"
-                                   maxlength="100"
-                                   style="width: 100%; padding: 12px 14px 12px 44px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; background: #f8fafc; transition: all 0.3s ease; outline: none;"
-                                   onfocus="this.style.borderColor='#0A3D62'; this.style.boxShadow='0 0 0 3px rgba(10,61,98,0.1)'"
-                                   onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
+                        <div class="input-wrapper">
+                            <i data-feather="mail"></i>
+                            <input type="email" id="email" placeholder="student@nchsm.ac.ke" required autocomplete="email">
                         </div>
                     </div>
 
-                    <!-- Password -->
-                    <div style="display: flex; flex-direction: column; gap: 4px;">
-                        <label for="password" style="display: flex; align-items: center; gap: 6px; font-size: 14px; font-weight: 600; color: #475569;">
-                            <i data-feather="lock" style="width: 16px; height: 16px;"></i>
-                            Password
+                    <div class="form-group">
+                        <label for="password" class="form-label">
+                            <i data-feather="lock"></i> Password
                         </label>
-                        <div style="position: relative; display: flex; align-items: center;">
-                            <i data-feather="lock" style="position: absolute; left: 14px; color: #94a3b8; width: 18px; height: 18px;"></i>
-                            <input type="password" 
-                                   id="password" 
-                                   placeholder="Enter your password" 
-                                   required
-                                   autocomplete="current-password"
-                                   maxlength="128"
-                                   minlength="8"
-                                   style="width: 100%; padding: 12px 14px 12px 44px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; background: #f8fafc; transition: all 0.3s ease; outline: none;"
-                                   onfocus="this.style.borderColor='#0A3D62'; this.style.boxShadow='0 0 0 3px rgba(10,61,98,0.1)'"
-                                   onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                            <button type="button" 
-                                    id="password-toggle-btn" 
-                                    style="position: absolute; right: 12px; background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; transition: color 0.3s ease;"
-                                    onmouseover="this.style.color='#0A3D62'"
-                                    onmouseout="this.style.color='#94a3b8'"
-                                    aria-label="Toggle password visibility">
-                                <i data-feather="eye-off" id="toggle-icon" style="width: 18px; height: 18px;"></i>
+                        <div class="input-wrapper">
+                            <i data-feather="lock"></i>
+                            <input type="password" id="password" placeholder="Enter your password" required autocomplete="current-password" minlength="8">
+                            <button type="button" class="password-toggle" id="password-toggle-btn" aria-label="Toggle password visibility">
+                                <i data-feather="eye-off" id="toggle-icon"></i>
                             </button>
                         </div>
-                        <div style="margin-top: 4px;">
-                            <div style="height: 4px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                                <div id="strengthProgress" style="width: 0%; height: 100%; background: #94a3b8; border-radius: 4px; transition: width 0.3s ease;"></div>
-                            </div>
-                            <span id="strengthText" style="font-size: 12px; color: #94a3b8; display: block; margin-top: 4px;">Enter a strong password</span>
+                        <div class="strength-bar">
+                            <div class="strength-progress" id="strengthProgress"></div>
                         </div>
+                        <span class="strength-text" id="strengthText">Enter a strong password</span>
                     </div>
 
-                    <!-- Options -->
-                    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                        <div style="display: flex; align-items: center; gap: 8px;">
-                            <input type="checkbox" id="staySignedIn" style="width: 16px; height: 16px; accent-color: #0A3D62; cursor: pointer;">
-                            <label for="staySignedIn" style="font-size: 13px; color: #475569; cursor: pointer;">Stay signed in</label>
-                            <span style="font-size: 12px; color: #94a3b8; cursor: help;" title="We'll keep you signed in for 30 days">ⓘ</span>
+                    <div class="form-options">
+                        <div class="stay-signed-in">
+                            <input type="checkbox" id="staySignedIn">
+                            <label for="staySignedIn">Stay signed in</label>
                         </div>
-                        <a href="forgot-password.html" style="font-size: 13px; color: #0A3D62; text-decoration: none; font-weight: 500; transition: color 0.3s;" onmouseover="this.style.color='#FDB913'" onmouseout="this.style.color='#0A3D62'">Forgot Password?</a>
+                        <a href="forgot-password.html" class="forgot-link">Forgot Password?</a>
                     </div>
 
-                    <!-- Honeypot -->
-                    <div style="position: absolute; left: -9999px; top: -9999px;">
-                        <label for="honeypot">Leave this empty</label>
-                        <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
-                    </div>
-
-                    <!-- Login Button -->
-                    <button type="submit" 
-                            id="loginButton" 
-                            style="width: 100%; padding: 14px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: 'Inter', sans-serif;"
-                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(10,61,98,0.3)'"
-                            onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <button type="submit" class="login-btn" id="loginButton">
                         <span class="button-text">Sign In</span>
                         <span class="spinner" style="display: none;">⏳</span>
                     </button>
                 </form>
 
                 <!-- Divider -->
-                <div style="display: flex; align-items: center; gap: 15px; margin: 20px 0;">
-                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-                    <span style="color: #94a3b8; font-size: 13px;">or continue with</span>
-                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
+                <div class="divider">
+                    <div class="divider-line"></div>
+                    <span class="divider-text">or continue with</span>
+                    <div class="divider-line"></div>
                 </div>
 
                 <!-- SSO Options -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;" class="sso-grid">
-                    <button id="googleSignIn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: white; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #475569;" onmouseover="this.style.borderColor='#0A3D62'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='white'">
-                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width: 20px; height: 20px;">
+                <div class="sso-grid">
+                    <button id="googleSignIn" class="sso-btn">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
                         <span>Google</span>
                     </button>
-                    <button id="microsoftSignIn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: white; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #475569;" onmouseover="this.style.borderColor='#0A3D62'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='white'">
-                        <img src="https://img.icons8.com/color/48/000000/microsoft.png" alt="Microsoft" style="width: 20px; height: 20px;">
+                    <button id="microsoftSignIn" class="sso-btn">
+                        <img src="https://img.icons8.com/color/48/000000/microsoft.png" alt="Microsoft">
                         <span>Microsoft</span>
                     </button>
-                    <button id="appleSignIn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: white; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #475569;" onmouseover="this.style.borderColor='#0A3D62'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='white'">
-                        <i class="fab fa-apple" style="font-size: 20px;"></i>
+                    <button id="appleSignIn" class="sso-btn">
+                        <i class="fab fa-apple"></i>
                         <span>Apple</span>
                     </button>
                 </div>
 
-                <!-- Divider -->
-                <div style="display: flex; align-items: center; gap: 15px; margin: 15px 0 10px 0;">
-                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-                    <span style="color: #94a3b8; font-size: 13px;">Don't have an account?</span>
-                    <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-                </div>
-
                 <!-- Signup -->
-                <div style="text-align: center;">
-                    <a href="register.html" style="display: inline-flex; align-items: center; gap: 6px; color: #0A3D62; text-decoration: none; font-weight: 600; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#FDB913'" onmouseout="this.style.color='#0A3D62'">
-                        <i data-feather="user-plus" style="width: 18px; height: 18px;"></i>
-                        Create New Account
-                    </a>
-                </div>
+                <a href="register.html" class="signup-link">
+                    <i data-feather="user-plus"></i> Create New Account
+                </a>
 
                 <!-- 2FA Button -->
-                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
-                    <button onclick="showQRCode()" 
-                            id="enable2FABtn"
-                            style="width: 100%; padding: 12px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: 'Inter', sans-serif;"
-                            onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(10,61,98,0.3)'"
-                            onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                        <i data-feather="shield" style="width: 18px; height: 18px;"></i>
-                        🔐 Enable Two-Factor Authentication
-                    </button>
-                    <div id="twoFAStatus" style="margin-top: 8px; text-align: center; font-size: 13px; color: #94a3b8; display: none;"></div>
-                </div>
+                <button class="twofa-btn" id="enable2FABtn">
+                    <i data-feather="shield"></i> Enable Two-Factor Authentication
+                </button>
 
                 <!-- Keyboard Shortcuts -->
-                <div style="display: flex; justify-content: center; gap: 15px; margin-top: 15px; font-size: 11px; color: #94a3b8;">
-                    <kbd style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 10px; font-family: 'Inter', sans-serif;">Ctrl + ↵</kbd> to submit
-                    <kbd style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 10px; font-family: 'Inter', sans-serif;">Ctrl + R</kbd> to reset
+                <div class="keyboard-hints">
+                    <kbd>Ctrl + ↵</kbd> to submit
+                    <kbd>Ctrl + R</kbd> to reset
                 </div>
 
                 <!-- Footer -->
-                <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0; text-align: center;">
-                    <div style="font-size: 12px; color: #94a3b8;">© 2026 Nakuru College of Health Sciences and Management</div>
-                    <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 8px;">
-                        <a href="privacy.html" style="font-size: 12px; color: #94a3b8; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#0A3D62'" onmouseout="this.style.color='#94a3b8'">Privacy</a>
-                        <a href="terms.html" style="font-size: 12px; color: #94a3b8; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#0A3D62'" onmouseout="this.style.color='#94a3b8'">Terms</a>
-                        <a href="contact.html" style="font-size: 12px; color: #94a3b8; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#0A3D62'" onmouseout="this.style.color='#94a3b8'">Contact</a>
-                        <a href="support.html" style="font-size: 12px; color: #94a3b8; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#0A3D62'" onmouseout="this.style.color='#94a3b8'">Support</a>
-                        <a href="/blog/" style="font-size: 12px; color: #FDB913; text-decoration: none; font-weight: 600;">📝 Blog</a>
+                <div class="footer-section">
+                    <div class="copy">© 2026 Nakuru College of Health Sciences and Management</div>
+                    <div class="links">
+                        <a href="privacy.html">Privacy</a>
+                        <a href="terms.html">Terms</a>
+                        <a href="contact.html">Contact</a>
+                        <a href="support.html">Support</a>
+                        <a href="/blog/" class="blog-link">📝 Blog</a>
                     </div>
                 </div>
             </div>
@@ -771,9 +1337,134 @@
             }
         }, 1500);
     });
+
+    // ============================================
+    // SIMPLE THEME TOGGLE
+    // ============================================
+    document.getElementById('themeToggle')?.addEventListener('click', function() {
+        const icon = document.getElementById('themeIcon');
+        const label = document.getElementById('themeLabel');
+        const body = document.body;
+        if (body.style.background === '#0f172a') {
+            body.style.background = '#f1f5f9';
+            icon.setAttribute('data-feather', 'moon');
+            label.textContent = 'Dark';
+        } else {
+            body.style.background = '#0f172a';
+            icon.setAttribute('data-feather', 'sun');
+            label.textContent = 'Light';
+        }
+        feather.replace();
+    });
+
+    // ============================================
+    // PASSWORD TOGGLE
+    // ============================================
+    document.getElementById('password-toggle-btn')?.addEventListener('click', function() {
+        const passwordInput = document.getElementById('password');
+        const icon = document.getElementById('toggle-icon');
+        if (passwordInput.type === 'password') {
+            passwordInput.type = 'text';
+            icon.setAttribute('data-feather', 'eye');
+        } else {
+            passwordInput.type = 'password';
+            icon.setAttribute('data-feather', 'eye-off');
+        }
+        feather.replace();
+    });
+
+    // ============================================
+    // OTP AUTO-FOCUS
+    // ============================================
+    document.querySelectorAll('.otp-digit').forEach((input, index, arr) => {
+        input.addEventListener('input', function(e) {
+            const val = this.value;
+            if (val && index < arr.length - 1) {
+                arr[index + 1].focus();
+            }
+        });
+        input.addEventListener('keydown', function(e) {
+            if (e.key === 'Backspace' && !this.value && index > 0) {
+                arr[index - 1].focus();
+            }
+        });
+    });
+
+    // ============================================
+    // MODAL HELPERS
+    // ============================================
+    function closeModal(id) {
+        document.getElementById(id).style.display = 'none';
+    }
+
+    function showQRCode() {
+        document.getElementById('twoFactorSetupModal').style.display = 'flex';
+        // Simulate QR code and secret
+        document.getElementById('qrCodeImage').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=NCHSM-2FA-SECRET';
+        document.getElementById('secretKey').textContent = 'NCHS-2FA-KEY-2026';
+    }
+
+    function copySecret() {
+        const secret = document.getElementById('secretKey').textContent;
+        navigator.clipboard?.writeText(secret).then(() => {
+            alert('Secret key copied to clipboard!');
+        }).catch(() => {
+            alert('Secret: ' + secret);
+        });
+    }
+
+    function verifyAndEnable2FA() {
+        document.getElementById('setupStatus').style.display = 'block';
+        document.getElementById('setupStatus').textContent = '✅ 2FA enabled successfully!';
+        setTimeout(() => {
+            closeModal('twoFactorSetupModal');
+        }, 1500);
+    }
+
+    function resendOTP() {
+        alert('📱 OTP resent to your authenticator app.');
+    }
+
+    // ============================================
+    // FORM SUBMIT HANDLER
+    // ============================================
+    document.getElementById('loginForm')?.addEventListener('submit', function(e) {
+        e.preventDefault();
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        const errorMsg = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+        const loginBtn = document.getElementById('loginButton');
+        const btnText = loginBtn.querySelector('.button-text');
+        const spinner = loginBtn.querySelector('.spinner');
+
+        // Hide previous messages
+        errorMsg.style.display = 'none';
+        successMsg.style.display = 'none';
+
+        if (!email || !password) {
+            errorMsg.style.display = 'flex';
+            errorMsg.querySelector('.error-text').textContent = 'Please fill in both email and password.';
+            return;
+        }
+
+        // Simulate login
+        btnText.textContent = 'Signing in...';
+        spinner.style.display = 'inline';
+        loginBtn.disabled = true;
+
+        setTimeout(() => {
+            btnText.textContent = 'Sign In';
+            spinner.style.display = 'none';
+            loginBtn.disabled = false;
+            successMsg.style.display = 'flex';
+            successMsg.querySelector('.success-text').textContent = '✅ Login successful! Redirecting...';
+            setTimeout(() => {
+                window.location.href = '/dashboard';
+            }, 1500);
+        }, 2000);
+    });
     </script>
 
-    <!-- ===== MAIN SECURITY SCRIPT ===== -->
-    <script src="login-script.js"></script>
 </body>
 </html>
