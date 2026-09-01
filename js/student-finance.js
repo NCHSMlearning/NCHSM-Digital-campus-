@@ -1260,7 +1260,7 @@ function resendPaymentEmail() {
 }
 
 // ============================================================
-// 💳 PAYMENT MODAL - POS STYLE (FIXED FOR YOUR HTML)
+// 💳 PAYMENT MODAL - OPEN (FIXED FOR YOUR HTML)
 // ============================================================
 
 function openPaymentModal() {
@@ -1274,25 +1274,20 @@ function openPaymentModal() {
         return;
     }
     
-    // Get content elements
+    // Get content elements - THESE EXIST IN YOUR HTML
     const content = document.getElementById('finance-paymentContent');
     const title = document.getElementById('finance-paymentModalTitle');
     const formContainer = document.getElementById('finance-paymentFormContainer');
     const periodSelect = document.getElementById('finance-paymentPeriodSelect');
     const amountInput = document.getElementById('finance-paymentAmountInput');
     const descInput = document.getElementById('finance-paymentDescriptionInput');
-    
-    // Check if elements exist
-    if (!content || !title || !formContainer) {
-        console.error('❌ Modal elements missing:', { content, title, formContainer });
-        showToast('Payment system error. Please refresh the page.', 'error');
-        return;
-    }
+    const mpesaFields = document.getElementById('finance-mpesaFields');
+    const methodDetails = document.getElementById('finance-paymentMethodDetails');
     
     // Reset modal to POS style - show form, hide status
-    title.textContent = '💳 Make Payment';
-    content.style.display = 'none';
-    formContainer.style.display = 'block';
+    if (title) title.textContent = '💳 Make Payment';
+    if (content) content.style.display = 'none';
+    if (formContainer) formContainer.style.display = 'block';
     
     // Populate period dropdown
     if (periodSelect) {
@@ -1311,20 +1306,15 @@ function openPaymentModal() {
         });
         
         // Trigger change to set default values
-        if (periodSelect.onchange) {
-            periodSelect.onchange();
-        } else {
-            // Simulate change
-            const selectedPeriod = periodSelect.value;
-            if (selectedPeriod) {
-                const index = periods.indexOf(selectedPeriod);
-                if (index !== -1 && amountInput) {
-                    const amount = getFeeAmount(programType, index, programLevel);
-                    if (!amountInput.value) amountInput.value = amount;
-                }
-                if (descInput) {
-                    descInput.value = `${selectedPeriod} Tuition Fees`;
-                }
+        const selectedPeriod = periodSelect.value;
+        if (selectedPeriod) {
+            const index = periods.indexOf(selectedPeriod);
+            if (index !== -1 && amountInput) {
+                const amount = getFeeAmount(programType, index, programLevel);
+                if (!amountInput.value) amountInput.value = amount;
+            }
+            if (descInput) {
+                descInput.value = `${selectedPeriod} Tuition Fees`;
             }
         }
     }
@@ -1350,20 +1340,9 @@ function openPaymentModal() {
         el.classList.remove('selected');
     });
     
-    const methodDetails = document.getElementById('finance-paymentMethodDetails');
-    if (methodDetails) methodDetails.style.display = 'none';
-    
-    const mpesaFields = document.getElementById('finance-mpesaFields');
+    // Hide M-Pesa fields
     if (mpesaFields) mpesaFields.style.display = 'none';
-    
-    const cardFields = document.getElementById('finance-cardFields');
-    if (cardFields) cardFields.style.display = 'none';
-    
-    const bankFields = document.getElementById('finance-bankFields');
-    if (bankFields) bankFields.style.display = 'none';
-    
-    const paypalFields = document.getElementById('finance-paypalFields');
-    if (paypalFields) paypalFields.style.display = 'none';
+    if (methodDetails) methodDetails.style.display = 'none';
     
     document.querySelectorAll('.finance-validation-error').forEach(el => el.style.display = 'none');
     
@@ -1376,6 +1355,10 @@ function openPaymentModal() {
     
     console.log('✅ Payment modal opened successfully');
 }
+
+// ============================================================
+// ❌ CLOSE PAYMENT MODAL
+// ============================================================
 
 function closePaymentModal() {
     const modal = document.getElementById('finance-paymentModal');
@@ -1392,6 +1375,7 @@ function closePaymentModal() {
     pendingPayment.isProcessing = false;
     pendingPayment.cancelled = false;
 }
+
 
 // ============================================================
 // 📋 POPULATE PERIOD DROPDOWN
@@ -1440,7 +1424,7 @@ function populatePeriodDropdown() {
 }
 
 // ============================================================
-// 🎯 POS STYLE PAYMENT FUNCTIONS
+// ❌ CANCEL STUDENT PAYMENT
 // ============================================================
 
 function cancelStudentPayment() {
@@ -1471,6 +1455,10 @@ function cancelStudentPayment() {
     }
 }
 
+// ============================================================
+// 🔄 UPDATE STK STATUS
+// ============================================================
+
 function updateStudentSTKStatus(attempt, maxAttempts, message) {
     const content = document.getElementById('finance-paymentContent');
     const formContainer = document.getElementById('finance-paymentFormContainer');
@@ -1494,6 +1482,10 @@ function updateStudentSTKStatus(attempt, maxAttempts, message) {
     }
     if (formContainer) formContainer.style.display = 'none';
 }
+
+// ============================================================
+// ✅ SHOW PAYMENT SUCCESS
+// ============================================================
 
 function showStudentPaymentSuccess(amount, reference, period) {
     const content = document.getElementById('finance-paymentContent');
@@ -1527,6 +1519,10 @@ function showStudentPaymentSuccess(amount, reference, period) {
     }, 3000);
 }
 
+// ============================================================
+// ❌ SHOW PAYMENT FAILURE
+// ============================================================
+
 function showStudentPaymentFailure(message) {
     const content = document.getElementById('finance-paymentContent');
     const title = document.getElementById('finance-paymentModalTitle');
@@ -1544,6 +1540,10 @@ function showStudentPaymentFailure(message) {
     }
     if (formContainer) formContainer.style.display = 'none';
 }
+
+// ============================================================
+// ⏰ SHOW PAYMENT TIMEOUT
+// ============================================================
 
 function showStudentPaymentTimeout() {
     const content = document.getElementById('finance-paymentContent');
@@ -1565,9 +1565,8 @@ function showStudentPaymentTimeout() {
     }
     if (formContainer) formContainer.style.display = 'none';
 }
-
 // ============================================================
-// 📝 PAYMENT FORM VALIDATION
+// 📝 VALIDATE PAYMENT FORM (FIXED FOR YOUR HTML)
 // ============================================================
 
 function validatePaymentForm() {
@@ -1596,13 +1595,21 @@ function validatePaymentForm() {
     }
     
     let method = null;
-    if (selectedMethod) method = selectedMethod.id.replace('finance-method-', '');
+    if (selectedMethod) {
+        const id = selectedMethod.id || '';
+        method = id.replace('finance-method-', '');
+    }
     
+    // Only validate M-Pesa phone since that's the only method with fields
     if (method === 'mpesa') {
         const phone = document.getElementById('finance-mpesaPhoneInput');
         if (!phone || !phone.value || phone.value.replace(/\D/g, '').length < 10) {
-            const errorEl = phone?.nextElementSibling?.nextElementSibling;
-            if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
+            // Find the validation error within mpesa fields
+            const mpesaContainer = document.getElementById('finance-mpesaFields');
+            if (mpesaContainer) {
+                const errorEl = mpesaContainer.querySelector('.finance-validation-error');
+                if (errorEl) errorEl.style.display = 'block';
+            }
             isValid = false;
         }
     }
@@ -1610,29 +1617,57 @@ function validatePaymentForm() {
     if (!isValid) showToast('Please fix all validation errors.', 'error');
     return isValid;
 }
-
 // ============================================================
-// 📱 PAYMENT PROCESSING FUNCTIONS
+// 📱 PAYMENT PROCESSING FUNCTIONS - FIXED FOR YOUR HTML
 // ============================================================
 
 function selectPaymentMethod(method) {
+    console.log('📱 Selecting payment method:', method);
+    
+    // Remove selected class from all method items
     document.querySelectorAll('.payment-method-item').forEach(el => {
         el.classList.remove('selected');
     });
     
+    // Add selected class to the chosen method
     const selectedEl = document.getElementById(`finance-method-${method}`);
-    if (selectedEl) selectedEl.classList.add('selected');
+    if (selectedEl) {
+        selectedEl.classList.add('selected');
+        console.log('✅ Selected element found:', selectedEl.id);
+    } else {
+        console.warn('⚠️ Element not found: finance-method-' + method);
+    }
     
-    document.getElementById('finance-mpesaFields').style.display = 'none';
-    document.getElementById('finance-cardFields').style.display = 'none';
-    document.getElementById('finance-bankFields').style.display = 'none';
-    document.getElementById('finance-paypalFields').style.display = 'none';
+    // Only M-Pesa fields exist in your HTML - hide them initially
+    const mpesaFields = document.getElementById('finance-mpesaFields');
+    if (mpesaFields) {
+        mpesaFields.style.display = 'none';
+    }
     
+    // These don't exist in your HTML, but safe to try
+    const cardFields = document.getElementById('finance-cardFields');
+    const bankFields = document.getElementById('finance-bankFields');
+    const paypalFields = document.getElementById('finance-paypalFields');
+    if (cardFields) cardFields.style.display = 'none';
+    if (bankFields) bankFields.style.display = 'none';
+    if (paypalFields) paypalFields.style.display = 'none';
+    
+    // Update method details
     const detailsContent = document.getElementById('finance-methodDetailsContent');
     const detailsContainer = document.getElementById('finance-paymentMethodDetails');
     
-    const methodNames = { mpesa: 'M-Pesa STK Push', paypal: 'PayPal', card: 'Card Payment', bank: 'Bank Transfer' };
-    const methodIcons = { mpesa: '📱', paypal: '💳', card: '💳', bank: '🏦' };
+    const methodNames = { 
+        mpesa: 'M-Pesa STK Push', 
+        paypal: 'PayPal', 
+        card: 'Card Payment', 
+        bank: 'Bank Transfer' 
+    };
+    const methodIcons = { 
+        mpesa: '📱', 
+        paypal: '💳', 
+        card: '💳', 
+        bank: '🏦' 
+    };
     const methodDescriptions = {
         mpesa: 'Pay instantly using M-Pesa. You will receive a prompt on your phone.',
         paypal: 'Pay using your PayPal account.',
@@ -1640,34 +1675,50 @@ function selectPaymentMethod(method) {
         bank: 'Pay via bank transfer.'
     };
     
+    // Update method details if containers exist
     if (detailsContent) {
         detailsContent.innerHTML = `
             <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="font-size: 14px;">${methodIcons[method]}</span>
-                <strong style="color: #0A3D62; font-size: 12px;">${methodNames[method]}</strong>
+                <span style="font-size: 14px;">${methodIcons[method] || '💳'}</span>
+                <strong style="color: #0A3D62; font-size: 12px;">${methodNames[method] || method}</strong>
             </div>
-            <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">${methodDescriptions[method]}</p>
+            <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">${methodDescriptions[method] || 'Select this payment method'}</p>
         `;
     }
-    if (detailsContainer) detailsContainer.style.display = 'block';
+    if (detailsContainer) {
+        detailsContainer.style.display = 'block';
+    }
     
+    // Show M-Pesa fields only if method is mpesa
     if (method === 'mpesa') {
-        document.getElementById('finance-mpesaFields').style.display = 'block';
+        if (mpesaFields) {
+            mpesaFields.style.display = 'block';
+            console.log('✅ M-Pesa fields shown');
+        }
+        // Auto-fill phone number if available
         const user = window.currentUserProfile || window.currentUser;
         if (user?.phone) {
             const phoneInput = document.getElementById('finance-mpesaPhoneInput');
             if (phoneInput) phoneInput.value = user.phone;
         }
-    } else if (method === 'card') {
-        document.getElementById('finance-cardFields').style.display = 'block';
-    } else if (method === 'bank') {
-        document.getElementById('finance-bankFields').style.display = 'block';
-    } else if (method === 'paypal') {
-        document.getElementById('finance-paypalFields').style.display = 'block';
-        const user = window.currentUserProfile || window.currentUser;
-        if (user?.email) {
-            const emailInput = document.getElementById('finance-paypalEmailInput');
-            if (emailInput) emailInput.value = user.email;
+    } else {
+        // For other methods, show an informational message
+        if (detailsContent) {
+            detailsContent.innerHTML = `
+                <div style="display: flex; align-items: center; gap: 4px;">
+                    <span style="font-size: 14px;">${methodIcons[method] || '💳'}</span>
+                    <strong style="color: #0A3D62; font-size: 12px;">${methodNames[method] || method}</strong>
+                </div>
+                <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">
+                    ${methodDescriptions[method] || 'Select this payment method'}
+                </p>
+                <p style="margin: 6px 0 0 0; font-size: 11px; color: #f59e0b; background: #fffbeb; padding: 6px 10px; border-radius: 6px; border-left: 3px solid #f59e0b;">
+                    <i class="fas fa-info-circle"></i> 
+                    ${method === 'paypal' ? 'PayPal payments are processed securely. You will be redirected to PayPal to complete your payment.' : 
+                      method === 'card' ? 'Card payments are processed securely via our payment gateway. You will be redirected to complete your payment.' : 
+                      'Bank transfer details will be provided after confirmation. Please check your email for instructions.'}
+                </p>
+            `;
         }
     }
     
@@ -1675,7 +1726,6 @@ function selectPaymentMethod(method) {
     const methodError = document.getElementById('finance-methodError');
     if (methodError) methodError.style.display = 'none';
 }
-
 // ============================================================
 // 📱 PROCESS PAYMENT - WITH POS STYLE MODAL
 // ============================================================
