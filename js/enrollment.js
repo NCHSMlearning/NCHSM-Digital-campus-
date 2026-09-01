@@ -13,10 +13,10 @@ const ENR_STATE = {
     currentStudentId: null,
     currentStudentProgram: null,
     currentStudentName: null,
-    currentBlock: null,        // For Nursing
-    currentYear: null,         // For TVET
-    currentTerm: null,         // For TVET
-    programType: null,         // 'Nursing' or 'TVET'
+    currentBlock: null,
+    currentYear: null,
+    currentTerm: null,
+    programType: null,
     stats: {
         total: 0,
         pending: 0,
@@ -33,6 +33,35 @@ const NURSING_PROGRAMS = ['KRCHN', 'DCHN'];
 const BLOCK_OPTIONS = ['Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Block 7', 'Block 8'];
 const TVET_YEARS = ['Year 1', 'Year 2', 'Year 3'];
 const TVET_TERMS = ['Term 1', 'Term 2', 'Term 3'];
+
+// ============================================================
+// SAFE DOM HELPERS
+// ============================================================
+function safeGetElement(id) {
+    const el = document.getElementById(id);
+    if (!el) {
+        console.warn(`⚠️ Element not found: #${id}`);
+    }
+    return el;
+}
+
+function safeSetText(id, text) {
+    const el = safeGetElement(id);
+    if (el) {
+        el.textContent = text;
+        return true;
+    }
+    return false;
+}
+
+function safeSetHTML(id, html) {
+    const el = safeGetElement(id);
+    if (el) {
+        el.innerHTML = html;
+        return true;
+    }
+    return false;
+}
 
 // ============================================================
 // GET SUPABASE CLIENT
@@ -62,7 +91,6 @@ function initEnrollment() {
     loadStudentInfo();
     loadEnrollmentRequests();
     loadEnrollmentHistory();
-    // Load session reports after a short delay
     setTimeout(() => {
         loadSessionReports();
     }, 500);
@@ -76,7 +104,6 @@ function initEnrollment() {
 // ============================================================
 async function loadStudentInfo() {
     try {
-        // Get current user from session
         let user = null;
         if (window.currentUserProfile) {
             user = window.currentUserProfile;
@@ -90,57 +117,31 @@ async function loadStudentInfo() {
             ENR_STATE.currentStudentId = user.student_id || user.id || user.user_id;
             ENR_STATE.currentStudentProgram = user.program || 'N/A';
             ENR_STATE.currentStudentName = user.full_name || user.name || 'Student';
-            
-            // Get current block/year/term from profile
             ENR_STATE.currentBlock = user.current_block || user.block || null;
             ENR_STATE.currentYear = user.current_year || user.year || null;
             ENR_STATE.currentTerm = user.current_term || user.term || null;
-            
-            // Detect program type
             ENR_STATE.programType = detectProgramType(ENR_STATE.currentStudentProgram);
             
-            // Update UI
-            const nameEl = document.getElementById('enrollmentStudentName');
-            const idEl = document.getElementById('enrollmentStudentId');
-            const programEl = document.getElementById('enrollmentProgram');
+            safeSetText('enrollmentStudentName', ENR_STATE.currentStudentName);
+            safeSetText('enrollmentStudentId', ENR_STATE.currentStudentId || 'N/A');
+            safeSetText('enrollmentProgram', ENR_STATE.currentStudentProgram);
             
-            if (nameEl) nameEl.textContent = ENR_STATE.currentStudentName;
-            if (idEl) idEl.textContent = ENR_STATE.currentStudentId || 'N/A';
-            if (programEl) programEl.textContent = ENR_STATE.currentStudentProgram;
+            const currentDisplay = safeGetElement('enrCurrentProgramDisplay');
+            if (currentDisplay) currentDisplay.value = ENR_STATE.currentStudentProgram;
             
-            // Auto-populate current program in new request form
-            const currentDisplay = document.getElementById('enrCurrentProgramDisplay');
-            if (currentDisplay) {
-                currentDisplay.value = ENR_STATE.currentStudentProgram;
-            }
-            const previousDisplay = document.getElementById('enrPreviousProgramDisplay');
-            if (previousDisplay) {
-                previousDisplay.value = ENR_STATE.currentStudentProgram;
-            }
+            const previousDisplay = safeGetElement('enrPreviousProgramDisplay');
+            if (previousDisplay) previousDisplay.value = ENR_STATE.currentStudentProgram;
             
-            // Initialize session reporting if tab exists
-            if (document.getElementById('enrSessionReportingTab')) {
+            if (safeGetElement('enrSessionReportingTab')) {
                 initializeSessionReporting();
             }
             
-            console.log('✅ Student info loaded:', {
-                name: ENR_STATE.currentStudentName,
-                id: ENR_STATE.currentStudentId,
-                program: ENR_STATE.currentStudentProgram,
-                programType: ENR_STATE.programType,
-                block: ENR_STATE.currentBlock,
-                year: ENR_STATE.currentYear,
-                term: ENR_STATE.currentTerm
-            });
+            console.log('✅ Student info loaded');
         } else {
             console.warn('⚠️ User not found');
-            const nameEl = document.getElementById('enrollmentStudentName');
-            const idEl = document.getElementById('enrollmentStudentId');
-            const programEl = document.getElementById('enrollmentProgram');
-            
-            if (nameEl) nameEl.textContent = 'Student';
-            if (idEl) idEl.textContent = 'N/A';
-            if (programEl) programEl.textContent = 'N/A';
+            safeSetText('enrollmentStudentName', 'Student');
+            safeSetText('enrollmentStudentId', 'N/A');
+            safeSetText('enrollmentProgram', 'N/A');
         }
     } catch (error) {
         console.error('Error loading student info:', error);
@@ -152,9 +153,7 @@ async function loadStudentInfo() {
 // ============================================================
 function detectProgramType(programCode) {
     if (!programCode) return 'TVET';
-    if (NURSING_PROGRAMS.includes(programCode)) {
-        return 'Nursing';
-    }
+    if (NURSING_PROGRAMS.includes(programCode)) return 'Nursing';
     return 'TVET';
 }
 
@@ -203,12 +202,11 @@ function initializeSessionReporting() {
     const programType = ENR_STATE.programType || detectProgramType(program);
     const programDisplay = getProgramDisplayName(program);
 
-    console.log('🔄 Initializing Session Reporting for:', programDisplay, 'Type:', programType);
+    console.log('🔄 Initializing Session Reporting');
 
-    // Update banner
-    const currentProgramEl = document.getElementById('enrReportCurrentProgram');
-    const programTypeEl = document.getElementById('enrReportProgramType');
-    const autoDetect = document.getElementById('enrReportAutoDetect');
+    const currentProgramEl = safeGetElement('enrReportCurrentProgram');
+    const programTypeEl = safeGetElement('enrReportProgramType');
+    const autoDetect = safeGetElement('enrReportAutoDetect');
 
     if (currentProgramEl) currentProgramEl.textContent = programDisplay;
     if (programTypeEl) {
@@ -217,11 +215,10 @@ function initializeSessionReporting() {
         programTypeEl.style.color = programType === 'Nursing' ? '#1e40af' : '#92400e';
     }
 
-    // Update session dropdown based on program type
-    const sessionSelect = document.getElementById('enrReportSession');
-    const sessionLabel = document.getElementById('enrReportSessionLabel');
-    const helpText = document.getElementById('enrReportSessionHelpText');
-    const instructions = document.getElementById('enrReportInstructions');
+    const sessionSelect = safeGetElement('enrReportSession');
+    const sessionLabel = safeGetElement('enrReportSessionLabel');
+    const helpText = safeGetElement('enrReportSessionHelpText');
+    const instructions = safeGetElement('enrReportInstructions');
 
     if (!sessionSelect) {
         console.warn('⚠️ enrReportSession not found');
@@ -231,7 +228,6 @@ function initializeSessionReporting() {
     sessionSelect.innerHTML = '<option value="">-- Select --</option>';
 
     if (programType === 'Nursing') {
-        // Nursing - Show Blocks
         if (sessionLabel) sessionLabel.textContent = 'Current Block *';
         if (helpText) helpText.textContent = 'Select your current block in the Nursing program';
         if (instructions) instructions.textContent = 'Report your current block in the Nursing program.';
@@ -254,20 +250,16 @@ function initializeSessionReporting() {
         }
 
     } else {
-        // TVET - Show Year + Term
         if (sessionLabel) sessionLabel.textContent = 'Year & Term *';
         if (helpText) helpText.textContent = 'Select your current year and term in the TVET program';
         if (instructions) instructions.textContent = 'Report your current year and term in the TVET program.';
 
-        // Create combined Year + Term options
         TVET_YEARS.forEach(year => {
             TVET_TERMS.forEach(term => {
                 const value = `${year} - ${term}`;
                 const option = document.createElement('option');
                 option.value = value;
                 option.textContent = value;
-                
-                // Auto-select current year/term if matched
                 const currentCombined = ENR_STATE.currentYear && ENR_STATE.currentTerm ? 
                     `${ENR_STATE.currentYear} - ${ENR_STATE.currentTerm}` : '';
                 if (value === currentCombined) {
@@ -300,11 +292,11 @@ async function submitSessionReport() {
         return;
     }
 
-    const year = document.getElementById('enrReportYear').value;
-    const session = document.getElementById('enrReportSession').value;
-    const status = document.getElementById('enrReportStatus').value;
-    const remarks = document.getElementById('enrReportRemarks').value;
-    const feedback = document.getElementById('enrReportFeedback');
+    const year = safeGetElement('enrReportYear')?.value;
+    const session = safeGetElement('enrReportSession')?.value;
+    const status = safeGetElement('enrReportStatus')?.value;
+    const remarks = safeGetElement('enrReportRemarks')?.value;
+    const feedback = safeGetElement('enrReportFeedback');
 
     if (!year || !session) {
         if (feedback) {
@@ -317,7 +309,6 @@ async function submitSessionReport() {
         return;
     }
 
-    // Get current user
     let user = null;
     if (window.currentUserProfile) {
         user = window.currentUserProfile;
@@ -342,13 +333,7 @@ async function submitSessionReport() {
     const program = ENR_STATE.currentStudentProgram || user.program || 'N/A';
     const programType = ENR_STATE.programType || detectProgramType(program);
 
-    console.log('📤 Preparing to submit session report...');
-    console.log('   Student ID:', studentId);
-    console.log('   Student Name:', studentName);
-    console.log('   Program:', program);
-    console.log('   Program Type:', programType);
-    console.log('   Year:', year);
-    console.log('   Session:', session);
+    console.log('📤 Submitting session report for:', studentName);
 
     if (typeof showLoading === 'function') showLoading('Submitting session report...');
 
@@ -368,19 +353,12 @@ async function submitSessionReport() {
             updated_at: new Date().toISOString()
         };
 
-        console.log('📤 Inserting report data:', reportData);
-
         const { data, error } = await sb
             .from('session_reports')
             .insert(reportData)
             .select();
 
-        if (error) {
-            console.error('❌ Supabase insert error:', error);
-            throw error;
-        }
-
-        console.log('✅ Report inserted successfully:', data);
+        if (error) throw error;
 
         if (typeof hideLoading === 'function') hideLoading();
 
@@ -400,21 +378,16 @@ async function submitSessionReport() {
             showNotification('✅ Session report submitted successfully!', 'success');
         }
 
-        // Reset form
-        document.getElementById('enrReportForm').reset();
+        const form = safeGetElement('enrReportForm');
+        if (form) form.reset();
 
-        // Clear feedback after 5 seconds
         setTimeout(() => {
             if (feedback) feedback.style.display = 'none';
         }, 5000);
 
-        // 🔄 Refresh data immediately after submit
-        console.log('🔄 Refreshing session reports...');
         await loadSessionReports();
         updateReportBadge();
         initializeSessionReporting();
-
-        console.log('✅ Session reports refreshed!');
 
     } catch (error) {
         if (typeof hideLoading === 'function') hideLoading();
@@ -425,20 +398,14 @@ async function submitSessionReport() {
             feedback.style.background = '#fee2e2';
             feedback.style.color = '#991b1b';
             feedback.style.border = '1px solid #fecaca';
-            
             let errorMessage = error.message || 'Unknown error';
             if (errorMessage.includes('row-level security')) {
                 errorMessage = 'Permission denied. Please contact admin to set up RLS policies.';
             }
-            
             feedback.innerHTML = `
                 <i class="fas fa-exclamation-circle"></i> 
                 <strong>Error submitting report:</strong><br>
                 <span style="font-size: 13px;">${escapeHtml(errorMessage)}</span>
-                <br><br>
-                <span style="font-size: 12px; color: #6b7280;">
-                    💡 Tip: Make sure you're logged in and the session_reports table has proper RLS policies.
-                </span>
             `;
         }
 
@@ -462,7 +429,7 @@ async function loadSessionReports() {
         const studentId = ENR_STATE.currentStudentId;
         if (!studentId) {
             console.warn('⚠️ No student ID found');
-            const tbody = document.getElementById('enrReportsBody');
+            const tbody = safeGetElement('enrReportsBody');
             if (tbody) {
                 tbody.innerHTML = `
                     <tr><td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">
@@ -482,12 +449,9 @@ async function loadSessionReports() {
             .eq('student_id', studentId)
             .order('submitted_at', { ascending: false });
 
-        if (error) {
-            console.error('❌ Supabase error:', error);
-            throw error;
-        }
+        if (error) throw error;
 
-        console.log(`✅ Found ${data?.length || 0} session reports:`, data);
+        console.log(`✅ Found ${data?.length || 0} session reports`);
 
         ENR_STATE.reports = data || [];
         renderSessionReportsTable();
@@ -495,7 +459,7 @@ async function loadSessionReports() {
 
     } catch (error) {
         console.error('Error loading session reports:', error);
-        const tbody = document.getElementById('enrReportsBody');
+        const tbody = safeGetElement('enrReportsBody');
         if (tbody) {
             tbody.innerHTML = `
                 <tr><td colspan="5" style="padding: 30px; text-align: center; color: #dc2626;">
@@ -518,14 +482,10 @@ async function loadSessionReports() {
 // RENDER SESSION REPORTS TABLE
 // ============================================================
 function renderSessionReportsTable() {
-    const tbody = document.getElementById('enrReportsBody');
-    if (!tbody) {
-        console.warn('⚠️ enrReportsBody not found');
-        return;
-    }
+    const tbody = safeGetElement('enrReportsBody');
+    if (!tbody) return;
 
     const reports = ENR_STATE.reports || [];
-    console.log(`📊 Rendering ${reports.length} session reports`);
 
     if (!reports || reports.length === 0) {
         tbody.innerHTML = `
@@ -587,7 +547,6 @@ function renderSessionReportsTable() {
     });
 
     tbody.innerHTML = html;
-    console.log('✅ Session reports table rendered');
 }
 
 // ============================================================
@@ -596,11 +555,8 @@ function renderSessionReportsTable() {
 function updateReportBadge() {
     const reports = ENR_STATE.reports || [];
     const pending = reports.filter(r => r.approval_status === 'pending').length;
-    const total = reports.length;
 
-    console.log(`📊 Report stats: ${total} total, ${pending} pending`);
-
-    const badge = document.getElementById('enrReportBadge');
+    const badge = safeGetElement('enrReportBadge');
     if (badge) {
         badge.textContent = pending;
         badge.style.display = 'inline-block';
@@ -611,7 +567,7 @@ function updateReportBadge() {
         badge.style.fontSize = '11px';
     }
 
-    const statsCard = document.getElementById('enrPendingReports');
+    const statsCard = safeGetElement('enrPendingReports');
     if (statsCard) {
         statsCard.textContent = pending;
     }
@@ -620,7 +576,7 @@ function updateReportBadge() {
 }
 
 // ============================================================
-// ADMIN: APPROVE SESSION REPORT & UPDATE PROFILE
+// ADMIN: APPROVE SESSION REPORT
 // ============================================================
 async function approveSessionReport(reportId) {
     const sb = getSupabaseClient();
@@ -632,7 +588,6 @@ async function approveSessionReport(reportId) {
     }
 
     try {
-        // Get the report
         const { data: report, error: fetchError } = await sb
             .from('session_reports')
             .select('*')
@@ -642,7 +597,6 @@ async function approveSessionReport(reportId) {
         if (fetchError) throw fetchError;
         if (!report) throw new Error('Report not found');
 
-        // Update report status
         const { error: updateError } = await sb
             .from('session_reports')
             .update({
@@ -654,7 +608,6 @@ async function approveSessionReport(reportId) {
 
         if (updateError) throw updateError;
 
-        // NOW UPDATE THE STUDENT'S PROFILE based on program type
         const studentId = report.student_id;
         const programType = report.program_type || detectProgramType(report.program);
         const session = report.session;
@@ -662,14 +615,8 @@ async function approveSessionReport(reportId) {
         let updateData = {};
 
         if (programType === 'Nursing') {
-            // Update block for Nursing students
-            updateData = {
-                current_block: session,
-                updated_at: new Date().toISOString()
-            };
+            updateData = { current_block: session, updated_at: new Date().toISOString() };
         } else {
-            // TVET - Parse Year and Term from session string
-            // Format: "Year 1 - Term 1"
             const parts = session.split(' - ');
             if (parts.length === 2) {
                 updateData = {
@@ -678,7 +625,6 @@ async function approveSessionReport(reportId) {
                     updated_at: new Date().toISOString()
                 };
             } else {
-                // Fallback: try to parse differently
                 const yearMatch = session.match(/Year\s*(\d+)/i);
                 const termMatch = session.match(/Term\s*(\d+)/i);
                 if (yearMatch) updateData.current_year = `Year ${yearMatch[1]}`;
@@ -687,23 +633,19 @@ async function approveSessionReport(reportId) {
             }
         }
 
-        // Update the student's profile
         const { error: profileError } = await sb
             .from('consolidated_user_profiles_table')
             .update(updateData)
             .eq('student_id', studentId);
 
         if (profileError) {
-            // Try with just 'students' table if consolidated fails
             const { error: altError } = await sb
                 .from('students')
                 .update(updateData)
                 .eq('student_id', studentId);
-            
             if (altError) throw altError;
         }
 
-        // Also update in-memory state
         if (programType === 'Nursing') {
             ENR_STATE.currentBlock = session;
         } else {
@@ -718,7 +660,6 @@ async function approveSessionReport(reportId) {
             showNotification('✅ Session report approved and student profile updated!', 'success');
         }
 
-        // Refresh data
         await loadSessionReports();
         await loadStudentInfo();
         initializeSessionReporting();
@@ -788,9 +729,9 @@ async function loadEnrollmentRequests() {
             return;
         }
 
-        const search = document.getElementById('enrSearch')?.value?.toLowerCase() || '';
-        const status = document.getElementById('enrStatusFilter')?.value || 'all';
-        const type = document.getElementById('enrTypeFilter')?.value || 'all';
+        const search = safeGetElement('enrSearch')?.value?.toLowerCase() || '';
+        const status = safeGetElement('enrStatusFilter')?.value || 'all';
+        const type = safeGetElement('enrTypeFilter')?.value || 'all';
 
         let query = sb
             .from('student_requests')
@@ -809,7 +750,6 @@ async function loadEnrollmentRequests() {
 
         if (error) throw error;
 
-        // Apply search filter
         let filtered = data || [];
         if (search) {
             filtered = filtered.filter(r => 
@@ -826,16 +766,12 @@ async function loadEnrollmentRequests() {
 
     } catch (error) {
         console.error('Error loading enrollment requests:', error);
-        const tbody = document.getElementById('enrRequestsBody');
+        const tbody = safeGetElement('enrRequestsBody');
         if (tbody) {
             tbody.innerHTML = `
                 <tr><td colspan="5" style="padding: 30px; text-align: center; color: #dc2626;">
                     <i class="fas fa-exclamation-circle" style="font-size: 20px; display: block; margin-bottom: 8px;"></i>
                     Error loading requests: ${escapeHtml(error.message)}
-                    <br>
-                    <button onclick="loadEnrollmentRequests()" style="margin-top: 8px; padding: 6px 16px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        <i class="fas fa-sync-alt"></i> Retry
-                    </button>
                 </td></tr>
             `;
         }
@@ -849,7 +785,7 @@ async function loadEnrollmentRequests() {
 // RENDER ENROLLMENT REQUESTS TABLE
 // ============================================================
 function renderEnrollmentRequestsTable() {
-    const tbody = document.getElementById('enrRequestsBody');
+    const tbody = safeGetElement('enrRequestsBody');
     if (!tbody) return;
 
     const requests = ENR_STATE.requests;
@@ -910,9 +846,7 @@ function renderEnrollmentRequestsTable() {
                 </td>
                 <td style="padding: 10px 14px; text-align: center;">
                     <button onclick="viewEnrollmentRequest('${r.id}')" 
-                            style="padding: 4px 14px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; transition: all 0.2s;"
-                            onmouseover="this.style.background='#2563eb'; this.style.transform='scale(1.05)'" 
-                            onmouseout="this.style.background='#3b82f6'; this.style.transform='scale(1)'">
+                            style="padding: 4px 14px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
                         <i class="fas fa-eye"></i> View
                     </button>
                 </td>
@@ -956,75 +890,47 @@ async function viewEnrollmentRequest(requestId) {
         const toProgram = data.requested_program || 'N/A';
         const status = data.status || 'pending';
         const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
-        const statusColors = {
-            pending: '#f59e0b',
-            approved: '#10b981',
-            rejected: '#dc2626',
-            processing: '#3b82f6'
-        };
+        const statusColors = { pending: '#f59e0b', approved: '#10b981', rejected: '#dc2626', processing: '#3b82f6' };
         const statusColor = statusColors[status] || '#f59e0b';
         const date = data.created_at ? new Date(data.created_at).toLocaleString() : 'N/A';
         const updated = data.updated_at ? new Date(data.updated_at).toLocaleString() : 'N/A';
 
-        // Create modal content
         const modalContent = `
             <div style="max-width: 550px; width: 95%; background: white; border-radius: 16px; padding: 28px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); position: relative;">
-                <button onclick="closeEnrollmentModal()" style="position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 24px; color: #94a3b8; cursor: pointer; transition: all 0.2s;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#94a3b8'">
+                <button onclick="closeEnrollmentModal()" style="position: absolute; top: 12px; right: 16px; background: none; border: none; font-size: 24px; color: #94a3b8; cursor: pointer;">
                     <i class="fas fa-times"></i>
                 </button>
-
                 <h3 style="color: #0A3D62; margin: 0 0 4px 0; font-size: 18px; display: flex; align-items: center; gap: 8px;">
-                    <i class="fas fa-file-alt" style="color: #4C1D95;"></i> 
-                    ${escapeHtml(requestType)} Request
+                    <i class="fas fa-file-alt" style="color: #4C1D95;"></i> ${escapeHtml(requestType)} Request
                 </h3>
                 <p style="color: #94a3b8; font-size: 13px; margin: 0 0 20px 0;">Request ID: ${escapeHtml(data.id.substring(0, 8))}...</p>
-
                 <div style="display: flex; justify-content: center; margin-bottom: 20px;">
                     <span style="background: ${statusColor}20; color: ${statusColor}; padding: 6px 24px; border-radius: 20px; font-size: 14px; font-weight: 700; border: 1px solid ${statusColor}40;">
                         ${statusLabel}
                     </span>
                 </div>
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; padding: 16px; background: #f8fafc; border-radius: 10px;">
                     <div>
-                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">From Program</div>
+                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">From Program</div>
                         <div style="font-size: 15px; font-weight: 600; color: #1e293b; margin-top: 2px;">${escapeHtml(fromProgram)}</div>
                     </div>
                     <div>
-                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px;">Requested Program</div>
+                        <div style="font-size: 10px; color: #94a3b8; text-transform: uppercase;">Requested Program</div>
                         <div style="font-size: 15px; font-weight: 600; color: #4C1D95; margin-top: 2px;">${escapeHtml(toProgram)}</div>
                     </div>
                 </div>
-
                 <div style="margin-bottom: 16px;">
-                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">Reason / Justification</div>
+                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Reason / Justification</div>
                     <div style="background: #f1f5f9; padding: 12px 16px; border-radius: 8px; font-size: 14px; color: #334155; line-height: 1.6; margin-top: 4px; border-left: 3px solid #4C1D95;">
                         ${escapeHtml(data.reason || 'No reason provided')}
                     </div>
                 </div>
-
-                ${data.documents && data.documents.length > 0 ? `
-                <div style="margin-bottom: 16px;">
-                    <div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">
-                        <i class="fas fa-paperclip"></i> Supporting Documents
-                    </div>
-                    <div style="margin-top: 4px; display: flex; gap: 6px; flex-wrap: wrap;">
-                        ${data.documents.map(doc => `
-                            <span style="background: #e5e7eb; padding: 4px 12px; border-radius: 6px; font-size: 12px; color: #1e293b; display: inline-flex; align-items: center; gap: 4px;">
-                                <i class="fas fa-file"></i> ${escapeHtml(doc.name || 'Document')}
-                            </span>
-                        `).join('')}
-                    </div>
-                </div>
-                ` : ''}
-
                 <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px; color: #94a3b8; border-top: 1px solid #e5e7eb; padding-top: 14px;">
                     <div><i class="fas fa-clock"></i> Submitted: ${date}</div>
                     <div><i class="fas fa-edit"></i> Updated: ${updated}</div>
                 </div>
-
                 <div style="margin-top: 18px; text-align: center;">
-                    <button onclick="closeEnrollmentModal()" style="padding: 10px 40px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                    <button onclick="closeEnrollmentModal()" style="padding: 10px 40px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px;">
                         <i class="fas fa-times"></i> Close
                     </button>
                 </div>
@@ -1046,7 +952,6 @@ async function viewEnrollmentRequest(requestId) {
 // ============================================================
 function showEnrollmentModal(content) {
     closeEnrollmentModal();
-
     const modal = document.createElement('div');
     modal.id = 'enrollmentModal';
     modal.style.cssText = `
@@ -1057,13 +962,9 @@ function showEnrollmentModal(content) {
     `;
     modal.innerHTML = content;
     document.body.appendChild(modal);
-
     modal.addEventListener('click', function(e) {
-        if (e.target === this) {
-            closeEnrollmentModal();
-        }
+        if (e.target === this) closeEnrollmentModal();
     });
-
     document.addEventListener('keydown', function handler(e) {
         if (e.key === 'Escape') {
             closeEnrollmentModal();
@@ -1074,9 +975,7 @@ function showEnrollmentModal(content) {
 
 function closeEnrollmentModal() {
     const modal = document.getElementById('enrollmentModal');
-    if (modal) {
-        modal.remove();
-    }
+    if (modal) modal.remove();
 }
 
 // ============================================================
@@ -1096,8 +995,8 @@ async function loadEnrollmentHistory() {
             return;
         }
 
-        const type = document.getElementById('enrHistoryType')?.value || 'all';
-        const status = document.getElementById('enrHistoryStatus')?.value || 'all';
+        const type = safeGetElement('enrHistoryType')?.value || 'all';
+        const status = safeGetElement('enrHistoryStatus')?.value || 'all';
 
         let query = sb
             .from('student_requests')
@@ -1122,7 +1021,7 @@ async function loadEnrollmentHistory() {
 
     } catch (error) {
         console.error('Error loading enrollment history:', error);
-        const tbody = document.getElementById('enrHistoryBody');
+        const tbody = safeGetElement('enrHistoryBody');
         if (tbody) {
             tbody.innerHTML = `
                 <tr><td colspan="5" style="padding: 30px; text-align: center; color: #dc2626;">
@@ -1141,7 +1040,7 @@ async function loadEnrollmentHistory() {
 // RENDER ENROLLMENT HISTORY TABLE
 // ============================================================
 function renderEnrollmentHistoryTable() {
-    const tbody = document.getElementById('enrHistoryBody');
+    const tbody = safeGetElement('enrHistoryBody');
     if (!tbody) return;
 
     const history = ENR_STATE.history;
@@ -1151,7 +1050,6 @@ function renderEnrollmentHistoryTable() {
             <tr><td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">
                 <i class="fas fa-history" style="font-size: 28px; display: block; margin-bottom: 10px; color: #d1d5db;"></i>
                 <p style="margin: 0;">No enrollment history found</p>
-                <p style="margin: 4px 0 0 0; font-size: 12px; color: #cbd5e1;">Completed requests will appear here</p>
             </td></tr>
         `;
         return;
@@ -1207,14 +1105,13 @@ function renderEnrollmentHistoryTable() {
 // UPDATE ENROLLMENT STATS
 // ============================================================
 function updateEnrollmentStats() {
-    const requests = ENR_STATE.requests;
+    const requests = ENR_STATE.requests || [];
 
     const total = requests.length;
     const pending = requests.filter(r => r.status === 'pending').length;
     const approved = requests.filter(r => r.status === 'approved').length;
     const rejected = requests.filter(r => r.status === 'rejected').length;
 
-    // Latest request
     let lastRequest = '--';
     if (requests.length > 0) {
         const latest = requests.reduce((a, b) => 
@@ -1223,22 +1120,14 @@ function updateEnrollmentStats() {
         lastRequest = new Date(latest.created_at).toLocaleDateString();
     }
 
-    // Pending reports
-    const pendingReports = ENR_STATE.reports.filter(r => r.approval_status === 'pending').length;
+    const pendingReports = (ENR_STATE.reports || []).filter(r => r.approval_status === 'pending').length;
 
-    const totalEl = document.getElementById('enrTotalRequests');
-    const pendingEl = document.getElementById('enrPendingCount');
-    const approvedEl = document.getElementById('enrApprovedCount');
-    const rejectedEl = document.getElementById('enrRejectedCount');
-    const lastEl = document.getElementById('enrLastRequest');
-    const reportsEl = document.getElementById('enrPendingReports');
-
-    if (totalEl) totalEl.textContent = total;
-    if (pendingEl) pendingEl.textContent = pending;
-    if (approvedEl) approvedEl.textContent = approved;
-    if (rejectedEl) rejectedEl.textContent = rejected;
-    if (lastEl) lastEl.textContent = lastRequest;
-    if (reportsEl) reportsEl.textContent = pendingReports;
+    safeSetText('enrTotalRequests', total);
+    safeSetText('enrPendingCount', pending);
+    safeSetText('enrApprovedCount', approved);
+    safeSetText('enrRejectedCount', rejected);
+    safeSetText('enrLastRequest', lastRequest);
+    safeSetText('enrPendingReports', pendingReports);
 
     ENR_STATE.stats = { total, pending, approved, rejected, pendingReports };
 }
@@ -1247,11 +1136,11 @@ function updateEnrollmentStats() {
 // UPDATE ENROLLMENT BADGES
 // ============================================================
 function updateEnrollmentBadges() {
-    const pending = ENR_STATE.requests.filter(r => r.status === 'pending').length;
-    const badge = document.getElementById('enrPendingBadge');
+    const pending = (ENR_STATE.requests || []).filter(r => r.status === 'pending').length;
+    const badge = safeGetElement('enrPendingBadge');
     if (badge) {
         badge.textContent = pending;
-        badge.style.display = pending > 0 ? 'inline-block' : 'inline-block';
+        badge.style.display = 'inline-block';
         badge.style.background = pending > 0 ? '#f59e0b' : 'rgba(255,255,255,0.2)';
     }
 }
@@ -1267,10 +1156,8 @@ function filterEnrRequests() {
 // SHOW ENROLLMENT SUB TAB
 // ============================================================
 function showEnrSubTab(tab) {
-    // Hide all tabs
     document.querySelectorAll('.enr-tab-content').forEach(el => el.style.display = 'none');
 
-    // Show selected tab
     const tabMap = {
         'my-requests': 'enrMyRequestsTab',
         'new-request': 'enrNewRequestTab',
@@ -1280,11 +1167,10 @@ function showEnrSubTab(tab) {
 
     const tabId = tabMap[tab];
     if (tabId) {
-        const el = document.getElementById(tabId);
+        const el = safeGetElement(tabId);
         if (el) el.style.display = 'block';
     }
 
-    // Update tab buttons
     document.querySelectorAll('.enr-tab-btn').forEach(btn => {
         btn.style.background = 'transparent';
         btn.style.color = '#334155';
@@ -1300,7 +1186,7 @@ function showEnrSubTab(tab) {
 
     const btnId = btnMap[tab];
     if (btnId) {
-        const btn = document.getElementById(btnId);
+        const btn = safeGetElement(btnId);
         if (btn) {
             btn.style.background = 'linear-gradient(135deg, #4C1D95, #6d28d9)';
             btn.style.color = 'white';
@@ -1308,35 +1194,28 @@ function showEnrSubTab(tab) {
         }
     }
 
-    // Load data based on tab
     if (tab === 'my-requests') {
         loadEnrollmentRequests();
     } else if (tab === 'session-reporting') {
-        console.log('🔄 Loading Session Reporting tab...');
         initializeSessionReporting();
-        // Force refresh the reports after a short delay
-        setTimeout(() => {
-            loadSessionReports();
-        }, 200);
+        setTimeout(() => loadSessionReports(), 200);
     } else if (tab === 'history') {
         loadEnrollmentHistory();
     } else if (tab === 'new-request') {
-        // Reset form
-        const form = document.getElementById('enrRequestForm');
+        const form = safeGetElement('enrRequestForm');
         if (form) form.reset();
-        const feedback = document.getElementById('enrFormFeedback');
+        const feedback = safeGetElement('enrFormFeedback');
         if (feedback) feedback.style.display = 'none';
-        const error = document.getElementById('enrTypeError');
+        const error = safeGetElement('enrTypeError');
         if (error) error.style.display = 'none';
-        // Reset type selection
         document.querySelectorAll('#enrTypeChangeProgram, #enrTypeReadmission').forEach(btn => {
             btn.style.borderColor = '#e5e7eb';
             btn.style.background = 'white';
         });
-        const typeInput = document.getElementById('enrRequestType');
+        const typeInput = safeGetElement('enrRequestType');
         if (typeInput) typeInput.value = '';
-        const currentSection = document.getElementById('enrCurrentProgramSection');
-        const previousSection = document.getElementById('enrPreviousProgramSection');
+        const currentSection = safeGetElement('enrCurrentProgramSection');
+        const previousSection = safeGetElement('enrPreviousProgramSection');
         if (currentSection) currentSection.style.display = 'none';
         if (previousSection) previousSection.style.display = 'none';
     }
@@ -1346,29 +1225,27 @@ function showEnrSubTab(tab) {
 // SELECT ENROLLMENT TYPE
 // ============================================================
 function selectEnrType(type) {
-    const typeInput = document.getElementById('enrRequestType');
+    const typeInput = safeGetElement('enrRequestType');
     if (typeInput) typeInput.value = type;
     
-    const error = document.getElementById('enrTypeError');
+    const error = safeGetElement('enrTypeError');
     if (error) error.style.display = 'none';
 
-    // Update button styles
     document.querySelectorAll('#enrTypeChangeProgram, #enrTypeReadmission').forEach(btn => {
         btn.style.borderColor = '#e5e7eb';
         btn.style.background = 'white';
     });
 
-    const btn = document.getElementById(type === 'change-program' ? 'enrTypeChangeProgram' : 'enrTypeReadmission');
+    const btn = safeGetElement(type === 'change-program' ? 'enrTypeChangeProgram' : 'enrTypeReadmission');
     if (btn) {
         btn.style.borderColor = '#4C1D95';
         btn.style.background = '#f3e8ff';
     }
 
-    // Show/hide sections
-    const currentSection = document.getElementById('enrCurrentProgramSection');
-    const previousSection = document.getElementById('enrPreviousProgramSection');
-    const currentDisplay = document.getElementById('enrCurrentProgramDisplay');
-    const previousDisplay = document.getElementById('enrPreviousProgramDisplay');
+    const currentSection = safeGetElement('enrCurrentProgramSection');
+    const previousSection = safeGetElement('enrPreviousProgramSection');
+    const currentDisplay = safeGetElement('enrCurrentProgramDisplay');
+    const previousDisplay = safeGetElement('enrPreviousProgramDisplay');
 
     if (type === 'change-program') {
         if (currentSection) currentSection.style.display = 'block';
@@ -1393,14 +1270,13 @@ async function submitEnrollmentRequest() {
         return;
     }
 
-    const requestType = document.getElementById('enrRequestType')?.value;
-    const requestedProgram = document.getElementById('enrRequestedProgram')?.value;
-    const reason = document.getElementById('enrReason')?.value?.trim();
-    const docsInput = document.getElementById('enrSupportingDocs');
+    const requestType = safeGetElement('enrRequestType')?.value;
+    const requestedProgram = safeGetElement('enrRequestedProgram')?.value;
+    const reason = safeGetElement('enrReason')?.value?.trim();
+    const docsInput = safeGetElement('enrSupportingDocs');
 
-    // Validate
     if (!requestType) {
-        const error = document.getElementById('enrTypeError');
+        const error = safeGetElement('enrTypeError');
         if (error) error.style.display = 'block';
         if (typeof showNotification === 'function') {
             showNotification('Please select a request type', 'warning');
@@ -1426,8 +1302,7 @@ async function submitEnrollmentRequest() {
     const studentName = ENR_STATE.currentStudentName || 'Unknown';
     const currentProgram = ENR_STATE.currentStudentProgram || 'N/A';
 
-    // Check if already has pending request
-    const existingPending = ENR_STATE.requests.filter(r => r.status === 'pending');
+    const existingPending = (ENR_STATE.requests || []).filter(r => r.status === 'pending');
     if (existingPending.length > 0) {
         if (typeof showNotification === 'function') {
             showNotification('You already have a pending request. Please wait for it to be processed.', 'warning');
@@ -1438,15 +1313,10 @@ async function submitEnrollmentRequest() {
     if (typeof showLoading === 'function') showLoading('Submitting request...');
 
     try {
-        // Handle documents
         let documents = [];
         if (docsInput && docsInput.files && docsInput.files.length > 0) {
             for (const file of docsInput.files) {
-                documents.push({
-                    name: file.name,
-                    size: file.size,
-                    type: file.type
-                });
+                documents.push({ name: file.name, size: file.size, type: file.type });
             }
         }
 
@@ -1473,8 +1343,7 @@ async function submitEnrollmentRequest() {
 
         if (typeof hideLoading === 'function') hideLoading();
 
-        // Show success
-        const feedback = document.getElementById('enrFormFeedback');
+        const feedback = safeGetElement('enrFormFeedback');
         if (feedback) {
             feedback.style.display = 'block';
             feedback.style.background = '#d1fae5';
@@ -1491,24 +1360,21 @@ async function submitEnrollmentRequest() {
             showNotification('✅ Enrollment request submitted successfully!', 'success');
         }
 
-        // Reset form
-        const form = document.getElementById('enrRequestForm');
+        const form = safeGetElement('enrRequestForm');
         if (form) form.reset();
         if (docsInput) docsInput.value = '';
 
-        // Reset type selection
         document.querySelectorAll('#enrTypeChangeProgram, #enrTypeReadmission').forEach(btn => {
             btn.style.borderColor = '#e5e7eb';
             btn.style.background = 'white';
         });
-        const typeInput = document.getElementById('enrRequestType');
+        const typeInput = safeGetElement('enrRequestType');
         if (typeInput) typeInput.value = '';
-        const currentSection = document.getElementById('enrCurrentProgramSection');
-        const previousSection = document.getElementById('enrPreviousProgramSection');
+        const currentSection = safeGetElement('enrCurrentProgramSection');
+        const previousSection = safeGetElement('enrPreviousProgramSection');
         if (currentSection) currentSection.style.display = 'none';
         if (previousSection) previousSection.style.display = 'none';
 
-        // Refresh data
         setTimeout(() => {
             loadEnrollmentRequests();
             loadEnrollmentHistory();
@@ -1521,7 +1387,7 @@ async function submitEnrollmentRequest() {
         if (typeof hideLoading === 'function') hideLoading();
         console.error('Error submitting request:', error);
 
-        const feedback = document.getElementById('enrFormFeedback');
+        const feedback = safeGetElement('enrFormFeedback');
         if (feedback) {
             feedback.style.display = 'block';
             feedback.style.background = '#fee2e2';
@@ -1561,7 +1427,7 @@ function refreshEnrollment() {
 // EXPORT ENROLLMENT REQUESTS TO CSV
 // ============================================================
 function exportEnrollmentRequests() {
-    const requests = ENR_STATE.requests;
+    const requests = ENR_STATE.requests || [];
 
     if (!requests || requests.length === 0) {
         if (typeof showNotification === 'function') {
@@ -1621,7 +1487,6 @@ function escapeHtml(str) {
 // SETUP EVENT LISTENERS
 // ============================================================
 function setupEnrollmentEventListeners() {
-    // Request type button clicks
     document.querySelectorAll('#enrTypeChangeProgram, #enrTypeReadmission').forEach(btn => {
         btn.addEventListener('click', function() {
             const type = this.id === 'enrTypeChangeProgram' ? 'change-program' : 'readmission';
@@ -1629,17 +1494,15 @@ function setupEnrollmentEventListeners() {
         });
     });
 
-    // Reset form feedback on input change
-    const form = document.getElementById('enrRequestForm');
+    const form = safeGetElement('enrRequestForm');
     if (form) {
         form.addEventListener('change', function() {
-            const feedback = document.getElementById('enrFormFeedback');
+            const feedback = safeGetElement('enrFormFeedback');
             if (feedback) feedback.style.display = 'none';
         });
     }
 
-    // Session report form submission
-    const reportForm = document.getElementById('enrReportForm');
+    const reportForm = safeGetElement('enrReportForm');
     if (reportForm) {
         reportForm.addEventListener('submit', function(e) {
             e.preventDefault();
@@ -1649,13 +1512,7 @@ function setupEnrollmentEventListeners() {
 }
 
 // ============================================================
-// EXPOSE ADMIN FUNCTIONS (for admin panel)
-// ============================================================
-window.approveSessionReport = approveSessionReport;
-window.rejectSessionReport = rejectSessionReport;
-
-// ============================================================
-// GLOBAL REGISTRATION
+// EXPOSE FUNCTIONS
 // ============================================================
 window.initEnrollment = initEnrollment;
 window.loadEnrollmentRequests = loadEnrollmentRequests;
@@ -1674,16 +1531,8 @@ window.escapeHtml = escapeHtml;
 window.downloadCSV = downloadCSV;
 window.initializeSessionReporting = initializeSessionReporting;
 window.updateReportBadge = updateReportBadge;
+window.approveSessionReport = approveSessionReport;
+window.rejectSessionReport = rejectSessionReport;
 
 console.log('✅ Enrollment Module Loaded!');
-console.log('📋 Features:');
-console.log('   - ✅ Change of Program requests');
-console.log('   - ✅ Readmission requests');
-console.log('   - ✅ Request history with filters');
-console.log('   - ✅ Student view only (own requests)');
-console.log('   - ✅ Submit new enrollment requests');
-console.log('   - ✅ Export to CSV');
-console.log('   - ✅ View request details');
-console.log('   - ✅ SESSION REPORTING: Auto-detects block (Nursing) or Year/Term (TVET)');
-console.log('   - ✅ SESSION REPORTING: Admin approval auto-updates student profile');
-console.log('   - ✅ SESSION REPORTING: Reports appear immediately after submission');
+console.log('📋 Features: Session Reporting with Auto-Detection');
