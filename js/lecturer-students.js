@@ -210,7 +210,7 @@ const LecturerStudents = {
             if (!profile) return;
             
             const lecturerId = this.lecturerAssignmentId || profile.user_id;
-            const program = this.currentProgram || profile.program || 'KRCHN';
+            const program = this.currentProgram || profile.program || profile.department || 'KRCHN';
             
             const { data: assignments, error } = await supabase
                 .from('lecturer_subject_assignments')
@@ -232,87 +232,109 @@ const LecturerStudents = {
     },
     
     // ─── LOAD STUDENTS ───
-async loadStudents() {
-    try {
-        const profile = window.lecturerDB?.getCurrentUserProfile();
-        const program = this.currentProgram || profile?.program || profile?.department || 'KRCHN';
-        
-        const supabase = window.lecturerDB?.supabase;
-        if (!supabase) {
-            console.warn('Supabase not available');
-            return;
-        }
-        
-        // ✅ FIX: Include BOTH 'active' AND 'approved' statuses
-        const { data: students, error } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('*')
-            .eq('role', 'student')
-            .eq('program', program)
-            .in('status', ['active', 'approved'])  // ← ADD THIS LINE
-            .order('full_name', { ascending: true });
-        
-        if (error) {
-            console.error('Error loading students:', error);
-            return;
-        }
-        
-        this.students = students || [];
-        
-        // Add block display for TVET
-        this.students.forEach(s => {
-            s.block_display = this.getBlockDisplay(s.block);
-        });
-        
-        // Get student registrations for assigned units
-        if (this.assignedUnits.length > 0) {
-            const unitNames = this.assignedUnits.map(u => u.subject_name);
-            const blocks = [...new Set(this.assignedUnits.map(u => u.block))];
+    async loadStudents() {
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            const program = this.currentProgram || profile?.program || profile?.department || 'KRCHN';
             
-            const { data: registrations, error: regError } = await supabase
-                .from('student_unit_registrations')
-                .select('student_id, unit_name, block, status')
-                .eq('program', program)
-                .eq('status', 'approved')
-                .in('block', blocks)
-                .in('unit_name', unitNames);
+            const supabase = window.lecturerDB?.supabase;
+            if (!supabase) {
+                console.warn('Supabase not available');
+                return;
+            }
             
-            if (!regError && registrations) {
-                const registeredStudentIds = new Set(registrations.map(r => r.student_id));
-                this.students.forEach(s => {
-                    s.isRegistered = registeredStudentIds.has(s.user_id);
-                    s.enrolledUnits = registrations
-                        .filter(r => r.student_id === s.user_id)
-                        .map(r => r.unit_name);
-                });
+            // ✅ FIX: Check if this is a TVET lecturer
+            // TVET lecturers should see ALL TVET students, not just one program
+            const isTVETLecturer = this.isTVET || 
+                                   profile?.department === 'TVET' || 
+                                   profile?.program_type === 'TVET' ||
+                                   ['CPOTT', 'DPOTT', 'TVET', 'CCH', 'DCH', 'DHRIT'].includes(program) ||
+                                   program === 'TVET';
+            
+            console.log(`🔍 Lecturer type: ${isTVETLecturer ? 'TVET' : 'Nursing'}`);
+            console.log(`🔍 Lecturer program: ${program}`);
+            
+            let query = supabase
+                .from('consolidated_user_profiles_table')
+                .select('*')
+                .eq('role', 'student')
+                .in('status', ['active', 'approved'])
+                .order('full_name', { ascending: true });
+            
+            if (isTVETLecturer) {
+                // ✅ TVET Lecturer: Show ALL TVET students (any program in TVET)
+                query = query.eq('program_type', 'TVET');
+                console.log('📚 TVET Lecturer: Showing ALL TVET students');
+            } else {
+                // Nursing Lecturer: Show only their specific program
+                query = query.eq('program', program);
+                console.log(`📚 Nursing Lecturer: Showing ${program} students`);
+            }
+            
+            const { data: students, error } = await query;
+            
+            if (error) {
+                console.error('Error loading students:', error);
+                return;
+            }
+            
+            this.students = students || [];
+            
+            // Add block display for TVET
+            this.students.forEach(s => {
+                s.block_display = this.getBlockDisplay(s.block);
+            });
+            
+            // Get student registrations for assigned units
+            if (this.assignedUnits.length > 0) {
+                const unitNames = this.assignedUnits.map(u => u.subject_name);
+                const blocks = [...new Set(this.assignedUnits.map(u => u.block))];
+                
+                const { data: registrations, error: regError } = await supabase
+                    .from('student_unit_registrations')
+                    .select('student_id, unit_name, block, status')
+                    .eq('program', program)
+                    .eq('status', 'approved')
+                    .in('block', blocks)
+                    .in('unit_name', unitNames);
+                
+                if (!regError && registrations) {
+                    const registeredStudentIds = new Set(registrations.map(r => r.student_id));
+                    this.students.forEach(s => {
+                        s.isRegistered = registeredStudentIds.has(s.user_id);
+                        s.enrolledUnits = registrations
+                            .filter(r => r.student_id === s.user_id)
+                            .map(r => r.unit_name);
+                    });
+                }
+            }
+            
+            // Get risk data
+            await this.loadRiskData();
+            
+            this.filteredStudents = [...this.students];
+            
+            this.populateFilters();
+            this.renderTable();
+            this.updateStats();
+            this.updateProgramBadge();
+            
+            // Update badge
+            const badge = document.getElementById('studentCountBadge');
+            if (badge) badge.textContent = this.students.length;
+            const badge2 = document.getElementById('studentCountBadge2');
+            if (badge2) badge2.textContent = this.students.length;
+            
+            console.log(`✅ Loaded ${this.students.length} students (${this.getProgramTypeLabel()})`);
+            
+        } catch (error) {
+            console.error('Failed to load students:', error);
+            if (window.LecturerUI) {
+                window.LecturerUI.showNotification('Failed to load students: ' + error.message, 'error');
             }
         }
-        
-        // Get risk data
-        await this.loadRiskData();
-        
-        this.filteredStudents = [...this.students];
-        
-        this.populateFilters();
-        this.renderTable();
-        this.updateStats();
-        this.updateProgramBadge();
-        
-        // Update badge
-        const badge = document.getElementById('studentCountBadge');
-        if (badge) badge.textContent = this.students.length;
-        const badge2 = document.getElementById('studentCountBadge2');
-        if (badge2) badge2.textContent = this.students.length;
-        
-        console.log(`✅ Loaded ${this.students.length} students (${this.getProgramTypeLabel()})`);
-        
-    } catch (error) {
-        console.error('Failed to load students:', error);
-        if (window.LecturerUI) {
-            window.LecturerUI.showNotification('Failed to load students: ' + error.message, 'error');
-        }
-    }
-},
+    },
+    
     // ─── LOAD RISK DATA ───
     async loadRiskData() {
         try {
@@ -564,7 +586,7 @@ async loadStudents() {
         const total = this.students.length;
         const filtered = this.filteredStudents.length;
         const atRisk = this.students.filter(s => (s.riskLevel || 'low') === 'high').length;
-        const active = this.students.filter(s => (s.status || 'Active') === 'Active').length;
+        const active = this.students.filter(s => (s.status || 'Active') === 'Active' || s.status === 'approved').length;
         const probation = this.students.filter(s => (s.status || '') === 'Probation').length;
         const programs = [...new Set(this.students.map(s => s.program).filter(Boolean))];
         const typeLabel = this.getProgramTypeLabel();
