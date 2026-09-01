@@ -1,37 +1,58 @@
 <!DOCTYPE html>
 <html lang="en">
-<head> 
+<head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finance Module - NCHSM</title>
-    
+
     <!-- ===== SUPABASE ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
+    </script>
+
     <!-- ===== FONT AWESOME ===== -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+
     <!-- ===== CHART.JS ===== -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js">
+    </script>
+
     <!-- ===== FAVICON ===== -->
     <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
 
     <style>
         /* ===== RESET & BASE ===== */
-        * { margin: 0; padding: 0; box-sizing: border-box; }
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             background: #f0f4ff;
             min-height: 100vh;
         }
-        .tab-content { display: none; animation: fadeIn 0.3s ease; }
-        .tab-content.active { display: block; }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
         }
-        @keyframes spin { to { transform: rotate(360deg); } }
+        .tab-content.active {
+            display: block;
+        }
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
         .loading-spinner {
             display: inline-block;
             width: 30px;
@@ -43,7 +64,10 @@
         }
 
         /* ===== SIDEBAR ===== */
-        .finance-container { display: flex; min-height: 100vh; }
+        .finance-container {
+            display: flex;
+            min-height: 100vh;
+        }
         .finance-sidebar {
             width: 260px;
             background: linear-gradient(180deg, #0A3D62, #1a5a7a);
@@ -57,7 +81,7 @@
         }
         .finance-sidebar-header {
             padding: 0 20px 20px 20px;
-            border-bottom: 1px solid rgba(255,255,255,0.1);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
             align-items: center;
             gap: 12px;
@@ -86,7 +110,7 @@
             display: flex;
             align-items: center;
             padding: 12px 20px;
-            color: rgba(255,255,255,0.7);
+            color: rgba(255, 255, 255, 0.7);
             text-decoration: none;
             transition: all 0.2s;
             gap: 12px;
@@ -94,15 +118,18 @@
             position: relative;
         }
         .finance-nav li a:hover {
-            background: rgba(255,255,255,0.1);
+            background: rgba(255, 255, 255, 0.1);
             color: white;
         }
         .finance-nav li a.active {
-            background: rgba(255,255,255,0.15);
+            background: rgba(255, 255, 255, 0.15);
             color: white;
             border-right: 3px solid #FDB913;
         }
-        .finance-nav li a i { width: 20px; text-align: center; }
+        .finance-nav li a i {
+            width: 20px;
+            text-align: center;
+        }
         .finance-nav li a .badge {
             background: #dc2626;
             color: white;
@@ -113,20 +140,22 @@
         }
         .finance-sidebar-footer {
             padding: 20px;
-            border-top: 1px solid rgba(255,255,255,0.1);
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
             margin-top: auto;
         }
         .finance-sidebar-footer a {
             display: flex;
             align-items: center;
             gap: 12px;
-            color: rgba(255,255,255,0.6);
+            color: rgba(255, 255, 255, 0.6);
             text-decoration: none;
             padding: 8px 0;
             font-size: 13px;
             transition: color 0.2s;
         }
-        .finance-sidebar-footer a:hover { color: white; }
+        .finance-sidebar-footer a:hover {
+            color: white;
+        }
 
         .finance-main {
             margin-left: 260px;
@@ -162,14 +191,39 @@
             align-items: center;
             gap: 6px;
         }
-        .btn-action:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.15); }
-        .btn-primary { background: #4C1D95; color: white; }
-        .btn-success { background: #059669; color: white; }
-        .btn-danger { background: #dc2626; color: white; }
-        .btn-warning { background: #f59e0b; color: #0A3D62; }
-        .btn-outline { background: transparent; color: #475569; border: 1px solid #e2e8f0; }
-        .btn-sm { padding: 5px 12px; font-size: 12px; }
-        .btn-xs { padding: 2px 8px; font-size: 11px; }
+        .btn-action:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        .btn-primary {
+            background: #4C1D95;
+            color: white;
+        }
+        .btn-success {
+            background: #059669;
+            color: white;
+        }
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+        }
+        .btn-warning {
+            background: #f59e0b;
+            color: #0A3D62;
+        }
+        .btn-outline {
+            background: transparent;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        .btn-sm {
+            padding: 5px 12px;
+            font-size: 12px;
+        }
+        .btn-xs {
+            padding: 2px 8px;
+            font-size: 11px;
+        }
 
         /* ===== CARDS ===== */
         .cards {
@@ -182,15 +236,33 @@
             background: white;
             padding: 20px;
             border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
             border-top: 4px solid #4C1D95;
             transition: all 0.2s;
             cursor: pointer;
         }
-        .card:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.12); }
-        .card h3 { font-size: 12px; color: #64748b; margin: 0 0 8px 0; text-transform: uppercase; letter-spacing: 0.5px; }
-        .card .data { font-size: 28px; font-weight: 700; margin: 0; color: #0b1124; }
-        .card .minor-data { font-size: 12px; color: #94a3b8; margin: 4px 0 0 0; }
+        .card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+        }
+        .card h3 {
+            font-size: 12px;
+            color: #64748b;
+            margin: 0 0 8px 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        .card .data {
+            font-size: 28px;
+            font-weight: 700;
+            margin: 0;
+            color: #0b1124;
+        }
+        .card .minor-data {
+            font-size: 12px;
+            color: #94a3b8;
+            margin: 4px 0 0 0;
+        }
 
         /* ===== PAYROLL SUMMARY ===== */
         .payroll-summary-grid {
@@ -205,9 +277,19 @@
             border: 1px solid #e5e7eb;
             background: white;
         }
-        .payroll-summary-card .label { font-size: 12px; font-weight: 600; color: #475569; }
-        .payroll-summary-card .value { font-size: 22px; font-weight: 700; }
-        .payroll-summary-card .sub { font-size: 11px; color: #94a3b8; }
+        .payroll-summary-card .label {
+            font-size: 12px;
+            font-weight: 600;
+            color: #475569;
+        }
+        .payroll-summary-card .value {
+            font-size: 22px;
+            font-weight: 700;
+        }
+        .payroll-summary-card .sub {
+            font-size: 11px;
+            color: #94a3b8;
+        }
 
         /* ===== TABLES ===== */
         .table-container {
@@ -223,7 +305,10 @@
             align-items: center;
             margin-bottom: 15px;
         }
-        .table-header h4 { margin: 0; color: #0A3D62; }
+        .table-header h4 {
+            margin: 0;
+            color: #0A3D62;
+        }
         .modern-table {
             width: 100%;
             border-collapse: collapse;
@@ -236,12 +321,17 @@
             font-weight: 600;
             color: #475569;
             border-bottom: 2px solid #e5e7eb;
+            position: sticky;
+            top: 0;
+            z-index: 10;
         }
         .modern-table td {
             padding: 10px 12px;
             border-bottom: 1px solid #f1f5f9;
         }
-        .modern-table tr:hover td { background: #f8fafc; }
+        .modern-table tr:hover td {
+            background: #f8fafc;
+        }
 
         /* ===== FILTER BAR ===== */
         .filter-bar {
@@ -255,7 +345,8 @@
             flex-wrap: wrap;
             align-items: center;
         }
-        .filter-bar input, .filter-bar select {
+        .filter-bar input,
+        .filter-bar select {
             padding: 8px 14px;
             border-radius: 8px;
             border: 1px solid #e2e8f0;
@@ -263,9 +354,36 @@
             background: #f8fafc;
             min-width: 150px;
         }
-        .filter-bar input:focus, .filter-bar select:focus {
+        .filter-bar input:focus,
+        .filter-bar select:focus {
             border-color: #4C1D95;
             outline: none;
+        }
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 200px;
+        }
+        .search-box input {
+            width: 100%;
+            padding: 8px 14px 8px 36px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            font-size: 13px;
+            background: #f8fafc;
+            transition: all 0.3s;
+        }
+        .search-box input:focus {
+            border-color: #4C1D95;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(76, 29, 149, 0.1);
+        }
+        .search-box .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
         }
 
         /* ===== BADGES ===== */
@@ -276,23 +394,40 @@
             font-size: 11px;
             font-weight: 600;
         }
-        .badge-success { background: #d1fae5; color: #059669; }
-        .badge-warning { background: #fef3c7; color: #d97706; }
-        .badge-danger { background: #fee2e2; color: #dc2626; }
-        .badge-info { background: #dbeafe; color: #2563eb; }
+        .badge-success {
+            background: #d1fae5;
+            color: #059669;
+        }
+        .badge-warning {
+            background: #fef3c7;
+            color: #d97706;
+        }
+        .badge-danger {
+            background: #fee2e2;
+            color: #dc2626;
+        }
+        .badge-info {
+            background: #dbeafe;
+            color: #2563eb;
+        }
 
         /* ===== MODALS ===== */
         .modal-overlay {
             display: none;
             position: fixed;
-            top: 0; left: 0; right: 0; bottom: 0;
-            background: rgba(0,0,0,0.5);
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
             z-index: 99998;
             justify-content: center;
             align-items: center;
             backdrop-filter: blur(4px);
         }
-        .modal-overlay.active { display: flex; }
+        .modal-overlay.active {
+            display: flex;
+        }
         .modal-content {
             background: white;
             border-radius: 16px;
@@ -301,7 +436,7 @@
             width: 95%;
             max-height: 90vh;
             overflow-y: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
             position: relative;
         }
         .modal-close {
@@ -314,9 +449,13 @@
             color: #94a3b8;
             cursor: pointer;
         }
-        .modal-close:hover { color: #1e293b; }
+        .modal-close:hover {
+            color: #1e293b;
+        }
 
-        .finance-form-group { margin-bottom: 12px; }
+        .finance-form-group {
+            margin-bottom: 12px;
+        }
         .finance-form-group label {
             font-weight: 600;
             font-size: 13px;
@@ -334,7 +473,7 @@
         .form-control:focus {
             border-color: #4C1D95;
             outline: none;
-            box-shadow: 0 0 0 3px rgba(76,29,149,0.1);
+            box-shadow: 0 0 0 3px rgba(76, 29, 149, 0.1);
         }
 
         /* ===== TOAST ===== */
@@ -352,35 +491,126 @@
             border-radius: 10px;
             color: white;
             font-weight: 500;
-            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
             animation: slideIn 0.3s ease;
             max-width: 400px;
         }
-        .toast-success { background: #059669; }
-        .toast-error { background: #dc2626; }
-        .toast-warning { background: #f59e0b; color: #0A3D62; }
-        .toast-info { background: #3b82f6; }
+        .toast-success {
+            background: #059669;
+        }
+        .toast-error {
+            background: #dc2626;
+        }
+        .toast-warning {
+            background: #f59e0b;
+            color: #0A3D62;
+        }
+        .toast-info {
+            background: #3b82f6;
+        }
         @keyframes slideIn {
-            from { transform: translateX(20px); opacity: 0; }
-            to { transform: translateX(0); opacity: 1; }
+            from {
+                transform: translateX(20px);
+                opacity: 0;
+            }
+            to {
+                transform: translateX(0);
+                opacity: 1;
+            }
         }
 
         /* ===== RESPONSIVE ===== */
         @media (max-width: 768px) {
-            .finance-sidebar { transform: translateX(-100%); width: 280px; }
-            .finance-sidebar.open { transform: translateX(0); }
-            .finance-main { margin-left: 0; padding: 20px; }
-            .finance-mobile-toggle { display: block; }
-            .cards { grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); }
-            .filter-bar { flex-direction: column; align-items: stretch; }
-            .filter-bar input, .filter-bar select { min-width: 100%; }
-            .payroll-summary-grid { grid-template-columns: 1fr 1fr; }
+            .finance-sidebar {
+                transform: translateX(-100%);
+                width: 280px;
+            }
+            .finance-sidebar.open {
+                transform: translateX(0);
+            }
+            .finance-main {
+                margin-left: 0;
+                padding: 20px;
+            }
+            .finance-mobile-toggle {
+                display: block;
+            }
+            .cards {
+                grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            }
+            .filter-bar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+            .filter-bar input,
+            .filter-bar select {
+                min-width: 100%;
+            }
+            .payroll-summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .search-box {
+                min-width: 100%;
+            }
         }
         @media (max-width: 480px) {
-            .finance-main { padding: 14px; }
-            .cards { grid-template-columns: 1fr 1fr; }
-            .modal-content { padding: 20px; }
-            .payroll-summary-grid { grid-template-columns: 1fr 1fr; }
+            .finance-main {
+                padding: 14px;
+            }
+            .cards {
+                grid-template-columns: 1fr 1fr;
+            }
+            .modal-content {
+                padding: 20px;
+            }
+            .payroll-summary-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        /* ===== TABLE SCROLL ===== */
+        .table-scroll {
+            max-height: 500px;
+            overflow-y: auto;
+            position: relative;
+        }
+
+        /* ===== SEARCH HIGHLIGHT ===== */
+        .highlight {
+            background: #fef3c7;
+            padding: 0 2px;
+            border-radius: 2px;
+            font-weight: 600;
+        }
+
+        /* ===== QUICK STATS BAR ===== */
+        .quick-stats {
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            margin-bottom: 16px;
+            font-size: 13px;
+        }
+        .quick-stats span {
+            color: #475569;
+        }
+        .quick-stats strong {
+            color: #0A3D62;
+        }
+
+        /* ===== NO RESULTS ===== */
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #94a3b8;
+        }
+        .no-results i {
+            font-size: 48px;
+            display: block;
+            margin-bottom: 16px;
         }
     </style>
 </head>
@@ -425,7 +655,7 @@
                         <i class="fas fa-wallet"></i> Finance Dashboard
                     </h2>
                     <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
-                        <i class="fas fa-university"></i> NCHSM Financial Management &nbsp;|&nbsp; <i class="fas fa-clock"></i> 
+                        <i class="fas fa-university"></i> NCHSM Financial Management &nbsp;|&nbsp; <i class="fas fa-clock"></i>
                         <span id="currentDate"></span>
                     </p>
                 </div>
@@ -545,7 +775,7 @@
             </section>
 
             <!-- ============================================================ -->
-            <!-- TAB 2: STUDENT ACCOUNTS                                      -->
+            <!-- TAB 2: STUDENT ACCOUNTS (IMPROVED)                           -->
             <!-- ============================================================ -->
             <section id="tab-accounts" class="tab-content">
                 <div style="background: linear-gradient(135deg, #4C1D95, #6d28d9); border-radius: 12px; padding: 18px 24px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
@@ -563,11 +793,11 @@
                     </div>
                 </div>
 
-                <!-- Filter Bar -->
+                <!-- Improved Filter Bar with Quick Search -->
                 <div class="filter-bar">
                     <div class="search-box">
                         <i class="fas fa-search search-icon"></i>
-                        <input type="text" id="accountSearch" placeholder="🔍 Search by name, ID, program..." onkeyup="filterAccountsTable()">
+                        <input type="text" id="accountSearch" placeholder="🔍 Search by name, ID, or program..." onkeyup="filterAccountsTable()" autofocus>
                     </div>
                     <select id="accountStatusFilter" onchange="filterAccountsTable()">
                         <option value="all">All Status</option>
@@ -575,17 +805,38 @@
                         <option value="partial">⚠️ Partial</option>
                         <option value="outstanding">🔴 Outstanding</option>
                     </select>
+                    <select id="accountProgramFilter" onchange="filterAccountsTable()">
+                        <option value="all">All Programs</option>
+                    </select>
                     <button onclick="filterAccountsTable()" class="btn-action btn-primary btn-sm"><i class="fas fa-filter"></i> Apply</button>
                     <button onclick="resetAccountFilters()" class="btn-action btn-outline btn-sm"><i class="fas fa-undo"></i> Reset</button>
                     <span id="accountCount" style="font-size: 13px; color: #64748b; margin-left: auto;"></span>
                 </div>
 
-                <!-- Accounts Table -->
+                <!-- Quick Stats -->
+                <div class="quick-stats" id="accountQuickStats">
+                    <span>Total: <strong id="statTotal">0</strong></span>
+                    <span>✅ Paid: <strong id="statPaid">0</strong></span>
+                    <span>⚠️ Partial: <strong id="statPartial">0</strong></span>
+                    <span>🔴 Outstanding: <strong id="statOutstanding">0</strong></span>
+                </div>
+
+                <!-- Accounts Table with Scroll -->
                 <div class="table-container">
-                    <div style="overflow-x: auto;">
+                    <div class="table-scroll">
                         <table class="modern-table">
                             <thead>
-                                <tr><th>Student Name</th><th>Student ID</th><th>Program</th><th>Intake</th><th>Total Fees Due</th><th>Total Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr>
+                                <tr>
+                                    <th>Student Name</th>
+                                    <th>Student ID</th>
+                                    <th>Program</th>
+                                    <th>Intake</th>
+                                    <th>Total Fees Due</th>
+                                    <th>Total Paid</th>
+                                    <th>Balance</th>
+                                    <th>Status</th>
+                                    <th>Actions</th>
+                                </tr>
                             </thead>
                             <tbody id="accountsTableBody">
                                 <tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;"><div class="loading-spinner"></div><p style="margin-top:10px;">Loading accounts...</p></td></tr>
@@ -615,23 +866,23 @@
                 </div>
 
                 <!-- Payment Summary -->
-                <div class="payment-summary-grid">
-                    <div class="payment-summary-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-color: #86efac;">
+                <div class="payroll-summary-grid">
+                    <div class="payroll-summary-card" style="background: linear-gradient(135deg, #d1fae5, #a7f3d0); border-color: #86efac;">
                         <div class="label" style="color: #065f46;">Today</div>
                         <div class="value" style="color: #065f46;" id="todayPaymentSummary">KES 0</div>
                         <div class="sub" style="color: #047858;"><span id="todayPaymentCount">0</span> transactions</div>
                     </div>
-                    <div class="payment-summary-card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-color: #93c5fd;">
+                    <div class="payroll-summary-card" style="background: linear-gradient(135deg, #dbeafe, #bfdbfe); border-color: #93c5fd;">
                         <div class="label" style="color: #1e40af;">This Week</div>
                         <div class="value" style="color: #1e40af;" id="weekPaymentSummary">KES 0</div>
                         <div class="sub" style="color: #1e40af;"><span id="weekPaymentCount">0</span> transactions</div>
                     </div>
-                    <div class="payment-summary-card" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); border-color: #f9a8d4;">
+                    <div class="payroll-summary-card" style="background: linear-gradient(135deg, #fce7f3, #fbcfe8); border-color: #f9a8d4;">
                         <div class="label" style="color: #9d174d;">This Month</div>
                         <div class="value" style="color: #9d174d;" id="monthPaymentSummary">KES 0</div>
                         <div class="sub" style="color: #9d174d;"><span id="monthPaymentCount">0</span> transactions</div>
                     </div>
-                    <div class="payment-summary-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #f59e0b;">
+                    <div class="payroll-summary-card" style="background: linear-gradient(135deg, #fef3c7, #fde68a); border-color: #f59e0b;">
                         <div class="label" style="color: #92400e;">Pending</div>
                         <div class="value" style="color: #92400e;" id="pendingPaymentSummary">KES 0</div>
                         <div class="sub" style="color: #92400e;"><span id="pendingPaymentCount">0</span> awaiting approval</div>
@@ -903,25 +1154,27 @@
     <!-- ============================================================ -->
     <!-- ===== MODALS ===== -->
     <!-- ============================================================ -->
- <!-- ===== FEE STRUCTURE MODAL ===== -->
+
+    <!-- ===== FEE STRUCTURE MODAL ===== -->
     <div id="feeStructureModal" class="modal-overlay">
         <div class="modal-content" style="max-width:900px;">
             <button class="modal-close" onclick="closeFeeStructureModal()">&times;</button>
             <h3 style="color:#0A3D62;margin-bottom:16px;" id="feeModalTitle"><i class="fas fa-plus-circle"></i> Add Fee Structure</h3>
             <form id="feeStructureForm" onsubmit="event.preventDefault(); saveFeeStructureFull();">
                 <input type="hidden" id="feeStructureId">
+                <!-- Form fields (kept from original) -->
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
-                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Program Name *</label><input type="text" id="fee_program_name" class="form-control" placeholder="e.g., KRCHN Nursing" required></div>
-                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Program Code</label><input type="text" id="fee_program_code" class="form-control" placeholder="e.g., KRCHN"></div>
-                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Level</label><select id="fee_level" class="form-control"><option value="Certificate">Certificate</option><option value="Diploma">Diploma</option><option value="Degree">Degree</option><option value="Artisan">Artisan</option></select></div>
+                    <div class="finance-form-group"><label>Program Name *</label><input type="text" id="fee_program_name" class="form-control" placeholder="e.g., KRCHN Nursing" required></div>
+                    <div class="finance-form-group"><label>Program Code</label><input type="text" id="fee_program_code" class="form-control" placeholder="e.g., KRCHN"></div>
+                    <div class="finance-form-group"><label>Level</label><select id="fee_level" class="form-control"><option value="Certificate">Certificate</option><option value="Diploma">Diploma</option><option value="Degree">Degree</option><option value="Artisan">Artisan</option></select></div>
                 </div>
                 <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;margin-bottom:16px;">
-                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Duration</label><input type="text" id="fee_duration" class="form-control" placeholder="e.g., 4 Modules"></div>
-                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Mode</label><select id="fee_mode" class="form-control"><option value="Physical">Physical</option><option value="Online">Online</option><option value="Physical/Online">Physical/Online</option></select></div>
-                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Block / Term *</label><input type="text" id="fee_block_term" class="form-control" placeholder="e.g., Term 1, Block 1" required></div>
-                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Intake Year</label><select id="fee_intake_year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option><option value="2028">2028</option></select></div>
+                    <div class="finance-form-group"><label>Duration</label><input type="text" id="fee_duration" class="form-control" placeholder="e.g., 4 Modules"></div>
+                    <div class="finance-form-group"><label>Mode</label><select id="fee_mode" class="form-control"><option value="Physical">Physical</option><option value="Online">Online</option><option value="Physical/Online">Physical/Online</option></select></div>
+                    <div class="finance-form-group"><label>Block / Term *</label><input type="text" id="fee_block_term" class="form-control" placeholder="e.g., Term 1, Block 1" required></div>
+                    <div class="finance-form-group"><label>Intake Year</label><select id="fee_intake_year" class="form-control"><option value="2024">2024</option><option value="2025">2025</option><option value="2026" selected>2026</option><option value="2027">2027</option><option value="2028">2028</option></select></div>
                 </div>
-                
+
                 <!-- Fee Components -->
                 <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid #e5e7eb;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -950,24 +1203,24 @@
                         <span id="feeTotalPreview" style="font-size:18px;font-weight:700;color:#059669;">KES 0</span>
                     </div>
                 </div>
-                
+
                 <!-- Hostel & Optional Fees -->
                 <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
-                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Hostel Fee (Optional)</label><input type="number" id="fee_hostel" class="form-control" placeholder="0" value="18000"></div>
-                    <div class="finance-form-group"><label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Status</label><select id="fee_status" class="form-control"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
+                    <div class="finance-form-group"><label>Hostel Fee (Optional)</label><input type="number" id="fee_hostel" class="form-control" placeholder="0" value="18000"></div>
+                    <div class="finance-form-group"><label>Status</label><select id="fee_status" class="form-control"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
                 </div>
-                
+
                 <!-- Payment Info -->
                 <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid #e5e7eb;">
                     <h4 style="margin:0 0 12px 0;color:#0A3D62;font-size:15px;"><i class="fas fa-credit-card"></i> Payment Information</h4>
                     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                        <div class="finance-form-group"><label style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">M-Pesa Paybill</label><input type="text" id="fee_mpesa" class="form-control" value="BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo"></div>
-                        <div class="finance-form-group"><label style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">Bank Details</label><input type="text" id="fee_bank" class="form-control" value="Equity Bank | Branch: Nakuru | A/C: 0130200214036"></div>
-                        <div class="finance-form-group"><label style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">Email</label><input type="email" id="fee_email" class="form-control" value="nchsmfinance@gmail.com"></div>
-                        <div class="finance-form-group"><label style="font-weight:600;font-size:12px;color:#475569;display:block;margin-bottom:4px;">WhatsApp</label><input type="text" id="fee_whatsapp" class="form-control" value="+254 103614355 | +254 703345771"></div>
+                        <div class="finance-form-group"><label>M-Pesa Paybill</label><input type="text" id="fee_mpesa" class="form-control" value="BUSINESS NO: 247247 | ACCOUNT: 219337#AdmNo"></div>
+                        <div class="finance-form-group"><label>Bank Details</label><input type="text" id="fee_bank" class="form-control" value="Equity Bank | Branch: Nakuru | A/C: 0130200214036"></div>
+                        <div class="finance-form-group"><label>Email</label><input type="email" id="fee_email" class="form-control" value="nchsmfinance@gmail.com"></div>
+                        <div class="finance-form-group"><label>WhatsApp</label><input type="text" id="fee_whatsapp" class="form-control" value="+254 103614355 | +254 703345771"></div>
                     </div>
                 </div>
-                
+
                 <!-- Terms -->
                 <div style="background:#f8fafc;border-radius:8px;padding:16px;margin-bottom:16px;border:1px solid #e5e7eb;">
                     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
@@ -985,7 +1238,7 @@
                         </div>
                     </div>
                 </div>
-                
+
                 <div style="display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
                     <button type="button" onclick="closeFeeStructureModal()" class="btn-action btn-outline">Cancel</button>
                     <button type="submit" class="btn-action btn-primary"><i class="fas fa-save"></i> Save Fee Structure</button>
@@ -993,7 +1246,8 @@
             </form>
         </div>
     </div>
- <!-- Student Account Modal -->
+
+    <!-- ===== STUDENT ACCOUNT MODAL ===== -->
     <div id="studentAccountModal" class="modal-overlay">
         <div class="modal-content" style="max-width:800px;">
             <button class="modal-close" onclick="closeModal('studentAccountModal')">&times;</button>
@@ -1004,6 +1258,7 @@
             </div>
         </div>
     </div>
+
     <!-- ===== PAYMENT MODAL ===== -->
     <div id="paymentModal" class="modal-overlay">
         <div class="modal-content payment-modal-content">
@@ -1143,6 +1398,7 @@
         </div>
     </div>
 
+    <!-- ===== JAVASCRIPT ===== -->
     <script>
         // ============================================================
         // SUPABASE CONFIGURATION
@@ -1151,6 +1407,12 @@
         const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
 
         let sbClient = null;
+        let allStudents = [];
+        let allPayments = [];
+        let allTransactions = [];
+        let allFeeStructures = [];
+        let staffData = [];
+        let filteredStudents = [];
 
         function initSupabase() {
             if (typeof window.supabase !== 'undefined' && window.supabase.createClient) {
@@ -1164,20 +1426,11 @@
         }
 
         // ============================================================
-        // GLOBAL STATE
-        // ============================================================
-        let staffData = [];
-        let allStudents = [];
-        let allPayments = [];
-        let allTransactions = [];
-        let allFeeStructures = [];
-        let currentUser = null;
-
-        // ============================================================
         // UTILITY FUNCTIONS
         // ============================================================
         function formatCurrency(amount) {
-            return 'KES ' + Number(amount || 0).toLocaleString('en-KE', { minimumFractionDigits: 0, maximumFractionDigits: 0 });
+            return 'KES ' + Number(amount || 0).toLocaleString('en-KE', { minimumFractionDigits: 0,
+                maximumFractionDigits: 0 });
         }
 
         function formatDate(date) {
@@ -1236,16 +1489,29 @@
                 link.classList.remove('active');
                 if (link.getAttribute('data-tab') === tabId) link.classList.add('active');
             });
-            // Load data for tab
             setTimeout(() => {
-                switch(tabId) {
-                    case 'dashboard': loadDashboardData(); break;
-                    case 'accounts': loadAllStudentAccounts(); break;
-                    case 'payments': loadAllPayments(); break;
-                    case 'fee-structure': loadFeeStructures(); break;
-                    case 'payroll': loadStaffData(); break;
-                    case 'transactions': loadAllTransactions(); break;
-                    case 'settings': loadAuditLog(); break;
+                switch (tabId) {
+                    case 'dashboard':
+                        loadDashboardData();
+                        break;
+                    case 'accounts':
+                        loadAllStudentAccounts();
+                        break;
+                    case 'payments':
+                        loadAllPayments();
+                        break;
+                    case 'fee-structure':
+                        loadFeeStructures();
+                        break;
+                    case 'payroll':
+                        loadStaffData();
+                        break;
+                    case 'transactions':
+                        loadAllTransactions();
+                        break;
+                    case 'settings':
+                        loadAuditLog();
+                        break;
                 }
             }, 300);
         };
@@ -1255,9 +1521,8 @@
         // ============================================================
         async function loadDashboardData() {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
-                
-                // Get total students
+                if (!sbClient) { if (!initSupabase()) return; }
+
                 const { count: totalStudents } = await sbClient
                     .from('consolidated_user_profiles_table')
                     .select('*', { count: 'exact', head: true })
@@ -1265,43 +1530,40 @@
                 document.getElementById('totalStudents').textContent = totalStudents || 0;
                 document.getElementById('accountsBadge').textContent = totalStudents || 0;
 
-                // Get payments
                 const { data: payments } = await sbClient
                     .from('finance_payments')
                     .select('amount, payment_date, status, student_name, program, payment_method')
                     .order('payment_date', { ascending: false });
 
                 if (payments) {
-                    const totalCollected = payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + (p.amount || 0), 0);
+                    const totalCollected = payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + (p
+                        .amount || 0), 0);
                     document.getElementById('totalCollected').textContent = formatCurrency(totalCollected);
 
-                    // Today's payments
                     const today = new Date().toISOString().split('T')[0];
                     const todayPayments = payments.filter(p => p.payment_date === today && p.status === 'completed');
                     const todayTotal = todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0);
                     document.getElementById('todayPayments').textContent = formatCurrency(todayTotal);
-
                     document.getElementById('totalTransactions').textContent = payments.length;
 
-                    // Recent transactions
                     const recentTbody = document.getElementById('recentTransactions');
                     if (payments.length === 0) {
-                        recentTbody.innerHTML = `<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">No transactions found</td></tr>`;
+                        recentTbody.innerHTML =
+                            `<tr><td colspan="6" style="text-align:center;padding:30px;color:#94a3b8;">No transactions found</td></tr>`;
                     } else {
                         recentTbody.innerHTML = payments.slice(0, 10).map(p => `
-                            <tr>
-                                <td>${formatDate(p.payment_date)}</td>
-                                <td><strong>${p.student_name || 'N/A'}</strong></td>
-                                <td>${p.program || '-'}</td>
-                                <td><strong>${formatCurrency(p.amount)}</strong></td>
-                                <td>${p.payment_method || '-'}</td>
-                                <td><span class="badge ${p.status === 'completed' ? 'badge-success' : p.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${p.status || 'Pending'}</span></td>
-                            </tr>
-                        `).join('');
+                                <tr>
+                                    <td>${formatDate(p.payment_date)}</td>
+                                    <td><strong>${p.student_name || 'N/A'}</strong></td>
+                                    <td>${p.program || '-'}</td>
+                                    <td><strong>${formatCurrency(p.amount)}</strong></td>
+                                    <td>${p.payment_method || '-'}</td>
+                                    <td><span class="badge ${p.status === 'completed' ? 'badge-success' : p.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${p.status || 'Pending'}</span></td>
+                                </tr>
+                            `).join('');
                     }
                 }
 
-                // Get outstanding balance
                 const { data: accounts } = await sbClient
                     .from('finance_student_accounts')
                     .select('balance')
@@ -1313,16 +1575,13 @@
                     document.getElementById('dashboardBadge').textContent = accounts.length || 0;
                 }
 
-                // Load charts
                 loadCharts(payments || []);
-
             } catch (error) {
                 console.error('Error loading dashboard:', error);
             }
         }
 
         function loadCharts(payments) {
-            // Monthly chart
             const monthlyCtx = document.getElementById('monthlyCollectionsChart');
             if (monthlyCtx) {
                 if (window.monthlyChart) window.monthlyChart.destroy();
@@ -1352,12 +1611,12 @@
                         responsive: true,
                         maintainAspectRatio: true,
                         plugins: { legend: { display: false } },
-                        scales: { y: { beginAtZero: true, ticks: { callback: v => 'KES ' + (v/1000).toFixed(0) + 'k' } } }
+                        scales: { y: { beginAtZero: true, ticks: { callback: v => 'KES ' + (v / 1000)
+                                    .toFixed(0) + 'k' } } }
                     }
                 });
             }
 
-            // Status chart
             const statusCtx = document.getElementById('paymentStatusChart');
             if (statusCtx) {
                 if (window.statusChart) window.statusChart.destroy();
@@ -1376,7 +1635,9 @@
                     options: {
                         responsive: true,
                         maintainAspectRatio: true,
-                        plugins: { legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true } } },
+                        plugins: {
+                            legend: { position: 'bottom', labels: { padding: 15, usePointStyle: true } }
+                        },
                         cutout: '60%'
                     }
                 });
@@ -1384,12 +1645,196 @@
         }
 
         // ============================================================
-        // STAFF MANAGEMENT (SUPABASE)
+        // STUDENT ACCOUNTS (FAST SEARCH)
+        // ============================================================
+        async function loadAllStudentAccounts() {
+            try {
+                if (!sbClient) { if (!initSupabase()) return; }
+
+                showToast('Loading students...', 'info');
+
+                const { data, error } = await sbClient
+                    .from('consolidated_user_profiles_table')
+                    .select('*')
+                    .eq('role', 'student')
+                    .order('full_name', { ascending: true });
+
+                if (error) throw error;
+
+                allStudents = (data || []).map(s => ({
+                    ...s,
+                    student_id_display: s.student_id || s.user_id,
+                    student_name: s.full_name,
+                    student_id: s.user_id,
+                    display_id: s.student_id || s.user_id,
+                    balance: 0,
+                    total_fees_due: 0,
+                    total_paid: 0,
+                    payment_status: 'active'
+                }));
+
+                // Populate program filter
+                populateProgramFilter(allStudents);
+
+                renderAccountsTable(allStudents);
+                updateQuickStats(allStudents);
+                document.getElementById('accountCount').textContent = `${allStudents.length} students`;
+
+                // Update dashboard
+                document.getElementById('totalStudents').textContent = allStudents.length;
+                document.getElementById('accountsBadge').textContent = allStudents.length;
+
+                showToast(`✅ ${allStudents.length} students loaded`, 'success');
+
+            } catch (error) {
+                console.error('Error loading accounts:', error);
+                showToast('Error loading accounts', 'error');
+            }
+        }
+
+        function populateProgramFilter(students) {
+            const programs = [...new Set(students.map(s => s.program).filter(p => p))];
+            const select = document.getElementById('accountProgramFilter');
+            select.innerHTML = '<option value="all">All Programs</option>';
+            programs.sort().forEach(p => {
+                const option = document.createElement('option');
+                option.value = p;
+                option.textContent = p;
+                select.appendChild(option);
+            });
+        }
+
+        function renderAccountsTable(accounts) {
+            const tbody = document.getElementById('accountsTableBody');
+            if (!accounts || accounts.length === 0) {
+                tbody.innerHTML = `
+                        <tr>
+                            <td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">
+                                <i class="fas fa-info-circle" style="font-size:24px;display:block;margin-bottom:10px;"></i>
+                                No student accounts found
+                            </td>
+                        </tr>
+                    `;
+                return;
+            }
+
+            const searchTerm = document.getElementById('accountSearch').value.toLowerCase().trim();
+
+            tbody.innerHTML = accounts.map(acc => {
+                const balance = parseFloat(acc.balance) || 0;
+                const status = balance === 0 ? 'paid' : balance > 0 && balance <= 10000 ? 'partial' : 'outstanding';
+                const statusLabel = status === 'paid' ? '✅ Paid' : status === 'partial' ? '⚠️ Partial' :
+                    '🔴 Outstanding';
+                const statusClass = status === 'paid' ? 'badge-success' : status === 'partial' ? 'badge-warning' :
+                    'badge-danger';
+
+                const displayId = acc.display_id || acc.student_id_display || acc.student_id || '-';
+                const studentName = acc.full_name || acc.student_name || 'N/A';
+
+                // Highlight search term
+                let highlightedName = studentName;
+                let highlightedId = displayId;
+                if (searchTerm) {
+                    const regex = new RegExp(`(${searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi');
+                    highlightedName = studentName.replace(regex, '<span class="highlight">$1</span>');
+                    highlightedId = displayId.replace(regex, '<span class="highlight">$1</span>');
+                }
+
+                return `
+                        <tr>
+                            <td><strong>${highlightedName}</strong></td>
+                            <td>${highlightedId}</td>
+                            <td>${acc.program || '-'}</td>
+                            <td>${acc.intake_year || '-'}</td>
+                            <td>${formatCurrency(acc.total_fees_due)}</td>
+                            <td>${formatCurrency(acc.total_paid)}</td>
+                            <td><strong>${formatCurrency(balance)}</strong></td>
+                            <td><span class="badge ${statusClass}">${statusLabel}</span></td>
+                            <td>
+                                <button onclick="openPaymentModal('${acc.student_id}')" class="btn-action btn-success btn-xs" style="padding:2px 8px;font-size:11px;" title="Record Payment">
+                                    <i class="fas fa-plus"></i>
+                                </button>
+                                <button onclick="viewStudentAccount('${acc.student_id}')" class="btn-action btn-primary btn-xs" style="padding:2px 8px;font-size:11px;" title="View Details">
+                                    <i class="fas fa-eye"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `;
+            }).join('');
+        }
+
+        function updateQuickStats(students) {
+            const total = students.length;
+            const paid = students.filter(s => (parseFloat(s.balance) || 0) === 0).length;
+            const partial = students.filter(s => {
+                const b = parseFloat(s.balance) || 0;
+                return b > 0 && b <= 10000;
+            }).length;
+            const outstanding = students.filter(s => (parseFloat(s.balance) || 0) > 10000).length;
+
+            document.getElementById('statTotal').textContent = total;
+            document.getElementById('statPaid').textContent = paid;
+            document.getElementById('statPartial').textContent = partial;
+            document.getElementById('statOutstanding').textContent = outstanding;
+        }
+
+        function filterAccountsTable() {
+            const search = document.getElementById('accountSearch').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('accountStatusFilter').value;
+            const programFilter = document.getElementById('accountProgramFilter').value;
+
+            let filtered = allStudents;
+
+            // Fast search - check multiple fields
+            if (search) {
+                filtered = filtered.filter(s => {
+                    const name = (s.full_name || s.student_name || '').toLowerCase();
+                    const id = (s.display_id || s.student_id_display || s.student_id || '').toLowerCase();
+                    const program = (s.program || '').toLowerCase();
+                    const email = (s.email || '').toLowerCase();
+                    return name.includes(search) || id.includes(search) || program.includes(search) || email
+                    .includes(search);
+                });
+            }
+
+            // Status filter
+            if (statusFilter !== 'all') {
+                filtered = filtered.filter(s => {
+                    const balance = parseFloat(s.balance) || 0;
+                    if (statusFilter === 'paid') return balance === 0;
+                    if (statusFilter === 'partial') return balance > 0 && balance <= 10000;
+                    if (statusFilter === 'outstanding') return balance > 10000;
+                    return true;
+                });
+            }
+
+            // Program filter
+            if (programFilter !== 'all') {
+                filtered = filtered.filter(s => (s.program || '') === programFilter);
+            }
+
+            renderAccountsTable(filtered);
+            document.getElementById('accountCount').textContent = `${filtered.length} students (filtered)`;
+            updateQuickStats(filtered);
+        }
+
+        function resetAccountFilters() {
+            document.getElementById('accountSearch').value = '';
+            document.getElementById('accountStatusFilter').value = 'all';
+            document.getElementById('accountProgramFilter').value = 'all';
+            renderAccountsTable(allStudents);
+            document.getElementById('accountCount').textContent = `${allStudents.length} students`;
+            updateQuickStats(allStudents);
+            showToast('Filters reset!', 'info');
+        }
+
+        // ============================================================
+        // STAFF MANAGEMENT
         // ============================================================
         async function loadStaffData() {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
-                
+                if (!sbClient) { if (!initSupabase()) return; }
+
                 const { data, error } = await sbClient
                     .from('finance_staff')
                     .select('*')
@@ -1409,25 +1854,26 @@
         function renderStaffTable() {
             const tbody = document.getElementById('staffTableBody');
             if (staffData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No staff records found. Click "Add Staff" to get started.</td></tr>`;
+                tbody.innerHTML =
+                    `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No staff records found. Click "Add Staff" to get started.</td></tr>`;
                 return;
             }
             tbody.innerHTML = staffData.map(s => `
-                <tr>
-                    <td><strong>${s.staff_id || '-'}</strong></td>
-                    <td>${s.full_name || 'N/A'}</td>
-                    <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
-                    <td>${s.position || '-'}</td>
-                    <td>${formatCurrency(s.basic_salary)}</td>
-                    <td>${formatCurrency(s.allowances)}</td>
-                    <td><strong>${formatCurrency(s.total_pay)}</strong></td>
-                    <td><span class="badge ${s.status === 'active' ? 'badge-success' : s.status === 'on leave' ? 'badge-warning' : 'badge-danger'}">${s.status || 'Active'}</span></td>
-                    <td>
-                        <button onclick="editStaffMember('${s.id}')" class="btn-action btn-primary btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteStaffMember('${s.id}')" class="btn-action btn-danger btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>
-            `).join('');
+                    <tr>
+                        <td><strong>${s.staff_id || '-'}</strong></td>
+                        <td>${s.full_name || 'N/A'}</td>
+                        <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
+                        <td>${s.position || '-'}</td>
+                        <td>${formatCurrency(s.basic_salary)}</td>
+                        <td>${formatCurrency(s.allowances)}</td>
+                        <td><strong>${formatCurrency(s.total_pay)}</strong></td>
+                        <td><span class="badge ${s.status === 'active' ? 'badge-success' : s.status === 'on leave' ? 'badge-warning' : 'badge-danger'}">${s.status || 'Active'}</span></td>
+                        <td>
+                            <button onclick="editStaffMember('${s.id}')" class="btn-action btn-primary btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteStaffMember('${s.id}')" class="btn-action btn-danger btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
         }
 
         function filterStaffTable() {
@@ -1436,9 +1882,9 @@
             const status = document.getElementById('staffStatusFilter').value;
 
             let filtered = staffData.filter(s => {
-                const matchSearch = (s.full_name || '').toLowerCase().includes(search) || 
-                                   (s.staff_id || '').toLowerCase().includes(search) || 
-                                   (s.position || '').toLowerCase().includes(search);
+                const matchSearch = (s.full_name || '').toLowerCase().includes(search) ||
+                    (s.staff_id || '').toLowerCase().includes(search) ||
+                    (s.position || '').toLowerCase().includes(search);
                 const matchDept = dept === 'all' || s.department === dept;
                 const matchStatus = status === 'all' || s.status === status;
                 return matchSearch && matchDept && matchStatus;
@@ -1446,25 +1892,26 @@
 
             const tbody = document.getElementById('staffTableBody');
             if (filtered.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No staff match your filters.</td></tr>`;
+                tbody.innerHTML =
+                    `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No staff match your filters.</td></tr>`;
                 return;
             }
             tbody.innerHTML = filtered.map(s => `
-                <tr>
-                    <td><strong>${s.staff_id || '-'}</strong></td>
-                    <td>${s.full_name || 'N/A'}</td>
-                    <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
-                    <td>${s.position || '-'}</td>
-                    <td>${formatCurrency(s.basic_salary)}</td>
-                    <td>${formatCurrency(s.allowances)}</td>
-                    <td><strong>${formatCurrency(s.total_pay)}</strong></td>
-                    <td><span class="badge ${s.status === 'active' ? 'badge-success' : s.status === 'on leave' ? 'badge-warning' : 'badge-danger'}">${s.status || 'Active'}</span></td>
-                    <td>
-                        <button onclick="editStaffMember('${s.id}')" class="btn-action btn-primary btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-edit"></i></button>
-                        <button onclick="deleteStaffMember('${s.id}')" class="btn-action btn-danger btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>
-            `).join('');
+                    <tr>
+                        <td><strong>${s.staff_id || '-'}</strong></td>
+                        <td>${s.full_name || 'N/A'}</td>
+                        <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
+                        <td>${s.position || '-'}</td>
+                        <td>${formatCurrency(s.basic_salary)}</td>
+                        <td>${formatCurrency(s.allowances)}</td>
+                        <td><strong>${formatCurrency(s.total_pay)}</strong></td>
+                        <td><span class="badge ${s.status === 'active' ? 'badge-success' : s.status === 'on leave' ? 'badge-warning' : 'badge-danger'}">${s.status || 'Active'}</span></td>
+                        <td>
+                            <button onclick="editStaffMember('${s.id}')" class="btn-action btn-primary btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-edit"></i></button>
+                            <button onclick="deleteStaffMember('${s.id}')" class="btn-action btn-danger btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
             document.getElementById('staffCount').textContent = `${filtered.length} staff members (filtered)`;
         }
 
@@ -1485,7 +1932,8 @@
             document.getElementById('totalStaffCount').textContent = staffData.length;
             document.getElementById('monthlyPayrollTotal').textContent = formatCurrency(total);
             document.getElementById('payrollStaffCount').textContent = `${active.length} active staff`;
-            document.getElementById('pendingPayrollCount').textContent = formatCurrency(pending.reduce((sum, s) => sum + (s.total_pay || 0), 0));
+            document.getElementById('pendingPayrollCount').textContent = formatCurrency(pending.reduce((sum, s) => sum + (s
+                .total_pay || 0), 0));
             document.getElementById('pendingPayrollStaff').textContent = `${pending.length} pending`;
             document.getElementById('avgSalary').textContent = formatCurrency(avg);
         }
@@ -1496,13 +1944,14 @@
         function openAddStaffModal() {
             document.getElementById('addStaffModal').classList.add('active');
             document.getElementById('addStaffForm').reset();
-            document.getElementById('staffId').value = 'STF-' + String(Math.floor(Math.random() * 10000)).padStart(4, '0');
+            document.getElementById('staffId').value = 'STF-' + String(Math.floor(Math.random() * 10000)).padStart(4,
+            '0');
             document.getElementById('addStaffForm').dataset.editId = '';
         }
 
         async function saveStaffToDatabase() {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
+                if (!sbClient) { if (!initSupabase()) return; }
 
                 const editId = document.getElementById('addStaffForm').dataset.editId;
                 const data = {
@@ -1525,7 +1974,6 @@
                 data.total_pay = data.basic_salary + data.allowances;
 
                 if (editId) {
-                    // Update
                     const { error } = await sbClient
                         .from('finance_staff')
                         .update({
@@ -1546,7 +1994,6 @@
                     if (error) throw error;
                     showToast('Staff updated successfully!', 'success');
                 } else {
-                    // Add new
                     const { error } = await sbClient
                         .from('finance_staff')
                         .insert([{
@@ -1570,7 +2017,6 @@
 
                 closeModal('addStaffModal');
                 await loadStaffData();
-
             } catch (error) {
                 console.error('Error saving staff:', error);
                 showToast('Error saving staff: ' + error.message, 'error');
@@ -1579,8 +2025,8 @@
 
         async function editStaffMember(id) {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
-                
+                if (!sbClient) { if (!initSupabase()) return; }
+
                 const { data, error } = await sbClient
                     .from('finance_staff')
                     .select('*')
@@ -1602,7 +2048,6 @@
                 document.getElementById('addStaffForm').dataset.editId = id;
                 document.getElementById('addStaffModal').classList.add('active');
                 document.querySelector('#addStaffModal h3').textContent = 'Edit Staff Member';
-
             } catch (error) {
                 console.error('Error loading staff for edit:', error);
                 showToast('Error loading staff data', 'error');
@@ -1613,7 +2058,7 @@
             if (!confirm('Are you sure you want to delete this staff member? This action cannot be undone.')) return;
 
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
+                if (!sbClient) { if (!initSupabase()) return; }
 
                 const { error } = await sbClient
                     .from('finance_staff')
@@ -1624,7 +2069,6 @@
 
                 showToast('Staff member deleted successfully', 'success');
                 await loadStaffData();
-
             } catch (error) {
                 console.error('Error deleting staff:', error);
                 showToast('Error deleting staff member', 'error');
@@ -1636,14 +2080,13 @@
         // ============================================================
         async function processPayrollAction() {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
+                if (!sbClient) { if (!initSupabase()) return; }
 
                 if (!confirm('Process payroll for all active staff for this month?')) return;
 
                 const currentMonth = new Date().toISOString().slice(0, 7);
                 showToast('Processing payroll...', 'info');
 
-                // Get active staff
                 const { data: staff, error: staffError } = await sbClient
                     .from('finance_staff')
                     .select('*')
@@ -1656,7 +2099,6 @@
                     return;
                 }
 
-                // Check for existing payroll
                 const { data: existing, error: existingError } = await sbClient
                     .from('finance_payroll_records')
                     .select('staff_id')
@@ -1695,7 +2137,6 @@
 
                 showToast(`Payroll processed for ${newRecords.length} staff members`, 'success');
                 await loadStaffData();
-
             } catch (error) {
                 console.error('Error processing payroll:', error);
                 showToast('Error processing payroll: ' + error.message, 'error');
@@ -1703,92 +2144,11 @@
         }
 
         // ============================================================
-        // STUDENT ACCOUNTS
-        // ============================================================
-        async function loadAllStudentAccounts() {
-            try {
-                if (!sbClient) { if(!initSupabase()) return; }
-
-                const { data, error } = await sbClient
-                    .from('finance_student_accounts')
-                    .select('*')
-                    .order('student_name', { ascending: true });
-
-                if (error) throw error;
-
-                allStudents = data || [];
-                renderAccountsTable(allStudents);
-                document.getElementById('accountCount').textContent = `${allStudents.length} students`;
-
-            } catch (error) {
-                console.error('Error loading accounts:', error);
-                showToast('Error loading accounts', 'error');
-            }
-        }
-
-        function renderAccountsTable(accounts) {
-            const tbody = document.getElementById('accountsTableBody');
-            if (!accounts || accounts.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No student accounts found</td></tr>`;
-                return;
-            }
-            tbody.innerHTML = accounts.map(acc => {
-                const balance = parseFloat(acc.balance) || 0;
-                const status = balance === 0 ? 'paid' : balance > 0 && balance <= 10000 ? 'partial' : 'outstanding';
-                const statusLabel = status === 'paid' ? '✅ Paid' : status === 'partial' ? '⚠️ Partial' : '🔴 Outstanding';
-                const statusClass = status === 'paid' ? 'badge-success' : status === 'partial' ? 'badge-warning' : 'badge-danger';
-                return `
-                    <tr>
-                        <td><strong>${acc.student_name || 'N/A'}</strong></td>
-                        <td>${acc.student_id || '-'}</td>
-                        <td>${acc.program || '-'}</td>
-                        <td>${acc.intake_year || '-'}</td>
-                        <td>${formatCurrency(acc.total_fees_due)}</td>
-                        <td>${formatCurrency(acc.total_paid)}</td>
-                        <td><strong>${formatCurrency(balance)}</strong></td>
-                        <td><span class="badge ${statusClass}">${statusLabel}</span></td>
-                        <td>
-                            <button onclick="openPaymentModal('${acc.student_id}')" class="btn-action btn-success btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-plus"></i></button>
-                            <button onclick="viewStudentAccount('${acc.student_id}')" class="btn-action btn-primary btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-eye"></i></button>
-                        </td>
-                    </tr>
-                `;
-            }).join('');
-        }
-
-        function filterAccountsTable() {
-            const search = document.getElementById('accountSearch').value.toLowerCase();
-            const status = document.getElementById('accountStatusFilter').value;
-
-            let filtered = allStudents.filter(s => {
-                const matchSearch = (s.student_name || '').toLowerCase().includes(search) || 
-                                   (s.student_id || '').toLowerCase().includes(search) ||
-                                   (s.program || '').toLowerCase().includes(search);
-                const balance = parseFloat(s.balance) || 0;
-                let matchStatus = true;
-                if (status === 'paid') matchStatus = balance === 0;
-                else if (status === 'partial') matchStatus = balance > 0 && balance <= 10000;
-                else if (status === 'outstanding') matchStatus = balance > 10000;
-                return matchSearch && matchStatus;
-            });
-
-            renderAccountsTable(filtered);
-            document.getElementById('accountCount').textContent = `${filtered.length} students (filtered)`;
-        }
-
-        function resetAccountFilters() {
-            document.getElementById('accountSearch').value = '';
-            document.getElementById('accountStatusFilter').value = 'all';
-            renderAccountsTable(allStudents);
-            document.getElementById('accountCount').textContent = `${allStudents.length} students`;
-        }
-
-        // ============================================================
         // PAYMENTS
         // ============================================================
         async function loadAllPayments() {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
+                if (!sbClient) { if (!initSupabase()) return; }
 
                 const { data, error } = await sbClient
                     .from('finance_payments')
@@ -1801,7 +2161,6 @@
                 renderPaymentsTable(allPayments);
                 updatePaymentSummary(allPayments);
                 document.getElementById('paymentCount').textContent = `${allPayments.length} payments`;
-
             } catch (error) {
                 console.error('Error loading payments:', error);
                 showToast('Error loading payments', 'error');
@@ -1811,25 +2170,26 @@
         function renderPaymentsTable(payments) {
             const tbody = document.getElementById('paymentsTableBody');
             if (!payments || payments.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No payments found</td></tr>`;
+                tbody.innerHTML =
+                    `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No payments found</td></tr>`;
                 return;
             }
             tbody.innerHTML = payments.map(p => `
-                <tr>
-                    <td>${formatDate(p.payment_date)}</td>
-                    <td><strong>${p.student_name || 'N/A'}</strong></td>
-                    <td>${p.program || '-'}</td>
-                    <td><strong>${formatCurrency(p.amount)}</strong></td>
-                    <td>${p.payment_method || '-'}</td>
-                    <td>${p.reference_number || '-'}</td>
-                    <td>${p.period || '-'}</td>
-                    <td><span class="badge ${p.status === 'completed' ? 'badge-success' : p.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${p.status || 'Pending'}</span></td>
-                    <td>
-                        <button onclick="viewPaymentDetail('${p.id}')" class="btn-action btn-primary btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-eye"></i></button>
-                        <button onclick="deletePaymentRecord('${p.id}')" class="btn-action btn-danger btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-trash"></i></button>
-                    </td>
-                </tr>
-            `).join('');
+                    <tr>
+                        <td>${formatDate(p.payment_date)}</td>
+                        <td><strong>${p.student_name || 'N/A'}</strong></td>
+                        <td>${p.program || '-'}</td>
+                        <td><strong>${formatCurrency(p.amount)}</strong></td>
+                        <td>${p.payment_method || '-'}</td>
+                        <td>${p.reference_number || '-'}</td>
+                        <td>${p.period || '-'}</td>
+                        <td><span class="badge ${p.status === 'completed' ? 'badge-success' : p.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${p.status || 'Pending'}</span></td>
+                        <td>
+                            <button onclick="viewPaymentDetail('${p.id}')" class="btn-action btn-primary btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-eye"></i></button>
+                            <button onclick="deletePaymentRecord('${p.id}')" class="btn-action btn-danger btn-xs" style="padding:2px 8px;font-size:11px;"><i class="fas fa-trash"></i></button>
+                        </td>
+                    </tr>
+                `).join('');
         }
 
         function updatePaymentSummary(payments) {
@@ -1841,10 +2201,14 @@
             monthAgo.setMonth(monthAgo.getMonth() - 1);
             const monthAgoStr = monthAgo.toISOString().split('T')[0];
 
-            let todayTotal = 0, todayCount = 0;
-            let weekTotal = 0, weekCount = 0;
-            let monthTotal = 0, monthCount = 0;
-            let pendingTotal = 0, pendingCount = 0;
+            let todayTotal = 0,
+                todayCount = 0;
+            let weekTotal = 0,
+                weekCount = 0;
+            let monthTotal = 0,
+                monthCount = 0;
+            let pendingTotal = 0,
+                pendingCount = 0;
 
             payments.forEach(p => {
                 const date = p.payment_date;
@@ -1881,8 +2245,8 @@
             const status = document.getElementById('paymentStatusFilter').value;
 
             let filtered = allPayments.filter(p => {
-                const matchSearch = (p.student_name || '').toLowerCase().includes(search) || 
-                                   (p.reference_number || '').toLowerCase().includes(search);
+                const matchSearch = (p.student_name || '').toLowerCase().includes(search) ||
+                    (p.reference_number || '').toLowerCase().includes(search);
                 const matchStatus = status === 'all' || p.status === status;
                 return matchSearch && matchStatus;
             });
@@ -1910,7 +2274,6 @@
             document.getElementById('modalPaymentDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('paymentStudentInfo').style.display = 'none';
 
-            // Load students for dropdown
             if (allStudents.length === 0) {
                 loadAllStudentAccounts().then(() => populateStudentDropdown(studentId));
             } else {
@@ -1925,7 +2288,8 @@
             allStudents.forEach(s => {
                 const option = document.createElement('option');
                 option.value = s.student_id;
-                option.textContent = `${s.student_name} (${s.student_id})`;
+                const displayId = s.display_id || s.student_id_display || s.student_id;
+                option.textContent = `${s.full_name || s.student_name} (${displayId})`;
                 option.dataset.student = JSON.stringify(s);
                 select.appendChild(option);
             });
@@ -1946,8 +2310,10 @@
             try {
                 selectedStudent = JSON.parse(option.dataset.student);
                 document.getElementById('paymentStudentInfo').style.display = 'block';
-                document.getElementById('modalStudentName').textContent = selectedStudent.student_name || 'N/A';
-                document.getElementById('modalStudentId').textContent = selectedStudent.student_id || 'N/A';
+                document.getElementById('modalStudentName').textContent = selectedStudent.full_name || selectedStudent
+                    .student_name || 'N/A';
+                document.getElementById('modalStudentId').textContent = selectedStudent.display_id || selectedStudent
+                    .student_id_display || selectedStudent.student_id || 'N/A';
                 document.getElementById('modalStudentProgram').textContent = selectedStudent.program || 'N/A';
                 document.getElementById('modalBalance').textContent = formatCurrency(selectedStudent.balance || 0);
                 document.getElementById('studentStatusBadge').textContent = selectedStudent.payment_status || 'Active';
@@ -1963,7 +2329,7 @@
 
         async function recordPaymentFromModal() {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
+                if (!sbClient) { if (!initSupabase()) return; }
 
                 const student = selectedStudent;
                 const amount = parseFloat(document.getElementById('modalPaymentAmount').value);
@@ -1976,8 +2342,8 @@
 
                 const paymentData = {
                     student_id: student.student_id,
-                    student_name: student.student_name,
-                    student_email: student.student_email || null,
+                    student_name: student.full_name || student.student_name,
+                    student_email: student.email || null,
                     program: student.program || 'KRCHN',
                     amount: amount,
                     payment_method: method,
@@ -1996,11 +2362,11 @@
 
                 if (error) throw error;
 
-                showToast(`Payment of ${formatCurrency(amount)} recorded for ${student.student_name}`, 'success');
+                showToast(`Payment of ${formatCurrency(amount)} recorded for ${student.full_name || student.student_name}`,
+                    'success');
                 closePaymentModal();
                 await loadAllPayments();
                 await loadAllStudentAccounts();
-
             } catch (error) {
                 console.error('Error recording payment:', error);
                 showToast('Error recording payment: ' + error.message, 'error');
@@ -2012,7 +2378,7 @@
         // ============================================================
         async function loadFeeStructures() {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
+                if (!sbClient) { if (!initSupabase()) return; }
 
                 const { data, error } = await sbClient
                     .from('finance_fee_structure')
@@ -2023,7 +2389,6 @@
 
                 allFeeStructures = data || [];
                 renderFeeStructures(allFeeStructures);
-
             } catch (error) {
                 console.error('Error loading fee structures:', error);
                 showToast('Error loading fee structures', 'error');
@@ -2034,36 +2399,36 @@
             const container = document.getElementById('feeStructureCardsContainer');
             if (!fees || fees.length === 0) {
                 container.innerHTML = `
-                    <div style="text-align:center;padding:60px;color:#94a3b8;">
-                        <i class="fas fa-file-invoice" style="font-size:48px;display:block;margin-bottom:16px;"></i>
-                        <p>No fee structures found. Click "New Fee Structure" to create one.</p>
-                    </div>
-                `;
+                        <div style="text-align:center;padding:60px;color:#94a3b8;">
+                            <i class="fas fa-file-invoice" style="font-size:48px;display:block;margin-bottom:16px;"></i>
+                            <p>No fee structures found. Click "New Fee Structure" to create one.</p>
+                        </div>
+                    `;
                 return;
             }
 
             container.innerHTML = fees.map(f => `
-                <div style="background:white;border-radius:12px;padding:20px;border:1px solid #e5e7eb;margin-bottom:16px;border-left:4px solid ${f.is_active ? '#059669' : '#dc2626'};">
-                    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
-                        <div>
-                            <h4 style="margin:0;color:#0A3D62;">${f.program}</h4>
-                            <p style="margin:4px 0 0 0;font-size:13px;color:#64748b;">${f.level || 'N/A'} | ${f.duration || 'N/A'} | ${f.mode || 'N/A'}</p>
+                    <div style="background:white;border-radius:12px;padding:20px;border:1px solid #e5e7eb;margin-bottom:16px;border-left:4px solid ${f.is_active ? '#059669' : '#dc2626'};">
+                        <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;">
+                            <div>
+                                <h4 style="margin:0;color:#0A3D62;">${f.program}</h4>
+                                <p style="margin:4px 0 0 0;font-size:13px;color:#64748b;">${f.level || 'N/A'} | ${f.duration || 'N/A'} | ${f.mode || 'N/A'}</p>
+                            </div>
+                            <div>
+                                <span class="badge ${f.is_active ? 'badge-success' : 'badge-danger'}">${f.is_active ? 'Active' : 'Inactive'}</span>
+                                <span style="font-size:18px;font-weight:700;color:#059669;margin-left:12px;">${formatCurrency(f.total)}</span>
+                            </div>
                         </div>
-                        <div>
-                            <span class="badge ${f.is_active ? 'badge-success' : 'badge-danger'}">${f.is_active ? 'Active' : 'Inactive'}</span>
-                            <span style="font-size:18px;font-weight:700;color:#059669;margin-left:12px;">${formatCurrency(f.total)}</span>
+                        ${f.components ? `
+                            <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
+                                ${f.components.map(c => `<span class="badge" style="background:#f1f5f9;color:#475569;">${c.name}: ${formatCurrency(c.amount)}</span>`).join('')}
+                            </div>
+                        ` : ''}
+                        <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;">
+                            <i class="fas fa-calendar"></i> Intake: ${f.intake_year || '2026'} | <i class="fas fa-credit-card"></i> ${f.payment?.mpesa || 'M-Pesa: 247247'}
                         </div>
                     </div>
-                    ${f.components ? `
-                        <div style="margin-top:12px;display:flex;flex-wrap:wrap;gap:8px;">
-                            ${f.components.map(c => `<span class="badge" style="background:#f1f5f9;color:#475569;">${c.name}: ${formatCurrency(c.amount)}</span>`).join('')}
-                        </div>
-                    ` : ''}
-                    <div style="margin-top:12px;padding-top:12px;border-top:1px solid #f1f5f9;font-size:12px;color:#94a3b8;">
-                        <i class="fas fa-calendar"></i> Intake: ${f.intake_year || '2026'} | <i class="fas fa-credit-card"></i> ${f.payment?.mpesa || 'M-Pesa: 247247'}
-                    </div>
-                </div>
-            `).join('');
+                `).join('');
         }
 
         function openAddFeeModal() {
@@ -2075,7 +2440,7 @@
         // ============================================================
         async function loadAllTransactions() {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
+                if (!sbClient) { if (!initSupabase()) return; }
 
                 const { data, error } = await sbClient
                     .from('finance_payments')
@@ -2087,7 +2452,6 @@
                 allTransactions = data || [];
                 renderTransactionsTable(allTransactions);
                 document.getElementById('transactionCount').textContent = `${allTransactions.length} transactions`;
-
             } catch (error) {
                 console.error('Error loading transactions:', error);
                 showToast('Error loading transactions', 'error');
@@ -2097,20 +2461,21 @@
         function renderTransactionsTable(transactions) {
             const tbody = document.getElementById('transactionsTableBody');
             if (!transactions || transactions.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">No transactions found</td></tr>`;
+                tbody.innerHTML =
+                    `<tr><td colspan="7" style="text-align:center;padding:40px;color:#94a3b8;">No transactions found</td></tr>`;
                 return;
             }
             tbody.innerHTML = transactions.map(t => `
-                <tr>
-                    <td>${t.reference_number || '-'}</td>
-                    <td>${formatDate(t.payment_date)}</td>
-                    <td><strong>${t.student_name || 'N/A'}</strong></td>
-                    <td>${t.program || '-'}</td>
-                    <td><strong>${formatCurrency(t.amount)}</strong></td>
-                    <td>${t.payment_method || '-'}</td>
-                    <td><span class="badge ${t.status === 'completed' ? 'badge-success' : t.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${t.status || 'Pending'}</span></td>
-                </tr>
-            `).join('');
+                    <tr>
+                        <td>${t.reference_number || '-'}</td>
+                        <td>${formatDate(t.payment_date)}</td>
+                        <td><strong>${t.student_name || 'N/A'}</strong></td>
+                        <td>${t.program || '-'}</td>
+                        <td><strong>${formatCurrency(t.amount)}</strong></td>
+                        <td>${t.payment_method || '-'}</td>
+                        <td><span class="badge ${t.status === 'completed' ? 'badge-success' : t.status === 'pending' ? 'badge-warning' : 'badge-danger'}">${t.status || 'Pending'}</span></td>
+                    </tr>
+                `).join('');
         }
 
         function filterTransactionsTable() {
@@ -2118,8 +2483,8 @@
             const status = document.getElementById('transactionStatusFilter').value;
 
             let filtered = allTransactions.filter(t => {
-                const matchSearch = (t.student_name || '').toLowerCase().includes(search) || 
-                                   (t.reference_number || '').toLowerCase().includes(search);
+                const matchSearch = (t.student_name || '').toLowerCase().includes(search) ||
+                    (t.reference_number || '').toLowerCase().includes(search);
                 const matchStatus = status === 'all' || t.status === status;
                 return matchSearch && matchStatus;
             });
@@ -2140,7 +2505,7 @@
         // ============================================================
         async function loadAuditLog() {
             try {
-                if (!sbClient) { if(!initSupabase()) return; }
+                if (!sbClient) { if (!initSupabase()) return; }
 
                 const { data, error } = await sbClient
                     .from('finance_audit_logs')
@@ -2152,17 +2517,17 @@
 
                 const container = document.getElementById('auditLogContainer');
                 if (!data || data.length === 0) {
-                    container.innerHTML = `<div style="text-align:center;padding:20px;color:#94a3b8;">No audit records found</div>`;
+                    container.innerHTML =
+                        `<div style="text-align:center;padding:20px;color:#94a3b8;">No audit records found</div>`;
                     return;
                 }
 
                 container.innerHTML = data.map(log => `
-                    <div style="padding:10px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13px;">
-                        <span><i class="fas fa-${log.action === 'staff_add' ? 'user-plus' : log.action === 'staff_update' ? 'user-edit' : log.action === 'staff_delete' ? 'user-times' : 'info-circle'}" style="color:#4C1D95;"></i> ${log.description}</span>
-                        <span style="color:#94a3b8;">${formatDate(log.created_at)}</span>
-                    </div>
-                `).join('');
-
+                        <div style="padding:10px 0;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;font-size:13px;">
+                            <span><i class="fas fa-${log.action === 'staff_add' ? 'user-plus' : log.action === 'staff_update' ? 'user-edit' : log.action === 'staff_delete' ? 'user-times' : 'info-circle'}" style="color:#4C1D95;"></i> ${log.description}</span>
+                            <span style="color:#94a3b8;">${formatDate(log.created_at)}</span>
+                        </div>
+                    `).join('');
             } catch (error) {
                 console.error('Error loading audit log:', error);
             }
@@ -2208,20 +2573,20 @@
             const type = document.getElementById('reportType').value;
             const content = document.getElementById('reportContent');
             let html = `
-                <div style="padding:20px;">
-                    <h3 style="color:#0A3D62;margin-bottom:16px;">${type.charAt(0).toUpperCase() + type.slice(1)} Report</h3>
-                    <div style="background:#f8fafc;border-radius:8px;padding:20px;">
-                        <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
-                        <hr style="margin:12px 0;">
-                        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                            <div><strong>Total Students:</strong> ${allStudents.length}</div>
-                            <div><strong>Total Staff:</strong> ${staffData.length}</div>
-                            <div><strong>Total Payments:</strong> ${allPayments.length}</div>
-                            <div><strong>Total Collections:</strong> ${formatCurrency(allPayments.filter(p => p.status === 'completed').reduce((s, p) => s + (p.amount || 0), 0))}</div>
+                    <div style="padding:20px;">
+                        <h3 style="color:#0A3D62;margin-bottom:16px;">${type.charAt(0).toUpperCase() + type.slice(1)} Report</h3>
+                        <div style="background:#f8fafc;border-radius:8px;padding:20px;">
+                            <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+                            <hr style="margin:12px 0;">
+                            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                                <div><strong>Total Students:</strong> ${allStudents.length}</div>
+                                <div><strong>Total Staff:</strong> ${staffData.length}</div>
+                                <div><strong>Total Payments:</strong> ${allPayments.length}</div>
+                                <div><strong>Total Collections:</strong> ${formatCurrency(allPayments.filter(p => p.status === 'completed').reduce((s, p) => s + (p.amount || 0), 0))}</div>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `;
+                `;
             content.innerHTML = html;
             showToast(`Generated ${type} report`, 'success');
         }
@@ -2257,27 +2622,118 @@
         // ============================================================
         // PLACEHOLDER FUNCTIONS
         // ============================================================
-        function viewStudentAccount(id) { showToast('Viewing student: ' + id, 'info'); }
-        function viewPaymentDetail(id) { showToast('Viewing payment: ' + id, 'info'); }
-        function deletePaymentRecord(id) { 
+        function viewStudentAccount(id) {
+            showToast('Viewing student: ' + id, 'info');
+        }
+
+        function viewPaymentDetail(id) {
+            showToast('Viewing payment: ' + id, 'info');
+        }
+
+        function deletePaymentRecord(id) {
             if (confirm('Delete this payment?')) {
                 showToast('Payment deleted', 'success');
             }
         }
 
         // ============================================================
+        // FEE STRUCTURE MODAL FUNCTIONS
+        // ============================================================
+        function closeFeeStructureModal() {
+            document.getElementById('feeStructureModal').classList.remove('active');
+        }
+
+        function addFeeComponentRow() {
+            const container = document.getElementById('feeComponentsContainer');
+            const row = document.createElement('div');
+            row.className = 'fee-component-row';
+            row.style.cssText = 'display: grid; grid-template-columns: 1fr 120px 40px; gap: 8px; margin-bottom: 8px;';
+            row.innerHTML = `
+                    <input type="text" class="form-control comp-name" placeholder="Component name" oninput="updateFeeTotalPreview()">
+                    <input type="number" class="form-control comp-amount" placeholder="Amount" oninput="updateFeeTotalPreview()">
+                    <button type="button" onclick="removeFeeComponentRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+            container.appendChild(row);
+            updateFeeTotalPreview();
+        }
+
+        function removeFeeComponentRow(button) {
+            const row = button.closest('.fee-component-row');
+            if (row) {
+                row.remove();
+                updateFeeTotalPreview();
+            }
+        }
+
+        function addFeeTermRow() {
+            const container = document.getElementById('feeTermsContainer');
+            const row = document.createElement('div');
+            row.className = 'fee-term-row';
+            row.style.cssText = 'display: grid; grid-template-columns: 1fr 40px; gap: 8px; margin-bottom: 8px;';
+            row.innerHTML = `
+                    <input type="text" class="form-control term-text" placeholder="Enter term">
+                    <button type="button" onclick="removeFeeTermRow(this)" class="btn-action btn-danger btn-xs" style="padding: 4px 8px;">
+                        <i class="fas fa-times"></i>
+                    </button>
+                `;
+            container.appendChild(row);
+        }
+
+        function removeFeeTermRow(button) {
+            const row = button.closest('.fee-term-row');
+            if (row) {
+                row.remove();
+            }
+        }
+
+        function updateFeeTotalPreview() {
+            const compAmounts = document.querySelectorAll('.comp-amount');
+            let total = 0;
+            compAmounts.forEach(input => {
+                const val = parseFloat(input.value) || 0;
+                total += val;
+            });
+            const hostel = parseFloat(document.getElementById('fee_hostel')?.value) || 0;
+            total += hostel;
+            const previewEl = document.getElementById('feeTotalPreview');
+            if (previewEl) {
+                previewEl.textContent = 'KES ' + total.toLocaleString();
+            }
+        }
+
+        async function saveFeeStructureFull() {
+            showToast('Saving fee structure...', 'info');
+        }
+
+        // ============================================================
+        // UPDATE LAST UPDATED TIME
+        // ============================================================
+        function updateLastUpdated() {
+            const now = new Date();
+            const timeStr = now.toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' });
+            const el = document.getElementById('lastUpdatedTime');
+            if (el) {
+                el.textContent = timeStr;
+            }
+        }
+        setInterval(updateLastUpdated, 30000);
+        updateLastUpdated();
+
+        // ============================================================
         // INITIALIZATION
         // ============================================================
         document.addEventListener('DOMContentLoaded', function() {
-            // Set current date
-            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-KE', { 
-                weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+            document.getElementById('currentDate').textContent = new Date().toLocaleDateString('en-KE', {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric'
             });
 
-            // Initialize Supabase
             initSupabase();
 
-            // Tab navigation
             document.querySelectorAll('.finance-nav a[data-tab]').forEach(link => {
                 link.addEventListener('click', function(e) {
                     e.preventDefault();
@@ -2289,19 +2745,29 @@
                 });
             });
 
-            // Close modals on overlay click
             document.querySelectorAll('.modal-overlay').forEach(modal => {
                 modal.addEventListener('click', function(e) {
                     if (e.target === this) this.classList.remove('active');
                 });
             });
 
-            // Load initial data
+            // ✅ FAST SEARCH: Add debounced search
+            const searchInput = document.getElementById('accountSearch');
+            if (searchInput) {
+                let searchTimeout;
+                searchInput.addEventListener('input', function() {
+                    clearTimeout(searchTimeout);
+                    searchTimeout = setTimeout(() => {
+                        filterAccountsTable();
+                    }, 150); // 150ms delay for faster typing
+                });
+            }
+
             setTimeout(() => {
                 showTab('dashboard');
             }, 500);
 
-            console.log('✅ Finance module initialized with Staff Payroll (Supabase)');
+            console.log('✅ Finance module initialized with FAST STUDENT SEARCH');
         });
     </script>
 </body>
