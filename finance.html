@@ -1201,27 +1201,35 @@
         <form id="paymentModalForm" onsubmit="event.preventDefault(); processPayment();">
             <!-- Searchable Student Dropdown -->
             <div class="finance-form-group">
-                <label for="modalPaymentStudent">👤 Select Student *</label>
+                <label for="modalPaymentStudentSearch">👤 Select Student *</label>
                 <div style="position: relative;">
                     <input 
                         type="text" 
                         id="modalPaymentStudentSearch" 
-                        placeholder="🔍 Search student by name, ID, or program..." 
+                        placeholder="🔍 Type student name, ID, or program..." 
                         oninput="filterStudentDropdown()"
+                        onfocus="filterStudentDropdown()"
                         style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: #f8fafc; transition: all 0.3s;"
                         autocomplete="off"
                     >
-                    <div id="studentDropdownList" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 8px; max-height: 250px; overflow-y: auto; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.15); margin-top: 4px;">
+                    <div id="studentDropdownList" style="display: none; position: absolute; top: 100%; left: 0; right: 0; background: white; border: 1px solid #e2e8f0; border-radius: 8px; max-height: 280px; overflow-y: auto; z-index: 1000; box-shadow: 0 8px 30px rgba(0,0,0,0.15); margin-top: 4px;">
                         <!-- Student options will be populated here -->
                     </div>
                 </div>
                 <select id="modalPaymentStudent" style="display: none;">
                     <option value="">-- Select Student --</option>
                 </select>
-                <div id="selectedStudentDisplay" style="display: none; margin-top: 8px; padding: 10px 14px; background: #dbeafe; border-radius: 6px; border-left: 4px solid #4C1D95;">
-                    <span style="font-weight: 600; color: #0A3D62;" id="selectedStudentName"></span>
-                    <span style="color: #64748b; font-size: 13px; margin-left: 10px;" id="selectedStudentId"></span>
-                    <span style="color: #64748b; font-size: 13px; margin-left: 10px;" id="selectedStudentProgram"></span>
+                
+                <!-- Selected Student Badge -->
+                <div id="selectedStudentDisplay" style="display: none; margin-top: 8px; padding: 10px 14px; background: #dbeafe; border-radius: 6px; border-left: 4px solid #4C1D95; display: flex; justify-content: space-between; align-items: center;">
+                    <div>
+                        <span style="font-weight: 600; color: #0A3D62;" id="selectedStudentName"></span>
+                        <span style="color: #64748b; font-size: 13px; margin-left: 10px;" id="selectedStudentId"></span>
+                        <span style="color: #64748b; font-size: 13px; margin-left: 10px;" id="selectedStudentProgram"></span>
+                    </div>
+                    <button onclick="clearSelectedStudent()" style="background: none; border: none; color: #94a3b8; cursor: pointer; font-size: 16px;" title="Clear selection">
+                        <i class="fas fa-times-circle"></i>
+                    </button>
                 </div>
             </div>
 
@@ -1233,12 +1241,33 @@
                 </div>
                 <div class="finance-form-group">
                     <label for="modalPaymentMethod">💳 Payment Method *</label>
-                    <select id="modalPaymentMethod" class="form-control" required>
-                        <option value="M-Pesa">📱 M-Pesa</option>
+                    <select id="modalPaymentMethod" class="form-control" required onchange="togglePaymentMethodFields()">
+                        <option value="M-Pesa STK">📱 M-Pesa STK Push</option>
+                        <option value="M-Pesa">📱 M-Pesa (Manual)</option>
                         <option value="Cash">💵 Cash</option>
                         <option value="Bank Transfer">🏦 Bank Transfer</option>
                         <option value="Cheque">📄 Cheque</option>
                     </select>
+                </div>
+            </div>
+
+            <!-- STK Push Fields (shown only when M-Pesa STK is selected) -->
+            <div id="stkPushFields" style="display: none; background: #f0fdf4; padding: 16px; border-radius: 8px; border: 1px solid #86efac; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                    <span style="font-size: 18px;">📱</span>
+                    <span style="font-weight: 600; color: #065f46;">M-Pesa STK Push</span>
+                    <span class="badge badge-success" style="font-size: 10px;">Student will receive prompt on phone</span>
+                </div>
+                <div class="finance-form-group">
+                    <label for="modalStudentPhone">📱 Student Phone Number *</label>
+                    <input type="tel" id="modalStudentPhone" class="form-control" placeholder="e.g., 0712345678" style="background: #f8fafc;">
+                    <small style="color: #64748b; font-size: 11px;">The student will receive an M-Pesa prompt on this number</small>
+                </div>
+                <div style="background: #fef3c7; padding: 10px 14px; border-radius: 6px; border-left: 4px solid #f59e0b; margin-top: 8px;">
+                    <div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #92400e;">
+                        <span>💡</span>
+                        <span>Student will receive a payment request on their phone. They must enter their M-Pesa PIN to complete.</span>
+                    </div>
                 </div>
             </div>
 
@@ -1273,8 +1302,18 @@
                 </div>
             </div>
 
+            <!-- Payment Status (for STK processing) -->
+            <div id="paymentProcessingStatus" style="display: none; background: #f8fafc; padding: 16px; border-radius: 8px; margin: 12px 0; text-align: center; border: 1px solid #e5e7eb;">
+                <div class="loading-spinner" style="margin: 0 auto 10px;"></div>
+                <p style="font-weight: 600; color: #0A3D62;" id="paymentStatusText">⏳ Sending payment request...</p>
+                <p style="font-size: 12px; color: #94a3b8;" id="paymentStatusSubtext">Please wait while we process the payment</p>
+                <button onclick="cancelPaymentRequest()" class="btn-action btn-danger btn-sm" style="margin-top: 10px;">
+                    <i class="fas fa-times"></i> Cancel
+                </button>
+            </div>
+
             <!-- Action Buttons -->
-            <div style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
+            <div id="paymentActionButtons" style="display: flex; gap: 10px; margin-top: 20px; flex-wrap: wrap;">
                 <button type="submit" class="btn-action btn-success" style="flex: 1; padding: 12px; font-size: 15px; min-width: 120px;">
                     <i class="fas fa-check-circle"></i> Record Payment
                 </button>
@@ -1285,7 +1324,6 @@
         </form>
     </div>
 </div>
-
     <!-- ===== BULK IMPORT MODAL ===== -->
     <div id="bulkImportModal" class="modal-overlay">
         <div class="modal-content" style="max-width:600px;">
