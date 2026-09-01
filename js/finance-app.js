@@ -1422,7 +1422,15 @@ function renderFeeStructureCards(fees) {
         const components = fee.components || [];
         const terms = fee.terms || [];
         const payment = fee.payment || {};
-        const total = fee.total || 0;
+        
+        // ✅ Calculate total from components + hostel
+        let total = 0;
+        components.forEach(c => {
+            total += parseFloat(c.amount) || 0;
+        });
+        if (fee.hostel) {
+            total += parseFloat(fee.hostel) || 0;
+        }
         
         html += `
             <div class="fee-structure-pdf-card" style="background:white;border-radius:12px;border:1px solid #e5e7eb;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.04);">
@@ -1523,7 +1531,95 @@ function renderFeeStructureCards(fees) {
     
     container.innerHTML = html;
 }
+// ============================================================
+// FEE STRUCTURE - TOGGLE ACTIVE/INACTIVE
+// ============================================================
 
+async function toggleFeeStructure(feeId) {
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        
+        const { data, error } = await sbClient
+            .from('finance_fee_structure')
+            .select('is_active')
+            .eq('id', feeId)
+            .single();
+        
+        if (error) throw error;
+        
+        const newStatus = !data.is_active;
+        
+        const { error: updateError } = await sbClient
+            .from('finance_fee_structure')
+            .update({ is_active: newStatus, updated_at: new Date().toISOString() })
+            .eq('id', feeId);
+        
+        if (updateError) throw updateError;
+        
+        showToast(`Fee structure ${newStatus ? 'activated' : 'deactivated'}!`, 'success');
+        await loadFeeStructure();
+        
+    } catch (error) {
+        console.error('Error toggling fee structure:', error);
+        showToast('Error toggling fee structure', 'error');
+    }
+}
+
+async function duplicateFeeStructure(feeId) {
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        
+        const { data, error } = await sbClient
+            .from('finance_fee_structure')
+            .select('*')
+            .eq('id', feeId)
+            .single();
+        
+        if (error) throw error;
+        
+        delete data.id;
+        delete data.created_at;
+        delete data.updated_at;
+        
+        data.program = data.program + ' (Copy)';
+        data.is_active = true;
+        
+        const { error: insertError } = await sbClient
+            .from('finance_fee_structure')
+            .insert([data]);
+        
+        if (insertError) throw insertError;
+        
+        showToast('Fee structure duplicated successfully!', 'success');
+        await loadFeeStructure();
+        
+    } catch (error) {
+        console.error('Error duplicating fee structure:', error);
+        showToast('Error duplicating fee structure', 'error');
+    }
+}
+
+async function deleteFeeStructure(feeId) {
+    if (!confirm('Are you sure you want to delete this fee structure?')) return;
+    
+    try {
+        if (!sbClient) { if (!initSupabase()) return; }
+        
+        const { error } = await sbClient
+            .from('finance_fee_structure')
+            .delete()
+            .eq('id', feeId);
+        
+        if (error) throw error;
+        
+        showToast('Fee structure deleted!', 'success');
+        await loadFeeStructure();
+        
+    } catch (error) {
+        console.error('Error deleting fee structure:', error);
+        showToast('Error deleting fee structure', 'error');
+    }
+}
 // ============================================================
 // FEE STRUCTURE CALCULATION FUNCTIONS
 // ============================================================
