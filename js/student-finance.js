@@ -1961,13 +1961,10 @@ async function updateStudentBalanceAfterPayment(amount) {
 }
 
 // ============================================================
-// 📱 PROCESS PAYMENT - COMPLETE WORKING VERSION (LIKE VIEWPOINT)
+//  PROCESS PAYMENT - FIXED REFERENCE MATCHING
 // ============================================================
 
 async function processPayment() {
-    // ============================================================
-    //  STEP 1: VALIDATE FORM
-    // ============================================================
     if (!validatePaymentForm()) return;
     
     const period = document.getElementById('finance-paymentPeriodSelect')?.value;
@@ -1983,7 +1980,8 @@ async function processPayment() {
         return;
     }
     
-    const reference = 'STU-' + Date.now() + '-' + Math.floor(Math.random() * 1000);
+    // ✅ Use STU- prefix for reference (matches webhook User_Reference format)
+    const reference = 'STU-' + Date.now();
     
     if (method === 'mpesa') {
         const phoneInput = document.getElementById('finance-mpesaPhoneInput');
@@ -1993,12 +1991,12 @@ async function processPayment() {
             return;
         }
         
-        // Format phone number (like ViewPoint)
+        // Format phone number
         let formattedPhone = phone.replace(/\s/g, '');
         if (formattedPhone.startsWith('0')) {
             formattedPhone = '254' + formattedPhone.substring(1);
-        } else if (formattedPhone.startsWith('+254')) {
-            formattedPhone = formattedPhone.substring(1);
+        } else if (formattedPhone.startsWith('7')) {
+            formattedPhone = '254' + formattedPhone;
         }
         
         // Set pending payment state
@@ -2018,6 +2016,7 @@ async function processPayment() {
                 <p class="status-text">⏳ Sending STK Push...</p>
                 <p class="status-sub" id="finance-paymentDetails">Amount: KES ${amount.toLocaleString()}</p>
                 <p class="status-sub" style="font-size:12px;margin-top:8px;">📱 Check your phone and enter your PIN</p>
+                <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:4px;">🔄 Payment will auto-confirm</p>
                 <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
                     <i class="fas fa-times"></i> Cancel Payment
                 </button>
@@ -2033,30 +2032,23 @@ async function processPayment() {
             return;
         }
         
-        // ============================================================
-        //  STEP 2: GET PROFILE ID (Like ViewPoint gets user ID)
-        // ============================================================
-        const { data: profile, error: profileError } = await supabase
+        // Get profile ID
+        const { data: profile } = await supabase
             .from('consolidated_user_profiles_table')
             .select('id')
             .eq('user_id', user.user_id || user.id)
             .single();
         
-        if (profileError || !profile) {
-            console.error('❌ Profile error:', profileError);
+        if (!profile) {
             showToast('❌ Could not find profile', 'error');
             pendingPayment.isProcessing = false;
             return;
         }
         
         const profileId = profile.id;
-        console.log('✅ Profile ID:', profileId);
-        
-        // ============================================================
-        //  STEP 3: CREATE PAYMENT RECORD (Like ViewPoint creates order)
-        // ============================================================
         const dbPeriod = mapPeriodToDatabase(period);
         
+        // ✅ Create payment with STU- prefix reference
         const paymentRecord = {
             student_id: profileId,
             student_name: user?.full_name || user?.name || 'Student',
@@ -2064,7 +2056,7 @@ async function processPayment() {
             program: user?.program || 'KRCHN',
             amount: amount,
             payment_method: 'M-Pesa',
-            reference_number: reference,
+            reference_number: reference,  // ✅ STU- prefix
             payment_date: new Date().toISOString().split('T')[0],
             period: dbPeriod || period,
             status: 'pending',
@@ -2094,6 +2086,7 @@ async function processPayment() {
             savedPayment = data;
             pendingPayment.paymentId = savedPayment.id;
             console.log('✅ Payment created:', savedPayment.id);
+            console.log('📋 Reference:', savedPayment.reference_number);
             
         } catch (e) {
             console.error('❌ Error:', e);
@@ -2102,13 +2095,10 @@ async function processPayment() {
             return;
         }
         
-        // ============================================================
-        //  STEP 4: CALL EDGE FUNCTION FOR STK PUSH (Like ViewPoint)
-        // ============================================================
-        console.log('📱 Sending STK Push via Edge Function...');
-        console.log('📱 Phone:', formattedPhone);
-        console.log('💰 Amount:', amount);
-        console.log('📋 Payment ID:', savedPayment.id);
+        // Send STK Push
+        console.log('📱 Sending STK Push...');
+        console.log('📤 External Reference:', reference);
+        console.log('📤 This must match webhook User_Reference');
         
         try {
             const { data: stkData, error: stkError } = await supabase.functions.invoke('payhero', {
@@ -2116,7 +2106,7 @@ async function processPayment() {
                     action: 'stk_push',
                     phone: formattedPhone,
                     amount: Math.round(amount),
-                    order_id: reference,
+                    order_id: reference,  // ✅ Same reference as payment
                     payment_id: savedPayment.id,
                     customer_name: user?.full_name || user?.name || 'Student',
                     description: `${period} Tuition Fees Payment`
@@ -2137,221 +2127,26 @@ async function processPayment() {
             
             pendingPayment.transactionId = stkData.transaction_id;
             
-            // Update payment with transaction ID
+            // ✅ Update payment with checkout ID but KEEP the original reference
             await supabase
                 .from('finance_payments')
                 .update({
                     checkout_request_id: stkData.transaction_id,
-                    reference_number: stkData.transaction_id,
+                    // ✅ DO NOT overwrite reference_number with transaction ID
+                    // reference_number stays as 'STU-xxx'
                     updated_at: new Date().toISOString()
                 })
                 .eq('id', savedPayment.id);
             
-            console.log('✅ Payment updated with transaction ID');
+            console.log('✅ Payment updated with checkout ID');
+            console.log('📋 Reference (unchanged):', savedPayment.reference_number);
             
-            // ============================================================
-            //  STEP 5: POLL FOR STATUS (Like ViewPoint)
-            // ============================================================
-            let attempts = 0;
-            const maxAttempts = 30;
-            let paymentConfirmed = false;
-            let paymentData = null;
-            
-            // Update UI for waiting
-            if (content) {
-                content.innerHTML = `
-                    <div class="spinner"></div>
-                    <p class="status-text">⏳ Waiting for payment confirmation...</p>
-                    <p class="status-sub" id="finance-paymentDetails">Please check your phone and enter your PIN</p>
-                    <p class="status-sub" style="font-size:12px;color:var(--text-muted);margin-top:8px;">
-                        ⏱️ Waiting for M-Pesa confirmation...
-                    </p>
-                    <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
-                        <i class="fas fa-times"></i> Cancel Payment
-                    </button>
-                `;
-            }
-            
-            // Poll for payment status (like ViewPoint)
-            while (attempts < maxAttempts && !paymentConfirmed) {
-                // Check if payment was cancelled
-                if (pendingPayment.cancelled) {
-                    console.log('⛔ Payment cancelled by user');
-                    if (content) {
-                        content.innerHTML = `
-                            <div class="status-icon warning">⛔</div>
-                            <p class="status-text">Payment Cancelled</p>
-                            <p class="status-sub">You cancelled the payment.</p>
-                            <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
-                        `;
-                    }
-                    showToast('⛔ Payment cancelled', 'warning');
-                    pendingPayment.isProcessing = false;
-                    return;
-                }
-                
-                await new Promise(resolve => setTimeout(resolve, 2000));
-                attempts++;
-                
-                try {
-                    // Check status via Edge Function (like ViewPoint)
-                    const { data: statusData, error: statusError } = await supabase.functions.invoke('payhero', {
-                        body: {
-                            action: 'status',
-                            transaction_id: stkData.transaction_id
-                        }
-                    });
-                    
-                    if (statusError) {
-                        console.log('⚠️ Status check error:', statusError);
-                        continue;
-                    }
-                    
-                    if (statusData && statusData.success) {
-                        if (statusData.status === 'completed') {
-                            paymentConfirmed = true;
-                            paymentData = statusData;
-                            console.log('✅ Payment confirmed!');
-                            console.log('📱 Receipt:', statusData.receipt_number);
-                            break;
-                        } else if (statusData.status === 'failed' || statusData.status === 'cancelled') {
-                            paymentConfirmed = true;
-                            paymentData = statusData;
-                            console.log('❌ Payment failed:', statusData.message);
-                            break;
-                        }
-                    }
-                    
-                    // Update progress
-                    if (content && !paymentConfirmed && !pendingPayment.cancelled) {
-                        const remaining = Math.round((maxAttempts - attempts) * 2);
-                        content.innerHTML = `
-                            <div class="spinner"></div>
-                            <p class="status-text">⏳ Waiting for payment confirmation... (${attempts}/${maxAttempts})</p>
-                            <p class="status-sub">Please check your phone and enter your PIN</p>
-                            <p class="status-sub" style="font-size:12px;color:var(--text-muted);margin-top:8px;">
-                                ⏱️ ${remaining} seconds remaining
-                            </p>
-                            <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
-                                <i class="fas fa-times"></i> Cancel Payment
-                            </button>
-                        `;
-                    }
-                } catch (pollError) {
-                    console.log('⚠️ Polling error:', pollError);
-                }
-            }
-            
-            // ============================================================
-            //  STEP 6: PROCESS RESULT (Like ViewPoint)
-            // ============================================================
-            
-            if (paymentConfirmed && paymentData && paymentData.status === 'completed') {
-                // ✅ PAYMENT SUCCESS
-                await supabase
-                    .from('finance_payments')
-                    .update({
-                        status: 'completed',
-                        receipt_number: paymentData.receipt_number,
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', savedPayment.id);
-                
-                console.log('✅ Payment completed!');
-                console.log('📱 Receipt:', paymentData.receipt_number);
-                
-                // Update student account
-                await updateStudentBalanceAfterPayment(amount);
-                
-                if (content) {
-                    content.innerHTML = `
-                        <div class="status-icon success">✅</div>
-                        <p class="status-text">Payment Successful! 🎉</p>
-                        <p class="status-sub">${period}</p>
-                        <p class="status-sub" style="font-size:18px;font-weight:700;color:#10B981;margin-top:8px;">
-                            KES ${amount.toLocaleString()}
-                        </p>
-                        <p class="status-sub" style="font-size:12px;color:var(--text-muted);">
-                            Receipt: ${paymentData.receipt_number || 'N/A'}
-                        </p>
-                        <button class="btn btn-success" style="margin-top:12px;" onclick="closePaymentModal()">Done</button>
-                    `;
-                }
-                
-                showToast('✅ Payment successful!', 'success');
-                notifySuperAdmin('payment_completed', {
-                    studentId: user.user_id || user.id,
-                    amount: amount,
-                    period: period,
-                    transactionId: stkData.transaction_id,
-                    receipt: paymentData.receipt_number
-                });
-                
-                pendingPayment.isProcessing = false;
-                
-                setTimeout(() => {
-                    closePaymentModal();
-                    loadStudentFinance();
-                }, 2000);
-                
-            } else if (paymentConfirmed && paymentData && (paymentData.status === 'failed' || paymentData.status === 'cancelled')) {
-                // ❌ PAYMENT FAILED
-                await supabase
-                    .from('finance_payments')
-                    .update({
-                        status: 'failed',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('id', savedPayment.id);
-                
-                if (content) {
-                    content.innerHTML = `
-                        <div class="status-icon failed">❌</div>
-                        <p class="status-text">Payment Failed</p>
-                        <p class="status-sub">${paymentData.message || 'Transaction was not completed'}</p>
-                        <p class="status-sub" style="font-size:12px;color:var(--text-muted);margin-top:8px;">Please try again</p>
-                        <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">Try Again</button>
-                    `;
-                }
-                
-                showToast('❌ Payment failed. Please try again.', 'error');
-                pendingPayment.isProcessing = false;
-                
-            } else {
-                // ⏳ PAYMENT PENDING (Timeout)
-                if (content) {
-                    content.innerHTML = `
-                        <div class="status-icon warning">⏳</div>
-                        <p class="status-text">Payment Pending</p>
-                        <p class="status-sub">Your payment is still being processed</p>
-                        <p class="status-sub" style="font-size:12px;color:var(--text-muted);margin-top:8px;">Please check your phone and complete the transaction</p>
-                        <button class="btn btn-primary" style="margin-top:12px;" onclick="closePaymentModal()">OK</button>
-                    `;
-                }
-                
-                showToast('⏳ Payment pending. Please check your phone.', 'warning');
-                pendingPayment.isProcessing = false;
-                
-                setTimeout(() => {
-                    closePaymentModal();
-                    loadStudentFinance();
-                }, 3000);
-            }
+            // Start polling for status
+            await pollStudentPaymentStatus(stkData.transaction_id, amount, period);
             
         } catch (stkError) {
             console.error('❌ STK Error:', stkError);
             pendingPayment.isProcessing = false;
-            
-            // Update payment as failed
-            await supabase
-                .from('finance_payments')
-                .update({
-                    status: 'failed',
-                    notes: `STK Push failed: ${stkError.message}`,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', savedPayment.id);
-            
             showStudentPaymentFailure(stkError.message || 'Payment initiation failed');
             showToast('❌ Payment failed: ' + (stkError.message || 'Please try again'), 'error');
         }
