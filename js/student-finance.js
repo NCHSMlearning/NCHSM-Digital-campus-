@@ -331,35 +331,54 @@ async function fetchFinanceDataFromSupabase(user) {
     try {
         if (typeof supabase === 'undefined' || !supabase) return null;
         
-        // Get the user ID - using user_id from consolidated table
+        // Get the user ID
         const userId = user?.user_id || user?.id;
         if (!userId) {
             console.warn('⚠️ No user ID found');
             return null;
         }
         
-        // Get user program from consolidated table
-        const program = user?.program || user?.program_name || 'KRCHN';
+        // ✅ Get the PROFILE ID (this is the correct student_id)
+        const { data: profile, error: profileError } = await supabase
+            .from('consolidated_user_profiles_table')
+            .select('id, student_id, full_name, program')
+            .eq('user_id', userId)
+            .single();
+        
+        if (profileError || !profile) {
+            console.warn('⚠️ Could not find profile:', profileError);
+            // Fallback to auth user ID
+            var profileId = userId;
+            var studentName = user?.full_name || user?.name || 'Student';
+            var program = user?.program || 'KRCHN';
+        } else {
+            var profileId = profile.id;
+            var studentName = profile.full_name || user?.full_name || user?.name || 'Student';
+            var program = profile.program || user?.program || 'KRCHN';
+            console.log('✅ Found profile ID:', profileId);
+            console.log('📋 Student ID:', profile.student_id);
+        }
+        
         const programType = getProgramType(program);
         const programLevel = getProgramLevel(program);
         const periods = getPeriods(programType, programLevel);
         
-        console.log('📊 Fetching data for user:', userId);
+        console.log('📊 Fetching data using profile_id:', profileId);
         console.log('📚 Program:', program);
         console.log('🏷️ Program Type:', programType);
         
-        // 1. Get student account data
+        // 1. Get student account data using PROFILE ID
         let accountData = null;
         try {
             const { data, error } = await supabase
                 .from('finance_student_accounts')
                 .select('*')
-                .eq('student_id', userId)
+                .eq('student_id', profileId)
                 .maybeSingle();
             
             if (!error && data) {
                 accountData = data;
-                console.log('✅ Account data found');
+                console.log('✅ Account data found:', accountData);
             } else {
                 console.log('ℹ️ No account data found for student');
             }
@@ -367,13 +386,13 @@ async function fetchFinanceDataFromSupabase(user) {
             console.log('ℹ️ Account table error:', e.message);
         }
         
-        // 2. Get payments data - using correct column names
+        // 2. Get payments data using PROFILE ID
         let paymentsData = [];
         try {
             const { data, error } = await supabase
                 .from('finance_payments')
                 .select('*')
-                .eq('student_id', userId)
+                .eq('student_id', profileId)
                 .order('payment_date', { ascending: false });
             
             if (!error && data) {
@@ -389,7 +408,6 @@ async function fetchFinanceDataFromSupabase(user) {
         // 3. Get fee structure
         let feeStructureData = null;
         try {
-            // Try to get fee structure by program name
             const programFullName = mapProgramCodeToFullName(program);
             
             const { data, error } = await supabase
@@ -403,7 +421,6 @@ async function fetchFinanceDataFromSupabase(user) {
                 feeStructureData = data;
                 console.log('✅ Fee structure found for:', programFullName);
             } else {
-                // Try with program code
                 const { data: altData, error: altError } = await supabase
                     .from('finance_fee_structure')
                     .select('*')
@@ -453,7 +470,6 @@ async function fetchFinanceDataFromSupabase(user) {
                 });
             });
             
-            // Build vote heads
             allVoteHeads.forEach((vh, label) => {
                 const amounts = periodsList.map(period => {
                     const comp = period.components.find(c => c.label === label);
@@ -464,7 +480,6 @@ async function fetchFinanceDataFromSupabase(user) {
             
             processedFeeStructure = periodsList;
         } else {
-            // Fallback: Generate from periods
             periods.forEach((period, index) => {
                 const amount = getFeeAmount(programType, index, programLevel);
                 processedFeeStructure.push({
@@ -477,16 +492,24 @@ async function fetchFinanceDataFromSupabase(user) {
             });
         }
         
-        // Calculate current period and balance
-        const currentPeriod = accountData?.current_period || accountData?.current_block || periods[0];
+        // Calculate current period
+        const currentPeriod = accountData?.current_period || periods[0] || 'Term 1';
         const currentPeriodIndex = periods.indexOf(currentPeriod) >= 0 ? periods.indexOf(currentPeriod) : 0;
         
-        // Calculate semester fee from fee structure
-        let semesterFee = 0;
-        if (processedFeeStructure && processedFeeStructure.length > currentPeriodIndex) {
-            semesterFee = processedFeeStructure[currentPeriodIndex]?.amount || 0;
+        // Get values from account data or calculate
+        let balance, totalPaid, outstanding, totalDue;
+        if (accountData) {
+            balance = parseFloat(accountData.balance) || 0;
+            totalPaid = parseFloat(accountData.total_paid) || 0;
+            outstanding = parseFloat(accountData.outstanding) || 0;
+            totalDue = parseFloat(accountData.total_due) || 0;
         } else {
-            semesterFee = getFeeAmount(programType, currentPeriodIndex, programLevel);
+            // Calculate from payments
+            const allPayments = paymentsData.filter(p => p.status === 'completed');
+            totalPaid = allPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
+            totalDue = getFeeAmount(programType, currentPeriodIndex, programLevel);
+            balance = Math.max(totalDue - totalPaid, 0);
+            outstanding = balance;
         }
         
         // Calculate paid this semester
@@ -497,11 +520,9 @@ async function fetchFinanceDataFromSupabase(user) {
             })
             .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
         
-        // Calculate balance
-        const accountBalance = accountData?.balance || 0;
-        const balance = Math.max(semesterFee - paidThisSemester, 0);
+        const semesterFee = totalDue > 0 ? totalDue : getFeeAmount(programType, currentPeriodIndex, programLevel);
         
-        // Format payments for display
+        // Format payments
         const formattedPayments = paymentsData.map(p => ({
             date: p.payment_date || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
             description: p.notes || `${mapPeriodToDisplay(p.period)} Fees`,
@@ -522,16 +543,11 @@ async function fetchFinanceDataFromSupabase(user) {
             status: index <= currentPeriodIndex ? (index === currentPeriodIndex && paidThisSemester > 0 ? 'Partial' : 'Paid') : 'Pending'
         }));
         
-        // Calculate total paid
-        const totalPaid = accountData?.total_paid || paymentsData
-            .filter(p => p.status === 'completed')
-            .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-        
         return {
             balance: balance,
             totalPaid: totalPaid,
             totalDue: semesterFee,
-            outstanding: balance,
+            outstanding: outstanding,
             paymentProgress: semesterFee > 0 ? (paidThisSemester / semesterFee * 100) : 0,
             payments: formattedPayments,
             feeStructure: formattedFees,
@@ -545,9 +561,10 @@ async function fetchFinanceDataFromSupabase(user) {
             voteHeads: voteHeads,
             feeStructureRaw: { periods: processedFeeStructure, voteHeads: voteHeads, periodTotals: periodTotals },
             student: {
-                name: user?.full_name || user?.name || 'Student',
-                id: user?.student_id || user?.id || 'N/A',
+                name: studentName,
+                id: profile?.student_id || user?.student_id || user?.id || 'N/A',
                 userId: userId,
+                profileId: profileId,
                 program: program,
                 intake: user?.intake_year || '2026',
                 programType: programType,
@@ -559,7 +576,6 @@ async function fetchFinanceDataFromSupabase(user) {
         return null;
     }
 }
-
 // ============================================================
 // 📊 MAIN LOAD FUNCTION - FIXED
 // ============================================================
