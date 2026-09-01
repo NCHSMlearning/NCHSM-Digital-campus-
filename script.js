@@ -21820,7 +21820,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
 console.log('✅ Grade functions registered globally');
 // =====================================================
-// STAFF MANAGEMENT - Full Module with Document Upload
+// STAFF MANAGEMENT - FULL MODULE WITH DOCUMENT UPLOAD
 // MATCHES REGISTRATION FLOW
 // =====================================================
 
@@ -21840,7 +21840,73 @@ const staffUploadedDocs = {
     cv: null
 };
 
+// ============================================
+// GET SUPABASE CLIENT
+// ============================================
+function getSb() {
+    if (typeof sb !== 'undefined' && sb) return sb;
+    if (typeof window.sb !== 'undefined' && window.sb) return window.sb;
+    if (typeof window.supabase !== 'undefined' && window.supabase) return window.supabase;
+    console.warn('⚠️ Supabase client not found');
+    return null;
+}
 
+// ============================================
+// SHOW NOTIFICATION
+// ============================================
+function showNotification(message, type = 'success') {
+    const existing = document.querySelector('.notification');
+    if (existing) existing.remove();
+    
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        bottom: 24px;
+        right: 24px;
+        padding: 16px 24px;
+        border-radius: 12px;
+        color: white;
+        font-weight: 600;
+        z-index: 999999;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        animation: slideUp 0.3s ease;
+        max-width: 450px;
+        font-size: 14px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    `;
+    
+    const colors = {
+        success: '#10b981',
+        error: '#ef4444',
+        warning: '#f59e0b',
+        info: '#3b82f6'
+    };
+    
+    const icons = {
+        success: '✅',
+        error: '❌',
+        warning: '⚠️',
+        info: 'ℹ️'
+    };
+    
+    notification.style.background = colors[type] || colors.success;
+    notification.innerHTML = `${icons[type] || '📢'} ${message}`;
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification && notification.parentNode) {
+            notification.style.animation = 'slideDown 0.3s ease';
+            setTimeout(() => {
+                if (notification && notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 3500);
+}
 
 // ============================================
 // HELPER: Get document label
@@ -21972,24 +22038,12 @@ function renderStaffTable() {
         const genderDisplay = staff.gender === 'M' || staff.gender === 'Male' ? 'Male' : 
                              staff.gender === 'F' || staff.gender === 'Female' ? 'Female' : '-';
         
-        // Department with quick edit button
-        const deptDisplay = `
-            <span style="display:flex; align-items:center; gap:6px;">
-                ${escapeHtml(staff.department || 'N/A')}
-                <button onclick="quickEditDepartment('${staff.id}')" 
-                        style="background:transparent; border:none; color:#4C1D95; cursor:pointer; font-size:12px; padding:2px 6px;" 
-                        title="Quick edit department">
-                    <i class="fas fa-pen"></i>
-                </button>
-            </span>
-        `;
-        
         tbody.innerHTML += `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
+            <tr data-staff-id="${staff.id}" style="border-bottom: 1px solid #e5e7eb;">
                 <td style="padding: 12px;">${escapeHtml(staff.title || '')}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.first_name)}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.other_names || '')}</td>
-                <td style="padding: 12px;">${deptDisplay}</td>
+                <td style="padding: 12px;">${escapeHtml(staff.department || 'N/A')}</td>
                 <td style="padding: 12px;">${programBadge}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.email)}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.phone)}</td>
@@ -21999,25 +22053,35 @@ function renderStaffTable() {
                 <td style="padding: 12px;">${escapeHtml(staff.bank_account || '-')}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.shif_number || '-')}</td>
                 <td style="padding: 12px;">${escapeHtml(staff.nsrf_number || '-')}</td>
-                <td style="padding: 12px;">${loginStatus}</td>
                 <td style="padding: 12px;">
-                    <button onclick="editStaff('${staff.id}')" class="btn-sm" style="background:#3b82f6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">
-                        <i class="fas fa-edit"></i> Edit
+                    <span class="login-status" style="color: ${staff.login_enabled ? '#10b981' : '#ef4444'};">
+                        ${staff.login_enabled ? '✅ Enabled' : '❌ Disabled'}
+                    </span>
+                </td>
+                <td style="padding: 12px; white-space: nowrap;">
+                    <button onclick="toggleStaffLogin('${staff.id}', ${staff.login_enabled})" 
+                            class="toggle-login-btn"
+                            style="background:${staff.login_enabled ? '#f59e0b' : '#10b981'};color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;font-size:12px;">
+                        ${staff.login_enabled ? '🔓 Disable' : '🔒 Enable'}
+                    </button>
+                    <button onclick="editStaff('${staff.id}')" 
+                            style="background:#3b82f6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;font-size:12px;">
+                        <i class="fas fa-edit"></i>
                     </button>
                     <button onclick="viewStaffDocuments('${staff.id}')" 
-                            style="background:#10b981;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;" 
-                            title="View documents">
-                        <i class="fas fa-file-alt"></i> Docs
+                            style="background:#10b981;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;font-size:12px;">
+                        <i class="fas fa-file-alt"></i>
                     </button>
                     <button onclick="quickEditDepartment('${staff.id}')" 
-                            style="background:#8b5cf6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;" 
-                            title="Change department">
-                        <i class="fas fa-building"></i> Dept
+                            style="background:#8b5cf6;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;font-size:12px;">
+                        <i class="fas fa-building"></i>
                     </button>
-                    <button onclick="resetStaffPassword('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#f59e0b;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;">
+                    <button onclick="resetStaffPassword('${staff.id}', '${staff.first_name}')" 
+                            style="background:#f59e0b;color:white;border:none;padding:5px 10px;border-radius:4px;margin-right:5px;cursor:pointer;font-size:12px;">
                         <i class="fas fa-key"></i>
                     </button>
-                    <button onclick="deleteStaff('${staff.id}', '${staff.first_name}')" class="btn-sm" style="background:#ef4444;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;">
+                    <button onclick="deleteStaff('${staff.id}', '${staff.first_name}')" 
+                            style="background:#ef4444;color:white;border:none;padding:5px 10px;border-radius:4px;cursor:pointer;font-size:12px;">
                         <i class="fas fa-trash"></i>
                     </button>
                 </td>
@@ -22027,7 +22091,61 @@ function renderStaffTable() {
 }
 
 // ============================================
-// OPEN ADD STAFF MODAL
+// TOGGLE STAFF LOGIN ACCESS
+// ============================================
+async function toggleStaffLogin(staffId, currentStatus) {
+    try {
+        const sb = getSb();
+        if (!sb) throw new Error('Supabase client not available');
+        
+        const newStatus = !currentStatus;
+        
+        const { data, error } = await sb
+            .from('staff_records')
+            .update({
+                login_enabled: newStatus,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', staffId)
+            .select();
+        
+        if (error) throw error;
+        
+        // Update UI without reload
+        const row = document.querySelector(`[data-staff-id="${staffId}"]`);
+        if (row) {
+            const badge = row.querySelector('.login-status');
+            if (badge) {
+                badge.textContent = newStatus ? '✅ Enabled' : '❌ Disabled';
+                badge.style.color = newStatus ? '#10b981' : '#ef4444';
+            }
+            
+            const btn = row.querySelector('.toggle-login-btn');
+            if (btn) {
+                btn.textContent = newStatus ? '🔓 Disable' : '🔒 Enable';
+                btn.style.background = newStatus ? '#f59e0b' : '#10b981';
+                btn.onclick = function() { toggleStaffLogin(staffId, newStatus); };
+            }
+        }
+        
+        // Update staffRecords array
+        const staffIndex = staffRecords.findIndex(s => s.id === staffId);
+        if (staffIndex !== -1) {
+            staffRecords[staffIndex].login_enabled = newStatus;
+        }
+        
+        showNotification(`✅ Login ${newStatus ? 'enabled' : 'disabled'} successfully`, 'success');
+        return true;
+        
+    } catch (error) {
+        console.error('❌ Toggle login error:', error);
+        showNotification('❌ Failed to toggle login: ' + error.message, 'error');
+        return false;
+    }
+}
+
+// ============================================
+// OPEN ADD STAFF MODAL - FIXED
 // ============================================
 function openAddStaffModal() {
     console.log('🔧 Opening Add Staff Modal...');
@@ -22039,10 +22157,16 @@ function openAddStaffModal() {
         return;
     }
     
-    // Reset form to add mode
     document.getElementById('modalTitle').textContent = 'Register Staff';
     document.getElementById('editStaffId').value = '';
-    document.getElementById('submitBtnText').textContent = 'Save Staff';
+    
+    // ✅ FIXED - Safe button update
+    const submitBtn = document.querySelector('#staffForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Staff';
+        submitBtn.onclick = saveStaff;
+        submitBtn.disabled = false;
+    }
     
     // Reset form fields
     document.getElementById('staffTitle').value = 'Mr.';
@@ -22065,26 +22189,24 @@ function openAddStaffModal() {
     document.getElementById('staffEnableLogin').checked = true;
     document.getElementById('staffEnableLogin').disabled = false;
     
-    // Reset password fields
     document.getElementById('staffPassword').value = '';
     document.getElementById('staffConfirmPassword').value = '';
     
-    // Show password section
     const passwordSection = document.getElementById('staffPasswordSection');
     if (passwordSection) passwordSection.style.display = 'block';
     
-    // Reset document uploads
     resetStaffDocuments();
-    
-    // Change submit button to save mode
-    const submitBtn = document.querySelector('#staffForm button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Save Staff</span>';
-        submitBtn.onclick = saveStaff;
-    }
     
     modal.style.display = 'flex';
     console.log('✅ Modal opened successfully');
+}
+
+// ============================================
+// CLOSE MODAL
+// ============================================
+function closeAddStaffModal() {
+    const modal = document.getElementById('addStaffModal');
+    if (modal) modal.style.display = 'none';
 }
 
 // ============================================
@@ -22107,14 +22229,6 @@ function resetStaffDocuments() {
         if (filenameEl) filenameEl.textContent = '';
         if (input) input.value = '';
     });
-}
-
-// ============================================
-// CLOSE MODAL
-// ============================================
-function closeAddStaffModal() {
-    const modal = document.getElementById('addStaffModal');
-    if (modal) modal.style.display = 'none';
 }
 
 // ============================================
@@ -22157,7 +22271,6 @@ function handleStaffDocumentUpload(event, docType) {
         filenameEl.textContent = `${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
     }
     
-    // Show progress
     const progressEl = document.getElementById('staffDocUploadProgress');
     const progressBar = document.getElementById('staffDocProgressBar');
     if (progressEl) {
@@ -22216,11 +22329,9 @@ async function viewStaffDocuments(staffId) {
         const staff = staffRecords.find(s => s.id === staffId);
         title.textContent = `📄 ${staff?.first_name || 'Staff'} Documents`;
         
-        // Show loading
         content.innerHTML = '<p style="color:#94a3b8; text-align:center;"><i class="fas fa-spinner fa-spin"></i> Loading documents...</p>';
         modal.style.display = 'flex';
         
-        // Fetch documents from user_documents table
         const { data, error } = await sb
             .from('user_documents')
             .select('*')
@@ -22295,7 +22406,7 @@ function closeViewDocsModal() {
 }
 
 // ============================================
-// SAVE STAFF - CREATE NEW (Matches Registration Flow)
+// SAVE STAFF - CREATE NEW - FIXED
 // ============================================
 async function saveStaff() {
     console.log('🔧 Saving new staff...');
@@ -22304,7 +22415,6 @@ async function saveStaff() {
     const password = document.getElementById('staffPassword')?.value;
     const confirmPassword = document.getElementById('staffConfirmPassword')?.value;
     
-    // Validate password
     if (loginEnabled) {
         if (!password) {
             alert('Please enter a password');
@@ -22350,12 +22460,13 @@ async function saveStaff() {
         const sb = getSb();
         if (!sb) throw new Error('Supabase client not available');
         
+        // ✅ FIXED - Safe button update
         const submitBtn = document.querySelector('#staffForm button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
-        submitBtn.disabled = true;
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Saving...';
+            submitBtn.disabled = true;
+        }
         
-        // ✅ CHECK IF EMAIL ALREADY EXISTS
         const { data: existing, error: checkError } = await sb
             .from('staff_records')
             .select('id, email')
@@ -22368,29 +22479,23 @@ async function saveStaff() {
         
         let staffId;
         
-        // If email exists, UPDATE instead of INSERT
         if (existing) {
             console.log('⚠️ Staff with email already exists. Updating instead...');
             staffId = existing.id;
-            
-            // Don't override password if not provided
             if (password) {
                 staffData.password_hash = btoa(password);
             }
             staffData.updated_at = new Date().toISOString();
             
-            // UPDATE existing record
             const { error: updateError } = await sb
                 .from('staff_records')
                 .update(staffData)
                 .eq('id', existing.id);
             
             if (updateError) throw updateError;
-            
-            alert(`✅ Staff ${staffData.first_name} updated successfully! (Email already existed)`);
+            showNotification(`✅ Staff ${staffData.first_name} updated successfully!`, 'success');
             
         } else {
-            // ✅ INSERT new staff - Auto-generate Staff ID like registration
             const deptCodes = {
                 'Nursing': 'NUR',
                 'TVET': 'TVT',
@@ -22405,7 +22510,6 @@ async function saveStaff() {
             
             const deptCode = deptCodes[staffData.department] || 'STA';
             
-            // Get last staff ID for this department
             const { data: deptStaff } = await sb
                 .from('staff_records')
                 .select('id')
@@ -22426,30 +22530,25 @@ async function saveStaff() {
             staffId = 'NCHSM' + deptCode + '-' + String(nextNumber).padStart(3, '0');
             staffData.id = staffId;
             
-            // ✅ Base64 encode password (matches registration)
             if (password) {
                 staffData.password_hash = btoa(password);
             }
             staffData.created_at = new Date().toISOString();
             staffData.updated_at = new Date().toISOString();
             
-            // INSERT new record
             const { error: insertError } = await sb
                 .from('staff_records')
                 .insert([staffData]);
             
             if (insertError) throw insertError;
             
-            alert(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`);
+            showNotification(`✅ Staff ${staffData.first_name} registered! ID: ${staffId}`, 'success');
         }
         
-        // ============================================
-        // ✅ CREATE/UPDATE CONSOLIDATED PROFILE
-        // ============================================
+        // Sync with consolidated profile
         try {
             const fullName = `${staffData.title || ''} ${staffData.first_name} ${staffData.other_names || ''}`.trim();
             
-            // Check if consolidated profile exists
             const { data: existingCons } = await sb
                 .from('consolidated_user_profiles_table')
                 .select('user_id')
@@ -22457,8 +22556,7 @@ async function saveStaff() {
                 .maybeSingle();
             
             if (existingCons) {
-                // UPDATE existing consolidated profile
-                const { error: consUpdateError } = await sb
+                await sb
                     .from('consolidated_user_profiles_table')
                     .update({
                         full_name: fullName,
@@ -22472,15 +22570,9 @@ async function saveStaff() {
                         updated_at: new Date().toISOString()
                     })
                     .eq('email', staffData.email);
-                
-                if (consUpdateError) {
-                    console.warn('⚠️ Could not update consolidated profile:', consUpdateError);
-                } else {
-                    console.log('✅ Consolidated profile updated');
-                }
+                console.log('✅ Consolidated profile updated');
             } else {
-                // CREATE new consolidated profile
-                const { error: consInsertError } = await sb
+                await sb
                     .from('consolidated_user_profiles_table')
                     .insert({
                         email: staffData.email,
@@ -22495,20 +22587,13 @@ async function saveStaff() {
                         created_at: new Date().toISOString(),
                         updated_at: new Date().toISOString()
                     });
-                
-                if (consInsertError) {
-                    console.warn('⚠️ Could not create consolidated profile:', consInsertError);
-                } else {
-                    console.log('✅ Consolidated profile created');
-                }
+                console.log('✅ Consolidated profile created');
             }
         } catch (e) {
             console.warn('⚠️ Error with consolidated profile:', e);
         }
         
-        // ============================================
-        // UPLOAD DOCUMENTS (if any)
-        // ============================================
+        // Upload documents
         const docTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
         let docsUploaded = 0;
         
@@ -22524,7 +22609,6 @@ async function saveStaff() {
                         .upload(docPath, file, { upsert: true });
                     
                     if (!uploadError) {
-                        // Insert document record
                         await sb.from('user_documents').insert({
                             user_id: staffId,
                             document_type: docType,
@@ -22534,8 +22618,6 @@ async function saveStaff() {
                         });
                         docsUploaded++;
                         console.log(`✅ ${docType} document uploaded`);
-                    } else {
-                        console.warn(`⚠️ Could not upload ${docType}:`, uploadError);
                     }
                 } catch (err) {
                     console.warn(`⚠️ Error uploading ${docType}:`, err);
@@ -22555,15 +22637,17 @@ async function saveStaff() {
         console.error('❌ Save error:', error);
         alert(`❌ Error: ${error.message}`);
     } finally {
+        // ✅ FIXED - Safe button reset
         const submitBtn = document.querySelector('#staffForm button[type="submit"]');
         if (submitBtn) {
-            submitBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Save Staff</span>';
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Save Staff';
             submitBtn.disabled = false;
         }
     }
 }
+
 // ============================================
-// EDIT STAFF - LOAD DATA FOR EDITING
+// EDIT STAFF - FIXED
 // ============================================
 async function editStaff(staffId) {
     console.log('✏️ Editing staff:', staffId);
@@ -22580,14 +22664,18 @@ async function editStaff(staffId) {
         return;
     }
     
-    // Update modal title
     document.getElementById('modalTitle').textContent = `✏️ Edit Staff: ${staff.first_name}`;
-    document.getElementById('submitBtnText').textContent = 'Update Staff';
-    
-    // Store staff ID for update
     document.getElementById('editStaffId').value = staff.id;
     
-    // Populate form with existing data
+    // ✅ FIXED - Safe button update
+    const submitBtn = document.querySelector('#staffForm button[type="submit"]');
+    if (submitBtn) {
+        submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Staff';
+        submitBtn.onclick = updateStaff;
+        submitBtn.disabled = false;
+    }
+    
+    // Populate form fields
     document.getElementById('staffTitle').value = staff.title || 'Mr.';
     document.getElementById('staffFirstName').value = staff.first_name || '';
     document.getElementById('staffOtherNames').value = staff.other_names || '';
@@ -22607,7 +22695,6 @@ async function editStaff(staffId) {
     document.getElementById('staffStatus').value = staff.status || 'active';
     document.getElementById('staffEnableLogin').checked = staff.login_enabled || false;
     
-    // Show staff ID
     const staffIdDisplay = document.getElementById('staffIdDisplay');
     if (staffIdDisplay) {
         staffIdDisplay.value = staff.id;
@@ -22615,22 +22702,18 @@ async function editStaff(staffId) {
         staffIdDisplay.style.fontWeight = '600';
     }
     
-    // HIDE password section - we don't change password during edit
     const passwordSection = document.getElementById('staffPasswordSection');
     if (passwordSection) {
         passwordSection.style.display = 'none';
     }
     
-    // Disable login checkbox during edit
     const loginCheckbox = document.getElementById('staffEnableLogin');
     if (loginCheckbox) {
         loginCheckbox.disabled = true;
     }
     
-    // Reset document uploads for new uploads
     resetStaffDocuments();
     
-    // Check for existing documents
     try {
         const sb = getSb();
         if (sb) {
@@ -22661,20 +22744,12 @@ async function editStaff(staffId) {
         console.warn('Could not load existing documents:', e);
     }
     
-    // Change submit button to update mode
-    const submitBtn = document.querySelector('#staffForm button[type="submit"]');
-    if (submitBtn) {
-        submitBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Update Staff</span>';
-        submitBtn.onclick = updateStaff;
-    }
-    
     modal.style.display = 'flex';
     console.log('✅ Staff data loaded for editing:', staff.first_name);
 }
 
 // ============================================
-// UPDATE STAFF - DETAILS ONLY (NO PASSWORD)
-// ALSO UPDATES consolidated_user_profiles_table AND auth
+// UPDATE STAFF - FIXED
 // ============================================
 async function updateStaff() {
     console.log('🔄 Updating staff...');
@@ -22685,7 +22760,6 @@ async function updateStaff() {
         return;
     }
     
-    // Collect form data
     const staffData = {
         title: document.getElementById('staffTitle').value,
         first_name: document.getElementById('staffFirstName').value.trim(),
@@ -22707,7 +22781,6 @@ async function updateStaff() {
         updated_at: new Date().toISOString()
     };
     
-    // Validate required fields
     if (!staffData.first_name) {
         alert('First Name is required');
         return;
@@ -22729,14 +22802,13 @@ async function updateStaff() {
         const sb = getSb();
         if (!sb) throw new Error('Supabase client not available');
         
+        // ✅ FIXED - Safe button update
         const submitBtn = document.querySelector('#staffForm button[type="submit"]');
-        const originalText = submitBtn.innerHTML;
-        submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
-        submitBtn.disabled = true;
+        if (submitBtn) {
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Updating...';
+            submitBtn.disabled = true;
+        }
         
-        // ============================================
-        // 1. UPDATE staff_records
-        // ============================================
         const { error: staffError } = await sb
             .from('staff_records')
             .update(staffData)
@@ -22745,9 +22817,7 @@ async function updateStaff() {
         if (staffError) throw staffError;
         console.log('✅ staff_records updated');
         
-        // ============================================
-        // 2. UPDATE consolidated_user_profiles_table
-        // ============================================
+        // Update consolidated profile
         try {
             const fullName = `${staffData.title || ''} ${staffData.first_name} ${staffData.other_names || ''}`.trim();
             
@@ -22766,10 +22836,7 @@ async function updateStaff() {
                 .eq('staff_id', staffId);
             
             if (consError) {
-                console.warn('⚠️ Could not update consolidated profile:', consError);
-                
-                // Try updating by email instead
-                const { error: consError2 } = await sb
+                await sb
                     .from('consolidated_user_profiles_table')
                     .update({
                         full_name: fullName,
@@ -22781,84 +22848,13 @@ async function updateStaff() {
                         updated_at: new Date().toISOString()
                     })
                     .eq('email', staffData.email);
-                
-                if (consError2) {
-                    console.warn('⚠️ Could not update consolidated profile by email:', consError2);
-                } else {
-                    console.log('✅ consolidated_user_profiles_table updated (by email)');
-                }
-            } else {
-                console.log('✅ consolidated_user_profiles_table updated');
             }
+            console.log('✅ consolidated_user_profiles_table updated');
         } catch (e) {
             console.warn('⚠️ Error updating consolidated profile:', e);
         }
         
-        // ============================================
-        // 3. UPDATE auth.users (for email changes)
-        // ============================================
-        try {
-            // Get current staff record to check if email changed
-            const { data: currentStaff } = await sb
-                .from('staff_records')
-                .select('email')
-                .eq('id', staffId)
-                .single();
-            
-            if (currentStaff && currentStaff.email !== staffData.email) {
-                // Email changed - need to update auth
-                // Get the auth user by email
-                const { data: authUsers } = await sb.auth.admin.listUsers({
-                    filters: { email: currentStaff.email }
-                });
-                
-                const authUser = authUsers?.users?.[0];
-                if (authUser) {
-                    const { error: authError } = await sb.auth.admin.updateUserById(
-                        authUser.id,
-                        { email: staffData.email }
-                    );
-                    
-                    if (authError) {
-                        console.warn('⚠️ Could not update auth email:', authError);
-                    } else {
-                        console.log('✅ Auth user email updated');
-                    }
-                }
-            }
-            
-            // Also update user metadata in auth
-            const { data: authUsers } = await sb.auth.admin.listUsers({
-                filters: { email: staffData.email }
-            });
-            
-            const authUser = authUsers?.users?.[0];
-            if (authUser) {
-                const { error: metaError } = await sb.auth.admin.updateUserById(
-                    authUser.id,
-                    {
-                        user_metadata: {
-                            full_name: `${staffData.first_name} ${staffData.other_names || ''}`.trim(),
-                            department: staffData.department,
-                            program: staffData.program,
-                            role: 'lecturer'
-                        }
-                    }
-                );
-                
-                if (metaError) {
-                    console.warn('⚠️ Could not update auth metadata:', metaError);
-                } else {
-                    console.log('✅ Auth user metadata updated');
-                }
-            }
-        } catch (e) {
-            console.warn('⚠️ Error updating auth:', e);
-        }
-        
-        // ============================================
-        // 4. UPLOAD NEW DOCUMENTS (if any)
-        // ============================================
+        // Upload new documents
         const docTypes = ['lecturer_id', 'kra_pin', 'university_cert', 'cv'];
         let docsUploaded = 0;
         
@@ -22869,7 +22865,6 @@ async function updateStaff() {
                 const docPath = `documents/${staffId}/${docType}.${ext}`;
                 
                 try {
-                    // Check if document already exists
                     const { data: existingDoc } = await sb
                         .from('user_documents')
                         .select('id')
@@ -22878,7 +22873,6 @@ async function updateStaff() {
                         .maybeSingle();
                     
                     if (existingDoc) {
-                        // Update existing document
                         await sb
                             .from('user_documents')
                             .update({
@@ -22888,7 +22882,6 @@ async function updateStaff() {
                             })
                             .eq('id', existingDoc.id);
                     } else {
-                        // Insert new document
                         await sb.from('user_documents').insert({
                             user_id: staffId,
                             document_type: docType,
@@ -22898,7 +22891,6 @@ async function updateStaff() {
                         });
                     }
                     
-                    // Upload file to storage
                     const { error: uploadError } = await sb.storage
                         .from('user-documents')
                         .upload(docPath, file, { upsert: true });
@@ -22917,21 +22909,19 @@ async function updateStaff() {
             console.log(`📁 ${docsUploaded} documents uploaded/updated`);
         }
         
-        console.log('✅ Staff updated successfully');
-        alert(`✅ Staff ${staffData.first_name} updated successfully!`);
+        showNotification(`✅ Staff ${staffData.first_name} updated successfully!`, 'success');
         
-        // Close modal and refresh
         closeAddStaffModal();
         loadAllStaff();
         resetStaffDocuments();
         
-        // Reset form to add mode
+        // Reset modal to add mode
         document.getElementById('modalTitle').textContent = 'Register Staff';
-        document.getElementById('submitBtnText').textContent = 'Save Staff';
         const resetBtn = document.querySelector('#staffForm button[type="submit"]');
         if (resetBtn) {
-            resetBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Save Staff</span>';
+            resetBtn.innerHTML = '<i class="fas fa-save"></i> Save Staff';
             resetBtn.onclick = saveStaff;
+            resetBtn.disabled = false;
         }
         document.getElementById('editStaffId').value = '';
         const loginCheckbox = document.getElementById('staffEnableLogin');
@@ -22948,81 +22938,16 @@ async function updateStaff() {
         console.error('❌ Update error:', error);
         alert(`❌ Error updating staff: ${error.message}`);
         
-        // Reset button
         const submitBtn = document.querySelector('#staffForm button[type="submit"]');
         if (submitBtn) {
-            submitBtn.innerHTML = '<i class="fas fa-save"></i> <span id="submitBtnText">Update Staff</span>';
+            submitBtn.innerHTML = '<i class="fas fa-save"></i> Update Staff';
             submitBtn.disabled = false;
         }
     }
 }
-// ============================================
-// QUICK DEPARTMENT EDIT (INLINE)
-// ============================================
-async function quickEditDepartment(staffId) {
-    if (!staffId) {
-        alert('Staff ID is required');
-        return;
-    }
-    
-    // Find the staff record
-    const staff = staffRecords.find(s => s.id === staffId);
-    if (!staff) {
-        alert('Staff record not found');
-        return;
-    }
-    
-    // Show department selection dialog
-    const currentDept = staff.department || 'Not Set';
-    const options = STAFF_DEPARTMENTS.map(d => 
-        `${d === currentDept ? '✓ ' : '  '}${d}`
-    ).join('\n');
-    
-    const newDept = prompt(
-        `Current Department: ${currentDept}\n\n` +
-        `Select new department (type exactly as shown):\n${options}`,
-        currentDept
-    );
-    
-    if (!newDept || newDept === currentDept) {
-        if (newDept === currentDept) {
-            alert('Department unchanged');
-        }
-        return;
-    }
-    
-    // Validate department
-    if (!STAFF_DEPARTMENTS.includes(newDept)) {
-        alert(`❌ Invalid department. Choose from: ${STAFF_DEPARTMENTS.join(', ')}`);
-        return;
-    }
-    
-    try {
-        const sb = getSb();
-        if (!sb) throw new Error('Supabase client not available');
-        
-        // Update department
-        const { error } = await sb
-            .from('staff_records')
-            .update({ 
-                department: newDept,
-                updated_at: new Date().toISOString()
-            })
-            .eq('id', staffId);
-        
-        if (error) throw error;
-        
-        alert(`✅ Department updated to: ${newDept}`);
-        loadAllStaff();
-        
-    } catch (error) {
-        console.error('❌ Department update error:', error);
-        alert(`❌ Error: ${error.message}`);
-    }
-}
 
 // ============================================
-// RESET STAFF PASSWORD (Matches Registration encoding)
+// RESET STAFF PASSWORD
 // ============================================
 async function resetStaffPassword(staffId, staffName) {
     const newPassword = prompt(`Reset password for ${staffName}\n\nEnter new password (min 6 chars):`);
@@ -23041,7 +22966,6 @@ async function resetStaffPassword(staffId, staffName) {
         const sb = getSb();
         if (!sb) throw new Error('Supabase client not available');
         
-        // ✅ Base64 encode password (matches registration)
         const { error } = await sb
             .from('staff_records')
             .update({ 
@@ -23053,7 +22977,7 @@ async function resetStaffPassword(staffId, staffName) {
         
         if (error) throw error;
         
-        alert(`✅ Password for ${staffName} reset successfully!`);
+        showNotification(`✅ Password for ${staffName} reset successfully!`, 'success');
         loadAllStaff();
         
     } catch (error) {
@@ -23078,12 +23002,89 @@ async function deleteStaff(staffId, staffName) {
         
         if (error) throw error;
         
-        alert(`✅ Staff ${staffName} deleted!`);
+        showNotification(`✅ Staff ${staffName} deleted!`, 'success');
         loadAllStaff();
         
     } catch (error) {
         alert(`❌ Error: ${error.message}`);
     }
+}
+
+// ============================================
+// QUICK DEPARTMENT EDIT
+// ============================================
+async function quickEditDepartment(staffId) {
+    const staff = staffRecords.find(s => s.id === staffId);
+    if (!staff) {
+        alert('Staff record not found');
+        return;
+    }
+    
+    const currentDept = staff.department || 'Not Set';
+    const modal = document.createElement('div');
+    modal.style.cssText = `
+        position: fixed;
+        top: 0; left: 0; right: 0; bottom: 0;
+        background: rgba(0,0,0,0.5);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 100000;
+    `;
+    
+    modal.innerHTML = `
+        <div style="background: white; border-radius: 16px; padding: 32px; max-width: 400px; width: 90%;">
+            <h3 style="margin-top: 0; color: #1e293b;">Change Department</h3>
+            <p style="color: #64748b; margin-bottom: 16px;">
+                Current: <strong>${currentDept}</strong>
+            </p>
+            <select id="quickDeptSelect" style="width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; margin-bottom: 16px;">
+                ${STAFF_DEPARTMENTS.map(d => `<option value="${d}" ${d === currentDept ? 'selected' : ''}>${d}</option>`).join('')}
+            </select>
+            <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                <button onclick="this.closest('div[style]').remove()" style="padding: 8px 20px; border: none; background: #e2e8f0; border-radius: 8px; cursor: pointer;">Cancel</button>
+                <button id="quickDeptConfirm" style="padding: 8px 20px; border: none; background: #4C1D95; color: white; border-radius: 8px; cursor: pointer;">Update</button>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(modal);
+    
+    document.getElementById('quickDeptConfirm').onclick = async function() {
+        const newDept = document.getElementById('quickDeptSelect').value;
+        if (newDept === currentDept) {
+            alert('Department unchanged');
+            modal.remove();
+            return;
+        }
+        
+        try {
+            const sb = getSb();
+            if (!sb) throw new Error('Supabase client not available');
+            
+            const { error } = await sb
+                .from('staff_records')
+                .update({ 
+                    department: newDept,
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', staffId);
+            
+            if (error) throw error;
+            
+            showNotification(`✅ Department updated to: ${newDept}`, 'success');
+            modal.remove();
+            loadAllStaff();
+            
+        } catch (error) {
+            console.error('❌ Department update error:', error);
+            alert(`❌ Error: ${error.message}`);
+        }
+    };
+    
+    modal.addEventListener('click', function(e) {
+        if (e.target === this) this.remove();
+    });
 }
 
 // ============================================
@@ -23153,6 +23154,12 @@ function importStaffFromCSV() {
                 let skipped = 0;
                 let updated = 0;
                 
+                const sb = getSb();
+                if (!sb) {
+                    alert('Supabase client not available');
+                    return;
+                }
+                
                 for (let i = 1; i < lines.length; i++) {
                     if (!lines[i].trim()) continue;
                     
@@ -23190,7 +23197,6 @@ function importStaffFromCSV() {
                     };
                     
                     try {
-                        // Check if email exists
                         const { data: existing } = await sb
                             .from('staff_records')
                             .select('id')
@@ -23198,7 +23204,6 @@ function importStaffFromCSV() {
                             .maybeSingle();
                         
                         if (existing) {
-                            // UPDATE existing
                             const { error } = await sb
                                 .from('staff_records')
                                 .update(staffData)
@@ -23206,7 +23211,6 @@ function importStaffFromCSV() {
                             if (error) throw error;
                             updated++;
                         } else {
-                            // Generate staff ID
                             const deptCodes = {
                                 'Nursing': 'NUR',
                                 'TVET': 'TVT',
@@ -23276,7 +23280,7 @@ function importStaffFromCSV() {
 }
 
 // ============================================
-// STAFF LOGIN FUNCTION (Matches Registration)
+// STAFF LOGIN FUNCTION
 // ============================================
 async function staffLogin(emailOrId, password) {
     try {
@@ -23295,11 +23299,14 @@ async function staffLogin(emailOrId, password) {
             return { success: false, message: 'Invalid credentials' };
         }
         
-        // ✅ Check password (stored as base64 - matches registration)
         if (data.password_hash) {
-            const storedPassword = atob(data.password_hash);
-            if (storedPassword !== password) {
-                return { success: false, message: 'Invalid password' };
+            try {
+                const storedPassword = atob(data.password_hash);
+                if (storedPassword !== password) {
+                    return { success: false, message: 'Invalid password' };
+                }
+            } catch (e) {
+                return { success: false, message: 'Password format error' };
             }
         } else {
             return { success: false, message: 'No password set. Please contact admin.' };
@@ -23324,15 +23331,46 @@ async function staffLogin(emailOrId, password) {
 }
 
 // ============================================
+// STAFF LOGOUT
+// ============================================
+function staffLogout() {
+    localStorage.removeItem('staffSession');
+    showNotification('👋 Logged out successfully', 'info');
+    setTimeout(() => {
+        window.location.href = 'login.html';
+    }, 500);
+}
+
+// ============================================
+// CHECK STAFF SESSION
+// ============================================
+function checkStaffSession() {
+    try {
+        const session = localStorage.getItem('staffSession');
+        if (session) {
+            return JSON.parse(session);
+        }
+        return null;
+    } catch (e) {
+        return null;
+    }
+}
+
+// ============================================
+// GET CURRENT STAFF
+// ============================================
+function getCurrentStaff() {
+    return checkStaffSession();
+}
+
+// ============================================
 // INITIALIZE STAFF MANAGEMENT
 // ============================================
 function initStaffManagement() {
     console.log('🚀 Initializing Staff Management...');
     
-    // Load data
     loadAllStaff();
     
-    // Set up event listeners
     const searchInput = document.getElementById('staffSearchInput');
     if (searchInput) searchInput.addEventListener('keyup', filterStaffTable);
     
@@ -23348,7 +23386,6 @@ function initStaffManagement() {
     const loginCheckbox = document.getElementById('staffEnableLogin');
     if (loginCheckbox) loginCheckbox.addEventListener('change', toggleStaffPasswordField);
     
-    // Close modals on outside click
     const addModal = document.getElementById('addStaffModal');
     if (addModal) {
         addModal.addEventListener('click', function(e) {
@@ -23382,14 +23419,20 @@ window.exportStaffToCSV = exportStaffToCSV;
 window.importStaffFromCSV = importStaffFromCSV;
 window.initStaffManagement = initStaffManagement;
 window.toggleStaffPasswordField = toggleStaffPasswordField;
+window.toggleStaffLogin = toggleStaffLogin;
 window.staffLogin = staffLogin;
+window.staffLogout = staffLogout;
+window.checkStaffSession = checkStaffSession;
+window.getCurrentStaff = getCurrentStaff;
 window.quickEditDepartment = quickEditDepartment;
 window.handleStaffDocumentUpload = handleStaffDocumentUpload;
 window.removeStaffDocument = removeStaffDocument;
 window.viewStaffDocuments = viewStaffDocuments;
 window.closeViewDocsModal = closeViewDocsModal;
+window.showNotification = showNotification;
+window.getSb = getSb;
 
-console.log('✅ Staff Management module ready (with document upload support)');
+console.log('✅ Staff Management module fully loaded with all functions');
 /*******************************************************
  * SUPER ADMIN APPROVAL SYSTEM
  * All admin actions require Super Admin approval
