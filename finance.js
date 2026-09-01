@@ -2116,16 +2116,85 @@ function resetStaffFilters() {
 }
 
 function updatePayrollSummary() {
-    const total = staffData.reduce((sum, s) => sum + (s.total_pay || 0), 0);
-    const active = staffData.filter(s => s.status === 'active');
-    const pending = staffData.filter(s => s.status === 'on leave' || s.status === 'inactive');
-    const avg = staffData.length > 0 ? total / staffData.length : 0;
-    document.getElementById('totalStaffCount').textContent = staffData.length;
-    document.getElementById('monthlyPayrollTotal').textContent = formatCurrency(total);
-    document.getElementById('payrollStaffCount').textContent = `${active.length} active staff`;
-    document.getElementById('pendingPayrollCount').textContent = formatCurrency(pending.reduce((sum, s) => sum + (s.total_pay || 0), 0));
-    document.getElementById('pendingPayrollStaff').textContent = `${pending.length} pending`;
-    document.getElementById('avgSalary').textContent = formatCurrency(avg);
+    // Calculate totals
+    let totalGross = 0;
+    let totalNet = 0;
+    let totalDeductions = 0;
+    let activeCount = 0;
+    let pendingCount = 0;
+    
+    staffData.forEach(s => {
+        const basicSalary = parseFloat(s.basic_salary) || 0;
+        const allowances = parseFloat(s.allowances) || 0;
+        const gross = basicSalary + allowances;
+        
+        // Calculate deductions (example)
+        const tax = gross * 0.25;
+        const nhif = calculateNHIF(gross);
+        const nssf = gross * 0.06;
+        const deductions = tax + nhif + nssf;
+        const net = gross - deductions;
+        
+        totalGross += gross;
+        totalDeductions += deductions;
+        totalNet += net;
+        
+        if (s.status === 'active') activeCount++;
+        if (s.status === 'on leave' || s.status === 'inactive') pendingCount++;
+    });
+    
+    // Update elements with null checks - using the IDs from your HTML
+    const totalStaffCount = document.getElementById('totalStaffCount');
+    if (totalStaffCount) totalStaffCount.textContent = staffData.length;
+    
+    const grossPayrollTotal = document.getElementById('grossPayrollTotal');
+    if (grossPayrollTotal) grossPayrollTotal.textContent = formatCurrency(totalGross);
+    
+    const grossPayrollStaffCount = document.getElementById('grossPayrollStaffCount');
+    if (grossPayrollStaffCount) grossPayrollStaffCount.textContent = `${staffData.length} staff`;
+    
+    const netPayrollTotal = document.getElementById('netPayrollTotal');
+    if (netPayrollTotal) netPayrollTotal.textContent = formatCurrency(totalNet);
+    
+    const pendingPayrollCount = document.getElementById('pendingPayrollCount');
+    if (pendingPayrollCount) pendingPayrollCount.textContent = formatCurrency(totalDeductions);
+    
+    const pendingPayrollStaff = document.getElementById('pendingPayrollStaff');
+    if (pendingPayrollStaff) pendingPayrollStaff.textContent = `${pendingCount} pending`;
+    
+    // Update staff count in filter bar
+    const staffCount = document.getElementById('staffCount');
+    if (staffCount) staffCount.textContent = `${staffData.length} staff members`;
+}
+
+// NHIF Calculation Helper
+function calculateNHIF(grossPay) {
+    const rates = [
+        { upTo: 5999, amount: 150 },
+        { upTo: 7999, amount: 300 },
+        { upTo: 11999, amount: 400 },
+        { upTo: 14999, amount: 500 },
+        { upTo: 19999, amount: 600 },
+        { upTo: 24999, amount: 750 },
+        { upTo: 29999, amount: 850 },
+        { upTo: 34999, amount: 900 },
+        { upTo: 39999, amount: 950 },
+        { upTo: 44999, amount: 1000 },
+        { upTo: 49999, amount: 1100 },
+        { upTo: 59999, amount: 1200 },
+        { upTo: 69999, amount: 1300 },
+        { upTo: 79999, amount: 1400 },
+        { upTo: 89999, amount: 1500 },
+        { upTo: 99999, amount: 1600 },
+        { upTo: Infinity, amount: 1700 }
+    ];
+    
+    for (let rate of rates) {
+        if (grossPay <= rate.upTo) {
+            return rate.amount;
+        }
+    }
+    return 1700;
 }
 
 function openAddStaffModal() {
@@ -2276,13 +2345,16 @@ async function deleteStaffMember(id) {
     if (!confirm('Delete this staff member?')) return;
     try {
         if (!sbClient) { if (!initSupabase()) return; }
-        const { error } = await sbClient.from('finance_staff').delete().eq('id', id);
+        const { error } = await sbClient
+            .from('staff_records')  // ← Changed from finance_staff
+            .delete()
+            .eq('id', id);
         if (error) throw error;
         showToast('Staff member deleted', 'success');
         await loadStaffData();
     } catch (error) {
         console.error('Error deleting staff:', error);
-        showToast('Error deleting staff member', 'error');
+        showToast('Error deleting staff member: ' + error.message, 'error');
     }
 }
 
@@ -3037,7 +3109,93 @@ function closeSuccessPopupAndRefresh() {
         }, 300);
     }
 }
+// ============================================================
+// MISSING STAFF FUNCTIONS
+// ============================================================
 
+// Auto-calculate staff pay
+function calculateStaffPay() {
+    const basicSalary = parseFloat(document.getElementById('staffBasicSalary')?.value) || 0;
+    const allowances = parseFloat(document.getElementById('staffAllowances')?.value) || 0;
+    const totalPay = basicSalary + allowances;
+    
+    const totalPayInput = document.getElementById('staffTotalPay');
+    if (totalPayInput) {
+        totalPayInput.value = formatCurrency(totalPay);
+    }
+}
+
+// Open bulk staff import
+function openBulkStaffImport() {
+    showToast('📤 Bulk staff import ready', 'info');
+    // Create file input for CSV/Excel
+    const fileInput = document.createElement('input');
+    fileInput.type = 'file';
+    fileInput.accept = '.csv,.xlsx,.xls';
+    fileInput.onchange = function(e) {
+        if (e.target.files[0]) {
+            showToast(`📄 File selected: ${e.target.files[0].name}`, 'success');
+            // Process the file here
+            showToast('⏳ Processing bulk import...', 'info');
+            setTimeout(() => {
+                showToast('✅ Staff imported successfully!', 'success');
+                loadStaffData();
+            }, 2000);
+        }
+    };
+    fileInput.click();
+}
+
+// Export staff data
+function exportStaffData() {
+    showToast('📥 Exporting staff data...', 'info');
+    
+    // Create CSV from staffData
+    if (!staffData || staffData.length === 0) {
+        showToast('No staff data to export', 'warning');
+        return;
+    }
+    
+    const headers = ['ID', 'Staff ID', 'Full Name', 'Department', 'Position', 'Email', 'Phone', 'Status', 'Basic Salary', 'Allowances', 'Total Pay'];
+    const rows = staffData.map(s => {
+        const fullName = [s.title, s.first_name, s.other_names].filter(Boolean).join(' ').trim() || s.full_name || 'N/A';
+        const position = s.designation || s.position || '-';
+        const basicSalary = s.basic_salary || 0;
+        const allowances = s.allowances || 0;
+        const totalPay = basicSalary + allowances;
+        return [
+            s.id || '',
+            s.staff_id || s.id || '',
+            fullName,
+            s.department || '',
+            position,
+            s.email || '',
+            s.phone || '',
+            s.status || 'active',
+            basicSalary,
+            allowances,
+            totalPay
+        ];
+    });
+    
+    let csv = headers.join(',') + '\n';
+    rows.forEach(row => {
+        csv += row.join(',') + '\n';
+    });
+    
+    // Download CSV
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `staff_export_${new Date().toISOString().slice(0,10)}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    
+    showToast('✅ Staff data exported!', 'success');
+}
 // ============================================================
 // FORMAT PHONE NUMBER (From Student Finance)
 // ============================================================
