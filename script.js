@@ -21840,16 +21840,6 @@ const staffUploadedDocs = {
     cv: null
 };
 
-// ============================================
-// GET SUPABASE CLIENT
-// ============================================
-function getSb() {
-    if (typeof sb !== 'undefined' && sb) return sb;
-    if (typeof window.sb !== 'undefined' && window.sb) return window.sb;
-    if (typeof window.supabase !== 'undefined' && window.supabase) return window.supabase;
-    console.warn('⚠️ Supabase client not found');
-    return null;
-}
 
 // ============================================
 // SHOW NOTIFICATION
