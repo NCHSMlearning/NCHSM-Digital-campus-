@@ -552,65 +552,71 @@
             </div>
         </div>
 
-        <!-- ============================================ -->
-        <!-- STEP 4: SECURITY & SUBMIT -->
-        <!-- ============================================ -->
-        <div class="form-section" data-section="4" style="display: none;">
+     <!-- ============================================ -->
+<!-- STEP 4: SECURITY & SUBMIT -->
+<!-- ============================================ -->
+<div class="form-section" data-section="4" style="display: none;">
 
-            <div class="two-columns">
-                <div class="form-group">
-                    <label><i data-feather="lock"></i> Password</label>
-                    <input type="password" id="password" name="password" placeholder="Create a strong password" required>
-                    <div class="password-strength">
-                        <div class="strength-bar" id="strengthBar"></div>
-                        <div class="strength-text" id="strengthText">Enter a password</div>
-                    </div>
-                    <div class="help-text">Minimum 6 characters, use uppercase, numbers, and symbols</div>
-                </div>
-
-                <div class="form-group">
-                    <label><i data-feather="lock"></i> Confirm Password</label>
-                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
-                    <div class="help-text" id="passwordMatch"></div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <div class="terms-container">
-                    <input type="checkbox" id="terms" required>
-                    <label for="terms">
-                        I agree to the 
-                        <a href="#" onclick="openTermsModal(event)">Terms & Conditions</a> 
-                        and confirm that all information provided is accurate.
-                    </label>
-                </div>
-            </div>
-
-            <div class="draft-actions">
-                <button type="button" class="btn-secondary" onclick="saveDraft()">
-                    💾 Save Draft
-                </button>
-                <button type="button" class="btn-secondary" onclick="loadDraft()">
-                    📂 Load Draft
+    <div class="two-columns">
+        <!-- Password Field with Eye Toggle -->
+        <div class="form-group">
+            <label><i data-feather="lock"></i> Password</label>
+            <div class="password-toggle-wrapper">
+                <input type="password" id="password" name="password" placeholder="Create a strong password" required>
+                <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('password', this)" aria-label="Toggle password visibility">
+                    👁️
                 </button>
             </div>
-
-            <button type="submit" id="register-btn" style="width:100%; padding: 14px; background: #0A3D62; color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
-                <span id="button-text">✅ Create Account</span>
-            </button>
-            
-            <button type="button" onclick="goToStep(3)" style="margin-top: 0.5rem; width:100%; padding: 12px; background: #6b7280; color: white; border: none; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
-                ← Back to Documents
-            </button>
-
-            <div id="message" class="message"></div>
-            <div id="redirect-countdown" class="redirect-countdown"></div>
+            <div class="password-strength">
+                <div class="strength-bar" id="strengthBar"></div>
+                <div class="strength-text" id="strengthText">Enter a password</div>
+            </div>
+            <div class="help-text">Minimum 6 characters, use uppercase, numbers, and symbols</div>
         </div>
-    </form>
 
-    <div class="login-link">
-        Already have an account? <a href="login.html">Login here</a>
+        <!-- Confirm Password Field with Eye Toggle -->
+        <div class="form-group">
+            <label><i data-feather="lock"></i> Confirm Password</label>
+            <div class="password-toggle-wrapper">
+                <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm your password" required>
+                <button type="button" class="toggle-password-btn" onclick="togglePasswordVisibility('confirm_password', this)" aria-label="Toggle password visibility">
+                    👁️
+                </button>
+            </div>
+            <div class="help-text" id="passwordMatch"></div>
+        </div>
     </div>
+
+    <div class="form-group">
+        <div class="terms-container">
+            <input type="checkbox" id="terms" required>
+            <label for="terms">
+                I agree to the 
+                <a href="#" onclick="openTermsModal(event)">Terms & Conditions</a> 
+                and confirm that all information provided is accurate.
+            </label>
+        </div>
+    </div>
+
+    <div class="draft-actions">
+        <button type="button" class="btn-secondary" onclick="saveDraft()">
+            💾 Save Draft
+        </button>
+        <button type="button" class="btn-secondary" onclick="loadDraft()">
+            📂 Load Draft
+        </button>
+    </div>
+
+    <button type="submit" id="register-btn" style="width:100%; padding: 14px; background: #0A3D62; color: white; border: none; border-radius: 10px; font-size: 1rem; font-weight: 600; cursor: pointer; transition: all 0.3s ease;">
+        <span id="button-text">✅ Create Account</span>
+    </button>
+    
+    <button type="button" onclick="goToStep(3)" style="margin-top: 0.5rem; width:100%; padding: 12px; background: #6b7280; color: white; border: none; border-radius: 10px; font-size: 0.85rem; font-weight: 600; cursor: pointer;">
+        ← Back to Documents
+    </button>
+
+    <div id="message" class="message"></div>
+    <div id="redirect-countdown" class="redirect-countdown"></div>
 </div>
 
 <!-- ============================================ -->
