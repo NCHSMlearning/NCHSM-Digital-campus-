@@ -1259,60 +1259,78 @@
         </div>
     </div>
 
-    <!-- ===== PAYMENT MODAL ===== -->
-    <div id="paymentModal" class="modal-overlay">
-        <div class="modal-content payment-modal-content">
-            <button class="modal-close" onclick="closePaymentModal()">&times;</button>
-            <h3 style="color: #0A3D62; margin-bottom: 16px;"><i class="fas fa-receipt"></i> Record Payment</h3>
-            <div id="paymentStudentInfo" class="student-info-card" style="display: none;">
-                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
-                    <h4 style="margin:0;color:#0A3D62;font-size:15px;"><i class="fas fa-user-graduate"></i> Student Details</h4>
-                    <span id="studentStatusBadge" class="badge badge-info">Active</span>
-                </div>
-                <div class="info-row"><span class="label">Student Name:</span><span class="value" id="modalStudentName">-</span></div>
-                <div class="info-row"><span class="label">Student ID:</span><span class="value" id="modalStudentId">-</span></div>
-                <div class="info-row"><span class="label">Program:</span><span class="value" id="modalStudentProgram">-</span></div>
-                <div class="info-row"><span class="label">Balance:</span><span class="value" id="modalBalance">KES 0</span></div>
+   <!-- ===== PAYMENT MODAL (WITH SEARCH) ===== -->
+<div id="paymentModal" class="modal-overlay">
+    <div class="modal-content payment-modal-content">
+        <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+        <h3 style="color: #0A3D62; margin-bottom: 16px;"><i class="fas fa-receipt"></i> Record Payment</h3>
+        
+        <div id="paymentStudentInfo" class="student-info-card" style="display: none;">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <h4 style="margin:0;color:#0A3D62;font-size:15px;"><i class="fas fa-user-graduate"></i> Student Details</h4>
+                <span id="studentStatusBadge" class="badge badge-info">Active</span>
             </div>
-            <form id="paymentModalForm" onsubmit="event.preventDefault(); recordPaymentFromModal();">
-                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-                    <div class="finance-form-group" style="grid-column:1/-1;">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Select Student *</label>
-                        <select id="modalPaymentStudent" class="form-control" required onchange="updateStudentInfo()">
-                            <option value="">-- Select Student --</option>
-                        </select>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Amount (KES) *</label>
-                        <input type="number" id="modalPaymentAmount" class="form-control" placeholder="0.00" required step="0.01" min="0">
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Payment Method *</label>
-                        <select id="modalPaymentMethod" class="form-control" required>
-                            <option value="Cash">Cash</option>
-                            <option value="M-Pesa">M-Pesa</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
-                            <option value="Cheque">Cheque</option>
-                            <option value="Card">Card</option>
-                        </select>
-                    </div>
-                    <div class="finance-form-group">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Payment Date *</label>
-                        <input type="date" id="modalPaymentDate" class="form-control" required>
-                    </div>
-                    <div class="finance-form-group" style="grid-column:1/-1;">
-                        <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Notes</label>
-                        <textarea id="modalPaymentNotes" class="form-control" rows="2" placeholder="Additional notes (optional)"></textarea>
-                    </div>
-                </div>
-                <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
-                    <button type="button" onclick="closePaymentModal()" class="btn-action btn-outline"><i class="fas fa-times"></i> Cancel</button>
-                    <button type="submit" class="btn-action btn-success"><i class="fas fa-save"></i> Record Payment</button>
-                </div>
-            </form>
+            <div class="info-row"><span class="label">Student Name:</span><span class="value" id="modalStudentName">-</span></div>
+            <div class="info-row"><span class="label">Student ID:</span><span class="value" id="modalStudentId">-</span></div>
+            <div class="info-row"><span class="label">Program:</span><span class="value" id="modalStudentProgram">-</span></div>
+            <div class="info-row"><span class="label">Balance:</span><span class="value" id="modalBalance">KES 0</span></div>
         </div>
+        
+        <form id="paymentModalForm" onsubmit="event.preventDefault(); recordPaymentFromModal();">
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+                <!-- ===== SEARCHABLE STUDENT DROPDOWN ===== -->
+                <div class="finance-form-group" style="grid-column:1/-1;">
+                    <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">
+                        <i class="fas fa-search"></i> Search & Select Student *
+                    </label>
+                    <!-- Search input for filtering dropdown -->
+                    <input type="text" id="paymentStudentSearch" class="form-control" 
+                           placeholder="🔍 Type name, ID, or program..." 
+                           onkeyup="filterPaymentStudentDropdown()" 
+                           style="margin-bottom:8px;">
+                    <!-- Dropdown with all students -->
+                    <select id="modalPaymentStudent" class="form-control" required onchange="updateStudentInfo()" style="max-height:200px;overflow-y:auto;">
+                        <option value="">-- Select Student --</option>
+                    </select>
+                    <span id="paymentStudentCount" style="font-size:12px;color:#94a3b8;display:block;margin-top:4px;">
+                        <span id="paymentStudentTotal">0</span> students available
+                    </span>
+                </div>
+                
+                <div class="finance-form-group">
+                    <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Amount (KES) *</label>
+                    <input type="number" id="modalPaymentAmount" class="form-control" placeholder="0.00" required step="0.01" min="0">
+                </div>
+                
+                <div class="finance-form-group">
+                    <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Payment Method *</label>
+                    <select id="modalPaymentMethod" class="form-control" required>
+                        <option value="Cash">Cash</option>
+                        <option value="M-Pesa">M-Pesa</option>
+                        <option value="Bank Transfer">Bank Transfer</option>
+                        <option value="Cheque">Cheque</option>
+                        <option value="Card">Card</option>
+                    </select>
+                </div>
+                
+                <div class="finance-form-group">
+                    <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Payment Date *</label>
+                    <input type="date" id="modalPaymentDate" class="form-control" required>
+                </div>
+                
+                <div class="finance-form-group" style="grid-column:1/-1;">
+                    <label style="font-weight:600;font-size:13px;color:#475569;display:block;margin-bottom:5px;">Notes</label>
+                    <textarea id="modalPaymentNotes" class="form-control" rows="2" placeholder="Additional notes (optional)"></textarea>
+                </div>
+            </div>
+            
+            <div style="margin-top:16px;display:flex;gap:10px;justify-content:flex-end;border-top:1px solid #e5e7eb;padding-top:16px;">
+                <button type="button" onclick="closePaymentModal()" class="btn-action btn-outline"><i class="fas fa-times"></i> Cancel</button>
+                <button type="submit" class="btn-action btn-success"><i class="fas fa-save"></i> Record Payment</button>
+            </div>
+        </form>
     </div>
-
+</div>
     <!-- ===== BULK IMPORT MODAL ===== -->
     <div id="bulkImportModal" class="modal-overlay">
         <div class="modal-content" style="max-width:600px;">
@@ -2298,7 +2316,112 @@
                 updateStudentInfo();
             }
         }
+// ============================================================
+// PAYMENT MODAL - SEARCHABLE DROPDOWN
+// ============================================================
 
+let allStudentsForPayment = [];
+
+function populateStudentDropdown(studentId) {
+    const select = document.getElementById('modalPaymentStudent');
+    const searchInput = document.getElementById('paymentStudentSearch');
+    
+    // Store all students for filtering
+    allStudentsForPayment = [...allStudents];
+    
+    select.innerHTML = '<option value="">-- Select Student --</option>';
+    allStudentsForPayment.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s.student_id;
+        const displayId = s.display_id || s.student_id_display || s.student_id;
+        option.textContent = `${s.full_name || s.student_name} (${displayId}) - ${s.program || 'N/A'}`;
+        option.dataset.student = JSON.stringify(s);
+        select.appendChild(option);
+    });
+    
+    // Clear search input
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    updatePaymentStudentCount();
+    
+    if (studentId) {
+        select.value = studentId;
+        updateStudentInfo();
+    }
+}
+
+function filterPaymentStudentDropdown() {
+    const searchInput = document.getElementById('paymentStudentSearch');
+    const select = document.getElementById('modalPaymentStudent');
+    const searchTerm = searchInput.value.toLowerCase().trim();
+    
+    // Clear current options
+    select.innerHTML = '<option value="">-- Select Student --</option>';
+    
+    // Filter students
+    let filtered = allStudentsForPayment;
+    
+    if (searchTerm) {
+        filtered = allStudentsForPayment.filter(s => {
+            const name = (s.full_name || s.student_name || '').toLowerCase();
+            const id = (s.display_id || s.student_id_display || s.student_id || '').toLowerCase();
+            const program = (s.program || '').toLowerCase();
+            const email = (s.email || '').toLowerCase();
+            return name.includes(searchTerm) || id.includes(searchTerm) || 
+                   program.includes(searchTerm) || email.includes(searchTerm);
+        });
+    }
+    
+    // Add filtered options
+    filtered.forEach(s => {
+        const option = document.createElement('option');
+        option.value = s.student_id;
+        const displayId = s.display_id || s.student_id_display || s.student_id;
+        option.textContent = `${s.full_name || s.student_name} (${displayId}) - ${s.program || 'N/A'}`;
+        option.dataset.student = JSON.stringify(s);
+        select.appendChild(option);
+    });
+    
+    updatePaymentStudentCount(filtered.length);
+    
+    // If only one result, auto-select it
+    if (filtered.length === 1) {
+        select.value = filtered[0].student_id;
+        updateStudentInfo();
+    }
+}
+
+function updatePaymentStudentCount(count) {
+    const total = count !== undefined ? count : allStudentsForPayment.length;
+    const el = document.getElementById('paymentStudentTotal');
+    if (el) {
+        el.textContent = total;
+    }
+}
+
+// Override the original openPaymentModal to reset search
+const originalOpenPaymentModal = openPaymentModal;
+openPaymentModal = function(studentId) {
+    const modal = document.getElementById('paymentModal');
+    document.getElementById('paymentModalForm').reset();
+    document.getElementById('modalPaymentDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('paymentStudentInfo').style.display = 'none';
+    
+    // Clear search input
+    const searchInput = document.getElementById('paymentStudentSearch');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    if (allStudents.length === 0) {
+        loadAllStudentAccounts().then(() => populateStudentDropdown(studentId));
+    } else {
+        populateStudentDropdown(studentId);
+    }
+    modal.classList.add('active');
+};
         function updateStudentInfo() {
             const select = document.getElementById('modalPaymentStudent');
             const option = select.options[select.selectedIndex];
