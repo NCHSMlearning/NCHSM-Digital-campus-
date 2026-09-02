@@ -3006,97 +3006,224 @@ class SecureFaceProctor {
         }, (seconds + 2) * 1000);
     }
     
-    resumeExam() {
-        if (!this.state.isPaused) return;
-        
-        if (this.state.recoveryTimerId) {
-            clearInterval(this.state.recoveryTimerId);
-            this.state.recoveryTimerId = null;
-        }
-        if (this.state.recoveryTimer) {
-            clearTimeout(this.state.recoveryTimer);
-            this.state.recoveryTimer = null;
-        }
-        
-        this.state.isPaused = false;
-        AppState.isExamPaused = false;
-        this.state.consecutiveLost = 0;
-        this.state.remainingTime = 0;
-        this.state.multipleFacesStartTime = 0;
-        
-        if (DOM.faceRecoveryCountdown) {
-            DOM.faceRecoveryCountdown.textContent = '✅';
-            DOM.faceRecoveryCountdown.className = 'block-timer recovered';
-        }
-        
-        const overlay = DOM.faceBlockOverlay;
-        if (overlay) {
-            overlay.style.display = 'none';
-            overlay.classList.remove('active');
-        }
-        
-        const warning = DOM.multipleFacesWarning;
-        if (warning) warning.style.display = 'none';
-        
-        this.callbacks.onResume?.();
-        updateCameraStatus('good', '✅ Face detected', '1 face');
-        if (DOM.cameraContainer) DOM.cameraContainer.className = 'camera-container face-verified';
-        
-        if (DOM.proctoringStatusText) {
-            DOM.proctoringStatusText.textContent = 'Active';
-            DOM.proctoringStatusText.className = 'status-value active';
-        }
-        if (DOM.statsFace) {
-            DOM.statsFace.textContent = '✅ OK';
-            DOM.statsFace.style.color = '#38A169';
-        }
-        
-        showToast('✅ Face detected! Exam resumed.', 'success');
+    // ============================================================
+// RESUME EXAM - FIXED
+// ============================================================
+resumeExam() {
+    if (!this.state.isPaused) return;
+    
+    console.log('✅ Resuming exam...');
+    
+    // Clear timers
+    if (this.state.recoveryTimerId) {
+        clearInterval(this.state.recoveryTimerId);
+        this.state.recoveryTimerId = null;
+    }
+    if (this.state.recoveryTimer) {
+        clearTimeout(this.state.recoveryTimer);
+        this.state.recoveryTimer = null;
     }
     
-    retryCamera() {
+    // Reset state
+    this.state.isPaused = false;
+    AppState.isExamPaused = false;
+    this.state.consecutiveLost = 0;
+    this.state.remainingTime = 0;
+    this.state.multipleFacesStartTime = 0;
+    
+    // Update face recovery countdown
+    if (DOM.faceRecoveryCountdown) {
+        DOM.faceRecoveryCountdown.textContent = '✅';
+        DOM.faceRecoveryCountdown.className = 'block-timer recovered';
+    }
+    
+    // HIDE face block overlay
+    const overlay = DOM.faceBlockOverlay;
+    if (overlay) {
+        overlay.style.display = 'none';
+        overlay.classList.remove('active');
+    }
+    
+    // HIDE multiple faces warning
+    const warning = DOM.multipleFacesWarning;
+    if (warning) {
+        warning.style.display = 'none';
+    }
+    
+    // Call the callback
+    if (this.callbacks && typeof this.callbacks.onResume === 'function') {
+        this.callbacks.onResume();
+    }
+    
+    // Update status indicators
+    updateCameraStatus('good', '✅ Face detected', '1 face');
+    if (DOM.cameraContainer) {
+        DOM.cameraContainer.className = 'camera-container face-verified';
+    }
+    
+    if (DOM.proctoringStatusText) {
+        DOM.proctoringStatusText.textContent = 'Active';
+        DOM.proctoringStatusText.className = 'status-value active';
+    }
+    if (DOM.statsFace) {
+        DOM.statsFace.textContent = '✅ OK';
+        DOM.statsFace.style.color = '#38A169';
+    }
+    
+    showToast('✅ Face detected! Exam resumed.', 'success');
+}
+    // ============================================================
+// RETRY CAMERA - FULLY FIXED WITH PROMISE
+// ============================================================
+retryCamera() {
+    console.log('📷 SecureProctor.retryCamera called');
+    
+    return new Promise((resolve) => {
+        // Check if already at violation limit
         if (this.state.totalViolations >= this.config.TOTAL_VIOLATIONS_LIMIT) {
             this.callbacks.onAutoSubmit?.();
-            return false;
+            resolve(false);
+            return;
         }
         
+        // Check cooldown
         const now = Date.now();
         if (now - this.state.lastRetryTime < this.config.RETRY_COOLDOWN_SECONDS * 1000) {
             const remaining = Math.ceil((this.config.RETRY_COOLDOWN_SECONDS * 1000 - (now - this.state.lastRetryTime)) / 1000);
             showToast(`⏳ Wait ${remaining}s before retrying`, 'warning');
-            return false;
+            resolve(false);
+            return;
         }
         
         this.state.lastRetryTime = now;
         showToast('🔄 Restarting camera...', 'info');
         
-        try {
-            navigator.mediaDevices.getUserMedia({
-                video: { facingMode: 'user', width: { ideal: 480 }, height: { ideal: 360 } },
-                audio: false
-            }).then(stream => {
-                if (this.video) {
-                    if (this.video.srcObject) {
-                        const oldTracks = this.video.srcObject.getTracks();
-                        oldTracks.forEach(t => t.stop());
-                    }
-                    this.video.srcObject = stream;
-                    this.video.play();
-                }
-                this.state.consecutiveLost = 0;
-                this.state.isPaused = false;
-                AppState.isExamPaused = false;
-                this.resumeExam();
-                showToast('✅ Camera restarted', 'success');
-            }).catch(() => {
-                showToast('❌ Camera restart failed', 'error');
-            });
-        } catch (error) {
-            showToast('❌ Camera restart failed', 'error');
-            return false;
+        // Stop old tracks - CRITICAL FIX
+        if (this.video && this.video.srcObject) {
+            try {
+                const oldTracks = this.video.srcObject.getTracks();
+                oldTracks.forEach(t => {
+                    t.stop();
+                    console.log('📷 Stopped track:', t.kind);
+                });
+                this.video.srcObject = null;
+            } catch (e) {
+                console.warn('Could not stop tracks:', e);
+            }
         }
-        return true;
-    }
+        
+        if (AppState.cameraStream) {
+            try {
+                AppState.cameraStream.getTracks().forEach(t => t.stop());
+                AppState.cameraStream = null;
+            } catch (e) {}
+        }
+        
+        // Request new camera stream
+        navigator.mediaDevices.getUserMedia({
+            video: { 
+                facingMode: 'user', 
+                width: { ideal: 480 }, 
+                height: { ideal: 360 },
+                frameRate: { ideal: 20 }
+            },
+            audio: false
+        })
+        .then(async (stream) => {
+            console.log('📷 New camera stream obtained');
+            
+            // Update AppState stream
+            AppState.cameraStream = stream;
+            
+            // Set stream to video element
+            if (this.video) {
+                this.video.srcObject = stream;
+                await this.video.play();
+                console.log('📷 Camera video playing');
+            }
+            
+            // Also update lobby camera preview if visible
+            const cameraVideo = document.getElementById('cameraVideo');
+            if (cameraVideo) {
+                cameraVideo.srcObject = stream;
+                await cameraVideo.play();
+            }
+            
+            // Reset state
+            this.state.consecutiveLost = 0;
+            this.state.multipleFacesStartTime = 0;
+            
+            // Give camera time to warm up and check for face
+            setTimeout(async () => {
+                try {
+                    console.log('📷 Checking for face after retry...');
+                    const detections = await fastDetectFace(this.video);
+                    
+                    if (detections && detections.length === 1) {
+                        console.log('✅ Face detected after retry');
+                        // Force resume if paused
+                        if (this.state.isPaused) {
+                            this.resumeExam();
+                        } else {
+                            // Update UI
+                            updateCameraStatus('good', '✅ Face detected', '1 face');
+                            if (DOM.cameraContainer) {
+                                DOM.cameraContainer.className = 'camera-container face-verified';
+                            }
+                            if (DOM.proctoringStatusText) {
+                                DOM.proctoringStatusText.textContent = 'Active';
+                                DOM.proctoringStatusText.className = 'status-value active';
+                            }
+                            if (DOM.statsFace) {
+                                DOM.statsFace.textContent = '✅ OK';
+                                DOM.statsFace.style.color = '#38A169';
+                            }
+                            // Hide overlays
+                            const overlay = DOM.faceBlockOverlay;
+                            if (overlay) {
+                                overlay.style.display = 'none';
+                                overlay.classList.remove('active');
+                            }
+                            const warning = DOM.multipleFacesWarning;
+                            if (warning) warning.style.display = 'none';
+                            showToast('✅ Face detected!', 'success');
+                        }
+                        resolve(true);
+                    } else if (detections && detections.length > 1) {
+                        console.warn('⚠️ Multiple faces detected after retry');
+                        showToast('⚠️ Multiple faces detected. Only one person allowed.', 'warning');
+                        this.handleDetectionResult(detections.length);
+                        resolve(false);
+                    } else {
+                        console.warn('⚠️ No face detected after retry');
+                        showToast('⚠️ No face detected. Please look at the camera.', 'warning');
+                        // Start face detection monitoring again
+                        this.handleDetectionResult(0);
+                        resolve(false);
+                    }
+                } catch (e) {
+                    console.error('❌ Face detection after retry failed:', e);
+                    resolve(false);
+                }
+            }, 1500);
+        })
+        .catch((error) => {
+            console.error('❌ Camera restart failed:', error);
+            let errorMsg = '❌ Camera access denied. Please allow camera access.';
+            if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+                errorMsg = '❌ Camera permission denied. Please allow camera access in your browser settings.';
+            } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+                errorMsg = '❌ No camera found. Please connect a camera.';
+            } else if (error.name === 'NotReadableError') {
+                errorMsg = '❌ Camera is in use by another application. Please close other apps using the camera.';
+            } else if (error.name === 'OverconstrainedError') {
+                errorMsg = '❌ Camera constraints failed. Please check your camera.';
+            }
+            showToast(errorMsg, 'error');
+            resolve(false);
+        });
+    });
+}
     
     autoSubmitExam() {
         if (this.state.isSubmitting) return;
@@ -3444,7 +3571,7 @@ window.goToStep = goToStep;
 // RETRY CAMERA DURING EXAM - FIXED
 // ============================================================
 window.retryCameraDuringExam = async function() {
-    console.log('📷 Retry camera called');
+    console.log('📷 Retry camera called from window');
     
     if (!AppState.secureProctor) {
         showToast('❌ Face detection not initialized', 'error');
@@ -3456,16 +3583,26 @@ window.retryCameraDuringExam = async function() {
         return false;
     }
     
-    // Call the secure proctor's retry method
-    const result = await AppState.secureProctor.retryCamera();
-    
-    if (result) {
-        showToast('✅ Camera restarted successfully', 'success');
-    } else {
-        showToast('❌ Camera restart failed. Please check your camera.', 'error');
+    // If not paused and face is detected, no need to retry
+    if (!AppState.isExamPaused && AppState.faceVerified) {
+        showToast('✅ Face is already detected!', 'success');
+        return true;
     }
     
-    return result;
+    // Call the secure proctor's retry method
+    try {
+        const result = await AppState.secureProctor.retryCamera();
+        if (result) {
+            showToast('✅ Camera restarted successfully', 'success');
+        } else {
+            showToast('❌ Camera restart failed. Please check your camera.', 'error');
+        }
+        return result;
+    } catch (error) {
+        console.error('❌ Retry error:', error);
+        showToast('❌ Camera restart failed', 'error');
+        return false;
+    }
 };
 window.showKeyboardShortcuts = showKeyboardShortcuts;
 window.showToast = showToast;
