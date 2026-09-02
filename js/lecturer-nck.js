@@ -1,6 +1,6 @@
 // ============================================================
 // LECTURER NCK SYSTEM - KRCHN NURSING ONLY
-// COMPLETE FIX - WITH PROPER FILTERING
+// COMPLETE FIX - NO HARDCODING - FULLY DYNAMIC
 // ============================================================
 
 // ============================================================
@@ -25,7 +25,9 @@ var LecturerNCK = {
     initialized: false,
     accessGranted: true,
     allStudents: [],
-    filteredStudents: []
+    filteredStudents: [],
+    retryCount: 0,
+    maxRetries: 3
 };
 
 // Block mapping for intake years
@@ -95,7 +97,16 @@ function isNckAdmin() {
 }
 
 // ============================================================
-// GET LECTURER INFO - FIXED
+// CHECK IF KRCHN PROGRAM
+// ============================================================
+function isKRCHNProgram(programCode) {
+    if (!programCode) return false;
+    var code = String(programCode).toUpperCase().trim();
+    return code === 'KRCHN' || code === 'NURSING' || code === 'KRCHN NURSING';
+}
+
+// ============================================================
+// GET LECTURER INFO - COMPLETELY DYNAMIC - NO HARDCODING
 // ============================================================
 async function lecturerNCKGetLecturerInfo() {
     console.log('🔍 [NCK] Getting lecturer info...');
@@ -106,8 +117,12 @@ async function lecturerNCKGetLecturerInfo() {
         var program = 'KRCHN';
         var isTVET = false;
         var isKRCHN = true;
+        var email = null;
+        var userId = null;
         
+        // ============================================================
         // METHOD 1: Try from lecturerDB (most reliable)
+        // ============================================================
         try {
             if (window.lecturerDB && typeof window.lecturerDB.getCurrentUserProfile === 'function') {
                 var profile = window.lecturerDB.getCurrentUserProfile();
@@ -115,33 +130,41 @@ async function lecturerNCKGetLecturerInfo() {
                     lecturerId = profile.user_id || profile.id || profile.staff_id || profile.staffId;
                     lecturerName = profile.full_name || profile.name || 'Lecturer';
                     program = profile.program || profile.department || 'KRCHN';
-                    isTVET = program !== 'KRCHN' && program !== 'NURSING';
-                    isKRCHN = program === 'KRCHN' || program === 'NURSING';
+                    email = profile.email;
+                    userId = profile.user_id;
+                    isTVET = !isKRCHNProgram(program);
+                    isKRCHN = isKRCHNProgram(program);
                     console.log('✅ [NCK] Lecturer from lecturerDB:', lecturerId, 'Program:', program);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
                     return;
                 }
             }
         } catch (e) {}
         
+        // ============================================================
         // METHOD 2: Try from window.currentUser
+        // ============================================================
         try {
             if (window.currentUser) {
                 var user = window.currentUser;
                 lecturerId = user.id || user.user_id || user.staff_id || user.lecturer_id;
                 lecturerName = user.full_name || user.name || user.display_name || 'Lecturer';
                 program = user.program || user.department || 'KRCHN';
-                isTVET = program !== 'KRCHN' && program !== 'NURSING';
-                isKRCHN = program === 'KRCHN' || program === 'NURSING';
+                email = user.email;
+                userId = user.id || user.user_id;
+                isTVET = !isKRCHNProgram(program);
+                isKRCHN = isKRCHNProgram(program);
                 if (lecturerId) {
                     console.log('✅ [NCK] Lecturer from currentUser:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
                     return;
                 }
             }
         } catch (e) {}
         
+        // ============================================================
         // METHOD 3: Try from sessionStorage
+        // ============================================================
         try {
             var sessionUser = sessionStorage.getItem('user');
             if (sessionUser) {
@@ -149,17 +172,21 @@ async function lecturerNCKGetLecturerInfo() {
                 lecturerId = user.id || user.user_id || user.staff_id || user.lecturer_id;
                 lecturerName = user.full_name || user.name || user.display_name || 'Lecturer';
                 program = user.program || user.department || 'KRCHN';
-                isTVET = program !== 'KRCHN' && program !== 'NURSING';
-                isKRCHN = program === 'KRCHN' || program === 'NURSING';
+                email = user.email;
+                userId = user.id || user.user_id;
+                isTVET = !isKRCHNProgram(program);
+                isKRCHN = isKRCHNProgram(program);
                 if (lecturerId) {
                     console.log('✅ [NCK] Lecturer from sessionStorage:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
                     return;
                 }
             }
         } catch (e) {}
         
+        // ============================================================
         // METHOD 4: Try from localStorage staffSession
+        // ============================================================
         try {
             var staffSession = localStorage.getItem('staffSession');
             if (staffSession) {
@@ -167,64 +194,287 @@ async function lecturerNCKGetLecturerInfo() {
                 lecturerId = data.staffId || data.user_id || data.id || data.staff_id;
                 lecturerName = data.name || data.full_name || data.display_name || 'Lecturer';
                 program = data.program || data.department || 'KRCHN';
-                isTVET = program !== 'KRCHN' && program !== 'NURSING';
-                isKRCHN = program === 'KRCHN' || program === 'NURSING';
+                email = data.email;
+                userId = data.user_id || data.id;
+                isTVET = !isKRCHNProgram(program);
+                isKRCHN = isKRCHNProgram(program);
                 if (lecturerId) {
                     console.log('✅ [NCK] Lecturer from staffSession:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
                     return;
                 }
             }
         } catch (e) {}
         
+        // ============================================================
         // METHOD 5: Try from LecturerDashboard
+        // ============================================================
         try {
             if (window.LecturerDashboard) {
                 var dash = window.LecturerDashboard;
                 lecturerId = dash.lecturerAssignmentId || dash.lecturerUuid || dash.lecturerId || dash.staffId;
                 lecturerName = dash.lecturerName || dash.full_name || dash.name || 'Lecturer';
                 program = dash.program || dash.department || 'KRCHN';
-                isTVET = program !== 'KRCHN' && program !== 'NURSING';
-                isKRCHN = program === 'KRCHN' || program === 'NURSING';
+                email = dash.email;
+                userId = dash.userId || dash.user_id;
+                isTVET = !isKRCHNProgram(program);
+                isKRCHN = isKRCHNProgram(program);
                 if (lecturerId) {
                     console.log('✅ [NCK] Lecturer from LecturerDashboard:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
                     return;
                 }
             }
         } catch (e) {}
         
-        // FALLBACK: Use the known KRCHN lecturer ID
-        console.warn('⚠️ [NCK] All methods failed, using fallback');
-        lecturerId = '9f1452e8-9868-4ab4-b208-c50310a84713';
-        lecturerName = 'Kevin matoka Tiong\'i';
-        program = 'KRCHN';
-        isTVET = false;
-        isKRCHN = true;
-        finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN);
+        // ============================================================
+        // METHOD 6: Try from auth
+        // ============================================================
+        try {
+            if (window.auth && window.auth.currentUser) {
+                var user = window.auth.currentUser;
+                lecturerId = user.uid || user.id;
+                lecturerName = user.displayName || user.name || 'Lecturer';
+                email = user.email;
+                userId = user.uid || user.id;
+                program = 'KRCHN'; // Auth doesn't know program, assume KRCHN
+                isTVET = false;
+                isKRCHN = true;
+                if (lecturerId) {
+                    console.log('✅ [NCK] Lecturer from auth:', lecturerId);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                    return;
+                }
+            }
+        } catch (e) {}
+        
+        // ============================================================
+        // METHOD 7: Try from URL params
+        // ============================================================
+        try {
+            var urlParams = new URLSearchParams(window.location.search);
+            var idParam = urlParams.get('lecturer_id') || urlParams.get('staff_id') || urlParams.get('id');
+            if (idParam) {
+                lecturerId = idParam;
+                lecturerName = urlParams.get('name') || 'Lecturer';
+                program = urlParams.get('program') || 'KRCHN';
+                email = urlParams.get('email') || null;
+                userId = lecturerId;
+                isTVET = !isKRCHNProgram(program);
+                isKRCHN = isKRCHNProgram(program);
+                console.log('✅ [NCK] Lecturer from URL:', lecturerId);
+                finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                return;
+            }
+        } catch (e) {}
+        
+        // ============================================================
+        // METHOD 8: Try from DOM elements
+        // ============================================================
+        try {
+            var nameEl = document.getElementById('welcomeHeader') || 
+                         document.querySelector('.lecturer-name') ||
+                         document.querySelector('[data-lecturer-name]') ||
+                         document.querySelector('.user-name') ||
+                         document.querySelector('.profile-name');
+            if (nameEl) {
+                lecturerName = nameEl.textContent.replace('Welcome,', '').trim() || 'Lecturer';
+            }
+            
+            var idEl = document.querySelector('[data-lecturer-id]') ||
+                       document.querySelector('[data-staff-id]') ||
+                       document.querySelector('[data-user-id]');
+            if (idEl) {
+                lecturerId = idEl.dataset.lecturerId || idEl.dataset.staffId || idEl.dataset.userId;
+            }
+            
+            if (lecturerId) {
+                console.log('✅ [NCK] Lecturer from DOM:', lecturerId);
+                finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, null, lecturerId);
+                return;
+            }
+        } catch (e) {}
+        
+        // ============================================================
+        // METHOD 9: Try from userProfile sessionStorage
+        // ============================================================
+        try {
+            var userProfile = sessionStorage.getItem('userProfile');
+            if (userProfile) {
+                var profileData = JSON.parse(userProfile);
+                lecturerId = profileData.user_id || profileData.id || profileData.staff_id;
+                lecturerName = profileData.full_name || profileData.name || 'Lecturer';
+                program = profileData.program || profileData.department || 'KRCHN';
+                email = profileData.email;
+                userId = profileData.user_id || profileData.id;
+                isTVET = !isKRCHNProgram(program);
+                isKRCHN = isKRCHNProgram(program);
+                if (lecturerId) {
+                    console.log('✅ [NCK] Lecturer from userProfile:', lecturerId);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                    return;
+                }
+            }
+        } catch (e) {}
+        
+        // ============================================================
+        // METHOD 10: Try from lecturer-main (if available)
+        // ============================================================
+        try {
+            if (window.lecturerMain && window.lecturerMain.getCurrentLecturer) {
+                var lecturerData = window.lecturerMain.getCurrentLecturer();
+                if (lecturerData) {
+                    lecturerId = lecturerData.id || lecturerData.user_id || lecturerData.staff_id;
+                    lecturerName = lecturerData.name || lecturerData.full_name || 'Lecturer';
+                    program = lecturerData.program || lecturerData.department || 'KRCHN';
+                    email = lecturerData.email;
+                    userId = lecturerData.id || lecturerData.user_id;
+                    isTVET = !isKRCHNProgram(program);
+                    isKRCHN = isKRCHNProgram(program);
+                    if (lecturerId) {
+                        console.log('✅ [NCK] Lecturer from lecturerMain:', lecturerId);
+                        finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                        return;
+                    }
+                }
+            }
+        } catch (e) {}
+        
+        // ============================================================
+        // METHOD 11: Try from Supabase auth directly
+        // ============================================================
+        try {
+            var supabase = window.lecturerDB?.supabase || window.sb;
+            if (supabase) {
+                var { data: { user }, error: userError } = await supabase.auth.getUser();
+                if (!userError && user) {
+                    // Try to get profile from staff_records
+                    var { data: staffData, error: staffError } = await supabase
+                        .from('staff_records')
+                        .select('*')
+                        .eq('email', user.email)
+                        .maybeSingle();
+                    
+                    if (!staffError && staffData) {
+                        lecturerId = staffData.id || staffData.staff_id;
+                        lecturerName = staffData.name || staffData.full_name || 'Lecturer';
+                        program = staffData.program || staffData.department || 'KRCHN';
+                        email = staffData.email || user.email;
+                        userId = staffData.user_id || staffData.id;
+                        isTVET = !isKRCHNProgram(program);
+                        isKRCHN = isKRCHNProgram(program);
+                        console.log('✅ [NCK] Lecturer from Supabase staff_records:', lecturerId);
+                        finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                        return;
+                    }
+                    
+                    // Try profiles table
+                    var { data: profileData, error: profileError } = await supabase
+                        .from('consolidated_user_profiles_table')
+                        .select('*')
+                        .eq('email', user.email)
+                        .maybeSingle();
+                    
+                    if (!profileError && profileData) {
+                        lecturerId = profileData.user_id || profileData.id || profileData.staff_id;
+                        lecturerName = profileData.full_name || profileData.name || 'Lecturer';
+                        program = profileData.program || profileData.department || 'KRCHN';
+                        email = profileData.email || user.email;
+                        userId = profileData.user_id || profileData.id;
+                        isTVET = !isKRCHNProgram(program);
+                        isKRCHN = isKRCHNProgram(program);
+                        console.log('✅ [NCK] Lecturer from Supabase profiles:', lecturerId);
+                        finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                        return;
+                    }
+                }
+            }
+        } catch (e) {}
+        
+        // ============================================================
+        // FINAL: Show error - NO HARDCODING
+        // ============================================================
+        console.error('❌ [NCK] Could not find lecturer ID from any source');
+        console.error('Please ensure you are logged in as a lecturer');
+        
+        // Try one more time with retry
+        if (LecturerNCK.retryCount < LecturerNCK.maxRetries) {
+            LecturerNCK.retryCount++;
+            console.log(`🔄 [NCK] Retry ${LecturerNCK.retryCount}/${LecturerNCK.maxRetries}...`);
+            setTimeout(function() {
+                lecturerNCKGetLecturerInfo();
+            }, 2000);
+            return;
+        }
+        
+        // Show error in UI
+        var placeholder = document.getElementById('lecturerNCKPlaceholder');
+        if (placeholder) {
+            placeholder.innerHTML = `
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
+                <h3 style="color: #1e293b; margin: 0 0 10px 0;">❌ Lecturer ID Not Found</h3>
+                <p style="color: #94a3b8; margin: 0 0 5px 0;">
+                    <i class="fas fa-info-circle"></i> Could not find your lecturer ID.
+                </p>
+                <p style="color: #94a3b8; font-size: 13px; margin: 5px 0 15px 0;">
+                    Please try refreshing the page or logging out and back in.
+                </p>
+                <button onclick="location.reload()" style="background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
+                    <i class="fas fa-sync-alt"></i> Refresh Page
+                </button>
+                <button onclick="lecturerNCKGetLecturerInfo()" style="background: #059669; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
+                    <i class="fas fa-retry"></i> Retry
+                </button>
+            `;
+            placeholder.style.display = 'block';
+        }
+        
+        // Update stats to show error
+        var statIds = ['lecturerNCKTotalStudents', 'lecturerNCKPassRate', 'lecturerNCKAvgScore', 
+                       'lecturerNCKAtRisk', 'lecturerNCKPublished', 'lecturerNCKPending'];
+        statIds.forEach(function(id) {
+            var el = document.getElementById(id);
+            if (el) el.textContent = '—';
+        });
         
     } catch (e) {
         console.error('❌ [NCK] Error getting lecturer info:', e);
-        finishSetup('9f1452e8-9868-4ab4-b208-c50310a84713', 'Lecturer', 'KRCHN', false, true);
+        var placeholder = document.getElementById('lecturerNCKPlaceholder');
+        if (placeholder) {
+            placeholder.innerHTML = `
+                <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
+                <h3 style="color: #1e293b; margin: 0 0 10px 0;">❌ Error Loading Lecturer</h3>
+                <p style="color: #94a3b8; margin: 0 0 5px 0;">${e.message || 'Unknown error'}</p>
+                <button onclick="location.reload()" style="margin-top: 15px; background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-sync-alt"></i> Refresh Page
+                </button>
+            `;
+            placeholder.style.display = 'block';
+        }
     }
 }
 
 // ============================================================
-// FINISH SETUP
+// FINISH SETUP - NO HARDCODING
 // ============================================================
-function finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN) {
+function finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId) {
     console.log('📋 [NCK] FINAL - ID:', lecturerId);
     console.log('📋 [NCK] FINAL - Name:', lecturerName);
     console.log('📋 [NCK] FINAL - Program:', program);
     console.log('📋 [NCK] FINAL - isTVET:', isTVET);
     console.log('📋 [NCK] FINAL - isKRCHN:', isKRCHN);
+    console.log('📋 [NCK] FINAL - Email:', email);
+    console.log('📋 [NCK] FINAL - UserId:', userId);
     
-    LecturerNCK.lecturerId = lecturerId || '9f1452e8-9868-4ab4-b208-c50310a84713';
+    // Store whatever we got - NO HARDCODING
+    LecturerNCK.lecturerId = lecturerId || null;
     LecturerNCK.lecturerName = lecturerName || 'Lecturer';
     LecturerNCK.lecturerProgram = program || 'KRCHN';
     LecturerNCK.isTVET = isTVET || false;
     LecturerNCK.isKRCHN = isKRCHN || true;
     LecturerNCK.accessGranted = isKRCHN && !isTVET;
+    LecturerNCK.email = email || null;
+    LecturerNCK.userId = userId || lecturerId || null;
     
     // Store globally
     window.nckLecturerId = LecturerNCK.lecturerId;
@@ -232,6 +482,8 @@ function finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN) {
     window.nckLecturerProgram = LecturerNCK.lecturerProgram;
     window.nckIsTVET = LecturerNCK.isTVET;
     window.nckIsKRCHN = LecturerNCK.isKRCHN;
+    window.nckLecturerEmail = LecturerNCK.email;
+    window.nckUserId = LecturerNCK.userId;
     
     // Update UI
     lecturerNCKUpdateUI();
@@ -244,17 +496,35 @@ function finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN) {
             program: LecturerNCK.lecturerProgram,
             isTVET: LecturerNCK.isTVET,
             isKRCHN: LecturerNCK.isKRCHN,
-            accessGranted: LecturerNCK.accessGranted
+            accessGranted: LecturerNCK.accessGranted,
+            email: LecturerNCK.email,
+            userId: LecturerNCK.userId
         }
     }));
     
-    // Load data if access granted
+    // Load data if access granted AND we have a lecturer ID
     if (LecturerNCK.accessGranted && LecturerNCK.lecturerId) {
         console.log('✅ [NCK] Access granted, loading data...');
         setTimeout(function() {
             lecturerNCKLoadData();
         }, 500);
-    } else {
+    } else if (!LecturerNCK.lecturerId) {
+        console.warn('⚠️ [NCK] No lecturer ID - cannot load data');
+        var placeholder = document.getElementById('lecturerNCKPlaceholder');
+        if (placeholder) {
+            placeholder.innerHTML = `
+                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
+                <h3 style="color: #1e293b; margin: 0 0 10px 0;">⚠️ Lecturer ID Required</h3>
+                <p style="color: #94a3b8; margin: 0 0 5px 0;">
+                    <i class="fas fa-info-circle"></i> Please log in as a lecturer to access this module.
+                </p>
+                <button onclick="location.reload()" style="margin-top: 15px; background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-sync-alt"></i> Refresh Page
+                </button>
+            `;
+            placeholder.style.display = 'block';
+        }
+    } else if (!LecturerNCK.accessGranted) {
         showNCKAccessDenied();
     }
     
@@ -362,7 +632,7 @@ function lecturerNCKLoadColumns() {
 }
 
 // ============================================================
-// LOAD NCK DATA - FIXED WITH FILTERING
+// LOAD NCK DATA
 // ============================================================
 async function lecturerNCKLoadData() {
     console.log('📊 [NCK] Loading data...');
@@ -399,7 +669,9 @@ async function lecturerNCKLoadData() {
         if (!supabase) throw new Error('Database not available');
         
         var lecturerId = LecturerNCK.lecturerId;
-        if (!lecturerId) throw new Error('Lecturer ID not found');
+        if (!lecturerId) {
+            throw new Error('Lecturer ID not found. Please refresh or log in again.');
+        }
         
         var block = LECTURER_BLOCK_MAP[intake] || 'Block 1';
         console.log('📋 [NCK] Intake:', intake, 'Block:', block, 'Sheet:', sheet);
@@ -410,7 +682,7 @@ async function lecturerNCKLoadData() {
         // ============================================================
         var { data: allStudents, error: studentsError } = await supabase
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, admission_number, intake_year, program, status')
+            .select('student_id, full_name, admission_number, intake_year, program, status, email, phone')
             .eq('role', 'student')
             .eq('program', 'KRCHN')
             .eq('intake_year', parseInt(intake))
@@ -462,12 +734,9 @@ async function lecturerNCKLoadData() {
         });
         
         // ============================================================
-        // STEP 5: Store all students and filter for this lecturer
+        // STEP 5: Store all students
         // ============================================================
         LecturerNCK.allStudents = krchnStudents;
-        
-        // For now, show ALL KRCHN students (since we don't have assignment table)
-        // In production, this would filter by lecturer assignment
         LecturerNCK.students = krchnStudents;
         LecturerNCK.filteredStudents = krchnStudents;
         
@@ -483,6 +752,9 @@ async function lecturerNCKLoadData() {
         // Update student count in UI
         var countEl = document.getElementById('lecturer_nck_block_students');
         if (countEl) countEl.textContent = LecturerNCK.students.length;
+        
+        // Hide placeholder if exists
+        if (placeholder) placeholder.style.display = 'none';
         
     } catch (error) {
         console.error('❌ [NCK] Error loading data:', error);
@@ -502,7 +774,7 @@ async function lecturerNCKLoadData() {
 }
 
 // ============================================================
-// RENDER TABLE - FIXED
+// RENDER TABLE
 // ============================================================
 function lecturerNCKRenderTable() {
     var container = document.getElementById('lecturerNCKTableContainer');
@@ -1321,6 +1593,7 @@ function hideLoading() {
 // ============================================================
 function lecturerNCKInit() {
     console.log('📋 [NCK] Initializing Lecturer NCK System...');
+    LecturerNCK.retryCount = 0;
     lecturerNCKGetLecturerInfo();
     lecturerNCKLoadColumns();
     LecturerNCK.initialized = true;
@@ -1361,8 +1634,10 @@ window.isNckAdmin = isNckAdmin;
 window.showNCKAccessDenied = showNCKAccessDenied;
 window.showToast = showToast;
 window.calculateNursingGrade = calculateNursingGrade;
+window.isKRCHNProgram = isKRCHNProgram;
 
 console.log('✅ [NCK] Lecturer NCK module loaded successfully');
 console.log('📚 Available functions: lecturerNCKInit, lecturerNCKLoadData, lecturerNCKSaveAll, lecturerNCKSubmitForApproval, lecturerNCKWithdrawApproval, lecturerNCKExportCSV');
 console.log('👑 Admin mode:', isNckAdmin() ? 'ENABLED' : 'DISABLED');
 console.log('🔒 TVET Protection: ENABLED - Only KRCHN Nursing can access');
+console.log('📋 NO HARDCODING - All values loaded dynamically from session/profile');
