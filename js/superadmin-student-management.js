@@ -185,30 +185,27 @@ function initStudentManagement() {
     const sb = getSupabaseClient();
     if (!sb) {
         console.error('❌ Supabase client not available');
-        if (typeof showNotification === 'function') {
-            showNotification('Supabase client not available. Please refresh the page.', 'error');
-        }
         return;
     }
     
-    // Load all data
+    // Load all data - MAKE SURE loadSessionReportsAdmin() is included
     Promise.all([
         loadStudentsForDropdown(),
         loadAdmissions(),
         loadChangeProgramRequests(),
         loadReadmissionRequests(),
-        loadSessionReportsAdmin(),
+        loadSessionReportsAdmin(),  // ✅ This must be here
         loadSMHistory()
     ]).then(() => {
         updateSMStats();
         updateSMBadges();
+        updateSessionReportStats();  // ✅ Add this
         toggleSMRequestFields();
         console.log('✅ Student Management fully loaded');
     }).catch(err => {
         console.error('❌ Error loading student management:', err);
     });
 }
-
 // ============================================================
 // LOAD STUDENTS FOR DROPDOWN (FROM consolidated_user_profiles_table)
 // ============================================================
@@ -641,18 +638,26 @@ function renderReadmissionTable() {
 }
 
 // ============================================================
-// SESSION REPORTS - ADMIN VIEW
+// ADMIN: LOAD SESSION REPORTS
 // ============================================================
-
 async function loadSessionReportsAdmin() {
     const sb = getSupabaseClient();
-    if (!sb) return;
+    if (!sb) {
+        console.error('❌ Supabase client not available');
+        if (typeof showNotification === 'function') {
+            showNotification('Supabase client not available', 'error');
+        }
+        return;
+    }
     
     try {
+        console.log('📊 Loading admin session reports...');
+        
         const search = document.getElementById('smSessionReportSearch')?.value?.toLowerCase() || '';
         const status = document.getElementById('smSessionReportStatusFilter')?.value || 'all';
         const type = document.getElementById('smSessionReportTypeFilter')?.value || 'all';
 
+        // Build query
         let query = sb
             .from('session_reports')
             .select('*')
@@ -667,170 +672,222 @@ async function loadSessionReportsAdmin() {
 
         const { data, error } = await query;
 
-        if (error) throw error;
+        if (error) {
+            console.error('❌ Supabase error:', error);
+            throw error;
+        }
 
+        // Apply search filter
         let filtered = data || [];
         if (search) {
             filtered = filtered.filter(r => 
                 (r.student_name || '').toLowerCase().includes(search) ||
-                (r.student_id || '').toLowerCase().includes(search)
+                (r.student_id || '').toLowerCase().includes(search) ||
+                (r.program || '').toLowerCase().includes(search) ||
+                (r.session || '').toLowerCase().includes(search)
             );
         }
 
+        console.log(`✅ Found ${filtered.length} session reports for admin`);
+        console.log('📋 Reports:', filtered);
+        
+        // Store in state
         SM_STATE.sessionReports = filtered;
+        
+        // Render the table
         renderSessionReportsAdminTable();
+        
+        // Update stats
         updateSMStats();
         updateSMBadges();
+        updateSessionReportStats();
 
     } catch (error) {
-        console.error('Error loading session reports:', error);
-        // If table doesn't exist, use mock data for demo
-        if (error.message?.includes('relation') && error.message?.includes('does not exist')) {
-            console.warn('⚠️ session_reports table not found, using mock data');
-            const mockReports = [
-                {
-                    id: 'mock-1',
-                    student_name: 'Jane Mwangi',
-                    student_id: 'KRCHN/0001/2026',
-                    program: 'KRCHN',
-                    program_type: 'Nursing',
-                    academic_year: '2025/2026',
-                    session: 'Block 3',
-                    status: 'Continuing',
-                    remarks: 'Ready to proceed to next block',
-                    approval_status: 'pending',
-                    submitted_at: new Date().toISOString()
-                },
-                {
-                    id: 'mock-2',
-                    student_name: 'Peter Ochieng',
-                    student_id: 'DPOTT/0002/2026',
-                    program: 'DPOTT',
-                    program_type: 'TVET',
-                    academic_year: '2025/2026',
-                    session: 'Year 2 - Term 1',
-                    status: 'Repeating',
-                    remarks: 'Repeating after medical leave',
-                    approval_status: 'pending',
-                    submitted_at: new Date(Date.now() - 86400000).toISOString()
-                }
-            ];
-            SM_STATE.sessionReports = mockReports;
-            renderSessionReportsAdminTable();
-            updateSMStats();
-            updateSMBadges();
-        } else {
-            const tbody = document.getElementById('smSessionReportsBody');
-            if (tbody) {
-                tbody.innerHTML = `
-                    <tr><td colspan="8" style="padding: 40px; text-align: center; color: #dc2626;">
-                        <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-                        Error loading session reports: ${error.message || 'Unknown error'}
-                    </td></tr>
-                `;
-            }
+        console.error('❌ Error loading session reports:', error);
+        const tbody = document.getElementById('smSessionReportsBody');
+        if (tbody) {
+            tbody.innerHTML = `
+                <tr><td colspan="8" style="padding: 40px; text-align: center; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
+                    Error loading session reports: ${escapeHtml(error.message || 'Unknown error')}
+                    <br>
+                    <button onclick="loadSessionReportsAdmin()" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                        <i class="fas fa-sync-alt"></i> Retry
+                    </button>
+                </td></tr>
+            `;
         }
     }
 }
-
+// ============================================================
+// UPDATE SESSION REPORT STATS (For Admin)
+// ============================================================
+function updateSessionReportStats() {
+    const reports = SM_STATE.sessionReports || [];
+    
+    const total = reports.length;
+    const pending = reports.filter(r => r.approval_status === 'pending').length;
+    const approved = reports.filter(r => r.approval_status === 'approved').length;
+    const rejected = reports.filter(r => r.approval_status === 'rejected').length;
+    
+    // Update stats cards
+    const totalEl = document.getElementById('smSessionReportsTotal');
+    const pendingEl = document.getElementById('smSessionReportsPending');
+    const approvedEl = document.getElementById('smSessionReportsApproved');
+    const rejectedEl = document.getElementById('smSessionReportsRejected');
+    
+    if (totalEl) totalEl.textContent = total;
+    if (pendingEl) pendingEl.textContent = pending;
+    if (approvedEl) approvedEl.textContent = approved;
+    if (rejectedEl) rejectedEl.textContent = rejected;
+    
+    // Update badge in tab
+    const badge = document.getElementById('smSessionReportsBadge');
+    if (badge) {
+        badge.textContent = pending;
+        badge.style.display = pending > 0 ? 'inline-block' : 'none';
+    }
+    
+    // Update main stats
+    const sessionReportsCount = document.getElementById('smSessionReportsCount');
+    if (sessionReportsCount) {
+        sessionReportsCount.textContent = pending;
+    }
+    
+    console.log('📊 Session Report Stats:', { total, pending, approved, rejected });
+}
+// ============================================================
+// ADMIN: RENDER SESSION REPORTS TABLE
+// ============================================================
 function renderSessionReportsAdminTable() {
     const tbody = document.getElementById('smSessionReportsBody');
-    if (!tbody) return;
+    if (!tbody) {
+        console.error('❌ Table body not found: smSessionReportsBody');
+        return;
+    }
 
-    const reports = SM_STATE.sessionReports;
+    const reports = SM_STATE.sessionReports || [];
+    console.log(`📊 Rendering ${reports.length} session reports`);
 
     if (!reports || reports.length === 0) {
         tbody.innerHTML = `
-            <tr><td colspan="8" style="padding: 40px; text-align: center; color: #94a3b8;">
-                <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 10px;"></i>
-                No session reports found.
-            </td></tr>
+            <tr>
+                <td colspan="8" style="padding: 60px; text-align: center; color: #94a3b8;">
+                    <i class="fas fa-inbox" style="font-size: 40px; display: block; margin-bottom: 16px; color: #d1d5db;"></i>
+                    <p style="margin: 0; font-size: 16px;">No session reports found</p>
+                    <p style="margin: 4px 0 0 0; font-size: 13px; color: #cbd5e1;">Students haven't submitted any session reports yet</p>
+                </td>
+            </tr>
         `;
         return;
     }
 
     let html = '';
-    reports.forEach((r, index) => {
-        const statusClass = r.approval_status || 'pending';
-        const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
+    reports.forEach((report, index) => {
         const statusColors = {
-            pending: { bg: '#fef3c7', color: '#92400e' },
-            approved: { bg: '#d1fae5', color: '#065f46' },
-            rejected: { bg: '#fee2e2', color: '#991b1b' }
+            pending: { bg: '#fef3c7', color: '#92400e', icon: '⏳' },
+            approved: { bg: '#d1fae5', color: '#065f46', icon: '✅' },
+            rejected: { bg: '#fee2e2', color: '#991b1b', icon: '❌' }
         };
-        const statusStyle = statusColors[statusClass] || statusColors.pending;
-
-        const date = r.submitted_at ? new Date(r.submitted_at).toLocaleDateString() : 'N/A';
-        const programType = r.program_type || 'TVET';
-        const sessionDisplay = r.session || 'N/A';
-        const academicYear = r.academic_year || 'N/A';
+        const statusStyle = statusColors[report.approval_status] || statusColors.pending;
+        
+        const submittedDate = report.submitted_at ? new Date(report.submitted_at).toLocaleString() : 'N/A';
+        const programType = report.program_type || 'TVET';
+        const sessionDisplay = report.session || 'N/A';
+        const studentName = report.student_name || 'Unknown';
+        const studentId = report.student_id || 'N/A';
+        const studentProgram = report.program || 'N/A';
+        const studentStatus = report.student_status || report.status || 'Continuing';
+        const academicYear = report.academic_year || 'N/A';
+        const isPending = report.approval_status === 'pending';
 
         // Determine what gets updated on approval
         const updateLabel = programType === 'Nursing' ? 
             `Block → ${sessionDisplay}` : 
             `Year/Term → ${sessionDisplay}`;
 
-        const isApproved = statusClass === 'approved';
-        const isPending = statusClass === 'pending';
-
         html += `
-        <tr style="border-bottom: 1px solid #e5e7eb; ${index % 2 === 0 ? 'background: #f8fafc;' : ''}">
-            <td style="text-align: center; padding: 12px 8px;">
-                <input type="checkbox" class="sm-checkbox session-reports-checkbox" data-id="${r.id}" onchange="updateSMCounter('session-reports')" style="width: 16px; height: 16px; cursor: pointer;">
-            </td>
-            <td style="padding: 12px 16px;">
-                <strong>${escapeHtml(r.student_name || 'Unknown')}</strong>
-                <div style="font-size: 11px; color: #94a3b8;">${escapeHtml(r.student_id || 'N/A')}</div>
-            </td>
-            <td style="padding: 12px 16px;">
-                <span style="background: #dbeafe; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">${escapeHtml(r.program || 'N/A')}</span>
-                <br>
-                <span style="background: ${programType === 'Nursing' ? '#dbeafe' : '#fef3c7'}; padding: 2px 8px; border-radius: 12px; font-size: 10px; color: ${programType === 'Nursing' ? '#1e40af' : '#92400e'};">
-                    ${programType}
-                </span>
-            </td>
-            <td style="padding: 12px 16px;">
-                <div style="font-weight: 500; color: #0A3D62;">${escapeHtml(academicYear)}</div>
-                <div style="font-size: 12px; color: #475569;">
-                    <i class="fas fa-arrow-right" style="color: #94a3b8; font-size: 10px;"></i>
-                    ${escapeHtml(sessionDisplay)}
-                </div>
-                ${isPending ? `<div style="font-size: 10px; color: #3b82f6; margin-top: 2px;">
-                    <i class="fas fa-sync-alt"></i> Will update: ${updateLabel}
-                </div>` : ''}
-                ${isApproved ? `<div style="font-size: 10px; color: #059669; margin-top: 2px;">
-                    <i class="fas fa-check-circle"></i> Profile updated to: ${sessionDisplay}
-                </div>` : ''}
-            </td>
-            <td style="padding: 12px 16px;">
-                <span style="background: #d1fae5; padding: 2px 10px; border-radius: 12px; font-size: 12px; color: #065f46;">
-                    ${escapeHtml(r.status || 'Continuing')}
-                </span>
-            </td>
-            <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">${date}</td>
-            <td style="padding: 12px 16px; text-align: center;">
-                <span style="background: ${statusStyle.bg}; color: ${statusStyle.color}; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block;">
-                    ${statusLabel}
-                </span>
-            </td>
-            <td style="padding: 12px 16px; text-align: center;">
-                <button onclick="viewSMRequest('${r.id}', 'session-report')" style="padding: 4px 12px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; transition: 0.2s;" onmouseover="this.style.background='#2563eb'" onmouseout="this.style.background='#3b82f6'">
-                    <i class="fas fa-eye"></i> View
-                </button>
-                ${isPending ? `
-                <button onclick="approveSessionReportAdmin('${r.id}')" style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-top: 4px; transition: 0.2s;" onmouseover="this.style.background='#059669'" onmouseout="this.style.background='#10b981'">
-                    <i class="fas fa-check"></i> Approve
-                </button>
-                <button onclick="rejectSessionReportAdmin('${r.id}')" style="padding: 4px 10px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px; margin-top: 4px; transition: 0.2s;" onmouseover="this.style.background='#b91c1c'" onmouseout="this.style.background='#dc2626'">
-                    <i class="fas fa-times"></i>
-                </button>
-                ` : ''}
-            </td>
-        </tr>
-    `});
-    
+            <tr style="border-bottom: 1px solid #f1f5f9; ${index % 2 === 0 ? 'background: #fafafa;' : ''}">
+                <td style="text-align: center; padding: 12px 8px;">
+                    <input type="checkbox" class="sm-checkbox session-reports-checkbox" data-id="${report.id}" 
+                           onchange="updateSMCounter('session-reports')" 
+                           style="width: 16px; height: 16px; cursor: pointer;">
+                </td>
+                <td style="padding: 12px 16px;">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: #4C1D95; color: white; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 14px;">
+                            ${studentName.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                            <div style="font-weight: 600; color: #0A3D62; font-size: 14px;">${escapeHtml(studentName)}</div>
+                            <div style="font-size: 11px; color: #94a3b8;">${escapeHtml(studentId)}</div>
+                        </div>
+                    </div>
+                </td>
+                <td style="padding: 12px 16px;">
+                    <span style="background: #dbeafe; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #1e40af;">
+                        ${escapeHtml(studentProgram)}
+                    </span>
+                    <br>
+                    <span style="background: ${programType === 'Nursing' ? '#dbeafe' : '#fef3c7'}; padding: 2px 8px; border-radius: 12px; font-size: 10px; color: ${programType === 'Nursing' ? '#1e40af' : '#92400e'};">
+                        ${programType}
+                    </span>
+                </td>
+                <td style="padding: 12px 16px;">
+                    <div style="font-weight: 500; color: #0A3D62;">${escapeHtml(academicYear)}</div>
+                    <div style="font-size: 12px; color: #475569;">
+                        <i class="fas fa-arrow-right" style="color: #94a3b8; font-size: 10px;"></i>
+                        ${escapeHtml(sessionDisplay)}
+                    </div>
+                    <div style="font-size: 10px; color: #64748b; margin-top: 2px;">
+                        Status: ${escapeHtml(studentStatus)}
+                    </div>
+                    ${isPending ? `<div style="font-size: 10px; color: #3b82f6; margin-top: 2px;">
+                        <i class="fas fa-sync-alt"></i> Will update: ${updateLabel}
+                    </div>` : ''}
+                </td>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <span style="background: #d1fae5; padding: 4px 12px; border-radius: 12px; font-size: 12px; color: #065f46;">
+                        ${escapeHtml(studentStatus)}
+                    </span>
+                </td>
+                <td style="padding: 12px 16px; text-align: center; font-size: 12px; color: #64748b;">
+                    ${submittedDate}
+                </td>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <span style="background: ${statusStyle.bg}; color: ${statusStyle.color}; padding: 4px 14px; border-radius: 20px; font-size: 11px; font-weight: 600; display: inline-block;">
+                        ${statusStyle.icon} ${report.approval_status ? report.approval_status.charAt(0).toUpperCase() + report.approval_status.slice(1) : 'Pending'}
+                    </span>
+                </td>
+                <td style="padding: 12px 16px; text-align: center;">
+                    <div style="display: flex; gap: 4px; justify-content: center; flex-wrap: wrap;">
+                        <button onclick="viewSMRequest('${report.id}', 'session-report')" 
+                                style="padding: 4px 10px; background: #3b82f6; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                        ${isPending ? `
+                            <button onclick="approveSessionReportAdmin('${report.id}')" 
+                                    style="padding: 4px 10px; background: #10b981; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
+                                <i class="fas fa-check"></i>
+                            </button>
+                            <button onclick="rejectSessionReportAdmin('${report.id}')" 
+                                    style="padding: 4px 10px; background: #dc2626; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 10px;">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        ` : `
+                            <span style="font-size: 10px; color: #94a3b8;">
+                                ${report.approval_status === 'approved' ? '✅ Done' : '❌ Rejected'}
+                            </span>
+                        `}
+                    </div>
+                </td>
+            </tr>
+        `;
+    });
+
     tbody.innerHTML = html;
     updateSMCounter('session-reports');
+    console.log('✅ Session reports table rendered');
 }
 
 // ============================================================
