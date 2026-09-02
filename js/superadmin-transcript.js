@@ -990,12 +990,33 @@ window.downloadTranscript = function() {
         window.showNotification(`✅ Transcript downloaded for ${studentName}`, 'success');
     }
 };
+
 // ============================================================
-// RENDER A SPECIFIC BLOCK - FINAL VERSION
+// GET PROGRAM BLOCKS - FIXED PROGRESSION LOGIC
+// ============================================================
+
+function getProgramBlocks(programCode) {
+    const code = String(programCode).toUpperCase().trim();
+    
+    if (code === 'KRCHN' || code === 'NURSING') {
+        return KRCHN_BLOCKS;
+    }
+    
+    const type = getProgramType(programCode);
+    if (type === 'tvet_certificate' || type === 'tvet_artisan') {
+        return TVET_TERMS_CERTIFICATE;
+    }
+    if (type === 'tvet_diploma') {
+        return TVET_TERMS_DIPLOMA;
+    }
+    
+    return KRCHN_BLOCKS;
+}
+
+// ============================================================
+// RENDER A SPECIFIC BLOCK - FIXED PROGRESSION LOGIC
 // A4 Ready - No outside text
 // Clean header with proper spacing
-// Contact: KIAMUNYI CAMPUS · P.O. Box 12906 - 20100, Nakuru
-// Tel: 0703 345 771 · Email: info@nakurucollegeofhealth.ac.ke · Website: www.nchsm.co.ke
 // ============================================================
 
 function renderBlock(index) {
@@ -1211,22 +1232,55 @@ function renderBlock(index) {
     }
 
     // ============================================================
-    // 🎯 PROGRESSION MESSAGE
+    // 🎯 PROGRESSION MESSAGE - FIXED LOGIC
     // ============================================================
     const currentBlockIndex = index;
     const nextBlockIndex = currentBlockIndex + 1;
     const hasNextBlock = nextBlockIndex < blockNames.length;
     const nextBlockName = hasNextBlock ? blockNames[nextBlockIndex] : null;
     
+    // Get the complete program block sequence
+    const programBlocks = getProgramBlocks(program);
+    
+    // Find the index of the current block in the program sequence
+    const currentBlockProgramIndex = programBlocks.indexOf(blockName);
+    
+    // Check if all blocks in the program have marks
+    const allBlocksPresent = programBlocks.every(block => groupedMarks[block] !== undefined);
+    
+    // Check if this is the LAST block in the program sequence AND all blocks are present
+    const isLastProgramBlock = currentBlockProgramIndex === programBlocks.length - 1;
+    const isProgramComplete = allBlocksPresent && isLastProgramBlock;
+    
+    // Check if there are more program blocks that don't have marks yet
+    const hasMissingSubsequentBlocks = programBlocks.some((block, idx) => 
+        idx > currentBlockProgramIndex && groupedMarks[block] === undefined
+    );
+    
     let progressionMessage = '';
     let messageColor = '#64748b';
     
     if (allPassed && hasNextBlock) {
+        // Normal progression to next block/term that has marks
         messageColor = '#059669';
-        progressionMessage = `Passed — Proceed to ${nextBlockName} · ${yearLabel}`;
-    } else if (allPassed && !hasNextBlock) {
+        progressionMessage = `✅ Passed — Proceed to ${nextBlockName} · ${yearLabel}`;
+    } else if (allPassed && isProgramComplete) {
+        // ALL blocks in the program are completed AND this is the last block
         messageColor = '#4C1D95';
-        progressionMessage = `All blocks completed — Ready for Graduation · ${yearLabel}`;
+        progressionMessage = `🎓 ALL BLOCKS COMPLETED — Ready for Graduation · ${yearLabel}`;
+    } else if (allPassed && !hasNextBlock && !isProgramComplete && !hasMissingSubsequentBlocks) {
+        // No more blocks with marks, but program has more blocks that should exist
+        messageColor = '#f59e0b';
+        progressionMessage = `⚠️ ${blockName} completed — Waiting for results in subsequent blocks · Contact Registrar`;
+    } else if (allPassed && !hasNextBlock && !isProgramComplete && hasMissingSubsequentBlocks) {
+        // Passed current block, but there are more program blocks without marks
+        const nextProgramBlock = programBlocks[currentBlockProgramIndex + 1] || 'next block';
+        messageColor = '#059669';
+        progressionMessage = `✅ Passed — Proceed to ${nextProgramBlock} (results pending) · ${yearLabel}`;
+    } else if (allPassed && hasNextBlock === false && isLastProgramBlock === false && allBlocksPresent === false) {
+        // Passed but missing some blocks in the middle
+        messageColor = '#f59e0b';
+        progressionMessage = `⚠️ ${blockName} passed — Missing results for subsequent blocks · Contact Registrar`;
     } else if (hasFailed && blockPassed > 0) {
         const failedNames = blockMarks
             .filter(m => (m.final_score || 0) < passMark && (m.final_score || 0) > 0)
@@ -1234,15 +1288,15 @@ function renderBlock(index) {
             .join(', ');
         messageColor = '#dc2626';
         if (failedNames) {
-            progressionMessage = `${failedUnits} unit(s) failed: ${failedNames} — Retake required · ${yearLabel}`;
+            progressionMessage = `❌ ${failedUnits} unit(s) failed: ${failedNames} — Retake required · ${yearLabel}`;
         } else {
-            progressionMessage = `${failedUnits} unit(s) failed — Retake required · ${yearLabel}`;
+            progressionMessage = `❌ ${failedUnits} unit(s) failed — Retake required · ${yearLabel}`;
         }
     } else if (blockPassed === 0 && blockTotal > 0) {
         messageColor = '#dc2626';
-        progressionMessage = `Academic intervention required — Contact Registrar · ${yearLabel}`;
+        progressionMessage = `❌ Academic intervention required — Contact Registrar · ${yearLabel}`;
     } else {
-        progressionMessage = `Results pending · ${yearLabel}`;
+        progressionMessage = `⏳ Results pending · ${yearLabel}`;
     }
 
     // Build grading scale table
@@ -1270,7 +1324,7 @@ function renderBlock(index) {
             <div style="display: flex; justify-content: center; gap: 15px; margin-top: 14px; padding-top: 10px; border-top: 1px solid #e5e7eb; flex-wrap: wrap;">
                 ${prevBlock ? `
                     <button onclick="window.navigateBlock(-1)" style="background: #0A3D62; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-                        Previous: ${escapeHtml(prevBlock)}
+                        ← Previous: ${escapeHtml(prevBlock)}
                     </button>
                 ` : ''}
                 <span style="color: #64748b; font-size: 12px; padding: 8px 12px; background: #f1f5f9; border-radius: 20px;">
@@ -1278,7 +1332,7 @@ function renderBlock(index) {
                 </span>
                 ${nextBlock ? `
                     <button onclick="window.navigateBlock(1)" style="background: #0A3D62; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 12px; transition: all 0.2s;" onmouseover="this.style.transform='translateY(-2px)'" onmouseout="this.style.transform='none'">
-                        Next: ${escapeHtml(nextBlock)}
+                        Next: ${escapeHtml(nextBlock)} →
                     </button>
                 ` : `
                     <button style="background: #4C1D95; color: white; border: none; padding: 8px 20px; border-radius: 6px; cursor: default; font-weight: 600; font-size: 12px;">
@@ -1441,6 +1495,7 @@ function renderBlock(index) {
     
     content.innerHTML = html;
 };
+
 // ============================================================
 // CLOSE TRANSCRIPT PREVIEW
 // ============================================================
@@ -1590,6 +1645,7 @@ window.calculateGPA = calculateGPA;
 window.getStatusLabel = getStatusLabel;
 window.getUnitCode = getUnitCode;
 window.escapeHtml = escapeHtml;
+window.getProgramBlocks = getProgramBlocks;
 
 console.log('✅ Super Admin Transcript Generator Module Loaded Successfully!');
 console.log('📄 Official transcript format (CODE, COURSE TITLE, CREDIT, GRADE, POINTS)');
@@ -1598,6 +1654,7 @@ console.log('📊 TVET: Certificate (3 Terms), Diploma (6 Terms)');
 console.log('📊 KRCHN: Blocks (Introductory, Block 1-6, Final)');
 console.log('📋 Unit codes fetched from database (matches Marks Entry)');
 console.log('✅ FIXED: Grading scale correctly detects Nursing vs TVET');
+console.log('✅ FIXED: Progression message correctly checks program completion');
 console.log('📋 Features:');
 console.log('   - School Logo');
 console.log('   - GPA for the year / Cumulative GPA');
@@ -1612,3 +1669,5 @@ console.log('   - Block/Term headers with summaries (NO retake summary)');
 console.log('   - All borders on tables');
 console.log('   - TVET + Nursing support');
 console.log('   - Block navigation (Previous/Next)');
+console.log('   - FIXED: "Proceed to next block" for Block 2 (not graduation)');
+console.log('   - FIXED: "Ready for Graduation" only when ALL blocks completed');
