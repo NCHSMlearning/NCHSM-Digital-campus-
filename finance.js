@@ -781,41 +781,78 @@ function loadCharts(payments) {
     }
 }
 
-// ============================================================
-// STUDENT ACCOUNTS
-// ============================================================
-
 async function loadAccounts() {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
-        const { data, error } = await sbClient
+        
+        // Get students with their accounts and payments in one go
+        const { data: students, error: studentError } = await sbClient
             .from('consolidated_user_profiles_table')
-            .select('*')
+            .select(`
+                *,
+                finance_student_accounts!left (
+                    balance,
+                    total_paid,
+                    total_due,
+                    status
+                )
+            `)
             .eq('role', 'student')
             .eq('status', 'approved')
             .order('full_name', { ascending: true });
-        if (error) throw error;
-        allAccounts = (data || []).map(s => ({
-            ...s,
-            student_id: s.user_id,
-            student_name: s.full_name,
-            display_id: s.student_id || s.user_id,
-            balance: 0,
-            total_fees_due: 0,
-            total_paid: 0,
-            payment_status: 'active'
-        }));
+        
+        if (studentError) throw studentError;
+        
+        // Get payment totals separately
+        const { data: payments, error: paymentError } = await sbClient
+            .from('finance_payments')
+            .select('student_id, amount')
+            .eq('status', 'completed');
+        
+        if (paymentError) {
+            console.warn('⚠️ Could not fetch payments:', paymentError);
+        }
+        
+        // Calculate payment totals
+        const paymentTotals = {};
+        if (payments) {
+            payments.forEach(p => {
+                paymentTotals[p.student_id] = (paymentTotals[p.student_id] || 0) + (p.amount || 0);
+            });
+        }
+        
+        // Build accounts
+        allAccounts = (students || []).map(s => {
+            const account = s.finance_student_accounts?.[0] || {};
+            const totalPaid = paymentTotals[s.user_id] || 0;
+            const totalDue = account?.total_due || 0;
+            const balance = Math.max(totalDue - totalPaid, 0);
+            
+            return {
+                ...s,
+                student_id: s.user_id,
+                student_name: s.full_name,
+                display_id: s.student_id || s.user_id,
+                balance: balance,
+                total_fees_due: totalDue,
+                total_paid: totalPaid,
+                payment_status: account?.status || 'active'
+            };
+        });
+        
         renderAccounts(allAccounts);
         updateAccountCount(allAccounts.length);
         loadBalanceAlerts();
         populateProgramFilter();
         updateQuickStats(allAccounts);
+        
+        console.log('✅ Accounts loaded:', allAccounts.length);
+        
     } catch (error) {
         console.error('Error loading accounts:', error);
         showToast('Error loading student accounts', 'error');
     }
 }
-
 function renderAccounts(accounts) {
     const tbody = document.getElementById('accountsTableBody');
     if (!tbody) return;
