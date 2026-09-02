@@ -1,5 +1,5 @@
 // ============================================================
-// SUPER ADMIN PROFILE MODULE - COMPATIBLE WITH YOUR SCRIPT.JS
+// SUPER ADMIN PROFILE MODULE - FIXED FOR YOUR script.js
 // ============================================================
 
 // ============================================================
@@ -22,67 +22,112 @@ let profileData = {
 };
 
 // ============================================================
-// LOAD PROFILE DATA - USES YOUR EXISTING getCurrentUser()
+// LOAD PROFILE DATA - FIXED: Uses your existing getCurrentUser()
 // ============================================================
 
-async function loadProfileData() {
+function loadProfileData() {
     console.log('📋 Loading profile data...');
     
     try {
-        // Use your existing getCurrentUser() function
-        const user = await getCurrentUser();
+        // Use your existing getCurrentUser() function (synchronous)
+        let user = null;
+        
+        // Try sessionStorage first (your script.js stores user here)
+        try {
+            const sessionUser = JSON.parse(sessionStorage.getItem('user') || 'null');
+            if (sessionUser) user = sessionUser;
+        } catch(e) {}
+        
+        // Try localStorage if sessionStorage failed
+        if (!user) {
+            try {
+                const localUser = JSON.parse(localStorage.getItem('user') || 'null');
+                if (localUser) user = localUser;
+            } catch(e) {}
+        }
+        
+        // Try supabase session if available
+        if (!user) {
+            try {
+                const session = JSON.parse(localStorage.getItem('supabase.auth.token') || 'null');
+                if (session?.currentSession?.user) {
+                    user = session.currentSession.user;
+                }
+            } catch(e) {}
+        }
+        
+        // Try window.currentUser (set by your script.js)
+        if (!user && window.currentUser) {
+            user = window.currentUser;
+        }
+        
+        // If still no user, try the global getCurrentUser function
+        if (!user && typeof getCurrentUser === 'function') {
+            user = getCurrentUser();
+        }
+        
+        // Fallback to stored profile
+        if (!user) {
+            try {
+                const saved = JSON.parse(localStorage.getItem('profileData') || 'null');
+                if (saved) {
+                    profileData = { ...profileData, ...saved };
+                    updateProfileUI();
+                    loadRecentActivity();
+                    console.log('✅ Profile loaded from saved data:', profileData.name);
+                    return;
+                }
+            } catch(e) {}
+        }
         
         if (user) {
-            profileData.email = user.email || profileData.email;
-            profileData.name = user.full_name || user.email?.split('@')[0] || profileData.name;
-            profileData.avatarInitials = profileData.name
+            // Extract user data
+            const name = user.full_name || user.user_metadata?.full_name || user.email?.split('@')[0] || 'Super Admin';
+            const email = user.email || 'admin@nchsm.ac.ke';
+            
+            profileData.email = email;
+            profileData.name = name;
+            profileData.avatarInitials = name
                 .split(' ')
                 .map(n => n[0])
                 .join('')
                 .toUpperCase()
                 .slice(0, 2);
             
-            // If we have a profile object with more details
-            if (user.user_id) {
-                profileData.id = user.user_id;
-                profileData.employeeId = user.staff_id || user.student_id || 'SA-001';
-                profileData.department = user.department || 'Administration';
-                profileData.role = user.role || 'superadmin';
-                profileData.phone = user.phone || '+254 700 000 000';
-                profileData.location = user.location || 'Nairobi, Kenya';
+            if (user.id) profileData.id = user.id;
+            if (user.staff_id || user.student_id) {
+                profileData.employeeId = user.staff_id || user.student_id;
             }
-        }
-        
-        // Try to load from localStorage (your existing storage)
-        const savedProfile = localStorage.getItem('profileData');
-        if (savedProfile) {
-            try {
-                const parsed = JSON.parse(savedProfile);
-                profileData = { ...profileData, ...parsed };
-            } catch (e) {}
+            if (user.department) profileData.department = user.department;
+            if (user.role) profileData.role = user.role;
+            if (user.phone) profileData.phone = user.phone;
+            if (user.location) profileData.location = user.location;
+            
+            // Save to localStorage
+            localStorage.setItem('profileData', JSON.stringify(profileData));
         }
         
         // Update UI
         updateProfileUI();
-        await loadRecentActivity();
-        await loadProfileStats();
+        loadRecentActivity();
+        loadProfileStats();
         
         console.log('✅ Profile loaded:', profileData.name);
         
     } catch (error) {
         console.error('Error loading profile:', error);
-        if (typeof showFeedback === 'function') {
-            showFeedback('Error loading profile data', 'error');
-        }
+        // Still show UI with fallback data
+        updateProfileUI();
     }
 }
 
 // ============================================================
-// UPDATE PROFILE UI - USES YOUR showFeedback()
+// UPDATE PROFILE UI
 // ============================================================
 
 function updateProfileUI() {
-    // Use safeSetText or direct DOM manipulation
+    console.log('🔄 Updating profile UI...');
+    
     const elements = {
         'profileDisplayName': profileData.name,
         'profileEmail': profileData.email,
@@ -99,7 +144,10 @@ function updateProfileUI() {
     
     Object.keys(elements).forEach(id => {
         const el = document.getElementById(id);
-        if (el) el.textContent = elements[id];
+        if (el) {
+            el.textContent = elements[id];
+            console.log(`✅ Updated ${id}:`, elements[id]);
+        }
     });
     
     // Update avatar
@@ -108,42 +156,42 @@ function updateProfileUI() {
     
     const editAvatarText = document.getElementById('editProfileAvatarText');
     if (editAvatarText) editAvatarText.textContent = profileData.avatarInitials || 'SA';
+    
+    // Update edit form fields
+    document.getElementById('editProfileName').value = profileData.name;
+    document.getElementById('editProfileEmail').value = profileData.email;
+    document.getElementById('editProfilePhone').value = profileData.phone || '';
+    document.getElementById('editProfileEmployeeId').value = profileData.employeeId || '';
+    document.getElementById('editProfileDepartment').value = profileData.department || 'Administration';
+    document.getElementById('editProfileLocation').value = profileData.location || '';
+    
+    // Update stats
+    const statActions = document.getElementById('profileStatActions');
+    if (statActions) statActions.textContent = profileData.actionsCount || 0;
 }
 
 // ============================================================
-// LOAD PROFILE STATS - USES YOUR EXISTING AUDIT LOGS
+// LOAD PROFILE STATS
 // ============================================================
 
-async function loadProfileStats() {
+function loadProfileStats() {
     try {
         const supabase = window.sb || window.supabase;
         if (!supabase) return;
         
         // Get actions count from audit_logs
-        const { count, error } = await supabase
+        supabase
             .from('audit_logs')
             .select('*', { count: 'exact', head: true })
-            .eq('user_email', profileData.email);
-        
-        if (!error) {
-            profileData.actionsCount = count || 0;
-            const statActions = document.getElementById('profileStatActions');
-            if (statActions) statActions.textContent = profileData.actionsCount;
-        }
-        
-        // Get member since date
-        const { data: userProfile } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('created_at')
-            .eq('user_id', profileData.id)
-            .maybeSingle();
-        
-        if (userProfile?.created_at) {
-            const date = new Date(userProfile.created_at);
-            profileData.memberSince = date.getFullYear();
-            const memberEl = document.getElementById('profileStatMemberSince');
-            if (memberEl) memberEl.textContent = profileData.memberSince;
-        }
+            .eq('user_email', profileData.email)
+            .then(({ count, error }) => {
+                if (!error && count !== null) {
+                    profileData.actionsCount = count;
+                    const statActions = document.getElementById('profileStatActions');
+                    if (statActions) statActions.textContent = count;
+                }
+            })
+            .catch(() => {});
         
     } catch (error) {
         console.warn('Error loading profile stats:', error);
@@ -154,9 +202,11 @@ async function loadProfileStats() {
 // LOAD RECENT ACTIVITY - USES YOUR EXISTING AUDIT LOGS
 // ============================================================
 
-async function loadRecentActivity() {
+function loadRecentActivity() {
     const container = document.getElementById('profileRecentActivity');
     if (!container) return;
+    
+    console.log('📋 Loading recent activity...');
     
     try {
         const supabase = window.sb || window.supabase;
@@ -170,48 +220,56 @@ async function loadRecentActivity() {
             return;
         }
         
-        const { data: actions, error } = await supabase
+        supabase
             .from('audit_logs')
             .select('*')
             .eq('user_email', profileData.email)
             .order('timestamp', { ascending: false })
-            .limit(5);
-        
-        if (error || !actions || actions.length === 0) {
-            container.innerHTML = `
-                <div style="text-align: center; color: #94a3b8; padding: 20px;">
-                    <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
-                    No recent activity
-                </div>
-            `;
-            return;
-        }
-        
-        container.innerHTML = actions.map(action => {
-            const time = action.timestamp ? new Date(action.timestamp).toLocaleString() : '';
-            const icon = getActionIcon(action.action_type);
-            const color = getActionColor(action.action_type);
-            const statusColor = action.status === 'SUCCESS' ? '#10b981' : '#dc2626';
-            const statusText = action.status === 'SUCCESS' ? '✅' : '❌';
-            
-            return `
-                <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
-                    <div style="width: 30px; height: 30px; border-radius: 50%; background: ${color}20; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                        <i class="fas ${icon}" style="color: ${color}; font-size: 12px;"></i>
-                    </div>
-                    <div style="flex: 1; min-width: 0;">
-                        <div style="font-size: 12px; color: #1e293b; font-weight: 500;">
-                            ${escapeHtml(action.action_type || 'Activity')}
-                            <span style="font-weight: 400; color: #94a3b8; font-size: 11px;">
-                                ${escapeHtml(action.details || '').substring(0, 30)}
-                            </span>
-                            <span style="color: ${statusColor}; font-size: 10px;">${statusText}</span>
+            .limit(5)
+            .then(({ data: actions, error }) => {
+                if (error || !actions || actions.length === 0) {
+                    container.innerHTML = `
+                        <div style="text-align: center; color: #94a3b8; padding: 20px;">
+                            <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                            No recent activity
                         </div>
-                        <div style="font-size: 10px; color: #94a3b8;">${time}</div>
+                    `;
+                    return;
+                }
+                
+                container.innerHTML = actions.map(action => {
+                    const time = action.timestamp ? new Date(action.timestamp).toLocaleString() : '';
+                    const icon = getActionIcon(action.action_type);
+                    const color = getActionColor(action.action_type);
+                    const statusColor = action.status === 'SUCCESS' ? '#10b981' : '#dc2626';
+                    const statusText = action.status === 'SUCCESS' ? '✅' : '❌';
+                    
+                    return `
+                        <div style="display: flex; align-items: center; gap: 10px; padding: 6px 0; border-bottom: 1px solid #f1f5f9;">
+                            <div style="width: 30px; height: 30px; border-radius: 50%; background: ${color}20; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
+                                <i class="fas ${icon}" style="color: ${color}; font-size: 12px;"></i>
+                            </div>
+                            <div style="flex: 1; min-width: 0;">
+                                <div style="font-size: 12px; color: #1e293b; font-weight: 500;">
+                                    ${escapeHtml(action.action_type || 'Activity')}
+                                    <span style="font-weight: 400; color: #94a3b8; font-size: 11px;">
+                                        ${escapeHtml(action.details || '').substring(0, 30)}
+                                    </span>
+                                    <span style="color: ${statusColor}; font-size: 10px;">${statusText}</span>
+                                </div>
+                                <div style="font-size: 10px; color: #94a3b8;">${time}</div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            })
+            .catch(() => {
+                container.innerHTML = `
+                    <div style="text-align: center; color: #94a3b8; padding: 20px;">
+                        <i class="fas fa-exclamation-circle"></i> Could not load activity
                     </div>
-                </div>
-            `;
-        }).join('');
+                `;
+            });
         
     } catch (error) {
         console.warn('Error loading recent activity:', error);
@@ -261,8 +319,15 @@ function getActionIcon(action) {
     return icons[action] || 'fa-circle';
 }
 
+function escapeHtml(text) {
+    if (!text) return '';
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
 // ============================================================
-// EDIT PROFILE FUNCTIONS - USES YOUR EXISTING showFeedback()
+// EDIT PROFILE FUNCTIONS
 // ============================================================
 
 function showEditProfileModal() {
@@ -285,7 +350,7 @@ function closeEditProfileModal() {
     if (modal) modal.style.display = 'none';
 }
 
-async function saveProfileChanges() {
+function saveProfileChanges() {
     const name = document.getElementById('editProfileName').value.trim();
     const email = document.getElementById('editProfileEmail').value.trim();
     const phone = document.getElementById('editProfilePhone').value.trim();
@@ -304,7 +369,7 @@ async function saveProfileChanges() {
         const supabase = window.sb || window.supabase;
         if (supabase) {
             // Update profile in database
-            const { error } = await supabase
+            supabase
                 .from('consolidated_user_profiles_table')
                 .update({
                     full_name: name,
@@ -314,12 +379,15 @@ async function saveProfileChanges() {
                     location: location,
                     updated_at: new Date().toISOString()
                 })
-                .eq('user_id', profileData.id);
-            
-            if (error) {
-                console.warn('Database update failed:', error);
-                // Continue with local update
-            }
+                .eq('user_id', profileData.id)
+                .then(({ error }) => {
+                    if (error) {
+                        console.warn('Database update failed:', error);
+                    } else {
+                        console.log('✅ Profile updated in database');
+                    }
+                })
+                .catch(() => {});
         }
         
         // Update local profile data
@@ -342,10 +410,7 @@ async function saveProfileChanges() {
             showFeedback('Profile updated successfully!', 'success');
         }
         
-        // Refresh user data if on users page
-        if (typeof loadAllUsers === 'function') {
-            loadAllUsers(1, USERS_STATE?.filters || {});
-        }
+        console.log('✅ Profile saved:', profileData.name);
         
     } catch (error) {
         console.error('Error saving profile:', error);
@@ -356,7 +421,7 @@ async function saveProfileChanges() {
 }
 
 // ============================================================
-// CHANGE PASSWORD - USES YOUR EXISTING adminForceResetPassword()
+// CHANGE PASSWORD FUNCTIONS
 // ============================================================
 
 function changePassword() {
@@ -375,7 +440,7 @@ function closeChangePasswordModal() {
     if (modal) modal.style.display = 'none';
 }
 
-async function handlePasswordChange() {
+function handlePasswordChange() {
     const current = document.getElementById('currentPassword').value;
     const newPass = document.getElementById('newPassword').value;
     const confirm = document.getElementById('confirmPassword').value;
@@ -415,31 +480,44 @@ async function handlePasswordChange() {
     }
     
     try {
-        // Use your existing adminForceResetPassword function
-        if (typeof adminForceResetPassword === 'function') {
-            const result = await adminForceResetPassword(profileData.email, newPass);
-            
-            if (result.success) {
-                feedback.textContent = '✅ Password changed successfully!';
-                feedback.style.background = '#d1fae5';
-                feedback.style.color = '#065f46';
-                feedback.style.display = 'block';
-                
-                if (typeof showFeedback === 'function') {
-                    showFeedback('Password changed successfully!', 'success');
-                }
-                
-                setTimeout(() => {
-                    closeChangePasswordModal();
-                }, 1500);
-            } else {
-                feedback.textContent = '❌ ' + (result.message || 'Failed to change password');
-                feedback.style.background = '#fee2e2';
-                feedback.style.color = '#991b1b';
-                feedback.style.display = 'block';
-            }
+        const supabase = window.sb || window.supabase;
+        if (supabase) {
+            supabase.auth.updateUser({ password: newPass })
+                .then(({ data, error }) => {
+                    if (error) {
+                        feedback.textContent = '❌ ' + error.message;
+                        feedback.style.background = '#fee2e2';
+                        feedback.style.color = '#991b1b';
+                        feedback.style.display = 'block';
+                    } else {
+                        feedback.textContent = '✅ Password changed successfully!';
+                        feedback.style.background = '#d1fae5';
+                        feedback.style.color = '#065f46';
+                        feedback.style.display = 'block';
+                        
+                        if (typeof showFeedback === 'function') {
+                            showFeedback('Password changed successfully!', 'success');
+                        }
+                        
+                        setTimeout(() => {
+                            closeChangePasswordModal();
+                        }, 1500);
+                    }
+                })
+                .catch((err) => {
+                    feedback.textContent = '❌ ' + err.message;
+                    feedback.style.background = '#fee2e2';
+                    feedback.style.color = '#991b1b';
+                    feedback.style.display = 'block';
+                })
+                .finally(() => {
+                    if (submitBtn) {
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = originalText;
+                    }
+                });
         } else {
-            // Fallback: show instruction
+            // Fallback
             feedback.textContent = '✅ Password update request sent. Check your email.';
             feedback.style.background = '#dbeafe';
             feedback.style.color = '#1e40af';
@@ -449,13 +527,11 @@ async function handlePasswordChange() {
                 closeChangePasswordModal();
             }, 2000);
         }
-        
     } catch (error) {
         feedback.textContent = '❌ Error: ' + error.message;
         feedback.style.background = '#fee2e2';
         feedback.style.color = '#991b1b';
         feedback.style.display = 'block';
-    } finally {
         if (submitBtn) {
             submitBtn.disabled = false;
             submitBtn.textContent = originalText;
@@ -572,7 +648,7 @@ function exportProfileData() {
 }
 
 // ============================================================
-// INITIALIZE - USES YOUR EXISTING EVENT SYSTEM
+// INITIALIZE
 // ============================================================
 
 function initProfile() {
@@ -591,6 +667,9 @@ function initProfile() {
     if (activeTab && activeTab.id === 'profile') {
         setTimeout(loadProfileData, 500);
     }
+    
+    // Also load on page load after everything is ready
+    setTimeout(loadProfileData, 1000);
     
     console.log('✅ Profile module initialized');
 }
@@ -618,3 +697,10 @@ window.exportProfileData = exportProfileData;
 window.initProfile = initProfile;
 
 console.log('✅ Super Admin Profile module loaded (compatible with your script.js)');
+
+// Auto-initialize if DOM is ready
+if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    initProfile();
+} else {
+    document.addEventListener('DOMContentLoaded', initProfile);
+}
