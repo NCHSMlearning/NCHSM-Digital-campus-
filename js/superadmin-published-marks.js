@@ -280,54 +280,144 @@ function onAcademicYearChange() {
     filterPublishedMarks();
 }
 
+// ============================================================
+// FIX: populateBlockFilterByAcademicYear - TVET Terms & KRCHN Blocks
+// ============================================================
+
 function populateBlockFilterByAcademicYear(academicYear) {
     var blockFilter = document.getElementById('pm_block_filter');
     if (!blockFilter) return;
     
-    // Get blocks from marks filtered by academic year
-    var yearMarks = PUBLISHED_STATE.marks;
-    if (academicYear !== 'all') {
-        yearMarks = yearMarks.filter(function(m) {
-            return m.academic_year === academicYear;
+    var allMarks = PUBLISHED_STATE.marks || [];
+    var programFilter = PUBLISHED_STATE.currentProgramFilter || 'all';
+    
+    // ✅ Filter marks by program type if needed
+    var filteredMarks = allMarks;
+    if (programFilter === 'KRCHN') {
+        filteredMarks = allMarks.filter(function(m) { return m.program === 'KRCHN'; });
+    } else if (programFilter === 'TVET') {
+        filteredMarks = allMarks.filter(function(m) { return m.program !== 'KRCHN'; });
+    }
+    
+    // ✅ Also filter by academic year if not 'all'
+    if (academicYear && academicYear !== 'all') {
+        filteredMarks = filteredMarks.filter(function(m) { 
+            return m.academic_year === academicYear; 
         });
     }
     
+    // Get unique blocks from filtered marks
     var uniqueBlocks = [];
     var blockSet = {};
-    yearMarks.forEach(function(m) {
+    
+    filteredMarks.forEach(function(m) {
         if (m.block && !blockSet[m.block]) {
             blockSet[m.block] = true;
             uniqueBlocks.push(m.block);
         }
     });
     
-    // Add default blocks if empty
-    if (uniqueBlocks.length === 0) {
-        var defaultBlocks = ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'];
-        defaultBlocks.forEach(function(b) { uniqueBlocks.push(b); });
+    // ✅ Add default blocks based on program type
+    var isTVET = programFilter === 'TVET';
+    var defaultBlocks = [];
+    
+    if (isTVET) {
+        // TVET Terms
+        defaultBlocks = [
+            'Term 1', 'Year 1 Term 1',
+            'Term 2', 'Year 1 Term 2',
+            'Term 3', 'Year 1 Term 3',
+            'Term 4', 'Year 2 Term 1',
+            'Term 5', 'Year 2 Term 2',
+            'Term 6', 'Year 2 Term 3'
+        ];
+    } else if (programFilter === 'KRCHN') {
+        // KRCHN Blocks
+        defaultBlocks = [
+            'Introductory',
+            'Block 1',
+            'Block 2',
+            'Block 3',
+            'Block 4',
+            'Block 5',
+            'Block 6',
+            'Final'
+        ];
+    } else {
+        // All programs - show both
+        defaultBlocks = [
+            'Introductory',
+            'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final',
+            'Term 1', 'Term 2', 'Term 3', 'Term 4', 'Term 5', 'Term 6'
+        ];
     }
     
-    // Sort blocks
+    // Add default blocks if they don't exist
+    defaultBlocks.forEach(function(block) {
+        if (!blockSet[block]) {
+            blockSet[block] = true;
+            // Don't add empty blocks for filtered view
+            if (programFilter !== 'all') {
+                // Only add if we have marks or if it's a common block
+                var hasMarks = allMarks.some(function(m) { return m.block === block; });
+                if (hasMarks) {
+                    uniqueBlocks.push(block);
+                }
+            } else {
+                uniqueBlocks.push(block);
+            }
+        }
+    });
+    
+    // Sort blocks logically
     uniqueBlocks.sort(function(a, b) {
+        // Introductory first
         if (a === 'Introductory') return -1;
         if (b === 'Introductory') return 1;
-        var aNum = parseInt(a.replace('Block ', ''));
-        var bNum = parseInt(b.replace('Block ', ''));
-        if (!isNaN(aNum) && !isNaN(bNum)) return aNum - bNum;
+        
+        // Block X order
+        var aBlockNum = parseInt(a.replace('Block ', ''));
+        var bBlockNum = parseInt(b.replace('Block ', ''));
+        if (!isNaN(aBlockNum) && !isNaN(bBlockNum)) return aBlockNum - bBlockNum;
+        
+        // Term X order
+        var aTermNum = parseInt(a.replace('Term ', ''));
+        var bTermNum = parseInt(b.replace('Term ', ''));
+        if (!isNaN(aTermNum) && !isNaN(bTermNum)) return aTermNum - bTermNum;
+        
+        // Year X Term X order
+        if (a.includes('Year') && b.includes('Year')) return a.localeCompare(b);
+        
         return a.localeCompare(b);
     });
     
     // Rebuild dropdown
     var currentValue = blockFilter.value;
-    blockFilter.innerHTML = '<option value="all">📦 All Blocks/Terms</option>';
+    blockFilter.innerHTML = '<option value="all">📦 All ' + (programFilter === 'KRCHN' ? 'Blocks' : programFilter === 'TVET' ? 'Terms' : 'Blocks/Terms') + '</option>';
+    
     uniqueBlocks.forEach(function(block) {
         var option = document.createElement('option');
         option.value = block;
-        option.textContent = block;
+        // Count marks in this block
+        var count = filteredMarks.filter(function(m) { return m.block === block; }).length;
+        var totalCount = allMarks.filter(function(m) { return m.block === block; }).length;
+        var label = block;
+        if (count > 0) {
+            label += ' (' + count + ' marks' + (count !== totalCount ? '/' + totalCount : '') + ')';
+        }
+        option.textContent = label;
         blockFilter.appendChild(option);
     });
     
-    if (currentValue && uniqueBlocks.indexOf(currentValue) !== -1) {
+    // Preserve current selection if it still exists
+    var exists = false;
+    for (var i = 0; i < blockFilter.options.length; i++) {
+        if (blockFilter.options[i].value === currentValue) {
+            exists = true;
+            break;
+        }
+    }
+    if (exists) {
         blockFilter.value = currentValue;
     }
     
@@ -336,8 +426,11 @@ function populateBlockFilterByAcademicYear(academicYear) {
     if (blockDisplay) {
         blockDisplay.textContent = blockFilter.value === 'all' ? 'All' : blockFilter.value;
     }
+    
+    console.log('📊 Block filter populated with ' + uniqueBlocks.length + ' blocks/terms');
+    console.log('📋 Program filter:', programFilter);
+    console.log('📋 Blocks:', uniqueBlocks);
 }
-
 // ============================================================
 // FILTER BY PROGRAM TYPE
 // ============================================================
