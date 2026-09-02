@@ -102,14 +102,16 @@ async function getStudentProfile(studentId) {
             .eq('student_id', studentId)
             .single();
         
-        if (error) throw error;
+        if (error) {
+            console.error('Error fetching student profile:', error);
+            return null;
+        }
         return data;
     } catch (error) {
         console.error('Error fetching student profile:', error);
         return null;
     }
 }
-
 // ============================================================
 // UPDATE STUDENT PROFILE IN consolidated_user_profiles_table
 // ============================================================
@@ -891,7 +893,7 @@ function renderSessionReportsAdminTable() {
 }
 
 // ============================================================
-// APPROVE SESSION REPORT - UPDATES consolidated_user_profiles_table
+// APPROVE SESSION REPORT - FIXED FOR YOUR ACTUAL DATA
 // ============================================================
 async function approveSessionReportAdmin(reportId) {
     const sb = getSupabaseClient();
@@ -902,7 +904,7 @@ async function approveSessionReportAdmin(reportId) {
         return;
     }
 
-    if (!confirm('✅ Approve this session report?\n\nThis will update the student\'s profile in consolidated_user_profiles_table.')) return;
+    if (!confirm('✅ Approve this session report?\n\nThis will update the student\'s profile.')) return;
 
     if (typeof showLoading === 'function') showLoading('Approving session report...');
 
@@ -917,7 +919,7 @@ async function approveSessionReportAdmin(reportId) {
         if (fetchError) throw fetchError;
         if (!report) throw new Error('Report not found');
 
-        // 2. Get the student's current profile from consolidated_user_profiles_table
+        // 2. Get the student's current profile
         const studentProfile = await getStudentProfile(report.student_id);
         if (!studentProfile) {
             throw new Error(`Student profile not found for ID: ${report.student_id}`);
@@ -935,43 +937,38 @@ async function approveSessionReportAdmin(reportId) {
         if (programType === 'Nursing') {
             // Update block for Nursing students
             updateData = {
-                current_block: session,
-                current_academic_year: academicYear,
-                block: session  // Also update the legacy block field
+                current_block: session,  // Update current_block to the new session
+                block: session           // Also update block field
             };
-            console.log(`🔄 Updating Nursing student ${report.student_name}: Block → ${session}`);
+            console.log(`🔄 Updating Nursing student ${report.student_name}: current_block → ${session}`);
         } else {
-            // TVET - Parse Year and Term from session string
-            const parts = session.split(' - ');
-            if (parts.length === 2) {
-                const year = parts[0].trim();
-                const term = parts[1].trim();
-                updateData = {
-                    current_year: year,
-                    current_term: term,
-                    current_academic_year: academicYear,
-                    year: year,   // Also update legacy fields
-                    term: term
-                };
-                console.log(`🔄 Updating TVET student ${report.student_name}: ${year} - ${term}`);
-            } else {
-                // Fallback: try to parse differently
-                const yearMatch = session.match(/Year\s*(\d+)/i);
-                const termMatch = session.match(/Term\s*(\d+)/i);
-                if (yearMatch) {
-                    const year = `Year ${yearMatch[1]}`;
-                    updateData.current_year = year;
-                    updateData.year = year;
+            // TVET - Store Year/Term in block and current_block
+            // Since there are no dedicated year/term columns, store in block
+            updateData = {
+                current_block: session,  // Store in current_block
+                block: session           // Also store in block
+            };
+            console.log(`🔄 Updating TVET student ${report.student_name}: current_block → ${session}`);
+        }
+
+        // If academic year is provided, update intake_year or admission_year
+        if (academicYear) {
+            // Parse the academic year (e.g., "2025/2026" -> "2025")
+            const yearParts = academicYear.split('/');
+            if (yearParts.length > 0) {
+                const startYear = yearParts[0];
+                // Update intake_year if it's null or empty
+                if (!studentProfile.intake_year || studentProfile.intake_year === '') {
+                    updateData.intake_year = startYear;
                 }
-                if (termMatch) {
-                    const term = `Term ${termMatch[1]}`;
-                    updateData.current_term = term;
-                    updateData.term = term;
+                // Update admission_year if it's null or empty
+                if (!studentProfile.admission_year || studentProfile.admission_year === '') {
+                    updateData.admission_year = startYear;
                 }
-                updateData.current_academic_year = academicYear;
-                console.log(`🔄 Updating TVET student ${report.student_name} (fallback):`, updateData);
             }
         }
+
+        console.log('📝 Final Update Data:', updateData);
 
         // 4. Update the report status first
         const { error: updateReportError } = await sb
@@ -985,7 +982,7 @@ async function approveSessionReportAdmin(reportId) {
 
         if (updateReportError) throw updateReportError;
 
-        // 5. Update the student's profile in consolidated_user_profiles_table
+        // 5. Update the student's profile
         const profileUpdated = await updateStudentProfile(report.student_id, updateData);
 
         if (!profileUpdated) {
@@ -1008,6 +1005,7 @@ async function approveSessionReportAdmin(reportId) {
         await loadStudentsForDropdown();
         updateSMStats();
         updateSMBadges();
+        updateSessionReportStats();
 
     } catch (error) {
         if (typeof hideLoading === 'function') hideLoading();
