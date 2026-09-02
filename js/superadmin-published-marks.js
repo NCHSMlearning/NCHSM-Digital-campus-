@@ -811,9 +811,8 @@ async function getCurrentUser() {
         return { id: 'superadmin', name: 'Super Admin', role: 'superadmin', program: 'all' };
     }
 }
-
 // ============================================================
-// LOAD PUBLISHED MARKS - OPTIMIZED (LOAD ONCE, FILTER IN-MEMORY)
+// LOAD PUBLISHED MARKS - WITH PAGINATION (FIXED)
 // ============================================================
 
 async function loadPublishedMarks() {
@@ -854,34 +853,65 @@ async function loadPublishedMarks() {
         
         await loadPublishedRetakeData();
         
-        var marks = [];
+        var allMarks = [];
         
         try {
-            // ✅ OPTIMIZATION: Load ALL data without filters (only once)
-            var query = window.sb.from('student_marks').select('*');
-            query = query.order('created_at', { ascending: false });
-            query = query.limit(3000); // Load more to be safe
+            // ✅ FIX: Use pagination to load ALL data
+            console.log('📥 Loading all marks with pagination...');
             
-            var result = await query;
+            let page = 0;
+            const pageSize = 1000;
+            let hasMore = true;
+            let totalLoaded = 0;
             
-            if (result.error) {
-                console.error('❌ Database error:', result.error);
-                marks = [];
-            } else if (result.data) {
-                marks = result.data;
-                console.log('📊 Loaded ' + marks.length + ' marks from database (once)');
+            while (hasMore) {
+                const from = page * pageSize;
+                const to = from + pageSize - 1;
+                
+                console.log(`📥 Fetching batch ${page + 1} (${from}-${to})...`);
+                
+                const result = await window.sb
+                    .from('student_marks')
+                    .select('*')
+                    .order('created_at', { ascending: false })
+                    .range(from, to);
+                
+                if (result.error) {
+                    console.error('❌ Database error on batch:', result.error);
+                    break;
+                }
+                
+                if (result.data && result.data.length > 0) {
+                    allMarks = allMarks.concat(result.data);
+                    totalLoaded += result.data.length;
+                    console.log(`✅ Loaded ${result.data.length} marks (total: ${totalLoaded})`);
+                }
+                
+                // Check if we have all data
+                if (!result.data || result.data.length < pageSize) {
+                    hasMore = false;
+                }
+                page++;
+                
+                // Safety limit to prevent infinite loops
+                if (page > 50) {
+                    console.warn('⚠️ Reached safety limit of 50 pages');
+                    hasMore = false;
+                }
             }
+            
+            console.log('📊 Total marks loaded:', allMarks.length);
             
         } catch (e) {
             console.error('❌ Error fetching marks:', e);
-            marks = [];
+            allMarks = [];
         }
         
-        await cacheUnitPrograms(marks);
+        await cacheUnitPrograms(allMarks);
         
         var processedMarks = [];
-        for (var i = 0; i < marks.length; i++) {
-            var mark = marks[i];
+        for (var i = 0; i < allMarks.length; i++) {
+            var mark = allMarks[i];
             var program = PUBLISHED_STATE.unitProgramCache[mark.subject_name] || 'KRCHN';
             
             var retakeInfo = getStudentRetakeInfo(mark.admission_number, mark.subject_name);
@@ -922,9 +952,30 @@ async function loadPublishedMarks() {
             });
         }
         
+        // ✅ Normalize block names (handle BLOCK_2 vs Block 2)
+        let normalizedCount = 0;
+        processedMarks.forEach(m => {
+            if (m.block === 'BLOCK_2') {
+                m.block = 'Block 2';
+                normalizedCount++;
+            }
+        });
+        if (normalizedCount > 0) {
+            console.log(`✅ Normalized ${normalizedCount} marks from BLOCK_2 to Block 2`);
+        }
+        
         // ✅ Store ALL marks (not filtered)
         PUBLISHED_STATE.marks = processedMarks;
         PUBLISHED_STATE.userProgram = user?.program || 'all';
+        
+        console.log('📊 Final loaded count:', PUBLISHED_STATE.marks.length);
+        
+        // Log block distribution
+        const blockCounts = {};
+        PUBLISHED_STATE.marks.forEach(m => {
+            blockCounts[m.block] = (blockCounts[m.block] || 0) + 1;
+        });
+        console.log('📦 Blocks loaded:', blockCounts);
         
         updateUserInfo(user);
         populateFilters(processedMarks);
