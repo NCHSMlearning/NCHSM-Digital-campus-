@@ -317,12 +317,93 @@ function getSupabaseClient() {
 }
 
 // ============================================================
-// 📧 SEND PAYMENT RECEIPT EMAIL - NEW FUNCTION
+// 📄 GENERATE PDF RECEIPT - NEW FUNCTION
+// ============================================================
+
+async function generatePDFReceipt(payment, receiptNumber, studentName) {
+    try {
+        console.log('📄 Generating PDF receipt...');
+        
+        // Check if jsPDF is loaded
+        if (typeof window.jspdf === 'undefined') {
+            console.warn('⚠️ jsPDF not loaded, loading from CDN...');
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+        }
+        
+        // Create a temporary div with the receipt HTML
+        const tempDiv = document.createElement('div');
+        tempDiv.style.cssText = 'position: fixed; left: -9999px; top: 0; width: 700px; background: white; padding: 20px; z-index: 99999;';
+        
+        const date = new Date().toLocaleDateString('en-KE', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
+        const time = new Date().toLocaleTimeString('en-KE', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        
+        tempDiv.innerHTML = generateReceiptHTML(payment, receiptNumber, studentName, date, time);
+        document.body.appendChild(tempDiv);
+        
+        // Use html2canvas to convert to image
+        if (typeof html2canvas === 'undefined') {
+            console.warn('⚠️ html2canvas not loaded, loading from CDN...');
+            await loadScript('https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js');
+        }
+        
+        const canvas = await html2canvas(tempDiv, {
+            scale: 2,
+            useCORS: true,
+            logging: false,
+            backgroundColor: '#ffffff',
+            width: 700,
+            height: tempDiv.scrollHeight
+        });
+        
+        // Remove temp div
+        document.body.removeChild(tempDiv);
+        
+        // Convert to PDF using jsPDF
+        const imgData = canvas.toDataURL('image/jpeg', 0.95);
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF('p', 'mm', 'a4');
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = (canvas.height * pdfWidth) / canvas.width;
+        
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        
+        // Return as base64 data URL
+        return pdf.output('datauristring');
+        
+    } catch (error) {
+        console.error('❌ PDF generation error:', error);
+        return null;
+    }
+}
+
+// ============================================================
+// 📥 LOAD SCRIPT HELPER
+// ============================================================
+
+function loadScript(src) {
+    return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = src;
+        script.onload = resolve;
+        script.onerror = reject;
+        document.head.appendChild(script);
+    });
+}
+
+// ============================================================
+// 📧 SEND PAYMENT RECEIPT EMAIL WITH PDF ATTACHMENT - UPDATED
 // ============================================================
 
 async function sendPaymentReceiptEmail(paymentData) {
     try {
-        console.log('📧 Sending payment receipt email...');
+        console.log('📧 Sending payment receipt email with PDF...');
         
         const supabase = getSupabaseClient();
         if (!supabase) {
@@ -348,6 +429,31 @@ async function sendPaymentReceiptEmail(paymentData) {
         const receiptNumber = paymentData.receipt_number || paymentData.reference_number || 'N/A';
         const period = paymentData.period || 'N/A';
         const transactionId = paymentData.transaction_id || paymentData.checkout_request_id || 'N/A';
+        
+        // ✅ Generate PDF
+        console.log('📄 Generating PDF receipt...');
+        const pdfDataUrl = await generatePDFReceipt(
+            {
+                amount: amount,
+                period: period,
+                receipt_number: receiptNumber,
+                payment_method: paymentData.payment_method || 'M-Pesa',
+                reference_number: paymentData.reference_number || 'N/A',
+                program: paymentData.program || user.program || 'KRCHN',
+                checkout_request_id: transactionId
+            },
+            receiptNumber,
+            studentName
+        );
+        
+        // ✅ Prepare email payload
+        const emailPayload = {
+            to: studentEmail,
+            subject: `💰 Payment Receipt - ${receiptNumber}`,
+            from: 'NCHSM Finance <finance@nchsm.co.ke>'
+        };
+        
+        // ✅ Add HTML body
         const date = new Date().toLocaleDateString('en-KE', {
             year: 'numeric',
             month: 'long',
@@ -358,20 +464,31 @@ async function sendPaymentReceiptEmail(paymentData) {
             minute: '2-digit'
         });
         
-        const receiptHTML = generateReceiptHTML(paymentData, receiptNumber, studentName, date, time);
+        emailPayload.html = generateEmailHTML(paymentData, receiptNumber, studentName, date, time);
         
+        // ✅ Add PDF attachment if generated successfully
+        if (pdfDataUrl) {
+            const base64Data = pdfDataUrl.split(',')[1];
+            emailPayload.attachments = [
+                {
+                    filename: `receipt-${receiptNumber}.pdf`,
+                    content: base64Data,
+                    contentType: 'application/pdf'
+                }
+            ];
+            console.log('✅ PDF attachment added to email');
+        } else {
+            console.warn('⚠️ PDF generation failed, sending HTML only');
+        }
+        
+        // ✅ Send email
         const response = await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
             method: 'POST',
             headers: {
                 'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({
-                to: studentEmail,
-                subject: `💰 Payment Receipt - ${receiptNumber}`,
-                html: receiptHTML,
-                from: 'NCHSM Finance <finance@nchsm.co.ke>'
-            })
+            body: JSON.stringify(emailPayload)
         });
         
         const data = await response.json();
@@ -379,20 +496,40 @@ async function sendPaymentReceiptEmail(paymentData) {
         
         if (data.success) {
             console.log(`✅ Receipt email sent to ${studentEmail}`);
+            if (pdfDataUrl) {
+                console.log('📎 PDF receipt attached');
+            }
             
-            await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
+            // ✅ Also send copy to admin
+            if (studentEmail !== 'finance@nchsm.co.ke') {
+                const adminPayload = {
                     to: 'finance@nchsm.co.ke',
                     subject: `📋 Payment Receipt - ${receiptNumber} (Admin Copy)`,
-                    html: receiptHTML,
+                    html: generateEmailHTML(paymentData, receiptNumber, studentName, date, time),
                     from: 'NCHSM Finance <finance@nchsm.co.ke>'
-                })
-            });
+                };
+                
+                if (pdfDataUrl) {
+                    const base64Data = pdfDataUrl.split(',')[1];
+                    adminPayload.attachments = [
+                        {
+                            filename: `receipt-${receiptNumber}-admin.pdf`,
+                            content: base64Data,
+                            contentType: 'application/pdf'
+                        }
+                    ];
+                }
+                
+                await fetch('https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/send-email', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk',
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(adminPayload)
+                });
+                console.log('📧 Admin copy sent');
+            }
             
             return true;
         } else {
@@ -404,6 +541,93 @@ async function sendPaymentReceiptEmail(paymentData) {
         console.error('❌ Email error:', error);
         return false;
     }
+}
+
+// ============================================================
+// 📧 GENERATE EMAIL HTML (with PDF attachment notice)
+// ============================================================
+
+function generateEmailHTML(payment, receiptNumber, studentName, date, time) {
+    const amount = parseFloat(payment.amount).toFixed(2);
+    const period = payment.period || 'N/A';
+    const method = payment.payment_method || 'M-Pesa';
+    const program = payment.program || 'KRCHN';
+    
+    return `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt</title>
+    <style>
+        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f5f7fa; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
+        .header { text-align: center; border-bottom: 3px solid #0A3D62; padding-bottom: 20px; margin-bottom: 20px; }
+        .header h1 { color: #0A3D62; margin: 0; font-size: 24px; }
+        .header .subtitle { color: #666; margin: 5px 0 0; font-size: 14px; }
+        .greeting { font-size: 15px; color: #2c3e50; margin-bottom: 16px; }
+        .greeting strong { color: #0A3D62; }
+        .amount-box { background: linear-gradient(135deg, #eaf2f8, #d6eaf8); border-radius: 12px; padding: 20px; text-align: center; margin: 16px 0; border: 2px solid #0A3D62; }
+        .amount-box .label { font-size: 12px; color: #2c3e50; font-weight: 500; }
+        .amount-box .amount { font-size: 32px; font-weight: 800; color: #0A3D62; }
+        .details { margin: 16px 0; }
+        .details table { width: 100%; border-collapse: collapse; }
+        .details td { padding: 8px 0; border-bottom: 1px solid #eee; }
+        .details .label { color: #666; font-weight: 500; }
+        .details .value { text-align: right; font-weight: 600; color: #0A3D62; }
+        .pdf-notice { background: #fef9e7; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #f39c12; margin: 16px 0; }
+        .pdf-notice p { margin: 0; color: #7d6608; font-size: 13px; }
+        .status-badge { display: inline-block; background: #d4edda; color: #155724; padding: 4px 16px; border-radius: 20px; font-weight: 600; font-size: 13px; }
+        .footer { text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; }
+        .footer .contact { font-size: 13px; color: #0A3D62; margin: 4px 0; }
+        .btn { display: inline-block; padding: 10px 24px; background: #0A3D62; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px; }
+        @media (max-width: 480px) { .container { padding: 20px; } .amount-box .amount { font-size: 24px; } }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>NCH<span style="color:#f1c40f;">SM</span></h1>
+            <div class="subtitle">Nakuru College of Health Sciences and Management</div>
+        </div>
+        
+        <div class="greeting">Dear <strong>${studentName}</strong>,</div>
+        
+        <p>Thank you for your payment. Your transaction has been completed successfully.</p>
+        
+        <div class="amount-box">
+            <div class="label">AMOUNT PAID</div>
+            <div class="amount">KES ${amount}</div>
+        </div>
+        
+        <div class="details">
+            <table>
+                <tr><td class="label">Receipt Number</td><td class="value">${receiptNumber}</td></tr>
+                <tr><td class="label">Period</td><td class="value">${period}</td></tr>
+                <tr><td class="label">Program</td><td class="value">${program}</td></tr>
+                <tr><td class="label">Payment Method</td><td class="value">${method}</td></tr>
+                <tr><td class="label">Date</td><td class="value">${date} at ${time}</td></tr>
+                <tr><td class="label">Status</td><td class="value"><span class="status-badge">✅ Completed</span></td></tr>
+            </table>
+        </div>
+        
+        <div class="pdf-notice">
+            <p>📎 <strong>PDF Receipt Attached:</strong> Please find your official receipt attached to this email. You can download and print it for your records.</p>
+        </div>
+        
+        <div style="text-align: center;">
+            <a href="https://nchsm.co.ke/finance" class="btn">📊 View Finance Dashboard</a>
+        </div>
+        
+        <div class="footer">
+            <div class="contact">📞 +254 790 969 743 &nbsp;|&nbsp; 📧 finance@nchsm.ac.ke</div>
+            <p style="margin-top: 8px;">This is an automated email. Please do not reply.</p>
+            <p style="font-size: 10px; color: #bbb;">NCHSM &bull; ${new Date().getFullYear()}</p>
+        </div>
+    </div>
+</body>
+</html>`;
 }
 
 // ============================================================
@@ -511,7 +735,7 @@ function generateReceiptHTML(payment, receiptNumber, studentName, date, time) {
 }
 
 // ============================================================
-// 🎉 SHOW SUCCESS POPUP WITH EMAIL STATUS - NEW FUNCTION
+// 🎉 SHOW SUCCESS POPUP WITH EMAIL STATUS - UPDATED WITH PRINT
 // ============================================================
 
 function showSuccessPopup(amount, receiptNumber, period, emailSent = false) {
@@ -582,14 +806,17 @@ function showSuccessPopup(amount, receiptNumber, period, emailSent = false) {
         </div>
         <div id="email-status-container" style="margin: 12px 0; padding: 12px; background: ${emailSent ? '#f0fdf4' : '#fef3c7'}; border-radius: 8px; border: 1px solid ${emailSent ? '#86efac' : '#fcd34d'};">
             <div style="font-size: 13px; color: ${emailSent ? '#065f46' : '#92400e'};">
-                ${emailSent ? '📧 Receipt sent to your email' : '📧 Sending receipt to your email...'}
+                ${emailSent ? '📧 Receipt sent to your email (PDF attached)' : '📧 Sending receipt to your email...'}
             </div>
         </div>
         <div style="display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap;">
-            <button onclick="closeSuccessPopupAndRefresh()" style="flex:1; padding: 12px 20px; background: linear-gradient(135deg, #0A3D62, #1a5276); color: white; border: none; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s; min-width: 100px;">
+            <button onclick="closeSuccessPopupAndRefresh()" style="flex:1; padding: 12px 16px; background: linear-gradient(135deg, #0A3D62, #1a5276); color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: transform 0.2s; min-width: 70px;">
                 Done
             </button>
-            <button onclick="downloadReceipt()" style="flex:1; padding: 12px 20px; background: #f1f5f9; color: #0A3D62; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 14px; font-weight: 600; cursor: pointer; transition: transform 0.2s; min-width: 100px;">
+            <button onclick="printReceipt()" style="flex:1; padding: 12px 16px; background: #0A3D62; color: white; border: none; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: transform 0.2s; min-width: 70px;">
+                🖨️ Print
+            </button>
+            <button onclick="downloadReceipt()" style="flex:1; padding: 12px 16px; background: #f1f5f9; color: #0A3D62; border: 1px solid #e2e8f0; border-radius: 10px; font-size: 13px; font-weight: 600; cursor: pointer; transition: transform 0.2s; min-width: 70px;">
                 📥 Download
             </button>
         </div>
@@ -667,6 +894,230 @@ function downloadReceipt() {
     
     showToast('📥 Receipt downloaded!', 'success');
 }
+// ============================================================
+// 🖨️ PRINT RECEIPT - ADD THIS AFTER downloadReceipt()
+// ============================================================
+
+function printReceipt() {
+    const data = window._lastReceiptData;
+    if (!data) {
+        showToast('❌ No receipt data available', 'error');
+        return;
+    }
+    
+    // Get student details
+    const studentName = studentFinanceState.student?.full_name || 
+                       studentFinanceState.student?.name || 
+                       'Student';
+    const program = studentFinanceState.student?.program || 'KRCHN';
+    
+    // Generate receipt HTML
+    const receiptHTML = generateReceiptHTML(
+        { 
+            amount: data.amount, 
+            period: data.period,
+            receipt_number: data.receiptNumber,
+            payment_method: 'M-Pesa',
+            reference_number: data.receiptNumber,
+            program: program
+        },
+        data.receiptNumber,
+        studentName,
+        new Date().toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' }),
+        new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
+    );
+    
+    // Open in new window for printing
+    const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes');
+    if (!printWindow) {
+        showToast('❌ Please allow popups to print', 'error');
+        return;
+    }
+    
+    printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Payment Receipt - ${data.receiptNumber}</title>
+            <style>
+                body { 
+                    font-family: 'Segoe UI', Tahoma, Arial, sans-serif; 
+                    background: white; 
+                    padding: 20px; 
+                    margin: 0;
+                }
+                .receipt-container {
+                    max-width: 700px;
+                    margin: 0 auto;
+                    background: #ffffff;
+                    border-radius: 16px;
+                    box-shadow: 0 10px 40px rgba(0,0,0,0.12);
+                    overflow: hidden;
+                }
+                .header {
+                    background: linear-gradient(135deg, #0A3D62, #1a5276);
+                    padding: 30px 35px 25px;
+                    text-align: center;
+                    color: white;
+                }
+                .header .logo {
+                    font-size: 28px;
+                    font-weight: 700;
+                    letter-spacing: 1px;
+                }
+                .header .logo span { color: #f1c40f; }
+                .header .subtitle {
+                    font-size: 14px;
+                    opacity: 0.85;
+                    margin-top: 4px;
+                    font-weight: 300;
+                }
+                .header .receipt-badge {
+                    display: inline-block;
+                    background: rgba(255,255,255,0.15);
+                    padding: 6px 24px;
+                    border-radius: 20px;
+                    margin-top: 12px;
+                    font-size: 13px;
+                    font-weight: 600;
+                    letter-spacing: 1px;
+                    border: 1px solid rgba(255,255,255,0.2);
+                }
+                .body { padding: 30px 35px 20px; }
+                .greeting { font-size: 15px; color: #2c3e50; margin-bottom: 20px; }
+                .greeting strong { color: #0A3D62; }
+                .status-banner {
+                    background: #d4edda;
+                    border-radius: 10px;
+                    padding: 14px 20px;
+                    text-align: center;
+                    margin-bottom: 22px;
+                    border-left: 4px solid #28a745;
+                }
+                .status-banner .status-icon { font-size: 20px; margin-right: 8px; }
+                .status-banner .status-text { font-weight: 700; color: #155724; font-size: 16px; }
+                .details-grid {
+                    display: grid;
+                    grid-template-columns: 1fr 1fr;
+                    gap: 8px 20px;
+                    background: #f8f9fa;
+                    border-radius: 12px;
+                    padding: 18px 22px;
+                    margin-bottom: 20px;
+                }
+                .details-grid .item {
+                    display: flex;
+                    justify-content: space-between;
+                    padding: 5px 0;
+                    border-bottom: 1px solid #e9ecef;
+                }
+                .details-grid .item:last-child { border-bottom: none; }
+                .details-grid .label { color: #6c757d; font-size: 13px; font-weight: 500; }
+                .details-grid .value { color: #2c3e50; font-size: 13px; font-weight: 600; text-align: right; }
+                .amount-box {
+                    background: linear-gradient(135deg, #eaf2f8, #d6eaf8);
+                    border-radius: 12px;
+                    padding: 20px;
+                    text-align: center;
+                    margin-bottom: 20px;
+                    border: 2px solid #0A3D62;
+                }
+                .amount-box .label { font-size: 13px; color: #2c3e50; font-weight: 500; }
+                .amount-box .amount {
+                    font-size: 38px;
+                    font-weight: 800;
+                    color: #0A3D62;
+                    letter-spacing: 1px;
+                }
+                .mpesa-confirm {
+                    background: #fef9e7;
+                    border-radius: 10px;
+                    padding: 14px 18px;
+                    border-left: 4px solid #f39c12;
+                    margin-bottom: 20px;
+                }
+                .mpesa-confirm p { 
+                    margin: 0; 
+                    font-size: 13px; 
+                    color: #7d6608; 
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                }
+                .mpesa-confirm .code {
+                    font-weight: 700;
+                    font-family: monospace;
+                    font-size: 15px;
+                    color: #0A3D62;
+                }
+                .footer {
+                    background: #f8f9fa;
+                    padding: 20px 35px 25px;
+                    text-align: center;
+                    border-top: 1px solid #e9ecef;
+                }
+                .footer .thanks {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #0A3D62;
+                    margin-bottom: 4px;
+                }
+                .footer .contact {
+                    font-size: 12px;
+                    color: #6c757d;
+                    margin: 4px 0;
+                }
+                .footer .secure {
+                    display: inline-block;
+                    background: #28a745;
+                    color: white;
+                    font-size: 11px;
+                    padding: 3px 16px;
+                    border-radius: 20px;
+                    font-weight: 600;
+                    margin-top: 8px;
+                }
+                @media print {
+                    body { background: white; padding: 0; }
+                    .receipt-container { box-shadow: none; border-radius: 0; }
+                    .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .status-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .amount-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .mpesa-confirm { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .footer .secure { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+                    .no-print { display: none !important; }
+                }
+                @media (max-width: 480px) {
+                    .body { padding: 20px; }
+                    .header { padding: 20px; }
+                    .details-grid { grid-template-columns: 1fr; gap: 4px; }
+                    .amount-box .amount { font-size: 28px; }
+                }
+            </style>
+        </head>
+        <body>
+            ${receiptHTML}
+            <div style="text-align: center; margin-top: 20px;" class="no-print">
+                <button onclick="window.print()" style="padding: 12px 30px; background: #0A3D62; color: white; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600;">
+                    🖨️ Print Receipt
+                </button>
+                <button onclick="window.close()" style="padding: 12px 30px; background: #e2e8f0; color: #0A3D62; border: none; border-radius: 8px; font-size: 16px; cursor: pointer; font-weight: 600; margin-left: 10px;">
+                    Close
+                </button>
+                <p style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
+                    Press Ctrl+P or click the Print button above
+                </p>
+            </div>
+        </body>
+        </html>
+    `);
+    
+    printWindow.document.close();
+    printWindow.focus();
+    
+    showToast('🖨️ Receipt ready for printing', 'info');
+}
+window.printReceipt = printReceipt;
 
 // ============================================================
 // 📊 FETCH FINANCE DATA FROM SUPABASE - FIXED
