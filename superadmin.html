@@ -667,25 +667,27 @@
                         "
                     >⌘K</kbd>
                 </div>
-                <!-- Search Results Dropdown -->
-                <div 
-                    id="searchResults"
-                    style="
-                        display: none;
-                        position: absolute;
-                        background: white;
-                        color: #333;
-                        border-radius: 10px;
-                        padding: 8px 0;
-                        margin-top: 4px;
-                        width: calc(100% - 24px);
-                        max-height: 300px;
-                        overflow-y: auto;
-                        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
-                        z-index: 1000;
-                        left: 12px;
-                    "
-                ></div>
+               <!-- Search Results Dropdown - FIXED -->
+<div 
+    id="searchResults"
+    style="
+        display: none;
+        position: absolute;
+        top: 100%;  <!-- THIS IS THE KEY FIX - puts it below the input -->
+        left: 0;
+        right: 0;
+        background: white;
+        color: #333;
+        border-radius: 10px;
+        padding: 8px 0;
+        margin-top: 4px;
+        width: 100%;
+        max-height: 300px;
+        overflow-y: auto;
+        box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+        z-index: 9999;
+    "
+></div>
             </div>
 
             <!-- Navigation -->
