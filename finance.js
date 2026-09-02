@@ -2101,36 +2101,51 @@ function renderStaffTable() {
     if (!tbody) return;
     
     if (!staffData || staffData.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:40px;color:#94a3b8;">No staff records found</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="11" style="text-align:center;padding:40px;color:#94a3b8;">No staff records found</td></tr>`;
         return;
     }
     
     tbody.innerHTML = staffData.map(s => {
-        // Use designation as position
-        const position = s.designation || s.position || '-';
-        // Calculate full name
+        // Get salary data
+        const basicSalary = parseFloat(s.basic_salary) || 0;
+        const allowances = parseFloat(s.allowances) || 0;
+        const grossPay = basicSalary + allowances;
+        
+        // Calculate deductions
+        let deductions = 0;
+        let netPay = 0;
+        if (grossPay > 0) {
+            const tax = grossPay * 0.25; // 25% PAYE
+            const nhif = calculateNHIF(grossPay);
+            const nssf = grossPay * 0.06; // 6% NSSF
+            deductions = tax + nhif + nssf;
+            netPay = grossPay - deductions;
+        }
+        
+        // Build full name
         const fullName = [s.title, s.first_name, s.other_names].filter(Boolean).join(' ').trim() || s.full_name || 'N/A';
-        // Use id as staff_id if staff_id doesn't exist
+        const position = s.designation || s.position || '-';
         const staffId = s.staff_id || s.id || '-';
-        // Get salary info if available
-        const basicSalary = s.basic_salary || 0;
-        const allowances = s.allowances || 0;
-        const totalPay = basicSalary + allowances;
         
         const statusClass = s.status === 'active' ? 'badge-success' : 
                            s.status === 'on leave' ? 'badge-warning' : 'badge-danger';
         const statusLabel = s.status === 'active' ? '🟢 Active' : 
                            s.status === 'on leave' ? '🟡 On Leave' : '🔴 Inactive';
         
+        // Get department icon
+        const deptIcon = getDepartmentIcon(s.department);
+        
         return `
             <tr>
                 <td><strong>${staffId}</strong></td>
                 <td>${fullName}</td>
-                <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${s.department || '-'}</span></td>
+                <td><span class="badge" style="background:#e0e7ff;color:#4C1D95;">${deptIcon} ${s.department || '-'}</span></td>
                 <td>${position}</td>
-                <td style="text-align:right;">${formatCurrency(basicSalary)}</td>
-                <td style="text-align:right;">${formatCurrency(allowances)}</td>
-                <td style="text-align:right;"><strong>${formatCurrency(totalPay)}</strong></td>
+                <td style="text-align:right; font-weight:600; color:#0A3D62;">${formatCurrency(basicSalary)}</td>
+                <td style="text-align:right; font-weight:600; color:#0A3D62;">${formatCurrency(allowances)}</td>
+                <td style="text-align:right; font-weight:700; color:#059669;">${formatCurrency(grossPay)}</td>
+                <td style="text-align:right; font-weight:600; color:#dc2626;">${formatCurrency(deductions)}</td>
+                <td style="text-align:right; font-weight:700; color:#059669;">${formatCurrency(netPay)}</td>
                 <td><span class="badge ${statusClass}">${statusLabel}</span></td>
                 <td>
                     <button onclick="editStaffMember('${s.id}')" class="btn-action btn-primary btn-xs" title="Edit"><i class="fas fa-edit"></i></button>
@@ -2140,6 +2155,7 @@ function renderStaffTable() {
         `;
     }).join('');
 }
+
 
 function filterStaffTable() {
     const search = document.getElementById('staffSearch').value.toLowerCase();
