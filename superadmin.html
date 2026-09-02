@@ -14098,6 +14098,57 @@
     }
 
     console.log('✅ verifyCurrent() function loaded successfully');
+    <script>
+// ============================================================
+// SIDEBAR COLOR FUNCTIONS - Permanent Fix
+// ============================================================
+
+/**
+ * Change sidebar background color
+ * @param {string} color - CSS gradient or color value
+ */
+function changeSidebarColor(color) {
+    console.log('🎨 Changing sidebar color to:', color);
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.style.background = color;
+        // Save preference
+        try {
+            localStorage.setItem('sidebarColor', color);
+        } catch(e) {}
+    }
+}
+
+/**
+ * Reset sidebar color to default
+ */
+function resetSidebarColor() {
+    console.log('🔄 Resetting sidebar color to default...');
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.style.background = 'linear-gradient(135deg, #0c1445, #1a237e)';
+        try {
+            localStorage.removeItem('sidebarColor');
+        } catch(e) {}
+    }
+}
+
+// Load saved color preference on page load
+(function loadSavedSidebarColor() {
+    try {
+        const savedColor = localStorage.getItem('sidebarColor');
+        if (savedColor) {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.style.background = savedColor;
+                console.log('✅ Loaded saved sidebar color');
+            }
+        }
+    } catch(e) {}
+})();
+
+console.log('✅ Sidebar color functions loaded');
+</script>
 </script>
 <!-- ============================================ -->
 <!-- SEARCH FUNCTION - ADD TO YOUR PAGE           -->
