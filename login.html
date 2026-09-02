@@ -58,6 +58,44 @@
     <!-- Supabase -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
+    <!-- ===== MAIN CSS ===== -->
+    <link rel="stylesheet" href="styles.css">
+    
+    <style>
+        /* Additional inline styles only for critical things */
+        #skeletonLoader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(10, 61, 98, 0.95);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            gap: 20px;
+            transition: opacity 0.8s ease;
+        }
+        
+        #skeletonLoader .spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(253, 185, 19, 0.1);
+            border-top-color: #FDB913;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        
+        #skeletonLoader .loader-text {
+            color: rgba(255,255,255,0.7);
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            letter-spacing: 2px;
+        }
+    </style>
+    
     <script>
     // ============================================
     // GOOGLE REDIRECT HANDLER
@@ -102,220 +140,6 @@
         }
     })();
     </script>
-    
-   <style>
-    * {
-        margin: 0;
-        padding: 0;
-        box-sizing: border-box;
-    }
-    
-    body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Inter', sans-serif;
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        padding: 20px;
-        background: #f1f5f9;
-    }
-    
-    /* ===== ANIMATIONS ===== */
-    @keyframes floatParticle {
-        0%, 100% { transform: translateY(0) translateX(0); opacity: 0.3; }
-        25% { transform: translateY(-30px) translateX(15px); opacity: 0.6; }
-        50% { transform: translateY(0) translateX(30px); opacity: 0.3; }
-        75% { transform: translateY(30px) translateX(15px); opacity: 0.6; }
-    }
-    
-    @keyframes spin {
-        to { transform: rotate(360deg); }
-    }
-    
-    @keyframes slideIn {
-        from { opacity: 0; transform: translateY(20px) scale(0.95); }
-        to { opacity: 1; transform: translateY(0) scale(1); }
-    }
-    
-    @keyframes shimmer {
-        0% { transform: rotate(0deg); }
-        100% { transform: rotate(360deg); }
-    }
-    
-    @keyframes pulseIcon {
-        0%, 100% { transform: scale(1); }
-        50% { transform: scale(1.05); }
-    }
-    
-    @keyframes shake {
-        0%, 100% { transform: translateX(0); }
-        20%, 60% { transform: translateX(-10px); }
-        40%, 80% { transform: translateX(10px); }
-    }
-    
-    @keyframes glowPulse {
-        0%, 100% { box-shadow: 0 0 0 3px rgba(13, 107, 62, 0.1); }
-        50% { box-shadow: 0 0 0 6px rgba(13, 107, 62, 0.05); }
-    }
-    
-    @keyframes fadeInUp {
-        from { opacity: 0; transform: translateY(20px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    /* ===== SKELETON LOADER ===== */
-    #skeletonLoader {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(10, 61, 98, 0.95);
-        z-index: 9999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-direction: column;
-        gap: 20px;
-        transition: opacity 0.8s ease;
-    }
-    
-    #skeletonLoader .spinner {
-        width: 60px;
-        height: 60px;
-        border: 4px solid rgba(253, 185, 19, 0.1);
-        border-top-color: #FDB913;
-        border-radius: 50%;
-        animation: spin 0.8s linear infinite;
-    }
-    
-    #skeletonLoader .loader-text {
-        color: rgba(255,255,255,0.7);
-        font-family: 'Inter', sans-serif;
-        font-size: 14px;
-        letter-spacing: 2px;
-    }
-    
-    /* ============================================================
-       ✅ RESPONSIVE - LEFT PANEL HIDDEN ON MOBILE
-       ============================================================ */
-    
-    @media (max-width: 1024px) {
-        .right-panel {
-            flex: 0 0 420px;
-            padding: 30px 25px;
-        }
-        .left-panel .college-name {
-            font-size: 22px;
-        }
-    }
-    
-    @media (max-width: 768px) {
-        body {
-            padding: 0;
-        }
-        
-        .login-wrapper {
-            flex-direction: column !important;
-            border-radius: 0 !important;
-            min-height: auto !important;
-        }
-        
-        /* ✅ FIX: HIDE LEFT PANEL ON MOBILE */
-        .left-panel {
-            display: none !important;  /* ← KEY FIX: HIDDEN */
-        }
-        
-        .right-panel {
-            flex: 1 1 100% !important;
-            padding: 25px 20px !important;
-            min-height: auto !important;
-            order: 1 !important;  /* Right panel moves to top */
-            background: #ffffff !important;
-            border-left: none !important;
-        }
-        
-        .right-content {
-            max-width: 100% !important;
-        }
-        
-        .mobile-header {
-            display: block !important;
-        }
-        
-        .top-controls {
-            justify-content: center !important;
-        }
-        
-        .sso-grid {
-            grid-template-columns: 1fr 1fr 1fr !important;
-        }
-        
-        .welcome-title {
-            font-size: 20px !important;
-        }
-        
-        /* Hide left panel elements on mobile just in case */
-        .left-panel .logo-img,
-        .left-panel .college-name,
-        .left-panel .motto,
-        .left-panel .welcome-title-left,
-        .left-panel .tagline,
-        .left-panel .features-grid,
-        .left-panel .badges-container,
-        .left-panel .stats-row,
-        .left-panel .left-footer {
-            display: none !important;
-        }
-    }
-    
-    @media (max-width: 480px) {
-        .right-panel {
-            padding: 18px 14px !important;
-        }
-        
-        .sso-grid {
-            grid-template-columns: 1fr !important;  /* SSO buttons stack */
-        }
-        
-        .form-options {
-            flex-direction: column !important;
-            align-items: flex-start !important;
-        }
-        
-        .top-controls {
-            gap: 6px !important;
-        }
-        
-        .top-btn {
-            font-size: 11px !important;
-            padding: 6px 10px !important;
-        }
-        
-        .welcome-title {
-            font-size: 18px !important;
-        }
-        
-        .welcome-subtitle {
-            font-size: 13px !important;
-        }
-        
-        .login-btn {
-            font-size: 14px !important;
-            padding: 12px !important;
-        }
-        
-        .footer-section .links {
-            flex-direction: column !important;
-            gap: 6px !important;
-        }
-        
-        .keyboard-hints {
-            flex-wrap: wrap !important;
-            gap: 8px !important;
-        }
-    }
-</style>
 </head>
 <body>
 
@@ -326,432 +150,432 @@
     </div>
 
     <!-- ===== PARTICLES BACKGROUND ===== -->
-    <div style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; overflow: hidden; background: linear-gradient(135deg, #0A3D62 0%, #073450 100%);">
-        <div style="position: absolute; width: 60px; height: 60px; top: 10%; left: 5%; background: rgba(253,185,19,0.08); border-radius: 50%; animation: floatParticle 20s infinite ease-in-out;"></div>
-        <div style="position: absolute; width: 40px; height: 40px; bottom: 15%; right: 8%; background: rgba(253,185,19,0.06); border-radius: 50%; animation: floatParticle 25s infinite ease-in-out;"></div>
-        <div style="position: absolute; width: 80px; height: 80px; top: 30%; right: 15%; background: rgba(253,185,19,0.05); border-radius: 50%; animation: floatParticle 30s infinite ease-in-out;"></div>
-        <div style="position: absolute; width: 30px; height: 30px; bottom: 25%; left: 12%; background: rgba(253,185,19,0.07); border-radius: 50%; animation: floatParticle 18s infinite ease-in-out;"></div>
+    <div class="particles">
+        <div class="particle" style="width: 60px; height: 60px; top: 10%; left: 5%; background: rgba(253,185,19,0.08); animation-duration: 20s;"></div>
+        <div class="particle" style="width: 40px; height: 40px; bottom: 15%; right: 8%; background: rgba(253,185,19,0.06); animation-duration: 25s;"></div>
+        <div class="particle" style="width: 80px; height: 80px; top: 30%; right: 15%; background: rgba(253,185,19,0.05); animation-duration: 30s;"></div>
+        <div class="particle" style="width: 30px; height: 30px; bottom: 25%; left: 12%; background: rgba(253,185,19,0.07); animation-duration: 18s;"></div>
     </div>
 
     <!-- ===== MAIN WRAPPER ===== -->
-    <div style="display: flex; min-height: 100vh; position: relative; z-index: 1; font-family: 'Inter', sans-serif; max-width: 1200px; margin: 0 auto; background: rgba(255,255,255,0.96); box-shadow: 0 0 60px rgba(0,0,0,0.1); border-radius: 24px; overflow: hidden; width: 100%;" class="login-wrapper">
+    <div class="container">
 
         <!-- ===== LEFT PANEL ===== -->
-        <div style="flex: 1; background: linear-gradient(135deg, #0A3D62 0%, #1a5a7a 100%); padding: 40px; display: flex; flex-direction: column; min-height: 600px; position: relative; overflow: hidden;" class="left-panel">
+        <div class="left-panel">
+            <div class="panel-content">
 
-            <!-- Decorative Elements -->
-            <div style="position: absolute; top: -50%; right: -30%; width: 80%; height: 80%; background: radial-gradient(circle, rgba(253,185,19,0.05) 0%, transparent 70%); border-radius: 50%;"></div>
-            <div style="position: absolute; bottom: -30%; left: -20%; width: 60%; height: 60%; background: radial-gradient(circle, rgba(253,185,19,0.03) 0%, transparent 70%); border-radius: 50%;"></div>
+                <!-- Decorative Elements -->
+                <div style="position: absolute; top: -50%; right: -30%; width: 80%; height: 80%; background: radial-gradient(circle, rgba(253,185,19,0.05) 0%, transparent 70%); border-radius: 50%;"></div>
+                <div style="position: absolute; bottom: -30%; left: -20%; width: 60%; height: 60%; background: radial-gradient(circle, rgba(253,185,19,0.03) 0%, transparent 70%); border-radius: 50%;"></div>
 
-            <!-- ===== LOGO AT TOP ===== -->
-            <div style="position: relative; z-index: 2; text-align: center;">
-                <div style="width: 100px; height: 100px; border-radius: 50%; background: white; padding: 10px; border: 4px solid #FDB913; box-shadow: 0 10px 30px rgba(0,0,0,0.2); margin: 0 auto 20px; transition: transform 0.3s ease;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
-                    <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" style="width: 100%; height: 100%; object-fit: contain;">
+                <!-- ===== LOGO AT TOP ===== -->
+                <div style="position: relative; z-index: 2; text-align: center;">
+                    <div class="logo">
+                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo">
+                    </div>
+                    <h1 class="college-name">
+                        NAKURU COLLEGE OF <br><span class="gold">HEALTH SCIENCES</span><br>
+                        AND MANAGEMENT
+                    </h1>
+                    <p class="motto">"Excellence in Healthcare Education Since 1978"</p>
                 </div>
-                <h1 style="color: white; font-size: 24px; font-weight: 700; margin: 0; line-height: 1.3; letter-spacing: -0.5px;">
-                    NAKURU COLLEGE OF <br><span style="color: #FDB913;">HEALTH SCIENCES</span><br>
-                    AND MANAGEMENT
-                </h1>
-                <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-top: 4px; font-weight: 300; letter-spacing: 0.5px;">"Excellence in Healthcare Education Since 1978"</p>
+
+                <!-- ===== MIDDLE SECTION - Features ===== -->
+                <div style="position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0;">
+                    <h2 style="color: white; font-size: 20px; font-weight: 600; margin-bottom: 8px; text-align: center;">Welcome to NCHSM Digital Portal</h2>
+                    <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 20px; text-align: center;">Your gateway to excellence in healthcare education</p>
+
+                    <!-- Features Grid -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="features-grid">
+                        <div class="feature" style="display: block; text-align: center; padding: 14px;">
+                            <i data-feather="book-open" style="color: #FDB913; width: 24px; height: 24px; margin: 0 auto;"></i>
+                            <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Digital Learning</h4>
+                            <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Access course materials, lectures, and resources</p>
+                        </div>
+                        <div class="feature" style="display: block; text-align: center; padding: 14px;">
+                            <i data-feather="clipboard" style="color: #FDB913; width: 24px; height: 24px; margin: 0 auto;"></i>
+                            <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Progress Tracking</h4>
+                            <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Monitor your academic progress and achievements</p>
+                        </div>
+                        <div class="feature" style="display: block; text-align: center; padding: 14px;">
+                            <i data-feather="users" style="color: #FDB913; width: 24px; height: 24px; margin: 0 auto;"></i>
+                            <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Collaboration</h4>
+                            <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Connect with peers and instructors</p>
+                        </div>
+                        <div class="feature" style="display: block; text-align: center; padding: 14px;">
+                            <i data-feather="shield" style="color: #FDB913; width: 24px; height: 24px; margin: 0 auto;"></i>
+                            <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Secure Access</h4>
+                            <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Enterprise-grade security for your data</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== BOTTOM SECTION ===== -->
+                <div style="position: relative; z-index: 2; margin-top: auto;">
+                    <!-- Badges -->
+                    <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;" class="badges-container">
+                        <span class="badge gold">✓ TVET Accredited</span>
+                        <span class="badge">✓ Nursing Council of Kenya</span>
+                        <span class="badge">✓ KNQA Certified</span>
+                        <span class="badge gold">✓ ISO 9001:2015</span>
+                        <span class="badge">✓ Ministry of Health</span>
+                        <span class="badge">✓ Kenya Red Cross</span>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="stats" style="margin-top: 10px; padding-top: 15px;">
+                        <div class="stat">
+                            <span class="number">2,500+</span>
+                            <span class="label">Students</span>
+                        </div>
+                        <div class="stat">
+                            <span class="number">150+</span>
+                            <span class="label">Faculty</span>
+                        </div>
+                        <div class="stat">
+                            <span class="number">98%</span>
+                            <span class="label">Satisfaction</span>
+                        </div>
+                    </div>
+
+                    <!-- Footer -->
+                    <div style="text-align: center; font-size: 11px; color: rgba(255,255,255,0.3); padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.05); margin-top: 15px;">
+                        © 2026 Nakuru College of Health Sciences and Management
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== RIGHT PANEL ===== -->
+        <div class="right-panel">
+
+            <!-- ===== MOBILE HEADER ===== -->
+            <div class="mobile-header" id="mobileHeader">
+                <div class="header-content">
+                    <div class="logo">
+                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM">
+                    </div>
+                    <div class="college-info">
+                        <div class="college-name">NCHSM</div>
+                        <div class="college-tagline">Digital Learning Portal</div>
+                    </div>
+                </div>
             </div>
 
-            <!-- ===== MIDDLE SECTION - Features ===== -->
-            <div style="position: relative; z-index: 2; flex: 1; display: flex; flex-direction: column; justify-content: center; padding: 20px 0;">
-                <h2 style="color: white; font-size: 20px; font-weight: 600; margin-bottom: 8px; text-align: center;">Welcome to NCHSM Digital Portal</h2>
-                <p style="color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 20px; text-align: center;">Your gateway to excellence in healthcare education</p>
+            <!-- ===== RIGHT CONTENT ===== -->
+            <div class="right-content">
 
-                <!-- Features Grid -->
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;" class="features-grid">
-                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; text-align: center; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.transform='translateY(0)'">
-                        <i data-feather="book-open" style="color: #FDB913; width: 24px; height: 24px;"></i>
-                        <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Digital Learning</h4>
-                        <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Access course materials, lectures, and resources</p>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; text-align: center; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.transform='translateY(0)'">
-                        <i data-feather="clipboard" style="color: #FDB913; width: 24px; height: 24px;"></i>
-                        <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Progress Tracking</h4>
-                        <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Monitor your academic progress and achievements</p>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; text-align: center; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.transform='translateY(0)'">
-                        <i data-feather="users" style="color: #FDB913; width: 24px; height: 24px;"></i>
-                        <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Collaboration</h4>
-                        <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Connect with peers and instructors</p>
-                    </div>
-                    <div style="background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 12px; padding: 14px; text-align: center; transition: all 0.3s ease;" onmouseover="this.style.background='rgba(255,255,255,0.12)'; this.style.transform='translateY(-3px)'" onmouseout="this.style.background='rgba(255,255,255,0.06)'; this.style.transform='translateY(0)'">
-                        <i data-feather="shield" style="color: #FDB913; width: 24px; height: 24px;"></i>
-                        <h4 style="color: white; font-size: 13px; margin: 4px 0 2px 0; font-weight: 600;">Secure Access</h4>
-                        <p style="color: rgba(255,255,255,0.6); font-size: 11px; margin: 0;">Enterprise-grade security for your data</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- ===== BOTTOM SECTION ===== -->
-            <div style="position: relative; z-index: 2; margin-top: auto;">
-                <!-- Badges -->
-                <div style="display: flex; flex-wrap: wrap; gap: 8px; justify-content: center;" class="badges-container">
-                    <span style="background: rgba(253,185,19,0.15); color: #FDB913; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">✓ TVET Accredited</span>
-                    <span style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;">✓ Nursing Council of Kenya</span>
-                    <span style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;">✓ KNQA Certified</span>
-                    <span style="background: rgba(253,185,19,0.15); color: #FDB913; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 600;">✓ ISO 9001:2015</span>
-                    <span style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;">✓ Ministry of Health</span>
-                    <span style="background: rgba(255,255,255,0.08); color: rgba(255,255,255,0.8); padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500;">✓ Kenya Red Cross</span>
+                <!-- Top Controls -->
+                <div class="top-controls">
+                    <a href="https://campusnexus.co.ke/" target="_blank" class="main-site-btn" style="background: #f1f5f9; color: #475569;">
+                        <i data-feather="home"></i> Main Site
+                    </a>
+                    <a href="/blog/" class="main-site-btn" style="background: #FDB913; color: #0A3D62;">
+                        <i data-feather="book-open"></i> Blog
+                    </a>
+                    <button id="themeToggle" class="theme-toggle-btn">
+                        <i data-feather="sun" id="themeIcon"></i>
+                        <span id="themeLabel">Light</span>
+                    </button>
                 </div>
 
-                <!-- Stats -->
-                <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; padding: 15px 0; margin-top: 10px; border-top: 1px solid rgba(255,255,255,0.08);" class="stats-row">
-                    <div style="text-align: center;">
-                        <div style="font-size: 24px; font-weight: 700; color: #FDB913;" class="stat-number">2,500+</div>
-                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Students</div>
+                <!-- Welcome -->
+                <div class="welcome-section">
+                    <div class="welcome-icon">
+                        <i data-feather="lock" style="color: white; width: 24px; height: 24px;"></i>
                     </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 24px; font-weight: 700; color: #FDB913;" class="stat-number">150+</div>
-                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Faculty</div>
+                    <h2 class="welcome-title">Welcome <span class="gold">Back</span></h2>
+                    <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
+                </div>
+
+                <!-- Last Login Info -->
+                <div id="lastLoginInfo" class="last-login-info">
+                    <i data-feather="clock"></i>
+                    <span>Sign in to see your last login activity</span>
+                </div>
+
+                <!-- Attempts Info -->
+                <div id="attemptsInfo" class="attempts-info" style="display: none;">
+                    <i data-feather="alert-triangle"></i>
+                    <span id="attemptsText" style="color: #92400e;">5 attempts remaining</span>
+                    <div class="attempts-bar">
+                        <div id="attemptsProgress" class="attempts-progress" style="width: 100%; background: #10b981;"></div>
                     </div>
-                    <div style="text-align: center;">
-                        <div style="font-size: 24px; font-weight: 700; color: #FDB913;" class="stat-number">98%</div>
-                        <div style="font-size: 12px; color: rgba(255,255,255,0.6);">Satisfaction</div>
+                </div>
+
+                <!-- Error Message -->
+                <div id="errorMsg" class="error-message">
+                    <i data-feather="alert-circle" class="error-icon"></i>
+                    <span class="error-text"></span>
+                </div>
+
+                <!-- Success Message -->
+                <div id="successMsg" class="success-message">
+                    <i data-feather="check-circle" class="success-icon"></i>
+                    <span class="success-text"></span>
+                </div>
+
+                <!-- ===== LOGIN FORM ===== -->
+                <form id="loginForm" class="login-form" novalidate>
+                    <input type="hidden" name="csrf_token" id="csrf_token" value="">
+
+                    <!-- Email -->
+                    <div class="form-group">
+                        <label for="email" class="form-label">
+                            <i data-feather="mail"></i>
+                            Email Address
+                        </label>
+                        <div class="input-wrapper">
+                            <i data-feather="mail" class="input-icon"></i>
+                            <input type="email" 
+                                   id="email" 
+                                   class="form-input"
+                                   placeholder="student@nchsm.ac.ke" 
+                                   required
+                                   autocomplete="email"
+                                   maxlength="100">
+                        </div>
                     </div>
+
+                    <!-- Password -->
+                    <div class="form-group">
+                        <label for="password" class="form-label">
+                            <i data-feather="lock"></i>
+                            Password
+                        </label>
+                        <div class="input-wrapper">
+                            <i data-feather="lock" class="input-icon"></i>
+                            <input type="password" 
+                                   id="password" 
+                                   class="form-input"
+                                   placeholder="Enter your password" 
+                                   required
+                                   autocomplete="current-password"
+                                   maxlength="128"
+                                   minlength="8">
+                            <button type="button" 
+                                    id="password-toggle-btn" 
+                                    class="password-toggle"
+                                    aria-label="Toggle password visibility">
+                                <i data-feather="eye-off" id="toggle-icon"></i>
+                            </button>
+                        </div>
+                        <div class="password-strength">
+                            <div class="strength-bar">
+                                <div id="strengthProgress" class="strength-progress" style="width: 0%;"></div>
+                            </div>
+                            <span id="strengthText" class="strength-text">Enter a strong password</span>
+                        </div>
+                    </div>
+
+                    <!-- Options -->
+                    <div class="form-options">
+                        <div class="stay-signed-in">
+                            <label class="toggle-switch">
+                                <input type="checkbox" id="staySignedIn">
+                                <label for="staySignedIn">Stay signed in</label>
+                            </label>
+                            <span class="tooltip" title="We'll keep you signed in for 30 days">ⓘ</span>
+                        </div>
+                        <a href="forgot-password.html" class="forgot-link">Forgot Password?</a>
+                    </div>
+
+                    <!-- Honeypot -->
+                    <div style="position: absolute; left: -9999px; top: -9999px;">
+                        <label for="honeypot">Leave this empty</label>
+                        <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
+                    </div>
+
+                    <!-- Login Button -->
+                    <button type="submit" id="loginButton" class="login-button">
+                        <span class="button-content">
+                            <span class="button-text">Sign In</span>
+                            <span class="spinner" style="display: none;"></span>
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Divider -->
+                <div class="divider">
+                    <span>or continue with</span>
+                </div>
+
+                <!-- SSO Options -->
+                <div class="sso-options">
+                    <button id="googleSignIn" class="sso-btn google">
+                        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google">
+                        <span>Google</span>
+                    </button>
+                    <button id="microsoftSignIn" class="sso-btn microsoft">
+                        <img src="https://img.icons8.com/color/48/000000/microsoft.png" alt="Microsoft">
+                        <span>Microsoft</span>
+                    </button>
+                    <button id="appleSignIn" class="sso-btn apple">
+                        <i class="fab fa-apple" style="font-size: 20px;"></i>
+                        <span>Apple</span>
+                    </button>
+                </div>
+
+                <!-- Divider -->
+                <div class="divider" style="margin: 15px 0 10px 0;">
+                    <span>Don't have an account?</span>
+                </div>
+
+                <!-- Signup -->
+                <div class="signup-section">
+                    <a href="register.html" class="signup-link">
+                        <i data-feather="user-plus"></i>
+                        Create New Account
+                    </a>
+                </div>
+
+                <!-- 2FA Button -->
+                <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid var(--nchsm-gray-light);">
+                    <button onclick="showQRCode()" id="enable2FABtn">
+                        <i data-feather="shield"></i>
+                        🔐 Enable Two-Factor Authentication
+                    </button>
+                    <div id="twoFAStatus"></div>
+                </div>
+
+                <!-- Keyboard Shortcuts -->
+                <div class="keyboard-hints">
+                    <kbd>Ctrl + ↵</kbd> to submit
+                    <kbd>Ctrl + R</kbd> to reset
                 </div>
 
                 <!-- Footer -->
-                <div style="text-align: center; font-size: 11px; color: rgba(255,255,255,0.3); padding-top: 10px; border-top: 1px solid rgba(255,255,255,0.05);">
-                    © 2026 Nakuru College of Health Sciences and Management
-                </div>
-            </div>
-        </div>
-
-      <!-- ===== RIGHT PANEL ===== -->
-<div style="flex: 0 0 480px; max-width: 100%; background: white; padding: 40px 35px; display: flex; flex-direction: column; justify-content: center; min-height: 600px;" class="right-panel">
-
-    <!-- ===== MOBILE HEADER ===== -->
-    <div style="display: none; text-align: center; margin-bottom: 20px;" id="mobileHeader">
-        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM" style="width: 50px; height: 50px; border-radius: 50%; border: 2px solid #FDB913; padding: 4px; background: white;">
-        <h1 style="font-size: 20px; color: #0A3D62; margin: 10px 0 0 0;">NCHSM</h1>
-        <p style="color: #64748B; font-size: 12px; margin: 2px 0 0 0;">Digital Learning Portal</p>
-    </div>
-
-    <!-- ===== RIGHT CONTENT ===== -->
-    <div style="max-width: 420px; margin: 0 auto; width: 100%;" class="right-content">
-
-        <!-- Top Controls -->
-        <div style="display: flex; justify-content: flex-end; gap: 10px; margin-bottom: 20px; flex-wrap: wrap;" class="top-controls">
-            <a href="https://campusnexus.co.ke/" target="_blank" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #f1f5f9; color: #475569; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 500; transition: all 0.3s ease; font-family: 'Inter', sans-serif;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
-                <i data-feather="home" style="width: 16px; height: 16px;"></i> Main Site
-            </a>
-            <a href="/blog/" style="display: flex; align-items: center; gap: 6px; padding: 8px 16px; background: #FDB913; color: #0A3D62; border-radius: 8px; text-decoration: none; font-size: 13px; font-weight: 600; transition: all 0.3s ease; font-family: 'Inter', sans-serif;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(253,185,19,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <i data-feather="book-open" style="width: 16px; height: 16px;"></i> Blog
-            </a>
-            <button id="themeToggle" style="display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #f1f5f9; border: none; border-radius: 8px; cursor: pointer; color: #475569; font-size: 13px; font-weight: 500; transition: all 0.3s ease; font-family: 'Inter', sans-serif;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">
-                <i data-feather="sun" id="themeIcon" style="width: 16px; height: 16px;"></i>
-                <span id="themeLabel">Light</span>
-            </button>
-        </div>
-
-        <!-- Welcome -->
-        <div style="text-align: center; margin-bottom: 20px;">
-            <div style="width: 50px; height: 50px; background: #f1f5f9; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
-                <i data-feather="lock" style="color: #0A3D62; width: 24px; height: 24px;"></i>
-            </div>
-            <h2 style="font-size: 24px; font-weight: 700; color: #0A3D62; margin: 0;" class="welcome-title">Welcome <span style="color: #FDB913;">Back</span></h2>
-            <p style="color: #64748B; font-size: 14px; margin: 4px 0 0 0;">Sign in to access your digital learning portal</p>
-        </div>
-
-        <!-- Last Login Info -->
-        <div id="lastLoginInfo" style="display: flex; align-items: center; gap: 8px; padding: 10px 14px; background: #f8fafc; border-radius: 10px; border: 1px solid #e5e7eb; margin-bottom: 15px; font-size: 13px; color: #64748B; transition: all 0.3s ease;">
-            <i data-feather="clock" style="width: 16px; height: 16px; color: #94a3b8;"></i>
-            <span>Sign in to see your last login activity</span>
-        </div>
-
-        <!-- Attempts Info -->
-        <div id="attemptsInfo" style="display: none; align-items: center; gap: 8px; padding: 10px 14px; background: #fef3c7; border-radius: 10px; border: 1px solid #f59e0b; margin-bottom: 15px; font-size: 13px;">
-            <i data-feather="alert-triangle" style="width: 16px; height: 16px; color: #d97706;"></i>
-            <span id="attemptsText" style="color: #92400e;">5 attempts remaining</span>
-            <div style="flex: 1; height: 4px; background: #fcd34d; border-radius: 4px; overflow: hidden;">
-                <div id="attemptsProgress" style="width: 100%; height: 100%; background: #10b981; border-radius: 4px; transition: width 0.5s ease;"></div>
-            </div>
-        </div>
-
-        <!-- Error Message -->
-        <div id="errorMsg" style="display: none; align-items: center; gap: 10px; padding: 12px 16px; background: #fee2e2; border-left: 4px solid #dc2626; border-radius: 10px; margin-bottom: 15px;">
-            <i data-feather="alert-circle" style="color: #dc2626; width: 18px; height: 18px;"></i>
-            <span class="error-text" style="color: #991b1b; font-size: 14px; flex: 1;"></span>
-        </div>
-
-        <!-- Success Message -->
-        <div id="successMsg" style="display: none; align-items: center; gap: 10px; padding: 12px 16px; background: #d1fae5; border-left: 4px solid #10b981; border-radius: 10px; margin-bottom: 15px;">
-            <i data-feather="check-circle" style="color: #10b981; width: 18px; height: 18px;"></i>
-            <span class="success-text" style="color: #065f46; font-size: 14px; flex: 1;"></span>
-        </div>
-
-        <!-- ===== LOGIN FORM ===== -->
-        <form id="loginForm" novalidate style="display: flex; flex-direction: column; gap: 16px;">
-            <input type="hidden" name="csrf_token" id="csrf_token" value="">
-
-            <!-- Email -->
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-                <label for="email" style="display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; color: #0A3D62;">
-                    <i data-feather="mail" style="width: 16px; height: 16px;"></i>
-                    Email Address
-                </label>
-                <div style="position: relative; display: flex; align-items: center;">
-                    <i data-feather="mail" style="position: absolute; left: 14px; color: #94a3b8; width: 18px; height: 18px;"></i>
-                    <input type="email" 
-                           id="email" 
-                           placeholder="student@nchsm.ac.ke" 
-                           required
-                           autocomplete="email"
-                           maxlength="100"
-                           style="width: 100%; padding: 12px 14px 12px 44px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; background: #f8fafc; transition: all 0.3s ease; outline: none;"
-                           onfocus="this.style.borderColor='#0A3D62'; this.style.boxShadow='0 0 0 3px rgba(10,61,98,0.1)'"
-                           onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                </div>
-            </div>
-
-            <!-- Password -->
-            <div style="display: flex; flex-direction: column; gap: 4px;">
-                <label for="password" style="display: flex; align-items: center; gap: 6px; font-size: 15px; font-weight: 700; color: #0A3D62;">
-                    <i data-feather="lock" style="width: 16px; height: 16px;"></i>
-                    Password
-                </label>
-                <div style="position: relative; display: flex; align-items: center;">
-                    <i data-feather="lock" style="position: absolute; left: 14px; color: #94a3b8; width: 18px; height: 18px;"></i>
-                    <input type="password" 
-                           id="password" 
-                           placeholder="Enter your password" 
-                           required
-                           autocomplete="current-password"
-                           maxlength="128"
-                           minlength="8"
-                           style="width: 100%; padding: 12px 14px 12px 44px; border: 2px solid #e2e8f0; border-radius: 12px; font-size: 14px; font-family: 'Inter', sans-serif; background: #f8fafc; transition: all 0.3s ease; outline: none;"
-                           onfocus="this.style.borderColor='#0A3D62'; this.style.boxShadow='0 0 0 3px rgba(10,61,98,0.1)'"
-                           onblur="this.style.borderColor='#e2e8f0'; this.style.boxShadow='none'">
-                    <button type="button" 
-                            id="password-toggle-btn" 
-                            style="position: absolute; right: 12px; background: none; border: none; color: #94a3b8; cursor: pointer; padding: 4px; display: flex; align-items: center; transition: color 0.3s ease;"
-                            onmouseover="this.style.color='#0A3D62'"
-                            onmouseout="this.style.color='#94a3b8'"
-                            aria-label="Toggle password visibility">
-                        <i data-feather="eye-off" id="toggle-icon" style="width: 18px; height: 18px;"></i>
-                    </button>
-                </div>
-                <div style="margin-top: 4px;">
-                    <div style="height: 4px; background: #e2e8f0; border-radius: 4px; overflow: hidden;">
-                        <div id="strengthProgress" style="width: 0%; height: 100%; background: #94a3b8; border-radius: 4px; transition: width 0.3s ease;"></div>
+                <div class="footer" style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--nchsm-gray-light); background: none; backdrop-filter: none;">
+                    <div class="footer-content">
+                        <div class="copyright">© 2026 Nakuru College of Health Sciences and Management</div>
+                        <div class="footer-links">
+                            <a href="privacy.html" class="footer-link">Privacy</a>
+                            <a href="terms.html" class="footer-link">Terms</a>
+                            <a href="contact.html" class="footer-link">Contact</a>
+                            <a href="support.html" class="footer-link">Support</a>
+                            <a href="/blog/" class="footer-link" style="color: #FDB913; font-weight: 600;">📝 Blog</a>
+                        </div>
                     </div>
-                    <span id="strengthText" style="font-size: 12px; color: #94a3b8; display: block; margin-top: 4px;">Enter a strong password</span>
                 </div>
-            </div>
-
-            <!-- Options -->
-            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-                <div style="display: flex; align-items: center; gap: 8px;">
-                    <input type="checkbox" id="staySignedIn" style="width: 16px; height: 16px; accent-color: #0A3D62; cursor: pointer;">
-                    <label for="staySignedIn" style="font-size: 13px; color: #475569; cursor: pointer;">Stay signed in</label>
-                    <span style="font-size: 12px; color: #94a3b8; cursor: help;" title="We'll keep you signed in for 30 days">ⓘ</span>
-                </div>
-                <a href="forgot-password.html" style="font-size: 13px; color: #0A3D62; text-decoration: none; font-weight: 500; transition: color 0.3s;" onmouseover="this.style.color='#FDB913'" onmouseout="this.style.color='#0A3D62'">Forgot Password?</a>
-            </div>
-
-            <!-- Honeypot -->
-            <div style="position: absolute; left: -9999px; top: -9999px;">
-                <label for="honeypot">Leave this empty</label>
-                <input type="text" id="honeypot" name="honeypot" tabindex="-1" autocomplete="off">
-            </div>
-
-            <!-- Login Button -->
-            <button type="submit" 
-                    id="loginButton" 
-                    style="width: 100%; padding: 14px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); color: white; border: none; border-radius: 12px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: 'Inter', sans-serif;"
-                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(10,61,98,0.3)'"
-                    onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <span class="button-text">Sign In</span>
-                <span class="spinner" style="display: none;">⏳</span>
-            </button>
-        </form>
-
-        <!-- Divider -->
-        <div style="display: flex; align-items: center; gap: 15px; margin: 20px 0;">
-            <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-            <span style="color: #94a3b8; font-size: 13px;">or continue with</span>
-            <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-        </div>
-
-        <!-- SSO Options -->
-        <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;" class="sso-grid">
-            <button id="googleSignIn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: white; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #475569;" onmouseover="this.style.borderColor='#0A3D62'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='white'">
-                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" alt="Google" style="width: 20px; height: 20px;">
-                <span>Google</span>
-            </button>
-            <button id="microsoftSignIn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: white; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #475569;" onmouseover="this.style.borderColor='#0A3D62'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='white'">
-                <img src="https://img.icons8.com/color/48/000000/microsoft.png" alt="Microsoft" style="width: 20px; height: 20px;">
-                <span>Microsoft</span>
-            </button>
-            <button id="appleSignIn" style="display: flex; align-items: center; justify-content: center; gap: 8px; padding: 10px; background: white; border: 2px solid #e2e8f0; border-radius: 12px; cursor: pointer; transition: all 0.3s ease; font-family: 'Inter', sans-serif; font-size: 13px; font-weight: 500; color: #475569;" onmouseover="this.style.borderColor='#0A3D62'; this.style.background='#f8fafc'" onmouseout="this.style.borderColor='#e2e8f0'; this.style.background='white'">
-                <i class="fab fa-apple" style="font-size: 20px;"></i>
-                <span>Apple</span>
-            </button>
-        </div>
-
-        <!-- Divider -->
-        <div style="display: flex; align-items: center; gap: 15px; margin: 15px 0 10px 0;">
-            <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-            <span style="color: #94a3b8; font-size: 13px;">Don't have an account?</span>
-            <div style="flex: 1; height: 1px; background: #e2e8f0;"></div>
-        </div>
-
-        <!-- Signup -->
-        <div style="text-align: center;">
-            <a href="register.html" style="display: inline-flex; align-items: center; gap: 6px; color: #0A3D62; text-decoration: none; font-weight: 600; font-size: 14px; transition: color 0.3s;" onmouseover="this.style.color='#FDB913'" onmouseout="this.style.color='#0A3D62'">
-                <i data-feather="user-plus" style="width: 18px; height: 18px;"></i>
-                Create New Account
-            </a>
-        </div>
-
-        <!-- 2FA Button -->
-        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
-            <button onclick="showQRCode()" 
-                    id="enable2FABtn"
-                    style="width: 100%; padding: 12px; background: linear-gradient(135deg, #0A3D62, #1a5a7a); color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 14px; transition: all 0.3s ease; display: flex; align-items: center; justify-content: center; gap: 10px; font-family: 'Inter', sans-serif;"
-                    onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(10,61,98,0.3)'"
-                    onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
-                <i data-feather="shield" style="width: 18px; height: 18px;"></i>
-                🔐 Enable Two-Factor Authentication
-            </button>
-            <div id="twoFAStatus" style="margin-top: 8px; text-align: center; font-size: 13px; color: #94a3b8; display: none;"></div>
-        </div>
-
-        <!-- Keyboard Shortcuts -->
-        <div style="display: flex; justify-content: center; gap: 15px; margin-top: 15px; font-size: 11px; color: #94a3b8;">
-            <kbd style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 10px; font-family: 'Inter', sans-serif;">Ctrl + ↵</kbd> to submit
-            <kbd style="background: #f1f5f9; padding: 2px 8px; border-radius: 4px; border: 1px solid #e2e8f0; font-size: 10px; font-family: 'Inter', sans-serif;">Ctrl + R</kbd> to reset
-        </div>
-
-        <!-- Footer -->
-        <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid #e2e8f0; text-align: center;">
-            <div style="font-size: 12px; color: #94a3b8;">© 2026 Nakuru College of Health Sciences and Management</div>
-            <div style="display: flex; justify-content: center; gap: 16px; flex-wrap: wrap; margin-top: 8px;">
-                <a href="privacy.html" style="font-size: 12px; color: #94a3b8; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#0A3D62'" onmouseout="this.style.color='#94a3b8'">Privacy</a>
-                <a href="terms.html" style="font-size: 12px; color: #94a3b8; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#0A3D62'" onmouseout="this.style.color='#94a3b8'">Terms</a>
-                <a href="contact.html" style="font-size: 12px; color: #94a3b8; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#0A3D62'" onmouseout="this.style.color='#94a3b8'">Contact</a>
-                <a href="support.html" style="font-size: 12px; color: #94a3b8; text-decoration: none; transition: color 0.3s;" onmouseover="this.style.color='#0A3D62'" onmouseout="this.style.color='#94a3b8'">Support</a>
-                <a href="/blog/" style="font-size: 12px; color: #FDB913; text-decoration: none; font-weight: 600;">📝 Blog</a>
             </div>
         </div>
     </div>
-</div>
+
     <!-- ===== 2FA LOGIN MODAL ===== -->
-    <div id="twoFactorModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1000; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-        <div style="background: white; border-radius: 20px; max-width: 420px; width: 90%; padding: 30px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideIn 0.3s ease;">
-            <button onclick="closeModal('twoFactorModal')" style="float: right; font-size: 28px; background: none; border: none; cursor: pointer; color: #64748B; transition: color 0.3s;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#64748B'">&times;</button>
-            <div style="text-align: center; margin-bottom: 20px;">
-                <div style="width: 56px; height: 56px; background: #0A3D62; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+    <div id="twoFactorModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content">
+            <button onclick="closeModal('twoFactorModal')" class="modal-close">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon">
                     <i data-feather="shield" style="color: white; width: 28px; height: 28px;"></i>
                 </div>
-                <h2 style="font-size: 20px; color: #0A3D62; margin: 0;">🔐 Two-Factor Authentication</h2>
-                <p style="color: #64748B; font-size: 14px; margin: 4px 0 0 0;">Enter the 6-digit code from your authenticator app</p>
+                <h2 class="modal-title">🔐 Two-Factor Authentication</h2>
+                <p class="modal-subtitle">Enter the 6-digit code from your authenticator app</p>
             </div>
-            <div style="display: flex; gap: 10px; justify-content: center; margin: 20px 0;">
-                <input type="text" maxlength="1" class="otp-digit" data-index="0" autofocus pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                <input type="text" maxlength="1" class="otp-digit" data-index="1" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                <input type="text" maxlength="1" class="otp-digit" data-index="2" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                <input type="text" maxlength="1" class="otp-digit" data-index="3" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                <input type="text" maxlength="1" class="otp-digit" data-index="4" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                <input type="text" maxlength="1" class="otp-digit" data-index="5" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-            </div>
-            <div style="display: flex; gap: 10px;">
-                <button id="verifyOTP" style="flex: 1; padding: 12px; background: #0A3D62; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.3s;" onmouseover="this.style.background='#1a5a7a'" onmouseout="this.style.background='#0A3D62'">Verify Code</button>
-                <button id="resendOTP" style="flex: 1; padding: 12px; background: #f1f5f9; color: #475569; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-family: 'Inter', sans-serif; transition: all 0.3s;" onmouseover="this.style.background='#e2e8f0'" onmouseout="this.style.background='#f1f5f9'">Resend Code</button>
-            </div>
-            <div style="text-align: center; margin-top: 12px; font-size: 13px; color: #94a3b8;">
-                <span>Didn't receive code? <a href="#" onclick="resendOTP()" style="color: #0A3D62; text-decoration: none; font-weight: 600; transition: color 0.3s;" onmouseover="this.style.color='#FDB913'" onmouseout="this.style.color='#0A3D62'">Resend</a></span>
+            <div class="modal-body">
+                <div class="otp-input-group">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="0" autofocus pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="1" pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="2" pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="3" pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="4" pattern="[0-9]">
+                    <input type="text" maxlength="1" class="otp-digit" data-index="5" pattern="[0-9]">
+                </div>
+                <div class="otp-actions">
+                    <button id="verifyOTP" class="btn-primary">Verify Code</button>
+                    <button id="resendOTP" class="btn-secondary">Resend Code</button>
+                </div>
+                <div class="otp-help">
+                    <span>Didn't receive code? <a href="#" onclick="resendOTP()">Resend</a></span>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- ===== 2FA SETUP MODAL ===== -->
-    <div id="twoFactorSetupModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 1001; align-items: center; justify-content: center; backdrop-filter: blur(8px);">
-        <div style="background: white; border-radius: 20px; max-width: 500px; width: 90%; padding: 30px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideIn 0.3s ease; position: relative;">
-            <button onclick="closeModal('twoFactorSetupModal')" style="position: absolute; top: 15px; right: 20px; font-size: 28px; background: none; border: none; cursor: pointer; color: #64748B; transition: color 0.3s;" onmouseover="this.style.color='#dc2626'" onmouseout="this.style.color='#64748B'">&times;</button>
-            
-            <div style="text-align: center; margin-bottom: 20px;">
-                <div style="width: 56px; height: 56px; background: #0A3D62; border-radius: 50%; display: flex; align-items: center; justify-content: center; margin: 0 auto 12px;">
+    <div id="twoFactorSetupModal" class="modal-overlay" style="display: none;">
+        <div class="modal-content" style="max-width: 500px;">
+            <button onclick="closeModal('twoFactorSetupModal')" class="modal-close">&times;</button>
+            <div class="modal-header">
+                <div class="modal-icon">
                     <i data-feather="shield" style="color: white; width: 28px; height: 28px;"></i>
                 </div>
-                <h2 style="font-size: 20px; color: #0A3D62; margin: 0;">🔐 Setup Two-Factor Authentication</h2>
-                <p style="color: #64748B; font-size: 14px; margin: 4px 0 0 0;">Secure your account with Google Authenticator</p>
+                <h2 class="modal-title">🔐 Setup Two-Factor Authentication</h2>
+                <p class="modal-subtitle">Secure your account with Google Authenticator</p>
             </div>
-
-            <!-- Instructions -->
-            <div style="background: #f0f7ff; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
-                <h4 style="margin: 0 0 8px 0; color: #0A3D62; font-size: 14px;">📱 How to set up:</h4>
-                <ol style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 2; color: #475569;">
-                    <li><strong>Step 1:</strong> Download <strong>Google Authenticator</strong> from app store</li>
-                    <li><strong>Step 2:</strong> Open app → Tap <strong>"+"</strong> → <strong>"Scan a QR code"</strong></li>
-                    <li><strong>Step 3:</strong> <strong>Scan the QR code</strong> below with your phone</li>
-                    <li><strong>Step 4:</strong> Enter the <strong>6-digit code</strong> from the app to verify</li>
-                </ol>
-            </div>
-
-            <!-- QR CODE -->
-            <div style="text-align: center; margin: 20px 0;">
-                <div style="background: #ffffff; padding: 20px; border-radius: 16px; display: inline-block; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 2px solid #e2e8f0;">
-                    <img id="qrCodeImage" src="" alt="QR Code" style="width: 200px; height: 200px;">
+            <div class="modal-body">
+                <!-- Instructions -->
+                <div style="background: #f0f7ff; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #0A3D62;">
+                    <h4 style="margin: 0 0 8px 0; color: #0A3D62; font-size: 14px;">📱 How to set up:</h4>
+                    <ol style="margin: 0; padding-left: 20px; font-size: 13px; line-height: 2; color: #475569;">
+                        <li><strong>Step 1:</strong> Download <strong>Google Authenticator</strong> from app store</li>
+                        <li><strong>Step 2:</strong> Open app → Tap <strong>"+"</strong> → <strong>"Scan a QR code"</strong></li>
+                        <li><strong>Step 3:</strong> <strong>Scan the QR code</strong> below with your phone</li>
+                        <li><strong>Step 4:</strong> Enter the <strong>6-digit code</strong> from the app to verify</li>
+                    </ol>
                 </div>
-                <p style="font-size: 13px; color: #64748B; margin-top: 10px;">📸 <strong>Scan this QR code</strong> with Google Authenticator</p>
-            </div>
 
-            <!-- Manual Entry -->
-            <div style="background: #f8fafc; border-radius: 12px; padding: 16px; margin: 15px 0; border: 1px solid #e2e8f0;">
-                <p style="font-size: 13px; opacity: 0.7; margin: 0 0 8px 0;"><strong>🔑 Can't scan? Enter this code manually:</strong></p>
-                <div style="background: #ffffff; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 16px; letter-spacing: 3px; text-align: center; border: 1px solid #d1d5db;">
-                    <code id="secretKey">XXXX XXXX XXXX XXXX</code>
+                <!-- QR CODE -->
+                <div style="text-align: center; margin: 20px 0;">
+                    <div style="background: #ffffff; padding: 20px; border-radius: 16px; display: inline-block; box-shadow: 0 2px 10px rgba(0,0,0,0.05); border: 2px solid var(--nchsm-gray-light);">
+                        <img id="qrCodeImage" src="" alt="QR Code" style="width: 200px; height: 200px;">
+                    </div>
+                    <p style="font-size: 13px; color: var(--nchsm-text-light); margin-top: 10px;">📸 <strong>Scan this QR code</strong> with Google Authenticator</p>
                 </div>
-                <button onclick="copySecret()" style="margin-top: 8px; padding: 8px; border: none; border-radius: 6px; background: #0A3D62; color: #fff; cursor: pointer; font-size: 13px; width: 100%; font-weight: 600; transition: background 0.3s;" onmouseover="this.style.background='#1a5a7a'" onmouseout="this.style.background='#0A3D62'">
-                    📋 Copy Secret Key
-                </button>
-            </div>
 
-            <!-- Verification -->
-            <div style="margin-top: 20px; border-top: 2px solid #e2e8f0; padding-top: 20px;">
-                <p style="font-size: 14px; text-align: center; font-weight: 600; color: #0A3D62;">✅ Enter the 6-digit code from Google Authenticator:</p>
-                
-                <div style="display: flex; gap: 8px; justify-content: center; margin: 15px 0; flex-wrap: wrap;">
-                    <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="0" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                    <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="1" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                    <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="2" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                    <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="3" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                    <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="4" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                    <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="5" pattern="[0-9]" style="width: 45px; height: 50px; text-align: center; font-size: 20px; border: 2px solid #e2e8f0; border-radius: 8px; background: #f8fafc; font-family: 'Inter', sans-serif; transition: border-color 0.3s;" onfocus="this.style.borderColor='#0A3D62'" onblur="this.style.borderColor='#e2e8f0'">
-                </div>
-                
-                <div style="text-align: center;">
-                    <button onclick="verifyAndEnable2FA()" style="padding: 12px 40px; background: #0A3D62; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 15px; font-family: 'Inter', sans-serif; transition: all 0.3s;" onmouseover="this.style.background='#1a5a7a'" onmouseout="this.style.background='#0A3D62'">
-                        🔐 Verify & Enable 2FA
+                <!-- Manual Entry -->
+                <div style="background: var(--nchsm-gray); border-radius: 12px; padding: 16px; margin: 15px 0; border: 1px solid var(--nchsm-gray-light);">
+                    <p style="font-size: 13px; opacity: 0.7; margin: 0 0 8px 0;"><strong>🔑 Can't scan? Enter this code manually:</strong></p>
+                    <div style="background: #ffffff; padding: 12px; border-radius: 8px; font-family: monospace; font-size: 16px; letter-spacing: 3px; text-align: center; border: 1px solid #d1d5db;">
+                        <code id="secretKey">XXXX XXXX XXXX XXXX</code>
+                    </div>
+                    <button onclick="copySecret()" style="margin-top: 8px; padding: 8px; border: none; border-radius: 6px; background: #0A3D62; color: #fff; cursor: pointer; font-size: 13px; width: 100%; font-weight: 600; transition: background 0.3s;" onmouseover="this.style.background='#1a5a7a'" onmouseout="this.style.background='#0A3D62'">
+                        📋 Copy Secret Key
                     </button>
                 </div>
-                
-                <div id="setupStatus" style="margin-top: 12px; text-align: center; font-size: 14px; color: #94a3b8; display: none;"></div>
-            </div>
 
-            <!-- Troubleshooting -->
-            <div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 3px solid #F59E0B; font-size: 13px;">
-                <strong style="color: #92400e;">💡 Troubleshooting:</strong>
-                <ul style="margin: 5px 0 0 0; padding-left: 18px; color: #92400e;">
-                    <li>Make sure your phone's time is synced correctly</li>
-                    <li>If code doesn't work, wait for a new code (30 seconds)</li>
-                    <li>You can also enter the secret key manually in the app</li>
-                </ul>
+                <!-- Verification -->
+                <div style="margin-top: 20px; border-top: 2px solid var(--nchsm-gray-light); padding-top: 20px;">
+                    <p style="font-size: 14px; text-align: center; font-weight: 600; color: #0A3D62;">✅ Enter the 6-digit code from Google Authenticator:</p>
+                    
+                    <div class="otp-input-group">
+                        <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="0" pattern="[0-9]">
+                        <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="1" pattern="[0-9]">
+                        <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="2" pattern="[0-9]">
+                        <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="3" pattern="[0-9]">
+                        <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="4" pattern="[0-9]">
+                        <input type="text" maxlength="1" class="otp-digit setup-otp" data-index="5" pattern="[0-9]">
+                    </div>
+                    
+                    <div style="text-align: center;">
+                        <button onclick="verifyAndEnable2FA()" style="padding: 12px 40px; background: #0A3D62; color: white; border: none; border-radius: 10px; font-weight: 600; cursor: pointer; font-size: 15px; font-family: 'Inter', sans-serif; transition: all 0.3s;" onmouseover="this.style.background='#1a5a7a'" onmouseout="this.style.background='#0A3D62'">
+                            🔐 Verify & Enable 2FA
+                        </button>
+                    </div>
+                    
+                    <div id="setupStatus" style="margin-top: 12px; text-align: center; font-size: 14px; color: var(--nchsm-text-light); display: none;"></div>
+                </div>
+
+                <!-- Troubleshooting -->
+                <div style="margin-top: 20px; padding: 12px; background: #fef3c7; border-radius: 8px; border-left: 3px solid #F59E0B; font-size: 13px;">
+                    <strong style="color: #92400e;">💡 Troubleshooting:</strong>
+                    <ul style="margin: 5px 0 0 0; padding-left: 18px; color: #92400e;">
+                        <li>Make sure your phone's time is synced correctly</li>
+                        <li>If code doesn't work, wait for a new code (30 seconds)</li>
+                        <li>You can also enter the secret key manually in the app</li>
+                    </ul>
+                </div>
             </div>
         </div>
     </div>
 
     <!-- ===== SESSION WARNING ===== -->
-    <div id="sessionWarning" style="display: none; position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #1e293b; color: white; padding: 12px 24px; border-radius: 12px; z-index: 9999; box-shadow: 0 10px 40px rgba(0,0,0,0.3); font-family: 'Inter', sans-serif; align-items: center; gap: 16px; backdrop-filter: blur(10px);">
-        <div style="display: flex; align-items: center; gap: 12px;">
-            <i data-feather="clock" style="color: #FDB913; width: 20px; height: 20px;"></i>
-            <span>Your session will expire in <strong id="sessionTimer" style="color: #FDB913;">5:00</strong></span>
+    <div id="sessionWarning" class="session-warning">
+        <div class="warning-content">
+            <i data-feather="clock" class="warning-icon"></i>
+            <span class="warning-text">Your session will expire in <strong id="sessionTimer" style="color: #FDB913;">5:00</strong></span>
         </div>
-        <button id="extendSessionBtn" style="padding: 6px 18px; background: #FDB913; color: #0A3D62; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 13px; font-family: 'Inter', sans-serif; transition: all 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">Extend</button>
+        <button id="extendSessionBtn" class="btn-extend">Extend</button>
     </div>
 
     <!-- ===== FORCE HIDE SKELETON LOADER ===== -->
