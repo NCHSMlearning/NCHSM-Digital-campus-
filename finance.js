@@ -1464,7 +1464,6 @@ function updateStudentInfo() {
     }
 }
 
-// Record payment from modal
 async function recordPaymentFromModal() {
     try {
         if (!sbClient) { if (!initSupabase()) return; }
@@ -1475,94 +1474,287 @@ async function recordPaymentFromModal() {
         // If no student selected via search, try the select
         if (!student) {
             const select = document.getElementById('modalPaymentStudent');
-            const option = select.options[select.selectedIndex];
-            if (option && option.value) {
-                try {
-                    student = JSON.parse(option.dataset.student);
-                } catch (e) {
-                    student = null;
+            if (select) {
+                const option = select.options[select.selectedIndex];
+                if (option && option.value) {
+                    try {
+                        student = JSON.parse(option.dataset.student);
+                    } catch (e) {
+                        student = null;
+                    }
                 }
             }
         }
         
-        const amount = parseFloat(document.getElementById('modalPaymentAmount').value);
-        const method = document.getElementById('modalPaymentMethod').value;
-        const date = document.getElementById('modalPaymentDate').value;
-        const reference = document.getElementById('modalPaymentReference')?.value || null;
+        // If still no student, try to find from allAccounts
+        if (!student) {
+            const studentId = document.getElementById('modalPaymentStudent')?.value;
+            if (studentId) {
+                const found = allAccounts.find(a => a.user_id === studentId || a.student_id === studentId);
+                if (found) {
+                    student = {
+                        ...found,
+                        student_id: found.user_id || found.student_id,
+                        full_name: found.full_name || found.student_name,
+                        email: found.email || null
+                    };
+                }
+            }
+        }
+        
+        // Validate student
+        if (!student) {
+            showToast('Please select a student', 'warning');
+            return;
+        }
+        
+        // Get payment details
+        const amount = parseFloat(document.getElementById('modalPaymentAmount')?.value);
+        const method = document.getElementById('modalPaymentMethod')?.value || 'Cash';
+        const date = document.getElementById('modalPaymentDate')?.value;
+        const reference = document.getElementById('modalPaymentReference')?.value || 'TXN-' + Date.now().toString().slice(-8);
         const period = document.getElementById('modalPaymentPeriod')?.value || 'Term 1';
-        const notes = document.getElementById('modalPaymentNotes').value || null;
+        const notes = document.getElementById('modalPaymentNotes')?.value || null;
         
-        if (!student) { 
-            showToast('Please select a student', 'warning'); 
-            return; 
+        // Validate amount
+        if (!amount || amount <= 0) {
+            showToast('Please enter a valid amount', 'warning');
+            return;
         }
         
-        if (!amount || amount <= 0) { 
-            showToast('Please enter a valid amount', 'warning'); 
-            return; 
+        if (!date) {
+            showToast('Please select a payment date', 'warning');
+            return;
         }
         
+        // Generate receipt number
+        const receiptNumber = 'RCP-' + Date.now().toString().slice(-8);
+        
+        // Build payment data
         const paymentData = {
             student_id: student.student_id || student.user_id,
-            student_name: student.full_name || student.student_name,
+            student_name: student.full_name || student.student_name || student.student_name,
             student_email: student.email || null,
             program: student.program || 'KRCHN',
             amount: amount,
             payment_method: method,
-            reference_number: reference || 'TXN-' + Date.now().toString().slice(-8),
+            reference_number: reference,
+            receipt_number: receiptNumber,
             payment_date: date,
             period: period,
             status: 'completed',
-            notes: notes,
+            notes: notes || 'Payment recorded by admin',
             recorded_by_name: 'Admin',
-            created_at: new Date().toISOString()
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
         };
         
-        const { error } = await sbClient.from('finance_payments').insert([paymentData]);
-        if (error) throw error;
+        console.log('📝 Recording payment:', paymentData);
         
-        showToast(`Payment of ${formatCurrency(amount)} recorded for ${student.full_name}`, 'success');
+        // Save payment to database
+        const { data: savedPayment, error: saveError } = await sbClient
+            .from('finance_payments')
+            .insert([paymentData])
+            .select()
+            .single();
+        
+        if (saveError) {
+            console.error('❌ Save error:', saveError);
+            showToast('Error saving payment: ' + saveError.message, 'error');
+            return;
+        }
+        
+        console.log('✅ Payment saved:', savedPayment);
+        
+        // Update student account balance
+        await updateStudentBalance(student.student_id || student.user_id, amount);
+        
+        // Show success message
+        showToast(`✅ Payment of ${formatCurrency(amount)} recorded for ${student.full_name}`, 'success');
+        
+        // Close modal
         closePaymentModal();
+        
+        // Refresh data
         await loadPayments();
         await loadAccounts();
+        await loadDashboardData();
+        
+        // Notify student (if applicable)
+        notifyStudentPayment({
+            student_id: student.student_id || student.user_id,
+            student_name: student.full_name || student.student_name,
+            amount: amount,
+            reference_number: reference,
+            receipt_number: receiptNumber
+        });
         
     } catch (error) {
-        console.error('Error recording payment:', error);
+        console.error('❌ Error recording payment:', error);
         showToast('Error recording payment: ' + error.message, 'error');
     }
 }
 
-// Record payment (legacy function - kept for compatibility)
+// ============================================================
+// UPDATE STUDENT BALANCE
+// ============================================================
+
+async function updateStudentBalance(studentId, amount) {
+    try {
+        if (!sbClient) return;
+        if (!studentId) {
+            console.warn('⚠️ No student ID provided for balance update');
+            return;
+        }
+        
+        // Get current account
+        const { data: account, error: fetchError } = await sbClient
+            .from('finance_student_accounts')
+            .select('*')
+            .eq('student_id', studentId)
+            .maybeSingle();
+        
+        if (fetchError && fetchError.code !== 'PGRST116') {
+            console.error('❌ Error fetching account:', fetchError);
+            return;
+        }
+        
+        if (account) {
+            // Update existing account
+            const newTotalPaid = (account.total_paid || 0) + amount;
+            const newBalance = Math.max((account.total_due || 0) - newTotalPaid, 0);
+            
+            const { error: updateError } = await sbClient
+                .from('finance_student_accounts')
+                .update({
+                    total_paid: newTotalPaid,
+                    balance: newBalance,
+                    outstanding: newBalance,
+                    payment_status: newBalance === 0 ? 'paid' : 'outstanding',
+                    last_payment_date: new Date().toISOString().split('T')[0],
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', account.id);
+            
+            if (updateError) {
+                console.error('❌ Error updating account:', updateError);
+            } else {
+                console.log('✅ Account balance updated for:', studentId);
+                console.log(`   New Balance: ${formatCurrency(newBalance)}`);
+            }
+        } else {
+            // Create new account
+            const { error: insertError } = await sbClient
+                .from('finance_student_accounts')
+                .insert({
+                    student_id: studentId,
+                    total_paid: amount,
+                    balance: 0,
+                    outstanding: 0,
+                    payment_status: 'paid',
+                    last_payment_date: new Date().toISOString().split('T')[0],
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
+            
+            if (insertError) {
+                console.error('❌ Error creating account:', insertError);
+            } else {
+                console.log('✅ New account created for:', studentId);
+            }
+        }
+        
+    } catch (error) {
+        console.error('❌ Error updating student balance:', error);
+    }
+}
+
+// ============================================================
+// NOTIFY STUDENT OF PAYMENT
+// ============================================================
+
+function notifyStudentPayment(paymentData) {
+    try {
+        // Dispatch event for student dashboard
+        const studentEvent = new CustomEvent('studentPaymentUpdate', {
+            detail: {
+                studentId: paymentData.student_id,
+                amount: paymentData.amount,
+                reference: paymentData.reference_number,
+                receipt: paymentData.receipt_number,
+                timestamp: new Date().toISOString()
+            }
+        });
+        window.dispatchEvent(studentEvent);
+        console.log('📤 Payment notification sent to student');
+    } catch (error) {
+        console.warn('⚠️ Could not notify student:', error);
+    }
+}
+// ============================================================
+// RECORD PAYMENT - UPDATED FOR ACTUAL HTML STRUCTURE
+// ============================================================
+
 function recordPayment() {
-    const studentId = document.getElementById('paymentStudent')?.value;
-    const amount = parseFloat(document.getElementById('paymentAmount')?.value);
-    const method = document.getElementById('paymentMethod')?.value;
-    const reference = document.getElementById('paymentReference')?.value || null;
-    const date = document.getElementById('paymentDate')?.value;
-    const period = document.getElementById('paymentPeriod')?.value;
-    const notes = document.getElementById('paymentNotes')?.value || null;
+    // Get form values - using the correct element IDs from your modal
+    const studentId = document.getElementById('modalPaymentStudent')?.value;
+    const amount = parseFloat(document.getElementById('modalPaymentAmount')?.value);
+    const method = document.getElementById('modalPaymentMethod')?.value;
+    const reference = document.getElementById('modalPaymentReference')?.value || null;
+    const date = document.getElementById('modalPaymentDate')?.value;
+    const period = document.getElementById('modalPaymentPeriod')?.value || 'Term 1';
+    const notes = document.getElementById('modalPaymentNotes')?.value || null;
     
-    if (!studentId || !amount || !date) {
-        showToast('Please fill in all required fields.', 'warning');
+    // Validate inputs
+    if (!studentId) {
+        showToast('Please select a student', 'warning');
         return;
     }
     
-    if (amount <= 0) {
-        showToast('Please enter a valid amount.', 'warning');
+    if (!amount || amount <= 0) {
+        showToast('Please enter a valid amount', 'warning');
         return;
     }
     
+    if (!date) {
+        showToast('Please select a payment date', 'warning');
+        return;
+    }
+    
+    // Find the student in allAccounts
     const student = allAccounts.find(a => a.student_id === studentId || a.user_id === studentId);
     if (!student) {
-        showToast('Student not found.', 'error');
+        showToast('Student not found. Please refresh and try again.', 'error');
         return;
     }
     
-    selectedStudentForPayment = student;
-    document.getElementById('modalPaymentAmount').value = amount;
-    document.getElementById('modalPaymentMethod').value = method || 'Cash';
-    document.getElementById('modalPaymentDate').value = date;
-    document.getElementById('modalPaymentNotes').value = notes || '';
+    // Set selected student for the modal
+    selectedStudentForPayment = {
+        ...student,
+        student_id: student.user_id || student.student_id,
+        full_name: student.full_name || student.student_name,
+        email: student.email || null,
+        program: student.program || 'KRCHN'
+    };
+    
+    // Update the student info display
+    const studentInfo = document.getElementById('paymentStudentInfo');
+    if (studentInfo) {
+        studentInfo.style.display = 'block';
+        document.getElementById('modalStudentName').textContent = selectedStudentForPayment.full_name || 'N/A';
+        document.getElementById('modalStudentId').textContent = selectedStudentForPayment.display_id || selectedStudentForPayment.student_id || 'N/A';
+        document.getElementById('modalStudentProgram').textContent = selectedStudentForPayment.program || 'N/A';
+        document.getElementById('modalBalance').textContent = formatCurrency(selectedStudentForPayment.balance || 0);
+    }
+    
+    // Show the modal
+    const modal = document.getElementById('paymentModal');
+    if (modal) {
+        modal.classList.add('active');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    // Call recordPaymentFromModal to process the payment
     recordPaymentFromModal();
 }
 // ============================================================
