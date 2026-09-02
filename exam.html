@@ -15,459 +15,478 @@
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     
-    <style>
-        /* ============================================================
-           RESET & BASE
-           ============================================================ */
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            background: #f0f4f8;
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            padding: 20px;
-        }
-        /* ============================================================
-   FULL SCREEN EXAM - ADD THESE RULES
-   ============================================================ */
+   <style>
+    /* ============================================================
+       RESET & BASE
+       ============================================================ */
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+    }
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        background: #f0f4f8;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
 
-/* When exam is active - remove body padding and centering */
-body.exam-active {
-    padding: 0 !important;
-    margin: 0 !important;
-    background: #f1f5f9;
-    display: block !important;
-    align-items: unset !important;
-    justify-content: unset !important;
-    min-height: 100vh;
-}
+    /* ============================================================
+       FULL SCREEN EXAM - FIXED
+       ============================================================ */
 
-/* Exam interface - FULL SCREEN */
-.exam-interface {
-    display: none;
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100vh;
-    height: 100dvh; /* For mobile browsers */
-    padding: 12px 16px;
-    background: #f1f5f9;
-    overflow-y: auto;
-    z-index: 1000;
-}
-.exam-interface.active {
-    display: block;
-}
+    /* When exam is active - remove body padding and centering */
+    body.exam-active {
+        padding: 0 !important;
+        margin: 0 !important;
+        background: #f1f5f9;
+        display: block !important;
+        align-items: unset !important;
+        justify-content: unset !important;
+        min-height: 100vh;
+        overflow: hidden !important;
+    }
 
-/* 3-Column Grid - takes full height */
-.exam-grid {
-    display: grid;
-    grid-template-columns: 280px 1fr 260px;
-    gap: 12px;
-    max-width: 1440px;
-    margin: 0 auto;
-    height: calc(100vh - 24px);
-    height: calc(100dvh - 24px);
-    min-height: 500px;
-}
+    /* Exam interface - FULL SCREEN (SINGLE DEFINITION) */
+    .exam-interface {
+        display: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100vh;
+        height: 100dvh;
+        padding: 12px 16px;
+        background: #f1f5f9;
+        overflow: hidden !important;
+        z-index: 1000;
+    }
+    .exam-interface.active {
+        display: block;
+        animation: fadeIn 0.5s ease;
+    }
 
-/* Left panel scrollable */
-.exam-grid > div:first-child {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow-y: auto;
-    max-height: 100%;
-}
+    /* 3-Column Grid - takes full height (SINGLE DEFINITION) */
+    .exam-grid {
+        display: grid;
+        grid-template-columns: 280px 1fr 260px;
+        gap: 12px;
+        max-width: 1440px;
+        margin: 0 auto;
+        height: calc(100vh - 24px);
+        height: calc(100dvh - 24px);
+        min-height: 500px;
+        overflow: hidden;
+    }
 
-/* Middle panel - takes remaining space */
-.exam-grid > div:nth-child(2) {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow: hidden;
-}
+    /* Left panel scrollable */
+    .exam-grid > div:first-child {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow-y: auto;
+        max-height: 100%;
+    }
 
-/* Question area - flexible */
-.exam-grid > div:nth-child(2) > div:nth-child(4) {
-    flex: 1;
-    overflow-y: auto;
-    min-height: 150px;
-    max-height: none;
-}
+    /* Middle panel - takes remaining space */
+    .exam-grid > div:nth-child(2) {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow: hidden;
+        min-height: 0;
+    }
 
-/* Right panel scrollable */
-.exam-grid > div:last-child {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    overflow-y: auto;
-    max-height: 100%;
-}
+    /* Question area - FIXED SCROLLABLE */
+    .exam-grid > div:nth-child(2) > div:nth-child(4) {
+        flex: 1;
+        overflow-y: auto;
+        min-height: 150px;
+        max-height: none;
+        padding: 0 !important;
+    }
 
-/* Status grid - flexible height */
-.exam-grid > div:last-child > div:nth-child(4) {
-    flex: 1;
-    max-height: none;
-    min-height: 100px;
-}
-        /* ============================================================
-           LOBBY - ULTRA MODERN (Marks Entry Style)
-           ============================================================ */
-        .lobby-container {
-            display: block !important;
-            max-width: 580px;
-            width: 100%;
-            margin: 0 auto;
-            background: white;
-            border-radius: 24px;
-            padding: 32px 30px 30px;
-            box-shadow: 0 20px 60px rgba(10, 61, 98, 0.08);
-            border: 1px solid rgba(226, 232, 240, 0.5);
-        }
-        .lobby-container.hidden {
-            display: none !important;
-        }
-        
-        /* ============================================================
-           EXAM INTERFACE - MODERN 3-COLUMN
-           ============================================================ */
-        .exam-interface {
-            display: none;
-            max-width: 1440px;
-            margin: 0 auto;
-            padding: 16px 20px 30px;
-            min-height: 100vh;
-            width: 100%;
-        }
-        .exam-interface.active {
-            display: block;
-            animation: fadeIn 0.5s ease;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        /* 3-Column Grid */
+    /* ============================================================
+       EXAM CONTAINER - SCROLLABLE QUESTIONS
+       ============================================================ */
+    #exam-container {
+        height: 100%;
+        max-height: 100% !important;
+        overflow-y: auto !important;
+        padding: 10px 15px 20px 15px !important;
+        font-size: 0.95rem;
+        line-height: 1.7;
+        color: #1e293b;
+    }
+
+    /* Custom scrollbar for question container */
+    #exam-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    #exam-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+    #exam-container::-webkit-scrollbar-thumb {
+        background: #0A3D62;
+        border-radius: 10px;
+    }
+    #exam-container::-webkit-scrollbar-thumb:hover {
+        background: #1a5a7a;
+    }
+
+    /* Firefox scrollbar */
+    #exam-container {
+        scrollbar-width: thin;
+        scrollbar-color: #0A3D62 #f1f1f1;
+    }
+
+    /* Right panel scrollable */
+    .exam-grid > div:last-child {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow-y: auto;
+        max-height: 100%;
+    }
+
+    /* Status grid - flexible height */
+    .exam-grid > div:last-child > div:nth-child(4) {
+        flex: 1;
+        max-height: none;
+        min-height: 100px;
+        overflow-y: auto;
+    }
+
+    /* ============================================================
+       LOBBY - ULTRA MODERN
+       ============================================================ */
+    .lobby-container {
+        display: block !important;
+        max-width: 580px;
+        width: 100%;
+        margin: 0 auto;
+        background: white;
+        border-radius: 24px;
+        padding: 32px 30px 30px;
+        box-shadow: 0 20px 60px rgba(10, 61, 98, 0.08);
+        border: 1px solid rgba(226, 232, 240, 0.5);
+    }
+    .lobby-container.hidden {
+        display: none !important;
+    }
+
+    /* ============================================================
+       ANIMATIONS
+       ============================================================ */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(20px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes fadeSlideUp {
+        from { opacity: 0; transform: translateY(12px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    @keyframes pulse-dot {
+        0%, 100% { opacity: 1; transform: scale(1); }
+        50% { opacity: 0.4; transform: scale(0.8); }
+    }
+    @keyframes breathe {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.06); }
+    }
+    @keyframes pulse-timer {
+        from { opacity: 1; }
+        to { opacity: 0.4; }
+    }
+
+    .step-content { animation: fadeSlideUp 0.5s ease; }
+    .status-dot.good { background: #10b981; animation: pulse-dot 1.5s infinite; }
+    .status-dot.warning { background: #f59e0b; animation: pulse-dot 1s infinite; }
+    .status-dot.danger { background: #ef4444; animation: pulse-dot 0.8s infinite; }
+
+    /* ============================================================
+       TOAST
+       ============================================================ */
+    .toast {
+        position: fixed;
+        bottom: 30px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #0A3D62;
+        color: white;
+        padding: 12px 24px;
+        border-radius: 14px;
+        box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+        z-index: 999999;
+        font-family: 'Inter', sans-serif;
+        font-size: 0.85rem;
+        font-weight: 500;
+        max-width: 90%;
+        text-align: center;
+        animation: slideUpToast 0.4s ease;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        border: 1px solid rgba(255,255,255,0.05);
+    }
+    @keyframes slideUpToast {
+        from { opacity: 0; transform: translateX(-50%) translateY(20px); }
+        to { opacity: 1; transform: translateX(-50%) translateY(0); }
+    }
+    .toast-success { background: #10b981; }
+    .toast-error { background: #ef4444; }
+    .toast-warning { background: #f59e0b; }
+    .toast-info { background: #0A3D62; }
+
+    /* ============================================================
+       OVERLAYS
+       ============================================================ */
+    #app-block-overlay {
+        display: none !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.8);
+        backdrop-filter: blur(12px);
+        z-index: 99999;
+        align-items: center;
+        justify-content: center;
+        flex-direction: column;
+        color: white;
+        padding: 20px;
+        text-align: center;
+    }
+    #app-block-overlay.active {
+        display: flex !important;
+    }
+    #app-block-overlay .icon { font-size: 4rem; margin-bottom: 16px; }
+    #app-block-overlay h2 { font-size: 1.5rem; font-weight: 700; }
+    #app-block-overlay p { color: #94a3b8; margin-bottom: 12px; max-width: 400px; }
+    #app-block-overlay .blocked-items {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+        justify-content: center;
+        margin-bottom: 16px;
+    }
+    #app-block-overlay .blocked-items span {
+        background: rgba(255,255,255,0.06);
+        padding: 6px 16px;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        border: 1px solid rgba(255,255,255,0.04);
+    }
+    #app-block-overlay .return-btn {
+        background: white;
+        color: #0A3D62;
+        border: none;
+        padding: 12px 32px;
+        border-radius: 100px;
+        font-weight: 600;
+        cursor: pointer;
+        margin-top: 12px;
+        transition: all 0.3s;
+        font-size: 0.9rem;
+    }
+    #app-block-overlay .return-btn:hover {
+        transform: scale(1.03);
+        box-shadow: 0 4px 20px rgba(255,255,255,0.1);
+    }
+    .overlay-hidden { display: none !important; }
+
+    /* ============================================================
+       STATUS GRID ITEMS
+       ============================================================ */
+    #question-status-table .status-item {
+        padding: 4px 2px;
+        text-align: center;
+        border-radius: 4px;
+        font-size: 0.65rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        background: #e2e8f0;
+        color: #64748b;
+        border: 2px solid transparent;
+    }
+    #question-status-table .status-item:hover {
+        transform: scale(1.05);
+    }
+    #question-status-table .status-item.current {
+        border-color: #3b82f6;
+    }
+    #question-status-table .status-item.answered {
+        background: #10b981;
+        color: white;
+    }
+    #question-status-table .status-item.flagged {
+        background: #f59e0b;
+        color: white;
+    }
+    #question-status-table .status-item.answered.flagged {
+        background: linear-gradient(135deg, #10b981, #f59e0b);
+    }
+    #question-status-table .status-item.face-lost {
+        background: #ef4444;
+        color: white;
+    }
+
+    /* ============================================================
+       REVIEW CONTAINER
+       ============================================================ */
+    #review-container .review-item {
+        padding: 6px 10px;
+        border-radius: 6px;
+        margin-bottom: 4px;
+        background: #f8fafc;
+        border-left: 3px solid #e2e8f0;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.7rem;
+    }
+    #review-container .review-item.unanswered {
+        background: #fef2f2;
+        border-left-color: #dc2626;
+    }
+    #review-container .review-item.flagged-item {
+        border-left-color: #f59e0b;
+    }
+
+    /* ============================================================
+       RESPONSIVE
+       ============================================================ */
+    @media (max-width: 1024px) {
         .exam-grid {
-            display: grid;
-            grid-template-columns: 280px 1fr 260px;
-            gap: 16px;
-            max-width: 1440px;
-            margin: 0 auto;
+            grid-template-columns: 240px 1fr 220px !important;
+            gap: 12px !important;
         }
-        
-        /* ============================================================
-           ANIMATIONS
-           ============================================================ */
-        @keyframes fadeSlideUp {
-            from { opacity: 0; transform: translateY(12px); }
-            to { opacity: 1; transform: translateY(0); }
+    }
+
+    @media (max-width: 768px) {
+        .exam-grid {
+            grid-template-columns: 1fr !important;
+            gap: 12px !important;
         }
-        @keyframes pulse-dot {
-            0%, 100% { opacity: 1; transform: scale(1); }
-            50% { opacity: 0.4; transform: scale(0.8); }
+        .exam-grid > div:first-child {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 10px !important;
         }
-        @keyframes breathe {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.06); }
+        .exam-grid > div:first-child > div:nth-child(3) {
+            grid-column: 1 / -1 !important;
         }
-        @keyframes pulse-timer {
-            from { opacity: 1; }
-            to { opacity: 0.4; }
+        .exam-grid > div:first-child > div:first-child {
+            grid-column: 1 / -1 !important;
         }
-        .step-content { animation: fadeSlideUp 0.5s ease; }
-        .status-dot.good { background: #10b981; animation: pulse-dot 1.5s infinite; }
-        .status-dot.warning { background: #f59e0b; animation: pulse-dot 1s infinite; }
-        .status-dot.danger { background: #ef4444; animation: pulse-dot 0.8s infinite; }
-        
-        /* ============================================================
-           TOAST
-           ============================================================ */
-        .toast {
-            position: fixed;
-            bottom: 30px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #0A3D62;
-            color: white;
-            padding: 12px 24px;
-            border-radius: 14px;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.15);
-            z-index: 999999;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.85rem;
-            font-weight: 500;
-            max-width: 90%;
-            text-align: center;
-            animation: slideUpToast 0.4s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            border: 1px solid rgba(255,255,255,0.05);
+        .exam-grid > div:last-child {
+            display: grid !important;
+            grid-template-columns: 1fr 1fr !important;
+            gap: 10px !important;
         }
-        @keyframes slideUpToast {
-            from { opacity: 0; transform: translateX(-50%) translateY(20px); }
-            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        .exam-grid > div:last-child > div:first-child {
+            grid-column: 1 / -1 !important;
         }
-        .toast-success { background: #10b981; }
-        .toast-error { background: #ef4444; }
-        .toast-warning { background: #f59e0b; }
-        .toast-info { background: #0A3D62; }
-        
-        /* ============================================================
-           OVERLAYS
-           ============================================================ */
-        #app-block-overlay {
-            display: none !important;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: rgba(0,0,0,0.8);
-            backdrop-filter: blur(12px);
-            z-index: 99999;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            color: white;
-            padding: 20px;
-            text-align: center;
+        .exam-grid > div:last-child > div:nth-child(5) {
+            grid-column: 1 / -1 !important;
         }
-        #app-block-overlay.active {
-            display: flex !important;
+        .exam-grid > div:last-child > div:nth-child(6) {
+            grid-column: 1 / -1 !important;
         }
-        #app-block-overlay .icon { font-size: 4rem; margin-bottom: 16px; }
-        #app-block-overlay h2 { font-size: 1.5rem; font-weight: 700; }
-        #app-block-overlay p { color: #94a3b8; margin-bottom: 12px; max-width: 400px; }
-        #app-block-overlay .blocked-items {
-            display: flex;
-            gap: 10px;
-            flex-wrap: wrap;
-            justify-content: center;
-            margin-bottom: 16px;
+        .exam-grid > div:last-child > div:last-child {
+            grid-column: 1 / -1 !important;
         }
-        #app-block-overlay .blocked-items span {
-            background: rgba(255,255,255,0.06);
-            padding: 6px 16px;
-            border-radius: 100px;
-            font-size: 0.75rem;
-            border: 1px solid rgba(255,255,255,0.04);
+        .exam-grid > div:nth-child(2) {
+            grid-column: 1 / -1 !important;
         }
-        #app-block-overlay .return-btn {
-            background: white;
-            color: #0A3D62;
-            border: none;
-            padding: 12px 32px;
-            border-radius: 100px;
-            font-weight: 600;
-            cursor: pointer;
-            margin-top: 12px;
-            transition: all 0.3s;
-            font-size: 0.9rem;
+        .exam-grid > div:first-child > div:nth-child(2) > div:nth-child(2) {
+            font-size: 1.5rem !important;
         }
-        #app-block-overlay .return-btn:hover {
-            transform: scale(1.03);
-            box-shadow: 0 4px 20px rgba(255,255,255,0.1);
+        .exam-grid > div:nth-child(2) > div:nth-child(5) {
+            flex-direction: column !important;
+            align-items: stretch !important;
+            gap: 8px !important;
         }
-        .overlay-hidden { display: none !important; }
-        
-        /* ============================================================
-           STATUS GRID ITEMS
-           ============================================================ */
-        #question-status-table .status-item {
-            padding: 4px 2px;
-            text-align: center;
-            border-radius: 4px;
-            font-size: 0.65rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.2s;
-            background: #e2e8f0;
-            color: #64748b;
-            border: 2px solid transparent;
+        .exam-grid > div:nth-child(2) > div:nth-child(5) > div:first-child {
+            justify-content: center !important;
         }
-        #question-status-table .status-item:hover {
-            transform: scale(1.05);
+        .exam-grid > div:nth-child(2) > div:nth-child(5) > div:last-child {
+            width: 100% !important;
         }
-        #question-status-table .status-item.current {
-            border-color: #3b82f6;
+        .exam-grid > div:nth-child(2) > div:nth-child(5) > div:last-child button {
+            width: 100% !important;
+            justify-content: center !important;
         }
-        #question-status-table .status-item.answered {
-            background: #10b981;
-            color: white;
+        .exam-grid > div:nth-child(2) > div:nth-child(4) {
+            min-height: 200px !important;
         }
-        #question-status-table .status-item.flagged {
-            background: #f59e0b;
-            color: white;
+        .exam-grid > div:last-child > div:nth-child(4) {
+            max-height: 100px !important;
         }
-        #question-status-table .status-item.answered.flagged {
-            background: linear-gradient(135deg, #10b981, #f59e0b);
+        .exam-grid > div:last-child > div:nth-child(2) {
+            gap: 4px !important;
+            font-size: 0.55rem !important;
         }
-        #question-status-table .status-item.face-lost {
-            background: #ef4444;
-            color: white;
+        .exam-grid > div:last-child > div:nth-child(5) {
+            grid-template-columns: 1fr 1fr !important;
+            gap: 2px 8px !important;
+            padding: 10px 12px !important;
         }
-        
-        /* ============================================================
-           REVIEW CONTAINER
-           ============================================================ */
-        #review-container .review-item {
-            padding: 6px 10px;
-            border-radius: 6px;
-            margin-bottom: 4px;
-            background: #f8fafc;
-            border-left: 3px solid #e2e8f0;
-            cursor: pointer;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            font-size: 0.7rem;
+    }
+
+    @media (max-width: 480px) {
+        .exam-grid > div:first-child {
+            grid-template-columns: 1fr !important;
         }
-        #review-container .review-item.unanswered {
-            background: #fef2f2;
-            border-left-color: #dc2626;
+        .exam-grid > div:last-child {
+            grid-template-columns: 1fr !important;
         }
-        #review-container .review-item.flagged-item {
-            border-left-color: #f59e0b;
+        .exam-grid > div:nth-child(2) > div:first-child h2 {
+            font-size: 0.9rem !important;
         }
-        
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
-        @media (max-width: 1024px) {
-            .exam-grid {
-                grid-template-columns: 240px 1fr 220px !important;
-                gap: 12px !important;
-            }
+        .exam-grid > div:nth-child(2) > div:nth-child(4) {
+            padding: 16px !important;
+            font-size: 0.85rem !important;
         }
-        
-        @media (max-width: 768px) {
-            .exam-grid {
-                grid-template-columns: 1fr !important;
-                gap: 12px !important;
-            }
-            .exam-grid > div:first-child {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                gap: 10px !important;
-            }
-            .exam-grid > div:first-child > div:nth-child(3) {
-                grid-column: 1 / -1 !important;
-            }
-            .exam-grid > div:first-child > div:first-child {
-                grid-column: 1 / -1 !important;
-            }
-            .exam-grid > div:last-child {
-                display: grid !important;
-                grid-template-columns: 1fr 1fr !important;
-                gap: 10px !important;
-            }
-            .exam-grid > div:last-child > div:first-child {
-                grid-column: 1 / -1 !important;
-            }
-            .exam-grid > div:last-child > div:nth-child(5) {
-                grid-column: 1 / -1 !important;
-            }
-            .exam-grid > div:last-child > div:nth-child(6) {
-                grid-column: 1 / -1 !important;
-            }
-            .exam-grid > div:last-child > div:last-child {
-                grid-column: 1 / -1 !important;
-            }
-            .exam-grid > div:nth-child(2) {
-                grid-column: 1 / -1 !important;
-            }
-            .exam-grid > div:first-child > div:nth-child(2) > div:nth-child(2) {
-                font-size: 1.5rem !important;
-            }
-            .exam-grid > div:nth-child(2) > div:nth-child(5) {
-                flex-direction: column !important;
-                align-items: stretch !important;
-                gap: 8px !important;
-            }
-            .exam-grid > div:nth-child(2) > div:nth-child(5) > div:first-child {
-                justify-content: center !important;
-            }
-            .exam-grid > div:nth-child(2) > div:nth-child(5) > div:last-child {
-                width: 100% !important;
-            }
-            .exam-grid > div:nth-child(2) > div:nth-child(5) > div:last-child button {
-                width: 100% !important;
-                justify-content: center !important;
-            }
-            .exam-grid > div:nth-child(2) > div:nth-child(4) {
-                min-height: 200px !important;
-            }
-            .exam-grid > div:last-child > div:nth-child(4) {
-                max-height: 100px !important;
-            }
-            .exam-grid > div:last-child > div:nth-child(2) {
-                gap: 4px !important;
-                font-size: 0.55rem !important;
-            }
-            .exam-grid > div:last-child > div:nth-child(5) {
-                grid-template-columns: 1fr 1fr !important;
-                gap: 2px 8px !important;
-                padding: 10px 12px !important;
-            }
+        .exam-grid > div:first-child > div:nth-child(2) > div:nth-child(2) {
+            font-size: 1.2rem !important;
         }
-        
-        @media (max-width: 480px) {
-            .exam-grid > div:first-child {
-                grid-template-columns: 1fr !important;
-            }
-            .exam-grid > div:last-child {
-                grid-template-columns: 1fr !important;
-            }
-            .exam-grid > div:nth-child(2) > div:first-child h2 {
-                font-size: 0.9rem !important;
-            }
-            .exam-grid > div:nth-child(2) > div:nth-child(4) {
-                padding: 16px !important;
-                font-size: 0.85rem !important;
-            }
-            .exam-grid > div:first-child > div:nth-child(2) > div:nth-child(2) {
-                font-size: 1.2rem !important;
-            }
-            .exam-grid > div:nth-child(2) > div:nth-child(5) > div:first-child {
-                flex-direction: column !important;
-                gap: 6px !important;
-            }
-            .exam-grid > div:nth-child(2) > div:nth-child(5) > div:first-child button {
-                width: 100% !important;
-                justify-content: center !important;
-            }
-            .exam-grid > div:last-child > div:nth-child(4) {
-                grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)) !important;
-                gap: 3px !important;
-                padding: 10px !important;
-            }
-            .exam-grid > div:last-child > div:nth-child(4) .status-item {
-                font-size: 0.55rem !important;
-                padding: 3px 2px !important;
-            }
-            .exam-interface {
-                padding: 10px !important;
-            }
+        .exam-grid > div:nth-child(2) > div:nth-child(5) > div:first-child {
+            flex-direction: column !important;
+            gap: 6px !important;
         }
-        
-        @media (max-width: 480px) {
-            .lobby-container { padding: 20px 16px; }
-            .exam-info-card .exam-meta { gap: 6px; }
-            .student-info { grid-template-columns: 1fr 1fr; }
-            .terms-box ul { grid-template-columns: 1fr; }
+        .exam-grid > div:nth-child(2) > div:nth-child(5) > div:first-child button {
+            width: 100% !important;
+            justify-content: center !important;
         }
-    </style>
+        .exam-grid > div:last-child > div:nth-child(4) {
+            grid-template-columns: repeat(auto-fill, minmax(28px, 1fr)) !important;
+            gap: 3px !important;
+            padding: 10px !important;
+        }
+        .exam-grid > div:last-child > div:nth-child(4) .status-item {
+            font-size: 0.55rem !important;
+            padding: 3px 2px !important;
+        }
+        .exam-interface {
+            padding: 10px !important;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .lobby-container { padding: 20px 16px; }
+        .exam-info-card .exam-meta { gap: 6px; }
+        .student-info { grid-template-columns: 1fr 1fr; }
+        .terms-box ul { grid-template-columns: 1fr; }
+    }
+</style>
 </head>
 <body>
 
