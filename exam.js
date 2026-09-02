@@ -3440,14 +3440,32 @@ window.closeAttendanceModal = closeAttendanceModal;
 window.startExam = startExam;
 window.testCamera = testCamera;
 window.goToStep = goToStep;
-
-// Helpers
-window.retryCameraDuringExam = function() {
-    if (AppState.secureProctor) {
-        AppState.secureProctor.retryCamera();
-    } else {
+// ============================================================
+// RETRY CAMERA DURING EXAM - FIXED
+// ============================================================
+window.retryCameraDuringExam = async function() {
+    console.log('📷 Retry camera called');
+    
+    if (!AppState.secureProctor) {
         showToast('❌ Face detection not initialized', 'error');
+        return false;
     }
+    
+    if (AppState.isSubmitting) {
+        showToast('⏳ Exam is submitting, please wait...', 'warning');
+        return false;
+    }
+    
+    // Call the secure proctor's retry method
+    const result = await AppState.secureProctor.retryCamera();
+    
+    if (result) {
+        showToast('✅ Camera restarted successfully', 'success');
+    } else {
+        showToast('❌ Camera restart failed. Please check your camera.', 'error');
+    }
+    
+    return result;
 };
 window.showKeyboardShortcuts = showKeyboardShortcuts;
 window.showToast = showToast;
