@@ -24,7 +24,76 @@ let allInvoices = [];
 let selectedStudentForPayment = null;
 let monthlyChart = null;
 let statusChart = null;
+// ============================================================
+// STAFF DEPARTMENTS
+// ============================================================
 
+const STAFF_DEPARTMENTS = {
+    // Academic Departments
+    ACADEMIC: 'Academic',
+    TVET: 'TVET',
+    NURSING: 'Nursing',
+    HEALTH_SCIENCES: 'Health Sciences',
+    CLINICAL_MEDICINE: 'Clinical Medicine',
+    PHARMACY: 'Pharmacy',
+    MEDICAL_LABORATORY: 'Medical Laboratory',
+    
+    // Administrative Departments
+    ADMINISTRATION: 'Administration',
+    FINANCE: 'Finance',
+    ICT: 'ICT',
+    HUMAN_RESOURCES: 'Human Resources',
+    STUDENT_AFFAIRS: 'Student Affairs',
+    LIBRARY: 'Library',
+    
+    // Support Departments
+    HEALTH_SERVICES: 'Health Services',
+    MAINTENANCE: 'Maintenance',
+    SECURITY: 'Security',
+    TRANSPORT: 'Transport',
+    SPORTS_RECREATION: 'Sports & Recreation',
+    
+    // Research & Quality
+    RESEARCH_DEVELOPMENT: 'Research & Development',
+    QUALITY_ASSURANCE: 'Quality Assurance',
+    
+    // Marketing
+    MARKETING_COMMUNICATIONS: 'Marketing & Communications',
+    
+    // Other
+    OTHER: 'Other'
+};
+
+// Department icons mapping
+const DEPARTMENT_ICONS = {
+    'Academic': '📚',
+    'TVET': '🔧',
+    'Nursing': '🩺',
+    'Health Sciences': '🏥',
+    'Clinical Medicine': '💊',
+    'Pharmacy': '💉',
+    'Medical Laboratory': '🔬',
+    'Administration': '📋',
+    'Finance': '💰',
+    'ICT': '💻',
+    'Human Resources': '👔',
+    'Student Affairs': '🎓',
+    'Library': '📖',
+    'Health Services': '🏥',
+    'Maintenance': '🔧',
+    'Security': '🛡️',
+    'Transport': '🚌',
+    'Sports & Recreation': '⚽',
+    'Research & Development': '🔬',
+    'Quality Assurance': '✅',
+    'Marketing & Communications': '📢',
+    'Other': '📌'
+};
+
+// Get department icon
+function getDepartmentIcon(department) {
+    return DEPARTMENT_ICONS[department] || '📌';
+}
 // ============================================================
 // INJECT CSS
 // ============================================================
