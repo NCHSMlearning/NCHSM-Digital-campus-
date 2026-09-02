@@ -186,6 +186,13 @@ body::after {
 .container {
     display: flex;
     min-height: 100vh;
+    max-width: 1200px;
+    margin: 0 auto;
+    background: rgba(255, 255, 255, 0.96);
+    box-shadow: 0 0 60px rgba(0,0,0,0.1);
+    border-radius: 24px;
+    overflow: hidden;
+    width: 100%;
 }
 
 /* ===== LEFT PANEL - Glass effect ===== */
@@ -196,10 +203,10 @@ body::after {
     position: relative;
     overflow: hidden;
     color: var(--nchsm-white);
-    background: rgba(5, 46, 31, 0.6);
-    backdrop-filter: blur(10px);
-    border-right: 1px solid rgba(255, 255, 255, 0.1);
+    background: linear-gradient(135deg, #0A3D62 0%, #1a5a7a 100%);
     transition: all 0.3s ease;
+    min-height: 600px;
+    flex-direction: column;
 }
 
 /* Animated shimmer effect */
@@ -242,6 +249,7 @@ body::after {
     flex-direction: column;
     max-width: 600px;
     margin: 0 auto;
+    width: 100%;
 }
 
 /* ===== RIGHT PANEL - Glass effect ===== */
@@ -254,15 +262,19 @@ body::after {
     backdrop-filter: blur(20px);
     border-left: 1px solid rgba(255, 255, 255, 0.2);
     transition: background 0.3s ease;
+    padding: 40px 35px;
+    justify-content: center;
+    flex: 0 0 480px;
+    max-width: 100%;
 }
 
 /* ===== MOBILE HEADER ===== */
 .mobile-header {
+    display: none;
     background: rgba(255, 255, 255, 0.95);
     backdrop-filter: blur(10px);
     border-bottom: 2px solid var(--nchsm-gray);
     padding: 0.75rem 1rem;
-    display: flex;
     align-items: center;
     box-shadow: var(--shadow-sm);
     transition: background 0.3s ease;
@@ -316,17 +328,23 @@ body::after {
 }
 
 .left-panel .logo {
-    width: 140px;
-    height: 140px;
+    width: 100px;
+    height: 100px;
     margin: 0 auto 1.5rem;
-    padding: 0.5rem;
+    padding: 10px;
     display: flex;
     align-items: center;
     justify-content: center;
     background: rgba(255, 255, 255, 0.1);
-    border-radius: var(--radius-xl);
-    border: 2px solid rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    border: 4px solid var(--nchsm-gold);
     backdrop-filter: blur(10px);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    transition: transform 0.3s ease;
+}
+
+.left-panel .logo:hover {
+    transform: scale(1.05);
 }
 
 .left-panel .logo img {
@@ -516,6 +534,12 @@ body::after {
     justify-content: center;
 }
 
+.right-content {
+    max-width: 420px;
+    margin: 0 auto;
+    width: 100%;
+}
+
 /* ===== LOGIN CARD ===== */
 .login-card {
     background: rgba(255, 255, 255, 0.95);
@@ -571,10 +595,11 @@ body::after {
    ============================================ */
 .top-controls {
     display: flex;
-    justify-content: space-between;
+    justify-content: flex-end;
     align-items: center;
     margin-bottom: 1.5rem;
     gap: 0.75rem;
+    flex-wrap: wrap;
 }
 
 .main-site-btn {
@@ -655,8 +680,8 @@ body::after {
 }
 
 .welcome-icon {
-    width: 80px;
-    height: 80px;
+    width: 50px;
+    height: 50px;
     background: var(--gradient-nchsm-accent);
     border-radius: var(--radius-full);
     display: flex;
@@ -1947,7 +1972,7 @@ body.light-theme .theme-toggle-btn:hover {
    ============================================ */
 @media (min-width: 768px) {
     .left-panel {
-        display: flex;
+        display: flex !important;
     }
     
     .mobile-header {
@@ -1980,16 +2005,34 @@ body.light-theme .theme-toggle-btn:hover {
 }
 
 @media (max-width: 767px) {
+    .container {
+        border-radius: 0;
+        flex-direction: column;
+        min-height: auto;
+    }
+    
     .left-panel {
-        display: none;
+        display: none !important;
     }
     
     .mobile-header {
-        display: flex;
+        display: flex !important;
     }
     
     .main-content {
         padding: 1.5rem 1rem;
+    }
+    
+    .right-panel {
+        flex: 1 1 100% !important;
+        padding: 25px 20px !important;
+        min-height: auto !important;
+        background: #ffffff !important;
+        border-left: none !important;
+    }
+    
+    .right-content {
+        max-width: 100% !important;
     }
     
     .login-card {
@@ -2057,6 +2100,7 @@ body.light-theme .theme-toggle-btn:hover {
     
     .top-controls {
         flex-wrap: wrap;
+        justify-content: center !important;
     }
     
     .theme-toggle-btn {
@@ -2067,6 +2111,57 @@ body.light-theme .theme-toggle-btn:hover {
     .theme-toggle-btn i {
         width: 14px;
         height: 14px;
+    }
+    
+    .sso-grid {
+        grid-template-columns: 1fr 1fr 1fr !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .right-panel {
+        padding: 18px 14px !important;
+    }
+    
+    .sso-grid {
+        grid-template-columns: 1fr !important;
+    }
+    
+    .form-options {
+        flex-direction: column !important;
+        align-items: flex-start !important;
+    }
+    
+    .top-controls {
+        gap: 6px !important;
+    }
+    
+    .top-btn {
+        font-size: 11px !important;
+        padding: 6px 10px !important;
+    }
+    
+    .welcome-title {
+        font-size: 18px !important;
+    }
+    
+    .welcome-subtitle {
+        font-size: 13px !important;
+    }
+    
+    .login-btn {
+        font-size: 14px !important;
+        padding: 12px !important;
+    }
+    
+    .footer-section .links {
+        flex-direction: column !important;
+        gap: 6px !important;
+    }
+    
+    .keyboard-hints {
+        flex-wrap: wrap !important;
+        gap: 8px !important;
     }
 }
 
