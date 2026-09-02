@@ -991,9 +991,6 @@ async function initExam() {
     }
 }
 
-// ============================================================
-// RENDER QUESTION - Supports Multiple Choice & Text Input
-// ============================================================
 function renderQuestion(index) {
     if (AppState.questions.length === 0) return;
 
@@ -1043,7 +1040,7 @@ function renderQuestion(index) {
         });
 
         questionHtml = `
-            <div style="font-size:1.05rem; font-weight:500; color:#1e293b; line-height:1.7;">
+            <div style="font-size:1.05rem; font-weight:500; color:#1e293b; line-height:1.7; padding-bottom:10px;">
                 <strong>Q${AppState.currentIndex + 1}:</strong> ${q.question_text}
                 <span style="font-size:0.7rem; color:#94a3b8; font-weight:400; margin-left:8px;">(Multiple Choice)</span>
             </div>
@@ -1064,7 +1061,7 @@ function renderQuestion(index) {
         const wordCount = savedAnswer ? savedAnswer.trim().split(/\s+/).length : 0;
 
         questionHtml = `
-            <div style="font-size:1.05rem; font-weight:500; color:#1e293b; line-height:1.7;">
+            <div style="font-size:1.05rem; font-weight:500; color:#1e293b; line-height:1.7; padding-bottom:10px;">
                 <strong>Q${AppState.currentIndex + 1}:</strong> ${q.question_text}
                 <span style="font-size:0.7rem; color:#94a3b8; font-weight:400; margin-left:8px;">(Written Answer)</span>
             </div>
@@ -1101,10 +1098,20 @@ function renderQuestion(index) {
     }
 
     // ============================================================
-    // RENDER THE QUESTION
+    // ✅ RENDER THE QUESTION WITH SCROLLABLE CONTAINER
     // ============================================================
     if (DOM.examContainer) {
-        DOM.examContainer.innerHTML = questionHtml;
+        DOM.examContainer.innerHTML = `
+            <div style="height:100%; overflow-y:auto; padding:10px 15px 20px 15px; scroll-behavior:smooth;">
+                ${questionHtml}
+            </div>
+        `;
+        
+        // Apply scroll styles to the container itself
+        DOM.examContainer.style.maxHeight = 'calc(100vh - 280px)';
+        DOM.examContainer.style.overflow = 'hidden';
+        DOM.examContainer.style.padding = '0';
+        DOM.examContainer.style.position = 'relative';
     }
 
     // ============================================================
@@ -1231,7 +1238,6 @@ function renderQuestion(index) {
         }
     }, 1000);
 }
-
 // ============================================================
 // QUESTION NAVIGATION
 // ============================================================
