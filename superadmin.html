@@ -14097,12 +14097,14 @@
         document.body.appendChild(backdrop);
     }
 
+<script>
     console.log('✅ verifyCurrent() function loaded successfully');
-    <script>
-// ============================================================
-// SIDEBAR COLOR FUNCTIONS - Permanent Fix
-// ============================================================
+</script>
 
+<!-- ============================================================ -->
+<!-- SIDEBAR COLOR FUNCTIONS - Permanent Fix                      -->
+<!-- ============================================================ -->
+<script>
 /**
  * Change sidebar background color
  * @param {string} color - CSS gradient or color value
@@ -14112,7 +14114,6 @@ function changeSidebarColor(color) {
     const sidebar = document.querySelector('.sidebar');
     if (sidebar) {
         sidebar.style.background = color;
-        // Save preference
         try {
             localStorage.setItem('sidebarColor', color);
         } catch(e) {}
