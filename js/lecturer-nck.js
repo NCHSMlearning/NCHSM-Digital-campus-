@@ -27,7 +27,10 @@ var LecturerNCK = {
     allStudents: [],
     filteredStudents: [],
     retryCount: 0,
-    maxRetries: 3
+    maxRetries: 3,
+    email: null,
+    userId: null,
+    profile: null
 };
 
 // Block mapping for intake years
@@ -106,7 +109,19 @@ function isKRCHNProgram(programCode) {
 }
 
 // ============================================================
-// GET LECTURER INFO - COMPLETELY DYNAMIC - NO HARDCODING
+// CHECK IF TVET PROGRAM
+// ============================================================
+function isTVETProgram(programCode) {
+    if (!programCode) return false;
+    var code = String(programCode).toUpperCase().trim();
+    var tvetPrograms = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME',
+                        'CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT',
+                        'ACH', 'AAG', 'ASW', 'CCA', 'PTE'];
+    return tvetPrograms.includes(code);
+}
+
+// ============================================================
+// GET LECTURER INFO - COMPLETELY DYNAMIC
 // ============================================================
 async function lecturerNCKGetLecturerInfo() {
     console.log('🔍 [NCK] Getting lecturer info...');
@@ -119,23 +134,24 @@ async function lecturerNCKGetLecturerInfo() {
         var isKRCHN = true;
         var email = null;
         var userId = null;
+        var profile = null;
         
         // ============================================================
         // METHOD 1: Try from lecturerDB (most reliable)
         // ============================================================
         try {
             if (window.lecturerDB && typeof window.lecturerDB.getCurrentUserProfile === 'function') {
-                var profile = window.lecturerDB.getCurrentUserProfile();
+                profile = window.lecturerDB.getCurrentUserProfile();
                 if (profile) {
                     lecturerId = profile.user_id || profile.id || profile.staff_id || profile.staffId;
                     lecturerName = profile.full_name || profile.name || 'Lecturer';
                     program = profile.program || profile.department || 'KRCHN';
                     email = profile.email;
                     userId = profile.user_id;
-                    isTVET = !isKRCHNProgram(program);
+                    isTVET = isTVETProgram(program);
                     isKRCHN = isKRCHNProgram(program);
-                    console.log('✅ [NCK] Lecturer from lecturerDB:', lecturerId, 'Program:', program);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                    console.log('✅ [NCK] Lecturer from lecturerDB:', lecturerId);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId, profile);
                     return;
                 }
             }
@@ -152,11 +168,12 @@ async function lecturerNCKGetLecturerInfo() {
                 program = user.program || user.department || 'KRCHN';
                 email = user.email;
                 userId = user.id || user.user_id;
-                isTVET = !isKRCHNProgram(program);
+                profile = user;
+                isTVET = isTVETProgram(program);
                 isKRCHN = isKRCHNProgram(program);
                 if (lecturerId) {
                     console.log('✅ [NCK] Lecturer from currentUser:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId, profile);
                     return;
                 }
             }
@@ -174,11 +191,12 @@ async function lecturerNCKGetLecturerInfo() {
                 program = user.program || user.department || 'KRCHN';
                 email = user.email;
                 userId = user.id || user.user_id;
-                isTVET = !isKRCHNProgram(program);
+                profile = user;
+                isTVET = isTVETProgram(program);
                 isKRCHN = isKRCHNProgram(program);
                 if (lecturerId) {
                     console.log('✅ [NCK] Lecturer from sessionStorage:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId, profile);
                     return;
                 }
             }
@@ -196,11 +214,12 @@ async function lecturerNCKGetLecturerInfo() {
                 program = data.program || data.department || 'KRCHN';
                 email = data.email;
                 userId = data.user_id || data.id;
-                isTVET = !isKRCHNProgram(program);
+                profile = data;
+                isTVET = isTVETProgram(program);
                 isKRCHN = isKRCHNProgram(program);
                 if (lecturerId) {
                     console.log('✅ [NCK] Lecturer from staffSession:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId, profile);
                     return;
                 }
             }
@@ -217,158 +236,26 @@ async function lecturerNCKGetLecturerInfo() {
                 program = dash.program || dash.department || 'KRCHN';
                 email = dash.email;
                 userId = dash.userId || dash.user_id;
-                isTVET = !isKRCHNProgram(program);
+                profile = dash;
+                isTVET = isTVETProgram(program);
                 isKRCHN = isKRCHNProgram(program);
                 if (lecturerId) {
                     console.log('✅ [NCK] Lecturer from LecturerDashboard:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId, profile);
                     return;
                 }
             }
         } catch (e) {}
         
         // ============================================================
-        // METHOD 6: Try from auth
-        // ============================================================
-        try {
-            if (window.auth && window.auth.currentUser) {
-                var user = window.auth.currentUser;
-                lecturerId = user.uid || user.id;
-                lecturerName = user.displayName || user.name || 'Lecturer';
-                email = user.email;
-                userId = user.uid || user.id;
-                program = 'KRCHN'; // Auth doesn't know program, assume KRCHN
-                isTVET = false;
-                isKRCHN = true;
-                if (lecturerId) {
-                    console.log('✅ [NCK] Lecturer from auth:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
-                    return;
-                }
-            }
-        } catch (e) {}
-        
-        // ============================================================
-        // METHOD 7: Try from URL params
-        // ============================================================
-        try {
-            var urlParams = new URLSearchParams(window.location.search);
-            var idParam = urlParams.get('lecturer_id') || urlParams.get('staff_id') || urlParams.get('id');
-            if (idParam) {
-                lecturerId = idParam;
-                lecturerName = urlParams.get('name') || 'Lecturer';
-                program = urlParams.get('program') || 'KRCHN';
-                email = urlParams.get('email') || null;
-                userId = lecturerId;
-                isTVET = !isKRCHNProgram(program);
-                isKRCHN = isKRCHNProgram(program);
-                console.log('✅ [NCK] Lecturer from URL:', lecturerId);
-                finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
-                return;
-            }
-        } catch (e) {}
-        
-        // ============================================================
-        // METHOD 8: Try from DOM elements
-        // ============================================================
-        try {
-            var nameEl = document.getElementById('welcomeHeader') || 
-                         document.querySelector('.lecturer-name') ||
-                         document.querySelector('[data-lecturer-name]') ||
-                         document.querySelector('.user-name') ||
-                         document.querySelector('.profile-name');
-            if (nameEl) {
-                lecturerName = nameEl.textContent.replace('Welcome,', '').trim() || 'Lecturer';
-            }
-            
-            var idEl = document.querySelector('[data-lecturer-id]') ||
-                       document.querySelector('[data-staff-id]') ||
-                       document.querySelector('[data-user-id]');
-            if (idEl) {
-                lecturerId = idEl.dataset.lecturerId || idEl.dataset.staffId || idEl.dataset.userId;
-            }
-            
-            if (lecturerId) {
-                console.log('✅ [NCK] Lecturer from DOM:', lecturerId);
-                finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, null, lecturerId);
-                return;
-            }
-        } catch (e) {}
-        
-        // ============================================================
-        // METHOD 9: Try from userProfile sessionStorage
-        // ============================================================
-        try {
-            var userProfile = sessionStorage.getItem('userProfile');
-            if (userProfile) {
-                var profileData = JSON.parse(userProfile);
-                lecturerId = profileData.user_id || profileData.id || profileData.staff_id;
-                lecturerName = profileData.full_name || profileData.name || 'Lecturer';
-                program = profileData.program || profileData.department || 'KRCHN';
-                email = profileData.email;
-                userId = profileData.user_id || profileData.id;
-                isTVET = !isKRCHNProgram(program);
-                isKRCHN = isKRCHNProgram(program);
-                if (lecturerId) {
-                    console.log('✅ [NCK] Lecturer from userProfile:', lecturerId);
-                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
-                    return;
-                }
-            }
-        } catch (e) {}
-        
-        // ============================================================
-        // METHOD 10: Try from lecturer-main (if available)
-        // ============================================================
-        try {
-            if (window.lecturerMain && window.lecturerMain.getCurrentLecturer) {
-                var lecturerData = window.lecturerMain.getCurrentLecturer();
-                if (lecturerData) {
-                    lecturerId = lecturerData.id || lecturerData.user_id || lecturerData.staff_id;
-                    lecturerName = lecturerData.name || lecturerData.full_name || 'Lecturer';
-                    program = lecturerData.program || lecturerData.department || 'KRCHN';
-                    email = lecturerData.email;
-                    userId = lecturerData.id || lecturerData.user_id;
-                    isTVET = !isKRCHNProgram(program);
-                    isKRCHN = isKRCHNProgram(program);
-                    if (lecturerId) {
-                        console.log('✅ [NCK] Lecturer from lecturerMain:', lecturerId);
-                        finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
-                        return;
-                    }
-                }
-            }
-        } catch (e) {}
-        
-        // ============================================================
-        // METHOD 11: Try from Supabase auth directly
+        // METHOD 6: Try from Supabase directly (most reliable fallback)
         // ============================================================
         try {
             var supabase = window.lecturerDB?.supabase || window.sb;
             if (supabase) {
                 var { data: { user }, error: userError } = await supabase.auth.getUser();
                 if (!userError && user) {
-                    // Try to get profile from staff_records
-                    var { data: staffData, error: staffError } = await supabase
-                        .from('staff_records')
-                        .select('*')
-                        .eq('email', user.email)
-                        .maybeSingle();
-                    
-                    if (!staffError && staffData) {
-                        lecturerId = staffData.id || staffData.staff_id;
-                        lecturerName = staffData.name || staffData.full_name || 'Lecturer';
-                        program = staffData.program || staffData.department || 'KRCHN';
-                        email = staffData.email || user.email;
-                        userId = staffData.user_id || staffData.id;
-                        isTVET = !isKRCHNProgram(program);
-                        isKRCHN = isKRCHNProgram(program);
-                        console.log('✅ [NCK] Lecturer from Supabase staff_records:', lecturerId);
-                        finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
-                        return;
-                    }
-                    
-                    // Try profiles table
+                    // Try to get profile from consolidated_user_profiles_table
                     var { data: profileData, error: profileError } = await supabase
                         .from('consolidated_user_profiles_table')
                         .select('*')
@@ -381,12 +268,47 @@ async function lecturerNCKGetLecturerInfo() {
                         program = profileData.program || profileData.department || 'KRCHN';
                         email = profileData.email || user.email;
                         userId = profileData.user_id || profileData.id;
-                        isTVET = !isKRCHNProgram(program);
+                        profile = profileData;
+                        isTVET = isTVETProgram(program);
                         isKRCHN = isKRCHNProgram(program);
                         console.log('✅ [NCK] Lecturer from Supabase profiles:', lecturerId);
-                        finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId);
+                        finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId, profile);
                         return;
                     }
+                    
+                    // Try staff_records
+                    var { data: staffData, error: staffError } = await supabase
+                        .from('staff_records')
+                        .select('*')
+                        .eq('email', user.email)
+                        .maybeSingle();
+                    
+                    if (!staffError && staffData) {
+                        lecturerId = staffData.id || staffData.staff_id || staffData.employee_id;
+                        lecturerName = staffData.name || staffData.full_name || 'Lecturer';
+                        program = staffData.program || staffData.department || 'KRCHN';
+                        email = staffData.email || user.email;
+                        userId = staffData.user_id || staffData.id;
+                        profile = staffData;
+                        isTVET = isTVETProgram(program);
+                        isKRCHN = isKRCHNProgram(program);
+                        console.log('✅ [NCK] Lecturer from Supabase staff_records:', lecturerId);
+                        finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId, profile);
+                        return;
+                    }
+                    
+                    // Fallback: use user from auth
+                    lecturerId = user.id;
+                    lecturerName = user.user_metadata?.full_name || user.email || 'Lecturer';
+                    program = user.user_metadata?.program || 'KRCHN';
+                    email = user.email;
+                    userId = user.id;
+                    profile = user;
+                    isTVET = false;
+                    isKRCHN = true;
+                    console.log('✅ [NCK] Lecturer from Supabase auth (fallback):', lecturerId);
+                    finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId, profile);
+                    return;
                 }
             }
         } catch (e) {}
@@ -395,7 +317,6 @@ async function lecturerNCKGetLecturerInfo() {
         // FINAL: Show error - NO HARDCODING
         // ============================================================
         console.error('❌ [NCK] Could not find lecturer ID from any source');
-        console.error('Please ensure you are logged in as a lecturer');
         
         // Try one more time with retry
         if (LecturerNCK.retryCount < LecturerNCK.maxRetries) {
@@ -408,63 +329,50 @@ async function lecturerNCKGetLecturerInfo() {
         }
         
         // Show error in UI
-        var placeholder = document.getElementById('lecturerNCKPlaceholder');
-        if (placeholder) {
-            placeholder.innerHTML = `
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
-                <h3 style="color: #1e293b; margin: 0 0 10px 0;">❌ Lecturer ID Not Found</h3>
-                <p style="color: #94a3b8; margin: 0 0 5px 0;">
-                    <i class="fas fa-info-circle"></i> Could not find your lecturer ID.
-                </p>
-                <p style="color: #94a3b8; font-size: 13px; margin: 5px 0 15px 0;">
-                    Please try refreshing the page or logging out and back in.
-                </p>
-                <button onclick="location.reload()" style="background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
-                    <i class="fas fa-sync-alt"></i> Refresh Page
-                </button>
-                <button onclick="lecturerNCKGetLecturerInfo()" style="background: #059669; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
-                    <i class="fas fa-retry"></i> Retry
-                </button>
-            `;
-            placeholder.style.display = 'block';
-        }
-        
-        // Update stats to show error
-        var statIds = ['lecturerNCKTotalStudents', 'lecturerNCKPassRate', 'lecturerNCKAvgScore', 
-                       'lecturerNCKAtRisk', 'lecturerNCKPublished', 'lecturerNCKPending'];
-        statIds.forEach(function(id) {
-            var el = document.getElementById(id);
-            if (el) el.textContent = '—';
-        });
+        showLecturerNotFound();
         
     } catch (e) {
         console.error('❌ [NCK] Error getting lecturer info:', e);
-        var placeholder = document.getElementById('lecturerNCKPlaceholder');
-        if (placeholder) {
-            placeholder.innerHTML = `
-                <i class="fas fa-exclamation-circle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
-                <h3 style="color: #1e293b; margin: 0 0 10px 0;">❌ Error Loading Lecturer</h3>
-                <p style="color: #94a3b8; margin: 0 0 5px 0;">${e.message || 'Unknown error'}</p>
-                <button onclick="location.reload()" style="margin-top: 15px; background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-sync-alt"></i> Refresh Page
-                </button>
-            `;
-            placeholder.style.display = 'block';
-        }
+        showLecturerNotFound(e.message);
+    }
+}
+
+// ============================================================
+// SHOW LECTURER NOT FOUND
+// ============================================================
+function showLecturerNotFound(errorMessage) {
+    var placeholder = document.getElementById('lecturerNCKPlaceholder');
+    if (placeholder) {
+        placeholder.innerHTML = `
+            <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
+            <h3 style="color: #1e293b; margin: 0 0 10px 0;">❌ Lecturer Not Found</h3>
+            <p style="color: #94a3b8; margin: 0 0 5px 0;">
+                <i class="fas fa-info-circle"></i> Could not find your lecturer profile.
+            </p>
+            ${errorMessage ? `<p style="color: #dc2626; font-size: 13px; margin: 5px 0 15px 0;">Error: ${errorMessage}</p>` : ''}
+            <p style="color: #94a3b8; font-size: 13px; margin: 5px 0 15px 0;">
+                Please ensure you are logged in as a KRCHN Nursing lecturer.
+            </p>
+            <button onclick="location.reload()" style="background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
+                <i class="fas fa-sync-alt"></i> Refresh Page
+            </button>
+            <button onclick="window.lecturerNCKGetLecturerInfo()" style="background: #059669; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px; margin-left: 10px;">
+                <i class="fas fa-retry"></i> Retry
+            </button>
+        `;
+        placeholder.style.display = 'block';
     }
 }
 
 // ============================================================
 // FINISH SETUP - NO HARDCODING
 // ============================================================
-function finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId) {
+function finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, userId, profile) {
     console.log('📋 [NCK] FINAL - ID:', lecturerId);
     console.log('📋 [NCK] FINAL - Name:', lecturerName);
     console.log('📋 [NCK] FINAL - Program:', program);
     console.log('📋 [NCK] FINAL - isTVET:', isTVET);
     console.log('📋 [NCK] FINAL - isKRCHN:', isKRCHN);
-    console.log('📋 [NCK] FINAL - Email:', email);
-    console.log('📋 [NCK] FINAL - UserId:', userId);
     
     // Store whatever we got - NO HARDCODING
     LecturerNCK.lecturerId = lecturerId || null;
@@ -475,6 +383,7 @@ function finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, 
     LecturerNCK.accessGranted = isKRCHN && !isTVET;
     LecturerNCK.email = email || null;
     LecturerNCK.userId = userId || lecturerId || null;
+    LecturerNCK.profile = profile || null;
     
     // Store globally
     window.nckLecturerId = LecturerNCK.lecturerId;
@@ -510,20 +419,7 @@ function finishSetup(lecturerId, lecturerName, program, isTVET, isKRCHN, email, 
         }, 500);
     } else if (!LecturerNCK.lecturerId) {
         console.warn('⚠️ [NCK] No lecturer ID - cannot load data');
-        var placeholder = document.getElementById('lecturerNCKPlaceholder');
-        if (placeholder) {
-            placeholder.innerHTML = `
-                <i class="fas fa-exclamation-triangle" style="font-size: 48px; color: #f59e0b; margin-bottom: 16px; display: block;"></i>
-                <h3 style="color: #1e293b; margin: 0 0 10px 0;">⚠️ Lecturer ID Required</h3>
-                <p style="color: #94a3b8; margin: 0 0 5px 0;">
-                    <i class="fas fa-info-circle"></i> Please log in as a lecturer to access this module.
-                </p>
-                <button onclick="location.reload()" style="margin-top: 15px; background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-sync-alt"></i> Refresh Page
-                </button>
-            `;
-            placeholder.style.display = 'block';
-        }
+        showLecturerNotFound('No lecturer ID found');
     } else if (!LecturerNCK.accessGranted) {
         showNCKAccessDenied();
     }
@@ -594,16 +490,24 @@ function lecturerNCKUpdateUI() {
         placeholder.innerHTML = `
             <i class="fas fa-check-circle" style="font-size: 48px; color: #10b981; margin-bottom: 16px; display: block;"></i>
             <h3 style="color: #1e293b; margin: 0 0 10px 0;">✅ Lecturer Ready</h3>
-            <p style="color: #94a3b8; margin: 0 0 5px 0;">
-                <i class="fas fa-user-tie"></i> Lecturer: <strong>${LecturerNCK.lecturerName}</strong>
-            </p>
-            <p style="color: #94a3b8; font-size: 13px; margin: 0 0 15px 0;">
-                <i class="fas fa-id-card"></i> ID: <strong>${LecturerNCK.lecturerId}</strong>
-                <span style="margin-left: 15px; background: #d1fae5; padding: 2px 12px; border-radius: 12px; color: #065f46; font-size: 11px;">
-                    🎓 KRCHN Nursing
-                </span>
-            </p>
-            <button onclick="lecturerNCKLoadData()" style="background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
+            <div style="background: #f0fdf4; padding: 15px; border-radius: 8px; text-align: left; max-width: 500px; margin: 0 auto; border: 1px solid #bbf7d0;">
+                <p style="margin: 5px 0; color: #1e293b; font-size: 14px;">
+                    <strong>👤 Name:</strong> ${LecturerNCK.lecturerName}
+                </p>
+                <p style="margin: 5px 0; color: #1e293b; font-size: 13px;">
+                    <strong>🆔 ID:</strong> <code style="background: #e2e8f0; padding: 2px 8px; border-radius: 4px; font-size: 12px;">${LecturerNCK.lecturerId}</code>
+                </p>
+                <p style="margin: 5px 0; color: #1e293b; font-size: 13px;">
+                    <strong>📧 Email:</strong> ${LecturerNCK.email || 'N/A'}
+                </p>
+                <p style="margin: 5px 0; color: #1e293b; font-size: 13px;">
+                    <strong>🎓 Program:</strong> ${LecturerNCK.lecturerProgram}
+                    <span style="margin-left: 10px; background: #d1fae5; padding: 2px 12px; border-radius: 12px; color: #065f46; font-size: 11px; font-weight: 600;">
+                        ✅ KRCHN Nursing
+                    </span>
+                </p>
+            </div>
+            <button onclick="window.lecturerNCKLoadData()" style="margin-top: 15px; background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600; font-size: 14px;">
                 <i class="fas fa-sync-alt"></i> Load My Students
             </button>
         `;
@@ -714,7 +618,7 @@ async function lecturerNCKLoadData() {
         console.log('📚 [NCK] Total marks for', sheet, ':', marks?.length || 0);
         
         // ============================================================
-        // STEP 3: Filter students by admission number (only KRCHN)
+        // STEP 3: Filter students with valid admission numbers
         // ============================================================
         var krchnStudents = (allStudents || []).filter(function(s) {
             return s.admission_number && s.admission_number.startsWith('KRCHN');
@@ -764,7 +668,7 @@ async function lecturerNCKLoadData() {
                     <i class="fas fa-exclamation-circle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
                     <p style="font-size: 16px; font-weight: 500;">Error loading data</p>
                     <p style="font-size: 13px; margin: 0;">${error.message}</p>
-                    <button onclick="lecturerNCKLoadData()" style="margin-top: 15px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                    <button onclick="window.lecturerNCKLoadData()" style="margin-top: 15px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
                         <i class="fas fa-sync-alt"></i> Retry
                     </button>
                 </div>
@@ -794,7 +698,7 @@ function lecturerNCKRenderTable() {
                 <i class="fas fa-users" style="font-size:32px;display:block;margin-bottom:10px;"></i>
                 <p style="font-size:16px;font-weight:500;">No students found</p>
                 <p style="font-size:13px;margin:0;">No KRCHN students found for ${LecturerNCK.currentIntake} intake</p>
-                <button onclick="lecturerNCKLoadData()" style="margin-top:15px;padding:8px 20px;background:#4C1D95;color:white;border:none;border-radius:6px;cursor:pointer;">
+                <button onclick="window.lecturerNCKLoadData()" style="margin-top:15px;padding:8px 20px;background:#4C1D95;color:white;border:none;border-radius:6px;cursor:pointer;">
                     <i class="fas fa-sync-alt"></i> Refresh
                 </button>
             </div>
@@ -821,18 +725,18 @@ function lecturerNCKRenderTable() {
                 </p>
             </div>
             <div style="display: flex; gap: 8px; flex-wrap: wrap;">
-                <button onclick="lecturerNCKSaveAll()" style="background: #059669; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
+                <button onclick="window.lecturerNCKSaveAll()" style="background: #059669; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
                     <i class="fas fa-save"></i> Save All
                 </button>
                 ${!isAdmin ? `
-                <button onclick="lecturerNCKSubmitForApproval()" style="background: #4C1D95; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
+                <button onclick="window.lecturerNCKSubmitForApproval()" style="background: #4C1D95; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
                     <i class="fas fa-paper-plane"></i> Submit for Approval
                 </button>
-                <button onclick="lecturerNCKWithdrawApproval()" style="background: #d97706; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
+                <button onclick="window.lecturerNCKWithdrawApproval()" style="background: #d97706; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
                     <i class="fas fa-undo"></i> Withdraw
                 </button>
                 ` : ''}
-                <button onclick="lecturerNCKExportCSV()" style="background: #0A3D62; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
+                <button onclick="window.lecturerNCKExportCSV()" style="background: #0A3D62; padding: 6px 14px; border: none; border-radius: 6px; color: white; cursor: pointer; font-size: 12px; font-weight: 600;">
                     <i class="fas fa-download"></i> Export
                 </button>
             </div>
@@ -918,7 +822,7 @@ function lecturerNCKRenderTable() {
                            max="100" 
                            step="0.5" 
                            style="width: 55px; padding: 4px; border-radius: 6px; text-align: center; background: ${inputBg}; border: 1px solid ${hasValue ? '#d1fae5' : '#fef3c7'}; font-size: 12px;" 
-                           onchange="lecturerNCKUpdateAverage('${student.admission_number || student.student_id}')">
+                           onchange="window.lecturerNCKUpdateAverage('${student.admission_number || student.student_id}')">
                 </td>
             `;
         });
@@ -1635,8 +1539,10 @@ window.showNCKAccessDenied = showNCKAccessDenied;
 window.showToast = showToast;
 window.calculateNursingGrade = calculateNursingGrade;
 window.isKRCHNProgram = isKRCHNProgram;
+window.isTVETProgram = isTVETProgram;
+window.showLecturerNotFound = showLecturerNotFound;
 
-console.log('✅ [NCK] Lecturer NCK module loaded successfully');
+console.log('✅ [NCK] Lecturer NCK module loaded successfully - NO HARDCODING');
 console.log('📚 Available functions: lecturerNCKInit, lecturerNCKLoadData, lecturerNCKSaveAll, lecturerNCKSubmitForApproval, lecturerNCKWithdrawApproval, lecturerNCKExportCSV');
 console.log('👑 Admin mode:', isNckAdmin() ? 'ENABLED' : 'DISABLED');
 console.log('🔒 TVET Protection: ENABLED - Only KRCHN Nursing can access');
