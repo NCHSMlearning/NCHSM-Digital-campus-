@@ -14200,6 +14200,57 @@ document.addEventListener('click', function(e) {
 });
 
 console.log('✅ Search function loaded successfully!');
+    <script>
+// ============================================================
+// SIDEBAR COLOR FUNCTIONS
+// ============================================================
+
+/**
+ * Change sidebar background color
+ */
+function changeSidebarColor(color) {
+    console.log('🎨 Changing sidebar color to:', color);
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.style.background = color;
+        // Save preference
+        try {
+            localStorage.setItem('sidebarColor', color);
+        } catch(e) {}
+    }
+}
+
+/**
+ * Reset sidebar color to default
+ */
+function resetSidebarColor() {
+    console.log('🔄 Resetting sidebar color to default...');
+    const sidebar = document.querySelector('.sidebar');
+    if (sidebar) {
+        sidebar.style.background = 'linear-gradient(135deg, #0c1445, #1a237e)';
+        // Remove saved preference
+        try {
+            localStorage.removeItem('sidebarColor');
+        } catch(e) {}
+    }
+}
+
+// Load saved color preference on page load
+document.addEventListener('DOMContentLoaded', function() {
+    try {
+        const savedColor = localStorage.getItem('sidebarColor');
+        if (savedColor) {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar) {
+                sidebar.style.background = savedColor;
+                console.log('✅ Loaded saved sidebar color');
+            }
+        }
+    } catch(e) {}
+});
+
+console.log('✅ Sidebar color functions loaded');
+</script>
 </script>
 <!-- ============================================ -->
 <!-- INITIALIZATION - AFTER ALL MODULES LOADED    -->
