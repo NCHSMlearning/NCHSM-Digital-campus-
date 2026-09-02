@@ -218,9 +218,10 @@ async function loadStudentsForDropdown() {
     try {
         if (typeof showLoading === 'function') showLoading('Loading students...');
         
+        // Remove current_year and current_term from the select - they don't exist!
         const { data, error } = await sb
             .from('consolidated_user_profiles_table')
-            .select('student_id, full_name, program, block, current_block, current_year, current_term, intake_year, intake_month, email')
+            .select('student_id, full_name, program, block, current_block, intake_year, admission_year, email')
             .eq('role', 'student')
             .eq('status', 'approved')
             .order('full_name', { ascending: true });
@@ -242,8 +243,7 @@ async function loadStudentsForDropdown() {
                 opt.textContent = `${student.full_name} (${student.student_id || 'N/A'}) - ${student.program || 'No Program'}`;
                 opt.dataset.program = student.program || '';
                 opt.dataset.block = student.current_block || student.block || '';
-                opt.dataset.year = student.current_year || '';
-                opt.dataset.term = student.current_term || '';
+                opt.dataset.year = student.intake_year || student.admission_year || '';
                 opt.dataset.email = student.email || '';
                 opt.dataset.studentId = student.student_id || '';
                 select.appendChild(opt);
@@ -276,7 +276,6 @@ async function loadStudentsForDropdown() {
         if (typeof hideLoading === 'function') hideLoading();
     }
 }
-
 // ============================================================
 // LOAD ADMISSIONS
 // ============================================================
