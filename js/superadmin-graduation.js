@@ -7,18 +7,185 @@
 console.log('🏆 Super Admin Certificate Generator Loading...');
 
 // ============================================================
-// GLOBAL VARIABLES
+// GLOBAL VARIABLES - Safe declarations (check if already defined)
 // ============================================================
 
-const CERT_STORAGE_KEY = 'nchsm_certificates';
-const CERT_SERIAL_PREFIX = 'NCHSM-';
-const MAX_RETAKES = 2;
+// Safe declaration - only define if not already declared
+if (typeof MAX_RETAKES === 'undefined') {
+    var MAX_RETAKES = 2;
+}
 
+if (typeof CERT_STORAGE_KEY === 'undefined') {
+    var CERT_STORAGE_KEY = 'nchsm_certificates';
+}
+
+if (typeof CERT_SERIAL_PREFIX === 'undefined') {
+    var CERT_SERIAL_PREFIX = 'NCHSM-';
+}
+
+// Use let for mutable variables (they don't conflict with const)
 let certificates = [];
 let graduationCandidates = [];
 let allStudents = [];
 let allMarks = [];
 let allTranscripts = [];
+
+// ============================================================
+// PROGRAM TYPE DETECTION (Matches Transcript Generator)
+// ============================================================
+
+// Safe function declarations - only define if not already defined
+if (typeof getProgramType === 'undefined') {
+    function getProgramType(programCode) {
+        if (!programCode) return 'nursing';
+        const code = String(programCode).toUpperCase().trim();
+        
+        if (code === 'KRCHN' || code === 'NURSING') return 'nursing';
+        
+        const tvetDiploma = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'];
+        const tvetCertificate = ['CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'CCA'];
+        const tvetArtisan = ['ACH', 'AAG', 'ASW'];
+        
+        if (tvetDiploma.includes(code)) return 'tvet_diploma';
+        if (tvetCertificate.includes(code)) return 'tvet_certificate';
+        if (tvetArtisan.includes(code)) return 'tvet_artisan';
+        
+        return 'nursing';
+    }
+}
+
+if (typeof isTVETProgram === 'undefined') {
+    function isTVETProgram(programCode) {
+        if (!programCode) return false;
+        const type = getProgramType(programCode);
+        return type === 'tvet_diploma' || type === 'tvet_certificate' || type === 'tvet_artisan';
+    }
+}
+
+if (typeof isNursingProgram === 'undefined') {
+    function isNursingProgram(programCode) {
+        if (!programCode) return true;
+        return getProgramType(programCode) === 'nursing';
+    }
+}
+
+// ============================================================
+// GRADE CALCULATION (Matches Transcript Generator)
+// ============================================================
+
+if (typeof getGradingConfig === 'undefined') {
+    function getGradingConfig(programCode) {
+        if (isNursingProgram(programCode)) {
+            return {
+                grades: {
+                    'A': { min: 75, max: 100, points: 4.0, label: 'DISTINCTION' },
+                    'B': { min: 65, max: 74, points: 3.0, label: 'CREDIT' },
+                    'C': { min: 60, max: 64, points: 2.0, label: 'PASS' },
+                    'D': { min: 0, max: 59, points: 0.0, label: 'FAIL' }
+                },
+                passMark: 60,
+                label: 'Nursing Academic'
+            };
+        } else {
+            return {
+                grades: {
+                    'A': { min: 80, max: 100, points: 4.0, label: 'MASTERY' },
+                    'B': { min: 65, max: 79, points: 3.0, label: 'PROFICIENT' },
+                    'C': { min: 50, max: 64, points: 2.0, label: 'COMPETENT' },
+                    'E': { min: 0, max: 49, points: 0.0, label: 'NOT YET COMPETENT' }
+                },
+                passMark: 50,
+                label: 'TVET Competency-Based'
+            };
+        }
+    }
+}
+
+if (typeof calculateOfficialGrade === 'undefined') {
+    function calculateOfficialGrade(score, programCode) {
+        const config = getGradingConfig(programCode);
+        const grades = config.grades;
+        
+        if (score === null || score === undefined || score === 0) {
+            const defaultGrade = isNursingProgram(programCode) ? 'D' : 'E';
+            return {
+                grade: defaultGrade,
+                points: 0.0,
+                label: config === getGradingConfig('TVET') ? 'NOT YET COMPETENT' : 'FAIL',
+                color: '#991b1b',
+                bgColor: '#fee2e2'
+            };
+        }
+        
+        for (const [grade, gConfig] of Object.entries(grades)) {
+            if (score >= gConfig.min && score <= gConfig.max) {
+                return {
+                    grade: grade,
+                    points: gConfig.points,
+                    label: gConfig.label,
+                    color: gConfig.color || '#0A3D62',
+                    bgColor: gConfig.bgColor || '#f8fafc'
+                };
+            }
+        }
+        
+        const defaultGrade = isNursingProgram(programCode) ? 'D' : 'E';
+        return {
+            grade: defaultGrade,
+            points: 0.0,
+            label: config === getGradingConfig('TVET') ? 'NOT YET COMPETENT' : 'FAIL',
+            color: '#991b1b',
+            bgColor: '#fee2e2'
+        };
+    }
+}
+
+if (typeof calculateAverageScore === 'undefined') {
+    function calculateAverageScore(marks) {
+        if (!marks || marks.length === 0) return 0;
+        const total = marks.reduce((sum, m) => sum + (m.final_score || m.score || 0), 0);
+        return Math.round((total / marks.length) * 10) / 10;
+    }
+}
+
+// ============================================================
+// UTILITY FUNCTIONS
+// ============================================================
+
+if (typeof escapeHtml === 'undefined') {
+    function escapeHtml(str) {
+        if (!str) return '';
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+}
+
+if (typeof generateHash === 'undefined') {
+    function generateHash(text) {
+        let hash = 0;
+        for (let i = 0; i < text.length; i++) {
+            const char = text.charCodeAt(i);
+            hash = ((hash << 5) - hash) + char;
+            hash = hash & hash;
+        }
+        return Math.abs(hash).toString(16).padStart(8, '0').toUpperCase();
+    }
+}
+
+// ============================================================
+// SAMPLE DATA FOR TESTING (Only if no data exists)
+// ============================================================
+
+if (typeof getSampleStudents === 'undefined') {
+    function getSampleStudents() {
+        return [
+            { id: 'STU-001', name: 'Jane Muthoni', email: 'jane@nchsm.ac.ke', program: 'KRCHN', intake: '2026', block: 'Final' },
+            { id: 'STU-002', name: 'Peter Ochieng', email: 'peter@nchsm.ac.ke', program: 'DPOTT', intake: '2026', block: 'Final' },
+            { id: 'STU-003', name: 'Sarah Wanjiru', email: 'sarah@nchsm.ac.ke', program: 'DCH', intake: '2026', block: 'Block 5' },
+        ];
+    }
+}
 
 // ============================================================
 // INITIALIZATION
@@ -76,14 +243,6 @@ function loadStudentsAndMarks() {
     }
 }
 
-function getSampleStudents() {
-    return [
-        { id: 'STU-001', name: 'Jane Muthoni', email: 'jane@nchsm.ac.ke', program: 'KRCHN', intake: '2026', block: 'Final' },
-        { id: 'STU-002', name: 'Peter Ochieng', email: 'peter@nchsm.ac.ke', program: 'DPOTT', intake: '2026', block: 'Final' },
-        { id: 'STU-003', name: 'Sarah Wanjiru', email: 'sarah@nchsm.ac.ke', program: 'DCH', intake: '2026', block: 'Block 5' },
-    ];
-}
-
 // ============================================================
 // SETUP EVENT LISTENERS
 // ============================================================
@@ -100,111 +259,6 @@ function setupCertificateEventListeners() {
     if (statusFilter) statusFilter.addEventListener('change', filterCertStudents);
     if (searchInput) searchInput.addEventListener('keyup', filterCertStudents);
     if (selectAll) selectAll.addEventListener('change', toggleAllCertCheckboxes);
-}
-
-// ============================================================
-// PROGRAM TYPE DETECTION (Matches Transcript Generator)
-// ============================================================
-
-function getProgramType(programCode) {
-    if (!programCode) return 'nursing';
-    const code = String(programCode).toUpperCase().trim();
-    
-    if (code === 'KRCHN' || code === 'NURSING') return 'nursing';
-    
-    const tvetDiploma = ['DPOTT', 'DCH', 'DHRIT', 'DSL', 'DSW', 'DCJS', 'DHSS', 'DICT', 'DME'];
-    const tvetCertificate = ['CPOTT', 'CCH', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'CCA'];
-    const tvetArtisan = ['ACH', 'AAG', 'ASW'];
-    
-    if (tvetDiploma.includes(code)) return 'tvet_diploma';
-    if (tvetCertificate.includes(code)) return 'tvet_certificate';
-    if (tvetArtisan.includes(code)) return 'tvet_artisan';
-    
-    return 'nursing';
-}
-
-function isTVETProgram(programCode) {
-    if (!programCode) return false;
-    const type = getProgramType(programCode);
-    return type === 'tvet_diploma' || type === 'tvet_certificate' || type === 'tvet_artisan';
-}
-
-function isNursingProgram(programCode) {
-    if (!programCode) return true;
-    return getProgramType(programCode) === 'nursing';
-}
-
-// ============================================================
-// GRADE CALCULATION (Matches Transcript Generator)
-// ============================================================
-
-function getGradingConfig(programCode) {
-    if (isNursingProgram(programCode)) {
-        return {
-            grades: {
-                'A': { min: 75, max: 100, points: 4.0, label: 'DISTINCTION' },
-                'B': { min: 65, max: 74, points: 3.0, label: 'CREDIT' },
-                'C': { min: 60, max: 64, points: 2.0, label: 'PASS' },
-                'D': { min: 0, max: 59, points: 0.0, label: 'FAIL' }
-            },
-            passMark: 60,
-            label: 'Nursing Academic'
-        };
-    } else {
-        return {
-            grades: {
-                'A': { min: 80, max: 100, points: 4.0, label: 'MASTERY' },
-                'B': { min: 65, max: 79, points: 3.0, label: 'PROFICIENT' },
-                'C': { min: 50, max: 64, points: 2.0, label: 'COMPETENT' },
-                'E': { min: 0, max: 49, points: 0.0, label: 'NOT YET COMPETENT' }
-            },
-            passMark: 50,
-            label: 'TVET Competency-Based'
-        };
-    }
-}
-
-function calculateOfficialGrade(score, programCode) {
-    const config = getGradingConfig(programCode);
-    const grades = config.grades;
-    
-    if (score === null || score === undefined || score === 0) {
-        const defaultGrade = isNursingProgram(programCode) ? 'D' : 'E';
-        return {
-            grade: defaultGrade,
-            points: 0.0,
-            label: config === getGradingConfig('TVET') ? 'NOT YET COMPETENT' : 'FAIL',
-            color: '#991b1b',
-            bgColor: '#fee2e2'
-        };
-    }
-    
-    for (const [grade, gConfig] of Object.entries(grades)) {
-        if (score >= gConfig.min && score <= gConfig.max) {
-            return {
-                grade: grade,
-                points: gConfig.points,
-                label: gConfig.label,
-                color: gConfig.color || '#0A3D62',
-                bgColor: gConfig.bgColor || '#f8fafc'
-            };
-        }
-    }
-    
-    const defaultGrade = isNursingProgram(programCode) ? 'D' : 'E';
-    return {
-        grade: defaultGrade,
-        points: 0.0,
-        label: config === getGradingConfig('TVET') ? 'NOT YET COMPETENT' : 'FAIL',
-        color: '#991b1b',
-        bgColor: '#fee2e2'
-    };
-}
-
-function calculateAverageScore(marks) {
-    if (!marks || marks.length === 0) return 0;
-    const total = marks.reduce((sum, m) => sum + (m.final_score || m.score || 0), 0);
-    return Math.round((total / marks.length) * 10) / 10;
 }
 
 // ============================================================
@@ -242,16 +296,6 @@ function generateQRCodeData(certData) {
     return btoa(unescape(encodeURIComponent(jsonStr)));
 }
 
-function generateHash(text) {
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-        const char = text.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16).padStart(8, '0').toUpperCase();
-}
-
 // ============================================================
 // CREATE CERTIFICATE FOR STUDENT
 // ============================================================
@@ -285,7 +329,7 @@ function createCertificate(student, marks, transcriptData) {
         unitsCompleted: marks.length,
         totalCredits: marks.length * 3,
         hash: generateHash(certId + serialNumber + student.id),
-        qrCode: null, // Will be set after generation
+        qrCode: null,
         issuedAt: now.toISOString(),
         generatedBy: window.currentUser?.id || 'system',
         scanCount: 0,
@@ -297,114 +341,20 @@ function createCertificate(student, marks, transcriptData) {
         verificationUrl: `https://nchsm.ac.ke/verify/${serialNumber}`
     };
     
-    // Generate QR code
     certData.qrCode = generateQRCodeData(certData);
     
     return certData;
 }
 
 // ============================================================
-// AUTO-GENERATE CERTIFICATES FOR ALL GRADUATES
+// GET STUDENT MARKS
 // ============================================================
 
-async function autoGenerateAllCertificates() {
-    console.log('🏆 Auto-generating certificates for all graduates...');
-    
-    // Get all students who have completed their program
-    const graduates = allStudents.filter(s => 
-        s.block === 'Final' || s.block === 'Block 6' || s.block === 'Graduated'
-    );
-    
-    if (graduates.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('No graduates found. Students must be in Final Block.', 'warning');
-        }
-        return;
-    }
-    
-    // Check which students already have certificates
-    const existingCertIds = new Set(certificates.map(c => c.studentId));
-    const eligibleGraduates = graduates.filter(s => !existingCertIds.has(s.id));
-    
-    if (eligibleGraduates.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('All graduates already have certificates.', 'info');
-        }
-        return;
-    }
-    
-    if (typeof showLoading === 'function') {
-        showLoading(`Generating ${eligibleGraduates.length} certificates...`);
-    }
-    
-    let generated = 0;
-    let failed = 0;
-    
-    for (const student of eligibleGraduates) {
-        try {
-            // Get marks for this student
-            const studentMarks = getStudentMarks(student.id);
-            
-            // Get transcript if available
-            const transcript = allTranscripts.find(t => t.studentId === student.id);
-            
-            // Create certificate
-            const certData = createCertificate(student, studentMarks, transcript);
-            
-            // Save certificate
-            certificates.push(certData);
-            localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
-            
-            // Update graduation candidate status
-            const gradIndex = graduationCandidates.findIndex(g => g.studentId === student.id);
-            if (gradIndex > -1) {
-                graduationCandidates[gradIndex].certificateGenerated = true;
-                graduationCandidates[gradIndex].certificateUrl = '#cert-' + certData.certId;
-                graduationCandidates[gradIndex].serialNumber = certData.serialNumber;
-                graduationCandidates[gradIndex].qrCode = certData.qrCode;
-                graduationCandidates[gradIndex].status = 'ready';
-                localStorage.setItem('nchsm_graduation', JSON.stringify(graduationCandidates));
-            }
-            
-            generated++;
-            
-            // Update progress
-            if (typeof updateLoadingProgress === 'function') {
-                const percent = Math.round((generated / eligibleGraduates.length) * 100);
-                updateLoadingProgress(percent, 1, `Generated ${generated}/${eligibleGraduates.length}`);
-            }
-            
-        } catch (error) {
-            console.error('Error generating certificate for:', student.id, error);
-            failed++;
-        }
-    }
-    
-    if (typeof hideLoading === 'function') {
-        hideLoading();
-    }
-    
-    // Update UI
-    renderCertificateList();
-    updateCertStats();
-    renderGraduateList();
-    
-    if (typeof showNotification === 'function') {
-        if (failed === 0) {
-            showNotification(`✅ ${generated} certificates generated successfully!`, 'success');
-        } else {
-            showNotification(`⚠️ ${generated} generated, ${failed} failed`, 'warning');
-        }
-    }
-}
-
 function getStudentMarks(studentId) {
-    // Try to get marks from localStorage
     if (allMarks[studentId]) {
         return allMarks[studentId];
     }
     
-    // Try to get from transcript data
     const transcriptMarks = allTranscripts
         .filter(t => t.studentId === studentId)
         .flatMap(t => t.marks || []);
@@ -413,7 +363,6 @@ function getStudentMarks(studentId) {
         return transcriptMarks;
     }
     
-    // Generate sample marks for testing
     return generateSampleMarks(studentId);
 }
 
@@ -432,7 +381,7 @@ function generateSampleMarks(studentId) {
 }
 
 // ============================================================
-// GENERATE CERTIFICATE FOR SINGLE STUDENT
+// GENERATE CERTIFICATES
 // ============================================================
 
 function generateSingleCertificate(studentId) {
@@ -444,7 +393,6 @@ function generateSingleCertificate(studentId) {
         return;
     }
     
-    // Check if already has certificate
     const existing = certificates.find(c => c.studentId === studentId);
     if (existing) {
         if (typeof showNotification === 'function') {
@@ -453,16 +401,13 @@ function generateSingleCertificate(studentId) {
         return;
     }
     
-    // Get marks
     const studentMarks = getStudentMarks(studentId);
     const transcript = allTranscripts.find(t => t.studentId === studentId);
     
-    // Create certificate
     const certData = createCertificate(student, studentMarks, transcript);
     certificates.push(certData);
     localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
     
-    // Update graduation
     const gradIndex = graduationCandidates.findIndex(g => g.studentId === studentId);
     if (gradIndex > -1) {
         graduationCandidates[gradIndex].certificateGenerated = true;
@@ -482,67 +427,131 @@ function generateSingleCertificate(studentId) {
     }
 }
 
-// ============================================================
-// VERIFY CERTIFICATE BY QR CODE
-// ============================================================
-
-function verifyCertificateByQR(qrData) {
-    try {
-        // Decode QR data
-        const decoded = JSON.parse(decodeURIComponent(escape(atob(qrData))));
-        
-        // Find certificate
-        const cert = certificates.find(c => c.serialNumber === decoded.serialNumber);
-        
-        if (!cert) {
-            return {
-                valid: false,
-                message: 'Certificate not found in system',
-                code: 'NOT_FOUND'
-            };
+async function autoGenerateAllCertificates() {
+    console.log('🏆 Auto-generating certificates for all graduates...');
+    
+    const graduates = allStudents.filter(s => 
+        s.block === 'Final' || s.block === 'Block 6' || s.block === 'Graduated'
+    );
+    
+    if (graduates.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No graduates found. Students must be in Final Block.', 'warning');
         }
-        
-        // Check if expired
-        const today = new Date().toISOString().split('T')[0];
-        if (cert.expiryDate < today) {
-            return {
-                valid: false,
-                message: 'Certificate has expired',
-                code: 'EXPIRED',
-                cert: cert
-            };
-        }
-        
-        // Check if active
-        if (cert.status !== 'ACTIVE') {
-            return {
-                valid: false,
-                message: `Certificate is ${cert.status}`,
-                code: 'INACTIVE',
-                cert: cert
-            };
-        }
-        
-        // Increment scan count
-        cert.scanCount = (cert.scanCount || 0) + 1;
-        cert.lastScanned = new Date().toISOString();
-        localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
-        
-        return {
-            valid: true,
-            message: 'Certificate verified successfully',
-            code: 'VALID',
-            cert: cert
-        };
-        
-    } catch (error) {
-        console.error('Error verifying QR:', error);
-        return {
-            valid: false,
-            message: 'Invalid QR code',
-            code: 'INVALID_QR'
-        };
+        return;
     }
+    
+    const existingCertIds = new Set(certificates.map(c => c.studentId));
+    const eligibleGraduates = graduates.filter(s => !existingCertIds.has(s.id));
+    
+    if (eligibleGraduates.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('All graduates already have certificates.', 'info');
+        }
+        return;
+    }
+    
+    if (typeof showLoading === 'function') {
+        showLoading(`Generating ${eligibleGraduates.length} certificates...`);
+    }
+    
+    let generated = 0;
+    let failed = 0;
+    
+    for (const student of eligibleGraduates) {
+        try {
+            generateSingleCertificate(student.id);
+            generated++;
+        } catch (error) {
+            console.error('Error generating certificate for:', student.id, error);
+            failed++;
+        }
+    }
+    
+    if (typeof hideLoading === 'function') {
+        hideLoading();
+    }
+    
+    renderCertificateList();
+    updateCertStats();
+    renderGraduateList();
+    
+    if (typeof showNotification === 'function') {
+        if (failed === 0) {
+            showNotification(`✅ ${generated} certificates generated successfully!`, 'success');
+        } else {
+            showNotification(`⚠️ ${generated} generated, ${failed} failed`, 'warning');
+        }
+    }
+}
+
+function generateSelectedCertificates() {
+    const checkboxes = document.querySelectorAll('.cert-student-checkbox:checked');
+    const selectedIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
+    
+    if (selectedIds.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select at least one student', 'warning');
+        }
+        return;
+    }
+    
+    if (typeof showLoading === 'function') {
+        showLoading(`Generating ${selectedIds.length} certificates...`);
+    }
+    
+    let generated = 0;
+    let failed = 0;
+    
+    selectedIds.forEach((studentId, index) => {
+        setTimeout(() => {
+            try {
+                generateSingleCertificate(studentId);
+                generated++;
+            } catch (error) {
+                console.error('Error generating certificate for:', studentId, error);
+                failed++;
+            }
+            
+            if (index === selectedIds.length - 1) {
+                if (typeof hideLoading === 'function') {
+                    hideLoading();
+                }
+                if (typeof showNotification === 'function') {
+                    if (failed === 0) {
+                        showNotification(`✅ ${generated} certificates generated!`, 'success');
+                    } else {
+                        showNotification(`⚠️ ${generated} generated, ${failed} failed`, 'warning');
+                    }
+                }
+            }
+        }, index * 300);
+    });
+}
+
+function generateCertificatesForAll() {
+    const graduates = allStudents.filter(s => 
+        s.block === 'Final' || s.block === 'Block 6' || s.block === 'Graduated'
+    );
+    
+    const existingCertIds = new Set(certificates.map(c => c.studentId));
+    const eligible = graduates.filter(s => !existingCertIds.has(s.id));
+    
+    if (eligible.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('All graduates already have certificates', 'info');
+        }
+        return;
+    }
+    
+    document.querySelectorAll('.cert-student-checkbox').forEach(cb => {
+        const studentId = cb.dataset.studentId;
+        if (eligible.some(s => s.id === studentId)) {
+            cb.checked = true;
+        }
+    });
+    
+    generateSelectedCertificates();
 }
 
 // ============================================================
@@ -568,7 +577,6 @@ function renderGraduateList() {
         graduates = graduates.filter(s => s.intake === yearFilter || s.intake_year === yearFilter);
     }
     
-    // Check certificate status
     const existingCertIds = new Set(certificates.map(c => c.studentId));
     
     graduates = graduates.map(s => ({
@@ -596,18 +604,6 @@ function renderGraduateList() {
     
     let html = '';
     graduates.forEach((student, index) => {
-        const statusColors = {
-            pending: 'background: #fef3c7; color: #92400e;',
-            ready: 'background: #d1fae5; color: #065f46;',
-            printed: 'background: #dbeafe; color: #1e40af;'
-        };
-        
-        const statusLabels = {
-            pending: '⏳ Pending',
-            ready: '✅ Ready',
-            printed: '🖨️ Printed'
-        };
-        
         const avgScore = student.cert?.avgScore || '--';
         const serial = student.cert?.serialNumber || '—';
         const status = student.hasCert ? 'ready' : 'pending';
@@ -668,8 +664,6 @@ function renderCertificateList() {
     let html = '';
     sorted.forEach((cert, index) => {
         const student = allStudents.find(s => s.id === cert.studentId);
-        const statusColor = cert.status === 'ACTIVE' ? '#10b981' : '#f59e0b';
-        const statusIcon = cert.status === 'ACTIVE' ? '✅' : '⏳';
         const isPassing = cert.isPassing;
         
         html += `
@@ -737,7 +731,7 @@ function updateCertStats() {
 }
 
 // ============================================================
-// QR CODE DISPLAY
+// QR CODE FUNCTIONS
 // ============================================================
 
 function showCertificateQR(studentId) {
@@ -749,12 +743,10 @@ function showCertificateQR(studentId) {
         return;
     }
     
-    // Create modal or display QR
     const qrData = cert.qrCode;
     const serial = cert.serialNumber;
     const name = cert.studentName;
     
-    // Open QR modal
     const modal = document.createElement('div');
     modal.style.cssText = `
         position: fixed; top: 0; left: 0; right: 0; bottom: 0;
@@ -788,7 +780,6 @@ function showCertificateQR(studentId) {
     `;
     document.body.appendChild(modal);
     
-    // Render QR code using canvas
     renderQRCode('qrCanvas', qrData);
 }
 
@@ -799,23 +790,19 @@ function renderQRCode(canvasId, data) {
     const ctx = canvas.getContext('2d');
     const size = canvas.width || 200;
     
-    // Simple QR code rendering (fallback - in production use a library)
     ctx.fillStyle = 'white';
     ctx.fillRect(0, 0, size, size);
     
-    // Draw a stylized QR code pattern
     const qrSize = 21;
     const cellSize = size / qrSize;
     const seed = data.length;
     
-    // Simple pattern based on data
     for (let row = 0; row < qrSize; row++) {
         for (let col = 0; col < qrSize; col++) {
             const index = (row * qrSize + col) * 7;
             const charCode = data.charCodeAt(index % data.length) || 0;
             const isDark = (charCode + row + col + seed) % 3 !== 0;
             
-            // Position detection patterns (corners)
             const isCorner = 
                 (row < 7 && col < 7) || 
                 (row < 7 && col > qrSize - 8) || 
@@ -834,7 +821,6 @@ function renderQRCode(canvasId, data) {
         }
     }
     
-    // Center logo
     const logoSize = size * 0.2;
     const logoX = (size - logoSize) / 2;
     const logoY = (size - logoSize) / 2;
@@ -915,10 +901,8 @@ function downloadCertificatePDF(studentId) {
         return;
     }
     
-    // Generate PDF content
     const html = generateCertificateHTML(cert);
     
-    // Open print window
     const printWindow = window.open('', '_blank', 'width=900,height=700');
     if (!printWindow) {
         alert('Please allow popups to download the certificate.');
@@ -970,6 +954,36 @@ function downloadCertificatePDF(studentId) {
     }, 500);
 }
 
+function getProgramFullName(programCode) {
+    const programNames = {
+        'KRCHN': 'Kenya Registered Community Health Nursing',
+        'DPOTT': 'Diploma in Perioperative Theatre Technology',
+        'DCH': 'Diploma in Community Health',
+        'DHRIT': 'Diploma in Health Records and Information Technology',
+        'DSL': 'Diploma in Science Lab',
+        'DSW': 'Diploma in Social Work and Community Development',
+        'DCJS': 'Diploma in Criminal Justice',
+        'DHSS': 'Diploma in Health Support Services',
+        'DICT': 'Diploma in Information Technology',
+        'DME': 'Diploma in Medical Engineering',
+        'CPOTT': 'Certificate in Perioperative Theatre Technology',
+        'CCH': 'Certificate in Community Health',
+        'CHRIT': 'Certificate in Health Records and Information Technology',
+        'CPC': 'Certificate in Patient Care',
+        'CSL': 'Certificate in Science Lab',
+        'CSW': 'Certificate in Social Work',
+        'CCJS': 'Certificate in Criminal Justice',
+        'CAG': 'Certificate in Agriculture',
+        'CHSS': 'Certificate in Health Support Services',
+        'CICT': 'Certificate in Information Technology',
+        'CCA': 'Certificate in Computer Applications',
+        'ACH': 'Artisan in Community Health',
+        'AAG': 'Artisan in Agriculture',
+        'ASW': 'Artisan in Social Work'
+    };
+    return programNames[programCode] || programCode;
+}
+
 function generateCertificateHTML(cert) {
     const isNursing = isNursingProgram(cert.program);
     const programType = isNursing ? 'Nursing' : 'Technical/Vocational';
@@ -977,10 +991,8 @@ function generateCertificateHTML(cert) {
     
     return `
         <div id="certContainer">
-            <!-- Decorative border -->
             <div style="border: 2px solid #FDB913; padding: 30px; border-radius: 8px; position: relative;">
                 
-                <!-- Header -->
                 <div style="text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 16px; margin-bottom: 20px;">
                     <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
                         <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
@@ -995,7 +1007,6 @@ function generateCertificateHTML(cert) {
                     </div>
                 </div>
                 
-                <!-- Certificate Title -->
                 <div style="text-align: center; margin: 20px 0 10px 0;">
                     <div style="font-size: 32px; font-weight: 700; color: #0A3D62; letter-spacing: 4px; font-family: 'Georgia', serif;">
                         CERTIFICATE
@@ -1003,12 +1014,10 @@ function generateCertificateHTML(cert) {
                     <div style="font-size: 14px; color: #64748b; letter-spacing: 2px;">OF COMPLETION</div>
                 </div>
                 
-                <!-- Serial Number -->
                 <div style="text-align: right; font-size: 11px; color: #94a3b8; font-family: monospace; margin-bottom: 10px;">
                     Serial No: ${cert.serialNumber}
                 </div>
                 
-                <!-- Main Content -->
                 <div style="text-align: center; padding: 20px 0;">
                     <p style="font-size: 18px; color: #475569; margin-bottom: 8px;">
                         This is to certify that
@@ -1046,7 +1055,6 @@ function generateCertificateHTML(cert) {
                         ${cert.expiryDate ? `&nbsp;·&nbsp; Expires: <strong>${cert.expiryDate}</strong>` : ''}
                     </p>
                     
-                    <!-- QR Code -->
                     <div style="margin: 20px auto; display: inline-block; background: white; padding: 10px; border-radius: 8px; border: 2px solid #e5e7eb;">
                         <canvas id="certQRCanvas" style="width: 120px; height: 120px;"></canvas>
                     </div>
@@ -1055,7 +1063,6 @@ function generateCertificateHTML(cert) {
                     </div>
                 </div>
                 
-                <!-- Signatures -->
                 <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
                     <div style="text-align: center;">
                         <div style="border-bottom: 2px solid #1e293b; width: 160px; margin: 0 auto 4px auto;"></div>
@@ -1074,7 +1081,6 @@ function generateCertificateHTML(cert) {
                     </div>
                 </div>
                 
-                <!-- Footer -->
                 <div style="text-align: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #94a3b8;">
                     <p style="font-style: italic;">This Certificate is issued without any alteration whatsoever, and is only valid with the College Seal.</p>
                     <p style="font-size: 8px; color: #cbd5e1;">Document ID: ${cert.certId} · Generated: ${new Date().toLocaleDateString()}</p>
@@ -1082,36 +1088,6 @@ function generateCertificateHTML(cert) {
             </div>
         </div>
     `;
-}
-
-function getProgramFullName(programCode) {
-    const programNames = {
-        'KRCHN': 'Kenya Registered Community Health Nursing',
-        'DPOTT': 'Diploma in Perioperative Theatre Technology',
-        'DCH': 'Diploma in Community Health',
-        'DHRIT': 'Diploma in Health Records and Information Technology',
-        'DSL': 'Diploma in Science Lab',
-        'DSW': 'Diploma in Social Work and Community Development',
-        'DCJS': 'Diploma in Criminal Justice',
-        'DHSS': 'Diploma in Health Support Services',
-        'DICT': 'Diploma in Information Technology',
-        'DME': 'Diploma in Medical Engineering',
-        'CPOTT': 'Certificate in Perioperative Theatre Technology',
-        'CCH': 'Certificate in Community Health',
-        'CHRIT': 'Certificate in Health Records and Information Technology',
-        'CPC': 'Certificate in Patient Care',
-        'CSL': 'Certificate in Science Lab',
-        'CSW': 'Certificate in Social Work',
-        'CCJS': 'Certificate in Criminal Justice',
-        'CAG': 'Certificate in Agriculture',
-        'CHSS': 'Certificate in Health Support Services',
-        'CICT': 'Certificate in Information Technology',
-        'CCA': 'Certificate in Computer Applications',
-        'ACH': 'Artisan in Community Health',
-        'AAG': 'Artisan in Agriculture',
-        'ASW': 'Artisan in Social Work'
-    };
-    return programNames[programCode] || programCode;
 }
 
 // ============================================================
@@ -1125,76 +1101,6 @@ function toggleAllCertCheckboxes() {
     checkboxes.forEach(cb => cb.checked = isChecked);
 }
 
-function generateSelectedCertificates() {
-    const checkboxes = document.querySelectorAll('.cert-student-checkbox:checked');
-    const selectedIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
-    
-    if (selectedIds.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select at least one student', 'warning');
-        }
-        return;
-    }
-    
-    if (typeof showLoading === 'function') {
-        showLoading(`Generating ${selectedIds.length} certificates...`);
-    }
-    
-    let generated = 0;
-    let failed = 0;
-    
-    selectedIds.forEach((studentId, index) => {
-        setTimeout(() => {
-            try {
-                generateSingleCertificate(studentId);
-                generated++;
-            } catch (error) {
-                console.error('Error generating certificate for:', studentId, error);
-                failed++;
-            }
-            
-            if (index === selectedIds.length - 1) {
-                if (typeof hideLoading === 'function') {
-                    hideLoading();
-                }
-                if (typeof showNotification === 'function') {
-                    if (failed === 0) {
-                        showNotification(`✅ ${generated} certificates generated!`, 'success');
-                    } else {
-                        showNotification(`⚠️ ${generated} generated, ${failed} failed`, 'warning');
-                    }
-                }
-            }
-        }, index * 300);
-    });
-}
-
-function generateCertificatesForAll() {
-    const graduates = allStudents.filter(s => 
-        s.block === 'Final' || s.block === 'Block 6' || s.block === 'Graduated'
-    );
-    
-    const existingCertIds = new Set(certificates.map(c => c.studentId));
-    const eligible = graduates.filter(s => !existingCertIds.has(s.id));
-    
-    if (eligible.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('All graduates already have certificates', 'info');
-        }
-        return;
-    }
-    
-    // Select all eligible checkboxes
-    document.querySelectorAll('.cert-student-checkbox').forEach(cb => {
-        const studentId = cb.dataset.studentId;
-        if (eligible.some(s => s.id === studentId)) {
-            cb.checked = true;
-        }
-    });
-    
-    generateSelectedCertificates();
-}
-
 function markCertificateAsPrinted(studentId) {
     const cert = certificates.find(c => c.studentId === studentId);
     if (!cert) return;
@@ -1204,7 +1110,6 @@ function markCertificateAsPrinted(studentId) {
     cert.status = 'PRINTED';
     localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
     
-    // Update graduation
     const gradIndex = graduationCandidates.findIndex(g => g.studentId === studentId);
     if (gradIndex > -1) {
         graduationCandidates[gradIndex].printed = true;
@@ -1308,15 +1213,8 @@ function filterCertStudents() {
 }
 
 // ============================================================
-// UTILITY FUNCTIONS
+// COPY SERIAL
 // ============================================================
-
-function escapeHtml(str) {
-    if (!str) return '';
-    const div = document.createElement('div');
-    div.textContent = str;
-    return div.innerHTML;
-}
 
 function copySerial(serial) {
     navigator.clipboard.writeText(serial).then(() => {
@@ -1324,7 +1222,6 @@ function copySerial(serial) {
             showNotification('✅ Serial number copied!', 'success');
         }
     }).catch(() => {
-        // Fallback
         const input = document.createElement('input');
         input.value = serial;
         document.body.appendChild(input);
@@ -1338,7 +1235,7 @@ function copySerial(serial) {
 }
 
 // ============================================================
-// SHOW NOTIFICATION (Fallback)
+// NOTIFICATION FALLBACKS
 // ============================================================
 
 if (typeof showNotification === 'undefined') {
@@ -1400,7 +1297,7 @@ if (typeof hideLoading === 'undefined') {
 }
 
 // ============================================================
-// EXPOSE FUNCTIONS TO GLOBAL SCOPE
+// EXPOSE TO GLOBAL SCOPE
 // ============================================================
 
 window.initCertificateSystem = initCertificateSystem;
@@ -1410,7 +1307,6 @@ window.generateSelectedCertificates = generateSelectedCertificates;
 window.generateCertificatesForAll = generateCertificatesForAll;
 window.showCertificateQR = showCertificateQR;
 window.verifyCertificate = verifyCertificate;
-window.verifyCertificateByQR = verifyCertificateByQR;
 window.downloadCertificatePDF = downloadCertificatePDF;
 window.downloadQR = downloadQR;
 window.markCertificateAsPrinted = markCertificateAsPrinted;
@@ -1425,11 +1321,6 @@ window.renderCertificateList = renderCertificateList;
 window.renderGraduateList = renderGraduateList;
 window.updateCertStats = updateCertStats;
 window.getProgramFullName = getProgramFullName;
-window.isNursingProgram = isNursingProgram;
-window.isTVETProgram = isTVETProgram;
-window.getGradingConfig = getGradingConfig;
-window.calculateOfficialGrade = calculateOfficialGrade;
-window.escapeHtml = escapeHtml;
 
 console.log('🏆 Certificate System Loaded Successfully!');
 console.log('📋 Features:');
