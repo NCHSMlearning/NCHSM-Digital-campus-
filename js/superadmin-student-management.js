@@ -135,7 +135,506 @@ async function updateStudentProfile(studentId, updateData) {
         return false;
     }
 }
+// ============================================================
+// APPROVE STUDENT REQUEST (Change Program / Readmission)
+// ============================================================
+async function approveSMRequest(requestId) {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        if (typeof showNotification === 'function') {
+            showNotification('Supabase client not available', 'error');
+        }
+        return;
+    }
 
+    if (!confirm('✅ Approve this request?')) return;
+
+    if (typeof showLoading === 'function') showLoading('Approving request...');
+
+    try {
+        // Get the request
+        const { data: request, error: fetchError } = await sb
+            .from('student_requests')
+            .select('*')
+            .eq('id', requestId)
+            .single();
+
+        if (fetchError) throw fetchError;
+        if (!request) throw new Error('Request not found');
+
+        // Update request status
+        const { error: updateError } = await sb
+            .from('student_requests')
+            .update({
+                status: 'approved',
+                approved_at: new Date().toISOString(),
+                approved_by: 'Admin'
+            })
+            .eq('id', requestId);
+
+        if (updateError) throw updateError;
+
+        // If it's a change of program, update the student's profile
+        if (request.request_type === 'change_program') {
+            const updateData = {
+                program: request.requested_program,
+                updated_at: new Date().toISOString()
+            };
+            await updateStudentProfile(request.student_id, updateData);
+        }
+
+        if (typeof hideLoading === 'function') hideLoading();
+
+        if (typeof showNotification === 'function') {
+            showNotification('✅ Request approved successfully!', 'success');
+        }
+
+        // Refresh data
+        await loadChangeProgramRequests();
+        await loadReadmissionRequests();
+        updateSMStats();
+        updateSMBadges();
+
+        // Close modal
+        closeModal('smRequestModal');
+
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error approving request:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error approving request: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// REJECT STUDENT REQUEST (Change Program / Readmission)
+// ============================================================
+async function rejectSMRequest(requestId) {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        if (typeof showNotification === 'function') {
+            showNotification('Supabase client not available', 'error');
+        }
+        return;
+    }
+
+    if (!confirm('❌ Reject this request?')) return;
+
+    if (typeof showLoading === 'function') showLoading('Rejecting request...');
+
+    try {
+        const { error } = await sb
+            .from('student_requests')
+            .update({
+                status: 'rejected',
+                approved_at: new Date().toISOString(),
+                approved_by: 'Admin'
+            })
+            .eq('id', requestId);
+
+        if (error) throw error;
+
+        if (typeof hideLoading === 'function') hideLoading();
+
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Request rejected', 'warning');
+        }
+
+        // Refresh data
+        await loadChangeProgramRequests();
+        await loadReadmissionRequests();
+        updateSMStats();
+        updateSMBadges();
+
+        // Close modal
+        closeModal('smRequestModal');
+
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error rejecting request:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error rejecting request: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// QUICK APPROVE STUDENT REQUEST
+// ============================================================
+async function quickApproveSM(requestId, type) {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        if (typeof showNotification === 'function') {
+            showNotification('Supabase client not available', 'error');
+        }
+        return;
+    }
+
+    if (!confirm(`✅ Approve this ${type} request?`)) return;
+
+    if (typeof showLoading === 'function') showLoading('Approving...');
+
+    try {
+        if (type === 'admission') {
+            // Handle admission approval
+            const { data: application, error: fetchError } = await sb
+                .from('applications')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+
+            if (fetchError) throw fetchError;
+            if (!application) throw new Error('Application not found');
+
+            // Update application status
+            const { error: updateError } = await sb
+                .from('applications')
+                .update({
+                    status: 'approved',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', requestId);
+
+            if (updateError) throw updateError;
+
+            // Create student profile
+            const studentData = {
+                user_id: application.user_id || application.id,
+                full_name: application.full_name,
+                email: application.email,
+                phone: application.phone || '',
+                program: application.program_name || application.program,
+                student_id: application.application_number || `STD/${Date.now().toString().slice(-6)}`,
+                role: 'student',
+                status: 'approved',
+                created_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            };
+
+            const { error: profileError } = await sb
+                .from('consolidated_user_profiles_table')
+                .insert(studentData);
+
+            if (profileError && !profileError.message?.includes('duplicate')) {
+                throw profileError;
+            }
+
+        } else {
+            // Handle change_program or readmission
+            const { data: request, error: fetchError } = await sb
+                .from('student_requests')
+                .select('*')
+                .eq('id', requestId)
+                .single();
+
+            if (fetchError) throw fetchError;
+            if (!request) throw new Error('Request not found');
+
+            // Update request status
+            const { error: updateError } = await sb
+                .from('student_requests')
+                .update({
+                    status: 'approved',
+                    approved_at: new Date().toISOString(),
+                    approved_by: 'Admin'
+                })
+                .eq('id', requestId);
+
+            if (updateError) throw updateError;
+
+            // If change of program, update student's program
+            if (request.request_type === 'change_program') {
+                await updateStudentProfile(request.student_id, {
+                    program: request.requested_program
+                });
+            }
+        }
+
+        if (typeof hideLoading === 'function') hideLoading();
+
+        if (typeof showNotification === 'function') {
+            showNotification('✅ Request approved successfully!', 'success');
+        }
+
+        // Refresh all data
+        await loadAdmissions();
+        await loadChangeProgramRequests();
+        await loadReadmissionRequests();
+        updateSMStats();
+        updateSMBadges();
+
+        // Close modal
+        closeModal('smRequestModal');
+
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error approving request:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error approving request: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// BULK APPROVE STUDENT REQUESTS
+// ============================================================
+async function bulkApproveSM() {
+    const checkboxes = document.querySelectorAll('.sm-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select requests to approve', 'warning');
+        }
+        return;
+    }
+
+    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+    const type = checkboxes[0]?.classList.contains('change-checkbox') ? 'change' :
+                 checkboxes[0]?.classList.contains('readmission-checkbox') ? 'readmission' :
+                 checkboxes[0]?.classList.contains('admissions-checkbox') ? 'admission' : 'unknown';
+
+    if (!confirm(`✅ Approve ${ids.length} request(s)?`)) return;
+
+    if (typeof showLoading === 'function') showLoading(`Approving ${ids.length} requests...`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const id of ids) {
+        try {
+            await quickApproveSM(id, type);
+            successCount++;
+        } catch (error) {
+            console.error(`Error approving ${id}:`, error);
+            errorCount++;
+        }
+    }
+
+    if (typeof hideLoading === 'function') hideLoading();
+
+    if (typeof showNotification === 'function') {
+        showNotification(`✅ ${successCount} approved, ${errorCount} failed`, successCount > 0 ? 'success' : 'error');
+    }
+
+    // Refresh data
+    await loadAdmissions();
+    await loadChangeProgramRequests();
+    await loadReadmissionRequests();
+    updateSMStats();
+    updateSMBadges();
+}
+
+// ============================================================
+// BULK REJECT STUDENT REQUESTS
+// ============================================================
+async function bulkRejectSM() {
+    const checkboxes = document.querySelectorAll('.sm-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select requests to reject', 'warning');
+        }
+        return;
+    }
+
+    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+    if (!confirm(`❌ Reject ${ids.length} request(s)?`)) return;
+
+    if (typeof showLoading === 'function') showLoading(`Rejecting ${ids.length} requests...`);
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const id of ids) {
+        try {
+            await rejectSMRequest(id);
+            successCount++;
+        } catch (error) {
+            console.error(`Error rejecting ${id}:`, error);
+            errorCount++;
+        }
+    }
+
+    if (typeof hideLoading === 'function') hideLoading();
+
+    if (typeof showNotification === 'function') {
+        showNotification(`✅ ${successCount} rejected, ${errorCount} failed`, successCount > 0 ? 'success' : 'error');
+    }
+
+    // Refresh data
+    await loadAdmissions();
+    await loadChangeProgramRequests();
+    await loadReadmissionRequests();
+    updateSMStats();
+    updateSMBadges();
+}
+
+// ============================================================
+// BULK REVIEW STUDENT REQUESTS (Mark as Processing)
+// ============================================================
+async function bulkReviewSM() {
+    const checkboxes = document.querySelectorAll('.sm-checkbox:checked');
+    
+    if (checkboxes.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select requests to mark as reviewing', 'warning');
+        }
+        return;
+    }
+
+    const ids = Array.from(checkboxes).map(cb => cb.dataset.id);
+
+    if (!confirm(`📋 Mark ${ids.length} request(s) as reviewing?`)) return;
+
+    if (typeof showLoading === 'function') showLoading(`Marking ${ids.length} requests...`);
+
+    const sb = getSupabaseClient();
+    if (!sb) return;
+
+    let successCount = 0;
+    let errorCount = 0;
+
+    for (const id of ids) {
+        try {
+            const { error } = await sb
+                .from('student_requests')
+                .update({
+                    status: 'reviewing',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', id);
+
+            if (error) throw error;
+            successCount++;
+        } catch (error) {
+            console.error(`Error reviewing ${id}:`, error);
+            errorCount++;
+        }
+    }
+
+    if (typeof hideLoading === 'function') hideLoading();
+
+    if (typeof showNotification === 'function') {
+        showNotification(`✅ ${successCount} marked as reviewing, ${errorCount} failed`, successCount > 0 ? 'success' : 'error');
+    }
+
+    await loadAdmissions();
+    await loadChangeProgramRequests();
+    await loadReadmissionRequests();
+    updateSMStats();
+    updateSMBadges();
+}
+
+// ============================================================
+// SUBMIT NEW STUDENT REQUEST (Admin)
+// ============================================================
+async function submitSMRequest() {
+    const sb = getSupabaseClient();
+    if (!sb) {
+        if (typeof showNotification === 'function') {
+            showNotification('Supabase client not available', 'error');
+        }
+        return;
+    }
+
+    const studentSelect = document.getElementById('smStudentSelect');
+    const requestType = document.getElementById('smRequestType')?.value;
+    const currentProgram = document.getElementById('smCurrentProgram')?.value;
+    const requestedProgram = document.getElementById('smRequestedProgram')?.value;
+    const reason = document.getElementById('smRequestReason')?.value;
+
+    if (!studentSelect?.value) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select a student', 'warning');
+        }
+        return;
+    }
+
+    if (!requestType) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select request type', 'warning');
+        }
+        return;
+    }
+
+    if (!requestedProgram) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select requested program', 'warning');
+        }
+        return;
+    }
+
+    const studentId = studentSelect.value;
+    const studentName = studentSelect.options[studentSelect.selectedIndex]?.text || 'Unknown';
+
+    if (typeof showLoading === 'function') showLoading('Submitting request...');
+
+    try {
+        const requestData = {
+            student_id: studentId,
+            student_name: studentName,
+            request_type: requestType,
+            current_program: requestType === 'change_program' ? currentProgram : null,
+            previous_program: requestType === 'readmission' ? currentProgram : null,
+            requested_program: requestedProgram,
+            reason: reason || '',
+            status: 'pending',
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await sb
+            .from('student_requests')
+            .insert(requestData);
+
+        if (error) throw error;
+
+        if (typeof hideLoading === 'function') hideLoading();
+
+        if (typeof showNotification === 'function') {
+            showNotification('✅ Request submitted successfully!', 'success');
+        }
+
+        // Reset form
+        document.getElementById('smRequestForm')?.reset();
+        
+        // Refresh data
+        await loadChangeProgramRequests();
+        await loadReadmissionRequests();
+        updateSMStats();
+        updateSMBadges();
+
+    } catch (error) {
+        if (typeof hideLoading === 'function') hideLoading();
+        console.error('Error submitting request:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error submitting request: ' + error.message, 'error');
+        }
+    }
+}
+
+// ============================================================
+// TOGGLE REQUEST FIELDS (Show/Hide based on request type)
+// ============================================================
+function toggleSMRequestFields() {
+    const requestType = document.getElementById('smRequestType')?.value;
+    const currentSection = document.getElementById('smCurrentProgramSection');
+    const previousSection = document.getElementById('smPreviousProgramSection');
+
+    if (!currentSection || !previousSection) return;
+
+    // Hide both sections first
+    currentSection.style.display = 'none';
+    previousSection.style.display = 'none';
+
+    if (requestType === 'change_program') {
+        currentSection.style.display = 'block';
+    } else if (requestType === 'readmission') {
+        previousSection.style.display = 'block';
+    }
+}
 // ============================================================
 // GENERATE STUDENT ID
 // ============================================================
