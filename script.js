@@ -16722,9 +16722,6 @@ async function deleteBackup(backupId) {
 
 // Global calendar instance
 let mainCalendar = null;
-let currentUserProfile = null;
-let currentUserId = null;
-
 // =====================================================
 // INITIALIZE CALENDAR SECTION
 // =====================================================
