@@ -4774,15 +4774,66 @@ function renderStudentPublishList(marks) {
 window.renderStudentPublishList = renderStudentPublishList;
 
 function toggleStudentSelection(admission, checked) {
-    if (checked) {
-        sp_selected.add(admission);
-    } else {
-        sp_selected.delete(admission);
+    // ✅ FIX: Handle case where admission is undefined or from event
+    if (!admission) {
+        console.warn('⚠️ toggleStudentSelection: admission is undefined, trying to get from event...');
+        
+        // Try to get from the calling element
+        const caller = document.activeElement;
+        if (caller && caller.tagName === 'INPUT') {
+            admission = caller.dataset.admission || caller.value;
+            checked = caller.checked;
+            console.log(`📋 Retrieved admission from element: ${admission}`);
+        }
     }
-    updateStudentPublishStats();
+    
+    // ✅ If still undefined, try to find from checkbox
+    if (!admission) {
+        const checkboxes = document.querySelectorAll('.sp-student-checkbox:checked');
+        if (checkboxes.length > 0) {
+            // If multiple, use the first one (should be the one just clicked)
+            const cb = checkboxes[0];
+            admission = cb.dataset.admission || cb.value;
+            checked = cb.checked;
+            console.log(`📋 Retrieved admission from checked checkbox: ${admission}`);
+        }
+    }
+    
+    // ✅ Final validation
+    if (!admission || typeof admission !== 'string') {
+        console.error('❌ toggleStudentSelection: Still cannot find admission');
+        return;
+    }
+    
+    // ✅ Ensure sp_selected exists
+    if (typeof sp_selected === 'undefined') {
+        console.warn('⚠️ sp_selected not defined, initializing...');
+        window.sp_selected = new Set();
+    }
+    
+    // ✅ Convert to string and toggle
+    const admissionStr = String(admission);
+    
+    if (checked) {
+        sp_selected.add(admissionStr);
+        console.log(`✅ Selected: ${admissionStr}`);
+    } else {
+        sp_selected.delete(admissionStr);
+        console.log(`❌ Deselected: ${admissionStr}`);
+    }
+    
+    // ✅ Safely call update function
+    if (typeof updateStudentPublishStats === 'function') {
+        updateStudentPublishStats();
+    } else {
+        console.warn('⚠️ updateStudentPublishStats not found');
+    }
 }
 
+// Make sure it's globally accessible
 window.toggleStudentSelection = toggleStudentSelection;
+
+console.log('✅ toggleStudentSelection fixed!');
 
 function selectAllStudents() {
     const checkboxes = document.querySelectorAll('.sp-student-checkbox:not([disabled])');
