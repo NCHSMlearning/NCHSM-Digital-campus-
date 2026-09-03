@@ -540,61 +540,86 @@ function calculateNursingTotal(cat1, cat2, exam, type) {
 }
 
 // ============================================================
-// ✅ TVET CALCULATION - FIXED (Total 160)
+// ✅ TVET CALCULATION - PERMANENT FIX
 // ============================================================
 
 function calculateTVETTotal(cat1, cat2, exam, type) {
-    let total = 0;
-    
     // Clamp values
     const c1 = Math.min(Math.max(cat1 || 0, 0), 30);
     const c2 = Math.min(Math.max(cat2 || 0, 0), 30);
-    const e = Math.min(Math.max(exam || 0, 0), 100);  // ✅ Exam max is 100 for TVET!
+    const e = Math.min(Math.max(exam || 0, 0), 100);
+    
+    let total = 0;
+    let score = 0;
+    let maxScore = 0;
     
     switch(type) {
         case 'full':
-            // ✅ TVET: CAT1+CAT2+Exam = 160 total
-            // Convert to percentage: (sum / 160) * 100
-            total = ((c1 + c2 + e) / 160) * 100;
+            // CAT1(30) + CAT2(30) + Exam(100) = 160 total
+            score = c1 + c2 + e;
+            maxScore = 160;
+            total = (score / maxScore) * 100;
             break;
             
         case 'single_cat':
-            // ✅ TVET: CAT+Exam = 130 total (30 + 100)
-            total = ((c1 + e) / 130) * 100;
+            // CAT1(30) + Exam(100) = 130 total
+            score = c1 + e;
+            maxScore = 130;
+            total = (score / maxScore) * 100;
             break;
             
         case 'exam_only':
-            // ✅ Exam only - out of 100
+            // Exam only - out of 100 (already a percentage)
             total = e;
             break;
             
         case 'cats_only':
-            // ✅ CAT1+CAT2 only = 60 total
-            total = ((c1 + c2) / 60) * 100;
+            // CAT1(30) + CAT2(30) = 60 total
+            score = c1 + c2;
+            maxScore = 60;
+            total = (score / maxScore) * 100;
             break;
             
         case 'cat_only':
-            // ✅ CAT only = 30 total
-            total = (c1 / 30) * 100;
+            // CAT1 only = 30 total
+            score = c1;
+            maxScore = 30;
+            total = (score / maxScore) * 100;
             break;
             
         default:
-            // ✅ Default: full mode
-            total = ((c1 + c2 + e) / 160) * 100;
+            // Default: full mode
+            score = c1 + c2 + e;
+            maxScore = 160;
+            total = (score / maxScore) * 100;
     }
     
     // Round to 1 decimal place and cap at 100
     return Math.min(Math.round(total * 10) / 10, 100);
 }
-// ============================================================
-// ✅ UNIFIED CALCULATION - Nursing + TVET
-// ============================================================
-
 function calculateMarksEntryTotal(cat1, cat2, exam, type) {
-    if (isTVETProgram()) {
+    const program = window.me_currentProgram || 
+                    document.getElementById('me_program_select')?.value || 
+                    '';
+    const isTVET = program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+    
+    if (isTVET) {
         return calculateTVETTotal(cat1, cat2, exam, type);
     } else {
         return calculateNursingTotal(cat1, cat2, exam, type);
+    }
+}
+
+function getMarksEntryGrade(score) {
+    const program = window.me_currentProgram || 
+                    document.getElementById('me_program_select')?.value || 
+                    '';
+    const isTVET = program !== 'KRCHN' && program !== 'nursing' && program !== 'Nursing' && program !== '';
+    
+    if (isTVET) {
+        return getTVETGrade(score);
+    } else {
+        return getNursingGrade(score);
     }
 }
 
@@ -744,25 +769,20 @@ function getMarksEntryGrade(score) {
     }
 }
 
-// ============================================================
-// ✅ ADD TVET GRADE HELPER FUNCTIONS
-// ============================================================
-
 function calculateTVETGrade(score) {
     if (score === null || score === undefined || score === 0) return 'E';
     if (score >= 80) return 'A';
     if (score >= 65) return 'B';
     if (score >= 50) return 'C';
-    return 'E';  // ✅ FIXED: E instead of FAIL
+    return 'E';
 }
 
 function calculateTVETPoints(grade) {
-    if (!grade) return 0;
-    var points = {
+    const points = {
         'A': 4.0,
         'B': 3.0,
         'C': 2.0,
-        'E': 0.0   // ✅ FIXED: E gets 0 points
+        'E': 0.0
     };
     return points[grade] || 0;
 }
@@ -782,7 +802,6 @@ function getTVETComment(score) {
     if (score >= 50) return 'SATISFACTORY';
     return 'FAIL';
 }
-
 // ============================================================
 // ✅ CORRECT CALCULATE GRADE FUNCTION
 // ============================================================
