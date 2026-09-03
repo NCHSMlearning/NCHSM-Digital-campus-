@@ -1,6 +1,6 @@
 // ============================================================
 // LECTURER NCK SYSTEM - KRCHN NURSING ONLY
-// COMPLETE WORKING VERSION - NO HARDCODING
+// COMPLETE WORKING VERSION - XY FORMS & ASSESSMENT
 // ============================================================
 
 // ============================================================
@@ -37,7 +37,9 @@ var LECTURER_BLOCK_MAP = {
     '2030': 'Block 4'
 };
 
-// Default columns
+// ============================================================
+// COLUMN DEFINITIONS
+// ============================================================
 var LECTURER_XY_COLUMNS = [
     'MED1', 'MED2', 'MED3',
     'MCH1', 'MCH2', 'MCH3',
@@ -50,10 +52,18 @@ var LECTURER_XY_COLUMNS = [
 ];
 
 var LECTURER_ASSESSMENT_COLUMNS = [
-    'ANC WARD', 'IMMUNIZATION ASSESSMENT', 'NURSING CARE',
-    'PSYCHIATRY ASSESSMENT', 'NBU ASSESSMENT', 'MIDWIFERY ASSESSMENT',
-    'WARD MANAGEMENT', 'MCH/FP CLINIC', 'PSYCHIATRY CASE STUDY',
-    'GENERAL NURSING CASE STUDY', 'MIDWIFERY CASE STUDY', 'COMMUNITY DIAGNOSIS'
+    'ANC WARD',
+    'IMMUNIZATION ASSESSMENT',
+    'NURSING CARE',
+    'PSYCHIATRY ASSESSMENT',
+    'NBU ASSESSMENT',
+    'MIDWIFERY ASSESSMENT',
+    'WARD MANAGEMENT',
+    'MCH/FP CLINIC',
+    'PSYCHIATRY CASE STUDY',
+    'GENERAL NURSING CASE STUDY',
+    'MIDWIFERY CASE STUDY',
+    'COMMUNITY DIAGNOSIS'
 ];
 
 // ============================================================
@@ -142,7 +152,7 @@ function hideLoading() {
 }
 
 // ============================================================
-// GET LECTURER INFO - WORKS WITH YOUR SESSION
+// GET LECTURER INFO
 // ============================================================
 async function lecturerNCKGetLecturerInfo() {
     console.log('🔍 [NCK] Getting lecturer info...');
@@ -151,10 +161,8 @@ async function lecturerNCKGetLecturerInfo() {
     var lecturerName = 'Lecturer';
     var program = 'KRCHN';
     var email = null;
-    var isTVET = false;
-    var isKRCHN = true;
     
-    // METHOD 1: Try from sessionStorage (most reliable)
+    // METHOD 1: Try from sessionStorage
     try {
         var sessionUser = sessionStorage.getItem('user');
         if (sessionUser) {
@@ -199,7 +207,7 @@ async function lecturerNCKGetLecturerInfo() {
         }
     } catch (e) {}
     
-    // METHOD 4: Try from localStorage staffSession
+    // METHOD 4: Try from localStorage
     try {
         var staffSession = localStorage.getItem('staffSession');
         if (staffSession) {
@@ -214,7 +222,7 @@ async function lecturerNCKGetLecturerInfo() {
         }
     } catch (e) {}
     
-    // METHOD 5: Try from Supabase directly
+    // METHOD 5: Try from Supabase
     try {
         var supabase = window.lecturerDB?.supabase || window.sb;
         if (supabase) {
@@ -231,8 +239,8 @@ async function lecturerNCKGetLecturerInfo() {
         }
     } catch (e) {}
     
-    // METHOD 6: Use the ID from the logs (your actual ID)
-    console.log('⚠️ [NCK] Using lecturer ID from profile data');
+    // METHOD 6: Use known ID as fallback (from your session)
+    console.log('⚠️ [NCK] Using fallback lecturer ID');
     lecturerId = '9f1452e8-9868-4ab4-b208-c50310a84713';
     lecturerName = 'Kevin matoka Tiong\'i';
     program = 'KRCHN';
@@ -263,10 +271,8 @@ function finishSetup(lecturerId, lecturerName, program, email) {
     window.nckIsTVET = LecturerNCK.isTVET;
     window.nckIsKRCHN = LecturerNCK.isKRCHN;
     
-    // Update UI
     lecturerNCKUpdateUI();
     
-    // Load data if access granted
     if (LecturerNCK.accessGranted && LecturerNCK.lecturerId) {
         console.log('✅ [NCK] Access granted, loading data...');
         setTimeout(function() {
@@ -341,10 +347,7 @@ function showNCKAccessDenied() {
             <i class="fas fa-lock" style="font-size: 48px; color: #dc2626; margin-bottom: 16px; display: block;"></i>
             <h3 style="color: #1e293b; margin: 0 0 10px 0;">⛔ Access Denied</h3>
             <p style="color: #94a3b8; margin: 0 0 5px 0;">
-                <i class="fas fa-info-circle"></i> The NCK XY Forms system is <strong>only available for KRCHN Nursing</strong> lecturers.
-            </p>
-            <p style="color: #dc2626; font-size: 13px; margin: 10px 0 0 0;">
-                <i class="fas fa-user-tie"></i> Your program: <strong>${LecturerNCK.lecturerProgram || 'Unknown'}</strong>
+                <i class="fas fa-info-circle"></i> The NCK system is <strong>only available for KRCHN Nursing</strong> lecturers.
             </p>
         `;
         placeholder.style.display = 'block';
@@ -353,25 +356,35 @@ function showNCKAccessDenied() {
 }
 
 // ============================================================
-// LOAD COLUMNS
+// LOAD COLUMNS - FIXED FOR BOTH XY AND ASSESSMENT
 // ============================================================
 function lecturerNCKLoadColumns() {
-    var sheet = document.getElementById('lecturerNCKSheet')?.value || 'XY_FORMS';
-    if (sheet === 'XY_FORMS') {
-        LecturerNCK.columns = LECTURER_XY_COLUMNS.map(function(c) {
-            return { id: c, label: c };
-        });
+    var sheetEl = document.getElementById('lecturerNCKSheet');
+    var sheet = sheetEl ? sheetEl.value : 'XY_FORMS';
+    
+    console.log('📋 [NCK] Loading columns for sheet:', sheet);
+    
+    var columns = [];
+    if (sheet === 'XY_FORMS' || sheet === 'XY FORMS - Clinical Evaluation') {
+        columns = LECTURER_XY_COLUMNS;
     } else {
-        LecturerNCK.columns = LECTURER_ASSESSMENT_COLUMNS.map(function(c) {
-            return { id: c, label: c };
-        });
+        columns = LECTURER_ASSESSMENT_COLUMNS;
     }
+    
+    LecturerNCK.columns = columns.map(function(c) {
+        return { id: c, label: c };
+    });
+    LecturerNCK.currentSheet = sheet;
+    
     var colEl = document.getElementById('lecturer_nck_block_columns');
-    if (colEl) colEl.textContent = LecturerNCK.columns.length;
+    if (colEl) colEl.textContent = columns.length;
+    
+    console.log('✅ [NCK] Loaded', columns.length, 'columns for', sheet);
+    console.log('📊 [NCK] Columns:', columns.join(', '));
 }
 
 // ============================================================
-// LOAD NCK DATA - WORKING
+// LOAD NCK DATA
 // ============================================================
 async function lecturerNCKLoadData() {
     console.log('📊 [NCK] Loading data...');
@@ -388,6 +401,9 @@ async function lecturerNCKLoadData() {
     
     LecturerNCK.currentIntake = intake;
     LecturerNCK.currentSheet = sheet;
+    
+    // Load columns first
+    lecturerNCKLoadColumns();
     
     var container = document.getElementById('lecturerNCKTableContainer');
     var placeholder = document.getElementById('lecturerNCKPlaceholder');
@@ -408,7 +424,6 @@ async function lecturerNCKLoadData() {
         
         var lecturerId = LecturerNCK.lecturerId;
         if (!lecturerId) {
-            // Try to get it again
             await lecturerNCKGetLecturerInfo();
             lecturerId = LecturerNCK.lecturerId;
             if (!lecturerId) {
@@ -501,7 +516,7 @@ async function lecturerNCKLoadData() {
 }
 
 // ============================================================
-// RENDER TABLE
+// RENDER TABLE - WITH BOTH XY AND ASSESSMENT COLUMNS
 // ============================================================
 function lecturerNCKRenderTable() {
     var container = document.getElementById('lecturerNCKTableContainer');
@@ -510,6 +525,12 @@ function lecturerNCKRenderTable() {
     
     var students = LecturerNCK.students || [];
     var columns = LecturerNCK.columns || [];
+    
+    // If columns are empty, load them
+    if (columns.length === 0) {
+        lecturerNCKLoadColumns();
+        columns = LecturerNCK.columns || [];
+    }
     
     if (students.length === 0) {
         container.innerHTML = `
@@ -526,11 +547,13 @@ function lecturerNCKRenderTable() {
     }
     
     var isAdmin = isNckAdmin();
+    var sheetLabel = LecturerNCK.currentSheet === 'XY_FORMS' || LecturerNCK.currentSheet === 'XY FORMS - Clinical Evaluation' ? 'XY Forms' : 'Assessment & Case';
+    
     var html = `
         <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 20px;">
             <div>
                 <h4 style="margin: 0; color: #1e293b; font-size: 16px;">
-                    <i class="fas fa-table"></i> NCK ${LecturerNCK.currentSheet === 'XY_FORMS' ? 'XY Forms' : 'Assessment & Case'}
+                    <i class="fas fa-table"></i> NCK ${sheetLabel}
                     <span style="font-size: 13px; font-weight: 400; color: #64748b; margin-left: 10px;">
                         ${LecturerNCK.currentIntake} Intake
                     </span>
@@ -564,13 +587,13 @@ function lecturerNCKRenderTable() {
             <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
                 <thead>
                     <tr style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; position: sticky; top: 0; z-index: 5;">
-                        <th style="padding: 10px 8px; text-align: center;">#</th>
+                        <th style="padding: 10px 8px; text-align: center; min-width: 35px;">#</th>
                         <th style="padding: 10px 8px; text-align: left; min-width: 160px;">Student Name</th>
-                        <th style="padding: 10px 8px; text-align: left; min-width: 100px;">Admission</th>
+                        <th style="padding: 10px 8px; text-align: left; min-width: 120px;">Admission</th>
     `;
     
     columns.forEach(function(col) {
-        html += '<th style="padding: 10px 8px; text-align: center; min-width: 60px; font-size: 11px; background: #6d28d9;">' + col.label + '</th>';
+        html += '<th style="padding: 10px 8px; text-align: center; min-width: 60px; font-size: 11px; background: #6d28d9; border: 1px solid rgba(255,255,255,0.1);">' + col.label + '</th>';
     });
     
     html += `
@@ -589,7 +612,9 @@ function lecturerNCKRenderTable() {
             if (mark.scores) {
                 scores = typeof mark.scores === 'string' ? JSON.parse(mark.scores) : mark.scores;
             }
-        } catch (e) {}
+        } catch (e) {
+            scores = {};
+        }
         
         var approvalStatus = mark.approval_status || 'draft';
         
