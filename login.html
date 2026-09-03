@@ -56,88 +56,88 @@
     <style>
         /* ===== TOP CONTROLS - PROPER SPACING ===== */
         .top-controls {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            width: 100%;
-            max-width: 420px;
-            margin: 0 auto 30px auto;
-            padding: 0;
-            gap: 10px;
-            flex-wrap: wrap;
+            display: flex !important;
+            justify-content: space-between !important;
+            align-items: center !important;
+            width: 100% !important;
+            max-width: 420px !important;
+            margin: 0 auto 30px auto !important;
+            padding: 0 !important;
+            gap: 10px !important;
+            flex-wrap: wrap !important;
         }
         
         .top-controls .left-group,
         .top-controls .right-group {
-            display: flex;
-            gap: 8px;
-            align-items: center;
+            display: flex !important;
+            gap: 8px !important;
+            align-items: center !important;
         }
         
         /* Button base style */
         .top-controls a,
         .top-controls button {
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.3s ease;
-            cursor: pointer;
-            border: none;
-            font-family: inherit;
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
+            display: inline-flex !important;
+            align-items: center !important;
+            gap: 6px !important;
+            padding: 8px 16px !important;
+            border-radius: 8px !important;
+            font-size: 13px !important;
+            font-weight: 600 !important;
+            text-decoration: none !important;
+            transition: all 0.3s ease !important;
+            cursor: pointer !important;
+            border: none !important;
+            font-family: inherit !important;
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0 !important;
         }
         
         .top-controls a:hover,
         .top-controls button:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+            transform: translateY(-1px) !important;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important;
         }
         
         /* Main Site button */
         .top-controls .main-site-btn {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0 !important;
         }
         
         .top-controls .main-site-btn:hover {
-            background: #e2e8f0;
+            background: #e2e8f0 !important;
         }
         
         /* Blog button - Yellow theme */
         .top-controls .blog-btn {
-            background: #FDB913;
-            color: #0A3D62;
-            border: none;
+            background: #FDB913 !important;
+            color: #0A3D62 !important;
+            border: none !important;
         }
         
         .top-controls .blog-btn:hover {
-            background: #e8a80e;
+            background: #e8a80e !important;
         }
         
         /* Theme toggle button */
         .top-controls .theme-toggle-btn {
-            background: #f1f5f9;
-            color: #475569;
-            border: 1px solid #e2e8f0;
-            padding: 8px 14px;
+            background: #f1f5f9 !important;
+            color: #475569 !important;
+            border: 1px solid #e2e8f0 !important;
+            padding: 8px 14px !important;
         }
         
         .top-controls .theme-toggle-btn:hover {
-            background: #e2e8f0;
+            background: #e2e8f0 !important;
         }
         
         /* Feather icons inside top controls */
         .top-controls i {
-            width: 16px;
-            height: 16px;
+            width: 16px !important;
+            height: 16px !important;
         }
     </style>
     
@@ -316,12 +316,12 @@
                 <div class="login-card">
                     <!-- ===== TOP CONTROLS - FIXED WITH PROPER SPACING ===== -->
                     <div class="top-controls" id="topControls">
-                        <!-- Left Group: Main Site + Blog -->
+                                               <!-- Left Group: Main Site + Blog -->
                         <div class="left-group">
-                            <a href="home.html" class="main-site-btn">
+                            <a href="https://campusnexus.co.ke/" class="main-site-btn" target="_blank">
                                 <i data-feather="home"></i> Main Site
                             </a>
-                            <a href="blog.html" class="blog-btn">
+                            <a href="https://nchsm.co.ke/blog/" class="blog-btn" target="_blank">
                                 <i data-feather="edit"></i> Blog
                             </a>
                         </div>
@@ -497,7 +497,7 @@
                         </a>
                     </div>
                     
-                    <!-- ===== 2FA ENABLE BUTTON - NOW VISIBLE ===== -->
+                    <!-- ===== 2FA ENABLE BUTTON ===== -->
                     <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid #e2e8f0;">
                         <button onclick="showQRCode()" 
                                 id="enable2FABtn"
