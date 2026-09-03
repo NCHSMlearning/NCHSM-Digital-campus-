@@ -1382,17 +1382,75 @@ function toggleSelectAll() {
         toggleStudentSelection(cb);
     });
 }
+// ============================================================
+// TOGGLE STUDENT SELECTION - FIXED
+// ============================================================
 
 function toggleStudentSelection(checkbox) {
-    var admission = checkbox.dataset.admission;
-    if (checkbox.checked) {
-        PUBLISHED_STATE.selectedStudents.add(admission);
-    } else {
-        PUBLISHED_STATE.selectedStudents.delete(admission);
+    // ✅ FIX: Handle undefined checkbox
+    if (!checkbox) {
+        console.warn('⚠️ toggleStudentSelection: checkbox is undefined');
+        // Try to get from event
+        var target = window.event?.target || document.activeElement;
+        if (target && target.tagName === 'INPUT') {
+            checkbox = target;
+        } else {
+            return;
+        }
     }
-    updateSelectedCount();
+    
+    // ✅ Get admission from dataset or value
+    var admission = checkbox.dataset?.admission || checkbox.value;
+    
+    // ✅ If still no admission, try to find from the row
+    if (!admission) {
+        var row = checkbox.closest('tr');
+        if (row) {
+            var cells = row.querySelectorAll('td');
+            if (cells.length > 2) {
+                // Try to get from the second cell (student name) or third (admission)
+                var admissionCell = cells[1]?.textContent?.trim() || 
+                                   cells[2]?.textContent?.trim() || 
+                                   '';
+                // Check if it looks like an admission number
+                if (admissionCell && (admissionCell.includes('/') || admissionCell.length > 5)) {
+                    admission = admissionCell;
+                }
+            }
+        }
+    }
+    
+    // ✅ If still no admission, log error and return
+    if (!admission) {
+        console.warn('⚠️ toggleStudentSelection: Cannot find admission for checkbox:', checkbox);
+        return;
+    }
+    
+    // ✅ Initialize PUBLISHED_STATE.selectedStudents if needed
+    if (!PUBLISHED_STATE.selectedStudents) {
+        PUBLISHED_STATE.selectedStudents = new Set();
+    }
+    
+    // ✅ Toggle selection
+    var admissionStr = String(admission);
+    if (checkbox.checked) {
+        PUBLISHED_STATE.selectedStudents.add(admissionStr);
+        console.log('✅ Selected:', admissionStr);
+    } else {
+        PUBLISHED_STATE.selectedStudents.delete(admissionStr);
+        console.log('❌ Deselected:', admissionStr);
+    }
+    
+    // ✅ Update UI
+    if (typeof updateSelectedCount === 'function') {
+        updateSelectedCount();
+    }
 }
 
+// Make sure it's globally accessible
+window.toggleStudentSelection = toggleStudentSelection;
+
+console.log('✅ toggleStudentSelection fixed!');
 function selectAllStudents() {
     document.querySelectorAll('.pm-student-checkbox').forEach(function(cb) {
         cb.checked = true;
