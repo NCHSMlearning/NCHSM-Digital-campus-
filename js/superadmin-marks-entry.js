@@ -760,14 +760,6 @@ function getNursingGrade(score) {
         };
     }
 }
-function getMarksEntryGrade(score) {
-    // ✅ Check if TVET or Nursing
-    if (isTVETProgram()) {
-        return getTVETGrade(score);  // ✅ This should be called
-    } else {
-        return getNursingGrade(score);
-    }
-}
 
 function calculateTVETGrade(score) {
     if (score === null || score === undefined || score === 0) return 'E';
