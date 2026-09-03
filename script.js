@@ -1135,11 +1135,13 @@ async function loadSectionData(tabId) {
         case 'system-health': 
             loadSystemHealth(); 
             break;
-            case 'profile': 
-    if (typeof loadProfileData === 'function') {
-        loadProfileData();
-    }
-    break;
+            
+        case 'profile': 
+            if (typeof loadProfileData === 'function') {
+                loadProfileData();
+            }
+            break;
+            
         case 'user-analytics': 
             loadUserAnalytics(); 
             break;
@@ -1339,6 +1341,45 @@ async function loadSectionData(tabId) {
                 loadNursingSystemData();
             } else {
                 console.warn('⚠️ loadNursingSystemData function not found');
+            }
+            break;
+
+        // ============================================================
+        // 🏆 CERTIFICATE MANAGEMENT - NEW
+        // ============================================================
+        case 'certificate-management':
+            console.log('🏆 Loading Certificate Management...');
+            if (typeof initCertificateSystem === 'function') {
+                // Show loading state
+                const gradList = document.getElementById('certGraduateList');
+                if (gradList) {
+                    gradList.innerHTML = `
+                        <tr><td colspan="6" style="padding: 40px; text-align: center; color: #94a3b8;">
+                            <div class="loading-spinner" style="margin: 0 auto 12px; width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top: 3px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p>Loading certificate system...</p>
+                        </td></tr>
+                    `;
+                }
+                // Initialize after a short delay
+                setTimeout(() => {
+                    initCertificateSystem();
+                }, 300);
+            } else if (typeof loadCertificates === 'function') {
+                loadCertificates();
+            } else {
+                console.warn('⚠️ Certificate module not loaded - check if superadmin-certificates.js is loaded');
+                const gradList = document.getElementById('certGraduateList');
+                if (gradList) {
+                    gradList.innerHTML = `
+                        <tr><td colspan="6" style="padding: 40px; text-align: center; color: #dc2626;">
+                            <i class="fas fa-exclamation-triangle" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
+                            <p>Certificate module not loaded. Please refresh the page.</p>
+                            <button onclick="location.reload()" style="margin-top: 12px; padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
+                                Refresh Page
+                            </button>
+                        </td></tr>
+                    `;
+                }
             }
             break;
             
