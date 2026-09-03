@@ -9,9 +9,6 @@ console.log('🎓 Graduation & Certificate System Loading...');
 // GLOBAL VARIABLES - Safe declarations
 // ============================================================
 
-if (typeof MAX_RETAKES === 'undefined') {
-    var MAX_RETAKES = 2;
-}
 
 if (typeof CERT_STORAGE_KEY === 'undefined') {
     var CERT_STORAGE_KEY = 'nchsm_certificates';
