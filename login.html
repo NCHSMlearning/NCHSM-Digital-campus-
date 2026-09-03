@@ -50,6 +50,97 @@
     <!-- Supabase -->
     <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
     
+    <!-- ============================================ -->
+    <!-- ===== INLINE STYLES FOR TOP CONTROLS ===== -->
+    <!-- ============================================ -->
+    <style>
+        /* ===== TOP CONTROLS - PROPER SPACING ===== */
+        .top-controls {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 420px;
+            margin: 0 auto 30px auto;
+            padding: 0;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .top-controls .left-group,
+        .top-controls .right-group {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        /* Button base style */
+        .top-controls a,
+        .top-controls button {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 13px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            cursor: pointer;
+            border: none;
+            font-family: inherit;
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .top-controls a:hover,
+        .top-controls button:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.08);
+        }
+        
+        /* Main Site button */
+        .top-controls .main-site-btn {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+        }
+        
+        .top-controls .main-site-btn:hover {
+            background: #e2e8f0;
+        }
+        
+        /* Blog button - Yellow theme */
+        .top-controls .blog-btn {
+            background: #FDB913;
+            color: #0A3D62;
+            border: none;
+        }
+        
+        .top-controls .blog-btn:hover {
+            background: #e8a80e;
+        }
+        
+        /* Theme toggle button */
+        .top-controls .theme-toggle-btn {
+            background: #f1f5f9;
+            color: #475569;
+            border: 1px solid #e2e8f0;
+            padding: 8px 14px;
+        }
+        
+        .top-controls .theme-toggle-btn:hover {
+            background: #e2e8f0;
+        }
+        
+        /* Feather icons inside top controls */
+        .top-controls i {
+            width: 16px;
+            height: 16px;
+        }
+    </style>
+    
     <script>
     // ============================================
     // GOOGLE REDIRECT HANDLER
@@ -223,12 +314,19 @@
             <!-- ===== MAIN CONTENT ===== -->
             <main id="main-content" class="main-content">
                 <div class="login-card">
-                    <!-- Top Controls -->
-                    <div class="top-controls">
-                        <a href="home.html" class="main-site-btn">
-                            <i data-feather="home"></i> Main Site
-                        </a>
-                        <div class="theme-controls">
+                    <!-- ===== TOP CONTROLS - FIXED WITH PROPER SPACING ===== -->
+                    <div class="top-controls" id="topControls">
+                        <!-- Left Group: Main Site + Blog -->
+                        <div class="left-group">
+                            <a href="home.html" class="main-site-btn">
+                                <i data-feather="home"></i> Main Site
+                            </a>
+                            <a href="blog.html" class="blog-btn">
+                                <i data-feather="edit"></i> Blog
+                            </a>
+                        </div>
+                        <!-- Right Group: Theme Toggle -->
+                        <div class="right-group">
                             <button id="themeToggle" class="theme-toggle-btn" aria-label="Toggle theme">
                                 <i data-feather="sun" id="themeIcon"></i>
                                 <span id="themeLabel">Light</span>
