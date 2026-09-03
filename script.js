@@ -2931,14 +2931,28 @@ if (typeof window.loadRecentActivity === 'undefined') {
 }
 
 // ============================================
-// 📝 WELCOME MESSAGE FUNCTIONS
+// 📝 WELCOME MESSAGE FUNCTIONS - COMPLETE
 // ============================================
 
+// Constants - make sure these are defined globally
+if (typeof window.SETTINGS_TABLE === 'undefined') {
+    window.SETTINGS_TABLE = 'app_settings';
+}
+if (typeof window.MESSAGE_KEY === 'undefined') {
+    window.MESSAGE_KEY = 'student_welcome';
+}
+
+// ============================================
+// LOAD WELCOME MESSAGE FOR STUDENTS
+// ============================================
 if (typeof window.loadStudentWelcomeMessage === 'undefined') {
     window.loadStudentWelcomeMessage = async function() {
         try {
             const client = window.sb || window.supabase;
-            if (!client) return;
+            if (!client) {
+                console.warn('Supabase client not available');
+                return;
+            }
             
             const { data, error } = await client
                 .from(window.SETTINGS_TABLE)
@@ -2959,9 +2973,21 @@ if (typeof window.loadStudentWelcomeMessage === 'undefined') {
             } else {
                 const welcomeText = document.getElementById('welcomeMessageText');
                 if (welcomeText) {
-                    welcomeText.innerHTML = '👋 Welcome to the NCHSM Command Center!';
+                    welcomeText.innerHTML = `
+                        <div style="text-align: center; padding: 20px;">
+                            <h1 style="color: #4C1D95;">👋 Welcome to NCHSM Portal</h1>
+                            <p style="color: #475569;">Welcome to the Nursing & Community Health Sciences Management Portal.</p>
+                            <p style="color: #64748b;">Please check your timetable and announcements regularly.</p>
+                        </div>
+                    `;
                 } else {
-                    messageDiv.innerHTML = '<p>👋 Welcome to the NCHSM Command Center!</p>';
+                    messageDiv.innerHTML = `
+                        <div style="text-align: center; padding: 20px;">
+                            <h1 style="color: #4C1D95;">👋 Welcome to NCHSM Portal</h1>
+                            <p style="color: #475569;">Welcome to the Nursing & Community Health Sciences Management Portal.</p>
+                            <p style="color: #64748b;">Please check your timetable and announcements regularly.</p>
+                        </div>
+                    `;
                 }
             }
             
@@ -2974,17 +3000,28 @@ if (typeof window.loadStudentWelcomeMessage === 'undefined') {
             console.error('Error loading welcome message:', error);
             const messageDiv = document.getElementById('student-welcome-message');
             if (messageDiv) {
-                messageDiv.innerHTML = '<p>👋 Welcome to the NCHSM Command Center!</p>';
+                messageDiv.innerHTML = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h1 style="color: #4C1D95;">👋 Welcome to NCHSM Portal</h1>
+                        <p style="color: #475569;">Welcome to the Nursing & Community Health Sciences Management Portal.</p>
+                    </div>
+                `;
             }
         }
     };
 }
 
+// ============================================
+// LOAD WELCOME MESSAGE FOR EDITING (ADMIN)
+// ============================================
 if (typeof window.loadWelcomeMessageForEdit === 'undefined') {
     window.loadWelcomeMessageForEdit = async function() {
         try {
             const client = window.sb || window.supabase;
-            if (!client) return;
+            if (!client) {
+                console.warn('Supabase client not available');
+                return;
+            }
             
             const { data, error } = await client
                 .from(window.SETTINGS_TABLE)
@@ -2993,23 +3030,49 @@ if (typeof window.loadWelcomeMessageForEdit === 'undefined') {
                 .single();
 
             const editor = document.getElementById('welcome-message-editor');
-            if (!editor) return;
+            if (!editor) {
+                console.warn('Welcome editor element not found');
+                return;
+            }
 
             if (data && data.value) {
                 editor.value = data.value;
             } else {
-                editor.value = '<p>👋 Welcome to the NCHSM Command Center!</p>';
+                editor.value = `
+                    <div style="text-align: center; padding: 20px;">
+                        <h1 style="color: #4C1D95;">👋 Welcome to NCHSM Portal</h1>
+                        <p style="color: #475569;">Welcome to the Nursing & Community Health Sciences Management Portal.</p>
+                        <p style="color: #64748b;">Please check your timetable and announcements regularly.</p>
+                        <hr style="margin: 20px 0;">
+                        <p style="color: #94a3b8;">📚 For academic support, contact your program coordinator.</p>
+                        <p style="color: #94a3b8;">💻 Technical support: it@nchsm.ac.ke</p>
+                    </div>
+                `;
+            }
+            
+            // Update preview
+            if (typeof window.previewWelcomeMessage === 'function') {
+                window.previewWelcomeMessage();
+            }
+            
+            // Update stats
+            if (typeof window.updateWelcomeStats === 'function') {
+                window.updateWelcomeStats();
             }
             
             if (typeof window.loadStudentWelcomeMessage === 'function') {
                 window.loadStudentWelcomeMessage();
             }
+            
         } catch (error) {
             console.error('Error loading welcome message for edit:', error);
         }
     };
 }
 
+// ============================================
+// SAVE WELCOME MESSAGE
+// ============================================
 if (typeof window.handleSaveWelcomeMessage === 'undefined') {
     window.handleSaveWelcomeMessage = async function(e) {
         e.preventDefault();
@@ -3024,7 +3087,11 @@ if (typeof window.handleSaveWelcomeMessage === 'undefined') {
         const value = document.getElementById('welcome-message-editor')?.value?.trim();
 
         if (!value) {
-            window.showFeedback('Message content cannot be empty.', 'error');
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback('Message content cannot be empty.', 'error');
+            } else {
+                alert('Message content cannot be empty.');
+            }
             if (submitButton) {
                 submitButton.textContent = originalText;
                 submitButton.disabled = false;
@@ -3036,34 +3103,68 @@ if (typeof window.handleSaveWelcomeMessage === 'undefined') {
             const client = window.sb || window.supabase;
             if (!client) throw new Error('Supabase client not available');
             
+            // Check if record exists
             const { data: existing, error: fetchError } = await client
                 .from(window.SETTINGS_TABLE)
-                .select('id')
+                .select('id, version')
                 .eq('key', window.MESSAGE_KEY);
 
             if (fetchError) throw fetchError;
 
             let result;
+            const currentVersion = (existing && existing.length > 0) ? (existing[0].version || 0) + 1 : 1;
+            
             if (existing && existing.length > 0) {
                 result = await client
                     .from(window.SETTINGS_TABLE)
-                    .update({ value, updated_at: new Date().toISOString() })
+                    .update({ 
+                        value, 
+                        version: currentVersion,
+                        updated_at: new Date().toISOString(),
+                        updated_by: window.currentUserId || null
+                    })
                     .eq('id', existing[0].id);
             } else {
                 result = await client
                     .from(window.SETTINGS_TABLE)
-                    .insert({ key: window.MESSAGE_KEY, value });
+                    .insert({ 
+                        key: window.MESSAGE_KEY, 
+                        value,
+                        version: 1,
+                        created_at: new Date().toISOString(),
+                        updated_at: new Date().toISOString()
+                    });
             }
 
             if (result.error) throw result.error;
 
-            window.showFeedback('Welcome message saved successfully!', 'success');
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback('✅ Welcome message saved successfully!', 'success');
+            } else {
+                alert('✅ Welcome message saved successfully!');
+            }
+            
+            // Refresh all views
             if (typeof window.loadWelcomeMessageForEdit === 'function') {
                 window.loadWelcomeMessageForEdit();
             }
+            if (typeof window.loadStudentWelcomeMessage === 'function') {
+                window.loadStudentWelcomeMessage();
+            }
+            if (typeof window.previewWelcomeMessage === 'function') {
+                window.previewWelcomeMessage();
+            }
+            if (typeof window.updateWelcomeStats === 'function') {
+                window.updateWelcomeStats();
+            }
             
         } catch (err) {
-            window.showFeedback(`Failed to save message: ${err.message}`, 'error');
+            console.error('Save error:', err);
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback(`❌ Failed to save message: ${err.message}`, 'error');
+            } else {
+                alert(`Failed to save message: ${err.message}`);
+            }
         } finally {
             if (submitButton) {
                 submitButton.textContent = originalText;
@@ -3073,6 +3174,282 @@ if (typeof window.handleSaveWelcomeMessage === 'undefined') {
     };
 }
 
+// ============================================
+// PREVIEW WELCOME MESSAGE
+// ============================================
+if (typeof window.previewWelcomeMessage === 'undefined') {
+    window.previewWelcomeMessage = function() {
+        const editor = document.getElementById('welcome-message-editor');
+        const preview = document.getElementById('live-preview');
+        
+        if (editor && preview) {
+            const content = editor.value || '';
+            preview.innerHTML = content || '<p style="color: #94a3b8; text-align: center; padding: 40px;">Empty message. Type something in the editor above.</p>';
+            
+            // Update word count
+            if (typeof window.updateWelcomeStats === 'function') {
+                window.updateWelcomeStats();
+            }
+        }
+    };
+}
+
+// ============================================
+// UPDATE WELCOME STATS
+// ============================================
+if (typeof window.updateWelcomeStats === 'undefined') {
+    window.updateWelcomeStats = function() {
+        const editor = document.getElementById('welcome-message-editor');
+        const wordCountEl = document.getElementById('welcome_word_count');
+        const statusEl = document.getElementById('welcome_status');
+        
+        if (editor) {
+            const content = editor.value || '';
+            const words = content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(w => w.length > 0).length;
+            
+            if (wordCountEl) {
+                wordCountEl.textContent = words;
+            }
+            
+            if (statusEl) {
+                if (content.length > 0) {
+                    statusEl.innerHTML = '<i class="fas fa-check-circle"></i> Published';
+                    statusEl.style.color = '#059669';
+                } else {
+                    statusEl.innerHTML = '<i class="fas fa-exclamation-circle"></i> Empty';
+                    statusEl.style.color = '#f59e0b';
+                }
+            }
+        }
+    };
+}
+
+// ============================================
+// CLEAR WELCOME EDITOR
+// ============================================
+if (typeof window.clearWelcomeEditor === 'undefined') {
+    window.clearWelcomeEditor = function() {
+        const editor = document.getElementById('welcome-message-editor');
+        if (editor) {
+            if (confirm('Clear all content from the editor?')) {
+                editor.value = '';
+                if (typeof window.previewWelcomeMessage === 'function') {
+                    window.previewWelcomeMessage();
+                }
+                if (typeof window.updateWelcomeStats === 'function') {
+                    window.updateWelcomeStats();
+                }
+                if (typeof window.showFeedback === 'function') {
+                    window.showFeedback('🧹 Editor cleared', 'info');
+                }
+            }
+        }
+    };
+}
+
+// ============================================
+// RESET WELCOME MESSAGE TO DEFAULT
+// ============================================
+if (typeof window.resetWelcomeMessage === 'undefined') {
+    window.resetWelcomeMessage = function() {
+        if (!confirm('Reset to default welcome message?')) return;
+        
+        const defaultMessage = `
+            <div style="text-align: center; padding: 20px;">
+                <h1 style="color: #4C1D95;">👋 Welcome to NCHSM Portal</h1>
+                <p style="color: #475569;">Welcome to the Nursing & Community Health Sciences Management Portal.</p>
+                <p style="color: #64748b;">Please check your timetable and announcements regularly.</p>
+                <hr style="margin: 20px 0;">
+                <p style="color: #94a3b8;">📚 For academic support, contact your program coordinator.</p>
+                <p style="color: #94a3b8;">💻 Technical support: it@nchsm.ac.ke</p>
+            </div>
+        `;
+        
+        const editor = document.getElementById('welcome-message-editor');
+        if (editor) {
+            editor.value = defaultMessage;
+            if (typeof window.previewWelcomeMessage === 'function') {
+                window.previewWelcomeMessage();
+            }
+            if (typeof window.updateWelcomeStats === 'function') {
+                window.updateWelcomeStats();
+            }
+            
+            // Auto-save
+            const form = document.getElementById('edit-welcome-form');
+            if (form) {
+                const submitEvent = new Event('submit');
+                form.dispatchEvent(submitEvent);
+            }
+            
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback('🔄 Reset to default message', 'info');
+            }
+        }
+    };
+}
+
+// ============================================
+// REFRESH WELCOME PREVIEW
+// ============================================
+if (typeof window.refreshWelcomePreview === 'undefined') {
+    window.refreshWelcomePreview = function() {
+        if (typeof window.previewWelcomeMessage === 'function') {
+            window.previewWelcomeMessage();
+        }
+        if (typeof window.loadWelcomeMessageForEdit === 'function') {
+            window.loadWelcomeMessageForEdit();
+        }
+        if (typeof window.showFeedback === 'function') {
+            window.showFeedback('🔄 Preview refreshed!', 'success');
+        }
+    };
+}
+
+// ============================================
+// INSERT WELCOME TEMPLATE
+// ============================================
+if (typeof window.insertWelcomeTemplate === 'undefined') {
+    window.insertWelcomeTemplate = function(type) {
+        const editor = document.getElementById('welcome-message-editor');
+        if (!editor) return;
+        
+        let template = '';
+        
+        switch(type) {
+            case 'basic':
+                template = `
+                    <div style="padding: 20px;">
+                        <h1 style="color: #4C1D95;">Welcome to NCHSM</h1>
+                        <p>Welcome to the Nursing & Community Health Sciences Management Portal.</p>
+                        <p>Please check your timetable and announcements regularly.</p>
+                        <p>For academic support, contact your program coordinator.</p>
+                    </div>
+                `;
+                break;
+            case 'announcement':
+                template = `
+                    <div style="padding: 20px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #059669;">
+                        <h2 style="color: #065f46;">📢 Important Announcement</h2>
+                        <p>Welcome to the new academic year!</p>
+                        <ul>
+                            <li>Check your timetable for class schedules</li>
+                            <li>Review the academic calendar for important dates</li>
+                            <li>Contact your program coordinator for any questions</li>
+                        </ul>
+                        <p style="color: #065f46;">Stay focused and work hard!</p>
+                    </div>
+                `;
+                break;
+            case 'exam':
+                template = `
+                    <div style="padding: 20px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                        <h2 style="color: #92400e;">📝 Exam Preparation</h2>
+                        <p><strong>Exams are approaching!</strong> Please prepare accordingly.</p>
+                        <ul>
+                            <li>Review all course materials</li>
+                            <li>Check exam schedule in your timetable</li>
+                            <li>Contact your lecturer for any clarifications</li>
+                            <li>Get enough rest before exam day</li>
+                        </ul>
+                        <p style="color: #92400e; font-weight: bold;">Best of luck with your exams!</p>
+                    </div>
+                `;
+                break;
+            case 'holiday':
+                template = `
+                    <div style="padding: 20px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                        <h2 style="color: #1e40af;">☀️ Holiday Announcement</h2>
+                        <p>Please note the following holiday schedule:</p>
+                        <ul>
+                            <li>Classes will resume on <strong>[date]</strong></li>
+                            <li>Administrative offices will be closed</li>
+                            <li>Enjoy your break and stay safe!</li>
+                        </ul>
+                        <p style="color: #1e40af;">Have a wonderful break!</p>
+                    </div>
+                `;
+                break;
+            default:
+                template = '';
+        }
+        
+        if (template) {
+            editor.value = template;
+            if (typeof window.previewWelcomeMessage === 'function') {
+                window.previewWelcomeMessage();
+            }
+            if (typeof window.updateWelcomeStats === 'function') {
+                window.updateWelcomeStats();
+            }
+            if (typeof window.showFeedback === 'function') {
+                window.showFeedback('📋 Template inserted! Edit and save.', 'info');
+            }
+        }
+    };
+}
+
+// ============================================
+// INITIALIZE WELCOME EDITOR
+// ============================================
+if (typeof window.initWelcomeEditor === 'undefined') {
+    window.initWelcomeEditor = function() {
+        console.log('📝 Initializing Welcome Editor...');
+        
+        // Load message for editing
+        if (typeof window.loadWelcomeMessageForEdit === 'function') {
+            window.loadWelcomeMessageForEdit();
+        }
+        
+        // Setup form submit
+        const form = document.getElementById('edit-welcome-form');
+        if (form) {
+            // Remove existing listeners to avoid duplicates
+            form.removeEventListener('submit', window.handleSaveWelcomeMessage);
+            form.addEventListener('submit', window.handleSaveWelcomeMessage);
+        }
+        
+        // Setup preview on input change
+        const editor = document.getElementById('welcome-message-editor');
+        if (editor) {
+            editor.removeEventListener('input', window.previewWelcomeMessage);
+            editor.addEventListener('input', window.previewWelcomeMessage);
+        }
+        
+        console.log('✅ Welcome Editor initialized');
+    };
+}
+
+// ============================================
+// AUTO-INITIALIZE ON DOM READY
+// ============================================
+document.addEventListener('DOMContentLoaded', function() {
+    // Check if we're on the welcome editor tab
+    const welcomeEditor = document.getElementById('welcome-editor');
+    if (welcomeEditor) {
+        setTimeout(function() {
+            if (typeof window.initWelcomeEditor === 'function') {
+                window.initWelcomeEditor();
+            }
+        }, 500);
+    }
+});
+
+// ============================================
+// EXPOSE FUNCTIONS GLOBALLY
+// ============================================
+window.loadStudentWelcomeMessage = window.loadStudentWelcomeMessage;
+window.loadWelcomeMessageForEdit = window.loadWelcomeMessageForEdit;
+window.handleSaveWelcomeMessage = window.handleSaveWelcomeMessage;
+window.previewWelcomeMessage = window.previewWelcomeMessage;
+window.updateWelcomeStats = window.updateWelcomeStats;
+window.clearWelcomeEditor = window.clearWelcomeEditor;
+window.resetWelcomeMessage = window.resetWelcomeMessage;
+window.refreshWelcomePreview = window.refreshWelcomePreview;
+window.insertWelcomeTemplate = window.insertWelcomeTemplate;
+window.initWelcomeEditor = window.initWelcomeEditor;
+
+console.log('✅ Welcome Message Functions loaded');
 // ============================================
 // 🎂 BIRTHDAY FUNCTIONS - WITH EMAIL STORAGE
 // ============================================
@@ -16338,18 +16715,297 @@ async function deleteBackup(backupId) {
     }
 }
 /*******************************************************
- * 18. CALENDAR & TIMETABLE MANAGEMENT (COMPLETE)
+ * 19. CALENDAR & TIMETABLE MANAGEMENT (COMPLETE)
  * Supports: Excel, CSV, Word, PDF uploads
+ * TVET: Full Year/Term support (Y1T1, Y1T2, etc.)
  *******************************************************/
 
 // Global calendar instance
 let mainCalendar = null;
+let currentUserProfile = null;
+let currentUserId = null;
 
 // =====================================================
-// RENDER FULL CALENDAR (shows events from all sources)
+// INITIALIZE CALENDAR SECTION
+// =====================================================
+async function initCalendarSection() {
+    console.log('📅 Initializing Calendar Section...');
+    
+    // Get current user
+    currentUserProfile = await getCurrentUser();
+    currentUserId = currentUserProfile?.id;
+    
+    // Load calendar data
+    await renderFullCalendar();
+    await loadCalendarStats();
+    await loadUpcomingEvents();
+    await loadWelcomeMessage();
+    
+    // Setup file input listeners
+    setupFileInputListeners();
+    
+    // Initialize program dropdowns for calendar
+    await initializeCalendarProgramDropdowns();
+    
+    // Update selected block display
+    updateSelectedBlockDisplay();
+    
+    console.log('✅ Calendar Section initialized');
+}
+
+// =====================================================
+// LOAD CALENDAR STATS
+// =====================================================
+async function loadCalendarStats() {
+    try {
+        // Get total timetable entries
+        const { count: totalSessions, error: totalError } = await sb
+            .from('timetables')
+            .select('*', { count: 'exact', head: true });
+        
+        if (!totalError) {
+            const el = document.getElementById('cal_total_events');
+            if (el) el.textContent = totalSessions || 0;
+        }
+        
+        // Get this week's sessions
+        const today = new Date();
+        const currentWeek = Math.ceil((today - new Date(today.getFullYear(), 0, 1)) / 604800000);
+        
+        const { count: weekSessions, error: weekError } = await sb
+            .from('timetables')
+            .select('*', { count: 'exact', head: true })
+            .eq('week_number', currentWeek);
+        
+        if (!weekError) {
+            const el = document.getElementById('cal_this_week');
+            if (el) el.textContent = weekSessions || 0;
+        }
+        
+        // Get distinct blocks count
+        const { data: blocks } = await sb
+            .from('timetables')
+            .select('block')
+            .order('block');
+        
+        const uniqueBlocks = new Set(blocks?.map(b => b.block) || []);
+        const el = document.getElementById('cal_active_blocks');
+        if (el) el.textContent = uniqueBlocks.size || 0;
+        
+        // Get unique lecturers/trainers
+        const { data: lecturers } = await sb
+            .from('timetables')
+            .select('lecturer_name')
+            .neq('lecturer_name', 'TBA')
+            .neq('lecturer_name', 'TBD');
+        
+        const uniqueLecturers = new Set(lecturers?.map(l => l.lecturer_name) || []);
+        const lecEl = document.getElementById('cal_lecturers');
+        if (lecEl) lecEl.textContent = uniqueLecturers.size || 0;
+        
+        // Get holidays count
+        const { count: holidayCount, error: holidayError } = await sb
+            .from('timetables')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_holiday', true);
+        
+        if (!holidayError) {
+            const el = document.getElementById('cal_holidays');
+            if (el) el.textContent = holidayCount || 0;
+        }
+        
+        // Get published blocks count
+        const { count: publishedCount, error: publishedError } = await sb
+            .from('timetables')
+            .select('*', { count: 'exact', head: true })
+            .eq('is_published', true);
+        
+        if (!publishedError) {
+            const el = document.getElementById('cal_published_blocks');
+            if (el) el.textContent = publishedCount || 0;
+        }
+        
+    } catch (error) {
+        console.error('Error loading calendar stats:', error);
+    }
+}
+
+// =====================================================
+// LOAD UPCOMING EVENTS
+// =====================================================
+async function loadUpcomingEvents() {
+    const tbody = document.getElementById('upcomingEventsBody');
+    if (!tbody) return;
+    
+    try {
+        const today = new Date();
+        const futureDate = new Date(today);
+        futureDate.setDate(today.getDate() + 14);
+        
+        const todayStr = today.toISOString().split('T')[0];
+        const futureStr = futureDate.toISOString().split('T')[0];
+        
+        // Fetch from calendar_events
+        const { data: calendarEvents, error: calError } = await sb
+            .from('calendar_events')
+            .select('*')
+            .gte('event_date', todayStr)
+            .lte('event_date', futureStr)
+            .order('event_date', { ascending: true })
+            .order('start_time', { ascending: true })
+            .limit(20);
+        
+        if (calError) throw calError;
+        
+        // Fetch from timetables
+        const currentWeek = Math.ceil((today - new Date(today.getFullYear(), 0, 1)) / 604800000);
+        const { data: timetableEvents, error: ttError } = await sb
+            .from('timetables')
+            .select('*')
+            .gte('week_number', currentWeek)
+            .lte('week_number', currentWeek + 2)
+            .order('week_number', { ascending: true })
+            .order('day_of_week', { ascending: true })
+            .limit(20);
+        
+        if (ttError) throw ttError;
+        
+        // Combine events
+        const allEvents = [];
+        
+        // Add calendar events
+        calendarEvents?.forEach(e => {
+            allEvents.push({
+                id: `cal_${e.id}`,
+                date: e.event_date,
+                time: e.start_time ? `${e.start_time.substring(0,5)} - ${e.end_time ? e.end_time.substring(0,5) : ''}` : 'All Day',
+                title: e.event_name,
+                venue: e.venue || 'TBD',
+                program: e.target_program || 'General',
+                block: e.target_block || 'General',
+                type: 'calendar'
+            });
+        });
+        
+        // Add timetable events
+        const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+        timetableEvents?.forEach(e => {
+            // Calculate actual date for this event
+            const eventDate = getDateForDay(e.day_of_week, e.week_number);
+            if (eventDate) {
+                allEvents.push({
+                    id: `tt_${e.id}`,
+                    date: eventDate,
+                    time: `${e.start_time.substring(0,5)} - ${e.end_time.substring(0,5)}`,
+                    title: e.session_name || e.course_name,
+                    venue: e.venue || 'TBD',
+                    program: e.program || 'General',
+                    block: e.block || 'General',
+                    type: e.is_holiday ? 'holiday' : (e.is_exam ? 'exam' : 'timetable')
+                });
+            }
+        });
+        
+        // Sort by date
+        allEvents.sort((a, b) => a.date.localeCompare(b.date));
+        
+        // Render table
+        if (allEvents.length === 0) {
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                        <i class="fas fa-calendar-check" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                        No upcoming sessions in the next 14 days
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        
+        tbody.innerHTML = allEvents.slice(0, 20).map(event => {
+            const typeColors = {
+                'holiday': '🔴',
+                'exam': '📝',
+                'timetable': '📚',
+                'calendar': '📅'
+            };
+            const icon = typeColors[event.type] || '📅';
+            
+            return `
+                <tr style="border-bottom: 1px solid #f3f4f6;">
+                    <td style="padding: 10px 16px; font-size: 13px;">${formatDate(event.date)}</td>
+                    <td style="padding: 10px 16px; font-size: 13px;">${event.time}</td>
+                    <td style="padding: 10px 16px; font-size: 13px; font-weight: 500;">${icon} ${escapeHtml(event.title)}</td>
+                    <td style="padding: 10px 16px; font-size: 13px;">${escapeHtml(event.venue)}</td>
+                    <td style="padding: 10px 16px; font-size: 13px;">${escapeHtml(event.program)}</td>
+                    <td style="padding: 10px 16px; font-size: 13px;">${escapeHtml(event.block)}</td>
+                    <td style="padding: 10px 16px; font-size: 13px;">
+                        <button onclick="viewEventDetails('${event.id}')" style="background: #f1f5f9; border: none; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 12px;">
+                            <i class="fas fa-eye"></i> View
+                        </button>
+                    </td>
+                </tr>
+            `;
+        }).join('');
+        
+    } catch (error) {
+        console.error('Error loading upcoming events:', error);
+        tbody.innerHTML = `
+            <tr>
+                <td colspan="7" style="text-align: center; padding: 20px; color: #dc2626;">
+                    <i class="fas fa-exclamation-circle"></i> Error loading events: ${error.message}
+                </td>
+            </tr>
+        `;
+    }
+}
+
+// =====================================================
+// UPDATE SELECTED BLOCK DISPLAY
+// =====================================================
+function updateSelectedBlockDisplay() {
+    const blockSelect = document.getElementById('adminTimetableBlock');
+    const programSelect = document.getElementById('adminTimetableProgram');
+    const nameEl = document.getElementById('selectedBlockName');
+    const programEl = document.getElementById('selectedBlockProgram');
+    
+    if (blockSelect && nameEl) {
+        const block = blockSelect.value;
+        const isTVET = programSelect && isTVETProgram(programSelect.value);
+        
+        // Format display name
+        let displayName = block;
+        if (block.match(/^Y(\d)T(\d)$/)) {
+            const year = block.match(/^Y(\d)T(\d)$/)[1];
+            const term = block.match(/^Y(\d)T(\d)$/)[2];
+            displayName = `Year ${year} - Term ${term}`;
+        } else if (block.startsWith('Artisan')) {
+            displayName = block;
+        }
+        
+        nameEl.textContent = displayName || 'None selected';
+    }
+    
+    if (programSelect && programEl) {
+        const program = programSelect.value;
+        if (program) {
+            const displayName = getProgramDisplayName(program) || program;
+            const isTVET = isTVETProgram(program);
+            programEl.textContent = isTVET ? `🔧 ${displayName}` : `🎓 ${displayName}`;
+            programEl.style.background = isTVET ? '#d1fae5' : '#dbeafe';
+            programEl.style.color = isTVET ? '#065f46' : '#1e40af';
+            programEl.style.borderColor = isTVET ? '#86efac' : '#93c5fd';
+        } else {
+            programEl.textContent = 'No Program Selected';
+        }
+    }
+}
+
+// =====================================================
+// RENDER FULL CALENDAR
 // =====================================================
 async function renderFullCalendar() {
-    const calendarEl = $('fullCalendarDisplay');
+    const calendarEl = document.getElementById('fullCalendarDisplay');
     if (!calendarEl) {
         console.log('Calendar element not found');
         return;
@@ -16375,13 +17031,13 @@ async function renderFullCalendar() {
             exams = Array.isArray(data) ? data : [];
         } catch(e) { exams = []; }
         
-        // Fetch calendar events (admin uploaded)
+        // Fetch calendar events
         try {
             const { data } = await fetchData('calendar_events', '*', {}, 'event_date', true);
             calendarEvents = Array.isArray(data) ? data : [];
         } catch(e) { calendarEvents = []; }
         
-        // Fetch TIMETABLE events from timetables table
+        // Fetch TIMETABLE events
         try {
             const { data } = await sb
                 .from('timetables')
@@ -16413,7 +17069,7 @@ async function renderFullCalendar() {
             return targetDate.toISOString().split('T')[0];
         }
 
-        // 1. Add scheduled sessions (classes, clinicals)
+        // 1. Add scheduled sessions
         sessions.forEach(s => {
             if (!s) return;
             if (!isAdmin && !shouldShowToStudent(s, currentUser)) return;
@@ -16434,7 +17090,14 @@ async function renderFullCalendar() {
                 end: endDate,
                 allDay: !s.session_time,
                 color: color,
-                extendedProps: { type: s.session_type || 'session', venue: s.venue || 'TBA', description: s.session_description || 'No description', program: s.target_program || 'General', block: s.target_block || 'General' }
+                extendedProps: { 
+                    type: s.session_type || 'session', 
+                    venue: s.venue || 'TBA', 
+                    description: s.session_description || 'No description', 
+                    program: s.target_program || 'General', 
+                    block: s.target_block || 'General',
+                    lecturer: s.lecturer || 'TBA'
+                }
             });
         });
 
@@ -16459,16 +17122,22 @@ async function renderFullCalendar() {
                 end: end,
                 allDay: !e.exam_start_time,
                 color: '#e74c3c',
-                extendedProps: { type: 'exam', venue: 'Exam Hall', description: `Duration: ${e.duration_minutes || 'N/A'} minutes`, program: e.target_program || 'General', block: e.target_block || 'General' }
+                extendedProps: { 
+                    type: 'exam', 
+                    venue: 'Exam Hall', 
+                    description: `Duration: ${e.duration_minutes || 'N/A'} minutes`, 
+                    program: e.target_program || 'General', 
+                    block: e.target_block || 'General',
+                    lecturer: e.invigilator || 'TBA'
+                }
             });
         });
 
-        // 3. Add TIMETABLE events (from timetables table - THIS IS THE NEW FEATURE!)
+        // 3. Add TIMETABLE events
         const currentDate = new Date();
         timetableEvents.forEach(tt => {
             if (!tt) return;
             
-            // Filter by student's block if not admin
             if (!isAdmin) {
                 const userBlock = currentUser?.block || 'Block 4';
                 if (tt.block !== userBlock) return;
@@ -16480,25 +17149,48 @@ async function renderFullCalendar() {
             const holidayBadge = tt.is_holiday ? '🔴 HOLIDAY - ' : '';
             const examBadge = tt.is_exam ? '📝 EXAM - ' : '';
             
+            let color = '#4C1D95';
+            if (tt.is_holiday) color = '#dc2626';
+            else if (tt.is_exam) color = '#f59e0b';
+            else if (tt.program && isTVETProgram(tt.program)) color = '#059669';
+            
+            let blockDisplay = tt.block || '';
+            if (tt.program && isTVETProgram(tt.program)) {
+                const blockMap = {
+                    'Y1T1': 'Year 1 Term 1',
+                    'Y1T2': 'Year 1 Term 2',
+                    'Y1T3': 'Year 1 Term 3',
+                    'Y2T1': 'Year 2 Term 1',
+                    'Y2T2': 'Year 2 Term 2',
+                    'Y2T3': 'Year 2 Term 3',
+                    'Y3T1': 'Year 3 Term 1',
+                    'Y3T2': 'Year 3 Term 2',
+                    'Y3T3': 'Year 3 Term 3'
+                };
+                blockDisplay = blockMap[tt.block] || tt.block;
+            }
+            
             events.push({
                 id: `timetable_${tt.id}`,
                 title: `${holidayBadge}${examBadge}${tt.session_name || tt.course_name}`,
                 start: `${eventDate}T${tt.start_time}`,
                 end: `${eventDate}T${tt.end_time}`,
                 allDay: false,
-                color: tt.is_holiday ? '#dc2626' : (tt.is_exam ? '#f59e0b' : '#4C1D95'),
+                color: color,
                 extendedProps: {
                     type: tt.is_holiday ? 'holiday' : (tt.is_exam ? 'exam' : 'class'),
                     venue: tt.venue || 'TBD',
                     description: `${tt.course_name || ''} - Week ${tt.week_number}`,
                     program: tt.program || 'General',
-                    block: tt.block || 'General',
-                    lecturer: tt.lecturer_name || 'TBA'
+                    block: blockDisplay,
+                    lecturer: tt.lecturer_name || 'TBA',
+                    weekNumber: tt.week_number,
+                    dayOfWeek: tt.day_of_week
                 }
             });
         });
 
-        // 4. Add calendar events (admin uploaded)
+        // 4. Add calendar events
         calendarEvents.forEach(event => {
             if (!event) return;
             if (!isAdmin && !shouldShowToStudent(event, currentUser)) return;
@@ -16518,7 +17210,14 @@ async function renderFullCalendar() {
                 end: end,
                 allDay: !event.start_time,
                 color: color,
-                extendedProps: { type: event.type || 'event', venue: event.venue || 'TBA', description: event.description || 'No description', program: event.target_program || 'General', block: event.target_block || 'General', organizer: event.organizer || 'Admin' }
+                extendedProps: { 
+                    type: event.type || 'event', 
+                    venue: event.venue || 'TBA', 
+                    description: event.description || 'No description', 
+                    program: event.target_program || 'General', 
+                    block: event.target_block || 'General', 
+                    organizer: event.organizer || 'Admin' 
+                }
             });
         });
 
@@ -16531,7 +17230,10 @@ async function renderFullCalendar() {
                     start: unitReg.units.assessment_deadline,
                     allDay: true,
                     color: '#f39c12',
-                    extendedProps: { type: 'assignment', description: `Unit: ${unitReg.units?.unit_code || 'Unknown'} - Assessment due` }
+                    extendedProps: { 
+                        type: 'assignment', 
+                        description: `Unit: ${unitReg.units?.unit_code || 'Unknown'} - Assessment due` 
+                    }
                 });
             }
         });
@@ -16544,20 +17246,31 @@ async function renderFullCalendar() {
             
             mainCalendar = new FullCalendar.Calendar(calendarEl, {
                 initialView: 'dayGridMonth',
-                headerToolbar: { left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' },
+                headerToolbar: { 
+                    left: 'prev,next today', 
+                    center: 'title', 
+                    right: 'dayGridMonth,timeGridWeek,timeGridDay,listWeek' 
+                },
                 events: events,
                 eventClick: function(info) { showEventDetails(info.event); },
                 eventDidMount: function(info) {
                     info.el.title = info.event.extendedProps.description || info.event.title;
-                    if (info.event.extendedProps.type === 'exam') info.el.style.borderLeft = '4px solid #e74c3c';
-                    else if (info.event.extendedProps.type === 'clinical') info.el.style.borderLeft = '4px solid #2ecc71';
-                    else if (info.event.extendedProps.type === 'holiday') info.el.style.borderLeft = '4px solid #dc2626';
-                    else if (info.event.extendedProps.type === 'class') info.el.style.borderLeft = '4px solid #4C1D95';
-                }
+                    const type = info.event.extendedProps.type;
+                    const colors = {
+                        'exam': '#e74c3c',
+                        'clinical': '#2ecc71',
+                        'holiday': '#dc2626',
+                        'class': '#4C1D95',
+                        'assignment': '#f39c12'
+                    };
+                    info.el.style.borderLeft = `4px solid ${colors[type] || '#95a5a6'}`;
+                },
+                height: 'auto',
+                themeSystem: 'standard'
             });
             mainCalendar.render();
         } else {
-            calendarEl.innerHTML = '<p style="color: red;">FullCalendar library not loaded.</p>';
+            calendarEl.innerHTML = '<p style="color: red;">FullCalendar library not loaded. Please check your internet connection.</p>';
         }
     } catch (error) {
         console.error('Calendar render error:', error);
@@ -16599,30 +17312,75 @@ function getEventIcon(type) {
     return '📅';
 }
 
+function formatDate(dateStr) {
+    if (!dateStr) return 'N/A';
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+        weekday: 'short', 
+        month: 'short', 
+        day: 'numeric',
+        year: 'numeric'
+    });
+}
+
+function getDateForDay(dayName, weekNumber = 1, baseDate = new Date()) {
+    const dayNumberMap = { 
+        'sunday': 0, 'monday': 1, 'tuesday': 2, 'wednesday': 3, 
+        'thursday': 4, 'friday': 5, 'saturday': 6 
+    };
+    const dayIndex = dayNumberMap[dayName.toLowerCase()];
+    if (dayIndex === undefined) return null;
+    
+    const currentDay = baseDate.getDay();
+    const daysToAdd = (dayIndex - currentDay + 7) % 7;
+    const targetDate = new Date(baseDate);
+    targetDate.setDate(baseDate.getDate() + daysToAdd + ((weekNumber - 1) * 7));
+    return targetDate.toISOString().split('T')[0];
+}
+
+// =====================================================
+// SHOW EVENT DETAILS
+// =====================================================
 function showEventDetails(event) {
     const props = event.extendedProps;
     const startDate = event.start ? new Date(event.start) : new Date();
     const startTime = startDate.getHours() !== 0 ? startDate.toLocaleTimeString() : '';
     const endTime = event.end ? new Date(event.end).toLocaleTimeString() : '';
     
+    const typeIcons = {
+        'exam': '📝',
+        'clinical': '🏥',
+        'class': '📚',
+        'holiday': '🔴',
+        'assignment': '📄',
+        'event': '📅'
+    };
+    const icon = typeIcons[props.type] || '📅';
+    
+    const isTVET = props.program && isTVETProgram(props.program);
+    const lecturerLabel = isTVET ? 'Trainer' : 'Lecturer';
+    const blockLabel = isTVET ? 'Term' : 'Block';
+    
     const modalHtml = `
-        <div id="eventDetailModal" class="modal" style="display: flex; z-index: 10000;">
-            <div class="modal-content" style="max-width: 500px; background: white; border-radius: 12px;">
-                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px; border-bottom: 1px solid #e5e7eb;">
-                    <h3 style="margin: 0;">${escapeHtml(event.title)}</h3>
-                    <span class="close" onclick="closeModal('eventDetailModal')" style="cursor: pointer; font-size: 24px;">&times;</span>
+        <div id="eventDetailModal" class="modal" style="display: flex; z-index: 10000; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); align-items: center; justify-content: center;">
+            <div class="modal-content" style="max-width: 500px; width: 90%; background: white; border-radius: 12px; box-shadow: 0 20px 60px rgba(0,0,0,0.3); max-height: 80vh; overflow-y: auto;">
+                <div class="modal-header" style="display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; border-bottom: 1px solid #e5e7eb;">
+                    <h3 style="margin: 0; font-size: 18px; color: #1e293b;">${icon} ${escapeHtml(event.title)}</h3>
+                    <span class="close" onclick="closeModal('eventDetailModal')" style="cursor: pointer; font-size: 28px; color: #94a3b8;">&times;</span>
                 </div>
                 <div class="modal-body" style="padding: 20px;">
-                    <p><strong>📅 Date:</strong> ${startDate.toLocaleDateString()}</p>
+                    <p><strong>📅 Date:</strong> ${startDate.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                     ${startTime ? `<p><strong>⏰ Time:</strong> ${startTime} ${endTime ? '- ' + endTime : ''}</p>` : ''}
                     ${props.venue && props.venue !== 'TBA' && props.venue !== 'TBD' ? `<p><strong>📍 Venue:</strong> ${escapeHtml(props.venue)}</p>` : ''}
                     ${props.type ? `<p><strong>🏷️ Type:</strong> ${escapeHtml(props.type)}</p>` : ''}
-                    ${props.lecturer ? `<p><strong>👨‍🏫 Lecturer:</strong> ${escapeHtml(props.lecturer)}</p>` : ''}
+                    ${props.lecturer && props.lecturer !== 'TBA' ? `<p><strong>👨‍🏫 ${lecturerLabel}:</strong> ${escapeHtml(props.lecturer)}</p>` : ''}
                     ${props.description && props.description !== 'No description' ? `<p><strong>📝 Details:</strong> ${escapeHtml(props.description)}</p>` : ''}
-                    ${props.program && props.program !== 'General' ? `<p><strong>🎓 Program:</strong> ${escapeHtml(props.program)}</p>` : ''}
-                    ${props.block && props.block !== 'General' ? `<p><strong>📌 Block:</strong> ${escapeHtml(props.block)}</p>` : ''}
+                    ${props.program && props.program !== 'General' ? `<p><strong>🎓 Program:</strong> ${escapeHtml(getProgramDisplayName(props.program) || props.program)}</p>` : ''}
+                    ${props.block && props.block !== 'General' ? `<p><strong>📌 ${blockLabel}:</strong> ${escapeHtml(props.block)}</p>` : ''}
+                    ${props.weekNumber ? `<p><strong>📆 Week:</strong> ${props.weekNumber}</p>` : ''}
+                    ${props.organizer ? `<p><strong>👤 Organizer:</strong> ${escapeHtml(props.organizer)}</p>` : ''}
                 </div>
-                <div class="modal-actions" style="padding: 15px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end;">
+                <div class="modal-actions" style="padding: 15px 20px; border-top: 1px solid #e5e7eb; display: flex; justify-content: flex-end; gap: 10px;">
                     <button onclick="closeModal('eventDetailModal')" class="btn" style="padding: 8px 16px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">Close</button>
                 </div>
             </div>
@@ -16633,7 +17391,10 @@ function showEventDetails(event) {
     if (existingModal) existingModal.remove();
     document.body.insertAdjacentHTML('beforeend', modalHtml);
 }
-// Add single event function
+
+// =====================================================
+// ADD SINGLE EVENT
+// =====================================================
 window.addSingleEvent = async function() {
     const title = document.getElementById('singleEventTitle')?.value;
     const date = document.getElementById('singleEventDate')?.value;
@@ -16650,6 +17411,9 @@ window.addSingleEvent = async function() {
         return;
     }
     
+    const isTVET = isTVETProgram(program);
+    const blockLabel = isTVET ? 'Term' : 'Block';
+    
     const { error } = await sb.from('calendar_events').insert([{
         event_name: title,
         event_date: date,
@@ -16660,21 +17424,27 @@ window.addSingleEvent = async function() {
         description: details || '',
         target_program: program || 'General',
         target_block: block || 'General',
-        organizer: 'Admin'
+        organizer: currentUserProfile?.name || 'Admin',
+        created_by: currentUserId,
+        created_at: new Date().toISOString()
     }]);
     
     if (error) {
         alert('Error: ' + error.message);
     } else {
-        alert('✅ Event added to calendar!');
+        alert(`✅ Session added to calendar for ${program} ${blockLabel}: ${block}`);
         document.getElementById('singleEventTitle').value = '';
         document.getElementById('singleEventVenue').value = '';
         document.getElementById('singleEventDetails').value = '';
         if (typeof renderFullCalendar === 'function') renderFullCalendar();
+        await loadUpcomingEvents();
+        await loadCalendarStats();
     }
 };
 
-// Create weekly schedule function
+// =====================================================
+// CREATE WEEKLY SCHEDULE
+// =====================================================
 window.createWeeklySchedule = async function() {
     const day = parseInt(document.getElementById('weeklyDay')?.value);
     const startTime = document.getElementById('weeklyStartTime')?.value;
@@ -16688,6 +17458,16 @@ window.createWeeklySchedule = async function() {
     
     if (!course || !startDate || !endDate || !startTime) {
         alert('Please fill all required fields');
+        return;
+    }
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+        alert('Please select valid dates');
+        return;
+    }
+    
+    if (startDate > endDate) {
+        alert('Start date must be before end date');
         return;
     }
     
@@ -16705,7 +17485,9 @@ window.createWeeklySchedule = async function() {
                 type: 'CLASS',
                 target_program: program || 'General',
                 target_block: block || 'General',
-                organizer: 'Weekly Schedule'
+                organizer: 'Weekly Schedule',
+                created_by: currentUserId,
+                created_at: new Date().toISOString()
             });
         }
         currentDate.setDate(currentDate.getDate() + 1);
@@ -16721,12 +17503,18 @@ window.createWeeklySchedule = async function() {
     if (error) {
         alert('Error: ' + error.message);
     } else {
-        alert(`✅ Added ${events.length} class sessions to calendar!`);
+        const isTVET = isTVETProgram(program);
+        const blockLabel = isTVET ? 'Term' : 'Block';
+        alert(`✅ Added ${events.length} class sessions to calendar for ${program} ${blockLabel}: ${block}`);
         if (typeof renderFullCalendar === 'function') renderFullCalendar();
+        await loadUpcomingEvents();
+        await loadCalendarStats();
     }
 };
 
-// Show upload method function
+// =====================================================
+// SHOW UPLOAD METHOD
+// =====================================================
 window.showUploadMethod = function(method) {
     const excelDiv = document.getElementById('excelUploadMethod');
     const singleDiv = document.getElementById('singleEventMethod');
@@ -16740,17 +17528,27 @@ window.showUploadMethod = function(method) {
     if (bulkDiv) bulkDiv.style.display = method === 'bulk' ? 'block' : 'none';
     
     // Update button styles
-    if (excelBtn) {
-        excelBtn.style.background = method === 'excel' ? '#4C1D95' : '#e5e7eb';
-        excelBtn.style.color = method === 'excel' ? 'white' : '#374151';
-    }
-    if (singleBtn) {
-        singleBtn.style.background = method === 'single' ? '#4C1D95' : '#e5e7eb';
-        singleBtn.style.color = method === 'single' ? 'white' : '#374151';
-    }
-    if (bulkBtn) {
-        bulkBtn.style.background = method === 'bulk' ? '#4C1D95' : '#e5e7eb';
-        bulkBtn.style.color = method === 'bulk' ? 'white' : '#374151';
+    const allBtns = [excelBtn, singleBtn, bulkBtn];
+    allBtns.forEach(btn => {
+        if (btn) {
+            btn.style.background = 'transparent';
+            btn.style.color = '#64748b';
+            btn.style.boxShadow = 'none';
+        }
+    });
+    
+    if (method === 'excel' && excelBtn) {
+        excelBtn.style.background = 'white';
+        excelBtn.style.color = '#4C1D95';
+        excelBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+    } else if (method === 'single' && singleBtn) {
+        singleBtn.style.background = 'white';
+        singleBtn.style.color = '#4C1D95';
+        singleBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
+    } else if (method === 'bulk' && bulkBtn) {
+        bulkBtn.style.background = 'white';
+        bulkBtn.style.color = '#4C1D95';
+        bulkBtn.style.boxShadow = '0 2px 8px rgba(0,0,0,0.08)';
     }
     
     // Update block dropdown for single event
@@ -16766,18 +17564,14 @@ window.showUploadMethod = function(method) {
         const programSelect = document.getElementById('weeklyProgram');
         const blockSelect = document.getElementById('weeklyBlock');
         if (programSelect && blockSelect) {
-            programSelect.addEventListener('change', function() {
-                updateBlockTermOptions('weeklyProgram', 'weeklyBlock');
-            });
             updateBlockTermOptions('weeklyProgram', 'weeklyBlock');
         }
     }
 };
-// =====================================================
-// TIMETABLE UPLOAD FUNCTIONS (Supports Excel, CSV, Word, PDF)
-// =====================================================
 
-// Main upload function - supports all file types
+// =====================================================
+// UPLOAD TIMETABLE TO SUPABASE
+// =====================================================
 window.uploadTimetableToSupabase = async function() {
     const fileInput = document.getElementById('adminTimetableFile');
     const blockSelect = document.getElementById('adminTimetableBlock');
@@ -16793,35 +17587,41 @@ window.uploadTimetableToSupabase = async function() {
     const program = programSelect ? programSelect.value : 'KRCHN';
     const fileName = file.name.toLowerCase();
     
+    // Validate TVET program and block
+    const isTVET = isTVETProgram(program);
+    if (isTVET && !block.match(/^Y\d+T\d+$/) && !block.startsWith('Artisan')) {
+        if (!confirm(`⚠️ You selected a TVET program (${program}) but the block "${block}" doesn't follow the Year/Term format (Y1T1, Y1T2, etc.). Continue anyway?`)) {
+            return;
+        }
+    }
+    
     // Show loading indicator
-    const uploadBtn = event?.target;
+    const uploadBtn = document.querySelector('[onclick="uploadTimetableToSupabase()"]');
     const originalText = uploadBtn ? uploadBtn.innerHTML : 'Upload';
     if (uploadBtn) {
         uploadBtn.disabled = true;
         uploadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+        uploadBtn.style.opacity = '0.7';
     }
     
     try {
-        // Check file type and process accordingly
         if (fileName.endsWith('.csv') || fileName.endsWith('.xlsx') || fileName.endsWith('.xls')) {
-            // Process Excel/CSV files
             await processSpreadsheetFile(file, block, program);
         } else if (fileName.endsWith('.pdf')) {
-            // Process PDF files - store as document, not as calendar events
             await processPDFFile(file, block, program);
         } else if (fileName.endsWith('.doc') || fileName.endsWith('.docx')) {
-            // Process Word documents
             await processWordFile(file, block, program);
         } else {
             alert('Unsupported file type. Please upload Excel, CSV, Word, or PDF files.');
         }
         
-        // Refresh preview and calendar
         if (typeof previewTimetable === 'function') previewTimetable();
         if (typeof renderFullCalendar === 'function') renderFullCalendar();
+        await loadCalendarStats();
+        await loadUpcomingEvents();
         
-        // Clear file input
         fileInput.value = '';
+        document.getElementById('cal_file_name').textContent = 'No file chosen';
         
     } catch (error) {
         console.error('Upload error:', error);
@@ -16830,11 +17630,14 @@ window.uploadTimetableToSupabase = async function() {
         if (uploadBtn) {
             uploadBtn.disabled = false;
             uploadBtn.innerHTML = originalText;
+            uploadBtn.style.opacity = '1';
         }
     }
 };
 
-// Process Excel/CSV files
+// =====================================================
+// PROCESS SPREADSHEET FILE
+// =====================================================
 async function processSpreadsheetFile(file, block, program) {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -16844,7 +17647,6 @@ async function processSpreadsheetFile(file, block, program) {
                 const fileName = file.name.toLowerCase();
                 
                 if (fileName.endsWith('.csv')) {
-                    // Parse CSV
                     const text = e.target.result;
                     const lines = text.split(/\r?\n/);
                     const headers = lines[0].split(',').map(h => h.trim().toLowerCase());
@@ -16889,12 +17691,14 @@ async function processSpreadsheetFile(file, block, program) {
                                 academic_year: '2026',
                                 is_holiday: (entry.is_holiday === 'TRUE' || entry.is_holiday === 'true' || entry.holiday === 'TRUE' || entry.holiday === 'true') ? true : false,
                                 is_exam: (entry.is_exam === 'TRUE' || entry.is_exam === 'true' || entry.exam === 'TRUE' || entry.exam === 'true') ? true : false,
-                                pending_allocation: (entry.lecturer_name === 'TBA' || entry.lecturer === 'TBA' || entry.pending === 'TRUE') ? true : false
+                                pending_allocation: (entry.lecturer_name === 'TBA' || entry.lecturer === 'TBA' || entry.pending === 'TRUE') ? true : false,
+                                is_published: false,
+                                created_by: currentUserId,
+                                created_at: new Date().toISOString()
                             });
                         }
                     }
                 } else {
-                    // Parse Excel
                     const data = new Uint8Array(e.target.result);
                     const workbook = XLSX.read(data, { type: 'array' });
                     const sheet = workbook.Sheets[workbook.SheetNames[0]];
@@ -16915,7 +17719,10 @@ async function processSpreadsheetFile(file, block, program) {
                             academic_year: '2026',
                             is_holiday: (row.is_holiday === 'TRUE' || row.is_holiday === true || row.holiday === 'TRUE' || row.holiday === true) ? true : false,
                             is_exam: (row.is_exam === 'TRUE' || row.is_exam === true || row.exam === 'TRUE' || row.exam === true) ? true : false,
-                            pending_allocation: (row.lecturer_name === 'TBA' || row.lecturer === 'TBA') ? true : false
+                            pending_allocation: (row.lecturer_name === 'TBA' || row.lecturer === 'TBA') ? true : false,
+                            is_published: false,
+                            created_by: currentUserId,
+                            created_at: new Date().toISOString()
                         });
                     }
                 }
@@ -16924,19 +17731,30 @@ async function processSpreadsheetFile(file, block, program) {
                     throw new Error('No valid data found in file');
                 }
                 
-                // Delete existing entries for this block
-                const { error: deleteError } = await sb.from('timetables').delete().eq('block', block);
+                const { error: deleteError } = await sb
+                    .from('timetables')
+                    .delete()
+                    .eq('block', block)
+                    .eq('program', program);
+                
                 if (deleteError) throw deleteError;
                 
-                // Insert new entries in batches
                 const batchSize = 50;
+                let inserted = 0;
                 for (let i = 0; i < entries.length; i += batchSize) {
                     const batch = entries.slice(i, i + batchSize);
-                    const { error: insertError } = await sb.from('timetables').insert(batch);
+                    const { error: insertError, data } = await sb
+                        .from('timetables')
+                        .insert(batch)
+                        .select();
+                    
                     if (insertError) throw insertError;
+                    inserted += data?.length || 0;
                 }
                 
-                alert(`✅ Success! ${entries.length} timetable entries uploaded for ${block}`);
+                const isTVET = isTVETProgram(program);
+                const blockLabel = isTVET ? 'Term' : 'Block';
+                alert(`✅ Success! ${inserted} timetable entries uploaded for ${program} ${blockLabel}: ${block}`);
                 resolve();
                 
             } catch (error) {
@@ -16952,9 +17770,10 @@ async function processSpreadsheetFile(file, block, program) {
     });
 }
 
-// Process PDF files (store as document, not as calendar events)
+// =====================================================
+// PROCESS PDF FILE
+// =====================================================
 async function processPDFFile(file, block, program) {
-    // Upload PDF to storage
     const timestamp = Date.now();
     const fileName = `timetable_${block}_${program}_${timestamp}.pdf`;
     const filePath = `timetables/${block}/${fileName}`;
@@ -16967,22 +17786,26 @@ async function processPDFFile(file, block, program) {
     
     const { data: { publicUrl } } = sb.storage.from('resources').getPublicUrl(filePath);
     
-    // Store metadata in timetables_documents table
     const { error: insertError } = await sb.from('timetables_documents').insert([{
         file_name: file.name,
         file_url: publicUrl,
         block: block,
         program: program,
-        uploaded_by: currentUserProfile?.id,
+        file_type: 'pdf',
+        uploaded_by: currentUserId,
         uploaded_at: new Date().toISOString()
     }]);
     
     if (insertError) throw insertError;
     
-    alert(`✅ PDF timetable uploaded successfully for ${block}!\nFile stored in resources.`);
+    const isTVET = isTVETProgram(program);
+    const blockLabel = isTVET ? 'Term' : 'Block';
+    alert(`✅ PDF timetable uploaded successfully for ${program} ${blockLabel}: ${block}!`);
 }
 
-// Process Word files
+// =====================================================
+// PROCESS WORD FILE
+// =====================================================
 async function processWordFile(file, block, program) {
     const timestamp = Date.now();
     const fileName = `timetable_${block}_${program}_${timestamp}.docx`;
@@ -17002,34 +17825,52 @@ async function processWordFile(file, block, program) {
         block: block,
         program: program,
         file_type: 'word',
-        uploaded_by: currentUserProfile?.id,
+        uploaded_by: currentUserId,
         uploaded_at: new Date().toISOString()
     }]);
     
     if (insertError) throw insertError;
     
-    alert(`✅ Word document uploaded successfully for ${block}!`);
+    const isTVET = isTVETProgram(program);
+    const blockLabel = isTVET ? 'Term' : 'Block';
+    alert(`✅ Word document uploaded successfully for ${program} ${blockLabel}: ${block}!`);
 }
 
-// Clear entire block timetable
+// =====================================================
+// CLEAR TIMETABLE BLOCK
+// =====================================================
 window.clearTimetableBlock = async function() {
     const blockSelect = document.getElementById('adminTimetableBlock');
+    const programSelect = document.getElementById('adminTimetableProgram');
     const block = blockSelect ? blockSelect.value : 'Block 4';
+    const program = programSelect ? programSelect.value : 'KRCHN';
     
-    if (!confirm(`⚠️ WARNING: This will DELETE ALL timetable entries for ${block}. This cannot be undone. Continue?`)) return;
+    const isTVET = isTVETProgram(program);
+    const blockLabel = isTVET ? 'Term' : 'Block';
+    
+    if (!confirm(`⚠️ WARNING: This will DELETE ALL timetable entries for ${program} ${blockLabel}: ${block}. This cannot be undone. Continue?`)) return;
     
     try {
-        const { error } = await sb.from('timetables').delete().eq('block', block);
+        const { error } = await sb
+            .from('timetables')
+            .delete()
+            .eq('block', block)
+            .eq('program', program);
+        
         if (error) throw error;
-        alert(`✅ ${block} timetable cleared successfully`);
+        alert(`✅ ${program} ${blockLabel}: ${block} timetable cleared successfully`);
         if (typeof previewTimetable === 'function') previewTimetable();
         if (typeof renderFullCalendar === 'function') renderFullCalendar();
+        await loadCalendarStats();
+        await loadUpcomingEvents();
     } catch (error) {
         alert('Error: ' + error.message);
     }
 };
 
-// Preview timetable for selected block
+// =====================================================
+// PREVIEW TIMETABLE
+// =====================================================
 window.previewTimetable = async function() {
     const blockSelect = document.getElementById('previewBlockSelect');
     const container = document.getElementById('adminTimetablePreview');
@@ -17054,6 +17895,9 @@ window.previewTimetable = async function() {
             return;
         }
         
+        const isTVET = data.some(d => isTVETProgram(d.program));
+        const blockLabel = isTVET ? 'Term' : 'Block';
+        
         const weeks = {};
         data.forEach(cls => {
             const week = cls.week_number || 1;
@@ -17064,16 +17908,22 @@ window.previewTimetable = async function() {
         const dayNames = { monday:'Monday', tuesday:'Tuesday', wednesday:'Wednesday', thursday:'Thursday', friday:'Friday', saturday:'Saturday', sunday:'Sunday' };
         const daysOrder = ['monday', 'tuesday', 'wednesday', 'thursday', 'friday', 'saturday', 'sunday'];
         
-        let html = '';
+        let html = `<div style="margin-bottom: 12px; padding: 8px 12px; background: #f5f3ff; border-radius: 8px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap;">
+            <span><strong>📋 Program:</strong> ${data[0]?.program || 'N/A'}</span>
+            <span><strong>📌 ${blockLabel}:</strong> ${block}</span>
+            <span><strong>📚 Total Sessions:</strong> ${data.length}</span>
+            ${isTVET ? `<span style="background: #059669; color: white; padding: 2px 10px; border-radius: 12px; font-size: 11px;">TVET</span>` : ''}
+        </div>`;
+        
         for (const week in weeks) {
             html += `<h4 style="margin: 20px 0 10px 0; background: #4C1D95; color: white; padding: 8px 12px; border-radius: 8px;">📅 Week ${week}</h4>`;
-            html += `<table style="width:100%; margin-bottom:20px; border-collapse: collapse;">
+            html += `<table style="width:100%; margin-bottom:20px; border-collapse: collapse; font-size: 14px;">
                         <thead><tr style="background: #f3f4f6;">
-                            <th style="padding: 10px; text-align: left;">Day</th>
-                            <th style="padding: 10px; text-align: left;">Time</th>
-                            <th style="padding: 10px; text-align: left;">Session/Course</th>
-                            <th style="padding: 10px; text-align: left;">Lecturer</th>
-                            <th style="padding: 10px; text-align: left;">Venue</th>
+                            <th style="padding: 10px; text-align: left; font-weight: 600;">Day</th>
+                            <th style="padding: 10px; text-align: left; font-weight: 600;">Time</th>
+                            <th style="padding: 10px; text-align: left; font-weight: 600;">Session/Course</th>
+                            <th style="padding: 10px; text-align: left; font-weight: 600;">${isTVET ? 'Trainer' : 'Lecturer'}</th>
+                            <th style="padding: 10px; text-align: left; font-weight: 600;">Venue</th>
                          </tr></thead><tbody>`;
             
             for (const day of daysOrder) {
@@ -17083,12 +17933,13 @@ window.previewTimetable = async function() {
                 dayClasses.forEach((cls, idx) => {
                     const holidayBadge = cls.is_holiday ? '<span style="background:#dc2626; color:white; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:5px;">HOLIDAY</span>' : '';
                     const examBadge = cls.is_exam ? '<span style="background:#f59e0b; color:white; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:5px;">EXAM</span>' : '';
+                    const pendingBadge = cls.pending_allocation ? '<span style="background:#94a3b8; color:white; padding:2px 6px; border-radius:4px; font-size:10px; margin-left:5px;">Pending</span>' : '';
                     
                     html += `<tr style="border-bottom: 1px solid #e5e7eb;">
                         <td style="padding: 8px;">${idx === 0 ? dayNames[day] : ''}</td>
                         <td style="padding: 8px;">${cls.start_time} - ${cls.end_time}</td>
                         <td style="padding: 8px;"><strong>${escapeHtml(cls.session_name || cls.course_name)}</strong> ${holidayBadge}${examBadge}<br><small>${escapeHtml(cls.course_name || '')}</small></td>
-                        <td style="padding: 8px;">${escapeHtml(cls.lecturer_name || 'TBA')} ${cls.pending_allocation ? '<span style="background:#94a3b8; color:white; padding:2px 6px; border-radius:4px; font-size:10px;">Pending</span>' : ''}</td>
+                        <td style="padding: 8px;">${escapeHtml(cls.lecturer_name || 'TBA')} ${pendingBadge}</td>
                         <td style="padding: 8px;">${escapeHtml(cls.venue || 'TBD')}</td>
                     </tr>`;
                 });
@@ -17102,7 +17953,9 @@ window.previewTimetable = async function() {
     }
 };
 
-// Download CSV template
+// =====================================================
+// DOWNLOAD CSV TEMPLATE
+// =====================================================
 window.downloadTimetableTemplate = function() {
     const csvContent = `day_of_week,week_number,start_time,end_time,session_name,course_name,lecturer_name,venue,is_holiday,is_exam
 monday,1,08:00,10:30,Critical Care Nursing,Critical Care,Mr. Peter Onkundi,Skills Lab,FALSE,FALSE
@@ -17113,12 +17966,7 @@ wednesday,1,09:00,12:00,Community Diagnosis,Community Health,Mr. Job Juma,Lectur
 wednesday,1,14:00,17:00,Teaching and Learning,Methodology,Md. Mary Nyamboki,Lecture Hall 2,FALSE,FALSE
 thursday,1,08:00,10:30,Communicable Diseases,Vector Borne,TBA,Lecture Hall 1,FALSE,FALSE
 thursday,1,11:00,13:00,Research Methods,Research,Dr. Anne Wanjiku,Room 101,FALSE,FALSE
-friday,1,09:00,11:00,Weekly Review,Review Session,Tutorial Staff,Room 203,FALSE,FALSE
-monday,2,08:00,10:30,Medical Surgical III,Dermatology/Burns,Mr. Job Juma,Lecture Hall 1,FALSE,FALSE
-tuesday,2,09:00,12:00,MADARAKA DAY,Public Holiday,,,TRUE,FALSE
-wednesday,2,08:00,10:30,Teaching and Learning,Methodology,Md. Mary Nyamboki,Lecture Hall 2,FALSE,FALSE
-thursday,2,11:00,13:00,Community Health,Community Health,Mr. Gideon Kibet,Lecture Hall 1,FALSE,FALSE
-friday,2,14:00,17:00,Leadership,Nursing Management,Mr. Kevin Matoka,Lecture Hall 2,FALSE,FALSE`;
+friday,1,09:00,11:00,Weekly Review,Review Session,Tutorial Staff,Room 203,FALSE,FALSE`;
     
     const blob = new Blob([csvContent], { type: 'text/csv' });
     const link = document.createElement('a');
@@ -17128,76 +17976,508 @@ friday,2,14:00,17:00,Leadership,Nursing Management,Mr. Kevin Matoka,Lecture Hall
     URL.revokeObjectURL(link.href);
 };
 
-// Refresh calendar data
+// =====================================================
+// REFRESH CALENDAR DATA
+// =====================================================
 async function refreshCalendarData() {
     await renderFullCalendar();
+    await loadCalendarStats();
+    await loadUpcomingEvents();
+    showFeedback('🔄 Calendar data refreshed successfully!', 'success');
 }
 
-// Add single event to calendar
-async function addCalendarEvent(eventData) {
-    const { error } = await sb.from('calendar_events').insert([eventData]);
-    if (error) {
-        alert('Failed to add event: ' + error.message);
-        return false;
+// =====================================================
+// EXPORT TIMETABLE DATA
+// =====================================================
+window.exportTimetableData = async function() {
+    try {
+        const { data, error } = await sb
+            .from('timetables')
+            .select('*')
+            .order('week_number', { ascending: true })
+            .order('day_of_week', { ascending: true });
+        
+        if (error) throw error;
+        
+        if (!data || data.length === 0) {
+            alert('No timetable data to export');
+            return;
+        }
+        
+        const headers = ['day_of_week', 'week_number', 'start_time', 'end_time', 'session_name', 'course_name', 'lecturer_name', 'venue', 'program', 'block', 'is_holiday', 'is_exam'];
+        let csv = headers.join(',') + '\n';
+        
+        data.forEach(row => {
+            const values = headers.map(h => {
+                let val = row[h] || '';
+                if (typeof val === 'string' && val.includes(',')) {
+                    val = `"${val}"`;
+                }
+                return val;
+            });
+            csv += values.join(',') + '\n';
+        });
+        
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `timetable_export_${new Date().toISOString().split('T')[0]}.csv`;
+        link.click();
+        URL.revokeObjectURL(link.href);
+        
+        showFeedback('✅ Timetable exported successfully!', 'success');
+    } catch (error) {
+        console.error('Export error:', error);
+        alert('Error exporting data: ' + error.message);
     }
-    await renderFullCalendar();
-    alert('✅ Event added to calendar!');
-    return true;
-}
+};
 
-// Upload Excel timetable (legacy function - kept for compatibility)
-async function uploadTimetableExcel(file, program, block) {
-    if (!file) {
-        alert('Please select an Excel file');
-        return false;
+// =====================================================
+// VIEW/EDIT EVENT DETAILS
+// =====================================================
+window.viewEventDetails = function(eventId) {
+    showFeedback('📋 Event details will be shown here', 'info');
+};
+
+window.editEvent = function(eventId) {
+    showFeedback('✏️ Edit functionality coming soon', 'info');
+};
+
+// =====================================================
+// CLOSE MODAL
+// =====================================================
+window.closeModal = function(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) modal.remove();
+};
+
+// =====================================================
+// INITIALIZE CALENDAR PROGRAM DROPDOWNS
+// =====================================================
+async function initializeCalendarProgramDropdowns() {
+    const dropdowns = [
+        'adminTimetableProgram',
+        'singleEventProgram',
+        'weeklyProgram'
+    ];
+    
+    for (const id of dropdowns) {
+        const select = document.getElementById(id);
+        if (select) {
+            await updateProgramDropdown(select);
+            
+            if (id === 'adminTimetableProgram') {
+                select.addEventListener('change', function() {
+                    updateTimetableBlocks();
+                    updateSelectedBlockDisplay();
+                });
+            } else if (id === 'singleEventProgram') {
+                select.addEventListener('change', function() {
+                    updateBlockTermOptions('singleEventProgram', 'singleEventBlock');
+                });
+            } else if (id === 'weeklyProgram') {
+                select.addEventListener('change', function() {
+                    updateBlockTermOptions('weeklyProgram', 'weeklyBlock');
+                });
+            }
+        }
     }
     
-    const reader = new FileReader();
-    reader.onload = async function(e) {
-        try {
-            const data = new Uint8Array(e.target.result);
-            const workbook = XLSX.read(data, { type: 'array' });
-            const sheet = workbook.Sheets[workbook.SheetNames[0]];
-            const rows = XLSX.utils.sheet_to_json(sheet);
-            
-            let added = 0;
-            for (const row of rows) {
-                const eventData = {
-                    event_name: row.Title || row.title || row.Course || row.course,
-                    event_date: row.Date || row.date,
-                    start_time: row.Start_Time || row.start_time || null,
-                    end_time: row.End_Time || row.end_time || null,
-                    venue: row.Venue || row.venue || null,
-                    type: (row.Type || row.type || 'CLASS').toUpperCase(),
-                    description: row.Description || row.description || '',
-                    target_program: program || 'General',
-                    target_block: block || 'General',
-                    organizer: 'Admin Upload'
-                };
-                
-                if (eventData.event_name && eventData.event_date) {
-                    const { error } = await sb.from('calendar_events').insert([eventData]);
-                    if (!error) added++;
-                }
-            }
-            alert(`✅ Added ${added} events to calendar!`);
-            await renderFullCalendar();
-        } catch (err) {
-            alert('Error processing file: ' + err.message);
-        }
-    };
-    reader.readAsArrayBuffer(file);
+    updateTimetableBlocks();
+    updateSelectedBlockDisplay();
 }
 
-// Expose functions globally
+// =====================================================
+// UPDATE TIMETABLE BLOCKS
+// =====================================================
+function updateTimetableBlocks() {
+    const programSelect = document.getElementById('adminTimetableProgram');
+    const blockSelect = document.getElementById('adminTimetableBlock');
+    
+    if (!programSelect || !blockSelect) return;
+    
+    const program = programSelect.value;
+    const isTVET = isTVETProgram(program);
+    
+    blockSelect.innerHTML = '';
+    
+    if (program === 'KRCHN') {
+        const groups = [
+            { label: '🎓 KRCHN Nursing Blocks', options: [
+                'Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Block 5', 'Block 6', 'Final'
+            ]}
+        ];
+        renderBlockOptions(groups);
+    } else if (isTVET) {
+        const level = getProgramLevel(program);
+        const isDiploma = level === 'DIPLOMA';
+        const isCertificate = level === 'CERTIFICATE';
+        const isArtisan = level === 'ARTISAN';
+        
+        if (isDiploma) {
+            const groups = [
+                { label: '🎯 TVET Diploma (Year 1)', options: ['Y1T1', 'Y1T2', 'Y1T3'] },
+                { label: '🎯 TVET Diploma (Year 2)', options: ['Y2T1', 'Y2T2', 'Y2T3'] },
+                { label: '🎯 TVET Diploma (Year 3)', options: ['Y3T1', 'Y3T2', 'Y3T3'] }
+            ];
+            renderBlockOptions(groups);
+        } else if (isCertificate) {
+            const groups = [
+                { label: '📜 TVET Certificate (Year 1)', options: ['Y1T1', 'Y1T2', 'Y1T3'] },
+                { label: '📜 TVET Certificate (Year 2)', options: ['Y2T1', 'Y2T2', 'Y2T3'] }
+            ];
+            renderBlockOptions(groups);
+        } else if (isArtisan) {
+            const groups = [
+                { label: '🔧 TVET Artisan (Year 1)', options: ['Artisan Y1T1', 'Artisan Y1T2'] },
+                { label: '🔧 TVET Artisan (Year 2)', options: ['Artisan Y2T1', 'Artisan Y2T2'] }
+            ];
+            renderBlockOptions(groups);
+        } else {
+            const groups = [
+                { label: '📘 TVET Terms', options: ['Term 1', 'Term 2', 'Term 3', 'Term 4'] }
+            ];
+            renderBlockOptions(groups);
+        }
+    } else {
+        const groups = [
+            { label: '📋 General Blocks', options: ['Introductory', 'Block 1', 'Block 2', 'Block 3', 'Block 4', 'Final'] }
+        ];
+        renderBlockOptions(groups);
+    }
+    
+    const generalOption = document.createElement('option');
+    generalOption.value = 'General';
+    generalOption.textContent = '📋 General';
+    blockSelect.appendChild(generalOption);
+}
+
+function renderBlockOptions(groups) {
+    const blockSelect = document.getElementById('adminTimetableBlock');
+    if (!blockSelect) return;
+    
+    groups.forEach(group => {
+        const optgroup = document.createElement('optgroup');
+        optgroup.label = group.label;
+        
+        group.options.forEach(opt => {
+            const option = document.createElement('option');
+            option.value = opt;
+            let display = opt;
+            if (opt.match(/^Y(\d)T(\d)$/)) {
+                const year = opt.match(/^Y(\d)T(\d)$/)[1];
+                const term = opt.match(/^Y(\d)T(\d)$/)[2];
+                display = `Year ${year} - Term ${term}`;
+            }
+            option.textContent = display;
+            optgroup.appendChild(option);
+        });
+        
+        blockSelect.appendChild(optgroup);
+    });
+}
+
+// =====================================================
+// SETUP FILE INPUT LISTENERS
+// =====================================================
+function setupFileInputListeners() {
+    const adminFileInput = document.getElementById('adminTimetableFile');
+    if (adminFileInput) {
+        adminFileInput.addEventListener('change', function() {
+            const fileName = document.getElementById('cal_file_name');
+            if (fileName) {
+                fileName.textContent = this.files[0] ? this.files[0].name : 'No file chosen';
+            }
+        });
+    }
+    
+    const bulkFileInput = document.getElementById('bulkExcelFile');
+    if (bulkFileInput) {
+        bulkFileInput.addEventListener('change', function() {
+            const fileName = document.getElementById('bulk_file_name');
+            if (fileName) {
+                fileName.textContent = this.files[0] ? this.files[0].name : 'No file selected';
+            }
+        });
+    }
+}
+
+// =====================================================
+// LOAD WELCOME MESSAGE
+// =====================================================
+async function loadWelcomeMessage() {
+    try {
+        const { data, error } = await sb
+            .from('app_settings')
+            .select('*')
+            .eq('key', 'student_welcome')
+            .single();
+        
+        if (error && error.code !== 'PGRST116') {
+            console.error('Error loading welcome message:', error);
+            return;
+        }
+        
+        const editor = document.getElementById('welcome-message-editor');
+        const preview = document.getElementById('live-preview');
+        const wordCount = document.getElementById('welcome_word_count');
+        const lastUpdated = document.getElementById('welcome_last_updated');
+        const version = document.getElementById('welcome_version');
+        
+        if (data) {
+            const content = data.value || '';
+            if (editor) editor.value = content;
+            if (preview) {
+                preview.innerHTML = content || '<p style="color: #94a3b8; text-align: center;">No welcome message set. Use the editor above to create one.</p>';
+            }
+            
+            if (wordCount) {
+                const words = content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(w => w.length > 0).length;
+                wordCount.textContent = words;
+            }
+            
+            if (lastUpdated) {
+                const updated = new Date(data.updated_at);
+                lastUpdated.textContent = updated.toLocaleString();
+            }
+            
+            if (version) {
+                const v = data.version || 1;
+                version.textContent = `v${v}.0`;
+            }
+            
+            const status = document.getElementById('welcome_status');
+            if (status) {
+                status.innerHTML = '<i class="fas fa-check-circle"></i> Published';
+                status.style.color = '#059669';
+            }
+            
+            const target = document.getElementById('selectedWelcomeTarget');
+            if (target) target.textContent = 'All Students';
+        }
+    } catch (error) {
+        console.error('Error in loadWelcomeMessage:', error);
+    }
+}
+
+// =====================================================
+// PREVIEW WELCOME MESSAGE
+// =====================================================
+function previewWelcomeMessage() {
+    const editor = document.getElementById('welcome-message-editor');
+    const preview = document.getElementById('live-preview');
+    
+    if (editor && preview) {
+        const content = editor.value || '';
+        preview.innerHTML = content || '<p style="color: #94a3b8; text-align: center;">Empty message. Type something in the editor above.</p>';
+        
+        // Update word count
+        const words = content.replace(/<[^>]*>/g, '').trim().split(/\s+/).filter(w => w.length > 0).length;
+        const wordCount = document.getElementById('welcome_word_count');
+        if (wordCount) wordCount.textContent = words;
+    }
+}
+
+// =====================================================
+// CLEAR WELCOME EDITOR
+// =====================================================
+function clearWelcomeEditor() {
+    const editor = document.getElementById('welcome-message-editor');
+    if (editor) {
+        if (confirm('Clear all content from the editor?')) {
+            editor.value = '';
+            previewWelcomeMessage();
+        }
+    }
+}
+
+// =====================================================
+// RESET WELCOME MESSAGE
+// =====================================================
+async function resetWelcomeMessage() {
+    if (!confirm('Reset to default welcome message?')) return;
+    
+    const defaultMessage = `
+        <div style="text-align: center; padding: 20px;">
+            <h1 style="color: #4C1D95;">Welcome to NCHSM Portal</h1>
+            <p style="font-size: 16px; color: #475569;">Welcome to the Nursing & Community Health Sciences Management Portal.</p>
+            <p style="font-size: 14px; color: #64748b;">Please check your timetable and announcements regularly.</p>
+            <hr style="margin: 20px 0;">
+            <p style="font-size: 13px; color: #94a3b8;">📚 For academic support, contact your program coordinator.</p>
+            <p style="font-size: 13px; color: #94a3b8;">💻 Technical support: it@nchsm.ac.ke</p>
+        </div>
+    `;
+    
+    const editor = document.getElementById('welcome-message-editor');
+    if (editor) {
+        editor.value = defaultMessage;
+        previewWelcomeMessage();
+        
+        // Auto-save
+        const form = document.getElementById('edit-welcome-form');
+        if (form) {
+            const submitEvent = new Event('submit');
+            form.dispatchEvent(submitEvent);
+        }
+    }
+}
+
+// =====================================================
+// REFRESH WELCOME PREVIEW
+// =====================================================
+function refreshWelcomePreview() {
+    previewWelcomeMessage();
+    loadWelcomeMessage();
+    showFeedback('🔄 Preview refreshed!', 'success');
+}
+
+// =====================================================
+// WELCOME FORM SUBMIT HANDLER
+// =====================================================
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.getElementById('edit-welcome-form');
+    if (form) {
+        form.addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const editor = document.getElementById('welcome-message-editor');
+            if (!editor) return;
+            
+            const content = editor.value;
+            
+            try {
+                const { error } = await sb
+                    .from('app_settings')
+                    .upsert({
+                        key: 'student_welcome',
+                        value: content,
+                        updated_at: new Date().toISOString(),
+                        updated_by: currentUserId
+                    }, { onConflict: 'key' });
+                
+                if (error) throw error;
+                
+                showFeedback('✅ Welcome message saved successfully!', 'success');
+                await loadWelcomeMessage();
+                previewWelcomeMessage();
+                
+            } catch (error) {
+                console.error('Error saving welcome message:', error);
+                showFeedback('❌ Error saving: ' + error.message, 'error');
+            }
+        });
+    }
+});
+
+// =====================================================
+// INSERT WELCOME TEMPLATE
+// =====================================================
+function insertWelcomeTemplate(type) {
+    const editor = document.getElementById('welcome-message-editor');
+    if (!editor) return;
+    
+    let template = '';
+    
+    switch(type) {
+        case 'basic':
+            template = `
+                <div style="padding: 20px;">
+                    <h1 style="color: #4C1D95;">Welcome to NCHSM</h1>
+                    <p>Welcome to the Nursing & Community Health Sciences Management Portal.</p>
+                    <p>Please check your timetable and announcements regularly.</p>
+                </div>
+            `;
+            break;
+        case 'announcement':
+            template = `
+                <div style="padding: 20px; background: #f0fdf4; border-radius: 8px; border-left: 4px solid #059669;">
+                    <h2 style="color: #065f46;">📢 Important Announcement</h2>
+                    <p>Welcome to the new academic year!</p>
+                    <ul>
+                        <li>Check your timetable for class schedules</li>
+                        <li>Review the academic calendar for important dates</li>
+                        <li>Contact your program coordinator for any questions</li>
+                    </ul>
+                </div>
+            `;
+            break;
+        case 'exam':
+            template = `
+                <div style="padding: 20px; background: #fef3c7; border-radius: 8px; border-left: 4px solid #f59e0b;">
+                    <h2 style="color: #92400e;">📝 Exam Preparation</h2>
+                    <p><strong>Exams are approaching!</strong> Please prepare accordingly.</p>
+                    <ul>
+                        <li>Review all course materials</li>
+                        <li>Check exam schedule in your timetable</li>
+                        <li>Contact your lecturer for any clarifications</li>
+                    </ul>
+                    <p style="color: #92400e;">Best of luck with your exams!</p>
+                </div>
+            `;
+            break;
+        case 'holiday':
+            template = `
+                <div style="padding: 20px; background: #eff6ff; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                    <h2 style="color: #1e40af;">☀️ Holiday Announcement</h2>
+                    <p>Please note the following holiday schedule:</p>
+                    <ul>
+                        <li>Classes will resume on [date]</li>
+                        <li>Administrative offices will be closed</li>
+                        <li>Enjoy your break and stay safe!</li>
+                    </ul>
+                </div>
+            `;
+            break;
+        default:
+            template = '';
+    }
+    
+    if (template) {
+        editor.value = template;
+        previewWelcomeMessage();
+        showFeedback('📋 Template inserted! Edit and save.', 'info');
+    }
+}
+
+// =====================================================
+// EXPOSE FUNCTIONS GLOBALLY
+// =====================================================
 window.renderFullCalendar = renderFullCalendar;
 window.refreshCalendarData = refreshCalendarData;
-window.uploadTimetableExcel = uploadTimetableExcel;
-window.addCalendarEvent = addCalendarEvent;
-window.downloadTimetableTemplate = downloadTimetableTemplate;
+window.loadCalendarStats = loadCalendarStats;
+window.loadUpcomingEvents = loadUpcomingEvents;
+window.initCalendarSection = initCalendarSection;
+window.updateTimetableBlocks = updateTimetableBlocks;
+window.updateSelectedBlockDisplay = updateSelectedBlockDisplay;
 window.uploadTimetableToSupabase = uploadTimetableToSupabase;
 window.clearTimetableBlock = clearTimetableBlock;
 window.previewTimetable = previewTimetable;
+window.downloadTimetableTemplate = downloadTimetableTemplate;
+window.addSingleEvent = addSingleEvent;
+window.createWeeklySchedule = createWeeklySchedule;
+window.showUploadMethod = showUploadMethod;
+window.exportTimetableData = exportTimetableData;
+window.showEventDetails = showEventDetails;
+window.closeModal = closeModal;
+window.editEvent = editEvent;
+window.viewEventDetails = viewEventDetails;
+window.initializeCalendarProgramDropdowns = initializeCalendarProgramDropdowns;
+window.loadWelcomeMessage = loadWelcomeMessage;
+window.previewWelcomeMessage = previewWelcomeMessage;
+window.clearWelcomeEditor = clearWelcomeEditor;
+window.resetWelcomeMessage = resetWelcomeMessage;
+window.refreshWelcomePreview = refreshWelcomePreview;
+window.insertWelcomeTemplate = insertWelcomeTemplate;
+window.isTVETProgram = isTVETProgram;
+window.getProgramLevel = getProgramLevel;
+window.getProgramDisplayName = getProgramDisplayName;
+window.getDateForDay = getDateForDay;
+window.getEventColor = getEventColor;
+window.getEventIcon = getEventIcon;
+window.formatDate = formatDate;
+window.shouldShowToStudent = shouldShowToStudent;
+
+console.log('✅ Section 19: Calendar & Timetable Management loaded');
 /*******************************************************
  * 19. ENHANCED FEATURES IMPLEMENTATION
  *******************************************************/
