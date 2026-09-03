@@ -24884,12 +24884,6 @@ function formatActionType(type) {
     return types[type] || type;
 }
 
-function formatDate(dateString) {
-    if (!dateString) return 'N/A';
-    var date = new Date(dateString);
-    return date.toLocaleString();
-}
-
 function updateApprovalStats(actions) {
     var pending = 0;
     var approvedToday = 0;
