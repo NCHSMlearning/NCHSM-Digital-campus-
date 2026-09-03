@@ -1992,8 +1992,8 @@ executeLogin: async function(identifier, password) {
             return;
         }
         
-        if (!password || password.length < 8) {
-            this.showError('Password must be at least 8 characters');
+        if (!password || password.length < 6) {
+            this.showError('Password must be at least 6 characters');
             this.recordFailedAttempt();
             this.addRateLimitRequest();
             
