@@ -10771,174 +10771,636 @@
                 </table>
             </section>
 
- <!-- Calendar Section WITH TIMETABLE UPLOAD -->
+<!-- Calendar Section WITH TIMETABLE UPLOAD -->
 <section id="calendar" class="tab-content">
-    <h2><i class="fas fa-calendar-alt"></i> System Calendar & Timetable Management</h2>
-    
-    <!-- ========== SUPER ADMIN TIMETABLE UPLOAD SECTION ========== -->
-    <div style="background: linear-gradient(135deg, #f3e8ff, #e9d5ff); padding: 20px; border-radius: 12px; margin-bottom: 25px;">
-        <h3><i class="fas fa-upload"></i> 📅 Timetable Management (Super Admin)</h3>
-        <p>Upload timetables for ANY BLOCK with UNLIMITED WEEKS. Students will see their block's timetable automatically.</p>
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #4C1D95, #7C3AED); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(76,29,149,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700;">
+                <i class="fas fa-calendar-alt"></i> System Calendar & Timetable Management
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-clock"></i> Manage timetables, sessions, and schedules across all blocks & programs
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="refreshCalendarData()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh Calendar
+            </button>
+            <button onclick="exportTimetableData()" class="btn-action" style="background: white; color: #4C1D95; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
+                <i class="fas fa-download"></i> Export Timetable
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div style="border-top: 4px solid #4C1D95; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #4C1D95; font-size: 12px; margin: 0;">Total Sessions</h3>
+            <p id="cal_total_events" style="font-size: 28px; font-weight: 700; color: #4C1D95; margin: 4px 0;">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Scheduled sessions</p>
+        </div>
+        <div style="border-top: 4px solid #059669; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #059669; font-size: 12px; margin: 0;">This Week</h3>
+            <p id="cal_this_week" style="font-size: 28px; font-weight: 700; color: #059669; margin: 4px 0;">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Upcoming classes</p>
+        </div>
+        <div style="border-top: 4px solid #FDB913; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #d97706; font-size: 12px; margin: 0;">Blocks Active</h3>
+            <p id="cal_active_blocks" style="font-size: 28px; font-weight: 700; color: #d97706; margin: 4px 0;">7</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Program blocks</p>
+        </div>
+        <div style="border-top: 4px solid #8b5cf6; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #6d28d9; font-size: 12px; margin: 0;">Trainers</h3>
+            <p id="cal_lecturers" style="font-size: 28px; font-weight: 700; color: #6d28d9; margin: 4px 0;">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Assigned this week</p>
+        </div>
+        <div style="border-top: 4px solid #ef4444; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #dc2626; font-size: 12px; margin: 0;">Holidays</h3>
+            <p id="cal_holidays" style="font-size: 28px; font-weight: 700; color: #dc2626; margin: 4px 0;">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Upcoming holidays</p>
+        </div>
+        <div style="border-top: 4px solid #10b981; background: linear-gradient(135deg, #f0fdf4, #ecfdf5); border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #059669; font-size: 12px; margin: 0;">📤 Published</h3>
+            <p id="cal_published_blocks" style="font-size: 28px; font-weight: 700; color: #059669; margin: 4px 0;">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Timetables visible</p>
+        </div>
+    </div>
+
+    <!-- Selected Block Display -->
+    <div id="selectedBlockDisplay" style="background: linear-gradient(135deg, #f5f3ff, #ede9fe); padding: 12px 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #c4b5fd; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-weight: 700; color: #4C1D95; font-size: 14px;">
+                <i class="fas fa-check-circle"></i> Selected Block:
+            </span>
+            <span id="selectedBlockName" style="font-weight: 600; color: #1e293b; font-size: 15px;">None selected</span>
+        </div>
+        <div>
+            <span id="selectedBlockProgram" style="background: #dbeafe; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #1e40af; border: 1px solid #93c5fd;">
+                <i class="fas fa-info-circle"></i> No Program Selected
+            </span>
+        </div>
+    </div>
+
+    <!-- ========== TIMETABLE UPLOAD SECTION ========== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-upload" style="color: #4C1D95;"></i> Timetable Management
+                <span style="background: #4C1D95; color: white; padding: 2px 12px; border-radius: 12px; font-size: 11px; font-weight: 600; margin-left: 8px;">Super Admin</span>
+            </h3>
+            <button onclick="previewTimetable()" class="btn-action" style="background: #059669; color: white; padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">
+                <i class="fas fa-eye"></i> Preview Timetable
+            </button>
+        </div>
+        <p style="color: #64748b; font-size: 14px; margin: 0 0 16px 0;">
+            <i class="fas fa-info-circle"></i> Upload timetables for ANY BLOCK with UNLIMITED WEEKS. Students will see their block's timetable automatically.
+        </p>
         
-        <!-- Block Selection -->
-        <div style="margin: 15px 0; display: flex; gap: 15px; flex-wrap: wrap; align-items: center;">
-            <select id="adminTimetableBlock" style="padding: 10px; border-radius: 8px; border: 1px solid #ddd; min-width: 180px;">
-                <option value="Introductory">🎓 Introductory Block</option>
-                <option value="Block 1">📚 Block 1</option>
-                <option value="Block 2">📗 Block 2</option>
-                <option value="Block 3">📘 Block 3</option>
-                <option value="Block 4" selected>📙 Block 4</option>
-                <option value="Block 5">📕 Block 5</option>
-                <option value="Final">🏆 Final Block</option>
-            </select>
-            
-            <select id="adminTimetableProgram" style="padding: 10px; border-radius: 8px; border: 1px solid #ddd;">
-                <option value="KRCHN">KRCHN Nursing</option>
-                <option value="TVET">TVET Programs</option>
-            </select>
-            
-            <input type="file" id="timetableExcelFile" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx" style="padding: 8px;">
-            
-            <button onclick="uploadExcelTimetable()" class="btn-action" style="background: #4C1D95;">
+        <!-- Program & Block Selection -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 16px;">
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-graduation-cap"></i> Program
+                </label>
+                <select id="adminTimetableProgram" class="form-control" onchange="updateTimetableBlocks()" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                    <option value="">-- Select Program --</option>
+                    <optgroup label="🎓 KRCHN Nursing">
+                        <option value="KRCHN">KRCHN Nursing</option>
+                    </optgroup>
+                    <optgroup label="🎯 TVET Diploma Programs">
+                        <option value="DPOTT">Diploma in Perioperative Theatre Technology</option>
+                        <option value="DCH">Diploma in Community Health</option>
+                        <option value="DHRIT">Diploma in Health Records and IT</option>
+                        <option value="DSL">Diploma in Science Lab</option>
+                        <option value="DSW">Diploma in Social Work</option>
+                        <option value="DCJS">Diploma in Criminal Justice</option>
+                        <option value="DHSS">Diploma in Health Support Services</option>
+                        <option value="DICT">Diploma in ICT</option>
+                        <option value="DME">Diploma in Medical Engineering</option>
+                    </optgroup>
+                    <optgroup label="📜 TVET Certificate Programs">
+                        <option value="CPOTT">Certificate in Perioperative Theatre Technology</option>
+                        <option value="CCH">Certificate in Community Health</option>
+                        <option value="CHRIT">Certificate in Health Records and IT</option>
+                        <option value="CPC">Certificate in Patient Care</option>
+                        <option value="CSL">Certificate in Science Lab</option>
+                        <option value="CSW">Certificate in Social Work</option>
+                        <option value="CCJS">Certificate in Criminal Justice</option>
+                        <option value="CAG">Certificate in Agriculture</option>
+                        <option value="CHSS">Certificate in Health Support Services</option>
+                        <option value="CICT">Certificate in ICT</option>
+                        <option value="CCG">Certificate in Caregiver</option>
+                        <option value="COMT">Certificate in Orthopedic Trauma Medicine</option>
+                    </optgroup>
+                    <optgroup label="🔧 TVET Artisan Programs">
+                        <option value="ACH">Artisan in Community Health</option>
+                        <option value="AAG">Artisan in Agriculture</option>
+                        <option value="ASW">Artisan in Social Work</option>
+                    </optgroup>
+                    <optgroup label="📊 Other TVET Programs">
+                        <option value="CCA">Certificate in Computer Applications</option>
+                        <option value="PTE">TVET/CDACC (PTE)</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-layer-group"></i> Block / Year & Term
+                </label>
+                <select id="adminTimetableBlock" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                    <!-- KRCHN Blocks -->
+                    <optgroup label="🎓 KRCHN Nursing Blocks">
+                        <option value="Introductory">Introductory Block</option>
+                        <option value="Block 1">Block 1</option>
+                        <option value="Block 2">Block 2</option>
+                        <option value="Block 3">Block 3</option>
+                        <option value="Block 4">Block 4</option>
+                        <option value="Block 5">Block 5</option>
+                        <option value="Block 6">Block 6</option>
+                        <option value="Final">Final Block</option>
+                    </optgroup>
+                    <!-- TVET Certificate Terms -->
+                    <optgroup label="📜 TVET Certificate (Year 1)">
+                        <option value="Y1T1">Certificate Year 1 - Term 1</option>
+                        <option value="Y1T2">Certificate Year 1 - Term 2</option>
+                        <option value="Y1T3">Certificate Year 1 - Term 3</option>
+                    </optgroup>
+                    <optgroup label="📜 TVET Certificate (Year 2)">
+                        <option value="Y2T1">Certificate Year 2 - Term 1</option>
+                        <option value="Y2T2">Certificate Year 2 - Term 2</option>
+                        <option value="Y2T3">Certificate Year 2 - Term 3</option>
+                    </optgroup>
+                    <!-- TVET Diploma Terms -->
+                    <optgroup label="🎯 TVET Diploma (Year 1)">
+                        <option value="Y1T1">Diploma Year 1 - Term 1</option>
+                        <option value="Y1T2">Diploma Year 1 - Term 2</option>
+                        <option value="Y1T3">Diploma Year 1 - Term 3</option>
+                    </optgroup>
+                    <optgroup label="🎯 TVET Diploma (Year 2)">
+                        <option value="Y2T1">Diploma Year 2 - Term 1</option>
+                        <option value="Y2T2">Diploma Year 2 - Term 2</option>
+                        <option value="Y2T3">Diploma Year 2 - Term 3</option>
+                    </optgroup>
+                    <optgroup label="🎯 TVET Diploma (Year 3)">
+                        <option value="Y3T1">Diploma Year 3 - Term 1</option>
+                        <option value="Y3T2">Diploma Year 3 - Term 2</option>
+                        <option value="Y3T3">Diploma Year 3 - Term 3</option>
+                    </optgroup>
+                    <!-- TVET Artisan Terms -->
+                    <optgroup label="🔧 TVET Artisan">
+                        <option value="Artisan Y1T1">Artisan Year 1 - Term 1</option>
+                        <option value="Artisan Y1T2">Artisan Year 1 - Term 2</option>
+                        <option value="Artisan Y2T1">Artisan Year 2 - Term 1</option>
+                        <option value="Artisan Y2T2">Artisan Year 2 - Term 2</option>
+                    </optgroup>
+                </select>
+            </div>
+            <div>
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">
+                    <i class="fas fa-file-upload"></i> Upload File
+                </label>
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <input type="file" id="adminTimetableFile" accept=".xlsx,.xls,.csv,.pdf,.doc,.docx" style="display: none;">
+                    <button onclick="document.getElementById('adminTimetableFile').click()" class="btn-action" style="background: #f1f5f9; color: #1e293b; padding: 10px 16px; border: 1.5px dashed #94a3b8; border-radius: 8px; cursor: pointer; font-weight: 500; display: flex; align-items: center; gap: 6px;">
+                        <i class="fas fa-folder-open"></i> Choose File
+                    </button>
+                    <span id="cal_file_name" style="font-size: 13px; color: #94a3b8;">No file chosen</span>
+                </div>
+            </div>
+        </div>
+
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-bottom: 16px;">
+            <button onclick="uploadTimetableToSupabase()" class="btn-action" style="background: #4C1D95; color: white; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 8px rgba(76,29,149,0.3);">
                 <i class="fas fa-cloud-upload-alt"></i> Upload & Replace
             </button>
-            
-            <button onclick="clearTimetableBlock()" class="btn-danger" style="background: #dc2626;">
+            <button onclick="clearTimetableBlock()" class="btn-action" style="background: #dc2626; color: white; padding: 10px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 8px rgba(220,38,38,0.3);">
                 <i class="fas fa-trash"></i> Clear This Block
             </button>
         </div>
         
         <!-- CSV Format Info -->
-        <div style="background: white; padding: 12px; border-radius: 8px; margin-top: 10px;">
-            <p style="margin: 0; font-size: 12px; color: #6b7280;">
-                <i class="fas fa-info-circle"></i> <strong>CSV/Excel Format:</strong> day_of_week, week_number, start_time, end_time, session_name, course_name, lecturer_name, venue, is_holiday, is_exam
-                <br>
+        <div style="background: #f8fafc; padding: 14px 18px; border-radius: 8px; border: 1px solid #e2e8f0;">
+            <p style="margin: 0 0 4px 0; font-size: 12px; color: #475569;">
+                <i class="fas fa-info-circle" style="color: #4C1D95;"></i> 
+                <strong>CSV/Excel Format:</strong> day_of_week, week_number, start_time, end_time, session_name, course_name, lecturer_name, venue, is_holiday, is_exam
+            </p>
+            <p style="margin: 0 0 8px 0; font-size: 12px; color: #64748b; background: white; padding: 6px 12px; border-radius: 4px; font-family: 'Courier New', monospace;">
                 <strong>Example:</strong> monday,1,08:00,10:30,Medical Surgical III,Dermatology/Burns,Mr. Job Juma,Lecture Hall 1,FALSE,FALSE
             </p>
-            <a href="#" onclick="downloadTimetableTemplate()" style="color: #4C1D95; font-size: 12px; margin-top: 8px; display: inline-block;">
+            <a href="#" onclick="downloadTimetableTemplate()" style="color: #4C1D95; font-size: 13px; font-weight: 500; text-decoration: none;">
                 <i class="fas fa-download"></i> Download CSV Template
             </a>
         </div>
     </div>
-    
-    <!-- Alternative Single Event Entry -->
-    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
-        <div style="display: flex; gap: 10px; border-bottom: 1px solid #e5e7eb; margin-bottom: 15px;">
-            <button id="excelTabBtn" class="tab-btn active" onclick="showUploadMethod('excel')" style="padding: 8px 16px; background: #4C1D95; color: white; border: none; border-radius: 6px;">📁 Excel Upload</button>
-            <button id="singleTabBtn" class="tab-btn" onclick="showUploadMethod('single')" style="padding: 8px 16px; background: #e5e7eb; border: none; border-radius: 6px;">➕ Single Event</button>
-            <button id="bulkTabBtn" class="tab-btn" onclick="showUploadMethod('bulk')" style="padding: 8px 16px; background: #e5e7eb; border: none; border-radius: 6px;">📆 Bulk Schedule</button>
+
+    <!-- ========== TAB NAVIGATION ========== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="display: flex; gap: 4px; background: #f1f5f9; padding: 4px; border-radius: 10px; margin-bottom: 20px;">
+            <button id="excelTabBtn" class="tab-btn active" onclick="showUploadMethod('excel')" style="flex: 1; padding: 10px 16px; border: none; border-radius: 8px; background: white; color: #4C1D95; font-weight: 600; cursor: pointer; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <i class="fas fa-file-excel"></i> Excel Upload
+            </button>
+            <button id="singleTabBtn" class="tab-btn" onclick="showUploadMethod('single')" style="flex: 1; padding: 10px 16px; border: none; border-radius: 8px; background: transparent; color: #64748b; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <i class="fas fa-plus-circle"></i> Single Session
+            </button>
+            <button id="bulkTabBtn" class="tab-btn" onclick="showUploadMethod('bulk')" style="flex: 1; padding: 10px 16px; border: none; border-radius: 8px; background: transparent; color: #64748b; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px;">
+                <i class="fas fa-calendar-week"></i> Bulk Schedule
+            </button>
         </div>
         
         <!-- Excel Upload Method -->
-        <div id="excelUploadMethod">
-            <p>Upload Excel/CSV file with timetable data. <a href="#" onclick="downloadTimetableTemplate()">Download template</a></p>
+        <div id="excelUploadMethod" class="tab-panel">
+            <p style="color: #64748b; margin: 0 0 12px 0;">
+                <i class="fas fa-info-circle"></i> Upload Excel/CSV file with timetable data. 
+                <a href="#" onclick="downloadTimetableTemplate()" style="color: #4C1D95; font-weight: 500;">Download template</a>
+            </p>
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <input type="file" id="bulkExcelFile" accept=".xlsx,.xls,.csv" style="display: none;">
+                <button onclick="document.getElementById('bulkExcelFile').click()" class="btn-action" style="background: #f1f5f9; color: #1e293b; padding: 10px 20px; border: 1.5px dashed #94a3b8; border-radius: 8px; cursor: pointer;">
+                    <i class="fas fa-folder-open"></i> Select Excel File
+                </button>
+                <span id="bulk_file_name" style="font-size: 13px; color: #94a3b8;">No file selected</span>
+            </div>
         </div>
         
-        <!-- Single Event Method -->
-        <div id="singleEventMethod" style="display: none;">
+        <!-- Single Session Method -->
+        <div id="singleEventMethod" class="tab-panel" style="display: none;">
             <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px;">
-                <input type="text" id="singleEventTitle" placeholder="Event Title *" style="padding: 8px; border-radius: 6px;">
-                <input type="date" id="singleEventDate" style="padding: 8px; border-radius: 6px;">
-                <input type="time" id="singleEventStart" style="padding: 8px; border-radius: 6px;">
-                <input type="time" id="singleEventEnd" style="padding: 8px; border-radius: 6px;">
-                <input type="text" id="singleEventVenue" placeholder="Venue" style="padding: 8px; border-radius: 6px;">
-                <select id="singleEventType" style="padding: 8px; border-radius: 6px;">
-                    <option value="CLASS">📚 Class</option>
-                    <option value="CLINICAL">🏥 Clinical</option>
-                    <option value="EXAM">📝 Exam</option>
-                    <option value="EVENT">🎉 Event</option>
-                </select>
-                <input type="text" id="singleEventDetails" placeholder="Description" style="padding: 8px; border-radius: 6px;">
-                <select id="singleEventProgram" style="padding: 8px; border-radius: 6px;">
-                    <option value="KRCHN">KRCHN</option>
-                    <option value="TVET">TVET</option>
-                    <option value="General">All Programs</option>
-                </select>
-                <select id="singleEventBlock" style="padding: 8px; border-radius: 6px;">
-                    <option value="General">All Blocks</option>
-                </select>
-                <button onclick="addSingleEvent()" class="btn-action" style="background: #4C1D95;">Add Event</button>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Session Title *</label>
+                    <input type="text" id="singleEventTitle" class="form-control" placeholder="Enter session title" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Date</label>
+                    <input type="date" id="singleEventDate" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Start Time</label>
+                    <input type="time" id="singleEventStart" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">End Time</label>
+                    <input type="time" id="singleEventEnd" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Venue</label>
+                    <input type="text" id="singleEventVenue" class="form-control" placeholder="Venue name" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Session Type</label>
+                    <select id="singleEventType" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                        <option value="CLASS">📚 Theory Class</option>
+                        <option value="CLINICAL">🏥 Practical/Clinical</option>
+                        <option value="EXAM">📝 Assessment/Exam</option>
+                        <option value="EVENT">🎉 Event</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Description</label>
+                    <input type="text" id="singleEventDetails" class="form-control" placeholder="Brief description" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Program</label>
+                    <select id="singleEventProgram" class="form-control" onchange="updateBlockTermOptions('singleEventProgram', 'singleEventBlock')" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                        <option value="">-- Select Program --</option>
+                        <option value="KRCHN">KRCHN Nursing</option>
+                        <option value="TVET">TVET Programs</option>
+                        <option value="General">All Programs</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Block / Year & Term</label>
+                    <select id="singleEventBlock" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                        <option value="General">All Blocks</option>
+                    </select>
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <button onclick="addSingleEvent()" class="btn-action" style="background: #4C1D95; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; box-shadow: 0 2px 8px rgba(76,29,149,0.3);">
+                        <i class="fas fa-plus"></i> Add Session
+                    </button>
+                </div>
             </div>
         </div>
         
         <!-- Bulk Schedule Method -->
-        <div id="bulkScheduleMethod" style="display: none;">
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px;">
-                <select id="weeklyDay">
-                    <option value="0">Sunday</option>
-                    <option value="1">Monday</option>
-                    <option value="2">Tuesday</option>
-                    <option value="3">Wednesday</option>
-                    <option value="4">Thursday</option>
-                    <option value="5">Friday</option>
-                    <option value="6">Saturday</option>
-                </select>
-                <input type="time" id="weeklyStartTime" placeholder="Start Time">
-                <input type="time" id="weeklyEndTime" placeholder="End Time">
-                <input type="text" id="weeklyCourse" placeholder="Course Name *">
-                <input type="text" id="weeklyVenue" placeholder="Venue">
-                <input type="date" id="weeklyStartDate">
-                <input type="date" id="weeklyEndDate">
-                <select id="weeklyProgram">
-                    <option value="KRCHN">KRCHN</option>
-                    <option value="TVET">TVET</option>
-                </select>
-                <select id="weeklyBlock">
-                    <option value="">Select Block</option>
-                </select>
-                <button onclick="createWeeklySchedule()" class="btn-action">Create Weekly Schedule</button>
+        <div id="bulkScheduleMethod" class="tab-panel" style="display: none;">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px;">
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Day of Week</label>
+                    <select id="weeklyDay" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                        <option value="0">Sunday</option>
+                        <option value="1">Monday</option>
+                        <option value="2">Tuesday</option>
+                        <option value="3">Wednesday</option>
+                        <option value="4">Thursday</option>
+                        <option value="5">Friday</option>
+                        <option value="6">Saturday</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Start Time</label>
+                    <input type="time" id="weeklyStartTime" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">End Time</label>
+                    <input type="time" id="weeklyEndTime" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Course/Unit Name *</label>
+                    <input type="text" id="weeklyCourse" class="form-control" placeholder="Enter course/unit name" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Venue</label>
+                    <input type="text" id="weeklyVenue" class="form-control" placeholder="Venue name" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Start Date</label>
+                    <input type="date" id="weeklyStartDate" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">End Date</label>
+                    <input type="date" id="weeklyEndDate" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Program</label>
+                    <select id="weeklyProgram" class="form-control" onchange="updateBlockTermOptions('weeklyProgram', 'weeklyBlock')" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                        <option value="">-- Select Program --</option>
+                        <option value="KRCHN">KRCHN Nursing</option>
+                        <option value="TVET">TVET Programs</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 5px;">Block / Year & Term</label>
+                    <select id="weeklyBlock" class="form-control" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                        <option value="">Select Block</option>
+                    </select>
+                </div>
+                <div style="grid-column: 1 / -1;">
+                    <button onclick="createWeeklySchedule()" class="btn-action" style="background: #059669; color: white; padding: 12px 24px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; width: 100%; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">
+                        <i class="fas fa-calendar-plus"></i> Create Weekly Schedule
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-    
-    <!-- Current Timetable Preview -->
-    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px;">
-        <h3><i class="fas fa-eye"></i> Current Timetable Preview</h3>
-        <div style="display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap;">
-            <select id="previewBlockSelect" onchange="previewTimetable()" style="padding: 8px; border-radius: 8px;">
-                <option value="Introductory">Introductory Block</option>
-                <option value="Block 1">Block 1</option>
-                <option value="Block 2">Block 2</option>
-                <option value="Block 3">Block 3</option>
-                <option value="Block 4" selected>Block 4</option>
-                <option value="Block 5">Block 5</option>
-                <option value="Final">Final Block</option>
-            </select>
-            <button onclick="previewTimetable()" class="btn-action" style="background: #4C1D95;">Load Preview</button>
+
+    <!-- ========== TIMETABLE PREVIEW ========== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 15px;">
+            <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-eye" style="color: #4C1D95;"></i> Current Timetable Preview
+            </h3>
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <select id="previewBlockSelect" onchange="previewTimetable()" style="padding: 8px 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px;">
+                    <optgroup label="🎓 KRCHN Blocks">
+                        <option value="Introductory">Introductory Block</option>
+                        <option value="Block 1">Block 1</option>
+                        <option value="Block 2">Block 2</option>
+                        <option value="Block 3">Block 3</option>
+                        <option value="Block 4" selected>Block 4</option>
+                        <option value="Block 5">Block 5</option>
+                        <option value="Block 6">Block 6</option>
+                        <option value="Final">Final Block</option>
+                    </optgroup>
+                    <optgroup label="📜 TVET Certificate">
+                        <option value="Y1T1">Certificate Year 1 - Term 1</option>
+                        <option value="Y1T2">Certificate Year 1 - Term 2</option>
+                        <option value="Y1T3">Certificate Year 1 - Term 3</option>
+                        <option value="Y2T1">Certificate Year 2 - Term 1</option>
+                        <option value="Y2T2">Certificate Year 2 - Term 2</option>
+                        <option value="Y2T3">Certificate Year 2 - Term 3</option>
+                    </optgroup>
+                    <optgroup label="🎯 TVET Diploma">
+                        <option value="Y1T1">Diploma Year 1 - Term 1</option>
+                        <option value="Y1T2">Diploma Year 1 - Term 2</option>
+                        <option value="Y1T3">Diploma Year 1 - Term 3</option>
+                        <option value="Y2T1">Diploma Year 2 - Term 1</option>
+                        <option value="Y2T2">Diploma Year 2 - Term 2</option>
+                        <option value="Y2T3">Diploma Year 2 - Term 3</option>
+                        <option value="Y3T1">Diploma Year 3 - Term 1</option>
+                        <option value="Y3T2">Diploma Year 3 - Term 2</option>
+                        <option value="Y3T3">Diploma Year 3 - Term 3</option>
+                    </optgroup>
+                    <optgroup label="🔧 TVET Artisan">
+                        <option value="Artisan Y1T1">Artisan Year 1 - Term 1</option>
+                        <option value="Artisan Y1T2">Artisan Year 1 - Term 2</option>
+                        <option value="Artisan Y2T1">Artisan Year 2 - Term 1</option>
+                        <option value="Artisan Y2T2">Artisan Year 2 - Term 2</option>
+                    </optgroup>
+                </select>
+                <button onclick="previewTimetable()" class="btn-action" style="background: #4C1D95; color: white; padding: 8px 20px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-sync"></i> Load Preview
+                </button>
+            </div>
         </div>
-        <div id="adminTimetablePreview" style="overflow-x: auto; max-height: 400px; overflow-y: auto;"></div>
+        <div id="adminTimetablePreview" style="overflow-x: auto; max-height: 400px; overflow-y: auto;">
+            <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                <i class="fas fa-calendar-alt" style="font-size: 36px; display: block; margin-bottom: 12px;"></i>
+                <p>Select a block and click "Load Preview" to view timetable</p>
+            </div>
+        </div>
     </div>
-    
-    <!-- Calendar Display -->
-    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-        <div id="fullCalendarDisplay"></div>
+
+    <!-- ========== CALENDAR VIEW ========== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <h3 style="margin: 0 0 16px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-calendar-alt" style="color: #4C1D95;"></i> Calendar View
+        </h3>
+        <div id="fullCalendarDisplay" style="min-height: 400px;">
+            <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                <i class="fas fa-calendar" style="font-size: 48px; display: block; margin-bottom: 16px; color: #c4b5fd;"></i>
+                <p style="font-size: 16px;">Calendar view will display here</p>
+                <p style="font-size: 13px;">Sessions, classes, and assessments scheduled across all blocks</p>
+            </div>
+        </div>
     </div>
-    
-    <!-- Recent Events List -->
-    <div style="margin-top: 20px;">
-        <h3><i class="fas fa-history"></i> Upcoming Events (Next 14 Days)</h3>
-        <div class="table-responsive">
-            <table id="upcomingEventsTable" style="width: 100%;">
+
+    <!-- ========== UPCOMING SESSIONS ========== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <h3 style="margin: 0 0 16px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-history" style="color: #4C1D95;"></i> Upcoming Sessions (Next 14 Days)
+        </h3>
+        <div class="table-responsive" style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
                 <thead>
-                    <tr><th>Date</th><th>Time</th><th>Title</th><th>Venue</th><th>Program</th><th>Block</th><th>Actions</th></tr>
+                    <tr style="background: #f8fafc; border-bottom: 2px solid #e2e8f0;">
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Date</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Time</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Session Title</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Venue</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Program</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Block / Term</th>
+                        <th style="padding: 12px 16px; text-align: left; font-weight: 600; color: #475569;">Actions</th>
+                    </tr>
                 </thead>
                 <tbody id="upcomingEventsBody">
-                    <tr><td colspan="7">Loading events...<\/td><\/tr>
+                    <tr>
+                        <td colspan="7" style="text-align: center; padding: 40px; color: #94a3b8;">
+                            <i class="fas fa-spinner fa-spin" style="font-size: 24px; display: block; margin-bottom: 8px;"></i>
+                            Loading sessions...
+                        </td>
+                    </tr>
                 </tbody>
             </table>
         </div>
     </div>
 </section>
-            <!-- Welcome Editor Section -->
-            <section id="welcome-editor" class="tab-content">
-                <h2>Edit Student Welcome Message</h2>
-                <form id="edit-welcome-form">
-                    <textarea id="welcome-message-editor" rows="20" placeholder="Paste HTML content here..."></textarea>
-                    <button type="submit" class="btn-action">Save Welcome Message</button>
-                </form>
-                <h3>Current Live Preview</h3>
-                <div id="live-preview"><p>Loading live preview...</p></div>
-            </section>
+
+<!-- ========== WELCOME EDITOR SECTION ========== -->
+<section id="welcome-editor" class="tab-content">
+    <!-- Header -->
+    <div style="background: linear-gradient(135deg, #4C1D95, #7C3AED); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(76,29,149,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700;">
+                <i class="fas fa-edit"></i> Edit Student Welcome Message
+            </h2>
+            <p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-greeting"></i> Customize the welcome message shown to students upon login
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="refreshWelcomePreview()" class="btn-action" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh Preview
+            </button>
+            <button onclick="resetWelcomeMessage()" class="btn-action" style="background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-undo"></i> Reset Default
+            </button>
+        </div>
+    </div>
+
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 16px; margin-bottom: 25px;">
+        <div style="border-top: 4px solid #4C1D95; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #4C1D95; font-size: 12px; margin: 0;">Message Status</h3>
+            <p id="welcome_status" style="font-size: 20px; font-weight: 700; color: #059669; margin: 4px 0;">
+                <i class="fas fa-check-circle"></i> Published
+            </p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Visible to students</p>
+        </div>
+        <div style="border-top: 4px solid #059669; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #059669; font-size: 12px; margin: 0;">Word Count</h3>
+            <p id="welcome_word_count" style="font-size: 28px; font-weight: 700; color: #059669; margin: 4px 0;">0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Total words</p>
+        </div>
+        <div style="border-top: 4px solid #FDB913; background: white; border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #d97706; font-size: 12px; margin: 0;">Last Updated</h3>
+            <p id="welcome_last_updated" style="font-size: 14px; font-weight: 600; color: #d97706; margin: 4px 0;">Never</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Last modified</p>
+        </div>
+        <div style="border-top: 4px solid #8b5cf6; background: linear-gradient(135deg, #f5f3ff, #ede9fe); border-radius: 8px; padding: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.08);">
+            <h3 style="color: #6d28d9; font-size: 12px; margin: 0;">🔄 Version</h3>
+            <p id="welcome_version" style="font-size: 20px; font-weight: 700; color: #6d28d9; margin: 4px 0;">v1.0</p>
+            <p style="font-size: 11px; color: #94a3b8; margin: 0;">Current version</p>
+        </div>
+    </div>
+
+    <!-- Selected Program Display -->
+    <div id="selectedWelcomeProgramDisplay" style="background: linear-gradient(135deg, #f5f3ff, #ede9fe); padding: 12px 20px; border-radius: 10px; margin-bottom: 20px; border: 1px solid #c4b5fd; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 10px;">
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-weight: 700; color: #4C1D95; font-size: 14px;">
+                <i class="fas fa-bullhorn"></i> Message Target:
+            </span>
+            <span id="selectedWelcomeTarget" style="font-weight: 600; color: #1e293b; font-size: 15px;">All Students</span>
+        </div>
+        <div>
+            <span id="selectedWelcomeStatus" style="background: #d1fae5; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; color: #065f46; border: 1px solid #86efac;">
+                <i class="fas fa-check-circle"></i> Active
+            </span>
+        </div>
+    </div>
+
+    <!-- Editor -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <div>
+                <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                    <i class="fas fa-code" style="color: #4C1D95;"></i> Message Content
+                </h3>
+                <p style="margin: 4px 0 0 0; color: #64748b; font-size: 13px;">
+                    <i class="fas fa-info-circle"></i> Use HTML to format the welcome message
+                </p>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <button onclick="insertWelcomeTemplate('basic')" class="btn-action" style="background: #f1f5f9; color: #1e293b; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-file-alt"></i> Basic
+                </button>
+                <button onclick="insertWelcomeTemplate('announcement')" class="btn-action" style="background: #f1f5f9; color: #1e293b; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-bullhorn"></i> Announcement
+                </button>
+                <button onclick="insertWelcomeTemplate('exam')" class="btn-action" style="background: #f1f5f9; color: #1e293b; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-graduation-cap"></i> Exam
+                </button>
+                <button onclick="insertWelcomeTemplate('holiday')" class="btn-action" style="background: #f1f5f9; color: #1e293b; padding: 6px 14px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px;">
+                    <i class="fas fa-umbrella-beach"></i> Holiday
+                </button>
+            </div>
+        </div>
+
+        <form id="edit-welcome-form">
+            <div style="margin-bottom: 16px;">
+                <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 8px;">
+                    <i class="fas fa-html5"></i> HTML Content
+                </label>
+                <textarea id="welcome-message-editor" class="form-control" rows="20" placeholder="Paste HTML content here..." style="width: 100%; padding: 14px; border-radius: 8px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; font-family: 'Courier New', monospace; resize: vertical;"></textarea>
+            </div>
+            
+            <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+                <button type="submit" class="btn-action" style="background: #4C1D95; color: white; padding: 12px 32px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 8px rgba(76,29,149,0.3);">
+                    <i class="fas fa-save"></i> Save Welcome Message
+                </button>
+                <button type="button" onclick="previewWelcomeMessage()" class="btn-action" style="background: #059669; color: white; padding: 12px 32px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; box-shadow: 0 2px 8px rgba(5,150,105,0.3);">
+                    <i class="fas fa-eye"></i> Preview
+                </button>
+                <button type="button" onclick="clearWelcomeEditor()" class="btn-action" style="background: #6b7280; color: white; padding: 12px 32px; border: none; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                    <i class="fas fa-eraser"></i> Clear
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Live Preview -->
+    <div style="background: white; border-radius: 12px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 16px;">
+            <h3 style="margin: 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+                <i class="fas fa-eye" style="color: #4C1D95;"></i> Live Preview
+            </h3>
+            <span style="background: #f1f5f9; padding: 4px 12px; border-radius: 12px; font-size: 11px; color: #64748b;">
+                <i class="fas fa-mobile-alt"></i> Student View
+            </span>
+        </div>
+        <div id="live-preview" style="padding: 24px; background: #f8fafc; border-radius: 8px; min-height: 200px; border: 1px solid #e2e8f0; position: relative;">
+            <div style="text-align: center; padding: 40px; color: #94a3b8;">
+                <i class="fas fa-spinner fa-spin" style="font-size: 24px; display: block; margin-bottom: 12px;"></i>
+                <p>Loading live preview...</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Quick Tips -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-top: 25px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <h4 style="margin: 0 0 12px 0; color: #1e293b; display: flex; align-items: center; gap: 8px;">
+            <i class="fas fa-lightbulb" style="color: #FDB913;"></i> Quick Tips
+        </h4>
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px;">
+            <div style="background: #f0fdf4; padding: 12px; border-radius: 8px; border-left: 3px solid #059669;">
+                <strong style="color: #065f46; font-size: 13px;">📝 Formatting</strong>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569;">Use HTML tags like <code>&lt;h1&gt;</code>, <code>&lt;p&gt;</code>, <code>&lt;strong&gt;</code></p>
+            </div>
+            <div style="background: #eff6ff; padding: 12px; border-radius: 8px; border-left: 3px solid #3b82f6;">
+                <strong style="color: #1e40af; font-size: 13px;">🎨 Styling</strong>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569;">Add inline CSS or use <code>style="..."</code> attributes</p>
+            </div>
+            <div style="background: #fef3c7; padding: 12px; border-radius: 8px; border-left: 3px solid #f59e0b;">
+                <strong style="color: #92400e; font-size: 13px;">📎 Images</strong>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569;">Use <code>&lt;img src="URL"&gt;</code> for images</p>
+            </div>
+            <div style="background: #fef2f2; padding: 12px; border-radius: 8px; border-left: 3px solid #ef4444;">
+                <strong style="color: #991b1b; font-size: 13px;">⚠️ Important</strong>
+                <p style="margin: 4px 0 0 0; font-size: 12px; color: #475569;">Test preview before publishing to students</p>
+            </div>
+        </div>
+    </div>
+</section>
 
           <!-- ============================================ -->
 <!-- ✅ ENHANCED AUDIT LOGS SECTION - MODERN UI    -->
