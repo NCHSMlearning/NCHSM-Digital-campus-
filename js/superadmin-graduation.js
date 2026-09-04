@@ -1,6 +1,6 @@
 // ============================================================
 // 🎓 COMPLETE GRADUATION & CERTIFICATE SYSTEM
-// ONE FILE - All functions for graduation + certificate generation
+// ONE FILE - All functions in correct order
 // ============================================================
 
 console.log('🎓 Graduation & Certificate System Loading...');
@@ -8,7 +8,6 @@ console.log('🎓 Graduation & Certificate System Loading...');
 // ============================================================
 // GLOBAL VARIABLES - Safe declarations
 // ============================================================
-
 
 if (typeof CERT_STORAGE_KEY === 'undefined') {
     var CERT_STORAGE_KEY = 'nchsm_certificates';
@@ -209,69 +208,6 @@ function generateQRCodeData(certData) {
 }
 
 // ============================================================
-// LOAD FUNCTIONS
-// ============================================================
-
-function loadAllData() {
-    // Load certificates
-    try {
-        const data = localStorage.getItem(CERT_STORAGE_KEY);
-        certificates = data ? JSON.parse(data) : [];
-    } catch (e) {
-        certificates = [];
-    }
-    
-    // Load graduation candidates
-    try {
-        const data = localStorage.getItem(GRAD_STORAGE_KEY);
-        graduationCandidates = data ? JSON.parse(data) : [];
-    } catch (e) {
-        graduationCandidates = [];
-    }
-    
-    // Load transcripts
-    try {
-        const data = localStorage.getItem(TRANSCRIPT_STORAGE_KEY);
-        allTranscripts = data ? JSON.parse(data) : [];
-    } catch (e) {
-        allTranscripts = [];
-    }
-    
-    // Load students
-    try {
-        const users = JSON.parse(localStorage.getItem('users') || '[]');
-        allStudents = users.filter(u => u.role === 'student' && u.status === 'approved');
-    } catch (e) {
-        allStudents = getSampleStudents();
-    }
-    
-    // Load marks
-    try {
-        const marks = JSON.parse(localStorage.getItem('student_marks') || '{}');
-        allMarks = marks;
-    } catch (e) {
-        allMarks = {};
-    }
-    
-    console.log(`📊 Loaded: ${allStudents.length} students, ${certificates.length} certificates`);
-}
-
-function loadGradSettings() {
-    try {
-        const settings = JSON.parse(localStorage.getItem('grad_settings') || '{}');
-        const passMarkEl = document.getElementById('gradPassMark');
-        const feeAmountEl = document.getElementById('gradFeeAmount');
-        const gradDateEl = document.getElementById('gradDate');
-        const templateEl = document.getElementById('gradTemplate');
-        
-        if (passMarkEl && settings.passMark) passMarkEl.value = settings.passMark;
-        if (feeAmountEl && settings.feeAmount) feeAmountEl.value = settings.feeAmount;
-        if (gradDateEl && settings.gradDate) gradDateEl.value = settings.gradDate;
-        if (templateEl && settings.template) templateEl.value = settings.template;
-    } catch (e) {}
-}
-
-// ============================================================
 // GET STUDENT MARKS
 // ============================================================
 
@@ -349,469 +285,72 @@ function createCertificate(student, marks, transcriptData) {
 }
 
 // ============================================================
-// MAIN INITIALIZATION
+// LOAD FUNCTIONS
 // ============================================================
 
-function initGraduationSystem() {
-    console.log('🎓 Initializing Graduation & Certificate System...');
-    loadAllData();
-    loadGradSettings();
-    processGraduationCandidates();
-    updateGraduationStats();
-    renderCertificateList();
-    renderGraduateList();
-    setupEventListeners();
-    showCertificateSection();
-    console.log('✅ Graduation & Certificate System initialized!');
-}
-
-function showCertificateSection() {
-    const section = document.getElementById('certificate-management');
-    if (section) {
-        section.style.display = 'block';
-        section.classList.add('active');
-        console.log('✅ Certificate section shown');
+function loadAllData() {
+    // Load certificates
+    try {
+        const data = localStorage.getItem(CERT_STORAGE_KEY);
+        certificates = data ? JSON.parse(data) : [];
+    } catch (e) {
+        certificates = [];
     }
+    
+    // Load graduation candidates
+    try {
+        const data = localStorage.getItem(GRAD_STORAGE_KEY);
+        graduationCandidates = data ? JSON.parse(data) : [];
+    } catch (e) {
+        graduationCandidates = [];
+    }
+    
+    // Load transcripts
+    try {
+        const data = localStorage.getItem(TRANSCRIPT_STORAGE_KEY);
+        allTranscripts = data ? JSON.parse(data) : [];
+    } catch (e) {
+        allTranscripts = [];
+    }
+    
+    // Load students
+    try {
+        const users = JSON.parse(localStorage.getItem('users') || '[]');
+        allStudents = users.filter(u => u.role === 'student' && u.status === 'approved');
+    } catch (e) {
+        allStudents = getSampleStudents();
+    }
+    
+    // Load marks
+    try {
+        const marks = JSON.parse(localStorage.getItem('student_marks') || '{}');
+        allMarks = marks;
+    } catch (e) {
+        allMarks = {};
+    }
+    
+    console.log(`📊 Loaded: ${allStudents.length} students, ${certificates.length} certificates`);
 }
 
-function setupEventListeners() {
-    const programFilter = document.getElementById('gradProgramFilter');
-    const statusFilter = document.getElementById('gradStatusFilter');
-    const selectAll = document.getElementById('gradSelectAll');
-    const certSelectAll = document.getElementById('certSelectAll');
-    
-    if (programFilter) programFilter.addEventListener('change', filterGradStudents);
-    if (statusFilter) statusFilter.addEventListener('change', filterGradStudents);
-    if (selectAll) selectAll.addEventListener('change', toggleAllGradCheckboxes);
-    if (certSelectAll) certSelectAll.addEventListener('change', toggleAllCertCheckboxes);
-}
-
-// ============================================================
-// PROCESS GRADUATION CANDIDATES
-// ============================================================
-
-function processGraduationCandidates() {
-    const passMark = parseInt(document.getElementById('gradPassMark')?.value || 50);
-    
-    const processed = allStudents.map(student => {
-        const marks = getStudentMarks(student.id);
-        const avgScore = calculateAverageScore(marks);
-        const isEligible = avgScore >= passMark && (student.block === 'Final' || student.block === 'Block 6');
-        const existingGrad = graduationCandidates.find(g => g.studentId === student.id);
+function loadGradSettings() {
+    try {
+        const settings = JSON.parse(localStorage.getItem('grad_settings') || '{}');
+        const passMarkEl = document.getElementById('gradPassMark');
+        const feeAmountEl = document.getElementById('gradFeeAmount');
+        const gradDateEl = document.getElementById('gradDate');
+        const templateEl = document.getElementById('gradTemplate');
         
-        return {
-            studentId: student.id,
-            name: student.name || student.full_name || 'Unknown',
-            email: student.email || '',
-            program: student.program || 'KRCHN',
-            intake: student.intake || student.intake_year || '2026',
-            avgScore: avgScore,
-            isEligible: isEligible,
-            status: existingGrad ? existingGrad.status : (isEligible ? 'pending' : 'not_eligible'),
-            transcriptGenerated: existingGrad?.transcriptGenerated || false,
-            certificateGenerated: existingGrad?.certificateGenerated || false,
-            printed: existingGrad?.printed || false,
-            serialNumber: existingGrad?.serialNumber || null,
-            qrCode: existingGrad?.qrCode || null,
-            appliedDate: existingGrad?.appliedDate || null,
-            graduationDate: existingGrad?.graduationDate || null,
-            feePaid: existingGrad?.feePaid || false,
-            feeAmount: existingGrad?.feeAmount || parseInt(document.getElementById('gradFeeAmount')?.value || 2500),
-            transcriptUrl: existingGrad?.transcriptUrl || null,
-            certificateUrl: existingGrad?.certificateUrl || null
-        };
-    });
-    
-    graduationCandidates = processed;
-    localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
-    renderGraduationList();
-    updateGraduationStats();
-}
-
-// ============================================================
-// GENERATE FUNCTIONS
-// ============================================================
-
-function generateTranscript(studentId) {
-    const student = graduationCandidates.find(g => g.studentId === studentId);
-    if (!student) {
-        if (typeof showNotification === 'function') {
-            showNotification('Student not found', 'error');
-        }
-        return;
-    }
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Generating transcript for ' + student.name + '...');
-    }
-    
-    setTimeout(() => {
-        const transcriptId = 'TRN-' + Date.now().toString().slice(-8) + '-' + studentId.slice(-4);
-        const marks = getStudentMarks(studentId);
-        
-        const transcriptData = {
-            id: transcriptId,
-            studentId: studentId,
-            studentName: student.name,
-            program: student.program,
-            intake: student.intake,
-            graduationDate: document.getElementById('gradDate')?.value || new Date().toISOString().split('T')[0],
-            marks: marks,
-            avgScore: student.avgScore,
-            generatedAt: new Date().toISOString(),
-            serialNumber: 'TRN-' + studentId.slice(-4) + '-' + Date.now().toString().slice(-6)
-        };
-        
-        allTranscripts.push(transcriptData);
-        localStorage.setItem(TRANSCRIPT_STORAGE_KEY, JSON.stringify(allTranscripts));
-        
-        student.transcriptGenerated = true;
-        student.transcriptUrl = '#transcript-' + transcriptId;
-        localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
-        
-        if (typeof hideLoading === 'function') {
-            hideLoading();
-        }
-        if (typeof showNotification === 'function') {
-            showNotification('✅ Transcript generated for ' + student.name, 'success');
-        }
-        renderGraduationList();
-        updateGraduationStats();
-        
-        // Auto-generate certificate
-        if (student.status === 'ready' || student.status === 'pending') {
-            setTimeout(() => generateCertificate(studentId), 500);
-        }
-    }, 1000);
-}
-
-function generateCertificate(studentId) {
-    const student = graduationCandidates.find(g => g.studentId === studentId);
-    if (!student) {
-        if (typeof showNotification === 'function') {
-            showNotification('Student not found', 'error');
-        }
-        return;
-    }
-    
-    if (!student.transcriptGenerated) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please generate transcript first', 'warning');
-        }
-        return;
-    }
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Generating certificate for ' + student.name + '...');
-    }
-    
-    setTimeout(() => {
-        try {
-            const studentData = {
-                id: student.studentId,
-                name: student.name,
-                program: student.program,
-                intake: student.intake,
-                block: 'Final'
-            };
-            
-            const marks = getStudentMarks(studentId);
-            const transcript = allTranscripts.find(t => t.studentId === studentId);
-            
-            const certData = createCertificate(studentData, marks, transcript);
-            certificates.push(certData);
-            localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
-            
-            student.certificateGenerated = true;
-            student.certificateUrl = '#cert-' + certData.certId;
-            student.serialNumber = certData.serialNumber;
-            student.qrCode = certData.qrCode;
-            student.status = certData.isPassing ? 'ready' : 'pending';
-            localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
-            
-            if (typeof hideLoading === 'function') {
-                hideLoading();
-            }
-            if (typeof showNotification === 'function') {
-                showNotification('✅ Certificate generated for ' + student.name + ' (Serial: ' + certData.serialNumber + ')', 'success');
-            }
-            renderCertificateList();
-            renderGraduateList();
-            updateGraduationStats();
-            
-            if (document.getElementById('autoPrint')?.checked) {
-                setTimeout(() => markAsPrinted(studentId), 500);
-            }
-        } catch (error) {
-            if (typeof hideLoading === 'function') {
-                hideLoading();
-            }
-            console.error('Error generating certificate:', error);
-            if (typeof showNotification === 'function') {
-                showNotification('❌ Error generating certificate: ' + error.message, 'error');
-            }
-        }
-    }, 1500);
-}
-
-function generateSingleCertificate(studentId) {
-    const student = allStudents.find(s => s.id === studentId || s.student_id === studentId);
-    if (!student) {
-        if (typeof showNotification === 'function') {
-            showNotification('Student not found', 'error');
-        }
-        return;
-    }
-    
-    const existing = certificates.find(c => c.studentId === studentId || c.studentId === student.id);
-    if (existing) {
-        if (typeof showNotification === 'function') {
-            showNotification('Student already has a certificate', 'info');
-        }
-        return;
-    }
-    
-    const studentMarks = getStudentMarks(studentId);
-    const transcript = allTranscripts.find(t => t.studentId === studentId);
-    const certData = createCertificate(student, studentMarks, transcript);
-    certificates.push(certData);
-    localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
-    
-    const gradIndex = graduationCandidates.findIndex(g => g.studentId === studentId);
-    if (gradIndex > -1) {
-        graduationCandidates[gradIndex].certificateGenerated = true;
-        graduationCandidates[gradIndex].certificateUrl = '#cert-' + certData.certId;
-        graduationCandidates[gradIndex].serialNumber = certData.serialNumber;
-        graduationCandidates[gradIndex].qrCode = certData.qrCode;
-        graduationCandidates[gradIndex].status = 'ready';
-        localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
-    }
-    
-    renderCertificateList();
-    renderGraduateList();
-    updateGraduationStats();
-    
-    if (typeof showNotification === 'function') {
-        showNotification('✅ Certificate generated for ' + student.name + ' (Serial: ' + certData.serialNumber + ')', 'success');
+        if (passMarkEl && settings.passMark) passMarkEl.value = settings.passMark;
+        if (feeAmountEl && settings.feeAmount) feeAmountEl.value = settings.feeAmount;
+        if (gradDateEl && settings.gradDate) gradDateEl.value = settings.gradDate;
+        if (templateEl && settings.template) templateEl.value = settings.template;
+    } catch (e) {
+        console.warn('Could not load grad settings:', e);
     }
 }
 
 // ============================================================
-// BULK GENERATION
-// ============================================================
-
-function generateSelectedTranscripts() {
-    const checkboxes = document.querySelectorAll('.grad-student-checkbox:checked');
-    if (checkboxes.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select at least one student.', 'warning');
-        }
-        return;
-    }
-    
-    const studentIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
-    const total = studentIds.length;
-    let completed = 0;
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Generating transcripts for ' + total + ' students...');
-    }
-    
-    const progressDiv = document.getElementById('gradProgress');
-    if (progressDiv) {
-        progressDiv.style.display = 'block';
-    }
-    
-    studentIds.forEach((studentId, index) => {
-        setTimeout(() => {
-            generateTranscript(studentId);
-            completed++;
-            const percent = Math.round((completed / total) * 100);
-            const bar = document.getElementById('gradProgressBar');
-            const percentEl = document.getElementById('gradProgressPercent');
-            const statusEl = document.getElementById('gradProgressStatus');
-            
-            if (bar) bar.style.width = percent + '%';
-            if (percentEl) percentEl.textContent = percent + '%';
-            if (statusEl) statusEl.textContent = completed + '/' + total + ' completed';
-            
-            if (completed === total) {
-                if (typeof hideLoading === 'function') {
-                    hideLoading();
-                }
-                if (typeof showNotification === 'function') {
-                    showNotification('✅ All ' + total + ' transcripts generated!', 'success');
-                }
-                if (progressDiv) {
-                    setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
-                }
-            }
-        }, index * 800);
-    });
-}
-
-function generateSelectedCertificates() {
-    const checkboxes = document.querySelectorAll('.grad-student-checkbox:checked');
-    if (checkboxes.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select at least one student.', 'warning');
-        }
-        return;
-    }
-    
-    const studentIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
-    const total = studentIds.length;
-    let completed = 0;
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Generating certificates for ' + total + ' students...');
-    }
-    
-    const progressDiv = document.getElementById('gradProgress');
-    if (progressDiv) {
-        progressDiv.style.display = 'block';
-        document.getElementById('gradProgressLabel').textContent = 'Generating certificates...';
-    }
-    
-    studentIds.forEach((studentId, index) => {
-        setTimeout(() => {
-            generateCertificate(studentId);
-            completed++;
-            const percent = Math.round((completed / total) * 100);
-            const bar = document.getElementById('gradProgressBar');
-            const percentEl = document.getElementById('gradProgressPercent');
-            const statusEl = document.getElementById('gradProgressStatus');
-            
-            if (bar) bar.style.width = percent + '%';
-            if (percentEl) percentEl.textContent = percent + '%';
-            if (statusEl) statusEl.textContent = completed + '/' + total + ' completed';
-            
-            if (completed === total) {
-                if (typeof hideLoading === 'function') {
-                    hideLoading();
-                }
-                if (typeof showNotification === 'function') {
-                    showNotification('✅ All ' + total + ' certificates generated!', 'success');
-                }
-                if (progressDiv) {
-                    setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
-                }
-            }
-        }, index * 1000);
-    });
-}
-
-function generateCertificatesForAll() {
-    const graduates = allStudents.filter(s => 
-        s.block === 'Final' || s.block === 'Block 6' || s.block === 'Graduated'
-    );
-    
-    const existingCertIds = new Set(certificates.map(c => c.studentId));
-    const eligible = graduates.filter(s => !existingCertIds.has(s.id));
-    
-    if (eligible.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('All graduates already have certificates', 'info');
-        }
-        return;
-    }
-    
-    document.querySelectorAll('.cert-student-checkbox').forEach(cb => {
-        const studentId = cb.dataset.studentId;
-        if (eligible.some(s => s.id === studentId)) {
-            cb.checked = true;
-        }
-    });
-    
-    generateSelectedCertificates();
-}
-
-function autoGenerateAllCertificates() {
-    generateCertificatesForAll();
-}
-
-function autoGenerateAllGraduationDocuments() {
-    const eligible = graduationCandidates.filter(g => 
-        g.isEligible && !g.certificateGenerated && g.status !== 'not_eligible'
-    );
-    
-    if (eligible.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('No eligible students found for auto-generation', 'info');
-        }
-        return;
-    }
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Auto-generating documents for ' + eligible.length + ' students...');
-    }
-    
-    let completed = 0;
-    eligible.forEach((student, index) => {
-        setTimeout(() => {
-            generateTranscript(student.studentId);
-            completed++;
-            if (completed === eligible.length) {
-                if (typeof hideLoading === 'function') {
-                    hideLoading();
-                }
-                if (typeof showNotification === 'function') {
-                    showNotification('✅ ' + completed + ' documents generated!', 'success');
-                }
-            }
-        }, index * 1500);
-    });
-}
-
-// ============================================================
-// MARK AS PRINTED
-// ============================================================
-
-function markAsPrinted(studentId) {
-    const student = graduationCandidates.find(g => g.studentId === studentId);
-    if (student) {
-        student.printed = true;
-        student.status = 'printed';
-        localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
-        
-        const cert = certificates.find(c => c.studentId === studentId);
-        if (cert) {
-            cert.printed = true;
-            cert.printedAt = new Date().toISOString();
-            cert.status = 'PRINTED';
-            localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
-        }
-        
-        renderGraduationList();
-        updateGraduationStats();
-    }
-}
-
-function markSelectedAsPrinted() {
-    const checkboxes = document.querySelectorAll('.grad-student-checkbox:checked');
-    if (checkboxes.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select at least one student.', 'warning');
-        }
-        return;
-    }
-    
-    const studentIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
-    studentIds.forEach(studentId => markAsPrinted(studentId));
-    
-    if (typeof showNotification === 'function') {
-        showNotification('✅ ' + studentIds.length + ' students marked as printed!', 'success');
-    }
-    renderGraduationList();
-    updateGraduationStats();
-}
-
-function markCertificateAsPrinted(studentId) {
-    markAsPrinted(studentId);
-}
-
-// ============================================================
-// RENDER FUNCTIONS
+// RENDER FUNCTIONS (DEFINED BEFORE THEY ARE CALLED)
 // ============================================================
 
 function renderGraduateList() {
@@ -1012,6 +551,472 @@ function filterGradStudents() {
     renderGraduateList();
 }
 
+function showCertificateSection() {
+    const section = document.getElementById('certificate-management');
+    if (section) {
+        section.style.display = 'block';
+        section.classList.add('active');
+        console.log('✅ Certificate section shown');
+    }
+}
+
+function setupEventListeners() {
+    const programFilter = document.getElementById('gradProgramFilter');
+    const statusFilter = document.getElementById('gradStatusFilter');
+    const selectAll = document.getElementById('gradSelectAll');
+    const certSelectAll = document.getElementById('certSelectAll');
+    
+    if (programFilter) programFilter.addEventListener('change', filterGradStudents);
+    if (statusFilter) statusFilter.addEventListener('change', filterGradStudents);
+    if (selectAll) selectAll.addEventListener('change', toggleAllGradCheckboxes);
+    if (certSelectAll) certSelectAll.addEventListener('change', toggleAllCertCheckboxes);
+}
+
+// ============================================================
+// PROCESS GRADUATION CANDIDATES (NOW AFTER RENDER FUNCTIONS)
+// ============================================================
+
+function processGraduationCandidates() {
+    const passMark = parseInt(document.getElementById('gradPassMark')?.value || 50);
+    
+    const processed = allStudents.map(student => {
+        const marks = getStudentMarks(student.id);
+        const avgScore = calculateAverageScore(marks);
+        const isEligible = avgScore >= passMark && (student.block === 'Final' || student.block === 'Block 6');
+        const existingGrad = graduationCandidates.find(g => g.studentId === student.id);
+        
+        return {
+            studentId: student.id,
+            name: student.name || student.full_name || 'Unknown',
+            email: student.email || '',
+            program: student.program || 'KRCHN',
+            intake: student.intake || student.intake_year || '2026',
+            avgScore: avgScore,
+            isEligible: isEligible,
+            status: existingGrad ? existingGrad.status : (isEligible ? 'pending' : 'not_eligible'),
+            transcriptGenerated: existingGrad?.transcriptGenerated || false,
+            certificateGenerated: existingGrad?.certificateGenerated || false,
+            printed: existingGrad?.printed || false,
+            serialNumber: existingGrad?.serialNumber || null,
+            qrCode: existingGrad?.qrCode || null,
+            appliedDate: existingGrad?.appliedDate || null,
+            graduationDate: existingGrad?.graduationDate || null,
+            feePaid: existingGrad?.feePaid || false,
+            feeAmount: existingGrad?.feeAmount || parseInt(document.getElementById('gradFeeAmount')?.value || 2500),
+            transcriptUrl: existingGrad?.transcriptUrl || null,
+            certificateUrl: existingGrad?.certificateUrl || null
+        };
+    });
+    
+    graduationCandidates = processed;
+    localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
+    renderGraduateList();
+    updateGraduationStats();
+}
+
+// ============================================================
+// MAIN INITIALIZATION
+// ============================================================
+
+function initGraduationSystem() {
+    console.log('🎓 Initializing Graduation & Certificate System...');
+    loadAllData();
+    loadGradSettings();
+    processGraduationCandidates();
+    updateGraduationStats();
+    renderCertificateList();
+    renderGraduateList();
+    setupEventListeners();
+    showCertificateSection();
+    console.log('✅ Graduation & Certificate System initialized!');
+}
+
+// Alias for compatibility
+window.initCertificateSystem = initGraduationSystem;
+
+// ============================================================
+// GENERATE FUNCTIONS
+// ============================================================
+
+function generateTranscript(studentId) {
+    const student = graduationCandidates.find(g => g.studentId === studentId);
+    if (!student) {
+        if (typeof showNotification === 'function') {
+            showNotification('Student not found', 'error');
+        }
+        return;
+    }
+    
+    if (typeof showLoading === 'function') {
+        showLoading('Generating transcript for ' + student.name + '...');
+    }
+    
+    setTimeout(() => {
+        const transcriptId = 'TRN-' + Date.now().toString().slice(-8) + '-' + studentId.slice(-4);
+        const marks = getStudentMarks(studentId);
+        
+        const transcriptData = {
+            id: transcriptId,
+            studentId: studentId,
+            studentName: student.name,
+            program: student.program,
+            intake: student.intake,
+            graduationDate: document.getElementById('gradDate')?.value || new Date().toISOString().split('T')[0],
+            marks: marks,
+            avgScore: student.avgScore,
+            generatedAt: new Date().toISOString(),
+            serialNumber: 'TRN-' + studentId.slice(-4) + '-' + Date.now().toString().slice(-6)
+        };
+        
+        allTranscripts.push(transcriptData);
+        localStorage.setItem(TRANSCRIPT_STORAGE_KEY, JSON.stringify(allTranscripts));
+        
+        student.transcriptGenerated = true;
+        student.transcriptUrl = '#transcript-' + transcriptId;
+        localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
+        
+        if (typeof hideLoading === 'function') {
+            hideLoading();
+        }
+        if (typeof showNotification === 'function') {
+            showNotification('✅ Transcript generated for ' + student.name, 'success');
+        }
+        renderGraduationList();
+        updateGraduationStats();
+        
+        // Auto-generate certificate
+        if (student.status === 'ready' || student.status === 'pending') {
+            setTimeout(() => generateCertificate(studentId), 500);
+        }
+    }, 1000);
+}
+
+function generateCertificate(studentId) {
+    const student = graduationCandidates.find(g => g.studentId === studentId);
+    if (!student) {
+        if (typeof showNotification === 'function') {
+            showNotification('Student not found', 'error');
+        }
+        return;
+    }
+    
+    if (!student.transcriptGenerated) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please generate transcript first', 'warning');
+        }
+        return;
+    }
+    
+    if (typeof showLoading === 'function') {
+        showLoading('Generating certificate for ' + student.name + '...');
+    }
+    
+    setTimeout(() => {
+        try {
+            const studentData = {
+                id: student.studentId,
+                name: student.name,
+                program: student.program,
+                intake: student.intake,
+                block: 'Final'
+            };
+            
+            const marks = getStudentMarks(studentId);
+            const transcript = allTranscripts.find(t => t.studentId === studentId);
+            
+            const certData = createCertificate(studentData, marks, transcript);
+            certificates.push(certData);
+            localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
+            
+            student.certificateGenerated = true;
+            student.certificateUrl = '#cert-' + certData.certId;
+            student.serialNumber = certData.serialNumber;
+            student.qrCode = certData.qrCode;
+            student.status = certData.isPassing ? 'ready' : 'pending';
+            localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
+            
+            if (typeof hideLoading === 'function') {
+                hideLoading();
+            }
+            if (typeof showNotification === 'function') {
+                showNotification('✅ Certificate generated for ' + student.name + ' (Serial: ' + certData.serialNumber + ')', 'success');
+            }
+            renderCertificateList();
+            renderGraduateList();
+            updateGraduationStats();
+            
+            if (document.getElementById('autoPrint')?.checked) {
+                setTimeout(() => markAsPrinted(studentId), 500);
+            }
+        } catch (error) {
+            if (typeof hideLoading === 'function') {
+                hideLoading();
+            }
+            console.error('Error generating certificate:', error);
+            if (typeof showNotification === 'function') {
+                showNotification('❌ Error generating certificate: ' + error.message, 'error');
+            }
+        }
+    }, 1500);
+}
+
+function generateSingleCertificate(studentId) {
+    const student = allStudents.find(s => s.id === studentId || s.student_id === studentId);
+    if (!student) {
+        if (typeof showNotification === 'function') {
+            showNotification('Student not found', 'error');
+        }
+        return;
+    }
+    
+    const existing = certificates.find(c => c.studentId === studentId || c.studentId === student.id);
+    if (existing) {
+        if (typeof showNotification === 'function') {
+            showNotification('Student already has a certificate', 'info');
+        }
+        return;
+    }
+    
+    const studentMarks = getStudentMarks(studentId);
+    const transcript = allTranscripts.find(t => t.studentId === studentId);
+    const certData = createCertificate(student, studentMarks, transcript);
+    certificates.push(certData);
+    localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
+    
+    const gradIndex = graduationCandidates.findIndex(g => g.studentId === studentId);
+    if (gradIndex > -1) {
+        graduationCandidates[gradIndex].certificateGenerated = true;
+        graduationCandidates[gradIndex].certificateUrl = '#cert-' + certData.certId;
+        graduationCandidates[gradIndex].serialNumber = certData.serialNumber;
+        graduationCandidates[gradIndex].qrCode = certData.qrCode;
+        graduationCandidates[gradIndex].status = 'ready';
+        localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
+    }
+    
+    renderCertificateList();
+    renderGraduateList();
+    updateGraduationStats();
+    
+    if (typeof showNotification === 'function') {
+        showNotification('✅ Certificate generated for ' + student.name + ' (Serial: ' + certData.serialNumber + ')', 'success');
+    }
+}
+
+// ============================================================
+// BULK GENERATION
+// ============================================================
+
+function generateSelectedTranscripts() {
+    const checkboxes = document.querySelectorAll('.grad-student-checkbox:checked');
+    if (checkboxes.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select at least one student.', 'warning');
+        }
+        return;
+    }
+    
+    const studentIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
+    const total = studentIds.length;
+    let completed = 0;
+    
+    if (typeof showLoading === 'function') {
+        showLoading('Generating transcripts for ' + total + ' students...');
+    }
+    
+    const progressDiv = document.getElementById('gradProgress');
+    if (progressDiv) {
+        progressDiv.style.display = 'block';
+        document.getElementById('gradProgressLabel').textContent = 'Generating transcripts...';
+    }
+    
+    studentIds.forEach((studentId, index) => {
+        setTimeout(() => {
+            generateTranscript(studentId);
+            completed++;
+            const percent = Math.round((completed / total) * 100);
+            const bar = document.getElementById('gradProgressBar');
+            const percentEl = document.getElementById('gradProgressPercent');
+            const statusEl = document.getElementById('gradProgressStatus');
+            
+            if (bar) bar.style.width = percent + '%';
+            if (percentEl) percentEl.textContent = percent + '%';
+            if (statusEl) statusEl.textContent = completed + '/' + total + ' completed';
+            
+            if (completed === total) {
+                if (typeof hideLoading === 'function') {
+                    hideLoading();
+                }
+                if (typeof showNotification === 'function') {
+                    showNotification('✅ All ' + total + ' transcripts generated!', 'success');
+                }
+                if (progressDiv) {
+                    setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
+                }
+            }
+        }, index * 800);
+    });
+}
+
+function generateSelectedCertificates() {
+    const checkboxes = document.querySelectorAll('.grad-student-checkbox:checked');
+    if (checkboxes.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select at least one student.', 'warning');
+        }
+        return;
+    }
+    
+    const studentIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
+    const total = studentIds.length;
+    let completed = 0;
+    
+    if (typeof showLoading === 'function') {
+        showLoading('Generating certificates for ' + total + ' students...');
+    }
+    
+    const progressDiv = document.getElementById('gradProgress');
+    if (progressDiv) {
+        progressDiv.style.display = 'block';
+        document.getElementById('gradProgressLabel').textContent = 'Generating certificates...';
+    }
+    
+    studentIds.forEach((studentId, index) => {
+        setTimeout(() => {
+            generateCertificate(studentId);
+            completed++;
+            const percent = Math.round((completed / total) * 100);
+            const bar = document.getElementById('gradProgressBar');
+            const percentEl = document.getElementById('gradProgressPercent');
+            const statusEl = document.getElementById('gradProgressStatus');
+            
+            if (bar) bar.style.width = percent + '%';
+            if (percentEl) percentEl.textContent = percent + '%';
+            if (statusEl) statusEl.textContent = completed + '/' + total + ' completed';
+            
+            if (completed === total) {
+                if (typeof hideLoading === 'function') {
+                    hideLoading();
+                }
+                if (typeof showNotification === 'function') {
+                    showNotification('✅ All ' + total + ' certificates generated!', 'success');
+                }
+                if (progressDiv) {
+                    setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
+                }
+            }
+        }, index * 1000);
+    });
+}
+
+function generateCertificatesForAll() {
+    const graduates = allStudents.filter(s => 
+        s.block === 'Final' || s.block === 'Block 6' || s.block === 'Graduated'
+    );
+    
+    const existingCertIds = new Set(certificates.map(c => c.studentId));
+    const eligible = graduates.filter(s => !existingCertIds.has(s.id));
+    
+    if (eligible.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('All graduates already have certificates', 'info');
+        }
+        return;
+    }
+    
+    document.querySelectorAll('.cert-student-checkbox').forEach(cb => {
+        const studentId = cb.dataset.studentId;
+        if (eligible.some(s => s.id === studentId)) {
+            cb.checked = true;
+        }
+    });
+    
+    generateSelectedCertificates();
+}
+
+function autoGenerateAllCertificates() {
+    generateCertificatesForAll();
+}
+
+function autoGenerateAllGraduationDocuments() {
+    const eligible = graduationCandidates.filter(g => 
+        g.isEligible && !g.certificateGenerated && g.status !== 'not_eligible'
+    );
+    
+    if (eligible.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('No eligible students found for auto-generation', 'info');
+        }
+        return;
+    }
+    
+    if (typeof showLoading === 'function') {
+        showLoading('Auto-generating documents for ' + eligible.length + ' students...');
+    }
+    
+    let completed = 0;
+    eligible.forEach((student, index) => {
+        setTimeout(() => {
+            generateTranscript(student.studentId);
+            completed++;
+            if (completed === eligible.length) {
+                if (typeof hideLoading === 'function') {
+                    hideLoading();
+                }
+                if (typeof showNotification === 'function') {
+                    showNotification('✅ ' + completed + ' documents generated!', 'success');
+                }
+            }
+        }, index * 1500);
+    });
+}
+
+// ============================================================
+// MARK AS PRINTED
+// ============================================================
+
+function markAsPrinted(studentId) {
+    const student = graduationCandidates.find(g => g.studentId === studentId);
+    if (student) {
+        student.printed = true;
+        student.status = 'printed';
+        localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
+        
+        const cert = certificates.find(c => c.studentId === studentId);
+        if (cert) {
+            cert.printed = true;
+            cert.printedAt = new Date().toISOString();
+            cert.status = 'PRINTED';
+            localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
+        }
+        
+        renderGraduationList();
+        updateGraduationStats();
+    }
+}
+
+function markSelectedAsPrinted() {
+    const checkboxes = document.querySelectorAll('.grad-student-checkbox:checked');
+    if (checkboxes.length === 0) {
+        if (typeof showNotification === 'function') {
+            showNotification('Please select at least one student.', 'warning');
+        }
+        return;
+    }
+    
+    const studentIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
+    studentIds.forEach(studentId => markAsPrinted(studentId));
+    
+    if (typeof showNotification === 'function') {
+        showNotification('✅ ' + studentIds.length + ' students marked as printed!', 'success');
+    }
+    renderGraduationList();
+    updateGraduationStats();
+}
+
+function markCertificateAsPrinted(studentId) {
+    markAsPrinted(studentId);
+}
+
 // ============================================================
 // QR CODE FUNCTIONS
 // ============================================================
@@ -1201,19 +1206,13 @@ function downloadCertificatePDF(studentId) {
                 body { 
                     font-family: 'Times New Roman', Times, serif;
                     background: white;
-                    display: flex;
-                    justify-content: center;
-                    align-items: center;
-                    min-height: 100vh;
-                    padding: 20px;
+                    display: flex; justify-content: center; align-items: center;
+                    min-height: 100vh; padding: 20px;
                 }
                 #certContainer {
-                    max-width: 1100px;
-                    width: 100%;
-                    background: white;
-                    border: 8px solid #0A3D62;
-                    border-radius: 12px;
-                    padding: 40px;
+                    max-width: 1100px; width: 100%;
+                    background: white; border: 8px solid #0A3D62;
+                    border-radius: 12px; padding: 40px;
                     box-shadow: 0 10px 40px rgba(0,0,0,0.1);
                 }
                 @media print {
@@ -1293,21 +1292,15 @@ function generateCertificateHTML(cert) {
                     Serial No: ${cert.serialNumber}
                 </div>
                 <div style="text-align: center; padding: 20px 0;">
-                    <p style="font-size: 18px; color: #475569; margin-bottom: 8px;">
-                        This is to certify that
-                    </p>
+                    <p style="font-size: 18px; color: #475569; margin-bottom: 8px;">This is to certify that</p>
                     <p style="font-size: 28px; font-weight: 700; color: #0A3D62; margin: 10px 0; letter-spacing: 1px;">
                         ${escapeHtml(cert.studentName)}
                     </p>
-                    <p style="font-size: 16px; color: #475569; margin-bottom: 4px;">
-                        has successfully completed the
-                    </p>
+                    <p style="font-size: 16px; color: #475569; margin-bottom: 4px;">has successfully completed the</p>
                     <p style="font-size: 22px; font-weight: 600; color: #0A3D62; margin: 8px 0;">
                         ${escapeHtml(programFullName)}
                     </p>
-                    <p style="font-size: 16px; color: #475569;">
-                        ${programType} Program
-                    </p>
+                    <p style="font-size: 16px; color: #475569;">${programType} Program</p>
                     <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; max-width: 600px; margin: 20px auto; padding: 15px; background: #f8fafc; border-radius: 8px;">
                         <div style="text-align: center;">
                             <div style="font-size: 11px; color: #94a3b8;">Average Score</div>
@@ -1822,6 +1815,4 @@ console.log('   - Bulk generation');
 console.log('   - Print/Download certificates');
 console.log('   - Export to CSV');
 console.log('   - QR scanner for verification');
-console.log('   - Scan tracking');
 console.log('📋 Run initGraduationSystem() to initialize');
-console.log('📋 Or run generateTestCertificate() to create a test certificate');
