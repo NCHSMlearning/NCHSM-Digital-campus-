@@ -9889,6 +9889,23 @@ async function viewQuestionDetail(questionId) {
 }
 
 // ============================================================
+// ✅ EXPOSE QUESTION BANK FUNCTIONS GLOBALLY
+// ============================================================
+window.loadExamsForQuestions = loadExamsForQuestions;
+window.loadQuestionsForExam = loadQuestionsForExam;
+window.renderQuestionsTable = renderQuestionsTable;
+window.updateQuestionStats = updateQuestionStats;
+window.openAddQuestion = openAddQuestion;
+window.editQuestion = editQuestion;
+window.toggleQuestionType = toggleQuestionType;
+window.saveQuestion = saveQuestion;
+window.deleteQuestion = deleteQuestion;
+window.closeQuestionModal = closeQuestionModal;
+window.refreshQuestions = refreshQuestions;
+
+console.log('✅ Question Bank functions exposed to window!');
+
+// ============================================================
 // ✅ EXPOSE PENDING QUESTIONS FUNCTIONS GLOBALLY
 // ============================================================
 window.loadPendingQuestions = loadPendingQuestions;
@@ -9905,20 +9922,5 @@ window.renderLecturerGroups = renderLecturerGroups;
 window.renderQuestionsTable = renderQuestionsTable;
 
 console.log('✅ Pending Questions functions exposed to window!');
-// ============================================================
-// ✅ EXPOSE QUESTION BANK FUNCTIONS GLOBALLY
-// ============================================================
-window.loadExamsForQuestions = loadExamsForQuestions;
-window.loadQuestionsForExam = loadQuestionsForExam;
-window.renderQuestionsTable = renderQuestionsTable;
-window.updateQuestionStats = updateQuestionStats;
-window.openAddQuestion = openAddQuestion;
-window.editQuestion = editQuestion;
-window.toggleQuestionType = toggleQuestionType;
-window.saveQuestion = saveQuestion;
-window.deleteQuestion = deleteQuestion;
-window.closeQuestionModal = closeQuestionModal;
-window.refreshQuestions = refreshQuestions;
 
-console.log('✅ Question Bank functions exposed to window!');
-})();
+console.log('✅ All functions exposed to window!');
