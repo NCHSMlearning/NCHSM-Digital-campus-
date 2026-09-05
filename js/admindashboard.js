@@ -326,7 +326,6 @@ window.updateTotalMarksHint = function() {
     const hintEl = document.getElementById('totalMarksHint');
     const passMarkInput = document.getElementById('examPassMark');
     
-    // Get the current value or use default
     let currentTotal = parseInt(totalMarksInput.value) || 0;
     let defaultMarks = 30;
     let defaultPass = 18;
@@ -345,17 +344,14 @@ window.updateTotalMarksHint = function() {
         hintEl.innerHTML = '📊 Standard exams: <strong>100 marks</strong> (you can change this) | Pass mark: <strong>60%</strong>';
     }
     
-    // Only set if empty or zero
     if (!currentTotal || currentTotal === 0) {
         totalMarksInput.value = defaultMarks;
         passMarkInput.value = defaultPass;
     } else {
-        // Auto-calculate pass mark based on current total
         passMarkInput.value = Math.round(currentTotal * 0.6);
         hintEl.innerHTML = `📊 Total marks: <strong>${currentTotal}</strong> | Pass mark (60%): <strong>${Math.round(currentTotal * 0.6)}</strong>`;
     }
 };
-
 // Add real-time update when total marks changes
 document.addEventListener('DOMContentLoaded', function() {
     const totalMarksInput = document.getElementById('examTotalMarks');
@@ -990,10 +986,7 @@ function displayAllStudents() {
     
     renderPagination('allStudents', allStudents.length);
 }
-   // ============================================
-// 📝 LOAD ALL EXAMS - MODERN
-// ============================================
-window.loadAllExams = async function() {
+ window.loadAllExams = async function() {
     const loadingDiv = document.getElementById('examsLoading');
     const table = document.getElementById('examsTable');
     
@@ -1005,6 +998,7 @@ window.loadAllExams = async function() {
         if (error) throw error;
         allExams = data || [];
         
+        // Get student counts
         const { data: grades } = await sb
             .from('exam_grades')
             .select('exam_id, result_status')
@@ -1041,7 +1035,6 @@ window.loadAllExams = async function() {
         }
     }
 };
-
 // ============================================
 // 📝 DISPLAY ALL EXAMS - MODERN
 // ============================================
@@ -5779,10 +5772,10 @@ window.displayLiveFeed = function() {
         if (confirmBtn) confirmBtn.disabled = true;
     };
 
-    window.closeExamModal = function() {
-        const modal = document.getElementById('examModal');
-        if (modal) modal.style.display = 'none';
-    };
+   window.closeExamModal = function() {
+    const modal = document.getElementById('examModal');
+    if (modal) modal.style.display = 'none';
+};
 
     window.closeResetModal = function() {
         const modal = document.getElementById('resetExamModal');
@@ -7014,8 +7007,10 @@ window.batchResendReleaseEmails = async function(examId) {
         console.error(error);
     }
 };
-    window.openCreateExamModal = function(examId = null) {
-    document.getElementById('examModalTitle').innerHTML = examId ? '<i class="fas fa-edit"></i> Edit Exam' : '<i class="fas fa-plus-circle"></i> Create New Exam';
+   window.openCreateExamModal = function(examId = null) {
+    document.getElementById('examModalTitle').innerHTML = examId ? 
+        '<i class="fas fa-edit"></i> Edit Exam' : 
+        '<i class="fas fa-plus-circle"></i> Create New Exam';
     document.getElementById('editingExamId').value = examId || '';
     
     if (examId && examsMap[examId]) {
@@ -7024,21 +7019,15 @@ window.batchResendReleaseEmails = async function(examId) {
         document.getElementById('examType').value = exam.exam_type || 'EXAM';
         document.getElementById('examCourse').value = exam.course_code || exam.course || '';
         document.getElementById('examDuration').value = exam.duration_minutes || 30;
-        
-        // ✅ FIX: Load the actual total_marks from the exam
         document.getElementById('examTotalMarks').value = exam.total_marks || exam.marks_out_of || 100;
         document.getElementById('examLink').value = exam.online_link || exam.exam_link || '';
         document.getElementById('examProgram').value = exam.program_type || '';
         document.getElementById('examBlock').value = exam.block || exam.block_term || '';
         document.getElementById('examIntakeYear').value = exam.intake_year || '';
-        
-        // ✅ FIX: Load the actual pass_mark from the exam
         document.getElementById('examPassMark').value = exam.pass_mark || Math.round((exam.total_marks || 100) * 0.6);
         
-        // ✅ Set status if the field exists
         const statusSelect = document.getElementById('examStatus');
         if (statusSelect) statusSelect.value = exam.status || 'draft';
-        
     } else {
         // New exam defaults
         document.getElementById('examName').value = '';
@@ -7058,13 +7047,11 @@ window.batchResendReleaseEmails = async function(examId) {
     updateTotalMarksHint();
     document.getElementById('examModal').style.display = 'flex';
 };
-
    document.getElementById('examForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const examId = document.getElementById('editingExamId').value;
     const examType = document.getElementById('examType').value;
     
-    // ✅ FIX: Get values from the form inputs, not hardcoded defaults
     const totalMarks = parseInt(document.getElementById('examTotalMarks').value) || 100;
     const passMark = parseInt(document.getElementById('examPassMark').value) || Math.round(totalMarks * 0.6);
     const duration = parseInt(document.getElementById('examDuration').value) || 30;
@@ -7075,9 +7062,9 @@ window.batchResendReleaseEmails = async function(examId) {
         exam_type: examType,
         course_code: document.getElementById('examCourse').value,
         duration_minutes: duration,
-        total_marks: totalMarks,      // ✅ Uses user input
-        marks_out_of: totalMarks,     // ✅ Uses user input
-        pass_mark: passMark,          // ✅ Uses user input
+        total_marks: totalMarks,
+        marks_out_of: totalMarks,
+        pass_mark: passMark,
         online_link: document.getElementById('examLink').value,
         program_type: document.getElementById('examProgram').value || null,
         block: document.getElementById('examBlock').value || null,
@@ -7086,7 +7073,7 @@ window.batchResendReleaseEmails = async function(examId) {
         updated_at: new Date().toISOString()
     };
     
-    // ✅ Add validation
+    // ✅ Validation
     if (!examData.title || examData.title.trim() === '') {
         alert('Please enter an exam name.');
         return;
@@ -7121,28 +7108,51 @@ window.batchResendReleaseEmails = async function(examId) {
     }
 });
 
-    window.deleteExam = async function(examId, examName) {
-        if (confirm(`Delete exam "${examName}"? This will also delete all student answers.`)) {
-            await sb.from('exam_grades').delete().eq('exam_id', examId);
-            const { error } = await sb.from('exams').delete().eq('id', examId);
-            if (error) alert('Error: ' + error.message);
-            else { 
-                alert('Exam deleted!');
-                loadAllExams();
-                loadStudentsWithResults(); 
-            }
+  window.deleteExam = async function(examId, examName) {
+    if (confirm(`Delete exam "${examName}"? This will also delete all student answers.`)) {
+        await sb.from('exam_grades').delete().eq('exam_id', examId);
+        const { error } = await sb.from('exams').delete().eq('id', examId);
+        if (error) alert('Error: ' + error.message);
+        else { 
+            alert('Exam deleted!');
+            loadAllExams();
+            loadStudentsWithResults(); 
         }
-    };
-
+    }
+};
     window.openAssignExamModal = async function() {
-        const { data: students } = await sb.from('consolidated_user_profiles_table').select('id, full_name, student_id');
-        const { data: exams } = await sb.from('exams').select('id, exam_name');
-        document.getElementById('assignStudentSelect').innerHTML = students.map(s =>
-            `<option value="${s.id}">${s.full_name} (${s.student_id || 'N/A'})</option>`).join('');
-        document.getElementById('assignExamSelect').innerHTML = exams.map(e =>
-            `<option value="${e.id}">${e.exam_name}</option>`).join('');
-        document.getElementById('assignExamModal').style.display = 'flex';
-    };
+    const { data: students } = await sb.from('consolidated_user_profiles_table').select('id, full_name, student_id');
+    const { data: exams } = await sb.from('exams').select('id, exam_name');
+    document.getElementById('assignStudentSelect').innerHTML = students.map(s =>
+        `<option value="${s.id}">${s.full_name} (${s.student_id || 'N/A'})</option>`).join('');
+    document.getElementById('assignExamSelect').innerHTML = exams.map(e =>
+        `<option value="${e.id}">${e.exam_name}</option>`).join('');
+    document.getElementById('assignExamModal').style.display = 'flex';
+};
+
+window.confirmAssignExam = async function() {
+    const studentId = document.getElementById('assignStudentSelect').value;
+    const examId = document.getElementById('assignExamSelect').value;
+    if (!studentId || !examId) return alert('Select both');
+    const { data: student } = await sb.from('consolidated_user_profiles_table').select('user_id').eq('id', studentId).single();
+    if (!student?.user_id) return alert('Student not found');
+    const { error } = await sb.from('exam_grades').insert({ 
+        student_id: student.user_id,
+        exam_id: parseInt(examId),
+        question_id: '00000000-0000-0000-0000-000000000000', 
+        marks: 0, 
+        total_score: 0,
+        result_status: 'Scheduled', 
+        graded_at: new Date().toISOString() 
+    });
+    if (error) alert('Error: ' + error.message);
+    else { 
+        alert('Exam assigned!');
+        closeAssignExamModal();
+        loadAllExams();
+        loadStudentsWithResults(); 
+    }
+};
 
     window.confirmAssignExam = async function() {
         const studentId = document.getElementById('assignStudentSelect').value;
