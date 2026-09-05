@@ -1,6 +1,6 @@
 // ============================================================
 // 🎓 COMPLETE GRADUATION & CERTIFICATE SYSTEM
-// ONE FILE - All functions in correct order
+// FIXED: Uses grad* IDs that match your HTML
 // ============================================================
 
 console.log('🎓 Graduation & Certificate System Loading...');
@@ -350,13 +350,14 @@ function loadGradSettings() {
 }
 
 // ============================================================
-// RENDER FUNCTIONS (DEFINED BEFORE THEY ARE CALLED)
+// RENDER FUNCTIONS - USING YOUR HTML IDs (grad*)
 // ============================================================
 
 function renderGraduateList() {
-    const tbody = document.getElementById('certGraduateList');
+    // ✅ FIXED: Use gradStudentsList (your HTML ID)
+    const tbody = document.getElementById('gradStudentsList');
     if (!tbody) {
-        console.warn('⚠️ certGraduateList element not found');
+        console.warn('⚠️ gradStudentsList element not found');
         return;
     }
     
@@ -439,10 +440,34 @@ function renderGraduateList() {
 }
 
 function renderCertificateList() {
-    const tbody = document.getElementById('certRecentList');
+    // ✅ FIXED: Use gradRecentList or create container
+    let tbody = document.getElementById('gradRecentList');
     if (!tbody) {
-        console.warn('⚠️ certRecentList element not found');
-        return;
+        // Try to find or create a container for recent certificates
+        const section = document.getElementById('certificate-management');
+        if (section) {
+            // Look for a table with appropriate headers
+            const tables = section.querySelectorAll('table');
+            let targetTable = null;
+            tables.forEach(table => {
+                const headers = table.querySelectorAll('th');
+                const headerTexts = Array.from(headers).map(th => th.textContent.toLowerCase());
+                if (headerTexts.some(t => t.includes('certificate') || t.includes('serial') || t.includes('recent'))) {
+                    targetTable = table;
+                }
+            });
+            if (targetTable) {
+                tbody = targetTable.querySelector('tbody');
+                if (tbody) {
+                    tbody.id = 'gradRecentList';
+                }
+            }
+        }
+        
+        if (!tbody) {
+            console.warn('⚠️ No recent certificates table found, skipping render');
+            return;
+        }
     }
     
     const sorted = [...certificates].sort((a, b) => 
@@ -507,22 +532,23 @@ function updateGraduationStats() {
     const notEligible = graduationCandidates.filter(g => g.status === 'not_eligible');
     const scanned = certificates.reduce((sum, c) => sum + (c.scanCount || 0), 0);
     
+    // ✅ FIXED: Use your HTML IDs (grad*)
     const elements = {
         'gradTotalStudents': total,
         'gradGraduatesCount': graduates.length,
         'gradPendingCount': pending.length,
         'gradPrintedCount': printed.length,
         'gradScanCount': scanned,
-        'gradNotEligibleCount': notEligible.length,
-        'certTotalStudents': allStudents.length,
-        'certGraduatesCount': graduates.length,
-        'certIssuedCount': certificates.length,
-        'certPendingCount': Math.max(graduates.length - certificates.length, 0)
+        'gradNotEligibleCount': notEligible.length
     };
     
     for (const [id, value] of Object.entries(elements)) {
         const el = document.getElementById(id);
-        if (el) el.textContent = value;
+        if (el) {
+            el.textContent = value;
+        } else {
+            console.warn(`⚠️ Element ${id} not found`);
+        }
     }
 }
 
@@ -542,6 +568,7 @@ function toggleAllGradCheckboxes() {
 
 function toggleAllCertCheckboxes() {
     const selectAll = document.getElementById('certSelectAll');
+    if (!selectAll) return;
     const checkboxes = document.querySelectorAll('.cert-student-checkbox:not([disabled])');
     const isChecked = selectAll?.checked || false;
     checkboxes.forEach(cb => cb.checked = isChecked);
@@ -573,7 +600,7 @@ function setupEventListeners() {
 }
 
 // ============================================================
-// PROCESS GRADUATION CANDIDATES (NOW AFTER RENDER FUNCTIONS)
+// PROCESS GRADUATION CANDIDATES
 // ============================================================
 
 function processGraduationCandidates() {
@@ -635,339 +662,39 @@ function initGraduationSystem() {
 window.initCertificateSystem = initGraduationSystem;
 
 // ============================================================
-// GENERATE FUNCTIONS
+// GENERATE FUNCTIONS (Shortened - keep the rest from your file)
 // ============================================================
 
 function generateTranscript(studentId) {
-    const student = graduationCandidates.find(g => g.studentId === studentId);
-    if (!student) {
-        if (typeof showNotification === 'function') {
-            showNotification('Student not found', 'error');
-        }
-        return;
-    }
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Generating transcript for ' + student.name + '...');
-    }
-    
-    setTimeout(() => {
-        const transcriptId = 'TRN-' + Date.now().toString().slice(-8) + '-' + studentId.slice(-4);
-        const marks = getStudentMarks(studentId);
-        
-        const transcriptData = {
-            id: transcriptId,
-            studentId: studentId,
-            studentName: student.name,
-            program: student.program,
-            intake: student.intake,
-            graduationDate: document.getElementById('gradDate')?.value || new Date().toISOString().split('T')[0],
-            marks: marks,
-            avgScore: student.avgScore,
-            generatedAt: new Date().toISOString(),
-            serialNumber: 'TRN-' + studentId.slice(-4) + '-' + Date.now().toString().slice(-6)
-        };
-        
-        allTranscripts.push(transcriptData);
-        localStorage.setItem(TRANSCRIPT_STORAGE_KEY, JSON.stringify(allTranscripts));
-        
-        student.transcriptGenerated = true;
-        student.transcriptUrl = '#transcript-' + transcriptId;
-        localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
-        
-        if (typeof hideLoading === 'function') {
-            hideLoading();
-        }
-        if (typeof showNotification === 'function') {
-            showNotification('✅ Transcript generated for ' + student.name, 'success');
-        }
-        renderGraduationList();
-        updateGraduationStats();
-        
-        // Auto-generate certificate
-        if (student.status === 'ready' || student.status === 'pending') {
-            setTimeout(() => generateCertificate(studentId), 500);
-        }
-    }, 1000);
+    // ... keep your existing function ...
 }
 
 function generateCertificate(studentId) {
-    const student = graduationCandidates.find(g => g.studentId === studentId);
-    if (!student) {
-        if (typeof showNotification === 'function') {
-            showNotification('Student not found', 'error');
-        }
-        return;
-    }
-    
-    if (!student.transcriptGenerated) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please generate transcript first', 'warning');
-        }
-        return;
-    }
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Generating certificate for ' + student.name + '...');
-    }
-    
-    setTimeout(() => {
-        try {
-            const studentData = {
-                id: student.studentId,
-                name: student.name,
-                program: student.program,
-                intake: student.intake,
-                block: 'Final'
-            };
-            
-            const marks = getStudentMarks(studentId);
-            const transcript = allTranscripts.find(t => t.studentId === studentId);
-            
-            const certData = createCertificate(studentData, marks, transcript);
-            certificates.push(certData);
-            localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
-            
-            student.certificateGenerated = true;
-            student.certificateUrl = '#cert-' + certData.certId;
-            student.serialNumber = certData.serialNumber;
-            student.qrCode = certData.qrCode;
-            student.status = certData.isPassing ? 'ready' : 'pending';
-            localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
-            
-            if (typeof hideLoading === 'function') {
-                hideLoading();
-            }
-            if (typeof showNotification === 'function') {
-                showNotification('✅ Certificate generated for ' + student.name + ' (Serial: ' + certData.serialNumber + ')', 'success');
-            }
-            renderCertificateList();
-            renderGraduateList();
-            updateGraduationStats();
-            
-            if (document.getElementById('autoPrint')?.checked) {
-                setTimeout(() => markAsPrinted(studentId), 500);
-            }
-        } catch (error) {
-            if (typeof hideLoading === 'function') {
-                hideLoading();
-            }
-            console.error('Error generating certificate:', error);
-            if (typeof showNotification === 'function') {
-                showNotification('❌ Error generating certificate: ' + error.message, 'error');
-            }
-        }
-    }, 1500);
+    // ... keep your existing function ...
 }
 
 function generateSingleCertificate(studentId) {
-    const student = allStudents.find(s => s.id === studentId || s.student_id === studentId);
-    if (!student) {
-        if (typeof showNotification === 'function') {
-            showNotification('Student not found', 'error');
-        }
-        return;
-    }
-    
-    const existing = certificates.find(c => c.studentId === studentId || c.studentId === student.id);
-    if (existing) {
-        if (typeof showNotification === 'function') {
-            showNotification('Student already has a certificate', 'info');
-        }
-        return;
-    }
-    
-    const studentMarks = getStudentMarks(studentId);
-    const transcript = allTranscripts.find(t => t.studentId === studentId);
-    const certData = createCertificate(student, studentMarks, transcript);
-    certificates.push(certData);
-    localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
-    
-    const gradIndex = graduationCandidates.findIndex(g => g.studentId === studentId);
-    if (gradIndex > -1) {
-        graduationCandidates[gradIndex].certificateGenerated = true;
-        graduationCandidates[gradIndex].certificateUrl = '#cert-' + certData.certId;
-        graduationCandidates[gradIndex].serialNumber = certData.serialNumber;
-        graduationCandidates[gradIndex].qrCode = certData.qrCode;
-        graduationCandidates[gradIndex].status = 'ready';
-        localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
-    }
-    
-    renderCertificateList();
-    renderGraduateList();
-    updateGraduationStats();
-    
-    if (typeof showNotification === 'function') {
-        showNotification('✅ Certificate generated for ' + student.name + ' (Serial: ' + certData.serialNumber + ')', 'success');
-    }
+    // ... keep your existing function ...
 }
 
-// ============================================================
-// BULK GENERATION
-// ============================================================
-
 function generateSelectedTranscripts() {
-    const checkboxes = document.querySelectorAll('.grad-student-checkbox:checked');
-    if (checkboxes.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select at least one student.', 'warning');
-        }
-        return;
-    }
-    
-    const studentIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
-    const total = studentIds.length;
-    let completed = 0;
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Generating transcripts for ' + total + ' students...');
-    }
-    
-    const progressDiv = document.getElementById('gradProgress');
-    if (progressDiv) {
-        progressDiv.style.display = 'block';
-        document.getElementById('gradProgressLabel').textContent = 'Generating transcripts...';
-    }
-    
-    studentIds.forEach((studentId, index) => {
-        setTimeout(() => {
-            generateTranscript(studentId);
-            completed++;
-            const percent = Math.round((completed / total) * 100);
-            const bar = document.getElementById('gradProgressBar');
-            const percentEl = document.getElementById('gradProgressPercent');
-            const statusEl = document.getElementById('gradProgressStatus');
-            
-            if (bar) bar.style.width = percent + '%';
-            if (percentEl) percentEl.textContent = percent + '%';
-            if (statusEl) statusEl.textContent = completed + '/' + total + ' completed';
-            
-            if (completed === total) {
-                if (typeof hideLoading === 'function') {
-                    hideLoading();
-                }
-                if (typeof showNotification === 'function') {
-                    showNotification('✅ All ' + total + ' transcripts generated!', 'success');
-                }
-                if (progressDiv) {
-                    setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
-                }
-            }
-        }, index * 800);
-    });
+    // ... keep your existing function ...
 }
 
 function generateSelectedCertificates() {
-    const checkboxes = document.querySelectorAll('.grad-student-checkbox:checked');
-    if (checkboxes.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select at least one student.', 'warning');
-        }
-        return;
-    }
-    
-    const studentIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
-    const total = studentIds.length;
-    let completed = 0;
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Generating certificates for ' + total + ' students...');
-    }
-    
-    const progressDiv = document.getElementById('gradProgress');
-    if (progressDiv) {
-        progressDiv.style.display = 'block';
-        document.getElementById('gradProgressLabel').textContent = 'Generating certificates...';
-    }
-    
-    studentIds.forEach((studentId, index) => {
-        setTimeout(() => {
-            generateCertificate(studentId);
-            completed++;
-            const percent = Math.round((completed / total) * 100);
-            const bar = document.getElementById('gradProgressBar');
-            const percentEl = document.getElementById('gradProgressPercent');
-            const statusEl = document.getElementById('gradProgressStatus');
-            
-            if (bar) bar.style.width = percent + '%';
-            if (percentEl) percentEl.textContent = percent + '%';
-            if (statusEl) statusEl.textContent = completed + '/' + total + ' completed';
-            
-            if (completed === total) {
-                if (typeof hideLoading === 'function') {
-                    hideLoading();
-                }
-                if (typeof showNotification === 'function') {
-                    showNotification('✅ All ' + total + ' certificates generated!', 'success');
-                }
-                if (progressDiv) {
-                    setTimeout(() => { progressDiv.style.display = 'none'; }, 3000);
-                }
-            }
-        }, index * 1000);
-    });
+    // ... keep your existing function ...
 }
 
 function generateCertificatesForAll() {
-    const graduates = allStudents.filter(s => 
-        s.block === 'Final' || s.block === 'Block 6' || s.block === 'Graduated'
-    );
-    
-    const existingCertIds = new Set(certificates.map(c => c.studentId));
-    const eligible = graduates.filter(s => !existingCertIds.has(s.id));
-    
-    if (eligible.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('All graduates already have certificates', 'info');
-        }
-        return;
-    }
-    
-    document.querySelectorAll('.cert-student-checkbox').forEach(cb => {
-        const studentId = cb.dataset.studentId;
-        if (eligible.some(s => s.id === studentId)) {
-            cb.checked = true;
-        }
-    });
-    
-    generateSelectedCertificates();
+    // ... keep your existing function ...
 }
 
 function autoGenerateAllCertificates() {
-    generateCertificatesForAll();
+    // ... keep your existing function ...
 }
 
 function autoGenerateAllGraduationDocuments() {
-    const eligible = graduationCandidates.filter(g => 
-        g.isEligible && !g.certificateGenerated && g.status !== 'not_eligible'
-    );
-    
-    if (eligible.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('No eligible students found for auto-generation', 'info');
-        }
-        return;
-    }
-    
-    if (typeof showLoading === 'function') {
-        showLoading('Auto-generating documents for ' + eligible.length + ' students...');
-    }
-    
-    let completed = 0;
-    eligible.forEach((student, index) => {
-        setTimeout(() => {
-            generateTranscript(student.studentId);
-            completed++;
-            if (completed === eligible.length) {
-                if (typeof hideLoading === 'function') {
-                    hideLoading();
-                }
-                if (typeof showNotification === 'function') {
-                    showNotification('✅ ' + completed + ' documents generated!', 'success');
-                }
-            }
-        }, index * 1500);
-    });
+    // ... keep your existing function ...
 }
 
 // ============================================================
@@ -975,42 +702,11 @@ function autoGenerateAllGraduationDocuments() {
 // ============================================================
 
 function markAsPrinted(studentId) {
-    const student = graduationCandidates.find(g => g.studentId === studentId);
-    if (student) {
-        student.printed = true;
-        student.status = 'printed';
-        localStorage.setItem(GRAD_STORAGE_KEY, JSON.stringify(graduationCandidates));
-        
-        const cert = certificates.find(c => c.studentId === studentId);
-        if (cert) {
-            cert.printed = true;
-            cert.printedAt = new Date().toISOString();
-            cert.status = 'PRINTED';
-            localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
-        }
-        
-        renderGraduationList();
-        updateGraduationStats();
-    }
+    // ... keep your existing function ...
 }
 
 function markSelectedAsPrinted() {
-    const checkboxes = document.querySelectorAll('.grad-student-checkbox:checked');
-    if (checkboxes.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('Please select at least one student.', 'warning');
-        }
-        return;
-    }
-    
-    const studentIds = Array.from(checkboxes).map(cb => cb.dataset.studentId);
-    studentIds.forEach(studentId => markAsPrinted(studentId));
-    
-    if (typeof showNotification === 'function') {
-        showNotification('✅ ' + studentIds.length + ' students marked as printed!', 'success');
-    }
-    renderGraduationList();
-    updateGraduationStats();
+    // ... keep your existing function ...
 }
 
 function markCertificateAsPrinted(studentId) {
@@ -1018,675 +714,79 @@ function markCertificateAsPrinted(studentId) {
 }
 
 // ============================================================
-// QR CODE FUNCTIONS
+// QR CODE FUNCTIONS (Keep your existing functions)
 // ============================================================
 
 function showCertificateQR(studentId) {
-    const cert = certificates.find(c => c.studentId === studentId);
-    if (!cert) {
-        if (typeof showNotification === 'function') {
-            showNotification('Certificate not found', 'error');
-        }
-        return;
-    }
-    
-    const qrData = cert.qrCode;
-    const serial = cert.serialNumber;
-    const name = cert.studentName;
-    
-    const modal = document.createElement('div');
-    modal.style.cssText = `
-        position: fixed; top: 0; left: 0; right: 0; bottom: 0;
-        background: rgba(0,0,0,0.7); z-index: 100000;
-        display: flex; align-items: center; justify-content: center;
-        padding: 20px;
-    `;
-    modal.innerHTML = `
-        <div style="background: white; border-radius: 16px; padding: 30px; max-width: 400px; width: 100%; text-align: center;">
-            <h3 style="color: #0A3D62; margin: 0 0 4px 0;">QR Certificate</h3>
-            <p style="color: #64748b; font-size: 13px; margin: 0 0 16px 0;">${escapeHtml(name)}</p>
-            <div style="background: white; padding: 20px; border-radius: 12px; display: inline-block; border: 2px solid #e5e7eb;">
-                <canvas id="qrCanvas" style="width: 200px; height: 200px;"></canvas>
-            </div>
-            <p style="font-family: monospace; font-size: 12px; color: #4C1D95; margin: 12px 0 0 0;">
-                ${escapeHtml(serial)}
-            </p>
-            <div style="margin-top: 16px; display: flex; gap: 10px; justify-content: center;">
-                <button onclick="this.closest('div[style]').remove()" style="padding: 8px 24px; background: #6b7280; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    Close
-                </button>
-                <button onclick="downloadQR('${studentId}')" style="padding: 8px 24px; background: #4C1D95; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    <i class="fas fa-download"></i> Download QR
-                </button>
-                <button onclick="verifyCertificate('${studentId}')" style="padding: 8px 24px; background: #10b981; color: white; border: none; border-radius: 6px; cursor: pointer;">
-                    <i class="fas fa-shield-alt"></i> Verify
-                </button>
-            </div>
-            <div id="verificationResult" style="margin-top: 12px; font-size: 13px;"></div>
-        </div>
-    `;
-    document.body.appendChild(modal);
-    
-    renderQRCode('qrCanvas', qrData);
+    // ... keep your existing function ...
 }
 
 function renderQRCode(canvasId, data) {
-    const canvas = document.getElementById(canvasId);
-    if (!canvas) return;
-    
-    const ctx = canvas.getContext('2d');
-    const size = canvas.width || 200;
-    
-    ctx.fillStyle = 'white';
-    ctx.fillRect(0, 0, size, size);
-    
-    const qrSize = 21;
-    const cellSize = size / qrSize;
-    const seed = data.length;
-    
-    for (let row = 0; row < qrSize; row++) {
-        for (let col = 0; col < qrSize; col++) {
-            const index = (row * qrSize + col) * 7;
-            const charCode = data.charCodeAt(index % data.length) || 0;
-            const isDark = (charCode + row + col + seed) % 3 !== 0;
-            
-            const isCorner = 
-                (row < 7 && col < 7) || 
-                (row < 7 && col > qrSize - 8) || 
-                (row > qrSize - 8 && col < 7);
-            
-            if (isCorner) {
-                const inInner = (row >= 2 && row <= 4 && col >= 2 && col <= 4) ||
-                                (row >= 2 && row <= 4 && col >= qrSize - 5 && col <= qrSize - 3) ||
-                                (row >= qrSize - 5 && row <= qrSize - 3 && col >= 2 && col <= 4);
-                ctx.fillStyle = inInner ? '#0A3D62' : (isDark ? '#0A3D62' : 'white');
-            } else {
-                ctx.fillStyle = isDark ? '#0A3D62' : 'white';
-            }
-            
-            ctx.fillRect(col * cellSize, row * cellSize, cellSize, cellSize);
-        }
-    }
-    
-    const logoSize = size * 0.2;
-    const logoX = (size - logoSize) / 2;
-    const logoY = (size - logoSize) / 2;
-    ctx.fillStyle = '#0A3D62';
-    ctx.fillRect(logoX, logoY, logoSize, logoSize);
-    ctx.fillStyle = '#FDB913';
-    ctx.font = `${logoSize * 0.5}px Arial`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('✓', size / 2, size / 2 + logoSize * 0.05);
+    // ... keep your existing function ...
 }
 
 function downloadQR(studentId) {
-    const cert = certificates.find(c => c.studentId === studentId);
-    if (!cert) return;
-    
-    const canvas = document.querySelector('#qrCanvas');
-    if (canvas) {
-        const link = document.createElement('a');
-        link.download = `QR_${cert.serialNumber}.png`;
-        link.href = canvas.toDataURL('image/png');
-        link.click();
-    }
+    // ... keep your existing function ...
 }
 
 function verifyCertificate(studentId) {
-    const cert = certificates.find(c => c.studentId === studentId);
-    if (!cert) {
-        document.getElementById('verificationResult').innerHTML = `
-            <span style="color: #dc2626;">❌ Certificate not found</span>
-        `;
-        return;
-    }
-    
-    const today = new Date().toISOString().split('T')[0];
-    const isExpired = cert.expiryDate < today;
-    const isValid = cert.status === 'ACTIVE' && !isExpired;
-    
-    const resultDiv = document.getElementById('verificationResult');
-    if (isValid) {
-        cert.scanCount = (cert.scanCount || 0) + 1;
-        cert.lastScanned = new Date().toISOString();
-        localStorage.setItem(CERT_STORAGE_KEY, JSON.stringify(certificates));
-        
-        resultDiv.innerHTML = `
-            <div style="background: #d1fae5; padding: 12px; border-radius: 8px; color: #065f46;">
-                <i class="fas fa-check-circle"></i> ✅ Certificate is VALID
-                <div style="font-size: 12px; margin-top: 4px;">
-                    Issued: ${cert.issueDate} | Expires: ${cert.expiryDate}
-                </div>
-                <div style="font-size: 11px; color: #059669; margin-top: 2px;">
-                    Scans: ${cert.scanCount}
-                </div>
-            </div>
-        `;
-    } else {
-        resultDiv.innerHTML = `
-            <div style="background: #fee2e2; padding: 12px; border-radius: 8px; color: #991b1b;">
-                <i class="fas fa-times-circle"></i> ❌ Certificate is ${isExpired ? 'EXPIRED' : 'INACTIVE'}
-                <div style="font-size: 12px; margin-top: 4px;">
-                    Status: ${cert.status} | Expires: ${cert.expiryDate}
-                </div>
-            </div>
-        `;
-    }
+    // ... keep your existing function ...
 }
-
-// ============================================================
-// DOWNLOAD CERTIFICATE PDF
-// ============================================================
-
-function downloadCertificatePDF(studentId) {
-    const cert = certificates.find(c => c.studentId === studentId);
-    if (!cert) {
-        if (typeof showNotification === 'function') {
-            showNotification('Certificate not found', 'error');
-        }
-        return;
-    }
-    
-    const printWindow = window.open('', '_blank', 'width=900,height=700');
-    if (!printWindow) {
-        alert('Please allow popups to download the certificate.');
-        return;
-    }
-    
-    printWindow.document.write(`
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <meta charset="UTF-8">
-            <title>Certificate - ${cert.serialNumber}</title>
-            <style>
-                @page { size: A4 landscape; margin: 0; }
-                * { margin: 0; padding: 0; box-sizing: border-box; }
-                body { 
-                    font-family: 'Times New Roman', Times, serif;
-                    background: white;
-                    display: flex; justify-content: center; align-items: center;
-                    min-height: 100vh; padding: 20px;
-                }
-                #certContainer {
-                    max-width: 1100px; width: 100%;
-                    background: white; border: 8px solid #0A3D62;
-                    border-radius: 12px; padding: 40px;
-                    box-shadow: 0 10px 40px rgba(0,0,0,0.1);
-                }
-                @media print {
-                    body { padding: 0; }
-                    #certContainer { border: 4px solid #0A3D62; border-radius: 0; padding: 30px; }
-                }
-            </style>
-        </head>
-        <body>
-            ${generateCertificateHTML(cert)}
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
-    
-    setTimeout(() => { printWindow.print(); }, 500);
-}
-
-function getProgramFullName(programCode) {
-    const programNames = {
-        'KRCHN': 'Kenya Registered Community Health Nursing',
-        'DPOTT': 'Diploma in Perioperative Theatre Technology',
-        'DCH': 'Diploma in Community Health',
-        'DHRIT': 'Diploma in Health Records and Information Technology',
-        'DSL': 'Diploma in Science Lab',
-        'DSW': 'Diploma in Social Work and Community Development',
-        'DCJS': 'Diploma in Criminal Justice',
-        'DHSS': 'Diploma in Health Support Services',
-        'DICT': 'Diploma in Information Technology',
-        'DME': 'Diploma in Medical Engineering',
-        'CPOTT': 'Certificate in Perioperative Theatre Technology',
-        'CCH': 'Certificate in Community Health',
-        'CHRIT': 'Certificate in Health Records and Information Technology',
-        'CPC': 'Certificate in Patient Care',
-        'CSL': 'Certificate in Science Lab',
-        'CSW': 'Certificate in Social Work',
-        'CCJS': 'Certificate in Criminal Justice',
-        'CAG': 'Certificate in Agriculture',
-        'CHSS': 'Certificate in Health Support Services',
-        'CICT': 'Certificate in Information Technology',
-        'CCA': 'Certificate in Computer Applications',
-        'ACH': 'Artisan in Community Health',
-        'AAG': 'Artisan in Agriculture',
-        'ASW': 'Artisan in Social Work'
-    };
-    return programNames[programCode] || programCode;
-}
-
-function generateCertificateHTML(cert) {
-    const isNursing = isNursingProgram(cert.program);
-    const programType = isNursing ? 'Nursing' : 'Technical/Vocational';
-    const programFullName = getProgramFullName(cert.program);
-    
-    return `
-        <div id="certContainer">
-            <div style="border: 2px solid #FDB913; padding: 30px; border-radius: 8px; position: relative;">
-                <div style="text-align: center; border-bottom: 3px double #0A3D62; padding-bottom: 16px; margin-bottom: 20px;">
-                    <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
-                             alt="NCHSM Logo" 
-                             style="max-height: 70px; width: auto;"
-                             onerror="this.style.display='none'">
-                        <div>
-                            <div style="font-size: 22px; font-weight: 700; color: #0A3D62; letter-spacing: 1px;">NAKURU COLLEGE OF HEALTH SCIENCES</div>
-                            <div style="font-size: 16px; font-weight: 600; color: #0A3D62; letter-spacing: 0.5px;">AND MANAGEMENT (NCHSM)</div>
-                            <div style="font-size: 11px; color: #64748b;">KIAMUNYI CAMPUS · P.O. Box 12906 - 20100, Nakuru</div>
-                        </div>
-                    </div>
-                </div>
-                <div style="text-align: center; margin: 20px 0 10px 0;">
-                    <div style="font-size: 32px; font-weight: 700; color: #0A3D62; letter-spacing: 4px; font-family: 'Georgia', serif;">
-                        CERTIFICATE
-                    </div>
-                    <div style="font-size: 14px; color: #64748b; letter-spacing: 2px;">OF COMPLETION</div>
-                </div>
-                <div style="text-align: right; font-size: 11px; color: #94a3b8; font-family: monospace; margin-bottom: 10px;">
-                    Serial No: ${cert.serialNumber}
-                </div>
-                <div style="text-align: center; padding: 20px 0;">
-                    <p style="font-size: 18px; color: #475569; margin-bottom: 8px;">This is to certify that</p>
-                    <p style="font-size: 28px; font-weight: 700; color: #0A3D62; margin: 10px 0; letter-spacing: 1px;">
-                        ${escapeHtml(cert.studentName)}
-                    </p>
-                    <p style="font-size: 16px; color: #475569; margin-bottom: 4px;">has successfully completed the</p>
-                    <p style="font-size: 22px; font-weight: 600; color: #0A3D62; margin: 8px 0;">
-                        ${escapeHtml(programFullName)}
-                    </p>
-                    <p style="font-size: 16px; color: #475569;">${programType} Program</p>
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 20px; max-width: 600px; margin: 20px auto; padding: 15px; background: #f8fafc; border-radius: 8px;">
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #94a3b8;">Average Score</div>
-                            <div style="font-size: 20px; font-weight: 700; color: #0A3D62;">${cert.avgScore}%</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #94a3b8;">Grade</div>
-                            <div style="font-size: 20px; font-weight: 700; color: ${cert.isPassing ? '#10b981' : '#dc2626'};">${cert.grade}</div>
-                        </div>
-                        <div style="text-align: center;">
-                            <div style="font-size: 11px; color: #94a3b8;">Status</div>
-                            <div style="font-size: 16px; font-weight: 600; color: ${cert.isPassing ? '#10b981' : '#dc2626'};">${cert.isPassing ? '✅ PASS' : '❌ FAIL'}</div>
-                        </div>
-                    </div>
-                    <p style="font-size: 14px; color: #64748b; margin-top: 16px;">
-                        Issue Date: <strong>${cert.issueDate}</strong>
-                        ${cert.expiryDate ? `&nbsp;·&nbsp; Expires: <strong>${cert.expiryDate}</strong>` : ''}
-                    </p>
-                    <div style="margin: 20px auto; display: inline-block; background: white; padding: 10px; border-radius: 8px; border: 2px solid #e5e7eb;">
-                        <canvas id="certQRCanvas" style="width: 120px; height: 120px;"></canvas>
-                    </div>
-                    <div style="font-size: 10px; color: #94a3b8; font-family: monospace;">
-                        Verify at: https://nchsm.ac.ke/verify/${cert.serialNumber}
-                    </div>
-                </div>
-                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 30px; margin-top: 20px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
-                    <div style="text-align: center;">
-                        <div style="border-bottom: 2px solid #1e293b; width: 160px; margin: 0 auto 4px auto;"></div>
-                        <div style="font-size: 12px; font-weight: 600; color: #0A3D62;">Principal</div>
-                        <div style="font-size: 10px; color: #94a3b8;">Date: _____________</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="border-bottom: 2px solid #1e293b; width: 160px; margin: 0 auto 4px auto;"></div>
-                        <div style="font-size: 12px; font-weight: 600; color: #0A3D62;">Director</div>
-                        <div style="font-size: 10px; color: #94a3b8;">Date: _____________</div>
-                    </div>
-                    <div style="text-align: center;">
-                        <div style="border-bottom: 2px solid #1e293b; width: 160px; margin: 0 auto 4px auto;"></div>
-                        <div style="font-size: 12px; font-weight: 600; color: #0A3D62;">Academic Registrar</div>
-                        <div style="font-size: 10px; color: #94a3b8;">Date: _____________</div>
-                    </div>
-                </div>
-                <div style="text-align: center; margin-top: 16px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 9px; color: #94a3b8;">
-                    <p style="font-style: italic;">This Certificate is issued without any alteration whatsoever, and is only valid with the College Seal.</p>
-                    <p style="font-size: 8px; color: #cbd5e1;">Document ID: ${cert.certId} · Generated: ${new Date().toLocaleDateString()}</p>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// ============================================================
-// QR SCANNER FUNCTIONS
-// ============================================================
 
 function startQRScanner() {
-    const video = document.getElementById('qrVideo');
-    const overlay = document.getElementById('qrOverlay');
-    const placeholder = document.getElementById('qrPlaceholder');
-    const status = document.getElementById('qrScannerStatus');
-    const startBtn = document.getElementById('qrStartBtn');
-    const stopBtn = document.getElementById('qrStopBtn');
-    
-    if (!video) return;
-    
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        if (typeof showNotification === 'function') {
-            showNotification('Camera not supported in this browser', 'error');
-        }
-        return;
-    }
-    
-    const constraints = {
-        video: { facingMode: 'environment', width: { ideal: 640 }, height: { ideal: 480 } }
-    };
-    
-    navigator.mediaDevices.getUserMedia(constraints)
-        .then(stream => {
-            qrStream = stream;
-            video.srcObject = stream;
-            video.style.display = 'block';
-            video.play();
-            
-            if (placeholder) placeholder.style.display = 'none';
-            if (overlay) overlay.style.display = 'flex';
-            if (status) status.innerHTML = '<i class="fas fa-circle" style="color: #10b981; font-size: 8px;"></i> Scanning...';
-            if (startBtn) startBtn.style.display = 'none';
-            if (stopBtn) stopBtn.style.display = 'block';
-            
-            qrScannerActive = true;
-            
-            setTimeout(() => {
-                scanQRCode();
-            }, 1000);
-            
-            if (typeof showNotification === 'function') {
-                showNotification('📸 Scanner started! Position QR code in frame', 'success');
-            }
-        })
-        .catch(err => {
-            console.error('Error accessing camera:', err);
-            if (typeof showNotification === 'function') {
-                showNotification('❌ Error accessing camera: ' + err.message, 'error');
-            }
-        });
+    // ... keep your existing function ...
 }
 
 function stopQRScanner() {
-    if (qrStream) {
-        qrStream.getTracks().forEach(track => track.stop());
-        qrStream = null;
-    }
-    
-    const video = document.getElementById('qrVideo');
-    const overlay = document.getElementById('qrOverlay');
-    const placeholder = document.getElementById('qrPlaceholder');
-    const status = document.getElementById('qrScannerStatus');
-    const startBtn = document.getElementById('qrStartBtn');
-    const stopBtn = document.getElementById('qrStopBtn');
-    
-    if (video) {
-        video.style.display = 'none';
-        video.srcObject = null;
-    }
-    if (overlay) overlay.style.display = 'none';
-    if (placeholder) placeholder.style.display = 'flex';
-    if (status) status.innerHTML = '<i class="fas fa-circle" style="color: #ef4444; font-size: 8px;"></i> Inactive';
-    if (startBtn) startBtn.style.display = 'block';
-    if (stopBtn) stopBtn.style.display = 'none';
-    
-    qrScannerActive = false;
-    
-    if (typeof showNotification === 'function') {
-        showNotification('🛑 Scanner stopped', 'info');
-    }
-}
-
-function scanQRCode() {
-    if (!qrScannerActive) return;
-    
-    const video = document.getElementById('qrVideo');
-    if (!video || video.readyState !== video.HAVE_ENOUGH_DATA) {
-        setTimeout(scanQRCode, 500);
-        return;
-    }
-    
-    setTimeout(() => {
-        if (qrScannerActive) {
-            const resultDiv = document.getElementById('qrScanResult');
-            if (resultDiv) {
-                const serialNumber = 'NCHSM-NUR-2026-0001-A7B3';
-                const name = 'Jane Muthoni';
-                
-                resultDiv.style.display = 'block';
-                document.getElementById('qrResultName').textContent = name;
-                document.getElementById('qrResultDetails').textContent = 'Serial: ' + serialNumber;
-                document.getElementById('qrVerificationStatus').textContent = '✅ Verified';
-                
-                if (typeof showNotification === 'function') {
-                    showNotification('✅ QR Code scanned! Certificate found for ' + name, 'success');
-                }
-                
-                stopQRScanner();
-            }
-        }
-    }, 3000);
+    // ... keep your existing function ...
 }
 
 function uploadQRImage() {
-    document.getElementById('qrImageUpload')?.click();
+    // ... keep your existing function ...
 }
 
 function scanQRFromImage(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    
-    if (typeof showNotification === 'function') {
-        showNotification('📷 Processing image...', 'info');
-    }
-    
-    setTimeout(() => {
-        const resultDiv = document.getElementById('qrScanResult');
-        if (resultDiv) {
-            resultDiv.style.display = 'block';
-            document.getElementById('qrResultName').textContent = 'Test Student';
-            document.getElementById('qrResultDetails').textContent = 'Serial: NCHSM-TEST-0001';
-            document.getElementById('qrVerificationStatus').textContent = '✅ Verified';
-            
-            if (typeof showNotification === 'function') {
-                showNotification('✅ QR Code scanned from image!', 'success');
-            }
-        }
-    }, 2000);
+    // ... keep your existing function ...
 }
 
 function viewCertificateFromQR() {
-    if (typeof showNotification === 'function') {
-        showNotification('📄 Opening certificate...', 'info');
-    }
+    // ... keep your existing function ...
 }
 
 function downloadCertificateFromQR() {
-    if (typeof showNotification === 'function') {
-        showNotification('📥 Downloading certificate...', 'info');
-    }
+    // ... keep your existing function ...
 }
 
 // ============================================================
-// SETTINGS FUNCTIONS
+// SETTINGS & EXPORT FUNCTIONS (Keep your existing functions)
 // ============================================================
 
 function saveGradSettings() {
-    const settings = {
-        passMark: parseInt(document.getElementById('gradPassMark')?.value || 50),
-        feeAmount: parseInt(document.getElementById('gradFeeAmount')?.value || 2500),
-        gradDate: document.getElementById('gradDate')?.value || '',
-        template: document.getElementById('gradTemplate')?.value || 'standard'
-    };
-    
-    try {
-        localStorage.setItem('grad_settings', JSON.stringify(settings));
-        if (typeof showNotification === 'function') {
-            showNotification('✅ Graduation settings saved!', 'success');
-        }
-        processGraduationCandidates();
-    } catch (e) {
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error saving settings', 'error');
-        }
-    }
+    // ... keep your existing function ...
 }
 
 function resetGradSettings() {
-    if (!confirm('Reset all graduation settings to default?')) return;
-    
-    localStorage.removeItem('grad_settings');
-    
-    const passMarkEl = document.getElementById('gradPassMark');
-    const feeAmountEl = document.getElementById('gradFeeAmount');
-    const gradDateEl = document.getElementById('gradDate');
-    const templateEl = document.getElementById('gradTemplate');
-    
-    if (passMarkEl) passMarkEl.value = '50';
-    if (feeAmountEl) feeAmountEl.value = '2500';
-    if (gradDateEl) gradDateEl.value = '';
-    if (templateEl) templateEl.value = 'standard';
-    
-    if (typeof showNotification === 'function') {
-        showNotification('✅ Settings reset to default', 'success');
-    }
-    processGraduationCandidates();
+    // ... keep your existing function ...
 }
 
-// ============================================================
-// EXPORT FUNCTIONS
-// ============================================================
-
 function exportGraduationCSV() {
-    if (graduationCandidates.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('No data to export', 'warning');
-        }
-        return;
-    }
-    
-    const headers = ['Student ID', 'Name', 'Program', 'Intake', 'Average Score', 'Status', 'Transcript', 'Certificate', 'Serial Number', 'Printed', 'Fee Paid'];
-    const rows = graduationCandidates.map(g => [
-        g.studentId,
-        g.name,
-        g.program,
-        g.intake,
-        g.avgScore + '%',
-        g.status,
-        g.transcriptGenerated ? 'Yes' : 'No',
-        g.certificateGenerated ? 'Yes' : 'No',
-        g.serialNumber || 'N/A',
-        g.printed ? 'Yes' : 'No',
-        g.feePaid ? 'Yes' : 'No'
-    ]);
-    
-    let csv = headers.join(',') + '\n';
-    rows.forEach(row => {
-        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
-    });
-    
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `graduation_data_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    if (typeof showNotification === 'function') {
-        showNotification('✅ Exported ' + graduationCandidates.length + ' records', 'success');
-    }
+    // ... keep your existing function ...
 }
 
 function exportCertificateCSV() {
-    if (certificates.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('No certificates to export', 'warning');
-        }
-        return;
-    }
-    
-    const headers = ['Serial Number', 'Student Name', 'Program', 'Average Score', 'Grade', 'Points', 'Status', 'Issue Date', 'Expiry Date', 'Scan Count'];
-    const rows = certificates.map(c => [
-        c.serialNumber,
-        c.studentName,
-        c.program,
-        c.avgScore + '%',
-        c.grade,
-        c.points.toFixed(1),
-        c.status,
-        c.issueDate,
-        c.expiryDate || 'N/A',
-        c.scanCount || 0
-    ]);
-    
-    let csv = headers.join(',') + '\n';
-    rows.forEach(row => {
-        csv += row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',') + '\n';
-    });
-    
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `certificates_${new Date().toISOString().split('T')[0]}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    
-    if (typeof showNotification === 'function') {
-        showNotification('✅ Exported ' + certificates.length + ' certificates to CSV', 'success');
-    }
+    // ... keep your existing function ...
 }
 
 function refreshGraduationData() {
-    console.log('🔄 Refreshing graduation data...');
-    loadAllData();
-    processGraduationCandidates();
-    updateGraduationStats();
-    renderCertificateList();
-    renderGraduateList();
-    
-    if (typeof showNotification === 'function') {
-        showNotification('🔄 Data refreshed!', 'success');
-    }
+    // ... keep your existing function ...
 }
 
 function printAllCertificates() {
-    if (certificates.length === 0) {
-        if (typeof showNotification === 'function') {
-            showNotification('No certificates to print', 'warning');
-        }
-        return;
-    }
-    
-    if (typeof showNotification === 'function') {
-        showNotification('🖨️ Opening print dialog for ' + certificates.length + ' certificates...', 'info');
-    }
-    
-    window.print();
+    // ... keep your existing function ...
 }
 
 function copySerial(serial) {
-    navigator.clipboard.writeText(serial).then(() => {
-        if (typeof showNotification === 'function') {
-            showNotification('✅ Serial number copied!', 'success');
-        }
-    }).catch(() => {
-        const input = document.createElement('input');
-        input.value = serial;
-        document.body.appendChild(input);
-        input.select();
-        document.execCommand('copy');
-        document.body.removeChild(input);
-        if (typeof showNotification === 'function') {
-            showNotification('✅ Serial number copied!', 'success');
-        }
-    });
+    // ... keep your existing function ...
 }
 
 // ============================================================
@@ -1756,7 +856,7 @@ if (typeof hideLoading === 'undefined') {
 // ============================================================
 
 window.initGraduationSystem = initGraduationSystem;
-window.initCertificateSystem = initGraduationSystem; // Alias for compatibility
+window.initCertificateSystem = initGraduationSystem;
 window.processGraduationCandidates = processGraduationCandidates;
 window.renderGraduateList = renderGraduateList;
 window.renderCertificateList = renderCertificateList;
@@ -1806,13 +906,5 @@ window.getStudentMarks = getStudentMarks;
 window.loadAllData = loadAllData;
 
 console.log('🎓 Graduation & Certificate System Loaded Successfully!');
-console.log('📋 Features:');
-console.log('   - Auto-generate transcripts & certificates');
-console.log('   - Unique serial numbers (NCHSM-NUR-2026-0001-A7B3)');
-console.log('   - QR codes for verification');
-console.log('   - TVET + Nursing support');
-console.log('   - Bulk generation');
-console.log('   - Print/Download certificates');
-console.log('   - Export to CSV');
-console.log('   - QR scanner for verification');
-console.log('📋 Run initGraduationSystem() to initialize');
+console.log('📋 Using HTML IDs: gradStudentsList, gradTotalStudents, etc.');
+console.log('📋
