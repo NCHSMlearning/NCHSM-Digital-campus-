@@ -9888,11 +9888,23 @@ async function viewQuestionDetail(questionId) {
     }
 }
 
-// Load pending questions when tab is switched
-// Add this to your switchTab function:
-// if (tab === 'pendingQuestions') {
-//     loadPendingQuestions();
-// }
+// ============================================================
+// ✅ EXPOSE PENDING QUESTIONS FUNCTIONS GLOBALLY
+// ============================================================
+window.loadPendingQuestions = loadPendingQuestions;
+window.toggleLecturer = toggleLecturer;
+window.approveLecturerQuestions = approveLecturerQuestions;
+window.approveSingleQuestion = approveSingleQuestion;
+window.openRejectModal = openRejectModal;
+window.closeRejectModal = closeRejectModal;
+window.confirmReject = confirmReject;
+window.viewQuestionDetail = viewQuestionDetail;
+window.updatePendingStats = updatePendingStats;
+window.groupByLecturer = groupByLecturer;
+window.renderLecturerGroups = renderLecturerGroups;
+window.renderQuestionsTable = renderQuestionsTable;
+
+console.log('✅ Pending Questions functions exposed to window!');
 // ============================================================
 // ✅ EXPOSE QUESTION BANK FUNCTIONS GLOBALLY
 // ============================================================
