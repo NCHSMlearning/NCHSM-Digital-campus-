@@ -61,8 +61,7 @@
                     </a></li>
                 </ul>
             </div>
-
-           <!-- Exams -->
+<!-- Exams -->
 <div class="menu-section">
     <div class="menu-label">Exams</div>
     <ul class="sidebar-menu">
@@ -72,10 +71,14 @@
         <li><a data-tab="createExam" onclick="switchTab('createExam')">
             <i class="fas fa-plus-circle"></i> Create Exam
         </a></li>
-        <!-- ✅ ADD THIS NEW MENU ITEM -->
         <li><a data-tab="questions" onclick="switchTab('questions')">
             <i class="fas fa-question-circle"></i> Question Bank
             <span class="badge-sidebar" id="questionBankBadge">0</span>
+        </a></li>
+        <!-- ✅ ADD THIS NEW MENU ITEM -->
+        <li><a data-tab="pendingQuestions" onclick="switchTab('pendingQuestions')">
+            <i class="fas fa-clock" style="color: #FDB913;"></i> Pending Questions
+            <span class="badge-sidebar" id="pendingQuestionsBadge" style="background: #f59e0b; color: #92400e;">0</span>
         </a></li>
         <li><a data-tab="attendance" onclick="switchTab('attendance')">
             <i class="fas fa-clipboard-check"></i> Attendance
@@ -83,7 +86,6 @@
         </a></li>
     </ul>
 </div>
-
             <!-- Monitoring -->
             <div class="menu-section">
                 <div class="menu-label">Monitoring</div>
@@ -1293,7 +1295,111 @@
 
     </div>
 </section>
+<!-- ============================================================ -->
+<!-- TAB: PENDING QUESTIONS (LECTURER APPROVAL)                    -->
+<!-- ============================================================ -->
+<section id="pendingQuestions" class="tab-content" style="display: block;">
+    <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 20px 25px; margin-bottom: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
+        <div>
+            <h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
+                <i class="fas fa-user-tie" style="color: #FDB913;"></i> Lecturer Questions
+            </h2>
+            <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
+                <i class="fas fa-check-double"></i> Review and approve questions submitted by lecturers
+            </p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <button onclick="loadPendingQuestions()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
 
+    <!-- Stats Cards -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #fef3c7; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-clock" style="color: #f59e0b; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="pendingCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Pending</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #10b981;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #d1fae5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-users" style="color: #10b981; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="lecturerCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Lecturers</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #8b5cf6;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #ede9fe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-check-circle" style="color: #8b5cf6; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="approvedCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Approved</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #dc2626;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #fee2e2; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-times-circle" style="color: #dc2626; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="rejectedCount">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Rejected</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters -->
+    <div style="background: white; border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; border: 1px solid #e5e7eb;">
+        <div style="display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
+            <div style="flex: 1; min-width: 180px;">
+                <label style="font-weight: 600; font-size: 12px; color: #475569;">Exam</label>
+                <select id="pendingExamFilter" onchange="loadPendingQuestions()" style="width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px; background: white;">
+                    <option value="">All Exams</option>
+                </select>
+            </div>
+            <div style="flex: 1; min-width: 150px;">
+                <label style="font-weight: 600; font-size: 12px; color: #475569;">Status</label>
+                <select id="pendingStatusFilter" onchange="loadPendingQuestions()" style="width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px; background: white;">
+                    <option value="">All Status</option>
+                    <option value="pending">⏳ Pending</option>
+                    <option value="approved">✅ Approved</option>
+                    <option value="rejected">❌ Rejected</option>
+                </select>
+            </div>
+            <div style="flex: 2; min-width: 200px;">
+                <label style="font-weight: 600; font-size: 12px; color: #475569;">Search</label>
+                <input type="text" id="pendingSearch" placeholder="Search by lecturer name..." style="width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 13px;" onkeyup="loadPendingQuestions()">
+            </div>
+            <button onclick="loadPendingQuestions()" style="padding: 8px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; margin-top: 18px;">
+                <i class="fas fa-search"></i> Filter
+            </button>
+        </div>
+    </div>
+
+    <!-- Lecturer Groups -->
+    <div id="pendingQuestionsContainer">
+        <!-- Rendered by JavaScript -->
+        <div style="text-align: center; padding: 40px; color: #94a3b8;">
+            <div style="display: inline-block; width: 30px; height: 30px; border: 3px solid #e2e8f0; border-top: 3px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+            <p style="margin: 10px 0 0 0;">Loading lecturers...</p>
+        </div>
+    </div>
+</section>
     </div> <!-- End main-content -->
 
     <!-- ============================================================ -->
