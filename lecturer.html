@@ -393,6 +393,32 @@
                 <span style="margin-left: auto; background: #10b981; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
             </a>
         </li>
+        <!-- Academic Dropdown - Add this item -->
+<li>
+    <a 
+        href="#" 
+        data-tab="lecturer-questions"
+        style="
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 14px;
+            border-radius: 8px;
+            color: rgba(255,255,255,0.8);
+            text-decoration: none;
+            font-size: 13px;
+            transition: all 0.2s;
+            background: rgba(5,150,105,0.15);
+            border-left: 3px solid #10b981;
+        "
+        onmouseover="this.style.background='rgba(5,150,105,0.3)'; this.style.color='white'"
+        onmouseout="this.style.background='rgba(5,150,105,0.15)'; this.style.color='rgba(255,255,255,0.8)'"
+    >
+        <i class="fas fa-question-circle" style="width: 18px; text-align: center; font-size: 12px; color: #10b981;"></i>
+        <span>Question Bank</span>
+        <span style="margin-left: auto; background: #f59e0b; padding: 0 8px; border-radius: 20px; font-size: 9px; color: white; font-weight: 700;">NEW</span>
+    </a>
+</li>
         <!-- ========================================== -->
 <!-- NURSING SYSTEM - ONLY FOR KRCHN DEPARTMENT -->
 <!-- ========================================== -->
@@ -3392,6 +3418,302 @@
         </div>
     </div>
 </section>
+            <!-- ========================================== -->
+<!-- 📝 QUESTION BANK - LECTURER WITH ADMIN APPROVAL -->
+<!-- ========================================== -->
+<section id="lecturer-questions-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
+    
+    <!-- ===== HEADER ===== -->
+    <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 25px;">
+        <div>
+            <h2 style="margin: 0;"><i class="fas fa-question-circle" style="color: #FDB913;"></i> Question Bank</h2>
+            <p style="color: #64748b; margin: 4px 0 0 0; font-size: 14px;">Create and manage exam questions for your assigned units. <span style="background: #fef3c7; padding: 2px 12px; border-radius: 12px; font-size: 12px; color: #92400e; font-weight: 600;">⏳ Requires Admin Approval</span></p>
+        </div>
+        <div style="display: flex; gap: 10px; flex-wrap: wrap;">
+            <span style="background: #fef3c7; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #92400e; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-clock"></i> <span id="lecPendingQuestions">0</span> Pending
+            </span>
+            <span style="background: #d1fae5; padding: 6px 14px; border-radius: 20px; font-size: 12px; color: #065f46; display: flex; align-items: center; gap: 6px;">
+                <i class="fas fa-check-circle"></i> <span id="lecApprovedQuestions">0</span> Approved
+            </span>
+            <button onclick="LecturerQuestions.refresh()" style="background: #4C1D95; color: white; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 13px; display: flex; align-items: center; gap: 6px;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+    </div>
+
+    <!-- ===== APPROVAL INFO BANNER ===== -->
+    <div style="background: #fef3c7; border-radius: 12px; padding: 16px 20px; margin-bottom: 25px; border-left: 4px solid #f59e0b; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
+        <i class="fas fa-shield-alt" style="color: #d97706; font-size: 24px;"></i>
+        <div style="flex: 1;">
+            <strong style="color: #92400e;">⏳ Admin Approval Required</strong>
+            <p style="margin: 2px 0 0 0; font-size: 13px; color: #78350f;">Questions you create will be submitted for <strong>Admin Approval</strong> before being added to the exam.</p>
+        </div>
+        <span style="background: #d1fae5; padding: 4px 16px; border-radius: 20px; font-size: 12px; color: #065f46; white-space: nowrap;">
+            <i class="fas fa-check-circle"></i> Approval Workflow
+        </span>
+    </div>
+
+    <!-- ===== STATS CARDS ===== -->
+    <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 15px; margin-bottom: 25px;">
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #4C1D95;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #ede9fe; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-question-circle" style="color: #4C1D95; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="lecTotalQuestions">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">My Questions</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #f59e0b;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #fef3c7; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-clock" style="color: #f59e0b; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="lecPendingQuestionsStat">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Pending Approval</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #10b981;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #d1fae5; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-check-circle" style="color: #10b981; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="lecApprovedQuestionsStat">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Approved</div>
+                </div>
+            </div>
+        </div>
+        <div style="background: white; border-radius: 12px; padding: 18px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border-left: 4px solid #dc2626;">
+            <div style="display: flex; align-items: center; gap: 12px;">
+                <div style="background: #fee2e2; width: 44px; height: 44px; border-radius: 10px; display: flex; align-items: center; justify-content: center;">
+                    <i class="fas fa-times-circle" style="color: #dc2626; font-size: 18px;"></i>
+                </div>
+                <div>
+                    <div style="font-size: 22px; font-weight: 800; color: #0A3D62;" id="lecRejectedQuestionsStat">0</div>
+                    <div style="font-size: 12px; color: #6b7280;">Rejected</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== EXAM SELECTOR ===== -->
+    <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; border: 1px solid #e5e7eb;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
+            <i class="fas fa-filter" style="color: #4C1D95;"></i>
+            <h4 style="margin: 0; color: #0A3D62; font-size: 15px;">Select Exam</h4>
+            <span style="margin-left: auto; font-size: 12px; color: #94a3b8;">
+                <i class="fas fa-info-circle"></i> Choose an exam to manage questions
+            </span>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr auto; gap: 12px; align-items: end;">
+            <div>
+                <label for="lecQuestionExamSelect" style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                    <i class="fas fa-file-alt"></i> Exam *
+                </label>
+                <select id="lecQuestionExamSelect" required style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'" onchange="LecturerQuestions.loadQuestions()">
+                    <option value="">-- Select an exam --</option>
+                </select>
+            </div>
+            <div style="display: flex; gap: 8px;">
+                <span style="padding: 6px 12px; background: #f8fafc; border-radius: 6px; font-size: 12px; color: #64748b; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-question-circle"></i> <span id="lecQuestionCount">0</span> Qs
+                </span>
+                <span style="padding: 6px 12px; background: #f8fafc; border-radius: 6px; font-size: 12px; color: #64748b; border: 1px solid #e2e8f0; display: flex; align-items: center; gap: 4px;">
+                    <i class="fas fa-trophy"></i> <span id="lecQuestionTotalMarks">0</span> marks
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== ADD QUESTION BUTTON ===== -->
+    <div style="display: flex; justify-content: flex-end; margin-bottom: 20px;">
+        <button onclick="LecturerQuestions.openAddModal()" style="background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; border: none; padding: 12px 28px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+            <i class="fas fa-plus-circle"></i> Add Question
+        </button>
+    </div>
+
+    <!-- ===== QUESTIONS TABLE ===== -->
+    <div style="background: white; border-radius: 12px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.08); border: 1px solid #e5e7eb;">
+        <div style="overflow-x: auto;">
+            <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
+                <thead>
+                    <tr style="background: linear-gradient(135deg, #f8fafc, #f1f5f9);">
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0; white-space: nowrap; font-size: 13px;">
+                            <i class="fas fa-hashtag" style="margin-right: 8px; color: #4C1D95;"></i> #
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0; white-space: nowrap; font-size: 13px;">
+                            <i class="fas fa-question" style="margin-right: 8px; color: #4C1D95;"></i> Question
+                        </th>
+                        <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0; white-space: nowrap; font-size: 13px;">
+                            <i class="fas fa-tag" style="margin-right: 8px; color: #4C1D95;"></i> Type
+                        </th>
+                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0; white-space: nowrap; font-size: 13px;">
+                            <i class="fas fa-trophy" style="margin-right: 8px; color: #4C1D95;"></i> Marks
+                        </th>
+                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0; white-space: nowrap; font-size: 13px;">
+                            <i class="fas fa-check-circle" style="margin-right: 8px; color: #4C1D95;"></i> Status
+                        </th>
+                        <th style="padding: 14px 18px; text-align: center; font-weight: 700; color: #0A3D62; border-bottom: 2px solid #e2e8f0; white-space: nowrap; font-size: 13px;">
+                            <i class="fas fa-cog" style="margin-right: 8px; color: #4C1D95;"></i> Actions
+                        </th>
+                    </tr>
+                </thead>
+                <tbody id="lecQuestionsTable">
+                    <tr>
+                        <td colspan="6" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                            <div style="display: inline-block; width: 40px; height: 40px; border: 4px solid #e2e8f0; border-top: 4px solid #4C1D95; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+                            <p style="margin: 15px 0 0 0; font-weight: 500;">Loading questions...</p>
+                        </td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- ===== TABLE FOOTER ===== -->
+        <div style="padding: 12px 18px; background: #f8fafc; border-top: 1px solid #e2e8f0; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
+            <span style="font-size: 13px; color: #64748b;">
+                <i class="fas fa-database"></i> <span id="lecQuestionCountDisplay">0</span> questions found
+            </span>
+            <div style="display: flex; gap: 8px;">
+                <span onclick="window.print()" style="font-size: 12px; color: #94a3b8; cursor: pointer;">
+                    <i class="fas fa-print"></i> Print
+                </span>
+                <span onclick="LecturerQuestions.exportQuestions()" style="font-size: 12px; color: #94a3b8; cursor: pointer;">
+                    <i class="fas fa-file-export"></i> Export
+                </span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- 📝 ADD/EDIT QUESTION MODAL                 -->
+    <!-- ========================================== -->
+    <div id="lecQuestionModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9999; align-items: center; justify-content: center; backdrop-filter: blur(4px);">
+        <div style="background: white; border-radius: 16px; max-width: 750px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3); animation: slideUp 0.3s ease;">
+            
+            <!-- Modal Header -->
+            <div style="padding: 20px 24px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-radius: 16px 16px 0 0;">
+                <div>
+                    <h3 style="margin: 0; color: #0A3D62; font-size: 18px; font-weight: 700; display: flex; align-items: center; gap: 10px;">
+                        <i class="fas fa-plus-circle" style="color: #4C1D95;"></i>
+                        <span id="lecQuestionModalTitle">Add New Question</span>
+                    </h3>
+                    <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
+                        <i class="fas fa-info-circle"></i> Question will be submitted for Admin Approval
+                    </p>
+                </div>
+                <button onclick="LecturerQuestions.closeModal()" style="background: none; border: none; font-size: 28px; cursor: pointer; color: #94a3b8; line-height: 1; padding: 0 8px; transition: color 0.2s;" onmouseover="this.style.color='#0A3D62'" onmouseout="this.style.color='#94a3b8'">&times;</button>
+            </div>
+            
+            <!-- Modal Body -->
+            <div style="padding: 24px;">
+                <form id="lecQuestionForm" onsubmit="event.preventDefault(); LecturerQuestions.saveQuestion();">
+                    <input type="hidden" id="lecQuestionId" value="">
+                    <input type="hidden" id="lecQuestionExamId" value="">
+
+                    <!-- Question Type + Marks -->
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px; margin-bottom: 15px;">
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">
+                                <i class="fas fa-tag"></i> Question Type *
+                            </label>
+                            <select id="lecQuestionType" required onchange="LecturerQuestions.toggleType()" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                                <option value="multiple_choice">Multiple Choice</option>
+                                <option value="essay">Essay / Written Answer</option>
+                            </select>
+                        </div>
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">
+                                <i class="fas fa-trophy"></i> Marks *
+                            </label>
+                            <input type="number" id="lecQuestionMarks" value="1" min="1" max="100" required style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; width: 100%;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                        </div>
+                    </div>
+
+                    <!-- Question Text -->
+                    <div style="margin-bottom: 15px;">
+                        <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                            <i class="fas fa-question"></i> Question Text *
+                        </label>
+                        <textarea id="lecQuestionText" required placeholder="Enter the question here..." rows="3" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; resize: vertical; font-family: 'Inter', sans-serif;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'"></textarea>
+                    </div>
+
+                    <!-- Multiple Choice Options -->
+                    <div id="lecMcqOptions" style="margin-bottom: 15px;">
+                        <h4 style="color: #0A3D62; margin: 0 0 10px 0; font-size: 14px; font-weight: 600;">
+                            <i class="fas fa-list"></i> Options
+                        </h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px;">
+                            <div>
+                                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">Option A *</label>
+                                <input type="text" id="lecOptionA" placeholder="Option A" style="width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">Option B *</label>
+                                <input type="text" id="lecOptionB" placeholder="Option B" style="width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">Option C</label>
+                                <input type="text" id="lecOptionC" placeholder="Option C (optional)" style="width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                            </div>
+                            <div>
+                                <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 3px;">Option D</label>
+                                <input type="text" id="lecOptionD" placeholder="Option D (optional)" style="width: 100%; padding: 8px 12px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                            </div>
+                        </div>
+                        <div style="margin-top: 10px;">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
+                                <i class="fas fa-check-circle"></i> Correct Answer *
+                            </label>
+                            <select id="lecCorrectAnswer" style="width: 100%; padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; background: white; transition: border-color 0.2s;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                                <option value="">-- Select --</option>
+                                <option value="A">A</option>
+                                <option value="B">B</option>
+                                <option value="C">C</option>
+                                <option value="D">D</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Essay Options -->
+                    <div id="lecEssayOptions" style="display: none; margin-bottom: 15px;">
+                        <div style="display: flex; flex-direction: column; gap: 5px;">
+                            <label style="font-weight: 600; font-size: 13px; color: #475569;">
+                                <i class="fas fa-text-height"></i> Max Characters
+                            </label>
+                            <input type="number" id="lecMaxChars" value="5000" min="100" max="50000" style="padding: 10px 14px; border: 2px solid #e2e8f0; border-radius: 8px; font-size: 14px; transition: border-color 0.2s; width: 100%;" onfocus="this.style.borderColor='#4C1D95'" onblur="this.style.borderColor='#e2e8f0'">
+                        </div>
+                    </div>
+
+                    <!-- Approval Info -->
+                    <div style="background: #fef3c7; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; border-left: 4px solid #f59e0b;">
+                        <p style="margin: 0; font-size: 13px; color: #92400e;">
+                            <i class="fas fa-info-circle"></i> 
+                            <strong>Note:</strong> This question will be submitted for <strong>Admin Approval</strong> before being added to the exam.
+                        </p>
+                    </div>
+
+                    <!-- Modal Footer -->
+                    <div style="display: flex; gap: 12px; justify-content: flex-end; border-top: 1px solid #e5e7eb; padding-top: 16px;">
+                        <button type="button" onclick="LecturerQuestions.closeModal()" style="padding: 10px 24px; border: 2px solid #e2e8f0; border-radius: 8px; background: white; color: #64748b; cursor: pointer; font-weight: 600; font-size: 14px; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='white'">
+                            Cancel
+                        </button>
+                        <button type="submit" style="padding: 10px 28px; border: none; border-radius: 8px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; gap: 8px; transition: all 0.3s;" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 8px 25px rgba(76,29,149,0.3)'" onmouseout="this.style.transform='none'; this.style.boxShadow='none'">
+                            <i class="fas fa-paper-plane"></i> Submit for Approval
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</section>
 
            <!-- ===== MARKS MANAGEMENT SECTION ===== -->
 <section id="marks-management-content" class="tab-content" style="display: none; animation: fadeIn 0.3s ease;">
@@ -5130,7 +5452,6 @@
             </div>
         </div>
     </div>
-
 <!-- ============================================ -->
 <!-- EXTERNAL SCRIPTS -->
 <!-- ============================================ -->
@@ -5387,7 +5708,7 @@ function checkNCKVisibility() {
 }
 
 // ============================================================
-// GLOBAL SHOWTAB FUNCTION - WITH NCK PROTECTION
+// GLOBAL SHOWTAB FUNCTION - WITH NCK PROTECTION & QUESTIONS
 // ============================================================
 
 /**
@@ -5496,6 +5817,21 @@ function showTab(tabId) {
     } else if (tabId === 'nursing-system') {
         if (window.lecturerNCKLoadData) {
             setTimeout(window.lecturerNCKLoadData, 300);
+        }
+    // ✅ ADDED: Lecturer Questions tab
+    } else if (tabId === 'lecturer-questions') {
+        if (window.LecturerQuestions?.init) {
+            setTimeout(window.LecturerQuestions.init, 300);
+        } else {
+            console.log('⏳ Waiting for LecturerQuestions to load...');
+            // Try again after a delay if not loaded
+            setTimeout(function() {
+                if (window.LecturerQuestions?.init) {
+                    window.LecturerQuestions.init();
+                } else {
+                    console.warn('⚠️ LecturerQuestions still not loaded');
+                }
+            }, 1000);
         }
     }
 }
@@ -5691,6 +6027,48 @@ window.hideLoading = function() {
         .tab-content {
             animation: fadeIn 0.3s ease;
         }
+        
+        /* Question Bank specific styles */
+        .badge-mcq {
+            background: #DBEAFE;
+            color: #1E40AF;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .badge-essay {
+            background: #FEF3C7;
+            color: #92400E;
+            padding: 2px 10px;
+            border-radius: 20px;
+            font-size: 10px;
+            font-weight: 600;
+        }
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-approved {
+            background: #d1fae5;
+            color: #065f46;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        .status-rejected {
+            background: #fee2e2;
+            color: #991b1b;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+        }
     `;
     document.head.appendChild(style);
     console.log('✅ Styles added with dropdown support');
@@ -5807,7 +6185,7 @@ window.checkNCKVisibility = checkNCKVisibility;
 window.getProgramDisplayName = getProgramDisplayName;
 
 console.log('✅ NCK visibility checker loaded');
-console.log('✅ showTab updated with NCK protection');
+console.log('✅ showTab updated with NCK protection and Question Bank');
 </script>
 
 <!-- ============================================ -->
@@ -5839,6 +6217,8 @@ console.log('✅ showTab updated with NCK protection');
 <script src="js/lecturer-calendar.js"></script>
 <script src="js/js/lecturer-nck.js"></script>
 
+<!-- ===== ✅ NEW: LECTURER QUESTIONS MODULE ===== -->
+<script src="js/lecturer-questions.js"></script>
 
 <!-- ===== NEW: ACADEMIC PORTFOLIO MODULE ===== -->
 <script src="js/lecturer-academic-portfolio.js"></script>
