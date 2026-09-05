@@ -1,83 +1,155 @@
 // ============================================================
-// 📝 LECTURER QUESTIONS - WITH ADMIN APPROVAL
-// Uses the existing exam_questions table with status field
+// 📝 LECTURER QUESTIONS - WITH OWNERSHIP CHECK
+// Lecturers can ONLY see and edit questions for exams THEY created
 // ============================================================
 
 const LecturerQuestions = {
     currentQuestions: [],
     currentExamId: null,
+    lecturerUuid: null,
+    lecturerAssignmentId: null,
 
     /**
      * Initialize the question bank
      */
     init: function() {
         console.log('📝 LecturerQuestions initialized');
+        this.resolveLecturerId();
         this.loadExams();
-        this.loadQuestions();
     },
 
     /**
-     * Refresh function for the refresh button
+     * Resolve the correct lecturer ID
      */
-    refresh: function() {
-        console.log('🔄 Refreshing questions...');
-        this.loadExams();
-        this.loadQuestions();
-        if (window.showToast) {
-            window.showToast('✅ Questions refreshed', 'success');
+    resolveLecturerId: function() {
+        try {
+            const profile = window.lecturerDB?.getCurrentUserProfile();
+            if (profile) {
+                this.lecturerUuid = profile.user_id;
+                console.log('👤 Lecturer UUID:', this.lecturerUuid);
+            } else {
+                const session = localStorage.getItem('staffSession');
+                if (session) {
+                    const data = JSON.parse(session);
+                    this.lecturerUuid = data.user_id || data.id;
+                    console.log('👤 Lecturer UUID (from session):', this.lecturerUuid);
+                }
+            }
+        } catch (error) {
+            console.error('Error resolving lecturer ID:', error);
         }
     },
 
     /**
-     * Load exams for the dropdown
+     * Get supabase client
+     */
+    getSupabase: function() {
+        const sb = window.supabase || 
+                   window.supabaseClient || 
+                   window._supabase || 
+                   window.sb;
+        
+        if (sb && typeof sb.from === 'function') {
+            return sb;
+        }
+        
+        if (window.lecturerDB?.supabase) {
+            return window.lecturerDB.supabase;
+        }
+        
+        console.error('❌ No supabase client available');
+        return null;
+    },
+
+    /**
+     * Load exams - ONLY SHOW EXAMS CREATED BY THIS LECTURER
      */
     loadExams: async function() {
         const select = document.getElementById('lecQuestionExamSelect');
-        if (!select) return;
+        if (!select) {
+            console.warn('⚠️ lecQuestionExamSelect not found');
+            return;
+        }
 
         try {
-            const lecturerData = this.getLecturerData();
-            const lecturerId = lecturerData.staff_id || lecturerData.id || lecturerData.user_id;
-
+            console.log('📚 Loading exams created by lecturer...');
+            
+            if (!this.lecturerUuid) {
+                this.resolveLecturerId();
+            }
+            
+            const sb = this.getSupabase();
+            if (!sb) {
+                select.innerHTML = '<option value="">-- System error --</option>';
+                return;
+            }
+            
+            const lecturerId = this.lecturerUuid;
+            
             if (!lecturerId) {
                 select.innerHTML = '<option value="">-- Please login --</option>';
                 return;
             }
-
-            // Get exams created by this lecturer OR all exams if superadmin
-            let query = window.supabase
+            
+            console.log('🔍 Filtering exams by created_by:', lecturerId);
+            
+            // ✅ ONLY get exams created by this lecturer
+            const { data, error } = await sb
                 .from('exams')
-                .select('id, title, exam_name, unit')
+                .select('id, title, exam_name, unit, created_by')
+                .eq('created_by', lecturerId)
                 .order('title');
-
-            // If not superadmin, filter by lecturer_id
-            const isSuperAdmin = lecturerData.role === 'super_admin' || lecturerData.role === 'superadmin';
-            if (!isSuperAdmin) {
-                query = query.eq('lecturer_id', lecturerId);
+            
+            if (error) {
+                console.error('❌ Error fetching exams:', error);
+                select.innerHTML = '<option value="">-- Error loading exams --</option>';
+                return;
             }
-
-            const { data, error } = await query;
-
-            if (error) throw error;
-
+            
+            console.log('📚 Exams found:', data?.length || 0);
+            
+            // Populate dropdown
             select.innerHTML = '<option value="">-- Select an exam --</option>';
             
             if (data && data.length > 0) {
                 data.forEach(exam => {
                     const option = document.createElement('option');
                     option.value = exam.id;
-                    option.textContent = exam.title || exam.exam_name || exam.unit || 'Untitled Exam';
+                    const displayName = exam.title || exam.exam_name || exam.unit || 'Untitled Exam';
+                    option.textContent = displayName;
                     select.appendChild(option);
                 });
+                
+                // Auto-select first exam
+                select.value = data[0].id;
+                console.log('✅ Selected:', data[0].title || data[0].exam_name);
+                
+                // Load questions for the selected exam
+                await this.loadQuestions();
+                
             } else {
-                select.innerHTML = '<option value="">-- No exams found --</option>';
+                select.innerHTML = '<option value="">-- No exams created --</option>';
+                console.log('⚠️ No exams created by this lecturer');
+                
+                // Show helpful message
+                const container = document.getElementById('lecQuestionStats');
+                if (container) {
+                    container.innerHTML = `
+                        <div style="background: #fef3c7; padding: 20px; border-radius: 12px; text-align: center; border: 1px solid #fde68a; grid-column: 1 / -1;">
+                            <i class="fas fa-info-circle" style="font-size: 24px; color: #d97706; display: block; margin-bottom: 8px;"></i>
+                            <p style="color: #92400e; font-weight: 500;">You haven't created any exams yet.</p>
+                            <p style="color: #92400e; font-size: 13px;">Create an exam first, then you can add questions to it.</p>
+                        </div>
+                    `;
+                }
             }
 
-            console.log(`✅ Loaded ${data?.length || 0} exams`);
-
         } catch (error) {
-            console.error('Error loading exams:', error);
-            select.innerHTML = '<option value="">-- Error loading exams --</option>';
+            console.error('❌ Error loading exams:', error);
+            const select = document.getElementById('lecQuestionExamSelect');
+            if (select) {
+                select.innerHTML = '<option value="">-- Error loading exams --</option>';
+            }
         }
     },
 
@@ -101,7 +173,7 @@ const LecturerQuestions = {
     },
 
     /**
-     * Load questions for selected exam
+     * Load questions for selected exam - ONLY IF LECTURER OWNS THE EXAM
      */
     loadQuestions: async function() {
         const select = document.getElementById('lecQuestionExamSelect');
@@ -134,7 +206,37 @@ const LecturerQuestions = {
                 `;
             }
 
-            const { data, error } = await window.supabase
+            const sb = this.getSupabase();
+            if (!sb) {
+                throw new Error('Supabase client not available');
+            }
+
+            // ✅ First verify the lecturer owns this exam
+            const { data: examCheck, error: examError } = await sb
+                .from('exams')
+                .select('created_by')
+                .eq('id', parseInt(examId))
+                .single();
+
+            if (examError) {
+                throw new Error('Exam not found');
+            }
+
+            // ✅ Check ownership - ONLY if created_by matches lecturer UUID
+            if (examCheck.created_by !== this.lecturerUuid) {
+                tbody.innerHTML = `
+                    <tr><td colspan="6" style="text-align:center; padding:30px; color:#dc2626;">
+                        <i class="fas fa-lock" style="font-size:24px; display:block; margin-bottom:8px;"></i>
+                        <strong>Access Denied</strong>
+                        <p style="margin:4px 0 0 0; font-size:13px; color:#94a3b8;">You can only view questions for exams you created.</p>
+                    </td></tr>
+                `;
+                this.updateCounts(0, 0);
+                return;
+            }
+
+            // ✅ Load questions for the exam
+            const { data, error } = await sb
                 .from('exam_questions')
                 .select('*')
                 .eq('exam_id', parseInt(examId))
@@ -196,7 +298,6 @@ const LecturerQuestions = {
         questions.forEach((q, index) => {
             const isMcq = q.question_type === 'mcq' || q.question_type === 'multiple_choice';
             const type = isMcq ? 'Multiple Choice' : 'Essay';
-            const typeClass = isMcq ? 'badge-mcq' : 'badge-essay';
             const questionText = q.question_text.length > 60 ? q.question_text.substring(0, 60) + '...' : q.question_text;
 
             // Status badge
@@ -207,7 +308,6 @@ const LecturerQuestions = {
             };
             const status = statusMap[q.status] || statusMap.pending;
             const canEdit = q.status === 'pending' || q.status === 'rejected';
-            const isLecturer = q.created_by === 'lecturer';
 
             html += `
                 <tr style="border-bottom: 1px solid #e5e7eb;">
@@ -217,7 +317,6 @@ const LecturerQuestions = {
                         <span style="padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; background: ${isMcq ? '#DBEAFE' : '#FEF3C7'}; color: ${isMcq ? '#1E40AF' : '#92400E'};">
                             ${type}
                         </span>
-                        ${isLecturer ? '<span style="margin-left:4px; font-size:9px; color:#8B5CF6;">👨‍🏫</span>' : ''}
                     </td>
                     <td style="padding: 10px 12px; text-align: center; font-weight: 600;">${q.marks || 1}</td>
                     <td style="padding: 10px 12px; text-align: center;">
@@ -230,7 +329,7 @@ const LecturerQuestions = {
                         ${q.rejection_reason ? `<br><small style="color:#dc2626; font-size:10px;">${q.rejection_reason}</small>` : ''}
                     </td>
                     <td style="padding: 10px 12px; text-align: center;">
-                        ${canEdit && isLecturer ? `
+                        ${canEdit ? `
                             <button onclick="LecturerQuestions.editQuestion('${q.id}')" style="background: #4C1D95; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-right: 4px;">
                                 <i class="fas fa-edit"></i> Edit
                             </button>
@@ -242,7 +341,7 @@ const LecturerQuestions = {
                                 <i class="fas fa-eye"></i> View
                             </button>
                         `}
-                        ${q.status === 'rejected' && isLecturer ? `
+                        ${q.status === 'rejected' ? `
                             <button onclick="LecturerQuestions.resubmitQuestion('${q.id}')" style="background: #f59e0b; color: white; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-size: 11px; margin-top: 4px; display:block;">
                                 <i class="fas fa-redo"></i> Resubmit
                             </button>
@@ -277,6 +376,18 @@ const LecturerQuestions = {
         if (rejectedEl) rejectedEl.textContent = rejected;
         if (pendingBadge) pendingBadge.textContent = pending;
         if (approvedBadge) approvedBadge.textContent = approved;
+    },
+
+    /**
+     * Refresh function
+     */
+    refresh: function() {
+        console.log('🔄 Refreshing questions...');
+        this.resolveLecturerId();
+        this.loadExams();
+        if (window.showToast) {
+            window.showToast('✅ Questions refreshed', 'success');
+        }
     },
 
     /**
@@ -333,7 +444,10 @@ const LecturerQuestions = {
      */
     editQuestion: async function(questionId) {
         try {
-            const { data, error } = await window.supabase
+            const sb = this.getSupabase();
+            if (!sb) throw new Error('Supabase not available');
+
+            const { data, error } = await sb
                 .from('exam_questions')
                 .select('*')
                 .eq('id', questionId)
@@ -400,20 +514,22 @@ const LecturerQuestions = {
 
         // Get lecturer data
         const lecturerData = this.getLecturerData();
-        const lecturerId = lecturerData.staff_id || lecturerData.id || lecturerData.user_id;
-        const isSuperAdmin = lecturerData.role === 'super_admin' || lecturerData.role === 'superadmin';
+        const lecturerId = this.lecturerUuid || lecturerData.staff_id || lecturerData.id || lecturerData.user_id;
 
         // Get next question number
         let nextNumber = 1;
         if (!id) {
-            const { data: existing } = await window.supabase
-                .from('exam_questions')
-                .select('question_number')
-                .eq('exam_id', examId)
-                .order('question_number', { ascending: false })
-                .limit(1);
-            
-            nextNumber = existing && existing.length > 0 ? (existing[0].question_number || 0) + 1 : 1;
+            const sb = this.getSupabase();
+            if (sb) {
+                const { data: existing } = await sb
+                    .from('exam_questions')
+                    .select('question_number')
+                    .eq('exam_id', examId)
+                    .order('question_number', { ascending: false })
+                    .limit(1);
+                
+                nextNumber = existing && existing.length > 0 ? (existing[0].question_number || 0) + 1 : 1;
+            }
         }
 
         const questionData = {
@@ -428,27 +544,26 @@ const LecturerQuestions = {
             correct_answer: correctAnswer || null,
             marks: marks,
             max_chars: maxChars,
-            // Approval fields
-            status: isSuperAdmin ? 'approved' : 'pending',
-            created_by: isSuperAdmin ? 'superadmin' : 'lecturer',
-            lecturer_id: isSuperAdmin ? null : lecturerId,
+            status: 'pending',
+            created_by: 'lecturer',
+            lecturer_id: lecturerId,
             submitted_at: new Date().toISOString(),
-            approved_at: isSuperAdmin ? new Date().toISOString() : null,
-            approved_by: isSuperAdmin ? 'superadmin' : null,
             updated_at: new Date().toISOString()
         };
 
         try {
+            const sb = this.getSupabase();
+            if (!sb) throw new Error('Supabase not available');
+
             let result;
             if (id) {
-                // Update existing - keep status unless resubmitting
-                const { data: existing } = await window.supabase
+                // Update existing - check ownership first
+                const { data: existing } = await sb
                     .from('exam_questions')
                     .select('status')
                     .eq('id', id)
                     .single();
 
-                // If resubmitting from rejected, set to pending
                 const newStatus = existing?.status === 'rejected' ? 'pending' : existing?.status;
                 
                 const updateData = {
@@ -457,15 +572,15 @@ const LecturerQuestions = {
                     resubmitted_at: existing?.status === 'rejected' ? new Date().toISOString() : null,
                     updated_at: new Date().toISOString()
                 };
-                delete updateData.question_number; // Don't change question number on update
+                delete updateData.question_number;
 
-                result = await window.supabase
+                result = await sb
                     .from('exam_questions')
                     .update(updateData)
                     .eq('id', id);
             } else {
                 // Create new
-                result = await window.supabase
+                result = await sb
                     .from('exam_questions')
                     .insert([questionData]);
             }
@@ -473,10 +588,7 @@ const LecturerQuestions = {
             if (result.error) throw result.error;
 
             if (window.showToast) {
-                const msg = id ? '✅ Question updated successfully!' : 
-                           isSuperAdmin ? '✅ Question created and approved!' : 
-                           '✅ Question submitted for admin approval!';
-                window.showToast(msg, 'success');
+                window.showToast('✅ Question submitted for admin approval!', 'success');
             }
             
             this.closeModal();
@@ -497,7 +609,10 @@ const LecturerQuestions = {
         if (!confirm('Are you sure you want to delete this question?')) return;
 
         try {
-            const { error } = await window.supabase
+            const sb = this.getSupabase();
+            if (!sb) throw new Error('Supabase not available');
+
+            const { error } = await sb
                 .from('exam_questions')
                 .delete()
                 .eq('id', questionId);
@@ -522,7 +637,10 @@ const LecturerQuestions = {
      */
     viewQuestion: async function(questionId) {
         try {
-            const { data, error } = await window.supabase
+            const sb = this.getSupabase();
+            if (!sb) throw new Error('Supabase not available');
+
+            const { data, error } = await sb
                 .from('exam_questions')
                 .select('*')
                 .eq('id', questionId)
@@ -536,7 +654,6 @@ const LecturerQuestions = {
             details += `Type: ${isMcq ? 'Multiple Choice' : 'Essay'}\n`;
             details += `Marks: ${data.marks || 1}\n`;
             details += `Status: ${data.status || 'Pending'}\n`;
-            details += `Created By: ${data.created_by || 'Unknown'}\n`;
             
             if (isMcq) {
                 details += `\nOptions:\n`;
@@ -568,7 +685,10 @@ const LecturerQuestions = {
         if (!confirm('Resubmit this question for admin approval?')) return;
 
         try {
-            const { error } = await window.supabase
+            const sb = this.getSupabase();
+            if (!sb) throw new Error('Supabase not available');
+
+            const { error } = await sb
                 .from('exam_questions')
                 .update({
                     status: 'pending',
@@ -617,7 +737,6 @@ const LecturerQuestions = {
             'Type': q.question_type || 'mcq',
             'Marks': q.marks || 1,
             'Status': q.status || 'pending',
-            'Created By': q.created_by || '',
             'Option A': q.option_a || '',
             'Option B': q.option_b || '',
             'Option C': q.option_c || '',
@@ -625,10 +744,41 @@ const LecturerQuestions = {
             'Correct Answer': q.correct_answer || ''
         }));
 
-        const ws = XLSX.utils.json_to_sheet(data);
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, 'Questions');
-        XLSX.writeFile(wb, `Questions_${new Date().toISOString().split('T')[0]}.xlsx`);
+        try {
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Questions');
+            XLSX.writeFile(wb, `Questions_${new Date().toISOString().split('T')[0]}.xlsx`);
+
+            if (window.showToast) {
+                window.showToast(`✅ Exported ${data.length} questions`, 'success');
+            }
+        } catch (error) {
+            console.error('Error exporting:', error);
+            // Fallback to CSV
+            this.exportQuestionsCSV(data);
+        }
+    },
+
+    /**
+     * Export as CSV fallback
+     */
+    exportQuestionsCSV: function(data) {
+        const headers = ['Question #', 'Question', 'Type', 'Marks', 'Status', 'Option A', 'Option B', 'Option C', 'Option D', 'Correct Answer'];
+        const csv = [
+            headers.join(','),
+            ...data.map(row => headers.map(h => `"${(row[h] || '').replace(/"/g, '""')}"`).join(','))
+        ].join('\n');
+
+        const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Questions_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
 
         if (window.showToast) {
             window.showToast(`✅ Exported ${data.length} questions`, 'success');
@@ -636,7 +786,23 @@ const LecturerQuestions = {
     }
 };
 
-// Expose to window
+// ============================================================
+// ✅ EXPOSE FUNCTIONS GLOBALLY
+// ============================================================
 window.LecturerQuestions = LecturerQuestions;
 
-console.log('✅ LecturerQuestions loaded');
+// Individual functions for inline onclick handlers
+window.loadLecturerQuestions = function() {
+    if (window.LecturerQuestions) {
+        window.LecturerQuestions.init();
+    }
+};
+
+window.refreshLecturerQuestions = function() {
+    if (window.LecturerQuestions) {
+        window.LecturerQuestions.refresh();
+    }
+};
+
+console.log('✅ LecturerQuestions loaded - Ownership check enabled');
+console.log('🔒 Lecturers can only see/edit their OWN exams');
