@@ -1,6 +1,6 @@
 // ============================================================
 // LECTURER UI MODULE - COMPLETE FIXED VERSION
-// WITH NCK SYSTEM SUPPORT
+// WITH NCK SYSTEM SUPPORT & QUESTION BANK
 // ============================================================
 
 // ============================================================
@@ -339,14 +339,14 @@ console.log('✅ Global functions registered for lecturer');
 })();
 
 // ============================================================
-// LECTURER UI CLASS - UPDATED WITH NCK SUPPORT
+// LECTURER UI CLASS - UPDATED WITH NCK SUPPORT & QUESTION BANK
 // ============================================================
 
 const LecturerUI = {
     currentTab: 'dashboard',
     sidebarOpen: false,
     
-    // Tab ID mapping - UPDATED with NCK
+    // Tab ID mapping - UPDATED with NCK & Question Bank
     tabMapping: {
         'dashboard': 'dashboard-content',
         'profile': 'profile-content',
@@ -366,7 +366,9 @@ const LecturerUI = {
         // ===== Academic Portfolio =====
         'academic-portfolio': 'academic-portfolio-content',
         // ===== NCK SYSTEM =====
-        'nursing-system': 'nursing-system-content'
+        'nursing-system': 'nursing-system-content',
+        // ===== ✅ QUESTION BANK (LECTURER) =====
+        'lecturer-questions': 'lecturer-questions-content'
     },
     
     // Initialize UI
@@ -631,7 +633,7 @@ const LecturerUI = {
     },
     
     // ==========================================
-    // TAB MANAGEMENT - UPDATED WITH NCK
+    // TAB MANAGEMENT - UPDATED WITH NCK & QUESTION BANK
     // ==========================================
     
     showTab(tabId) {
@@ -752,7 +754,7 @@ const LecturerUI = {
     },
     
     // ==========================================
-    // LOAD SECTION DATA - UPDATED WITH NCK
+    // LOAD SECTION DATA - UPDATED WITH NCK & QUESTION BANK
     // ==========================================
     
     loadSectionData(tabId) {
@@ -899,7 +901,6 @@ const LecturerUI = {
             // ===== NCK SYSTEM =====
             case 'nursing-system':
                 console.log('👩‍⚕️ Loading NCK System...');
-                // Check if NCK module is loaded
                 if (typeof lecturerNCKLoadData === 'function') {
                     lecturerNCKLoadData();
                 } else if (window.lecturerNCKLoadData) {
@@ -918,7 +919,6 @@ const LecturerUI = {
                         } else {
                             console.warn('⚠️ lecturerNCKLoadData still not available');
                             showNotification('⚠️ NCK module loading... Please refresh.', 'warning');
-                            // Show placeholder
                             const container = document.getElementById('nursing-system-content');
                             if (container) {
                                 const placeholder = document.getElementById('lecturerNCKPlaceholder');
@@ -929,7 +929,6 @@ const LecturerUI = {
                     script.onerror = function() {
                         console.error('❌ Failed to load lecturer-nck.js');
                         showNotification('❌ Error loading NCK module. Please refresh.', 'error');
-                        // Show placeholder with error
                         const container = document.getElementById('nursing-system-content');
                         if (container) {
                             const placeholder = document.getElementById('lecturerNCKPlaceholder');
@@ -944,6 +943,61 @@ const LecturerUI = {
                                     </button>
                                 `;
                             }
+                        }
+                    };
+                    document.head.appendChild(script);
+                }
+                break;
+            
+            // ===== ✅ QUESTION BANK (LECTURER) =====
+            case 'lecturer-questions':
+                console.log('📝 Loading Question Bank...');
+                if (window.LecturerQuestions && typeof window.LecturerQuestions.init === 'function') {
+                    setTimeout(function() {
+                        window.LecturerQuestions.init();
+                    }, 300);
+                } else {
+                    console.warn('⚠️ LecturerQuestions not found, trying to load...');
+                    // Try to load the script dynamically
+                    const script = document.createElement('script');
+                    script.src = 'js/lecturer-questions.js';
+                    script.onload = function() {
+                        console.log('✅ lecturer-questions.js loaded!');
+                        if (window.LecturerQuestions && typeof window.LecturerQuestions.init === 'function') {
+                            setTimeout(function() {
+                                window.LecturerQuestions.init();
+                            }, 300);
+                        } else {
+                            console.warn('⚠️ LecturerQuestions still not available');
+                            const container = document.getElementById('lecturer-questions-content');
+                            if (container) {
+                                container.innerHTML = `
+                                    <div style="text-align: center; padding: 60px 20px; color: #94a3b8;">
+                                        <i class="fas fa-question-circle" style="font-size: 48px; color: #f59e0b; display: block; margin-bottom: 16px;"></i>
+                                        <h3 style="color: #1e293b;">Question Bank</h3>
+                                        <p style="color: #94a3b8;">Loading question bank...</p>
+                                        <button onclick="location.reload()" style="margin-top: 15px; background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
+                                            <i class="fas fa-sync-alt"></i> Refresh
+                                        </button>
+                                    </div>
+                                `;
+                            }
+                        }
+                    };
+                    script.onerror = function() {
+                        console.error('❌ Failed to load lecturer-questions.js');
+                        const container = document.getElementById('lecturer-questions-content');
+                        if (container) {
+                            container.innerHTML = `
+                                <div style="text-align: center; padding: 60px 20px; color: #dc2626;">
+                                    <i class="fas fa-exclamation-circle" style="font-size: 48px; display: block; margin-bottom: 16px;"></i>
+                                    <h3 style="color: #1e293b;">Failed to Load Question Bank</h3>
+                                    <p style="color: #94a3b8;">Please refresh the page or contact support.</p>
+                                    <button onclick="location.reload()" style="margin-top: 15px; background: #4C1D95; padding: 10px 30px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: 600;">
+                                        <i class="fas fa-sync-alt"></i> Refresh Page
+                                    </button>
+                                </div>
+                            `;
                         }
                     };
                     document.head.appendChild(script);
@@ -1233,3 +1287,4 @@ console.log('✅ showNotification:', typeof window.showNotification);
 console.log('✅ showLoading:', typeof window.showLoading);
 console.log('✅ hideLoading:', typeof window.hideLoading);
 console.log('✅ NCK System support added');
+console.log('✅ Question Bank support added');
