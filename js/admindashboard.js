@@ -738,10 +738,7 @@ window.loadStudentsWithResults = async function() {
         }
     }
 };
-    // ============================================
-// 📊 DISPLAY STUDENTS RESULTS - EXACT MATCH FOR 10 COLUMNS
-// ============================================
-function displayStudentsResults() {
+ function displayStudentsResults() {
     const start = (currentPage.students - 1) * itemsPerPage;
     const page = studentsResults.slice(start, start + itemsPerPage);
     const tbody = document.getElementById('studentsBody');
@@ -754,43 +751,39 @@ function displayStudentsResults() {
     }
     
     tbody.innerHTML = page.map((r, index) => {
-        // ✅ Get student and exam data with fallbacks
+        // Get student and exam data
         const student = r.student_profile || {};
         const exam = r.exam_info || {};
         
-        // Column 1: Student ID
         const studentId = student.student_id || 'N/A';
-        
-        // Column 2: Name
         const studentName = student.full_name || 'Unknown';
-        
-        // Column 3: Email
         const studentEmail = student.email || '-';
-        
-        // Column 4: Program
         const studentProgram = student.program || '-';
-        
-        // Column 5: Exam
         const examName = exam.exam_name || 'Exam ' + r.exam_id;
         const typeLabel = exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
         const typeBadgeClass = exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
         
-        // Column 6 & 7: Score and %
         const totalMarks = exam.total_marks || 100;
         const passMark = exam.pass_mark || Math.round(totalMarks * 0.6);
         const score = parseFloat(r.marks) || 0;
         const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
         const percentNum = parseFloat(percentage);
         
-        // Column 8: Status
         const examStatus = exam.status || 'published';
         const isPendingReview = examStatus === 'pending_review';
         const isReleased = r.isReleased || false;
         
+        // ✅ FIXED: Show RESET_FOR_RETAKE status properly
         let displayStatus = '';
         let statusClass = '';
+        let showRetakeBadge = false;
         
-        if (isPendingReview) {
+        // Check for RESET_FOR_RETAKE FIRST
+        if (r.result_status === 'RESET_FOR_RETAKE') {
+            displayStatus = '🔄 Retake Available';
+            statusClass = 'status-reset';
+            showRetakeBadge = true;
+        } else if (isPendingReview) {
             displayStatus = 'PENDING';
             statusClass = 'status-pending';
         } else if (isReleased) {
@@ -809,59 +802,44 @@ function displayStudentsResults() {
             statusClass = 'status-pending';
         }
         
-        // Column 9: Released
+        // Released display
         const releasedDisplay = isReleased ? 
             '<span class="status-pass">✅ Released</span>' : 
             '<span class="status-pending">🔒 Not Released</span>';
         
-        // Column 10: Actions
+        // ✅ Show retake badge if available
+        const retakeBadge = (r.result_status === 'RESET_FOR_RETAKE' || r.allow_retake === true) ? 
+            `<span class="badge-retake"><i class="fas fa-undo"></i> Retake</span>` : '';
+        
         const studentUserId = r.student_id || '';
         const examId = r.exam_id || 0;
         const safeName = studentName.replace(/'/g, "\\'");
         const safeExam = examName.replace(/'/g, "\\'");
         
         return `<tr>
-            <!-- Column 1: Student ID -->
             <td><span class="student-id-badge">${studentId}</span></td>
-            
-            <!-- Column 2: Name -->
             <td><strong>${studentName}</strong></td>
-            
-            <!-- Column 3: Email -->
             <td>${studentEmail}</td>
-            
-            <!-- Column 4: Program -->
             <td>${studentProgram}</td>
-            
-            <!-- Column 5: Exam -->
             <td>
                 ${examName}
                 <span class="exam-type-badge ${typeBadgeClass}">${typeLabel}</span>
             </td>
-            
-            <!-- Column 6: Score -->
             <td style="text-align:center;">
                 <span class="clickable-score" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')">
                     ${score} / ${totalMarks} ✏️
                 </span>
             </td>
-            
-            <!-- Column 7: % -->
             <td style="text-align:center;">
                 <span class="clickable-percentage" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')">
                     ${percentage}% ✏️
                 </span>
             </td>
-            
-            <!-- Column 8: Status -->
             <td style="text-align:center;"><span class="${statusClass}">${displayStatus}</span></td>
-            
-            <!-- Column 9: Released -->
             <td style="text-align:center;">${releasedDisplay}</td>
-            
-            <!-- Column 10: Actions -->
             <td style="text-align:center;">
                 <div style="display:flex; gap:4px; flex-wrap:wrap; justify-content:center;">
+                    ${retakeBadge}
                     <button class="action-btn btn-view" onclick="viewExamResult('${studentUserId}',${examId})" title="View Details">
                         <i class="fas fa-eye"></i> View
                     </button>
