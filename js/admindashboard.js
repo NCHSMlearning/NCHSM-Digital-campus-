@@ -4777,14 +4777,13 @@ function startLiveFeedAutoRefresh() {
         // ✅ Check if liveFeedAutoRefresh is enabled
         if (!liveFeedAutoRefresh) return;
         
-        // ✅ Check if container exists and is visible
-        const container = document.getElementById('livefeedTableContainer');
-        if (!container) {
-            console.warn('⚠️ livefeedTableContainer not found');
-            return;
-        }
+        // ✅ Check if live feed tab is active
+        const liveFeedTab = document.getElementById('livefeed');
+        if (!liveFeedTab || liveFeedTab.style.display === 'none') return;
         
-        if (container.style.display === 'none') return;
+        // ✅ Check if grid exists (this is the actual container)
+        const grid = document.getElementById('liveFeedGrid');
+        if (!grid) return;
         
         // ✅ Save current filter values
         const searchValue = document.getElementById('liveFeedSearch')?.value || '';
@@ -4812,7 +4811,6 @@ function startLiveFeedAutoRefresh() {
         }
     }, 10000);
 }
-
 // ============================================
 // 🔄 RESTORE FILTERS - FIXED
 // ============================================
@@ -7188,7 +7186,7 @@ window.batchResendReleaseEmails = async function(examId) {
         overlay.classList.toggle('show');
     };
 
-   window.switchTab = function(tab) {
+ window.switchTab = function(tab) {
     currentTab = tab;
     
     // Update sidebar active state
@@ -7200,6 +7198,8 @@ window.batchResendReleaseEmails = async function(examId) {
         'students': ['Students Results', 'View and manage student exam results', 'fa-graduation-cap'],
         'allStudents': ['All Students', 'View all registered students', 'fa-users'],
         'exams': ['Exam Management', 'Create, edit and manage exams', 'fa-file-alt'],
+        'questions': ['Question Bank', 'Create and manage exam questions', 'fa-question-circle'],
+        'pendingQuestions': ['Pending Questions', 'Review and approve questions from lecturers', 'fa-clock'],
         'proctoring': ['Proctoring Alerts', 'Live monitoring and alerts', 'fa-video'],
         'liveStudents': ['Live Students', 'Students currently taking exams', 'fa-eye'],
         'livefeed': ['Live Camera Feed', 'Real-time camera feeds of active students', 'fa-video'],
@@ -7218,7 +7218,6 @@ window.batchResendReleaseEmails = async function(examId) {
     if (pageTitle) pageTitle.innerHTML = `<i class="fas ${icon}"></i> ${title}`;
     if (pageSubtitle) pageSubtitle.textContent = subtitle;
 
-    // ✅ FIX: Handle both section and container elements
     // Hide all sections first
     document.querySelectorAll('.tab-content, [id$="TableContainer"]').forEach(el => {
         if (el) el.style.display = 'none';
@@ -7238,7 +7237,8 @@ window.batchResendReleaseEmails = async function(examId) {
         'proctoring': 'proctoringTableContainer',
         'liveStudents': 'liveStudentsTableContainer',
         'livefeed': 'livefeedTableContainer',
-        'attendance': 'attendanceTableContainer'
+        'attendance': 'attendanceTableContainer',
+        'pendingQuestions': 'pendingQuestionsContainer'
     };
     
     const containerId = containerMap[tab];
@@ -7247,10 +7247,32 @@ window.batchResendReleaseEmails = async function(examId) {
         if (container) container.style.display = 'block';
     }
 
-    // Load data based on tab
+    // ============================================
+    // ✅ LOAD DATA BASED ON TAB
+    // ============================================
+    
     if (tab === 'students') loadStudentsWithResults();
     if (tab === 'allStudents') loadAllStudents();
     if (tab === 'exams') loadAllExams();
+    
+    // ✅ QUESTIONS TAB - Call external function
+    if (tab === 'questions') {
+        if (typeof loadExamsForQuestions === 'function') {
+            loadExamsForQuestions();
+        } else {
+            console.warn('⚠️ loadExamsForQuestions not found');
+        }
+    }
+    
+    // ✅ PENDING QUESTIONS TAB - Call external function
+    if (tab === 'pendingQuestions') {
+        if (typeof loadPendingQuestions === 'function') {
+            loadPendingQuestions();
+        } else {
+            console.warn('⚠️ loadPendingQuestions not found');
+        }
+    }
+    
     if (tab === 'proctoring') loadProctoringLogs();
     if (tab === 'liveStudents') loadLiveStudents();
     if (tab === 'livefeed') {
