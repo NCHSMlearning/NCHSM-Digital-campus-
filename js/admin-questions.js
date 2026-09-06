@@ -1,6 +1,7 @@
 // ============================================================
 // 📁 js/admin-questions.js
 // SUPER ADMIN - Question Bank + Pending Questions Approval
+// Supports MCQ & Short Answer/Essay Questions
 // ============================================================
 
 // ============================================================
@@ -134,7 +135,7 @@ async function loadQuestionsForExam() {
 }
 
 // ============================================================
-// RENDER QUESTIONS TABLE
+// RENDER QUESTIONS TABLE - Supports MCQ & Essay
 // ============================================================
 function renderQuestionsTable(questions) {
     const tbody = document.getElementById('questionsBody');
@@ -157,9 +158,9 @@ function renderQuestionsTable(questions) {
 
     let html = '';
     questions.forEach((q, index) => {
-        const isMcq = q.option_a || q.option_b || q.option_c || q.option_d;
-        const type = isMcq ? 'Multiple Choice' : 'Essay';
-        const correct = q.correct_answer || 'N/A';
+        const isMcq = q.question_type === 'mcq' || q.question_type === 'multiple_choice';
+        const type = isMcq ? 'Multiple Choice' : 'Short Answer';
+        const correct = isMcq ? (q.correct_answer || 'N/A') : '—';
         const questionText = q.question_text.length > 60 ? q.question_text.substring(0, 60) + '...' : q.question_text;
 
         html += `
@@ -172,7 +173,7 @@ function renderQuestionsTable(questions) {
                     </span>
                 </td>
                 <td style="padding: 8px 12px; text-align: center; font-weight: 600;">${q.marks || 1}</td>
-                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${correct !== 'N/A' ? '#059669' : '#94a3b8'};">
+                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${isMcq ? '#059669' : '#94a3b8'};">
                     ${correct}
                 </td>
                 <td style="padding: 8px 12px; text-align: center;">
@@ -200,7 +201,7 @@ function updateQuestionStats(questions) {
     if (!container) return;
     
     const total = questions ? questions.length : 0;
-    const mcqCount = questions ? questions.filter(q => q.option_a || q.option_b || q.option_c || q.option_d).length : 0;
+    const mcqCount = questions ? questions.filter(q => q.question_type === 'mcq' || q.question_type === 'multiple_choice').length : 0;
     const essayCount = total - mcqCount;
     const totalMarks = questions ? questions.reduce((sum, q) => sum + (q.marks || 1), 0) : 0;
 
@@ -214,7 +215,7 @@ function updateQuestionStats(questions) {
             <div style="font-size: 1.5rem; font-weight: 700; color: #1E40AF;">${mcqCount}</div>
         </div>
         <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
-            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Essay</div>
+            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Short Answer</div>
             <div style="font-size: 1.5rem; font-weight: 700; color: #92400E;">${essayCount}</div>
         </div>
         <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
@@ -291,7 +292,7 @@ async function editQuestion(questionId) {
 }
 
 // ============================================================
-// TOGGLE QUESTION TYPE
+// TOGGLE QUESTION TYPE - MCQ vs Short Answer
 // ============================================================
 function toggleQuestionType() {
     const type = document.getElementById('questionType');
@@ -299,20 +300,45 @@ function toggleQuestionType() {
     
     const mcqOptions = document.getElementById('mcqOptions');
     const essayOptions = document.getElementById('essayOptions');
+    const correctAnswerLabel = document.getElementById('correctAnswerLabel');
 
-    if (type.value === 'essay') {
+    if (type.value === 'essay' || type.value === 'short_answer' || type.value === 'written') {
+        // Short Answer / Essay mode
         if (mcqOptions) mcqOptions.style.display = 'none';
         if (essayOptions) essayOptions.style.display = 'block';
+        if (correctAnswerLabel) correctAnswerLabel.textContent = '📝 Sample Answer (Optional)';
+        
+        // Make correct answer optional for essay
+        const correctAnswerSelect = document.getElementById('correctAnswer');
+        if (correctAnswerSelect) {
+            correctAnswerSelect.required = false;
+            correctAnswerSelect.innerHTML = '<option value="">-- Optional --</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>';
+        }
     } else {
+        // MCQ mode
         if (mcqOptions) mcqOptions.style.display = 'block';
         if (essayOptions) essayOptions.style.display = 'none';
+        if (correctAnswerLabel) correctAnswerLabel.textContent = 'Correct Answer *';
+        
+        // Make correct answer required for MCQ
+        const correctAnswerSelect = document.getElementById('correctAnswer');
+        if (correctAnswerSelect) {
+            correctAnswerSelect.required = true;
+            correctAnswerSelect.innerHTML = '<option value="">-- Select --</option><option value="A">A</option><option value="B">B</option><option value="C">C</option><option value="D">D</option>';
+        }
     }
 }
 
 // ============================================================
-// SAVE QUESTION
+// SAVE QUESTION - Supports MCQ & Short Answer
 // ============================================================
-async function saveQuestion() {
+async function saveQuestion(e) {
+    // Prevent page refresh
+    if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+    }
+    
     console.log('📝 saveQuestion called');
     
     const id = document.getElementById('questionId')?.value;
@@ -327,13 +353,14 @@ async function saveQuestion() {
     const marks = parseInt(document.getElementById('questionMarks')?.value) || 1;
     const maxChars = parseInt(document.getElementById('maxChars')?.value) || 5000;
 
-    // Validation
+    // Validation - Question text is always required
     if (!questionText) {
         showToast('⚠️ Please enter the question text', 'warning');
         return;
     }
 
-    if (questionType === 'multiple_choice') {
+    // Validation - MCQ requires options and correct answer
+    if (questionType === 'multiple_choice' || questionType === 'mcq') {
         if (!optionA || !optionB) {
             showToast('⚠️ Please enter at least options A and B', 'warning');
             return;
@@ -344,19 +371,33 @@ async function saveQuestion() {
         }
     }
 
+    // Build question data based on type
     const questionData = {
         exam_id: examId,
         question_type: questionType,
         question_text: questionText,
-        option_a: optionA || null,
-        option_b: optionB || null,
-        option_c: optionC || null,
-        option_d: optionD || null,
-        correct_answer: correctAnswer || null,
         marks: marks,
-        max_characters: maxChars,
         updated_at: new Date().toISOString()
     };
+
+    // MCQ specific fields
+    if (questionType === 'multiple_choice' || questionType === 'mcq') {
+        questionData.option_a = optionA || null;
+        questionData.option_b = optionB || null;
+        questionData.option_c = optionC || null;
+        questionData.option_d = optionD || null;
+        questionData.correct_answer = correctAnswer || null;
+        questionData.max_characters = null;
+    } 
+    // Short Answer / Essay specific fields
+    else if (questionType === 'essay' || questionType === 'short_answer' || questionType === 'written') {
+        questionData.option_a = null;
+        questionData.option_b = null;
+        questionData.option_c = null;
+        questionData.option_d = null;
+        questionData.correct_answer = null;
+        questionData.max_characters = maxChars || 5000;
+    }
 
     try {
         let result;
@@ -391,7 +432,8 @@ async function saveQuestion() {
         }
 
         console.log('✅ Question saved successfully!');
-        showToast(`✅ Question ${id ? 'updated' : 'created'} successfully!`, 'success');
+        const questionTypeLabel = questionType === 'multiple_choice' || questionType === 'mcq' ? 'MCQ' : 'Short Answer';
+        showToast(`✅ ${questionTypeLabel} question ${id ? 'updated' : 'created'} successfully!`, 'success');
         
         // Close modal
         closeQuestionModal();
@@ -475,10 +517,11 @@ async function loadPendingQuestions() {
             </div>
         `;
 
-        // Build query
+        // Build query - get questions with status 'pending' from exam_questions
         let query = window.supabase
             .from('exam_questions')
             .select('*, exams(title, exam_name)')
+            .eq('status', 'pending')
             .order('submitted_at', { ascending: false });
 
         // Apply filters
@@ -489,7 +532,8 @@ async function loadPendingQuestions() {
         if (examFilter) {
             query = query.eq('exam_id', parseInt(examFilter));
         }
-        if (statusFilter) {
+        // Only show pending by default, but allow filtering to show all
+        if (statusFilter && statusFilter !== '') {
             query = query.eq('status', statusFilter);
         }
 
@@ -506,7 +550,7 @@ async function loadPendingQuestions() {
             });
         }
 
-        // Get lecturer names
+        // Get lecturer names from consolidated_user_profiles_table
         const lecturerIds = filteredData
             .filter(q => q.lecturer_id)
             .map(q => q.lecturer_id);
@@ -879,10 +923,15 @@ function updatePendingStats(questions) {
     const rejected = questions.filter(q => q.status === 'rejected').length;
     const lecturers = [...new Set(questions.filter(q => q.lecturer_id).map(q => q.lecturer_id))].length;
 
-    document.getElementById('pendingCount').textContent = pending;
-    document.getElementById('approvedCount').textContent = approved;
-    document.getElementById('rejectedCount').textContent = rejected;
-    document.getElementById('lecturerCount').textContent = lecturers;
+    const pendingEl = document.getElementById('pendingCount');
+    const approvedEl = document.getElementById('approvedCount');
+    const rejectedEl = document.getElementById('rejectedCount');
+    const lecturerEl = document.getElementById('lecturerCount');
+
+    if (pendingEl) pendingEl.textContent = pending;
+    if (approvedEl) approvedEl.textContent = approved;
+    if (rejectedEl) rejectedEl.textContent = rejected;
+    if (lecturerEl) lecturerEl.textContent = lecturers;
 }
 
 // ============================================================
@@ -963,3 +1012,5 @@ window.renderLecturerGroups = renderLecturerGroups;
 window.renderPendingQuestionsTable = renderPendingQuestionsTable;
 
 console.log('✅ Admin Questions + Pending Questions module loaded!');
+console.log('📝 Supports MCQ & Short Answer questions');
+console.log('👨‍🏫 Pending questions approval ready');
