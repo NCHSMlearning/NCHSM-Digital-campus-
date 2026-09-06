@@ -2002,9 +2002,6 @@ async function saveAllAnswersToDatabase() {
     return saved;
 }
 
-// ============================================================
-// CALCULATE AND SAVE GRADE
-// ============================================================
 async function calculateAndSaveGrade() {
     try {
         const qResult = await sb.from('exam_questions')
@@ -2022,6 +2019,7 @@ async function calculateAndSaveGrade() {
         let correctCount = 0;
         let wrongCount = 0;
 
+        // Calculate scores
         for (let i = 0; i < questionsData.length; i++) {
             const q = questionsData[i];
             const marks = q.marks || 1;
@@ -2040,49 +2038,55 @@ async function calculateAndSaveGrade() {
                 question_id: q.id,
                 selected_answer: studentAnswer || null,
                 marks: earned,
-                graded_at: new Date().toISOString()
+                graded_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
             });
         }
-
-        questionsData.forEach((q) => {
-            if (!AppState.answers[q.id]) {
-                answerRecords.push({
-                    student_id: AppState.studentId,
-                    exam_id: parseInt(AppState.examId),
-                    question_id: q.id,
-                    selected_answer: null,
-                    marks: 0,
-                    graded_at: new Date().toISOString()
-                });
-            }
-        });
 
         const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
         const resultStatus = 'PENDING_REVIEW';
 
-        await sb.from('exam_grades')
-            .delete()
-            .eq('student_id', AppState.studentId)
-            .eq('exam_id', parseInt(AppState.examId));
-
-        if (answerRecords.length > 0) {
-            const BATCH_SIZE = 50;
-            for (let i = 0; i < answerRecords.length; i += BATCH_SIZE) {
-                const batch = answerRecords.slice(i, i + BATCH_SIZE);
-                await sb.from('exam_grades').insert(batch);
+        // ✅ FIXED: USE UPSERT - DO NOT DELETE!
+        
+        // 1. Save individual answers with UPSERT
+        for (const answer of answerRecords) {
+            const { error: upsertError } = await sb
+                .from('exam_grades')
+                .upsert({
+                    student_id: answer.student_id,
+                    exam_id: answer.exam_id,
+                    question_id: answer.question_id,
+                    selected_answer: answer.selected_answer,
+                    marks: answer.marks,
+                    graded_at: answer.graded_at,
+                    updated_at: answer.updated_at
+                }, { onConflict: 'student_id, exam_id, question_id' });
+            
+            if (upsertError) {
+                console.warn('⚠️ Error upserting answer:', upsertError);
             }
         }
 
-        await sb.from('exam_grades').insert({
-            student_id: AppState.studentId,
-            exam_id: parseInt(AppState.examId),
-            question_id: '00000000-0000-0000-0000-000000000000',
-            marks: totalEarned,
-            total_score: totalEarned,
-            percentage: percentage,
-            result_status: resultStatus,
-            graded_at: new Date().toISOString()
-        });
+        // 2. Save main grade record with UPSERT
+        const { error: mainError } = await sb
+            .from('exam_grades')
+            .upsert({
+                student_id: AppState.studentId,
+                exam_id: parseInt(AppState.examId),
+                question_id: '00000000-0000-0000-0000-000000000000',
+                marks: totalEarned,
+                total_score: totalEarned,
+                percentage: percentage,
+                result_status: resultStatus,
+                completed: true,
+                graded_at: new Date().toISOString(),
+                updated_at: new Date().toISOString()
+            }, { onConflict: 'student_id, exam_id, question_id' });
+
+        if (mainError) {
+            console.error('❌ Error saving main grade:', mainError);
+            throw mainError;
+        }
 
         console.log('✅ Grade calculated: ' + totalEarned + '/' + totalPossible + ' marks (' + percentage.toFixed(2) + '%)');
         console.log('✅ Correct: ' + correctCount + ', Wrong: ' + wrongCount);
