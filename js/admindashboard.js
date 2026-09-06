@@ -326,6 +326,7 @@ window.updateTotalMarksHint = function() {
     const hintEl = document.getElementById('totalMarksHint');
     const passMarkInput = document.getElementById('examPassMark');
     
+    // Get the current value or use default
     let currentTotal = parseInt(totalMarksInput.value) || 0;
     let defaultMarks = 30;
     let defaultPass = 18;
@@ -344,14 +345,17 @@ window.updateTotalMarksHint = function() {
         hintEl.innerHTML = '📊 Standard exams: <strong>100 marks</strong> (you can change this) | Pass mark: <strong>60%</strong>';
     }
     
+    // Only set if empty or zero
     if (!currentTotal || currentTotal === 0) {
         totalMarksInput.value = defaultMarks;
         passMarkInput.value = defaultPass;
     } else {
+        // Auto-calculate pass mark based on current total
         passMarkInput.value = Math.round(currentTotal * 0.6);
         hintEl.innerHTML = `📊 Total marks: <strong>${currentTotal}</strong> | Pass mark (60%): <strong>${Math.round(currentTotal * 0.6)}</strong>`;
     }
 };
+
 // Add real-time update when total marks changes
 document.addEventListener('DOMContentLoaded', function() {
     const totalMarksInput = document.getElementById('examTotalMarks');
@@ -443,10 +447,18 @@ function checkAdminAuth() {
 }
 
 window.logout = function() { 
+    // Clear all session data
     localStorage.removeItem('adminSession');
     localStorage.removeItem('userProfile');
     sessionStorage.clear();
-    window.location.href = 'login.html'; 
+    
+    // Optional: Clear any other stored data
+    localStorage.removeItem('staffSession');
+    localStorage.removeItem('lecturerData');
+    localStorage.removeItem('user');
+    
+    // Redirect to admin login
+    window.location.href = 'https://nchsm.co.ke/adminlogin'; 
 };
 
     // ============================================
@@ -552,8 +564,9 @@ window.logout = function() {
             document.getElementById('confirmResetByEmailBtn').disabled = true;
         }
     }
+
 // ============================================
-// 📊 LOAD STUDENTS WITH RESULTS - DB FILTER FIXED
+// 📊 LOAD STUDENTS WITH RESULTS - USING RELEASE MODAL LOGIC
 // ============================================
 window.loadStudentsWithResults = async function() {
     const loadingDiv = document.getElementById('studentsLoading');
@@ -570,26 +583,11 @@ window.loadStudentsWithResults = async function() {
         await loadExamsMap();
         console.log('📚 Exams map loaded:', Object.keys(examsMap).length);
         
-        // ✅ GET FILTER VALUES FIRST
-        const examFilter = document.getElementById('examFilter')?.value;
-        const statusFilter = document.getElementById('statusFilter')?.value;
-        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
-        
-        console.log('🔍 Filters:', { examFilter, statusFilter, search });
-        
-        // ✅ BUILD QUERY WITH EXAM FILTER AT DATABASE LEVEL
-        let gradesQuery = sb
+        // ✅ USE SAME LOGIC AS RELEASE MODAL
+        const { data: grades, error } = await sb
             .from('exam_grades')
             .select('*')
             .eq('question_id', '00000000-0000-0000-0000-000000000000');
-        
-        // ✅ Apply exam filter at DATABASE level (like release modal)
-        if (examFilter && examFilter !== '') {
-            gradesQuery = gradesQuery.eq('exam_id', parseInt(examFilter));
-            console.log('🔍 Filtering by exam ID:', examFilter);
-        }
-        
-        const { data: grades, error } = await gradesQuery;
         
         if (error) { 
             console.error('❌ Error fetching grades:', error);
@@ -643,7 +641,7 @@ window.loadStudentsWithResults = async function() {
         console.log('👥 Profiles found:', Object.keys(profileMap).length);
         
         // ✅ Build results (SAME STRUCTURE as Release Modal)
-        let results = grades.map(g => {
+        studentsResults = grades.map(g => {
             const exam = examsMap[g.exam_id] || null;
             const profile = profileMap[g.student_id] || null;
             
@@ -658,11 +656,28 @@ window.loadStudentsWithResults = async function() {
             };
         });
         
-        console.log('📊 Initial results count:', results.length);
+        console.log('📊 Final studentsResults count:', studentsResults.length);
         
-        // ✅ FILTER 1: By Status (in memory)
+        // ============================================================
+        // ✅ APPLY FILTERS - SIMPLE AND CLEAN
+        // ============================================================
+        
+        const examFilter = document.getElementById('examFilter')?.value;
+        const statusFilter = document.getElementById('statusFilter')?.value;
+        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
+        
+        let filtered = studentsResults;
+        console.log('🔍 Starting filter with:', filtered.length, 'results');
+        
+        // ✅ FILTER 1: By Exam (SAME as Release Modal)
+        if (examFilter && examFilter !== '') {
+            filtered = filtered.filter(r => String(r.exam_id) === String(examFilter));
+            console.log('🔍 After exam filter:', filtered.length);
+        }
+        
+        // ✅ FILTER 2: By Status
         if (statusFilter && statusFilter !== '') {
-            results = results.filter(r => {
+            filtered = filtered.filter(r => {
                 // Check if released first
                 if (r.isReleased) {
                     const totalMarks = r.exam_info?.total_marks || 100;
@@ -675,12 +690,12 @@ window.loadStudentsWithResults = async function() {
                 // For unreleased, use result_status
                 return (r.result_status || '') === statusFilter;
             });
-            console.log('🔍 After status filter:', results.length);
+            console.log('🔍 After status filter:', filtered.length);
         }
         
-        // ✅ FILTER 2: By Search (in memory)
+        // ✅ FILTER 3: By Search
         if (search && search !== '') {
-            results = results.filter(r => {
+            filtered = filtered.filter(r => {
                 const name = (r.student_profile?.full_name || '').toLowerCase();
                 const studentId = (r.student_profile?.student_id || '').toLowerCase();
                 const examName = (r.exam_info?.exam_name || '').toLowerCase();
@@ -693,18 +708,18 @@ window.loadStudentsWithResults = async function() {
                        email.includes(search) ||
                        program.includes(search);
             });
-            console.log('🔍 After search filter:', results.length);
+            console.log('🔍 After search filter:', filtered.length);
         }
         
         // ✅ Store filtered results
-        studentsResults = results;
+        studentsResults = filtered;
         
         // ✅ Update count display
         const countEl = document.getElementById('filteredCount');
         if (countEl) countEl.textContent = studentsResults.length;
         
         const totalEl = document.getElementById('totalCount');
-        if (totalEl) totalEl.textContent = studentsResults.length;
+        if (totalEl) totalEl.textContent = filtered.length;
         
         console.log(`📊 FINAL: ${studentsResults.length} results`);
         
@@ -986,7 +1001,10 @@ function displayAllStudents() {
     
     renderPagination('allStudents', allStudents.length);
 }
- window.loadAllExams = async function() {
+   // ============================================
+// 📝 LOAD ALL EXAMS - MODERN
+// ============================================
+window.loadAllExams = async function() {
     const loadingDiv = document.getElementById('examsLoading');
     const table = document.getElementById('examsTable');
     
@@ -998,7 +1016,6 @@ function displayAllStudents() {
         if (error) throw error;
         allExams = data || [];
         
-        // Get student counts
         const { data: grades } = await sb
             .from('exam_grades')
             .select('exam_id, result_status')
@@ -1035,6 +1052,7 @@ function displayAllStudents() {
         }
     }
 };
+
 // ============================================
 // 📝 DISPLAY ALL EXAMS - MODERN
 // ============================================
@@ -1897,11 +1915,11 @@ window.closeResetByEmailModal = function() {
     const confirmBtn = document.getElementById('confirmResetByEmailBtn');
     if (confirmBtn) confirmBtn.disabled = true;
 };
-// ============================================
-// 🔄 RESET SINGLE STUDENT - FIXED
+    // ============================================
+// 🔄 RESET SINGLE STUDENT - MODERN
 // ============================================
 window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
-    // Modern confirmation dialog
+    // Modern confirmation dialog with better formatting
     const confirmMsg = `
 ╔══════════════════════════════════════════════════════════════╗
 ║                 ⚠️ RESET STUDENT FOR CONTINUATION           ║
@@ -1951,8 +1969,7 @@ Are you sure?`;
                 released: false,
                 released_at: null,
                 reset_at: new Date().toISOString(),
-                // ✅ FIXED: Use a simple value instead of sb.sql
-                reset_count: 1,
+                reset_count: sb.sql`reset_count + 1`,
                 allow_retake: true,
                 retake_unlocked: true,
                 timer_reset_at: new Date().toISOString(),
@@ -5772,10 +5789,10 @@ window.displayLiveFeed = function() {
         if (confirmBtn) confirmBtn.disabled = true;
     };
 
-   window.closeExamModal = function() {
-    const modal = document.getElementById('examModal');
-    if (modal) modal.style.display = 'none';
-};
+    window.closeExamModal = function() {
+        const modal = document.getElementById('examModal');
+        if (modal) modal.style.display = 'none';
+    };
 
     window.closeResetModal = function() {
         const modal = document.getElementById('resetExamModal');
@@ -7007,10 +7024,8 @@ window.batchResendReleaseEmails = async function(examId) {
         console.error(error);
     }
 };
-   window.openCreateExamModal = function(examId = null) {
-    document.getElementById('examModalTitle').innerHTML = examId ? 
-        '<i class="fas fa-edit"></i> Edit Exam' : 
-        '<i class="fas fa-plus-circle"></i> Create New Exam';
+    window.openCreateExamModal = function(examId = null) {
+    document.getElementById('examModalTitle').innerHTML = examId ? '<i class="fas fa-edit"></i> Edit Exam' : '<i class="fas fa-plus-circle"></i> Create New Exam';
     document.getElementById('editingExamId').value = examId || '';
     
     if (examId && examsMap[examId]) {
@@ -7019,15 +7034,21 @@ window.batchResendReleaseEmails = async function(examId) {
         document.getElementById('examType').value = exam.exam_type || 'EXAM';
         document.getElementById('examCourse').value = exam.course_code || exam.course || '';
         document.getElementById('examDuration').value = exam.duration_minutes || 30;
+        
+        // ✅ FIX: Load the actual total_marks from the exam
         document.getElementById('examTotalMarks').value = exam.total_marks || exam.marks_out_of || 100;
         document.getElementById('examLink').value = exam.online_link || exam.exam_link || '';
         document.getElementById('examProgram').value = exam.program_type || '';
         document.getElementById('examBlock').value = exam.block || exam.block_term || '';
         document.getElementById('examIntakeYear').value = exam.intake_year || '';
+        
+        // ✅ FIX: Load the actual pass_mark from the exam
         document.getElementById('examPassMark').value = exam.pass_mark || Math.round((exam.total_marks || 100) * 0.6);
         
+        // ✅ Set status if the field exists
         const statusSelect = document.getElementById('examStatus');
         if (statusSelect) statusSelect.value = exam.status || 'draft';
+        
     } else {
         // New exam defaults
         document.getElementById('examName').value = '';
@@ -7047,11 +7068,13 @@ window.batchResendReleaseEmails = async function(examId) {
     updateTotalMarksHint();
     document.getElementById('examModal').style.display = 'flex';
 };
+
    document.getElementById('examForm').addEventListener('submit', async (e) => {
     e.preventDefault();
     const examId = document.getElementById('editingExamId').value;
     const examType = document.getElementById('examType').value;
     
+    // ✅ FIX: Get values from the form inputs, not hardcoded defaults
     const totalMarks = parseInt(document.getElementById('examTotalMarks').value) || 100;
     const passMark = parseInt(document.getElementById('examPassMark').value) || Math.round(totalMarks * 0.6);
     const duration = parseInt(document.getElementById('examDuration').value) || 30;
@@ -7062,9 +7085,9 @@ window.batchResendReleaseEmails = async function(examId) {
         exam_type: examType,
         course_code: document.getElementById('examCourse').value,
         duration_minutes: duration,
-        total_marks: totalMarks,
-        marks_out_of: totalMarks,
-        pass_mark: passMark,
+        total_marks: totalMarks,      // ✅ Uses user input
+        marks_out_of: totalMarks,     // ✅ Uses user input
+        pass_mark: passMark,          // ✅ Uses user input
         online_link: document.getElementById('examLink').value,
         program_type: document.getElementById('examProgram').value || null,
         block: document.getElementById('examBlock').value || null,
@@ -7073,7 +7096,7 @@ window.batchResendReleaseEmails = async function(examId) {
         updated_at: new Date().toISOString()
     };
     
-    // ✅ Validation
+    // ✅ Add validation
     if (!examData.title || examData.title.trim() === '') {
         alert('Please enter an exam name.');
         return;
@@ -7108,51 +7131,28 @@ window.batchResendReleaseEmails = async function(examId) {
     }
 });
 
-  window.deleteExam = async function(examId, examName) {
-    if (confirm(`Delete exam "${examName}"? This will also delete all student answers.`)) {
-        await sb.from('exam_grades').delete().eq('exam_id', examId);
-        const { error } = await sb.from('exams').delete().eq('id', examId);
-        if (error) alert('Error: ' + error.message);
-        else { 
-            alert('Exam deleted!');
-            loadAllExams();
-            loadStudentsWithResults(); 
+    window.deleteExam = async function(examId, examName) {
+        if (confirm(`Delete exam "${examName}"? This will also delete all student answers.`)) {
+            await sb.from('exam_grades').delete().eq('exam_id', examId);
+            const { error } = await sb.from('exams').delete().eq('id', examId);
+            if (error) alert('Error: ' + error.message);
+            else { 
+                alert('Exam deleted!');
+                loadAllExams();
+                loadStudentsWithResults(); 
+            }
         }
-    }
-};
-    window.openAssignExamModal = async function() {
-    const { data: students } = await sb.from('consolidated_user_profiles_table').select('id, full_name, student_id');
-    const { data: exams } = await sb.from('exams').select('id, exam_name');
-    document.getElementById('assignStudentSelect').innerHTML = students.map(s =>
-        `<option value="${s.id}">${s.full_name} (${s.student_id || 'N/A'})</option>`).join('');
-    document.getElementById('assignExamSelect').innerHTML = exams.map(e =>
-        `<option value="${e.id}">${e.exam_name}</option>`).join('');
-    document.getElementById('assignExamModal').style.display = 'flex';
-};
+    };
 
-window.confirmAssignExam = async function() {
-    const studentId = document.getElementById('assignStudentSelect').value;
-    const examId = document.getElementById('assignExamSelect').value;
-    if (!studentId || !examId) return alert('Select both');
-    const { data: student } = await sb.from('consolidated_user_profiles_table').select('user_id').eq('id', studentId).single();
-    if (!student?.user_id) return alert('Student not found');
-    const { error } = await sb.from('exam_grades').insert({ 
-        student_id: student.user_id,
-        exam_id: parseInt(examId),
-        question_id: '00000000-0000-0000-0000-000000000000', 
-        marks: 0, 
-        total_score: 0,
-        result_status: 'Scheduled', 
-        graded_at: new Date().toISOString() 
-    });
-    if (error) alert('Error: ' + error.message);
-    else { 
-        alert('Exam assigned!');
-        closeAssignExamModal();
-        loadAllExams();
-        loadStudentsWithResults(); 
-    }
-};
+    window.openAssignExamModal = async function() {
+        const { data: students } = await sb.from('consolidated_user_profiles_table').select('id, full_name, student_id');
+        const { data: exams } = await sb.from('exams').select('id, exam_name');
+        document.getElementById('assignStudentSelect').innerHTML = students.map(s =>
+            `<option value="${s.id}">${s.full_name} (${s.student_id || 'N/A'})</option>`).join('');
+        document.getElementById('assignExamSelect').innerHTML = exams.map(e =>
+            `<option value="${e.id}">${e.exam_name}</option>`).join('');
+        document.getElementById('assignExamModal').style.display = 'flex';
+    };
 
     window.confirmAssignExam = async function() {
         const studentId = document.getElementById('assignStudentSelect').value;
@@ -8945,474 +8945,5 @@ window.viewAllLiveVideos = viewAllLiveVideos;
 window.getLiveStudents = getLiveStudents;
 window.viewStudentRecordings = viewStudentRecordings;  
 window.showVideoModal = showVideoModal;              
-window.downloadAllVideos = downloadAllVideos;  
-    
-// ============================================================
-// 📝 QUESTION BANK FUNCTIONS - COMPLETE WORKING VERSION
-// ============================================================
-
-let currentQuestions = [];
-let currentQuestionExamId = null;
-
-// ============================================================
-// LOAD EXAMS FOR QUESTIONS
-// ============================================================
-async function loadExamsForQuestions() {
-    console.log('📚 Loading exams for question bank...');
-    try {
-        const { data, error } = await sb
-            .from('exams')
-            .select('id, title, exam_name')
-            .order('title');
-
-        if (error) throw error;
-
-        const select = document.getElementById('questionExamSelect');
-        if (!select) {
-            console.warn('⚠️ questionExamSelect not found');
-            return;
-        }
-        
-        select.innerHTML = '<option value="">-- Select an exam --</option>';
-        
-        if (data && data.length > 0) {
-            data.forEach(exam => {
-                const option = document.createElement('option');
-                option.value = exam.id;
-                option.textContent = exam.title || exam.exam_name || 'Untitled Exam';
-                select.appendChild(option);
-            });
-
-            // Auto-select first exam
-            select.value = data[0].id;
-            await loadQuestionsForExam();
-        }
-        console.log(`✅ Loaded ${data?.length || 0} exams`);
-    } catch (error) {
-        console.error('Error loading exams:', error);
-        showToast('❌ Error loading exams: ' + error.message, 'error');
-    }
-}
-
-// ============================================================
-// LOAD QUESTIONS FOR SELECTED EXAM
-// ============================================================
-async function loadQuestionsForExam() {
-    const select = document.getElementById('questionExamSelect');
-    if (!select) {
-        console.warn('⚠️ questionExamSelect not found');
-        return;
-    }
-    
-    const examId = select.value;
-    console.log('📝 Loading questions for exam:', examId);
-
-    if (!examId) {
-        const body = document.getElementById('questionsBody');
-        if (body) {
-            body.innerHTML = `
-                <tr><td colspan="6" style="text-align:center; padding:30px; color:#94a3b8;">
-                    <i class="fas fa-info-circle"></i> Select an exam to view questions
-                </td></tr>
-            `;
-        }
-        const table = document.getElementById('questionsTable');
-        const loading = document.getElementById('questionsLoading');
-        const countDisplay = document.getElementById('questionCountDisplay');
-        const totalMarks = document.getElementById('questionTotalMarks');
-        
-        if (table) table.style.display = 'table';
-        if (loading) loading.style.display = 'none';
-        if (countDisplay) countDisplay.textContent = '0';
-        if (totalMarks) totalMarks.textContent = '0';
-        return;
-    }
-
-    currentQuestionExamId = examId;
-
-    try {
-        const loading = document.getElementById('questionsLoading');
-        const table = document.getElementById('questionsTable');
-        
-        if (loading) {
-            loading.style.display = 'block';
-            loading.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading questions...';
-        }
-        if (table) table.style.display = 'none';
-
-        const { data, error } = await sb
-            .from('exam_questions')
-            .select('*')
-            .eq('exam_id', parseInt(examId))
-            .order('question_number', { ascending: true });
-
-        if (error) throw error;
-
-        currentQuestions = data || [];
-        renderQuestionsTable(currentQuestions);
-        updateQuestionStats(currentQuestions);
-        
-        const countDisplay = document.getElementById('questionCountDisplay');
-        const totalMarksEl = document.getElementById('questionTotalMarks');
-        
-        if (countDisplay) countDisplay.textContent = currentQuestions.length;
-        if (totalMarksEl) {
-            const totalMarks = currentQuestions.reduce((sum, q) => sum + (q.marks || 1), 0);
-            totalMarksEl.textContent = totalMarks;
-        }
-
-        // Update badge
-        const badge = document.getElementById('questionBankBadge');
-        if (badge) badge.textContent = currentQuestions.length;
-
-        console.log(`✅ Loaded ${currentQuestions.length} questions for exam ${examId}`);
-    } catch (error) {
-        console.error('Error loading questions:', error);
-        showToast('❌ Error loading questions: ' + error.message, 'error');
-        const loading = document.getElementById('questionsLoading');
-        if (loading) {
-            loading.innerHTML = '❌ Error loading questions';
-            loading.style.color = '#DC2626';
-        }
-    }
-}
-
-// ============================================================
-// RENDER QUESTIONS TABLE
-// ============================================================
-function renderQuestionsTable(questions) {
-    const tbody = document.getElementById('questionsBody');
-    const table = document.getElementById('questionsTable');
-    const loading = document.getElementById('questionsLoading');
-
-    if (!tbody) return;
-
-    if (!questions || questions.length === 0) {
-        tbody.innerHTML = `
-            <tr><td colspan="6" style="text-align:center; padding:30px; color:#94a3b8;">
-                <i class="fas fa-plus-circle" style="font-size:24px; display:block; margin-bottom:8px;"></i>
-                No questions found. Click "Add Question" to create one.
-            </td></tr>
-        `;
-        if (table) table.style.display = 'table';
-        if (loading) loading.style.display = 'none';
-        return;
-    }
-
-    let html = '';
-    questions.forEach((q, index) => {
-        const isMcq = q.option_a || q.option_b || q.option_c || q.option_d;
-        const type = isMcq ? 'Multiple Choice' : 'Essay';
-        const correct = q.correct_answer || 'N/A';
-        const questionText = q.question_text.length > 60 ? q.question_text.substring(0, 60) + '...' : q.question_text;
-
-        html += `
-            <tr style="border-bottom: 1px solid #e5e7eb;">
-                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: #94a3b8;">${index + 1}</td>
-                <td style="padding: 8px 12px; color: #1e293b;">${questionText}</td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <span style="padding: 2px 10px; border-radius: 20px; font-size: 10px; font-weight: 600; background: ${isMcq ? '#DBEAFE' : '#FEF3C7'}; color: ${isMcq ? '#1E40AF' : '#92400E'};">
-                        ${type}
-                    </span>
-                </td>
-                <td style="padding: 8px 12px; text-align: center; font-weight: 600;">${q.marks || 1}</td>
-                <td style="padding: 8px 12px; text-align: center; font-weight: 600; color: ${correct !== 'N/A' ? '#059669' : '#94a3b8'};">
-                    ${correct}
-                </td>
-                <td style="padding: 8px 12px; text-align: center;">
-                    <button onclick="window.editQuestion('${q.id}')" style="background: #E0E7FF; color: #3730A3; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px; margin-right: 4px;">
-                        <i class="fas fa-edit"></i> Edit
-                    </button>
-                    <button onclick="window.deleteQuestion('${q.id}')" style="background: #FEE2E2; color: #991B1B; border: none; padding: 4px 12px; border-radius: 4px; cursor: pointer; font-weight: 600; font-size: 11px;">
-                        <i class="fas fa-trash"></i>
-                    </button>
-                </td>
-            </tr>
-        `;
-    });
-
-    tbody.innerHTML = html;
-    if (table) table.style.display = 'table';
-    if (loading) loading.style.display = 'none';
-}
-
-// ============================================================
-// UPDATE QUESTION STATS
-// ============================================================
-function updateQuestionStats(questions) {
-    const container = document.getElementById('questionStats');
-    if (!container) return;
-    
-    const total = questions ? questions.length : 0;
-    const mcqCount = questions ? questions.filter(q => q.option_a || q.option_b || q.option_c || q.option_d).length : 0;
-    const essayCount = total - mcqCount;
-    const totalMarks = questions ? questions.reduce((sum, q) => sum + (q.marks || 1), 0) : 0;
-
-    container.innerHTML = `
-        <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
-            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Total Questions</div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #0A3D62;">${total}</div>
-        </div>
-        <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
-            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Multiple Choice</div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #1E40AF;">${mcqCount}</div>
-        </div>
-        <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
-            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Essay</div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #92400E;">${essayCount}</div>
-        </div>
-        <div style="background: white; border-radius: 10px; padding: 14px 16px; border: 1px solid #e5e7eb; text-align: center;">
-            <div style="font-size: 0.6rem; color: #94a3b8; text-transform: uppercase;">Total Marks</div>
-            <div style="font-size: 1.5rem; font-weight: 700; color: #059669;">${totalMarks}</div>
-        </div>
-    `;
-}
-
-// ============================================================
-// OPEN ADD QUESTION MODAL
-// ============================================================
-function openAddQuestion() {
-    console.log('📝 openAddQuestion called');
-    
-    const examSelect = document.getElementById('questionExamSelect');
-    if (!examSelect || !examSelect.value) {
-        showToast('⚠️ Please select an exam first', 'warning');
-        return;
-    }
-
-    // Reset form
-    document.getElementById('questionModalTitle').textContent = 'Add New Question';
-    document.getElementById('questionId').value = '';
-    document.getElementById('questionExamId').value = examSelect.value;
-    document.getElementById('questionText').value = '';
-    document.getElementById('optionA').value = '';
-    document.getElementById('optionB').value = '';
-    document.getElementById('optionC').value = '';
-    document.getElementById('optionD').value = '';
-    document.getElementById('correctAnswer').value = '';
-    document.getElementById('questionType').value = 'multiple_choice';
-    document.getElementById('questionMarks').value = '1';
-    document.getElementById('maxChars').value = '5000';
-    
-    toggleQuestionType();
-    document.getElementById('questionModal').style.display = 'flex';
-    console.log('✅ Question modal opened');
-}
-
-// ============================================================
-// EDIT QUESTION
-// ============================================================
-async function editQuestion(questionId) {
-    console.log('📝 editQuestion called for:', questionId);
-    try {
-        const { data, error } = await sb
-            .from('exam_questions')
-            .select('*')
-            .eq('id', questionId)
-            .single();
-
-        if (error) throw error;
-
-        document.getElementById('questionModalTitle').textContent = 'Edit Question';
-        document.getElementById('questionId').value = data.id;
-        document.getElementById('questionExamId').value = data.exam_id;
-        document.getElementById('questionType').value = data.question_type || 'multiple_choice';
-        document.getElementById('questionText').value = data.question_text || '';
-        document.getElementById('optionA').value = data.option_a || '';
-        document.getElementById('optionB').value = data.option_b || '';
-        document.getElementById('optionC').value = data.option_c || '';
-        document.getElementById('optionD').value = data.option_d || '';
-        document.getElementById('correctAnswer').value = data.correct_answer || '';
-        document.getElementById('questionMarks').value = data.marks || 1;
-        document.getElementById('maxChars').value = data.max_characters || 5000;
-
-        toggleQuestionType();
-        document.getElementById('questionModal').style.display = 'flex';
-    } catch (error) {
-        console.error('Error loading question:', error);
-        showToast('❌ Error loading question: ' + error.message, 'error');
-    }
-}
-
-// ============================================================
-// TOGGLE QUESTION TYPE
-// ============================================================
-function toggleQuestionType() {
-    const type = document.getElementById('questionType');
-    if (!type) return;
-    
-    const mcqOptions = document.getElementById('mcqOptions');
-    const essayOptions = document.getElementById('essayOptions');
-
-    if (type.value === 'essay') {
-        if (mcqOptions) mcqOptions.style.display = 'none';
-        if (essayOptions) essayOptions.style.display = 'block';
-    } else {
-        if (mcqOptions) mcqOptions.style.display = 'block';
-        if (essayOptions) essayOptions.style.display = 'none';
-    }
-}
-
-// ============================================================
-// SAVE QUESTION - FIXED WITH BETTER ERROR HANDLING
-// ============================================================
-async function saveQuestion() {
-    console.log('📝 saveQuestion called');
-    
-    const id = document.getElementById('questionId')?.value;
-    const examId = parseInt(document.getElementById('questionExamId')?.value);
-    const questionType = document.getElementById('questionType')?.value;
-    const questionText = document.getElementById('questionText')?.value?.trim();
-    const optionA = document.getElementById('optionA')?.value?.trim();
-    const optionB = document.getElementById('optionB')?.value?.trim();
-    const optionC = document.getElementById('optionC')?.value?.trim();
-    const optionD = document.getElementById('optionD')?.value?.trim();
-    const correctAnswer = document.getElementById('correctAnswer')?.value;
-    const marks = parseInt(document.getElementById('questionMarks')?.value) || 1;
-    const maxChars = parseInt(document.getElementById('maxChars')?.value) || 5000;
-
-    console.log('📝 Question data:', { id, examId, questionType, questionText, optionA, optionB, correctAnswer, marks });
-
-    // Validation
-    if (!questionText) {
-        showToast('⚠️ Please enter the question text', 'warning');
-        return;
-    }
-
-    if (questionType === 'multiple_choice') {
-        if (!optionA || !optionB) {
-            showToast('⚠️ Please enter at least options A and B', 'warning');
-            return;
-        }
-        if (!correctAnswer) {
-            showToast('⚠️ Please select the correct answer', 'warning');
-            return;
-        }
-    }
-
-    const questionData = {
-        exam_id: examId,
-        question_type: questionType,
-        question_text: questionText,
-        option_a: optionA || null,
-        option_b: optionB || null,
-        option_c: optionC || null,
-        option_d: optionD || null,
-        correct_answer: correctAnswer || null,
-        marks: marks,
-        max_characters: maxChars,
-        updated_at: new Date().toISOString()
-    };
-
-    try {
-        let result;
-        if (id) {
-            console.log('📝 Updating question:', id);
-            result = await sb
-                .from('exam_questions')
-                .update(questionData)
-                .eq('id', id);
-        } else {
-            console.log('📝 Creating new question');
-            // Get next question number
-            const { data: existing } = await sb
-                .from('exam_questions')
-                .select('question_number')
-                .eq('exam_id', examId)
-                .order('question_number', { ascending: false })
-                .limit(1);
-            
-            const nextNumber = existing && existing.length > 0 ? (existing[0].question_number || 0) + 1 : 1;
-            questionData.question_number = nextNumber;
-            questionData.created_at = new Date().toISOString();
-            
-            result = await sb
-                .from('exam_questions')
-                .insert([questionData]);
-        }
-
-        if (result.error) {
-            console.error('❌ Supabase error:', result.error);
-            throw result.error;
-        }
-
-        console.log('✅ Question saved successfully!');
-        showToast(`✅ Question ${id ? 'updated' : 'created'} successfully!`, 'success');
-        
-        // Close modal
-        closeQuestionModal();
-        
-        // Reload questions
-        await loadQuestionsForExam();
-        
-        // Update badge
-        const badge = document.getElementById('questionBankBadge');
-        if (badge) badge.textContent = currentQuestions.length;
-        
-    } catch (error) {
-        console.error('❌ Error saving question:', error);
-        showToast('❌ Error saving question: ' + error.message, 'error');
-    }
-}
-
-// ============================================================
-// DELETE QUESTION
-// ============================================================
-async function deleteQuestion(questionId) {
-    console.log('🗑️ deleteQuestion called for:', questionId);
-    if (!confirm('Are you sure you want to delete this question?')) return;
-
-    try {
-        const { error } = await sb
-            .from('exam_questions')
-            .delete()
-            .eq('id', questionId);
-            
-        if (error) throw error;
-
-        showToast('✅ Question deleted successfully!', 'success');
-        await loadQuestionsForExam();
-        
-        const badge = document.getElementById('questionBankBadge');
-        if (badge) badge.textContent = currentQuestions.length;
-    } catch (error) {
-        console.error('Error deleting question:', error);
-        showToast('❌ Error deleting question: ' + error.message, 'error');
-    }
-}
-
-// ============================================================
-// CLOSE QUESTION MODAL
-// ============================================================
-function closeQuestionModal() {
-    const modal = document.getElementById('questionModal');
-    if (modal) modal.style.display = 'none';
-    console.log('📝 Question modal closed');
-}
-
-// ============================================================
-// REFRESH QUESTIONS
-// ============================================================
-function refreshQuestions() {
-    console.log('🔄 Refreshing questions...');
-    loadExamsForQuestions();
-    showToast('🔄 Refreshing questions...', 'info');
-}
-
-// ============================================================
-// ✅ EXPOSE QUESTION BANK FUNCTIONS GLOBALLY
-// ============================================================
-window.loadExamsForQuestions = loadExamsForQuestions;
-window.loadQuestionsForExam = loadQuestionsForExam;
-window.renderQuestionsTable = renderQuestionsTable;
-window.updateQuestionStats = updateQuestionStats;
-window.openAddQuestion = openAddQuestion;
-window.editQuestion = editQuestion;
-window.toggleQuestionType = toggleQuestionType;
-window.saveQuestion = saveQuestion;
-window.deleteQuestion = deleteQuestion;
-window.closeQuestionModal = closeQuestionModal;
-window.refreshQuestions = refreshQuestions;
-
-console.log('✅ Question Bank functions exposed to window!');
+window.downloadAllVideos = downloadAllVideos;          
 })();
