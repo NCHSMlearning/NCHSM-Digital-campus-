@@ -1,0 +1,688 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>NCHSM 20th Graduation - Certificate Verification</title>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <!-- Font Awesome 6 (Free) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+
+    <style>
+        /* ----------------------------------------------
+            RESET & BASE
+        ------------------------------------------------ */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: #f0f4f8;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            background-image: radial-gradient(circle at 10% 20%, rgba(10, 61, 98, 0.03) 0%, transparent 50%),
+                              radial-gradient(circle at 90% 80%, rgba(253, 185, 19, 0.05) 0%, transparent 50%);
+        }
+
+        /* ----------------------------------------------
+            MAIN CARD
+        ------------------------------------------------ */
+        .container {
+            max-width: 720px;
+            width: 100%;
+            background: #ffffff;
+            border-radius: 28px;
+            padding: 40px 40px 32px;
+            box-shadow: 0 25px 60px rgba(10, 61, 98, 0.12), 0 8px 24px rgba(0, 0, 0, 0.04);
+            transition: all 0.2s;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            backdrop-filter: blur(2px);
+            position: relative;
+            overflow: hidden;
+        }
+
+        /* subtle accent line */
+        .container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #0A3D62, #FDB913, #0A3D62);
+            background-size: 200% 100%;
+            animation: shimmer 4s ease-in-out infinite;
+        }
+
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        /* ----------------------------------------------
+            HEADER
+        ------------------------------------------------ */
+        .header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding-bottom: 22px;
+            margin-bottom: 28px;
+            border-bottom: 2px solid #f1f5f9;
+            flex-wrap: wrap;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 48px;
+            height: 48px;
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 22px;
+            font-weight: 800;
+            color: #FDB913;
+            box-shadow: 0 4px 12px rgba(10, 61, 98, 0.2);
+        }
+
+        .logo-text {
+            font-size: 24px;
+            font-weight: 800;
+            color: #0A3D62;
+            letter-spacing: -0.5px;
+            line-height: 1.1;
+        }
+
+        .logo-text span {
+            color: #FDB913;
+        }
+
+        .logo-sub {
+            font-size: 11px;
+            font-weight: 500;
+            color: #64748b;
+            letter-spacing: 0.3px;
+            margin-top: 1px;
+        }
+
+        .badge {
+            margin-left: auto;
+            background: linear-gradient(135deg, #0A3D62, #1a5a7a);
+            color: #ffffff;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+            box-shadow: 0 2px 8px rgba(10, 61, 98, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge i {
+            color: #FDB913;
+            font-size: 10px;
+        }
+
+        /* ----------------------------------------------
+            STATUS / CONTENT AREA
+        ------------------------------------------------ */
+        #content {
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* ---- LOADING ---- */
+        .loading-state {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 30px 0;
+            text-align: center;
+        }
+
+        .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid #e5e7eb;
+            border-top: 4px solid #0A3D62;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin-bottom: 18px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            font-size: 15px;
+            font-weight: 500;
+            color: #64748b;
+        }
+
+        .loading-text i {
+            color: #FDB913;
+            margin-right: 6px;
+        }
+
+        /* ---- RESULT CARDS ---- */
+        .result-card {
+            padding: 24px 28px;
+            border-radius: 16px;
+            animation: fadeSlideUp 0.4s ease;
+        }
+
+        @keyframes fadeSlideUp {
+            from { opacity: 0; transform: translateY(12px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-valid {
+            background: #f0fdf4;
+            border-left: 5px solid #10b981;
+        }
+
+        .result-invalid {
+            background: #fef2f2;
+            border-left: 5px solid #dc2626;
+        }
+
+        .result-error {
+            background: #fffbeb;
+            border-left: 5px solid #f59e0b;
+        }
+
+        .result-title {
+            font-size: 22px;
+            font-weight: 700;
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .result-title.valid { color: #065f46; }
+        .result-title.invalid { color: #991b1b; }
+        .result-title.error { color: #92400e; }
+
+        .result-title i {
+            font-size: 24px;
+        }
+
+        /* ---- DETAIL ROWS ---- */
+        .detail-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            margin: 8px 0 4px;
+        }
+
+        .detail-row {
+            display: flex;
+            padding: 8px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.04);
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            font-weight: 600;
+            color: #475569;
+            width: 140px;
+            flex-shrink: 0;
+            font-size: 14px;
+        }
+
+        .detail-value {
+            color: #0A3D62;
+            font-weight: 500;
+            font-size: 14px;
+            word-break: break-word;
+        }
+
+        .detail-value.highlight {
+            font-weight: 700;
+            color: #0A3D62;
+        }
+
+        /* ---- VERIFICATION BADGE ---- */
+        .verification-badge {
+            margin-top: 18px;
+            padding: 12px 16px;
+            border-radius: 10px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .verification-badge.success {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .verification-badge.fail {
+            background: #fecaca;
+            color: #991b1b;
+        }
+
+        .verification-badge i {
+            font-size: 16px;
+        }
+
+        /* ---- ERROR MESSAGE ---- */
+        .error-message {
+            margin-top: 12px;
+            padding: 12px 16px;
+            background: #f8fafc;
+            border-radius: 8px;
+            font-size: 13px;
+            color: #64748b;
+            border: 1px solid #e5e7eb;
+            word-break: break-all;
+        }
+
+        .error-message strong {
+            color: #dc2626;
+        }
+
+        /* ---- INVALID LIST ---- */
+        .invalid-list {
+            color: #64748b;
+            font-size: 14px;
+            margin: 8px 0 0 20px;
+            line-height: 1.7;
+        }
+
+        /* ----------------------------------------------
+            FOOTER
+        ------------------------------------------------ */
+        .footer {
+            margin-top: 32px;
+            padding-top: 20px;
+            border-top: 2px solid #f1f5f9;
+            text-align: center;
+            font-size: 13px;
+            color: #94a3b8;
+            line-height: 1.6;
+        }
+
+        .footer a {
+            color: #0A3D62;
+            text-decoration: none;
+            font-weight: 600;
+            transition: color 0.2s;
+        }
+
+        .footer a:hover {
+            color: #FDB913;
+        }
+
+        .footer .divider {
+            display: inline-block;
+            margin: 0 6px;
+            color: #d1d5db;
+        }
+
+        .footer .grad-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background: #f8fafc;
+            padding: 3px 14px;
+            border-radius: 30px;
+            font-size: 11px;
+            font-weight: 700;
+            color: #0A3D62;
+            border: 1px solid #e5e7eb;
+            margin-top: 6px;
+        }
+
+        .footer .grad-badge i {
+            color: #FDB913;
+        }
+
+        /* ----------------------------------------------
+            RESPONSIVE
+        ------------------------------------------------ */
+        @media (max-width: 600px) {
+            .container {
+                padding: 24px 20px 20px;
+                border-radius: 20px;
+            }
+
+            .header {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 12px;
+            }
+
+            .logo {
+                justify-content: center;
+            }
+
+            .badge {
+                margin-left: 0;
+                justify-content: center;
+                padding: 5px 14px;
+                font-size: 11px;
+            }
+
+            .logo-text {
+                font-size: 20px;
+            }
+
+            .logo-icon {
+                width: 40px;
+                height: 40px;
+                font-size: 18px;
+            }
+
+            .result-title {
+                font-size: 18px;
+            }
+
+            .detail-row {
+                flex-direction: column;
+                gap: 2px;
+                padding: 6px 0;
+            }
+
+            .detail-label {
+                width: 100%;
+                font-size: 12px;
+                color: #64748b;
+            }
+
+            .detail-value {
+                font-size: 14px;
+            }
+
+            .result-card {
+                padding: 16px 18px;
+            }
+
+            .footer {
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 400px) {
+            .container {
+                padding: 16px 14px 16px;
+            }
+
+            .logo-text {
+                font-size: 17px;
+            }
+
+            .badge {
+                font-size: 10px;
+                padding: 4px 12px;
+            }
+
+            .result-title {
+                font-size: 16px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- ============================================
+    HEADER
+    ============================================ -->
+    <div class="header">
+        <div class="logo">
+            <div class="logo-icon">N</div>
+            <div>
+                <div class="logo-text">NCHSM <span>🎓</span></div>
+                <div class="logo-sub">National College of Health Sciences &amp; Management</div>
+            </div>
+        </div>
+        <div class="badge">
+            <i class="fas fa-certificate"></i> 20<sup>th</sup> Graduation
+        </div>
+    </div>
+
+    <!-- ============================================
+    CONTENT
+    ============================================ -->
+    <div id="content">
+
+        <!-- LOADING STATE (visible by default) -->
+        <div id="loadingState" class="loading-state">
+            <div class="spinner"></div>
+            <div class="loading-text">
+                <i class="fas fa-spinner fa-spin"></i> Verifying certificate...
+            </div>
+        </div>
+
+        <!-- RESULT STATE (hidden by default) -->
+        <div id="resultState" style="display: none;"></div>
+
+    </div>
+
+    <!-- ============================================
+    FOOTER
+    ============================================ -->
+    <div class="footer">
+        <div>
+            © 2025 <a href="https://nchsm.co.ke" target="_blank">NCHSM</a>
+            <span class="divider">|</span>
+            All rights reserved
+        </div>
+        <div style="margin-top: 4px; font-size: 12px; color: #cbd5e1;">
+            <i class="fas fa-shield-alt" style="margin-right: 4px;"></i>
+            Digitally verified certificate
+        </div>
+        <div class="grad-badge">
+            <i class="fas fa-graduation-cap"></i> 20<sup>th</sup> Graduation Ceremony
+        </div>
+    </div>
+
+</div>
+
+<!-- ============================================
+JAVASCRIPT
+============================================ -->
+<script>
+    (function() {
+        'use strict';
+
+        // ============================================================
+        // 🔥 CONFIGURATION – UPDATE THIS WITH YOUR APPS SCRIPT URL
+        // ============================================================
+        const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec';
+
+        // DOM refs
+        const loadingState = document.getElementById('loadingState');
+        const resultState = document.getElementById('resultState');
+
+        // ============================================================
+        // GET CERTIFICATE ID FROM URL
+        // ============================================================
+        const urlParams = new URLSearchParams(window.location.search);
+        const certificateId = urlParams.get('id');
+
+        // ============================================================
+        // MAIN LOGIC
+        // ============================================================
+        if (!certificateId) {
+            // No ID provided – show error
+            loadingState.style.display = 'none';
+            resultState.style.display = 'block';
+            resultState.innerHTML = `
+                <div class="result-card result-invalid">
+                    <div class="result-title invalid">
+                        <i class="fas fa-exclamation-triangle"></i> No Certificate ID
+                    </div>
+                    <p style="color: #64748b; margin-bottom: 4px;">
+                        Please scan the QR code on your certificate.
+                    </p>
+                    <p style="color: #94a3b8; font-size: 14px; margin-top: 8px;">
+                        If you reached this page via a link, please contact the NCHSM administration.
+                    </p>
+                </div>
+            `;
+            return;
+        }
+
+        // We have an ID – verify it
+        verifyCertificate(certificateId);
+
+        // ============================================================
+        // VERIFY FUNCTION
+        // ============================================================
+        function verifyCertificate(id) {
+            const url = APPS_SCRIPT_URL + '?action=verify&id=' + encodeURIComponent(id);
+
+            fetch(url)
+                .then(function(response) {
+                    if (!response.ok) {
+                        throw new Error('Server responded with status ' + response.status);
+                    }
+                    return response.json();
+                })
+                .then(function(data) {
+                    // Hide loading
+                    loadingState.style.display = 'none';
+                    resultState.style.display = 'block';
+
+                    if (data.valid === true) {
+                        // --- SUCCESS ---
+                        resultState.innerHTML = `
+                            <div class="result-card result-valid">
+                                <div class="result-title valid">
+                                    <i class="fas fa-check-circle"></i> Certificate Verified
+                                </div>
+                                <div class="detail-grid">
+                                    <div class="detail-row">
+                                        <span class="detail-label">Student Name</span>
+                                        <span class="detail-value">${escapeHtml(data.student_name) || 'N/A'}</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">Registration No</span>
+                                        <span class="detail-value">${escapeHtml(data.registration_no) || 'N/A'}</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">Programme</span>
+                                        <span class="detail-value">${escapeHtml(data.programme) || 'N/A'}</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">Level</span>
+                                        <span class="detail-value">${escapeHtml(data.level) || 'N/A'}</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">Certificate No</span>
+                                        <span class="detail-value highlight">${escapeHtml(data.certificate_no) || escapeHtml(id)}</span>
+                                    </div>
+                                    <div class="detail-row">
+                                        <span class="detail-label">Date Issued</span>
+                                        <span class="detail-value">${escapeHtml(data.date_issued) || 'N/A'}</span>
+                                    </div>
+                                </div>
+                                <div class="verification-badge success">
+                                    <i class="fas fa-shield-alt"></i>
+                                    This is a valid certificate issued by NCHSM
+                                </div>
+                            </div>
+                        `;
+                    } else {
+                        // --- INVALID ---
+                        const msg = data.message || 'Certificate not found in our records.';
+                        resultState.innerHTML = `
+                            <div class="result-card result-invalid">
+                                <div class="result-title invalid">
+                                    <i class="fas fa-times-circle"></i> Invalid Certificate
+                                </div>
+                                <p style="color: #64748b;">
+                                    Certificate <strong>${escapeHtml(id)}</strong> could not be verified.
+                                </p>
+                                <p style="color: #64748b; margin-top: 8px; font-size: 14px;">
+                                    Possible reasons:
+                                </p>
+                                <ul class="invalid-list">
+                                    <li>The certificate number does not exist in our records</li>
+                                    <li>The certificate has been revoked or is expired</li>
+                                    <li>There was an error in the verification process</li>
+                                </ul>
+                                <p style="color: #64748b; margin-top: 12px; font-size: 14px;">
+                                    Please contact NCHSM administration for assistance.
+                                </p>
+                                ${data.error ? `<div class="error-message"><strong>Error:</strong> ${escapeHtml(data.error)}</div>` : ''}
+                            </div>
+                        `;
+                    }
+                })
+                .catch(function(error) {
+                    // --- FETCH ERROR ---
+                    loadingState.style.display = 'none';
+                    resultState.style.display = 'block';
+                    resultState.innerHTML = `
+                        <div class="result-card result-error">
+                            <div class="result-title error">
+                                <i class="fas fa-exclamation-circle"></i> Verification Error
+                            </div>
+                            <p style="color: #64748b;">
+                                Could not verify the certificate due to a system error.
+                            </p>
+                            <p style="color: #64748b; margin-top: 8px; font-size: 14px;">
+                                Please try again later or contact NCHSM administration.
+                            </p>
+                            <div class="error-message">
+                                <strong>Error:</strong> ${escapeHtml(error.message)}
+                            </div>
+                        </div>
+                    `;
+                });
+        }
+
+        // ============================================================
+        // HELPER: Escape HTML to prevent XSS
+        // ============================================================
+        function escapeHtml(str) {
+            if (!str) return '';
+            const map = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#039;'
+            };
+            return String(str).replace(/[&<>"']/g, function(m) { return map[m]; });
+        }
+
+    })();
+</script>
+
+</body>
+</html>
