@@ -6948,45 +6948,48 @@
 <div class="toast" id="toast" style="display: none; position: fixed; bottom: 30px; right: 30px; z-index: 99999; background: #1e293b; color: white; padding: 16px 24px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 400px; font-size: 14px; border-left: 4px solid #4C1D95; transform: translateY(100px); opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);"></div>
 
 
-<style id="footer-layout-fix">
-/* Footer layout: keep the footer in normal document flow.
-   It must NOT be fixed to the viewport or pushed with flex auto-margin.
-   Short pages can end near the viewport bottom; long pages naturally push
-   the footer below the content and require scrolling. */
-.main#main-content {
-    min-height: calc(100vh - 80px);
-    display: block;
-}
 
-.main#main-content > .app-footer {
+
+<style id="footer-layout-fix-v2">
+/* Proper portal shell: header + content container + normal-flow footer. */
+#app-content {
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+}
+#app-content > .container {
+    flex: 1 0 auto;
+    min-height: 0;
+    display: flex;
+    align-items: stretch;
+}
+#app-content > .container > #main-content {
+    min-width: 0;
+    flex: 1 1 auto;
+}
+#app-content > .app-footer {
+    flex: 0 0 auto;
     position: static !important;
+    margin-top: 40px;
     width: 100%;
     box-sizing: border-box;
-    margin-top: 40px !important;
-    flex: none !important;
-    flex-shrink: 0 !important;
 }
-
-/* During authentication/initialization, hide the footer visually so it
-   cannot flash above the dashboard. It still remains in normal flow. */
-body:not(.app-ready) .main#main-content > .app-footer {
+/* Keep the footer hidden until authentication/application initialization is complete. */
+body:not(.app-ready) #app-content > .app-footer {
     visibility: hidden;
 }
-
-body.app-ready .main#main-content > .app-footer {
+body.app-ready #app-content > .app-footer {
     visibility: visible;
 }
-
 @media (max-width: 768px) {
-    .main#main-content {
-        min-height: calc(100vh - 64px);
-    }
-
-    .main#main-content > .app-footer {
-        margin-top: 30px !important;
+    #app-content > .app-footer {
+        margin-top: 28px;
     }
 }
 </style>
+
+</main>
+        </div><!-- /.container -->
 
 <!-- ========== FOOTER - MATCHING SUPER ADMIN ========== -->
 <footer class="app-footer" style="background: #0A3D62; color: rgba(255,255,255,0.9); margin-left: 0; padding: 40px 40px 20px 40px; border-top: 3px solid #FDB913; margin-top: 40px;">
