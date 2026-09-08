@@ -6957,19 +6957,38 @@
     display: flex;
     flex-direction: column;
 }
+
+/* FINAL DESKTOP SHELL: one sidebar column + one content column. */
 #app-content > .container {
     flex: 1 0 auto;
     min-height: 0;
-    display: flex;
+    display: grid !important;
+    grid-template-columns: 260px minmax(0, 1fr);
     align-items: stretch;
-}
-#app-content > .container > #main-content {
-    min-width: 0;
-    flex: 1 1 auto;
+    width: 100%;
+    max-width: none;
+    margin: 0;
 }
 
-/* Desktop: keep the sidebar in normal page flow while allowing it to stay visible during scrolling.
-   Do not give it a fixed viewport height; that prevents it from visually extending over the footer. */
+#app-content > .container > #sidebar {
+    grid-column: 1;
+    grid-row: 1;
+    width: 260px !important;
+    min-width: 0;
+    box-sizing: border-box;
+}
+
+#app-content > .container > #main-content {
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+    width: auto !important;
+    max-width: none !important;
+    margin-left: 0 !important;
+    box-sizing: border-box;
+}
+
+/* Keep the sidebar visible while scrolling, but never over the footer. */
 @media (min-width: 769px) {
     #app-content > .container > #sidebar {
         position: sticky !important;
@@ -6982,6 +7001,28 @@
         z-index: 100;
     }
 }
+
+/* Mobile/tablet: single-column document flow. */
+@media (max-width: 768px) {
+    #app-content > .container {
+        display: block !important;
+        width: 100%;
+        max-width: none;
+    }
+
+    #app-content > .container > #sidebar {
+        width: 100% !important;
+        max-height: none;
+        position: static !important;
+        overflow: visible;
+    }
+
+    #app-content > .container > #main-content {
+        width: 100% !important;
+        margin-left: 0 !important;
+    }
+}
+
 #app-content > .app-footer {
     flex: 0 0 auto;
     position: static !important;
@@ -6989,6 +7030,7 @@
     width: 100%;
     box-sizing: border-box;
 }
+
 @media (max-width: 768px) {
     #app-content > .app-footer {
         margin-top: 28px;
