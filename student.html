@@ -6986,6 +6986,66 @@
 
 
 
+
+<style id="sidebar-alignment-final-v6">
+/* ============================================================
+   NCHSM SIDEBAR ALIGNMENT FIX v6
+   - Removes the unwanted empty space above the sidebar.
+   - Aligns sidebar top with the main content.
+   - Keeps the sidebar sticky only while scrolling.
+   - Preserves the organized sidebar header/search/nav/footer.
+   ============================================================ */
+
+#app-content > .container {
+    align-items: start !important;
+}
+
+/* The sidebar must begin exactly where the main content column begins. */
+#app-content > .container > #sidebar {
+    margin-top: 0 !important;
+    padding-top: 0 !important;
+    align-self: start !important;
+    transform: none !important;
+}
+
+/* Desktop/tablet landscape */
+@media (min-width: 769px) {
+    #app-content > .container > #sidebar {
+        position: sticky !important;
+        top: 57px !important;
+        margin-top: 0 !important;
+        height: calc(100vh - 57px) !important;
+        max-height: calc(100vh - 57px) !important;
+        align-self: start !important;
+        overflow: hidden !important;
+        z-index: 100 !important;
+    }
+
+    #app-content > .container > #main-content {
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        align-self: start !important;
+    }
+
+    .sidebar-premium {
+        margin-top: 0 !important;
+    }
+}
+
+/* Keep mobile behavior unchanged and prevent the desktop sticky rules
+   from creating spacing on small screens. */
+@media (max-width: 768px) {
+    #app-content > .container > #sidebar {
+        position: static !important;
+        height: auto !important;
+        max-height: none !important;
+        margin-top: 0 !important;
+        padding-top: 0 !important;
+        overflow: visible !important;
+    }
+}
+</style>
+
 <style id="footer-layout-fix-v2">
 /* Proper portal shell: header + content container + normal-flow footer. */
 #app-content {
@@ -7195,6 +7255,22 @@
             </div>
         </div>
     </div>
+
+        <div class="nchsm-footer-social" aria-label="Official social media">
+            <a href="https://www.facebook.com/people/Matoka-HealthTech-Software-Solutions/61584687137047/"
+               target="_blank" rel="noopener noreferrer"
+               aria-label="Matoka HealthTech Software Solutions on Facebook"
+               title="Facebook">
+                <i class="fab fa-facebook-f" aria-hidden="true"></i>
+            </a>
+            <a href="https://campusnexus.co.ke/"
+               target="_blank" rel="noopener noreferrer"
+               aria-label="CampusNexus official website"
+               title="CampusNexus">
+                <i class="fas fa-globe" aria-hidden="true"></i>
+            </a>
+        </div>
+
 </footer>
 
 <!-- TRANSCRIPT MODAL -->
@@ -8114,6 +8190,346 @@ window.addEventListener('appinstalled', () => {
     });
 })();
 </script>
+
+
+<!-- Clean URL helper: hides .html from the browser address bar without reloading the page. -->
+<script>
+(function () {
+    'use strict';
+
+    try {
+        var path = window.location.pathname;
+
+        // Only rewrite actual .html URLs. Preserve query strings and hashes.
+        if (/\.html$/i.test(path)) {
+            var cleanPath = path.replace(/\.html$/i, '') || '/';
+            window.history.replaceState(
+                { cleanUrl: true },
+                document.title,
+                cleanPath + window.location.search + window.location.hash
+            );
+            console.log('✅ Clean URL applied:', cleanPath);
+        }
+    } catch (error) {
+        console.warn('⚠️ Clean URL helper could not update the address bar:', error);
+    }
+})();
+</script>
+
+
+<style id="sidebar-footer-buttons-final-v7">
+/* ============================================================
+   NCHSM SIDEBAR FOOTER BUTTONS — FINAL
+   Refresh • Theme • Logout
+   ============================================================ */
+
+.sidebar-footer-premium .footer-actions {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 8px !important;
+}
+
+.sidebar-footer-premium .footer-btn {
+    position: relative !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 34px !important;
+    height: 32px !important;
+    min-width: 34px !important;
+    padding: 0 !important;
+    border: 1px solid rgba(255,255,255,.12) !important;
+    border-radius: 9px !important;
+    background: rgba(255,255,255,.06) !important;
+    color: rgba(255,255,255,.78) !important;
+    cursor: pointer !important;
+    transition: transform .18s ease, background .18s ease, color .18s ease !important;
+}
+
+.sidebar-footer-premium .footer-btn:hover {
+    background: rgba(255,255,255,.14) !important;
+    color: #fff !important;
+    transform: translateY(-1px) !important;
+}
+
+.sidebar-footer-premium .footer-btn:active {
+    transform: translateY(0) scale(.96) !important;
+}
+
+.sidebar-footer-premium .footer-btn:disabled {
+    opacity: .55 !important;
+    cursor: wait !important;
+    transform: none !important;
+}
+
+.sidebar-footer-premium .footer-btn.is-loading i {
+    animation: nchsmSidebarSpin .8s linear infinite !important;
+}
+
+@keyframes nchsmSidebarSpin {
+    to { transform: rotate(360deg); }
+}
+
+.sidebar-footer-premium .footer-version {
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 5px !important;
+    margin-top: 7px !important;
+}
+</style>
+
+<script id="sidebar-footer-buttons-controller-v7">
+(function () {
+    'use strict';
+
+    function getRealSupabaseClient() {
+        const candidates = [
+            window.sb,
+            window.supabaseClient,
+            window.db && window.db.supabase,
+            window.NCHSMLogin && window.NCHSMLogin.supabase
+        ];
+
+        return candidates.find(client =>
+            client &&
+            typeof client.from === 'function' &&
+            client.auth &&
+            typeof client.auth.getSession === 'function'
+        ) || null;
+    }
+
+    function getDashboardModule() {
+        return window.dashboardModule ||
+               window.dashboard ||
+               window.DashboardModuleInstance ||
+               null;
+    }
+
+    function refreshDashboard(button) {
+        if (button.disabled) return;
+
+        button.disabled = true;
+        button.classList.add('is-loading');
+
+        try {
+            const dashboard = getDashboardModule();
+
+            if (dashboard && typeof dashboard.refreshAll === 'function') {
+                Promise.resolve(dashboard.refreshAll())
+                    .catch(error => {
+                        console.error('❌ Sidebar dashboard refresh failed:', error);
+                    })
+                    .finally(() => {
+                        button.disabled = false;
+                        button.classList.remove('is-loading');
+                    });
+                return;
+            }
+
+            // Fallback: reload the current page if the dashboard module
+            // has not exposed itself yet.
+            window.location.reload();
+        } catch (error) {
+            console.error('❌ Sidebar refresh error:', error);
+            button.disabled = false;
+            button.classList.remove('is-loading');
+        }
+    }
+
+    function toggleTheme(button) {
+        try {
+            const current = document.body.getAttribute('data-theme') ||
+                localStorage.getItem('nchsm_theme') ||
+                'purple';
+
+            // Existing portal theme system uses setTheme().
+            if (typeof window.setTheme === 'function') {
+                const next = current === 'dark' ? 'purple' : 'dark';
+                window.setTheme(next);
+            } else {
+                const next = current === 'dark' ? 'purple' : 'dark';
+                document.body.setAttribute('data-theme', next);
+                localStorage.setItem('nchsm_theme', next);
+            }
+
+            const icon = button.querySelector('i');
+            if (icon) {
+                const activeTheme = document.body.getAttribute('data-theme');
+                icon.className = activeTheme === 'dark'
+                    ? 'fas fa-sun'
+                    : 'fas fa-moon';
+                icon.setAttribute('aria-hidden', 'true');
+            }
+        } catch (error) {
+            console.error('❌ Theme toggle error:', error);
+        }
+    }
+
+    async function logout(button) {
+        if (button.disabled) return;
+
+        const confirmed = window.Swal
+            ? await Swal.fire({
+                title: 'Log out?',
+                text: 'You will be signed out of the NCHSM Student Portal.',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Log Out',
+                cancelButtonText: 'Cancel',
+                reverseButtons: true
+            }).then(result => result.isConfirmed)
+            : window.confirm('Are you sure you want to log out?');
+
+        if (!confirmed) return;
+
+        button.disabled = true;
+
+        try {
+            const client = getRealSupabaseClient();
+
+            if (client) {
+                const { error } = await client.auth.signOut();
+                if (error) throw error;
+            } else if (window.db && typeof window.db.logout === 'function') {
+                await window.db.logout();
+            } else {
+                throw new Error('Authentication client is unavailable.');
+            }
+
+            // Clear only portal-local transient state.
+            try {
+                localStorage.removeItem('nchsm_session');
+                localStorage.removeItem('dashboard_cache');
+            } catch (_) {}
+
+            window.location.href = '/login';
+        } catch (error) {
+            console.error('❌ Logout failed:', error);
+            button.disabled = false;
+
+            if (window.Swal) {
+                Swal.fire({
+                    title: 'Logout failed',
+                    text: error.message || 'Unable to sign out. Please try again.',
+                    icon: 'error'
+                });
+            } else {
+                alert('Logout failed: ' + (error.message || 'Please try again.'));
+            }
+        }
+    }
+
+    function bindButtons() {
+        const refresh = document.getElementById('sidebarRefreshBtn');
+        const theme = document.getElementById('sidebarThemeBtn');
+        const logoutBtn = document.getElementById('sidebarLogoutBtn');
+
+        if (!refresh || !theme || !logoutBtn) {
+            return false;
+        }
+
+        // Prevent duplicate listeners if this initializer runs more than once.
+        if (!refresh.dataset.bound) {
+            refresh.dataset.bound = 'true';
+            refresh.addEventListener('click', () => refreshDashboard(refresh));
+        }
+
+        if (!theme.dataset.bound) {
+            theme.dataset.bound = 'true';
+            theme.addEventListener('click', () => toggleTheme(theme));
+        }
+
+        if (!logoutBtn.dataset.bound) {
+            logoutBtn.dataset.bound = 'true';
+            logoutBtn.addEventListener('click', () => logout(logoutBtn));
+        }
+
+        // Set the correct initial theme icon.
+        const activeTheme =
+            document.body.getAttribute('data-theme') ||
+            localStorage.getItem('nchsm_theme') ||
+            'purple';
+
+        const icon = theme.querySelector('i');
+        if (icon) {
+            icon.className = activeTheme === 'dark'
+                ? 'fas fa-sun'
+                : 'fas fa-moon';
+            icon.setAttribute('aria-hidden', 'true');
+        }
+
+        console.log('✅ Sidebar footer buttons ready: Refresh • Theme • Logout');
+        return true;
+    }
+
+    function initialize() {
+        if (bindButtons()) return;
+
+        // The sidebar can be rendered after the initial DOM load.
+        const observer = new MutationObserver(() => {
+            if (bindButtons()) observer.disconnect();
+        });
+
+        observer.observe(document.body, {
+            childList: true,
+            subtree: true
+        });
+
+        setTimeout(() => observer.disconnect(), 15000);
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', initialize, { once: true });
+    } else {
+        initialize();
+    }
+
+    document.addEventListener('appReady', bindButtons);
+})();
+</script>
+
+
+<style id="official-footer-links-final-v8">
+/* ============================================================
+   OFFICIAL FOOTER LINKS — NCHSM / CAMPUSNEXUS
+   ============================================================ */
+.app-footer .nchsm-footer-social {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    margin-top: 14px;
+}
+
+.app-footer .nchsm-footer-social a {
+    width: 36px;
+    height: 36px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    text-decoration: none;
+    color: rgba(255,255,255,.92);
+    background: rgba(255,255,255,.10);
+    border: 1px solid rgba(255,255,255,.16);
+    transition: transform .18s ease, background .18s ease;
+}
+
+.app-footer .nchsm-footer-social a:hover {
+    transform: translateY(-2px);
+    background: rgba(255,255,255,.20);
+}
+
+.app-footer a[href*="facebook.com"] {
+    text-decoration: none;
+}
+
+.app-footer a[href*="campusnexus.co.ke"] {
+    text-decoration: none;
+}
+</style>
 
 </body>
 </html>
