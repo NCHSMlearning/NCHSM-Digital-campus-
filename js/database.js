@@ -39,13 +39,54 @@ class Database {
                     throw new Error('Supabase configuration is missing. Check config.js.');
                 }
 
-                // Reuse an already-created client whenever possible.
-                if (window.NCHSMLogin?.supabase) {
+                // Reuse the READY client created by config.js first.
+                // config.js exposes the real Supabase client as window.sb.
+                if (
+                    window.sb &&
+                    typeof window.sb.from === 'function' &&
+                    window.sb.auth &&
+                    typeof window.sb.auth.getSession === 'function'
+                ) {
+                    this.supabase = window.sb;
+
+                    console.log(
+                        '✅ Database: Using Supabase client from window.sb'
+                    );
+
+                } else if (
+                    window.NCHSMLogin?.supabase &&
+                    typeof window.NCHSMLogin.supabase.from === 'function'
+                ) {
                     this.supabase = window.NCHSMLogin.supabase;
-                } else if (window.db?.supabase && window.db !== this) {
+
+                    console.log(
+                        '✅ Database: Using existing Supabase connection from login'
+                    );
+
+                } else if (
+                    window.db?.supabase &&
+                    window.db !== this &&
+                    typeof window.db.supabase.from === 'function'
+                ) {
                     this.supabase = window.db.supabase;
-                } else if (window.supabase) {
+
+                    console.log(
+                        '✅ Database: Using existing Supabase connection from db'
+                    );
+
+                } else if (
+                    window.supabase &&
+                    typeof window.supabase.from === 'function'
+                ) {
+                    // Only use window.supabase when it is the actual client.
+                    // The Supabase CDN normally exposes a namespace there,
+                    // which has createClient() but not from().
                     this.supabase = window.supabase;
+
+                    console.log(
+                        '✅ Database: Using global Supabase client'
+                    );
+
                 } else {
                     if (!window.supabaseClient && typeof supabase === 'undefined') {
                         throw new Error('Supabase library is not available.');
@@ -71,6 +112,9 @@ class Database {
                 if (!this.supabase?.auth) {
                     throw new Error('Supabase authentication client is unavailable.');
                 }
+
+                // Stable alias for the actual client.
+                window.supabaseClient = this.supabase;
 
                 await this.testConnection();
                 this.isInitialized = true;
@@ -1732,7 +1776,7 @@ window.initDatabase = async function() {
 function showGitHubSecretsHelp() {
     const helpText = `
 # GitHub Secrets Configuration
- 
+
 ## Required Secrets:
 1. SUPABASE_URL - Your Supabase project URL
    Example: https://lwhtjozfsmbyihenfunw.supabase.co
