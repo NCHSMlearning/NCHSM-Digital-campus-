@@ -15,6 +15,7 @@ class Database {
             failedUnits: []
         };
         this.isInitialized = false;
+        this.initializationPromise = null;
         this.profileModule = null;
         this.connectionCount = 0;
         this.lastConnectionTime = null;
@@ -22,82 +23,74 @@ class Database {
 
     // Initialize database connection with GitHub Secrets
     async initialize() {
-        if (this.isInitialized) {
-            console.log('✅ Database already initialized');
+        if (this.isInitialized && this.supabase) {
             return this.supabase;
         }
 
-        try {
-            console.log('🚀 Initializing database connection...');
+        if (this.initializationPromise) {
+            return this.initializationPromise;
+        }
 
-            // 1. Check if configuration is loaded
-            if (!window.APP_CONFIG) {
-                throw new Error('Configuration not loaded. config.js must be loaded before database.js');
-            }
+        this.initializationPromise = (async () => {
+            try {
+                const config = window.APP_CONFIG;
 
-            // 2. Validate configuration
-            if (!window.APP_CONFIG.SUPABASE_URL || !window.APP_CONFIG.SUPABASE_ANON_KEY) {
-                throw new Error('Missing Supabase credentials in configuration');
-            }
+                if (!config?.SUPABASE_URL || !config?.SUPABASE_ANON_KEY) {
+                    throw new Error('Supabase configuration is missing. Check config.js.');
+                }
 
-            console.log('🔧 Using Supabase project:', window.APP_CONFIG.SUPABASE_URL);
-            console.log('📦 Environment:', window.APP_CONFIG.ENVIRONMENT || 'production');
+                // Reuse an already-created client whenever possible.
+                if (window.NCHSMLogin?.supabase) {
+                    this.supabase = window.NCHSMLogin.supabase;
+                } else if (window.db?.supabase && window.db !== this) {
+                    this.supabase = window.db.supabase;
+                } else if (window.supabase) {
+                    this.supabase = window.supabase;
+                } else {
+                    if (!window.supabaseClient && typeof supabase === 'undefined') {
+                        throw new Error('Supabase library is not available.');
+                    }
 
-            // ============================================
-            // 🔥 FIX: REUSE EXISTING CONNECTION - NO LEAK!
-            // ============================================
-            // Try to reuse existing connection from login
-            if (window.NCHSMLogin && window.NCHSMLogin.supabase) {
-                this.supabase = window.NCHSMLogin.supabase;
-                console.log('✅ Database: Using existing Supabase connection from login');
-            } else if (window.db && window.db.supabase && typeof window.db.supabase.from === 'function') {
-                this.supabase = window.db.supabase;
-                console.log('✅ Database: Using existing Supabase connection from db');
-            } else if (window.supabase && typeof window.supabase.from === 'function') {
-                this.supabase = window.supabase;
-                console.log('✅ Database: Using global window.supabase');
-            } else {
-                // Only create NEW if absolutely necessary
-                console.warn('⚠️ Database: No existing connection found, creating new one');
-                this.supabase = supabase.createClient(
-                    window.APP_CONFIG.SUPABASE_URL,
-                    window.APP_CONFIG.SUPABASE_ANON_KEY,
-                    {
+                    const createClient =
+                        window.supabaseClient?.createClient ||
+                        (typeof supabase !== 'undefined' && supabase.createClient);
+
+                    if (typeof createClient !== 'function') {
+                        throw new Error('Supabase createClient function is not available.');
+                    }
+
+                    this.supabase = createClient(config.SUPABASE_URL, config.SUPABASE_ANON_KEY, {
                         auth: {
                             persistSession: true,
                             autoRefreshToken: true,
                             detectSessionInUrl: true
-                        },
-                        global: {
-                            headers: {
-                                'x-application-name': 'nchsm-student-portal',
-                                'x-version': window.APP_CONFIG.COMMIT_SHA || 'unknown',
-                                'x-environment': window.APP_CONFIG.ENVIRONMENT || 'production'
-                            }
                         }
-                    }
-                );
+                    });
+                }
+
+                if (!this.supabase?.auth) {
+                    throw new Error('Supabase authentication client is unavailable.');
+                }
+
+                await this.testConnection();
+                this.isInitialized = true;
+                this.connectionCount += 1;
+                this.lastConnectionTime = new Date();
+
+                return this.supabase;
+            } catch (error) {
+                this.isInitialized = false;
+                this.supabase = this.supabase || null;
+                this.showConfigurationError(error);
+                throw error;
+            } finally {
+                this.initializationPromise = null;
             }
-            // ============================================
-            // END FIX
-            // ============================================
+        })();
 
-            // 4. Test connection
-            await this.testConnection();
-
-            this.isInitialized = true;
-            console.log('✅ Database connection established successfully');
-
-            return this.supabase;
-
-        } catch (error) {
-            console.error('❌ Database initialization failed:', error);
-            this.showConfigurationError(error);
-            throw error;
-        }
+        return this.initializationPromise;
     }
 
-    // Test database connection
     async testConnection() {
         try {
             // Simple test query
@@ -263,69 +256,102 @@ class Database {
     // 🔥 FIXED: AUTHENTICATION FUNCTIONS - NO AUTO-REDIRECT!
     // ============================================================
 
+    /**
+     * Return the current authenticated session.
+     * This is the single gate used by database operations that require a user.
+     */
+    async getAuthenticatedSession() {
+        if (!this.supabase?.auth) {
+            throw new Error('Database is not initialized.');
+        }
+
+        const { data, error } = await this.supabase.auth.getSession();
+
+        if (error) {
+            throw error;
+        }
+
+        const session = data?.session;
+
+        if (!session?.user?.id) {
+            this.currentUserId = null;
+            this.currentUserProfile = null;
+            throw new Error('No authenticated user session.');
+        }
+
+        // Keep the local user identity synchronized with Supabase.
+        if (this.currentUserId && this.currentUserId !== session.user.id) {
+            this.clearUserState();
+        }
+
+        this.currentUserId = session.user.id;
+        return session;
+    }
+
+    /**
+     * Require an authenticated user before accessing user-scoped data.
+     */
+    async requireAuthenticatedUser() {
+        const session = await this.getAuthenticatedSession();
+        return session.user.id;
+    }
+
+    /**
+     * Clear user-scoped state without signing the user out.
+     */
+    clearUserState() {
+        this.currentUserId = null;
+        this.currentUserProfile = null;
+        this.cachedData = {
+            courses: [],
+            exams: [],
+            attendance: [],
+            resources: [],
+            messages: [],
+            calendar: []
+        };
+    }
+
     async checkAuth() {
         try {
-            console.log('🔐 Checking authentication...');
-            const { data: { session }, error } = await this.supabase.auth.getSession();
+            await this.initialize();
 
-            if (error) {
-                console.error('Session error:', error);
-                this.showDatabaseError('Authentication Error: ' + error.message);
-                return false;
-            }
+            const session = await this.getAuthenticatedSession();
+            const userId = session.user.id;
 
-            if (!session || !session.user) {
-                console.warn('No active session found');
-                this.showDatabaseError('No active session. Please login again.');
-                return false;
-            }
+            const profile = await this.loadUserProfile(userId);
 
-            this.currentUserId = session.user.id;
-            console.log('✅ User authenticated:', this.currentUserId);
-
-            const profile = await this.loadUserProfile();
-
-            // ✅ Check if profile was loaded successfully
             if (!profile) {
-                console.warn('⚠️ No profile loaded');
                 return false;
             }
 
-            // ✅ Check required fields
-            const requiredFields = ['program', 'block', 'intake_year'];
-            const missingFields = requiredFields.filter(f => !profile[f]);
+            const requiredAcademicFields = ['program', 'block', 'intake_year'];
+            const missingFields = requiredAcademicFields.filter(
+                field => profile[field] === null ||
+                         profile[field] === undefined ||
+                         String(profile[field]).trim() === ''
+            );
 
             if (missingFields.length > 0) {
-                console.warn('⚠️ Missing profile fields:', missingFields);
-                this.showIncompleteProfileWarning(missingFields);
+                console.warn('Profile is missing required academic fields:', missingFields);
+                this.showIncompleteProfileWarning(profile, missingFields);
                 return false;
             }
 
-            // Record login time after successful authentication
             await this.recordLoginTime();
-
             return true;
-
         } catch (error) {
-            console.error('Auth check failed:', error);
-            this.showDatabaseError('Authentication Failed: ' + error.message);
+            console.error('Authentication check failed:', error);
+
+            if (error?.message === 'No authenticated user session.') {
+                this.showDatabaseError('Your session has expired. Please sign in again.');
+            } else {
+                this.showDatabaseError(error?.message || 'Unable to verify your account.');
+            }
+
             return false;
         }
     }
-
-    // Get current user ID
-    getCurrentUserId() {
-        return this.currentUserId;
-    }
-
-    // Get current user profile
-    getUserProfile() {
-        return this.currentUserProfile;
-    }
-
-    // ============================================================
-    // 🔥 FIXED: loadUserProfile - NO HARDCODED FALLBACK!
-    // ============================================================
 
     async loadUserProfile() {
         try {
@@ -695,8 +721,7 @@ class Database {
             await this.recordLogoutTime();
             this.supabase.realtime.channels.forEach(channel => this.supabase.removeChannel(channel));
             await this.supabase.auth.signOut();
-            this.currentUserId = null;
-            this.currentUserProfile = null;
+            this.clearUserState();
             this.clearCache();
             window.location.href = "login.html";
         } catch (error) {
@@ -818,6 +843,17 @@ class Database {
     }
 
     async registerSupplementaryUnits(units, paymentRef = null) {
+        const userId = await this.requireAuthenticatedUser();
+        if (!this.currentUserProfile) {
+            await this.loadUserProfile(userId);
+        }
+        if (!this.currentUserProfile?.program ||
+            !this.currentUserProfile?.block ||
+            !this.currentUserProfile?.intake_year) {
+            throw new Error('Your academic profile is incomplete. Supplementary registration cannot continue.');
+        }
+
+
         if (!this.currentUserId) {
             return { success: false, error: 'User not logged in' };
         }
@@ -833,7 +869,7 @@ class Database {
                 payment_reference: paymentRef || null,
                 submitted_date: new Date().toISOString().split('T')[0],
                 created_at: new Date().toISOString(),
-                program: this.currentUserProfile?.program || 'KRCHN',
+                program: this.currentUserProfile?.program || null,
                 intake_year: this.currentUserProfile?.intake_year || new Date().getFullYear()
             }));
 
@@ -1655,7 +1691,8 @@ class Database {
             return photoPath;
         }
 
-        const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL || 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const supabaseUrl = window.APP_CONFIG?.SUPABASE_URL;
+        if (!supabaseUrl) throw new Error('Supabase URL is not configured.');
         return `${supabaseUrl}/storage/v1/object/public/user-documents/${photoPath}`;
     }
 
@@ -1673,8 +1710,9 @@ class Database {
 window.db = new Database();
 
 window.getDatabase = async function() {
+    await window.db.initialize();
     if (!window.db.supabase) {
-        await window.db.initialize();
+        throw new Error('Database connection is unavailable.');
     }
     return window.db;
 };
@@ -1719,3 +1757,12 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 console.log('✅ database.js loaded with Supplementary Registration support and corrected photo upload!');
+
+// Global guard for modules that need a verified authenticated user.
+// Modules should call this immediately before user-scoped database work.
+window.requireAuthenticatedUser = async function () {
+    if (!window.db) {
+        throw new Error('Database is not available.');
+    }
+    return window.db.requireAuthenticatedUser();
+};
