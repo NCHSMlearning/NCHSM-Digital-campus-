@@ -6947,6 +6947,35 @@
            <!-- ========== TOAST NOTIFICATION ========== -->
 <div class="toast" id="toast" style="display: none; position: fixed; bottom: 30px; right: 30px; z-index: 99999; background: #1e293b; color: white; padding: 16px 24px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 400px; font-size: 14px; border-left: 4px solid #4C1D95; transform: translateY(100px); opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);"></div>
 
+
+<style id="footer-layout-fix">
+/* Keep the portal footer at the bottom while authentication/dashboard content loads.
+   It must never jump to the top simply because the active tab is temporarily hidden. */
+.main#main-content {
+    min-height: calc(100vh - 80px);
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+}
+.main#main-content > .app-footer {
+    margin-top: auto !important;
+    flex-shrink: 0;
+}
+/* During the brief initialization state, don't let an empty main area expose
+   the footer above the dashboard. It is revealed when the application is ready. */
+body:not(.app-ready) .main#main-content > .app-footer {
+    visibility: hidden;
+}
+body.app-ready .main#main-content > .app-footer {
+    visibility: visible;
+}
+@media (max-width: 768px) {
+    .main#main-content {
+        min-height: calc(100vh - 64px);
+    }
+}
+</style>
+
 <!-- ========== FOOTER - MATCHING SUPER ADMIN ========== -->
 <footer class="app-footer" style="background: #0A3D62; color: rgba(255,255,255,0.9); margin-left: 0; padding: 40px 40px 20px 40px; border-top: 3px solid #FDB913; margin-top: 40px;">
     <div style="max-width: 1400px; margin: 0 auto;">
@@ -7972,7 +8001,10 @@ window.addEventListener('appinstalled', () => {
         initSidebarSearch();
     }
 
-    document.addEventListener('appReady', initSidebarSearch);
+    document.addEventListener('appReady', function () {
+        document.body.classList.add('app-ready');
+        initSidebarSearch();
+    });
 })();
 </script>
 
