@@ -11,7 +11,6 @@
 @import url('messages.css');
 @import url('calendar.css');
 @import url('courses.css');
-@import url('dashboard.css');
 @import url('resources.css');      
 @import url('reader.css');
 @import url('nurseiq.css');
@@ -6175,4 +6174,213 @@ body.dark-mode .stat-label {
 
 .report-content.active {
     display: block;
+}
+
+
+/* ============================================================
+   NCHSM PORTAL — FINAL SHELL / RESPONSIVE FIX
+   This section is intentionally last in main.css so legacy layout
+   declarations above cannot override the actual portal shell.
+   ============================================================ */
+
+html, body {
+    width: 100%;
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+#app-content {
+    width: 100%;
+    min-width: 0;
+}
+
+/* The header is in normal flow; the container follows it. */
+#app-content > .container {
+    display: grid !important;
+    grid-template-columns: 260px minmax(0, 1fr) !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+}
+
+#app-content > .container > #sidebar {
+    grid-column: 1 !important;
+    grid-row: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    width: 260px !important;
+    min-width: 260px !important;
+    max-width: 260px !important;
+    height: calc(100vh - 70px) !important;
+    max-height: calc(100vh - 70px) !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    position: sticky !important;
+    top: 0 !important;
+    align-self: start !important;
+    transform: none !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+    overflow: hidden !important;
+    z-index: 90 !important;
+    box-sizing: border-box !important;
+}
+
+#app-content > .container > #main-content {
+    grid-column: 2 !important;
+    grid-row: 1 !important;
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+
+#app-content > .container > #main-content .tab-content {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+    overflow-x: hidden !important;
+}
+
+/* Stop legacy .main width/margin rules from affecting grid layout. */
+#app-content > .container > #main-content.main {
+    margin-left: 0 !important;
+    width: 100% !important;
+    flex: none !important;
+}
+
+/* ---------- MOBILE DRAWER ---------- */
+@media (max-width: 768px) {
+    #app-content > .main-header {
+        width: 100% !important;
+        height: 56px !important;
+        min-height: 56px !important;
+        position: sticky !important;
+        top: 0 !important;
+        z-index: 1200 !important;
+        box-sizing: border-box !important;
+    }
+
+    #app-content > .main-header .mobile-menu-toggle {
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+
+    #app-content > .container {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        min-width: 0 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #app-content > .container > #main-content,
+    #app-content > .container > #main-content.main {
+        display: block !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        flex: none !important;
+        overflow-x: hidden !important;
+    }
+
+    #app-content > .container > #sidebar {
+        position: fixed !important;
+        top: 56px !important;
+        left: 0 !important;
+        right: auto !important;
+        bottom: 0 !important;
+        width: min(330px, 88vw) !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        height: calc(100dvh - 56px) !important;
+        max-height: calc(100dvh - 56px) !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: translate3d(-105%, 0, 0) !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        overflow: hidden !important;
+        z-index: 1150 !important;
+        transition: transform .25s ease, visibility 0s linear .25s !important;
+        box-shadow: 12px 0 30px rgba(0,0,0,0) !important;
+    }
+
+    body.nchsm-mobile-sidebar-open #app-content > .container > #sidebar {
+        transform: translate3d(0, 0, 0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        box-shadow: 12px 0 30px rgba(0,0,0,.30) !important;
+        transition: transform .25s ease, box-shadow .25s ease !important;
+    }
+
+    #app-content > .container > #sidebar .sidebar-header-premium,
+    #app-content > .container > #sidebar .sidebar-search-premium,
+    #app-content > .container > #sidebar .sidebar-footer-premium {
+        flex: 0 0 auto !important;
+    }
+
+    #app-content > .container > #sidebar .sidebar-nav-premium {
+        flex: 1 1 auto !important;
+        min-height: 0 !important;
+        overflow-y: auto !important;
+        overflow-x: hidden !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    #nchsm-mobile-sidebar-overlay {
+        display: block !important;
+        position: fixed !important;
+        top: 56px !important;
+        left: 0 !important;
+        right: 0 !important;
+        bottom: 0 !important;
+        z-index: 1100 !important;
+        background: rgba(15,23,42,.48) !important;
+        opacity: 0 !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        transition: opacity .25s ease, visibility .25s ease !important;
+    }
+
+    body.nchsm-mobile-sidebar-open #nchsm-mobile-sidebar-overlay {
+        opacity: 1 !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+
+    body.nchsm-mobile-sidebar-open {
+        overflow: hidden !important;
+    }
+
+    #nchsmMobileSidebarClose {
+        display: inline-flex !important;
+    }
+
+    #app-content > .app-footer {
+        width: 100% !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+        overflow: hidden !important;
+    }
+}
+
+@media (max-width: 380px) {
+    #app-content > .container > #sidebar {
+        width: min(310px, 90vw) !important;
+    }
 }
