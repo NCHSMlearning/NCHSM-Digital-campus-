@@ -164,11 +164,11 @@
         </div>
         
         <div class="header-actions" style="display: flex; align-items: center; gap: 2px;">
-            <button id="notificationToggle" class="icon-btn" title="Notifications" style="position: relative; background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: #4C1D95;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <button type="button" id="notificationToggle" class="icon-btn" title="Notifications" style="position: relative; background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: #4C1D95;">
                 <i class="fas fa-bell" style="font-size: 17px;"></i>
                 <span id="notificationDot" style="position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; background: #ef4444; border-radius: 50%; display: none; border: 2px solid white; animation: pulse-dot 2s infinite;"></span>
             </button>
-            <button class="icon-btn" id="header-refresh" title="Refresh Dashboard" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: #4C1D95;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">
+            <button type="button" class="icon-btn" id="header-refresh" title="Refresh Dashboard" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: #4C1D95;">
                 <i class="fas fa-sync-alt" style="font-size: 15px;"></i>
             </button>
         </div>
@@ -434,7 +434,7 @@
                 <span style="background: rgba(255,255,255,0.15); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
                     <i class="fas fa-circle" style="color: #10b981; font-size: 8px;"></i> Online
                 </span>
-                <span id="header-time" style="background: rgba(255,255,255,0.1); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px;">
+                <span id="header-time-secondary" style="background: rgba(255,255,255,0.1); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px;">
                     <i class="fas fa-clock"></i> Loading...
                 </span>
             </div>
@@ -632,7 +632,7 @@
             <div class="mini-card-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;" id="dashboard-reviews-avg">0.0</div>
             <div style="font-size: 11px; color: #94a3b8;">
                 <span id="dashboard-reviews-total">0</span> reviews · <span id="dashboard-reviews-pending">0</span> pending
-                <span id="reviewsBadge" style="display: none;"></span>
+                <span id="reviewsBadge-secondary" style="display: none;"></span>
             </div>
         </div>
         <div class="mini-card" data-tab="newsletter" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'">
@@ -1789,7 +1789,7 @@
             <button id="view-completed-only" class="action-btn" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: #f1f5f9; color: #475569;">
                 <i class="fas fa-check-circle"></i> Completed Only
             </button>
-            <button id="refresh-courses-btn" class="action-btn refresh" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: #f1f5f9; color: #475569;">
+            <button id="refresh-courses-btn-secondary" class="action-btn refresh" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: #f1f5f9; color: #475569;">
                 <i class="fas fa-sync-alt"></i> Refresh
             </button>
         </div>
@@ -2849,7 +2849,7 @@
             </button>
             
             <!-- ====== BUTTON 4: COMPLETED ONLY ====== -->
-            <button id="view-completed-only" 
+            <button id="view-completed-only-secondary" 
                     style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #10B981, #059669); color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.3); font-size: 13px;"
                     onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" 
                     onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'">
@@ -2939,7 +2939,7 @@
                     <h3 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
                         <i class="fas fa-check-circle" style="color: #059669;"></i> Completed Assessments
                     </h3>
-                    <span id="completed-count" style="background: #059669; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 completed</span>
+                    <span id="completed-count-secondary" style="background: #059669; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 completed</span>
                 </div>
                 <span id="completed-average" style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 12px;">
                     <i class="fas fa-chart-line"></i> Average: --
@@ -4753,10 +4753,10 @@
                     <i class="fas fa-filter"></i> Filter <i class="fas fa-chevron-down" style="font-size: 10px;"></i>
                 </button>
                 <div style="display: none; position: absolute; top: 100%; right: 0; background: white; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 4px 20px rgba(0,0,0,0.1); min-width: 160px; z-index: 100; margin-top: 4px; overflow: hidden;">
-                    <a href="#" data-filter="all" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">All Tickets</a>
-                    <a href="#" data-filter="open" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">Open</a>
-                    <a href="#" data-filter="progress" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">In Progress</a>
-                    <a href="#" data-filter="resolved" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;" onmouseover="this.style.background='#f1f5f9'" onmouseout="this.style.background='transparent'">Resolved</a>
+                    <a href="#" data-filter="all" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">All Tickets</a>
+                    <a href="#" data-filter="open" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">Open</a>
+                    <a href="#" data-filter="progress" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">In Progress</a>
+                    <a href="#" data-filter="resolved" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">Resolved</a>
                     <a href="#" data-filter="urgent" style="display: block; padding: 10px 16px; color: #dc2626; text-decoration: none; font-weight: 600; transition: all 0.2s; border-top: 1px solid #e5e7eb;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">Urgent Priority</a>
                 </div>
             </div>
@@ -7242,7 +7242,7 @@ window.setTheme = setTheme;
             greetingEmoji.textContent = emoji;
             console.log(`✅ Updated via IDs: ${greeting} ${emoji}`);
         } else {
-            h1.innerHTML = `${greeting}, <span id="welcome-student-name" style="color: #FDB913;">${name}</span>! ${emoji}`;
+            h1.innerHTML = `${greeting}, <span id="welcome-student-name-secondary" style="color: #FDB913;">${name}</span>! ${emoji}`;
             console.log(`✅ Updated via fallback: ${greeting} ${emoji}`);
         }
     } else {
@@ -7252,7 +7252,7 @@ window.setTheme = setTheme;
         if (h1Alt) {
             const nameSpan = document.getElementById('welcome-student-name');
             const name = nameSpan ? nameSpan.textContent : 'Student';
-            h1Alt.innerHTML = `${greeting}, <span id="welcome-student-name" style="color: #FDB913;">${name}</span>! ${emoji}`;
+            h1Alt.innerHTML = `${greeting}, <span id="welcome-student-name-tertiary" style="color: #FDB913;">${name}</span>! ${emoji}`;
             console.log(`✅ Updated via alt selector: ${greeting} ${emoji}`);
         }
     }
