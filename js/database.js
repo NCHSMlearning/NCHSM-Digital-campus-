@@ -1732,7 +1732,7 @@ window.initDatabase = async function() {
 function showGitHubSecretsHelp() {
     const helpText = `
 # GitHub Secrets Configuration
-
+ 
 ## Required Secrets:
 1. SUPABASE_URL - Your Supabase project URL
    Example: https://lwhtjozfsmbyihenfunw.supabase.co
