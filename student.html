@@ -7201,6 +7201,11 @@
         return true;
     }
 
+    // Expose the same navigation function to other portal UI controls (for example,
+    // sidebar search results) so they navigate directly instead of relying on a
+    // synthetic anchor click.
+    window.nchsmNavigateToTab = showTab;
+
     // One delegated click handler for all navigation links and cards.
     document.addEventListener('click', function (event) {
         const link = event.target.closest('[data-tab]');
@@ -7825,9 +7830,14 @@ window.addEventListener('appinstalled', () => {
             clearBtn.hidden = true;
             restoreNavigation();
 
-            // Use the portal's existing navigation controller so authentication,
-            // active-state handling, and module loading remain unchanged.
-            link.click();
+            // Use the portal's authoritative navigation controller directly.
+            // This is more reliable than triggering a synthetic anchor click and
+            // guarantees the searched page is opened.
+            if (typeof window.nchsmNavigateToTab === 'function') {
+                window.nchsmNavigateToTab(item.tabId);
+            } else {
+                link.click();
+            }
         }
 
         function render(query) {
