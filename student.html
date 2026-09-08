@@ -9017,5 +9017,209 @@ body {
 }
 </style>
 
+
+<script id="nchsm-nav-controller-v12">
+(function () {
+    'use strict';
+
+    function bind() {
+        const toggle = document.getElementById('mobile-menu-toggle');
+        const sidebar = document.getElementById('sidebar');
+        const overlay = document.getElementById('nchsm-mobile-sidebar-overlay');
+        const close = document.getElementById('nchsmMobileSidebarClose');
+
+        if (!toggle || !sidebar || !overlay) return;
+        if (toggle.dataset.v12Bound === 'true') return;
+        toggle.dataset.v12Bound = 'true';
+
+        const mobile = () => window.matchMedia('(max-width: 768px)').matches;
+
+        const closeDrawer = () => {
+            document.body.classList.remove('nchsm-mobile-sidebar-open');
+            toggle.setAttribute('aria-expanded', 'false');
+            overlay.setAttribute('aria-hidden', 'true');
+            const icon = toggle.querySelector('i');
+            if (icon) {
+                icon.classList.add('fa-bars');
+                icon.classList.remove('fa-times');
+            }
+        };
+
+        const openDrawer = () => {
+            if (!mobile()) return;
+            document.body.classList.add('nchsm-mobile-sidebar-open');
+            toggle.setAttribute('aria-expanded', 'true');
+            overlay.setAttribute('aria-hidden', 'false');
+            const icon = toggle.querySelector('i');
+            if (icon) {
+                icon.classList.remove('fa-bars');
+                icon.classList.add('fa-times');
+            }
+        };
+
+        toggle.addEventListener('click', function (e) {
+            if (!mobile()) return;
+            e.preventDefault();
+            e.stopPropagation();
+            if (document.body.classList.contains('nchsm-mobile-sidebar-open')) {
+                closeDrawer();
+            } else {
+                openDrawer();
+            }
+        }, true);
+
+        overlay.addEventListener('click', closeDrawer);
+        if (close) close.addEventListener('click', closeDrawer);
+
+        sidebar.addEventListener('click', function (e) {
+            if (!mobile()) return;
+            if (e.target.closest('[data-tab]')) {
+                setTimeout(closeDrawer, 100);
+            }
+        });
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === 'Escape' &&
+                document.body.classList.contains('nchsm-mobile-sidebar-open')) {
+                closeDrawer();
+            }
+        });
+
+        window.addEventListener('resize', function () {
+            if (!mobile()) closeDrawer();
+        });
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bind, { once: true });
+    } else {
+        bind();
+    }
+    window.addEventListener('appReady', bind);
+})();
+</script>
+
+
+<style id="nchsm-final-v12-desktop-nav-fix">
+/* ============================================================
+   FINAL DESKTOP NAVIGATION ALIGNMENT
+   The sidebar lives AFTER .main-header in the DOM. Therefore its
+   sticky top must not add another 57/65px offset at page load.
+   ============================================================ */
+@media (min-width: 769px) {
+    #app-content > .container {
+        display: grid !important;
+        grid-template-columns: 260px minmax(0, 1fr) !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        gap: 0 !important;
+        align-items: start !important;
+        overflow: visible !important;
+    }
+
+    #app-content > .container > #sidebar {
+        grid-column: 1 !important;
+        grid-row: 1 !important;
+        width: 260px !important;
+        min-width: 260px !important;
+        max-width: 260px !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        align-self: start !important;
+        position: sticky !important;
+        top: 0 !important;
+        height: calc(100vh - 0px) !important;
+        max-height: calc(100vh - 0px) !important;
+        transform: none !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+        overflow: hidden !important;
+        z-index: 90 !important;
+        box-sizing: border-box !important;
+    }
+
+    #app-content > .container > #main-content {
+        grid-column: 2 !important;
+        grid-row: 1 !important;
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        align-self: start !important;
+        overflow-x: hidden !important;
+        box-sizing: border-box !important;
+    }
+
+    #app-content > .container > #main-content .tab-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+        box-sizing: border-box !important;
+        overflow-x: hidden !important;
+    }
+
+    /* Never let a wide child force the desktop content column wider. */
+    #app-content > .container > #main-content > *,
+    #app-content > .container > #main-content .tab-content > * {
+        min-width: 0 !important;
+        max-width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Desktop keeps the sidebar visible; mobile drawer rules are untouched. */
+    #nchsm-mobile-sidebar-overlay,
+    #nchsmMobileSidebarClose {
+        display: none !important;
+    }
+}
+
+/* Keep the proven mobile drawer behavior from v11. */
+@media (max-width: 768px) {
+    #app-content > .container {
+        display: block !important;
+        width: 100% !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #app-content > .container > #main-content {
+        width: 100% !important;
+        min-width: 0 !important;
+        max-width: 100% !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    #app-content > .container > #sidebar {
+        position: fixed !important;
+        top: 56px !important;
+        left: 0 !important;
+        bottom: 0 !important;
+        width: min(330px, 88vw) !important;
+        height: calc(100dvh - 56px) !important;
+        max-height: calc(100dvh - 56px) !important;
+        min-width: 0 !important;
+        max-width: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        transform: translate3d(-105%, 0, 0) !important;
+        visibility: hidden !important;
+        pointer-events: none !important;
+        z-index: 1150 !important;
+        overflow: hidden !important;
+    }
+
+    body.nchsm-mobile-sidebar-open #app-content > .container > #sidebar {
+        transform: translate3d(0, 0, 0) !important;
+        visibility: visible !important;
+        pointer-events: auto !important;
+    }
+}
+</style>
+
 </body>
 </html>
