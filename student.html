@@ -27,7 +27,8 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link rel="stylesheet" href="css/dashboard.css">
     <link rel="stylesheet" href="css/main.css">
-<!-- Chart.js for Academic Reports -->
+
+    <!-- Chart.js for Academic Reports -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
     <!-- PWA Metadata -->
@@ -209,7 +210,6 @@
     }
 </style>
 
-
 </head>
 <body>
 
@@ -297,24 +297,14 @@
         </div>
     </div>
 </header>
-<!-- MOBILE SIDEBAR OVERLAY -->
-<div id="nchsm-mobile-sidebar-overlay" aria-hidden="true"></div>
-
 
 <div class="overlay" id="overlay" role="presentation" aria-hidden="true"></div>
 <div class="container">
 <!-- SIDEBAR NAVIGATION - PREMIUM MODERN -->
-<aside class="sidebar-premium" id="sidebar" aria-label="Main navigation">
+<aside class="sidebar sidebar-premium" id="sidebar" aria-label="Main navigation">
 
     <!-- ===== SIDEBAR HEADER ===== -->
     <div class="sidebar-header-premium">
-        <button type="button" id="nchsmMobileSidebarClose"
-                aria-label="Close navigation"
-                title="Close navigation"
-                style="display:none;">
-            <i class="fas fa-times" aria-hidden="true"></i>
-        </button>
-
         <div class="logo-section">
             <div class="logo-wrapper">
                 <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo" class="sidebar-logo">
@@ -414,68 +404,86 @@
     <nav class="sidebar-nav-premium" aria-label="Primary navigation">
         <ul class="nav-premium" role="menubar">
 
-            <li class="sidebar-nav-group-title" role="presentation"><span>OVERVIEW</span></li>
-
             <!-- DASHBOARD -->
             <li role="none">
                 <a href="#" data-tab="dashboard" class="active" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-home" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
-                    <span class="nav-text">Dashboard</span><span class="nav-badge-premium">Home</span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-home" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Dashboard</span>
+                    <span class="nav-badge-premium">Home</span>
                 </a>
             </li>
 
             <!-- PROFILE -->
             <li role="none">
                 <a href="#" data-tab="profile" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-user-circle" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
-                    <span class="nav-text">Profile</span><span class="nav-badge-premium" id="profileBadge" style="display:none;">!</span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-user-circle" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Profile</span>
+                    <span class="nav-badge-premium" id="profileBadge" style="display:none;">!</span>
                 </a>
             </li>
 
             <!-- ACADEMIC CALENDAR -->
             <li role="none">
                 <a href="#" data-tab="calendar" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-calendar-alt" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
-                    <span class="nav-text">Academic Calendar</span><span class="nav-badge-premium">📅</span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-calendar-alt" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Academic Calendar</span>
+                    <span class="nav-badge-premium">📅</span>
                 </a>
             </li>
 
-            <li class="sidebar-nav-group-title" role="presentation"><span>STUDENT SERVICES</span></li>
-
-            <!-- FINANCE -->
+            <!-- ===== FINANCE ===== -->
             <li role="none">
                 <a href="#" data-tab="finance" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-coins" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-coins" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
                     <span class="nav-text">My Finance</span>
-                    <span class="nav-badge-premium" id="financeBadge" style="display:none;"><span id="financeBadgeCount">0</span></span>
+                    <span class="nav-badge-premium" id="financeBadge" style="display: none;">
+                        <span id="financeBadgeCount">0</span>
+                    </span>
                 </a>
             </li>
 
-            <!-- ENROLLMENT -->
+            <!-- ===== ENROLLMENT (NEW) ===== -->
             <li role="none">
                 <a href="#" data-tab="enrollment" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-user-plus" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-user-plus" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
                     <span class="nav-text">Enrollment</span>
-                    <span class="nav-badge-premium" id="enrollmentBadge" style="background:#f59e0b;color:#0A3D62;font-weight:700;padding:2px 10px;border-radius:20px;font-size:10px;">NEW</span>
+                    <span class="nav-badge-premium" id="enrollmentBadge" style="background: #f59e0b; color: #0A3D62; font-weight: 700; padding: 2px 10px; border-radius: 20px; font-size: 10px;">NEW</span>
                 </a>
             </li>
 
-            <li class="sidebar-nav-group-title" role="presentation"><span>ACADEMICS</span></li>
-
-            <!-- LEARNING HUB -->
+            <!-- LEARNING HUB (DROPDOWN) -->
             <li role="none" class="has-dropdown-premium">
                 <a href="#" class="dropdown-toggle-premium" role="menuitem" aria-haspopup="true" aria-expanded="false">
-                    <span class="nav-icon-wrapper"><i class="fas fa-graduation-cap" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
-                    <span class="nav-text">My Learning Hub</span><i class="fas fa-chevron-down dropdown-arrow-premium" aria-hidden="true"></i>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-graduation-cap" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">My Learning Hub</span>
+                    <i class="fas fa-chevron-down dropdown-arrow-premium" aria-hidden="true"></i>
                 </a>
-                <ul class="dropdown-submenu-premium" style="display:none;">
+                <ul class="dropdown-submenu-premium" style="display: none;">
                     <li role="none"><a href="#" data-tab="hub-register" role="menuitem"><i class="fas fa-plus-circle" aria-hidden="true"></i> Register Units</a></li>
                     <li role="none"><a href="#" data-tab="hub-courses" role="menuitem"><i class="fas fa-book-open" aria-hidden="true"></i> My Units</a></li>
                     <li class="dropdown-divider-premium"></li>
                     <li role="none"><a href="#" data-tab="hub-lecture-card" role="menuitem"><i class="fas fa-chalkboard-teacher" aria-hidden="true"></i> Lecture Card</a></li>
                     <li role="none"><a href="#" data-tab="hub-exam-card" role="menuitem"><i class="fas fa-id-card" aria-hidden="true"></i> Exam Card</a></li>
                     <li class="dropdown-divider-premium"></li>
-                    <li role="none"><a href="#" data-tab="cats" role="menuitem"><i class="fas fa-chart-line" aria-hidden="true"></i> Exams &amp; Grades</a></li>
+                    <li role="none"><a href="#" data-tab="cats" role="menuitem"><i class="fas fa-chart-line" aria-hidden="true"></i> Exams & Grades</a></li>
                     <li role="none"><a href="#" data-tab="academic-reports" role="menuitem"><i class="fas fa-file-alt" aria-hidden="true"></i> Academic Reports</a></li>
                     <li role="none"><a href="#" data-tab="nurseiq" role="menuitem"><i class="fas fa-brain" aria-hidden="true"></i> NurseIQ</a></li>
                     <li role="none"><a href="#" data-tab="resources" role="menuitem"><i class="fas fa-folder-open" aria-hidden="true"></i> Resources</a></li>
@@ -486,42 +494,60 @@
             <!-- ATTENDANCE -->
             <li role="none">
                 <a href="#" data-tab="attendance" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-check-double" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
-                    <span class="nav-text">Attendance</span><span class="nav-badge-premium pulse-badge" id="attendanceBadge" style="display:none;">0</span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-check-double" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Attendance</span>
+                    <span class="nav-badge-premium pulse-badge" id="attendanceBadge" style="display:none;">0</span>
                 </a>
             </li>
-
-            <li class="sidebar-nav-group-title" role="presentation"><span>COMMUNICATION</span></li>
 
             <!-- MESSAGES -->
             <li role="none">
                 <a href="#" data-tab="messages" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-comment-dots" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
-                    <span class="nav-text">Messages</span><span class="nav-badge-premium pulse-badge" id="messagesBadge" style="display:none;">0</span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-comment-dots" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Messages</span>
+                    <span class="nav-badge-premium pulse-badge" id="messagesBadge" style="display:none;">0</span>
                 </a>
             </li>
 
             <!-- SUPPORT TICKETS -->
             <li role="none">
                 <a href="#" data-tab="support-tickets" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-ticket-alt" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
-                    <span class="nav-text">Support Tickets</span><span class="nav-badge-premium" id="ticketsBadge" style="display:none;">0</span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-ticket-alt" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Support Tickets</span>
+                    <span class="nav-badge-premium" id="ticketsBadge" style="display:none;">0</span>
                 </a>
             </li>
 
             <!-- REVIEWS -->
             <li role="none">
                 <a href="#" data-tab="reviews" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-star" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
-                    <span class="nav-text">Reviews</span><span class="nav-badge-premium" id="reviewsBadge-secondary-1" style="display:none;">0</span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-star" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Reviews</span>
+                    <span class="nav-badge-premium" id="reviewsBadge-secondary-1" style="display:none;">0</span>
                 </a>
             </li>
 
             <!-- NEWSLETTER -->
             <li role="none">
                 <a href="#" data-tab="newsletter" role="menuitem">
-                    <span class="nav-icon-wrapper"><i class="fas fa-envelope" aria-hidden="true"></i><span class="nav-icon-bg"></span></span>
-                    <span class="nav-text">Newsletter</span><span class="nav-badge-premium" id="newsletterBadge" style="display:none;">0</span>
+                    <span class="nav-icon-wrapper">
+                        <i class="fas fa-envelope" aria-hidden="true"></i>
+                        <span class="nav-icon-bg"></span>
+                    </span>
+                    <span class="nav-text">Newsletter</span>
+                    <span class="nav-badge-premium" id="newsletterBadge" style="display:none;">0</span>
                 </a>
             </li>
 
@@ -6922,73 +6948,53 @@
 <div class="toast" id="toast" style="display: none; position: fixed; bottom: 30px; right: 30px; z-index: 99999; background: #1e293b; color: white; padding: 16px 24px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.3); max-width: 400px; font-size: 14px; border-left: 4px solid #4C1D95; transform: translateY(100px); opacity: 0; transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);"></div>
 
 
-
-
-
-<style id="sidebar-alignment-final-v6">
-/* ============================================================
-   NCHSM SIDEBAR ALIGNMENT FIX v6
-   - Removes the unwanted empty space above the sidebar.
-   - Aligns sidebar top with the main content.
-   - Keeps the sidebar sticky only while scrolling.
-   - Preserves the organized sidebar header/search/nav/footer.
-   ============================================================ */
-
-#app-content > .container {
-    align-items: start !important;
+<style id="footer-layout-fix">
+/* Footer layout: keep the footer in normal document flow.
+   It must NOT be fixed to the viewport or pushed with flex auto-margin.
+   Short pages can end near the viewport bottom; long pages naturally push
+   the footer below the content and require scrolling. */
+.main#main-content {
+    min-height: calc(100vh - 80px);
+    display: block;
 }
 
-/* The sidebar must begin exactly where the main content column begins. */
-#app-content > .container > #sidebar {
-    margin-top: 0 !important;
-    padding-top: 0 !important;
-    align-self: start !important;
-    transform: none !important;
+.main#main-content > .app-footer {
+    position: static !important;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 40px !important;
+    flex: none !important;
+    flex-shrink: 0 !important;
 }
 
-/* Desktop/tablet landscape */
-@media (min-width: 769px) {
-    #app-content > .container > #sidebar {
-        position: sticky !important;
-        top: 57px !important;
-        margin-top: 0 !important;
-        height: calc(100vh - 57px) !important;
-        max-height: calc(100vh - 57px) !important;
-        align-self: start !important;
-        overflow: hidden !important;
-        z-index: 100 !important;
-    }
-
-    #app-content > .container > #main-content {
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-        align-self: start !important;
-    }
-
-    .sidebar-premium {
-        margin-top: 0 !important;
-    }
+/* During authentication/initialization, hide the footer visually so it
+   cannot flash above the dashboard. It still remains in normal flow. */
+body:not(.app-ready) .main#main-content > .app-footer {
+    visibility: hidden;
 }
 
-/* Keep mobile behavior unchanged and prevent the desktop sticky rules
-   from creating spacing on small screens. */
+body.app-ready .main#main-content > .app-footer {
+    visibility: visible;
+}
+
 @media (max-width: 768px) {
-    #app-content > .container > #sidebar {
-        position: static !important;
-        height: auto !important;
-        max-height: none !important;
-        margin-top: 0 !important;
-        padding-top: 0 !important;
-        overflow: visible !important;
+    .main#main-content {
+        min-height: calc(100vh - 64px);
+    }
+
+    .main#main-content > .app-footer {
+        margin-top: 30px !important;
     }
 }
 </style>
 
-</main>
-        </div><!-- /.container -->
+
+
+        </main>
+    </div><!-- /.container -->
 
 <!-- ========== FOOTER - MATCHING SUPER ADMIN ========== -->
-<footer class="app-footer" style="background: #0A3D62; color: rgba(255,255,255,0.9); margin-left: 0; padding: 40px 40px 20px 40px; border-top: 3px solid #FDB913;">
+<footer class="app-footer" style="background: #0A3D62; color: rgba(255,255,255,0.9); margin-left: 0; padding: 40px 40px 20px 40px; border-top: 3px solid #FDB913; margin-top: 40px;">
     <div style="max-width: 1400px; margin: 0 auto;">
 
         <!-- ===== FOOTER CONTENT ===== -->
@@ -7086,11 +7092,11 @@
         <div style="border-top: 1px solid rgba(255,255,255,0.15); padding-top: 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
             <div style="color: rgba(255,255,255,0.6); font-size: 13px;">
                 © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
-                <span id="appVersion" style="margin-left: 10px; background: rgba(255,255,255,0.1); padding: 2px 10px; border-radius: 12px; font-size: 11px; color: rgba(255,255,255,0.5);">v2.1</span> <span style="margin-left: 10px;">· Powered by <a class="nchsm-campusnexus-link" href="https://campusnexus.co.ke/" target="_blank" rel="noopener noreferrer">CampusNexus</a></span>
+                <span id="appVersion" style="margin-left: 10px; background: rgba(255,255,255,0.1); padding: 2px 10px; border-radius: 12px; font-size: 11px; color: rgba(255,255,255,0.5);">v2.1</span>
             </div>
 
             <div style="display: flex; gap: 12px;">
-                <a href="https://www.facebook.com/people/Matoka-HealthTech-Software-Solutions/61584687137047/" class="social-icon" aria-label="Facebook" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; text-decoration: none;" onmouseover="this.style.background='#FDB913'; this.style.color='#0A3D62'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.7)'; this.style.transform='none'" target="_blank" rel="noopener noreferrer">
+                <a href="https://www.facebook.com/people/Matoka-HealthTech-Software-Solutions/61584687137047/" target="_blank" rel="noopener noreferrer" class="social-icon" aria-label="Facebook" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; text-decoration: none;" onmouseover="this.style.background='#FDB913'; this.style.color='#0A3D62'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.7)'; this.style.transform='none'">
                     <i class="fab fa-facebook-f"></i>
                 </a>
                 <a href="#" class="social-icon" aria-label="Twitter" style="width: 36px; height: 36px; border-radius: 50%; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.7); display: flex; align-items: center; justify-content: center; transition: all 0.3s ease; text-decoration: none;" onmouseover="this.style.background='#FDB913'; this.style.color='#0A3D62'; this.style.transform='translateY(-2px)'" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.7)'; this.style.transform='none'">
@@ -7103,8 +7109,10 @@
                     <i class="fas fa-envelope" aria-hidden="true"></i>
                 </a>
             </div>
+            <div style="margin-top: 14px; font-size: 12px; color: rgba(255,255,255,0.65);">Powered by <a href="https://campusnexus.co.ke/" target="_blank" rel="noopener noreferrer" style="color:#FDB913; text-decoration:none; font-weight:700;">CampusNexus</a></div>
         </div>
-    </div></footer>
+    </div>
+</footer>
 
 <!-- TRANSCRIPT MODAL -->
 <div id="transcript-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); justify-content:center; align-items:center; z-index:1000;"><div style="background:white; padding:16px; border-radius:8px; max-width:350px; width:90%; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.15);"><button id="closeTranscriptBtn" style="position:absolute; top:8px; right:8px; background:none; border:none; font-size:1.2em; cursor:pointer; color:#6B7280; padding:4px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:50%;" type="button">×</button><div style="text-align:center; margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid var(--color-primary, #4F46E5);"><h4 style="margin:0; color: var(--color-primary, #4F46E5); font-size:1.1em; font-weight:600;"><i class="fas fa-file-alt" aria-hidden="true" style="margin-right:6px;"></i> Exam Transcript</h4><p id="transcript-exam-name" style="margin:5px 0 0; font-size:0.85em; color:#6B7280;"></p></div><table style="width:100%; border-collapse:collapse; font-size:0.9em; margin-bottom:10px;"><tr><td style="font-weight:600; padding:6px 0; width:50%;">CAT 1 (30):</td><td id="transcript-cat1" style="padding:6px 0; text-align:right;">-</td></tr>
@@ -7117,6 +7125,22 @@
              <div style="margin-top:15px; text-align:center;"><button id="closeTranscriptModalBtn" style="padding:8px 20px; background:var(--color-primary, #4F46E5); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.9em; font-weight:500; width:100%;" type="button">Close Transcript</button></div>
          </div>
      </div>
+<!-- ===== MOBILE NAVIGATION: COMPATIBLE WITH ORIGINAL main.css ===== -->
+<script>
+(function(){
+  const btn=document.getElementById('mobile-menu-toggle');
+  const sidebar=document.getElementById('sidebar');
+  const overlay=document.getElementById('overlay');
+  if(!btn||!sidebar) return;
+  function open(){ sidebar.classList.add('active'); overlay?.classList.add('active'); document.body.style.overflow='hidden'; }
+  function close(){ sidebar.classList.remove('active','open'); overlay?.classList.remove('active'); document.body.style.overflow=''; }
+  btn.addEventListener('click',()=> sidebar.classList.contains('active') ? close() : open());
+  overlay?.addEventListener('click',close);
+  sidebar.querySelectorAll('[data-tab]').forEach(a=>a.addEventListener('click',()=>{ if(window.innerWidth<=768) close(); }));
+  window.addEventListener('resize',()=>{ if(window.innerWidth>768) close(); });
+})();
+</script>
+
 <!-- ===== 2️⃣ SECOND: Utilities and Helpers ===== -->
 <script src="./js/utils.js"></script>
 <script src="./js/ui.js"></script>
@@ -7872,14 +7896,8 @@ window.addEventListener('appinstalled', () => {
             // Use the portal's authoritative navigation controller directly.
             // This is more reliable than triggering a synthetic anchor click and
             // guarantees the searched page is opened.
-            const tabId = link.getAttribute('data-tab');
-            if (!tabId) {
-                link.click();
-                return;
-            }
-
             if (typeof window.nchsmNavigateToTab === 'function') {
-                window.nchsmNavigateToTab(tabId);
+                window.nchsmNavigateToTab(item.tabId);
             } else {
                 link.click();
             }
@@ -8023,401 +8041,6 @@ window.addEventListener('appinstalled', () => {
     });
 })();
 </script>
-
-
-<!-- Clean URL helper: hides .html from the browser address bar without reloading the page. -->
-<script>
-(function () {
-    'use strict';
-
-    try {
-        var path = window.location.pathname;
-
-        // Only rewrite actual .html URLs. Preserve query strings and hashes.
-        if (/\.html$/i.test(path)) {
-            var cleanPath = path.replace(/\.html$/i, '') || '/';
-            window.history.replaceState(
-                { cleanUrl: true },
-                document.title,
-                cleanPath + window.location.search + window.location.hash
-            );
-            console.log('✅ Clean URL applied:', cleanPath);
-        }
-    } catch (error) {
-        console.warn('⚠️ Clean URL helper could not update the address bar:', error);
-    }
-})();
-</script>
-
-
-<style id="sidebar-footer-buttons-final-v7">
-/* ============================================================
-   NCHSM SIDEBAR FOOTER BUTTONS — FINAL
-   Refresh • Theme • Logout
-   ============================================================ */
-
-.sidebar-footer-premium .footer-actions {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 8px !important;
-}
-
-.sidebar-footer-premium .footer-btn {
-    position: relative !important;
-    display: inline-flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    width: 34px !important;
-    height: 32px !important;
-    min-width: 34px !important;
-    padding: 0 !important;
-    border: 1px solid rgba(255,255,255,.12) !important;
-    border-radius: 9px !important;
-    background: rgba(255,255,255,.06) !important;
-    color: rgba(255,255,255,.78) !important;
-    cursor: pointer !important;
-    transition: transform .18s ease, background .18s ease, color .18s ease !important;
-}
-
-.sidebar-footer-premium .footer-btn:hover {
-    background: rgba(255,255,255,.14) !important;
-    color: #fff !important;
-    transform: translateY(-1px) !important;
-}
-
-.sidebar-footer-premium .footer-btn:active {
-    transform: translateY(0) scale(.96) !important;
-}
-
-.sidebar-footer-premium .footer-btn:disabled {
-    opacity: .55 !important;
-    cursor: wait !important;
-    transform: none !important;
-}
-
-.sidebar-footer-premium .footer-btn.is-loading i {
-    animation: nchsmSidebarSpin .8s linear infinite !important;
-}
-
-@keyframes nchsmSidebarSpin {
-    to { transform: rotate(360deg); }
-}
-
-.sidebar-footer-premium .footer-version {
-    display: flex !important;
-    align-items: center !important;
-    justify-content: center !important;
-    gap: 5px !important;
-    margin-top: 7px !important;
-}
-</style>
-
-<script id="sidebar-footer-buttons-controller-v7">
-(function () {
-    'use strict';
-
-    function getRealSupabaseClient() {
-        const candidates = [
-            window.sb,
-            window.supabaseClient,
-            window.db && window.db.supabase,
-            window.NCHSMLogin && window.NCHSMLogin.supabase
-        ];
-
-        return candidates.find(client =>
-            client &&
-            typeof client.from === 'function' &&
-            client.auth &&
-            typeof client.auth.getSession === 'function'
-        ) || null;
-    }
-
-    function getDashboardModule() {
-        return window.dashboardModule ||
-               window.dashboard ||
-               window.DashboardModuleInstance ||
-               null;
-    }
-
-    function refreshDashboard(button) {
-        if (button.disabled) return;
-
-        button.disabled = true;
-        button.classList.add('is-loading');
-
-        try {
-            const dashboard = getDashboardModule();
-
-            if (dashboard && typeof dashboard.refreshAll === 'function') {
-                Promise.resolve(dashboard.refreshAll())
-                    .catch(error => {
-                        console.error('❌ Sidebar dashboard refresh failed:', error);
-                    })
-                    .finally(() => {
-                        button.disabled = false;
-                        button.classList.remove('is-loading');
-                    });
-                return;
-            }
-
-            // Fallback: reload the current page if the dashboard module
-            // has not exposed itself yet.
-            window.location.reload();
-        } catch (error) {
-            console.error('❌ Sidebar refresh error:', error);
-            button.disabled = false;
-            button.classList.remove('is-loading');
-        }
-    }
-
-    function toggleTheme(button) {
-        try {
-            const current = document.body.getAttribute('data-theme') ||
-                localStorage.getItem('nchsm_theme') ||
-                'purple';
-
-            // Existing portal theme system uses setTheme().
-            if (typeof window.setTheme === 'function') {
-                const next = current === 'dark' ? 'purple' : 'dark';
-                window.setTheme(next);
-            } else {
-                const next = current === 'dark' ? 'purple' : 'dark';
-                document.body.setAttribute('data-theme', next);
-                localStorage.setItem('nchsm_theme', next);
-            }
-
-            const icon = button.querySelector('i');
-            if (icon) {
-                const activeTheme = document.body.getAttribute('data-theme');
-                icon.className = activeTheme === 'dark'
-                    ? 'fas fa-sun'
-                    : 'fas fa-moon';
-                icon.setAttribute('aria-hidden', 'true');
-            }
-        } catch (error) {
-            console.error('❌ Theme toggle error:', error);
-        }
-    }
-
-    async function logout(button) {
-        if (button.disabled) return;
-
-        const confirmed = window.Swal
-            ? await Swal.fire({
-                title: 'Log out?',
-                text: 'You will be signed out of the NCHSM Student Portal.',
-                icon: 'question',
-                showCancelButton: true,
-                confirmButtonText: 'Log Out',
-                cancelButtonText: 'Cancel',
-                reverseButtons: true
-            }).then(result => result.isConfirmed)
-            : window.confirm('Are you sure you want to log out?');
-
-        if (!confirmed) return;
-
-        button.disabled = true;
-
-        try {
-            const client = getRealSupabaseClient();
-
-            if (client) {
-                const { error } = await client.auth.signOut();
-                if (error) throw error;
-            } else if (window.db && typeof window.db.logout === 'function') {
-                await window.db.logout();
-            } else {
-                throw new Error('Authentication client is unavailable.');
-            }
-
-            // Clear only portal-local transient state.
-            try {
-                localStorage.removeItem('nchsm_session');
-                localStorage.removeItem('dashboard_cache');
-            } catch (_) {}
-
-            window.location.href = '/login';
-        } catch (error) {
-            console.error('❌ Logout failed:', error);
-            button.disabled = false;
-
-            if (window.Swal) {
-                Swal.fire({
-                    title: 'Logout failed',
-                    text: error.message || 'Unable to sign out. Please try again.',
-                    icon: 'error'
-                });
-            } else {
-                alert('Logout failed: ' + (error.message || 'Please try again.'));
-            }
-        }
-    }
-
-    function bindButtons() {
-        const refresh = document.getElementById('sidebarRefreshBtn');
-        const theme = document.getElementById('sidebarThemeBtn');
-        const logoutBtn = document.getElementById('sidebarLogoutBtn');
-
-        if (!refresh || !theme || !logoutBtn) {
-            return false;
-        }
-
-        // Prevent duplicate listeners if this initializer runs more than once.
-        if (!refresh.dataset.bound) {
-            refresh.dataset.bound = 'true';
-            refresh.addEventListener('click', () => refreshDashboard(refresh));
-        }
-
-        if (!theme.dataset.bound) {
-            theme.dataset.bound = 'true';
-            theme.addEventListener('click', () => toggleTheme(theme));
-        }
-
-        if (!logoutBtn.dataset.bound) {
-            logoutBtn.dataset.bound = 'true';
-            logoutBtn.addEventListener('click', () => logout(logoutBtn));
-        }
-
-        // Set the correct initial theme icon.
-        const activeTheme =
-            document.body.getAttribute('data-theme') ||
-            localStorage.getItem('nchsm_theme') ||
-            'purple';
-
-        const icon = theme.querySelector('i');
-        if (icon) {
-            icon.className = activeTheme === 'dark'
-                ? 'fas fa-sun'
-                : 'fas fa-moon';
-            icon.setAttribute('aria-hidden', 'true');
-        }
-
-        console.log('✅ Sidebar footer buttons ready: Refresh • Theme • Logout');
-        return true;
-    }
-
-    function initialize() {
-        if (bindButtons()) return;
-
-        // The sidebar can be rendered after the initial DOM load.
-        const observer = new MutationObserver(() => {
-            if (bindButtons()) observer.disconnect();
-        });
-
-        observer.observe(document.body, {
-            childList: true,
-            subtree: true
-        });
-
-        setTimeout(() => observer.disconnect(), 15000);
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initialize, { once: true });
-    } else {
-        initialize();
-    }
-
-    document.addEventListener('appReady', bindButtons);
-})();
-</script>
-
-<style id="official-footer-links-final-v9">
-.app-footer .nchsm-campusnexus-link {
-    color: inherit;
-    text-decoration: none;
-}
-.app-footer .nchsm-campusnexus-link:hover {
-    text-decoration: underline;
-}
-</style>
-
-
-<script id="nchsm-mobile-drawer-final">
-(function () {
-    'use strict';
-
-    function init() {
-        const toggle = document.getElementById('mobile-menu-toggle');
-        const sidebar = document.getElementById('sidebar');
-        const overlay = document.getElementById('nchsm-mobile-sidebar-overlay');
-        const closeBtn = document.getElementById('nchsmMobileSidebarClose');
-
-        if (!toggle || !sidebar || !overlay || toggle.dataset.nchsmDrawerBound === '1') return;
-        toggle.dataset.nchsmDrawerBound = '1';
-
-        const isMobile = () => window.matchMedia('(max-width: 768px)').matches;
-
-        function setOpen(open) {
-            if (open && !isMobile()) return;
-
-            document.body.classList.toggle('nchsm-mobile-sidebar-open', open);
-            toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-            overlay.setAttribute('aria-hidden', open ? 'false' : 'true');
-
-            const icon = toggle.querySelector('i');
-            if (icon) {
-                icon.classList.toggle('fa-bars', !open);
-                icon.classList.toggle('fa-times', open);
-            }
-        }
-
-        toggle.setAttribute('aria-expanded', 'false');
-
-        toggle.addEventListener('click', function (event) {
-            if (!isMobile()) return;
-            event.preventDefault();
-            event.stopPropagation();
-            setOpen(!document.body.classList.contains('nchsm-mobile-sidebar-open'));
-        });
-
-        overlay.addEventListener('click', () => setOpen(false));
-        closeBtn?.addEventListener('click', () => setOpen(false));
-
-        sidebar.addEventListener('click', function (event) {
-            if (!isMobile()) return;
-            const link = event.target.closest('[data-tab]');
-            if (link && link.getAttribute('data-tab') !== 'learning-hub') {
-                setTimeout(() => setOpen(false), 120);
-            }
-        });
-
-        document.addEventListener('keydown', function (event) {
-            if (event.key === 'Escape' &&
-                document.body.classList.contains('nchsm-mobile-sidebar-open')) {
-                setOpen(false);
-            }
-        });
-
-        window.addEventListener('resize', function () {
-            if (!isMobile()) setOpen(false);
-        });
-    }
-
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', init, { once: true });
-    } else {
-        init();
-    }
-    window.addEventListener('appReady', init);
-})();
-</script>
-
-
-<style id="nchsm-footer-v14-fix">
-.app-footer .social-icon { flex: 0 0 36px; }
-.app-footer .nchsm-campusnexus-link { white-space: nowrap; }
-@media (max-width: 767px) {
-  .app-footer { padding: 28px 16px 18px !important; }
-  .app-footer > div > div:first-child { grid-template-columns: 1fr !important; }
-  .app-footer > div > div:last-child {
-    flex-direction: column !important;
-    align-items: center !important;
-    text-align: center !important;
-  }
-}
-</style>
 
 </body>
 </html>
