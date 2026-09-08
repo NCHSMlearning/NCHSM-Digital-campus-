@@ -6967,19 +6967,27 @@
     min-width: 0;
     flex: 1 1 auto;
 }
+
+/* Desktop: keep the sidebar in normal page flow while allowing it to stay visible during scrolling.
+   Do not give it a fixed viewport height; that prevents it from visually extending over the footer. */
+@media (min-width: 769px) {
+    #app-content > .container > #sidebar {
+        position: sticky !important;
+        top: 65px;
+        align-self: flex-start;
+        height: auto !important;
+        max-height: calc(100vh - 65px);
+        overflow-y: auto;
+        overflow-x: hidden;
+        z-index: 100;
+    }
+}
 #app-content > .app-footer {
     flex: 0 0 auto;
     position: static !important;
     margin-top: 40px;
     width: 100%;
     box-sizing: border-box;
-}
-/* Keep the footer hidden until authentication/application initialization is complete. */
-body:not(.app-ready) #app-content > .app-footer {
-    visibility: hidden;
-}
-body.app-ready #app-content > .app-footer {
-    visibility: visible;
 }
 @media (max-width: 768px) {
     #app-content > .app-footer {
@@ -6992,7 +7000,7 @@ body.app-ready #app-content > .app-footer {
         </div><!-- /.container -->
 
 <!-- ========== FOOTER - MATCHING SUPER ADMIN ========== -->
-<footer class="app-footer" style="background: #0A3D62; color: rgba(255,255,255,0.9); margin-left: 0; padding: 40px 40px 20px 40px; border-top: 3px solid #FDB913; margin-top: 40px;">
+<footer class="app-footer" style="background: #0A3D62; color: rgba(255,255,255,0.9); margin-left: 0; padding: 40px 40px 20px 40px; border-top: 3px solid #FDB913;">
     <div style="max-width: 1400px; margin: 0 auto;">
 
         <!-- ===== FOOTER CONTENT ===== -->
