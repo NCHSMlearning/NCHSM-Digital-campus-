@@ -6949,29 +6949,41 @@
 
 
 <style id="footer-layout-fix">
-/* Keep the portal footer at the bottom while authentication/dashboard content loads.
-   It must never jump to the top simply because the active tab is temporarily hidden. */
+/* Footer layout: keep the footer in normal document flow.
+   It must NOT be fixed to the viewport or pushed with flex auto-margin.
+   Short pages can end near the viewport bottom; long pages naturally push
+   the footer below the content and require scrolling. */
 .main#main-content {
     min-height: calc(100vh - 80px);
-    display: flex;
-    flex-direction: column;
-    align-items: stretch;
+    display: block;
 }
+
 .main#main-content > .app-footer {
-    margin-top: auto !important;
-    flex-shrink: 0;
+    position: static !important;
+    width: 100%;
+    box-sizing: border-box;
+    margin-top: 40px !important;
+    flex: none !important;
+    flex-shrink: 0 !important;
 }
-/* During the brief initialization state, don't let an empty main area expose
-   the footer above the dashboard. It is revealed when the application is ready. */
+
+/* During authentication/initialization, hide the footer visually so it
+   cannot flash above the dashboard. It still remains in normal flow. */
 body:not(.app-ready) .main#main-content > .app-footer {
     visibility: hidden;
 }
+
 body.app-ready .main#main-content > .app-footer {
     visibility: visible;
 }
+
 @media (max-width: 768px) {
     .main#main-content {
         min-height: calc(100vh - 64px);
+    }
+
+    .main#main-content > .app-footer {
+        margin-top: 30px !important;
     }
 }
 </style>
