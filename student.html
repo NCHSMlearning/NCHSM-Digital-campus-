@@ -12,7 +12,7 @@
       window.dataLayer = window.dataLayer || [];
       function gtag(){dataLayer.push(arguments);}
       gtag('js', new Date());
-      gtag('config', 'G-KBYGBSYY2S');
+      gtag('config', 'G-WTZRYGB8PE');
     </script>
 <!-- External Libraries -->
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -226,6 +226,76 @@
   #dashboard .dashboard-metric-grid { grid-template-columns: 1fr 1fr !important; gap: 8px !important; }
   #dashboard .dashboard-metric-grid > div { min-height: 82px; padding: 10px 12px !important; }
   #dashboard .dashboard-hero { min-height: 190px; }
+}
+</style>
+
+<style id="nchsm-dashboard-final-visual-fix">
+/* FINAL DASHBOARD HERO: real local campus asset, full image visible, dynamic greeting */
+#dashboard .nd-hero{
+  position:relative!important;
+  min-height:148px!important;
+  overflow:hidden!important;
+  border-radius:16px!important;
+  background:#07345a!important;
+  isolation:isolate!important;
+}
+#dashboard .nd-hero-image{
+  position:absolute!important;
+  inset:0 0 0 auto!important;
+  width:48%!important;
+  height:100%!important;
+  z-index:0!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  background:#07345a!important;
+  overflow:hidden!important;
+}
+#dashboard .nd-hero-image img{
+  display:block!important;
+  width:100%!important;
+  height:100%!important;
+  max-width:100%!important;
+  max-height:100%!important;
+  object-fit:contain!important;
+  object-position:center right!important;
+  background:#07345a!important;
+}
+#dashboard .nd-hero-image-overlay{
+  position:absolute!important;
+  inset:0!important;
+  background:linear-gradient(90deg,rgba(4,43,77,.96) 0%,rgba(4,43,77,.58) 30%,rgba(4,43,77,.12) 72%,rgba(4,43,77,.08) 100%)!important;
+  pointer-events:none!important;
+}
+#dashboard .nd-hero-inner{
+  position:relative!important;
+  z-index:2!important;
+  min-height:148px!important;
+  padding:20px 26px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:20px!important;
+  color:#fff!important;
+}
+#dashboard .nd-hero-copy{max-width:56%!important;position:relative!important;z-index:3!important}
+#dashboard .nd-hero h1{margin:0!important;font-size:31px!important;line-height:1.12!important;font-weight:800!important;letter-spacing:-.7px!important;color:#fff!important}
+#dashboard .nd-hero h1 #greeting-text,#dashboard .nd-hero h1 #welcome-student-name{color:#fff!important}
+#dashboard .nd-greeting-comma,#dashboard .nd-greeting-mark{color:#fff!important}
+#dashboard .nd-hero-sub{margin:8px 0 0!important;font-size:15px!important;color:rgba(255,255,255,.93)!important}
+#dashboard .nd-tagline{margin-top:13px!important;font-size:14px!important;font-weight:800!important;font-style:italic!important;color:#ffc928!important}
+#dashboard .nd-hero-right{position:relative!important;z-index:3!important;align-self:stretch!important;min-width:285px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:flex-end!important;text-align:right!important;padding-right:4px!important}
+#dashboard .nd-hero-nav{font-size:13px!important;font-weight:800!important;letter-spacing:.4px!important;color:#fff!important;white-space:nowrap!important;text-shadow:0 1px 5px rgba(0,0,0,.35)!important}
+#dashboard .nd-hero-nav span{opacity:.7!important;padding:0 9px!important}
+#dashboard .nd-hero-message{margin-top:10px!important;font-size:12px!important;line-height:1.45!important;color:#fff!important;max-width:260px!important;text-shadow:0 1px 5px rgba(0,0,0,.35)!important}
+@media(max-width:760px){
+ #dashboard .nd-hero{min-height:190px!important}
+ #dashboard .nd-hero-image{width:100%!important;opacity:.62!important}
+ #dashboard .nd-hero-image img{object-fit:contain!important;object-position:center right!important}
+ #dashboard .nd-hero-inner{min-height:190px!important;padding:20px 18px!important;align-items:flex-start!important}
+ #dashboard .nd-hero-copy{max-width:100%!important;padding-top:6px!important}
+ #dashboard .nd-hero-right{display:none!important}
+ #dashboard .nd-hero h1{font-size:26px!important}
 }
 </style>
 </head>
@@ -654,19 +724,30 @@
 #dashboard .nd-brand-left{display:flex;align-items:center;gap:14px;min-width:0;}.nd-brand-left i{font-size:28px;color:#ffd166;}.nd-brand-quote{font-size:14px;font-weight:800;white-space:nowrap;}.nd-brand-sub{font-size:10px;color:rgba(255,255,255,.78);margin-top:3px;}
 #dashboard .nd-brand-right{font-size:12px;font-style:italic;text-align:right;opacity:.95;}
 #dashboard .nd-hidden-data{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;}
+
+#dashboard .nd-attention{display:flex;align-items:center;gap:12px;margin:10px 0 14px;padding:11px 14px;border:1px solid #dbe7f2;border-left:4px solid #087bf0;border-radius:12px;background:#fff;box-shadow:0 3px 12px rgba(17,57,92,.06)}
+#dashboard .nd-attention-icon{width:34px;height:34px;border-radius:10px;display:grid;place-items:center;background:#eaf4ff;color:#087bf0;flex:0 0 auto}
+#dashboard .nd-attention-copy{min-width:0;display:flex;flex-direction:column;gap:2px;flex:1}.nd-attention-copy strong{font-size:11px;color:#173452}.nd-attention-copy span{font-size:10px;color:#6a8198;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dashboard .nd-attention-action{border:1px solid #cfe2f5;background:#f4f9ff;color:#0874dc;border-radius:8px;padding:7px 11px;font-size:10px;font-weight:800;cursor:pointer}.nd-attention-action:hover{background:#e8f3ff}
+body.dark-mode #dashboard .nd-attention{background:#122235;border-color:#27415a} body.dark-mode #dashboard .nd-attention-copy strong{color:#e8f1fa} body.dark-mode #dashboard .nd-attention-copy span{color:#9db1c5}
+@media(max-width:640px){#dashboard .nd-attention{align-items:flex-start}.nd-attention-action{margin-left:auto}.nd-attention-copy span{white-space:normal}}
 @media(max-width:1200px){#dashboard .nd-points{grid-template-columns:repeat(3,1fr)}#dashboard .nd-grid-bottom{grid-template-columns:1fr 1fr}.nd-grid-bottom .nd-card:last-child{grid-column:1/-1}.nd-hero-copy{max-width:64%!important}}
 @media(max-width:900px){#dashboard .nd-grid-top{grid-template-columns:1fr}#dashboard .nd-points{grid-template-columns:repeat(2,1fr)}#dashboard .nd-hero-right{display:none}#dashboard .nd-hero-copy{max-width:100%!important}.nd-hero h1{font-size:27px!important}}
 @media(max-width:640px){#dashboard .nd-wrap{padding:8px 0 0}#dashboard .nd-hero,#dashboard .nd-hero-inner{min-height:145px}#dashboard .nd-hero-inner{padding:18px}.nd-hero h1{font-size:22px!important}.nd-hero-sub{font-size:12px!important}.nd-tagline{font-size:11px!important}.nd-points{grid-template-columns:1fr 1fr!important;gap:8px!important}.nd-point{min-height:68px;padding:9px!important}.nd-point-icon{width:36px!important;height:36px!important;flex-basis:36px!important;font-size:16px!important}.nd-point-label{font-size:10px!important}.nd-point-value{font-size:13px!important}.nd-point-sub{font-size:9px!important}.nd-xpbar{min-width:60px!important}.nd-card-head{padding:9px 12px!important}.nd-card-body,.nd-events,.nd-courses,.nd-streak-body{padding-left:12px!important;padding-right:12px!important}.nd-actions{grid-template-columns:repeat(2,1fr)!important}.nd-progress{grid-template-columns:repeat(2,1fr)!important;row-gap:12px}.nd-ring{width:78px!important;height:78px!important}.nd-ring-value{font-size:14px!important}.nd-grid-bottom{grid-template-columns:1fr!important}.nd-grid-bottom .nd-card:last-child{grid-column:auto}.nd-brand-right{display:none}.nd-brand-quote{font-size:11px!important;white-space:normal}.nd-brand-sub{font-size:9px!important}}
 </style>
 <div class="nd-wrap">
-<div class="nd-hero">
+<div class="nd-hero" aria-label="NCHSM student welcome">
+<div class="nd-hero-image" aria-hidden="true">
+<img src="images/campus-header.jpg" alt="NCHSM campus" loading="eager" decoding="async"/>
+<div class="nd-hero-image-overlay"></div>
+</div>
 <div class="nd-hero-inner">
 <div class="nd-hero-copy">
-<h1><span id="greeting-text">Good Morning</span>, <span id="welcome-student-name" aria-live="polite"></span>! <span id="greeting-emoji">👋</span></h1>
+<h1><span id="greeting-text" aria-live="polite"></span><span class="nd-greeting-comma">, </span><span id="welcome-student-name" aria-live="polite"></span><span class="nd-greeting-mark">!</span> <span id="greeting-emoji" aria-hidden="true"></span></h1>
 <p class="nd-hero-sub" id="student-welcome-message">Stay focused, keep learning, and achieve your goals.</p>
 <div class="nd-tagline">“Better Healthcare Through Competence” 🎓</div>
 </div>
-<div aria-hidden="true" class="nd-hero-right">
+<div class="nd-hero-right">
 <div class="nd-hero-nav">LEARN <span>|</span> PRACTICE <span>|</span> EXCEL</div>
 <div class="nd-hero-message">NCHSM – Shaping Future Healthcare<br/>Professionals</div>
 </div>
@@ -685,6 +766,11 @@
 <div class="nd-point"><div class="nd-point-icon"><i class="fas fa-trophy"></i></div><div class="nd-point-body"><div class="nd-point-label">Total: <strong id="total-points-display">--</strong> pts</div><div class="nd-point-sub">All activities</div></div></div>
 </div>
 <div class="nd-announcement"><i class="fas fa-bullhorn nd-announcement-icon"></i><div class="nd-announcement-copy"><div class="nd-announcement-title">Official Announcement</div><div class="nd-announcement-text" id="student-announcement">Loading latest announcement...</div></div><span class="nd-arrow">›</span></div>
+<div class="nd-attention" id="dashboard-attention-card" aria-live="polite">
+  <div class="nd-attention-icon"><i class="fas fa-bell"></i></div>
+  <div class="nd-attention-copy"><strong>What needs my attention?</strong><span id="dashboard-attention-text">Checking your portal status...</span></div>
+  <button class="nd-attention-action" id="dashboard-attention-action" type="button" data-tab="dashboard">View</button>
+</div>
 <div class="nd-grid-top">
 <div class="nd-card">
 <div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-bolt"></i><div><h3>Quick Actions</h3><small>Access the most used portal features</small></div></div><button class="nd-view" data-tab="hub-online-learning" type="button">View All →</button></div>
@@ -7213,7 +7299,7 @@ document.addEventListener('DOMContentLoaded', function() {
 
         if (greetingText) greetingText.textContent = greeting;
         if (greetingEmoji) greetingEmoji.textContent = emoji;
-        if (nameEl && profile?.full_name) nameEl.textContent = profile.full_name.trim();
+        if (nameEl) nameEl.textContent = profile?.full_name ? profile.full_name.trim() : '';
     }
 
     if (document.readyState === 'loading') {
@@ -7515,5 +7601,42 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   document.addEventListener('appReady', initSidebarFooterControls);
   new MutationObserver(initSidebarFooterControls).observe(document.body, { childList:true, subtree:true });
 })();
-</script></body>
+</script>
+<script>
+// NCHSM dashboard polish: dynamic attention state, keyboard search, and safe UI refresh
+(function(){
+  'use strict';
+  function getNum(id){ const el=document.getElementById(id); if(!el) return null; const n=parseFloat((el.textContent||'').replace(/[^0-9.\-]/g,'')); return Number.isFinite(n)?n:null; }
+  function updateAttention(){
+    const card=document.getElementById('dashboard-attention-card'); const text=document.getElementById('dashboard-attention-text');
+    if(!card||!text) return;
+    const pending=getNum('dashboard-pending-count');
+    const attendance=getNum('dashboard-attendance-rate');
+    const balanceEl=document.getElementById('dashboard-finance-balance');
+    const balanceText=balanceEl ? (balanceEl.textContent||'').trim() : '';
+    const examStatus=(document.getElementById('dashboard-exam-status')?.textContent||'').trim().toUpperCase();
+    const items=[];
+    if(pending!==null && pending>0) items.push(pending+' attendance record'+(pending===1?'':'s')+' pending');
+    if(attendance!==null && attendance<75) items.push('attendance is below 75%');
+    if(examStatus==='NOT ELIGIBLE') items.push('exam clearance needs attention');
+    if(balanceText && balanceText!=='--' && !/^loading/i.test(balanceText) && /[0-9]/.test(balanceText)) items.push('finance status available for review');
+    if(items.length){ text.textContent=items.slice(0,2).join(' • '); card.classList.add('has-attention'); }
+    else { text.textContent='You are up to date. Keep learning and stay on track.'; card.classList.remove('has-attention'); }
+  }
+  function focusSearch(){
+    const input=document.getElementById('sidebarPortalSearch');
+    if(input){ input.focus(); input.select(); }
+  }
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){ e.preventDefault(); focusSearch(); }
+  });
+  document.addEventListener('DOMContentLoaded',function(){ setTimeout(updateAttention,1200); setTimeout(updateAttention,3000); });
+  document.addEventListener('appReady',function(){ setTimeout(updateAttention,300); });
+  window.addEventListener('appReady',function(){ setTimeout(updateAttention,300); });
+  const observer=new MutationObserver(function(){ updateAttention(); });
+  const watch=document.getElementById('dashboard');
+  if(watch) observer.observe(watch,{subtree:true,childList:true,characterData:true});
+})();
+</script>
+</body>
 </html>
