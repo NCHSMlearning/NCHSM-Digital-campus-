@@ -559,26 +559,216 @@
 <!-- MAIN CONTENT AREA -->
 <main class="main" id="main-content">
 <!-- ==================== DASHBOARD SECTION - FULL DARK THEME ==================== -->
-<section class="tab-content active" id="dashboard" style="padding:20px;max-width:100%;overflow-x:hidden;background:#f5f7fb;">
+<section class="tab-content active" id="dashboard" style="padding:0;max-width:100%;overflow-x:hidden;background:#f4f8fc;">
 <style>
-#dashboard .rd-shell{display:grid;gap:18px}#dashboard .rd-hero{position:relative;overflow:hidden;min-height:190px;border-radius:18px;background:#0a3d62;color:#fff;box-shadow:0 10px 30px rgba(10,61,98,.18)}#dashboard .rd-hero-bg{position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,42,69,.98) 0%,rgba(10,61,98,.82) 46%,rgba(10,61,98,.22) 100%),url('images/campus-header.jpg') center/cover no-repeat}#dashboard .rd-hero-content{position:relative;z-index:1;padding:28px 30px;display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:190px}#dashboard .rd-hero h1{margin:0;font-size:clamp(1.45rem,3vw,2.15rem);font-weight:800;letter-spacing:-.4px}#dashboard .rd-hero p{margin:8px 0 0;color:rgba(255,255,255,.86);font-size:13px;max-width:620px}#dashboard .rd-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}#dashboard .rd-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);font-size:11px;color:#fff}#dashboard .rd-hero-time{font-size:12px;color:rgba(255,255,255,.88)}#dashboard .rd-avatar{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.4);font-size:28px;flex:0 0 auto}#dashboard .rd-last{display:flex;align-items:center;gap:9px;padding:9px 14px;background:var(--card-bg,#fff);border:1px solid #e5e7eb;border-radius:10px;color:#64748b;font-size:12px}#dashboard .rd-section-title{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:#0a3d62;font-size:15px;font-weight:800}#dashboard .rd-section-title i{color:#fdb913}#dashboard .rd-points{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.rd-point{background:#fff;border:1px solid #e5e7eb;border-radius:13px;padding:13px;min-width:0}.rd-point .label{font-size:11px;color:#64748b}.rd-point .value{font-size:20px;font-weight:800;color:#0a3d62;margin-top:4px}.rd-point .sub{font-size:10px;color:#94a3b8}.rd-xpbar{height:5px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin-top:7px}.rd-xpbar span{display:block;height:100%;background:linear-gradient(90deg,#fdb913,#4c1d95);border-radius:5px;width:0}.rd-alert{display:flex;align-items:flex-start;gap:11px;padding:13px 16px;background:#fffbeb;border:1px solid #f5d58a;border-left:4px solid #f59e0b;border-radius:12px;color:#78350f}.rd-alert strong{display:block;font-size:13px;color:#92400e}.rd-alert span{display:block;font-size:12px;margin-top:2px}.rd-main-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.85fr);gap:18px}.rd-card{background:#fff;border:1px solid #e5e7eb;border-radius:15px;box-shadow:0 2px 8px rgba(15,23,42,.04);overflow:hidden}.rd-card-head{padding:15px 17px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between}.rd-card-head h3{margin:0;color:#0a3d62;font-size:14px}.rd-card-body{padding:16px}.rd-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.rd-action{border:1px solid #e5e7eb;background:#fff;border-radius:12px;padding:13px 8px;text-align:center;cursor:pointer;color:#334155;transition:.2s;text-decoration:none}.rd-action:hover{transform:translateY(-2px);box-shadow:0 7px 18px rgba(76,29,149,.1);border-color:#c4b5fd}.rd-action i{display:flex;align-items:center;justify-content:center;width:38px;height:38px;margin:0 auto 7px;border-radius:10px;background:#f3e8ff;color:#4c1d95;font-size:16px}.rd-action span{display:block;font-size:11px;font-weight:700}.rd-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.rd-ring{position:relative;text-align:center}.rd-ring svg{width:78px;height:78px;transform:rotate(-90deg)}.rd-ring circle{fill:none;stroke-width:7}.rd-ring .track{stroke:#edf0f5}.rd-ring .fill{stroke:#4c1d95;stroke-linecap:round;stroke-dasharray:214;stroke-dashoffset:214}.rd-ring .ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#0a3d62}.rd-ring label{display:block;margin-top:6px;font-size:10px;color:#64748b;font-weight:700}.rd-two{display:grid;grid-template-columns:1fr 1fr;gap:18px}.rd-streak{background:linear-gradient(135deg,#0a3d62,#174f73);color:#fff}.rd-streak .rd-card-head h3{color:#fff}.rd-streak .rd-card-head{border-color:rgba(255,255,255,.1)}.rd-streak-body{padding:16px}.rd-streak-num{font-size:32px;font-weight:900;color:#fdb913}.rd-days{display:flex;gap:5px;margin-top:12px}.rd-day{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.1);font-size:10px}.rd-events{display:grid;gap:8px}.rd-event{display:flex;gap:10px;align-items:center;padding:9px;border-radius:10px;background:#f8fafc}.rd-event-date{width:42px;text-align:center;font-size:9px;font-weight:800;color:#4c1d95}.rd-event-main{min-width:0}.rd-event-main strong{display:block;font-size:11px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rd-event-main span{font-size:9px;color:#94a3b8}.rd-course-list{display:grid;gap:8px}.rd-course{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #eef2f7;border-radius:10px}.rd-course-icon{width:34px;height:34px;border-radius:9px;background:#e0f2fe;color:#0369a1;display:flex;align-items:center;justify-content:center}.rd-course strong{display:block;font-size:11px;color:#334155}.rd-course span{font-size:9px;color:#94a3b8}.rd-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.rd-mini{padding:12px;border:1px solid #e5e7eb;border-radius:11px;background:#fff;cursor:pointer}.rd-mini strong{display:block;font-size:16px;color:#0a3d62;margin-top:4px}.rd-mini span{font-size:10px;color:#94a3b8}.rd-footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 2px;border-top:1px solid #e5e7eb;color:#94a3b8;font-size:10px}@media(max-width:900px){#dashboard .rd-points{grid-template-columns:repeat(3,1fr)}.rd-main-grid,.rd-two{grid-template-columns:1fr}}@media(max-width:640px){#dashboard{padding:12px!important}.rd-hero-content{padding:22px 18px;min-height:175px}.rd-avatar{display:none}.rd-points{grid-template-columns:repeat(2,1fr)!important}.rd-actions{grid-template-columns:repeat(2,1fr)}.rd-progress{grid-template-columns:repeat(2,1fr)}.rd-mini-grid{grid-template-columns:1fr 1fr}.rd-last{font-size:11px}.rd-hero h1{font-size:1.35rem}}
+/* NCHSM DASHBOARD — visual match to supplied reference */
+#dashboard{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#0f2745;}
+#dashboard .nd-wrap{display:flex;flex-direction:column;gap:12px;padding:12px 0 0;}
+#dashboard .nd-hero{position:relative;min-height:148px;border-radius:16px;overflow:hidden;background:#07345a;box-shadow:0 5px 18px rgba(9,54,91,.14);}
+#dashboard .nd-hero::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,43,77,.98) 0%,rgba(4,43,77,.94) 27%,rgba(4,43,77,.62) 50%,rgba(4,43,77,.12) 77%,rgba(4,43,77,.18) 100%),url('images/campus-header.jpg') center 53%/cover no-repeat;}
+#dashboard .nd-hero::after{content:"";position:absolute;right:0;top:0;width:34%;height:100%;background:linear-gradient(90deg,transparent,rgba(4,43,77,.2));pointer-events:none;}
+#dashboard .nd-hero-inner{position:relative;z-index:2;min-height:148px;padding:20px 26px;display:flex;align-items:center;justify-content:space-between;gap:20px;color:#fff;}
+#dashboard .nd-hero-copy{max-width:58%;}
+#dashboard .nd-hero h1{margin:0;font-size:31px;line-height:1.12;font-weight:800;letter-spacing:-.7px;color:#fff;}
+#dashboard .nd-hero h1 #welcome-student-name{color:#fff;}
+#dashboard .nd-hero-sub{margin:8px 0 0;font-size:15px;color:rgba(255,255,255,.93);}
+#dashboard .nd-tagline{margin-top:13px;font-size:14px;font-weight:800;font-style:italic;color:#ffc928;}
+#dashboard .nd-hero-right{align-self:stretch;min-width:285px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;text-align:right;padding-right:4px;}
+#dashboard .nd-hero-nav{font-size:13px;font-weight:800;letter-spacing:.4px;color:#fff;white-space:nowrap;}
+#dashboard .nd-hero-nav span{opacity:.55;padding:0 9px;}
+#dashboard .nd-hero-message{margin-top:10px;font-size:12px;line-height:1.45;color:#fff;max-width:260px;}
+#dashboard .nd-last-login{display:none;}
+#dashboard .nd-points{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}
+#dashboard .nd-point{min-height:74px;background:#fff;border:1px solid #dce6f0;border-radius:13px;box-shadow:0 2px 9px rgba(24,55,87,.06);padding:11px 14px;display:flex;align-items:center;gap:11px;min-width:0;}
+#dashboard .nd-point:nth-child(2){border-color:#dacbfa;background:linear-gradient(180deg,#fff,#fcf9ff);}
+#dashboard .nd-point:nth-child(4){border-color:#d9c9fa;background:#fbf9ff;}
+#dashboard .nd-point:nth-child(5){border-color:#f5bd32;background:linear-gradient(180deg,#fffdf7,#fff9e8);}
+#dashboard .nd-point-icon{width:43px;height:43px;flex:0 0 43px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;background:#fff7df;color:#f2ad00;}
+#dashboard .nd-point:nth-child(2) .nd-point-icon{background:#f1e8ff;color:#6d28d9;}
+#dashboard .nd-point:nth-child(3) .nd-point-icon{background:#e3f8ef;color:#059669;}
+#dashboard .nd-point:nth-child(4) .nd-point-icon{background:#f0e7ff;color:#6d28d9;}
+#dashboard .nd-point:nth-child(5) .nd-point-icon{background:#fff3cf;color:#f59e0b;}
+#dashboard .nd-point-body{min-width:0;}
+#dashboard .nd-point-label{font-size:12px;font-weight:600;color:#344b68;white-space:nowrap;}
+#dashboard .nd-point-value{font-size:15px;font-weight:800;color:#142c4b;margin-top:3px;white-space:nowrap;}
+#dashboard .nd-point-sub{font-size:10px;color:#647c98;margin-top:1px;white-space:nowrap;}
+#dashboard .nd-xpbar{height:7px;background:#dbe4ee;border-radius:99px;margin-top:5px;width:100%;min-width:100px;overflow:hidden;}
+#dashboard .nd-xpbar span{display:block;width:0%;height:100%;background:#c5d5e5;border-radius:99px;transition:width .5s ease;}
+#dashboard .nd-announcement{display:flex;align-items:center;gap:13px;min-height:58px;background:linear-gradient(90deg,#fff7dc,#fffdf3);border:1px solid #f1c53b;border-left:4px solid #ffb400;border-radius:12px;padding:10px 16px;box-shadow:0 2px 7px rgba(120,87,12,.04);}
+#dashboard .nd-announcement-icon{font-size:21px;color:#f2a800;flex:0 0 auto;}
+#dashboard .nd-announcement-copy{min-width:0;}
+#dashboard .nd-announcement-title{font-size:14px;font-weight:800;color:#713d0b;}
+#dashboard .nd-announcement-text{font-size:12px;color:#7c4a14;margin-top:2px;}
+#dashboard .nd-arrow{margin-left:auto;font-size:16px;color:#7c4a14;}
+#dashboard .nd-grid-top{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:14px;}
+#dashboard .nd-card{background:#fff;border:1px solid #dce6f0;border-radius:13px;box-shadow:0 2px 9px rgba(24,55,87,.055);overflow:hidden;min-width:0;}
+#dashboard .nd-card-head{height:55px;padding:10px 18px;border-bottom:1px solid #e7eef5;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+#dashboard .nd-card-title{display:flex;align-items:center;gap:10px;min-width:0;}
+#dashboard .nd-card-title i{font-size:23px;color:#fdb913;}
+#dashboard .nd-card-title h3{margin:0;font-size:15px;font-weight:800;color:#142d4e;}
+#dashboard .nd-card-title small{display:block;font-size:10px;font-weight:500;color:#7087a0;margin-top:2px;}
+#dashboard .nd-view{border:0;background:#edf6ff;color:#0875dc;border-radius:18px;padding:7px 13px;font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer;}
+#dashboard .nd-card-body{padding:10px 18px 14px;}
+#dashboard .nd-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px;}
+#dashboard .nd-action{min-height:76px;border:0;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:11px;font-weight:800;cursor:pointer;text-decoration:none;box-shadow:inset 0 -2px 0 rgba(0,0,0,.08);transition:transform .16s ease,filter .16s ease;}
+#dashboard .nd-action:hover{transform:translateY(-2px);filter:brightness(1.03);}
+#dashboard .nd-action i{font-size:20px;}
+#dashboard .nd-action:nth-child(1){background:#12b879;}.nd-action:nth-child(2){background:#087bf0;}.nd-action:nth-child(3){background:#9b35ee;}.nd-action:nth-child(4){background:#ff9700;}.nd-action:nth-child(5){background:#fa4771;}.nd-action:nth-child(6){background:#12a8ae;}.nd-action:nth-child(7){background:#4b3ee4;}.nd-action:nth-child(8){background:#647a91;}
+#dashboard .nd-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:start;}
+#dashboard .nd-progress-item{text-align:center;min-width:0;}
+#dashboard .nd-ring{width:91px;height:91px;margin:0 auto 5px;position:relative;}
+#dashboard .nd-ring svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible;}
+#dashboard .nd-ring-track{fill:none;stroke:#e6f0f8;stroke-width:8;}
+#dashboard .nd-ring-fill{fill:none;stroke:#d8e7f5;stroke-width:8;stroke-linecap:round;stroke-dasharray:251.33;stroke-dashoffset:251.33;transition:stroke-dashoffset .6s ease;}
+#dashboard .nd-progress-item:nth-child(2) .nd-ring-fill{stroke:#bfe8d8;}.nd-progress-item:nth-child(3) .nd-ring-fill{stroke:#d9c7f6;}.nd-progress-item:nth-child(4) .nd-ring-fill{stroke:#f7c45a;}
+#dashboard .nd-ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#102846;}
+#dashboard .nd-progress-label{font-size:11px;font-weight:800;color:#122c4d;}
+#dashboard .nd-progress-sub{font-size:10px;color:#52708f;margin-top:2px;}
+#dashboard .nd-grid-bottom{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr) minmax(260px,.72fr);gap:14px;}
+#dashboard .nd-streak .nd-card-head i{color:#ff6a00;}
+#dashboard .nd-streak-body{padding:8px 18px 13px;}
+#dashboard .nd-streak-sub{font-size:10px;color:#7188a0;margin-top:-5px;margin-bottom:8px;}
+#dashboard .nd-streak-top{display:flex;justify-content:space-between;align-items:center;}
+#dashboard .nd-streak-days{display:flex;justify-content:space-between;gap:7px;margin:5px 0 10px;}
+#dashboard .nd-milestone{min-width:42px;padding:6px 8px;border-radius:18px;background:#eef5fb;color:#59738f;font-size:10px;font-weight:800;text-align:center;}
+#dashboard .nd-milestone.active{background:#fff0c2;color:#d98a00;box-shadow:0 2px 7px rgba(250,174,0,.18);}
+#dashboard .nd-streak-line{height:8px;background:#e4edf5;border-radius:99px;position:relative;overflow:hidden;margin:0 4px 10px;}
+#dashboard .nd-streak-line span{display:block;height:100%;width:0%;background:#f5b71b;border-radius:99px;transition:width .5s ease;}
+#dashboard .nd-streak-button{border:1px solid #b9dafa;background:#f2f8ff;color:#0874dc;border-radius:7px;padding:7px 13px;font-size:10px;font-weight:800;cursor:pointer;}
+#dashboard .nd-streak-status{font-size:10px;color:#647e99;margin-left:8px;}
+#dashboard .nd-events{padding:6px 18px 12px;display:grid;gap:4px;}
+#dashboard .nd-event{display:grid;grid-template-columns:54px minmax(0,1fr);gap:9px;align-items:center;padding:5px 0;border-bottom:1px solid #e8eef5;}
+#dashboard .nd-event:last-child{border-bottom:0;}
+#dashboard .nd-date{width:45px;border:1px solid #d8e4ef;border-radius:7px;overflow:hidden;text-align:center;background:#fff;}
+#dashboard .nd-date-month{background:#f44336;color:#fff;font-size:8px;font-weight:800;padding:2px;}.nd-date-day{font-size:15px;font-weight:900;color:#102a49;padding:2px;}
+#dashboard .nd-event-title{font-size:11px;font-weight:800;color:#193453;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#dashboard .nd-event-meta{font-size:9px;color:#6d849d;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#dashboard .nd-courses{padding:7px 18px 10px;}
+#dashboard .nd-course{display:grid;grid-template-columns:66px minmax(0,1fr) 12px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #e8eef5;}
+#dashboard .nd-course:last-child{border-bottom:0;}
+#dashboard .nd-code{border-radius:5px;padding:4px 7px;font-size:10px;font-weight:900;text-align:center;background:#dff2ff;color:#086ebc;}
+#dashboard .nd-course:nth-child(2) .nd-code{background:#d7f6e9;color:#009b6c;}.nd-course:nth-child(3) .nd-code{background:#eee3ff;color:#6d2dd8;}.nd-course:nth-child(4) .nd-code{background:#ffe3e7;color:#f0444f;}
+#dashboard .nd-course-name{font-size:10px;font-weight:700;color:#1b3554;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+#dashboard .nd-course-arrow{font-size:10px;color:#122d4d;}
+#dashboard .nd-brand-footer{min-height:64px;border-radius:12px;overflow:hidden;background:linear-gradient(90deg,#06437a,#0862aa);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:9px 20px;box-shadow:0 3px 10px rgba(7,61,108,.13);}
+#dashboard .nd-brand-left{display:flex;align-items:center;gap:14px;min-width:0;}.nd-brand-left i{font-size:28px;color:#ffd166;}.nd-brand-quote{font-size:14px;font-weight:800;white-space:nowrap;}.nd-brand-sub{font-size:10px;color:rgba(255,255,255,.78);margin-top:3px;}
+#dashboard .nd-brand-right{font-size:12px;font-style:italic;text-align:right;opacity:.95;}
+#dashboard .nd-hidden-data{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;}
+@media(max-width:1200px){#dashboard .nd-points{grid-template-columns:repeat(3,1fr)}#dashboard .nd-grid-bottom{grid-template-columns:1fr 1fr}.nd-grid-bottom .nd-card:last-child{grid-column:1/-1}.nd-hero-copy{max-width:64%!important}}
+@media(max-width:900px){#dashboard .nd-grid-top{grid-template-columns:1fr}#dashboard .nd-points{grid-template-columns:repeat(2,1fr)}#dashboard .nd-hero-right{display:none}#dashboard .nd-hero-copy{max-width:100%!important}.nd-hero h1{font-size:27px!important}}
+@media(max-width:640px){#dashboard .nd-wrap{padding:8px 0 0}#dashboard .nd-hero,#dashboard .nd-hero-inner{min-height:145px}#dashboard .nd-hero-inner{padding:18px}.nd-hero h1{font-size:22px!important}.nd-hero-sub{font-size:12px!important}.nd-tagline{font-size:11px!important}.nd-points{grid-template-columns:1fr 1fr!important;gap:8px!important}.nd-point{min-height:68px;padding:9px!important}.nd-point-icon{width:36px!important;height:36px!important;flex-basis:36px!important;font-size:16px!important}.nd-point-label{font-size:10px!important}.nd-point-value{font-size:13px!important}.nd-point-sub{font-size:9px!important}.nd-xpbar{min-width:60px!important}.nd-card-head{padding:9px 12px!important}.nd-card-body,.nd-events,.nd-courses,.nd-streak-body{padding-left:12px!important;padding-right:12px!important}.nd-actions{grid-template-columns:repeat(2,1fr)!important}.nd-progress{grid-template-columns:repeat(2,1fr)!important;row-gap:12px}.nd-ring{width:78px!important;height:78px!important}.nd-ring-value{font-size:14px!important}.nd-grid-bottom{grid-template-columns:1fr!important}.nd-grid-bottom .nd-card:last-child{grid-column:auto}.nd-brand-right{display:none}.nd-brand-quote{font-size:11px!important;white-space:normal}.nd-brand-sub{font-size:9px!important}}
 </style>
-<div class="rd-shell">
-<div class="rd-hero"><div class="rd-hero-bg"></div><div class="rd-hero-content"><div><h1><span id="greeting-text">Good Morning</span>, <span id="welcome-student-name">Student</span>! <span id="greeting-emoji">👋</span></h1><p id="student-welcome-message">Access your courses, schedule, attendance and academic services from one place.</p><div class="rd-meta"><span class="rd-pill"><i class="fas fa-circle" style="color:#10b981;font-size:7px"></i> Online</span><span class="rd-pill rd-hero-time"><i class="fas fa-clock"></i> <span id="header-time-dashboard">Loading...</span></span></div></div><div aria-hidden="true" class="rd-avatar"><i class="fas fa-user-graduate"></i></div></div></div>
-<div class="rd-last"><i class="fas fa-history" style="color:#4c1d95"></i><span>Last login: <strong id="last-login-time">Loading...</strong></span></div>
-<div class="rd-card" id="quick-next-class" style="display:none"><div class="rd-card-head"><h3><i class="fas fa-chalkboard-teacher"></i> Next Class</h3><span id="quick-next-class-day" style="font-size:11px;color:#64748b">--</span></div><div class="rd-card-body" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div><strong id="quick-next-class-time" style="font-size:18px;color:#4c1d95">--:--</strong></div><div style="flex:1"><strong id="quick-next-class-name">--</strong><div style="font-size:11px;color:#94a3b8"><span id="quick-next-class-code">--</span> · <span id="quick-next-class-lecturer">--</span> · <span id="quick-next-class-venue">--</span></div></div></div><div id="quick-next-class-day-container" style="display:none"></div></div>
-<div class="rd-alert" id="next-exam-widget" style="display:none"><i class="fas fa-graduation-cap" style="color:#dc2626"></i><div><strong>Next Exam</strong><div id="next-exam-details">Loading...</div></div></div>
-<div><h3 class="rd-section-title"><i class="fas fa-trophy"></i> My Points &amp; Progress</h3><div class="rd-points"><div class="rd-point"><div class="label"><i class="fas fa-star" style="color:#fdb913"></i> Level</div><div class="value"><span id="user-level">--</span></div><div class="sub"><span id="user-xp">--</span> / <span id="user-xp-max">--</span> XP</div><div class="rd-xpbar"><span id="xp-progress-fill"></span></div></div><div class="rd-point"><div class="label"><i class="fas fa-brain" style="color:#4c1d95"></i> NurseIQ</div><div class="value"><span id="dashboard-nurseiq-points">--</span></div><div class="sub">points</div></div><div class="rd-point"><div class="label"><i class="fas fa-calendar-check" style="color:#059669"></i> Attendance</div><div class="value"><span id="attendance-points-value">--</span></div><div class="sub">points</div></div><div class="rd-point"><div class="label"><i class="fas fa-sign-in-alt" style="color:#4c1d95"></i> Login</div><div class="value"><span id="login-points-display">--</span></div><div class="sub"><span id="login-count-display">--</span> logins</div></div><div class="rd-point"><div class="label"><i class="fas fa-medal" style="color:#f59e0b"></i> Total</div><div class="value"><span id="total-points-display">--</span></div><div class="sub">points</div></div></div></div>
-<div class="rd-alert"><i class="fas fa-bullhorn" style="color:#f59e0b"></i><div><strong>Official Announcement</strong><span id="student-announcement">Loading latest announcement...</span></div></div>
-<div class="rd-main-grid"><div class="rd-card"><div class="rd-card-head"><h3><i class="fas fa-bolt" style="color:#fdb913"></i> Quick Actions</h3></div><div class="rd-card-body"><div class="rd-actions"><button class="rd-action" data-tab="hub-online-learning" type="button"><i class="fas fa-book-open"></i><span>My Learning Hub</span></button><button class="rd-action" data-tab="attendance" type="button"><i class="fas fa-calendar-check"></i><span>Attendance</span></button><button class="rd-action" data-tab="hub-exam-card" type="button"><i class="fas fa-file-alt"></i><span>Exams &amp; Results</span></button><button class="rd-action" data-tab="finance" type="button"><i class="fas fa-wallet"></i><span>My Finance</span></button><button class="rd-action" data-tab="calendar" type="button"><i class="fas fa-calendar-alt"></i><span>Academic Calendar</span></button><button class="rd-action" data-tab="messages" type="button"><i class="fas fa-comments"></i><span>Messages</span></button><button class="rd-action" data-tab="support-tickets" type="button"><i class="fas fa-life-ring"></i><span>Support Tickets</span></button><button class="rd-action" data-tab="profile" type="button"><i class="fas fa-user-cog"></i><span>Profile Settings</span></button></div></div></div>
-<div class="rd-card"><div class="rd-card-head"><h3><i class="fas fa-chart-pie" style="color:#4c1d95"></i> My Progress</h3></div><div class="rd-card-body"><div class="rd-progress"><div class="rd-ring"><svg viewbox="0 0 80 80"><circle class="track" cx="40" cy="40" r="34"></circle><circle class="fill" cx="40" cy="40" r="34"></circle></svg><div class="ring-value" id="dashboard-attendance-rate">--%</div><label>Attendance</label></div><div class="rd-ring"><svg viewbox="0 0 80 80"><circle class="track" cx="40" cy="40" r="34"></circle><circle class="fill" cx="40" cy="40" r="34"></circle></svg><div class="ring-value" id="dashboard-verified-count">--</div><label>Verified</label></div><div class="rd-ring"><svg viewbox="0 0 80 80"><circle class="track" cx="40" cy="40" r="34"></circle><circle class="fill" cx="40" cy="40" r="34"></circle></svg><div class="ring-value" id="dashboard-pending-count">--</div><label>Pending</label></div><div class="rd-ring"><svg viewbox="0 0 80 80"><circle class="track" cx="40" cy="40" r="34"></circle><circle class="fill" cx="40" cy="40" r="34"></circle></svg><div class="ring-value" id="dashboard-upcoming-exam">--</div><label>Exams</label></div></div><div style="font-size:10px;color:#94a3b8;text-align:center;margin-top:10px"><span id="dashboard-total-count">--</span> total records</div></div></div></div>
-<div class="rd-two"><div class="rd-card rd-streak"><div class="rd-card-head"><h3><span id="streak-emoji">🔥</span> Daily Streak</h3><span><strong id="daily-streak-display" style="color:#fdb913;font-size:18px">--</strong> <small>days</small></span></div><div class="rd-streak-body"><div id="streak-message" style="font-size:12px;opacity:.9">Keep showing up and build your streak.</div><div class="rd-days"><span class="rd-day" id="light-1">1</span><span class="rd-day" id="light-2">2</span><span class="rd-day" id="light-3">3</span><span class="rd-day" id="light-4">4</span><span class="rd-day" id="light-5">5</span></div><div id="streak-status-text" style="font-size:10px;margin-top:10px;opacity:.7">Loading streak status...</div><button id="streak-restore-btn" style="display:none;margin-top:8px;border:0;border-radius:7px;padding:5px 10px;background:#fdb913;color:#0a3d62;font-size:10px;font-weight:700" type="button">Restore Streak</button><div id="streak-progress-fill" style="height:4px;width:0;margin-top:10px;background:#fdb913;border-radius:4px"></div></div></div>
-<div class="rd-card"><div class="rd-card-head"><h3><i class="fas fa-calendar-day" style="color:#4c1d95"></i> Upcoming Events</h3><span style="font-size:10px;color:#94a3b8">Calendar</span></div><div class="rd-card-body"><div class="rd-events"><div class="rd-event"><div class="rd-event-date"><i class="fas fa-calendar"></i></div><div class="rd-event-main"><strong id="dashboard-current-block-value">Current block</strong><span id="dashboard-program-name">Loading...</span></div></div><div class="rd-event"><div class="rd-event-date"><i class="fas fa-graduation-cap"></i></div><div class="rd-event-main"><strong id="dashboard-intake-year">--</strong><span data-dashboard-id="dashboard-upcoming-exam">Upcoming academic event</span></div></div></div></div></div></div>
-<div class="rd-card"><div class="rd-card-head"><h3><i class="fas fa-book-medical" style="color:#059669"></i> My Courses</h3><span style="font-size:10px;color:#94a3b8">Current enrolment</span></div><div class="rd-card-body"><div class="rd-course-list"><div class="rd-course"><div class="rd-course-icon"><i class="fas fa-book"></i></div><div style="flex:1"><strong id="dashboard-active-courses">--</strong><span>Active courses</span></div><i class="fas fa-chevron-right" style="font-size:10px;color:#cbd5e1"></i></div><div class="rd-course"><div class="rd-course-icon"><i class="fas fa-file-alt"></i></div><div style="flex:1"><strong><span id="dashboard-approved-units">--</span> approved units</strong><span>Ready for academic activity</span></div></div><div class="rd-course"><div class="rd-course-icon"><i class="fas fa-book-reader"></i></div><div style="flex:1"><strong><span id="dashboard-new-resources">--</span> new resources</strong><span>Available learning materials</span></div></div></div></div></div>
-<div class="rd-mini-grid"><div class="rd-mini" data-tab="nurseiq"><span>🧠 NurseIQ accuracy</span><strong id="dashboard-nurseiq-accuracy">--</strong><span><span id="dashboard-nurseiq-questions">--</span> questions</span></div><div class="rd-mini" data-tab="hub-exam-card"><span>🪪 Exam Card</span><strong id="dashboard-exam-status">--</strong><span>Approved: <span data-dashboard-id="dashboard-approved-units">--</span> units</span></div><div class="rd-mini" data-tab="reviews"><span>⭐ Reviews</span><strong id="dashboard-reviews-avg">--</strong><span><span id="dashboard-reviews-total">--</span> reviews · <span id="dashboard-reviews-pending">--</span> pending</span><span id="reviewsBadge-dashboard" style="display:none"></span></div><div class="rd-mini" data-tab="newsletter"><span>📧 Newsletter</span><strong id="dashboard-newsletter-status">--</strong><span id="dashboard-newsletter-latest">--</span></div><div class="rd-mini" data-tab="finance"><span>💰 Finance</span><strong id="dashboard-finance-balance">--</strong><span id="dashboard-finance-status">--</span></div><div class="rd-mini"><span>🩺 Attendance</span><strong id="attendance-warning-badge">--</strong><span id="warning-text">Status</span></div></div>
-<div id="action-passport" style="display:none"></div>
-<div class="rd-footer"><span><i class="fas fa-clock"></i> Last updated: <span id="dashboard-last-updated">--</span></span><span><i class="fas fa-id-card"></i> <span id="dashboard-student-id">Loading...</span></span></div>
-</div></section>
+<div class="nd-wrap">
+<div class="nd-hero">
+<div class="nd-hero-inner">
+<div class="nd-hero-copy">
+<h1><span id="greeting-text">Good Morning</span>, <span id="welcome-student-name">Student</span>! <span id="greeting-emoji">👋</span></h1>
+<p class="nd-hero-sub" id="student-welcome-message">Stay focused, keep learning, and achieve your goals.</p>
+<div class="nd-tagline">“Better Healthcare Through Competence” 🎓</div>
+</div>
+<div aria-hidden="true" class="nd-hero-right">
+<div class="nd-hero-nav">LEARN <span>|</span> PRACTICE <span>|</span> EXCEL</div>
+<div class="nd-hero-message">NCHSM – Shaping Future Healthcare<br/>Professionals</div>
+</div>
+</div>
+</div>
+<div class="nd-last-login"><i class="fas fa-history"></i><strong>Last login:</strong> <span id="last-login-time">Loading...</span></div>
+<div class="nd-hidden-data" id="quick-next-class" style="display:none">
+<span id="quick-next-class-time">--:--</span><span id="quick-next-class-name">--</span><span id="quick-next-class-code">--</span><span id="quick-next-class-lecturer">--</span><span id="quick-next-class-venue">--</span><span id="quick-next-class-day">--</span><span id="quick-next-class-day-container"></span>
+<span id="header-time-dashboard"></span><span id="leaderboard-container"></span><span id="reviewsBadge-dashboard"></span></div>
+<div class="nd-hidden-data" id="next-exam-widget" style="display:none"><span id="next-exam-details">Loading...</span></div>
+<div class="nd-points">
+<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-star"></i></div><div class="nd-point-body"><div class="nd-point-label">Level <span id="user-level">--</span></div><div class="nd-point-value"><span id="user-xp">--</span> / <span id="user-xp-max">--</span> XP</div><div class="nd-xpbar"><span id="xp-progress-fill"></span></div></div></div>
+<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-brain"></i></div><div class="nd-point-body"><div class="nd-point-label">NurseIQ: <strong id="dashboard-nurseiq-points">--</strong> pts</div><div class="nd-point-sub">Keep participating!</div></div></div>
+<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-calendar-check"></i></div><div class="nd-point-body"><div class="nd-point-label">Attendance: <strong id="attendance-points-value">--</strong> pts</div><div class="nd-point-sub">This semester</div></div></div>
+<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-sign-in-alt"></i></div><div class="nd-point-body"><div class="nd-point-label">Login: <strong id="login-points-display">--</strong> pts</div><div class="nd-point-sub">(<span id="login-count-display">--</span> logins)</div></div></div>
+<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-trophy"></i></div><div class="nd-point-body"><div class="nd-point-label">Total: <strong id="total-points-display">--</strong> pts</div><div class="nd-point-sub">All activities</div></div></div>
+</div>
+<div class="nd-announcement"><i class="fas fa-bullhorn nd-announcement-icon"></i><div class="nd-announcement-copy"><div class="nd-announcement-title">Official Announcement</div><div class="nd-announcement-text" id="student-announcement">Loading latest announcement...</div></div><span class="nd-arrow">›</span></div>
+<div class="nd-grid-top">
+<div class="nd-card">
+<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-bolt"></i><div><h3>Quick Actions</h3><small>Access the most used portal features</small></div></div><button class="nd-view" data-tab="hub-online-learning" type="button">View All →</button></div>
+<div class="nd-card-body"><div class="nd-actions">
+<button class="nd-action" data-tab="hub-online-learning" type="button"><i class="fas fa-book-open"></i><span>My Learning Hub</span></button>
+<button class="nd-action" data-tab="attendance" type="button"><i class="fas fa-calendar-check"></i><span>Attendance</span></button>
+<button class="nd-action" data-tab="hub-exam-card" type="button"><i class="fas fa-file-alt"></i><span>Exams &amp; Results</span></button>
+<button class="nd-action" data-tab="finance" type="button"><i class="fas fa-wallet"></i><span>My Finance</span></button>
+<button class="nd-action" data-tab="calendar" type="button"><i class="fas fa-calendar-alt"></i><span>Academic Calendar</span></button>
+<button class="nd-action" data-tab="messages" type="button"><i class="fas fa-comments"></i><span>Messages</span></button>
+<button class="nd-action" data-tab="support-tickets" type="button"><i class="fas fa-headset"></i><span>Support Tickets</span></button>
+<button class="nd-action" data-tab="profile" type="button"><i class="fas fa-cog"></i><span>Profile Settings</span></button>
+</div></div>
+</div>
+<div class="nd-card">
+<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-chart-bar" style="color:#087bf0"></i><div><h3>My Progress</h3><small>Your academic journey at a glance</small></div></div><button class="nd-view" data-tab="academic-reports" type="button">View Details →</button></div>
+<div class="nd-card-body"><div class="nd-progress">
+<div class="nd-progress-item"><div class="nd-ring"><svg viewbox="0 0 100 100"><circle class="nd-ring-track" cx="50" cy="50" r="40"></circle><circle class="nd-ring-fill" cx="50" cy="50" id="nd-ring-attendance" r="40"></circle></svg><div class="nd-ring-value" id="dashboard-attendance-rate">--%</div></div><div class="nd-progress-label">Attendance</div><div class="nd-progress-sub">Current record</div></div>
+<div class="nd-progress-item"><div class="nd-ring"><svg viewbox="0 0 100 100"><circle class="nd-ring-track" cx="50" cy="50" r="40"></circle><circle class="nd-ring-fill" cx="50" cy="50" id="nd-ring-verified" r="40"></circle></svg><div class="nd-ring-value" id="dashboard-verified-count">--</div></div><div class="nd-progress-label">Verified</div><div class="nd-progress-sub">Attendance records</div></div>
+<div class="nd-progress-item"><div class="nd-ring"><svg viewbox="0 0 100 100"><circle class="nd-ring-track" cx="50" cy="50" r="40"></circle><circle class="nd-ring-fill" cx="50" cy="50" id="nd-ring-pending" r="40"></circle></svg><div class="nd-ring-value" id="dashboard-pending-count">--</div></div><div class="nd-progress-label">Pending</div><div class="nd-progress-sub">Needs attention</div></div>
+<div class="nd-progress-item"><div class="nd-ring"><svg viewbox="0 0 100 100"><circle class="nd-ring-track" cx="50" cy="50" r="40"></circle><circle class="nd-ring-fill" cx="50" cy="50" id="nd-ring-exams" r="40"></circle></svg><div class="nd-ring-value" id="dashboard-upcoming-exam">--</div></div><div class="nd-progress-label">Exams</div><div class="nd-progress-sub">Upcoming</div></div>
+</div></div>
+</div>
+</div>
+<div class="nd-grid-bottom">
+<div class="nd-card nd-streak">
+<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-fire"></i><div><h3>Daily Streak</h3><small>Keep logging in to build your streak!</small></div></div><div class="nd-view"><span id="daily-streak-display">--</span> days</div></div>
+<div class="nd-streak-body"><div class="nd-streak-days"><span class="nd-milestone active" data-day="1">🔥 1</span><span class="nd-milestone" data-day="3">🌱 3</span><span class="nd-milestone" data-day="7">🌿 7</span><span class="nd-milestone" data-day="14">💎 14</span><span class="nd-milestone" data-day="30">👑 30</span></div><div class="nd-streak-line"><span id="streak-progress-fill"></span></div><div><button class="nd-streak-button" id="streak-restore-btn" style="display:none" type="button">↻ Restore Streak</button><span class="nd-streak-status" id="streak-status-text">Loading streak status...</span></div><span class="nd-hidden-data" id="streak-emoji">🔥</span><span class="nd-hidden-data" id="streak-message">Keep logging in to build your streak!</span><span class="nd-hidden-data" id="light-1"></span><span class="nd-hidden-data" id="light-2"></span><span class="nd-hidden-data" id="light-3"></span><span class="nd-hidden-data" id="light-4"></span><span class="nd-hidden-data" id="light-5"></span></div>
+</div>
+<div class="nd-card">
+<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-calendar-alt" style="color:#087bf0"></i><div><h3>Upcoming Events</h3><small>Your schedule and important dates</small></div></div><button class="nd-view" data-tab="calendar" type="button">View All →</button></div>
+<div class="nd-events">
+<div class="nd-event"><div class="nd-date"><div class="nd-date-month">DATE</div><div class="nd-date-day">--</div></div><div><div class="nd-event-title" id="dashboard-current-block-value">Loading...</div><div class="nd-event-meta"><i class="fas fa-clock"></i> <span id="dashboard-intake-year">--</span> · <span id="dashboard-program-name">Loading...</span></div></div></div>
+<div class="nd-event"><div class="nd-date"><div class="nd-date-month">NEXT</div><div class="nd-date-day">--</div></div><div><div class="nd-event-title">Academic schedule</div><div class="nd-event-meta">Check the calendar for confirmed events</div></div></div>
+</div>
+</div>
+<div class="nd-card">
+<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-layer-group" style="color:#087bf0"></i><div><h3>My Courses</h3><small>Currently enrolled units</small></div></div><button class="nd-view" data-tab="hub-courses" type="button">View All →</button></div>
+<div class="nd-courses">
+<div class="nd-course"><span class="nd-code">UNITS</span><span class="nd-course-name"><span id="dashboard-active-courses">--</span> active courses</span><i class="fas fa-chevron-right nd-course-arrow"></i></div>
+<div class="nd-course"><span class="nd-code">APPROVED</span><span class="nd-course-name"><span id="dashboard-approved-units">--</span> approved units</span><i class="fas fa-chevron-right nd-course-arrow"></i></div>
+<div class="nd-course"><span class="nd-code">RESOURCES</span><span class="nd-course-name"><span id="dashboard-new-resources">--</span> new resources</span><i class="fas fa-chevron-right nd-course-arrow"></i></div>
+<div class="nd-course"><span class="nd-code">STATUS</span><span class="nd-course-name" id="dashboard-exam-status">Loading...</span><i class="fas fa-chevron-right nd-course-arrow"></i></div>
+</div>
+</div>
+</div>
+<div class="nd-brand-footer"><div class="nd-brand-left"><i class="fas fa-graduation-cap"></i><div><div class="nd-brand-quote">“A Healthier Community Begins With A Well-Trained Nurse”</div><div class="nd-brand-sub">NCHSM – Committed to Excellence in Health Training</div></div></div><div class="nd-brand-right">Future Nurses<br/><strong>Brighter Communities</strong> ♡</div></div>
+<div class="nd-hidden-data">
+<span id="dashboard-total-count">--</span><span id="dashboard-last-updated">--</span><span id="dashboard-student-id">Loading...</span><span id="dashboard-nurseiq-accuracy">--</span><span id="dashboard-nurseiq-questions">--</span><span id="dashboard-reviews-avg">--</span><span id="dashboard-reviews-total">--</span><span id="dashboard-reviews-pending">--</span><span id="dashboard-newsletter-status">--</span><span id="dashboard-newsletter-latest">--</span><span id="dashboard-finance-balance">--</span><span id="dashboard-finance-status">--</span><span id="attendance-warning-badge">--</span><span id="warning-text">--</span><span id="dashboard-nurseiq-progress">--%</span><span id="action-passport"></span>
+</div>
+</div>
+<script>
+(function(){
+  function navigate(tab){
+    if(!tab) return;
+    if(typeof window.nchsmNavigateToTab==='function'){window.nchsmNavigateToTab(tab);return;}
+    if(typeof window.showTab==='function'){window.showTab(tab);return;}
+    var link=document.querySelector('[data-tab="'+CSS.escape(tab)+'"]');
+    if(link && typeof link.click==='function') link.click();
+  }
+  document.querySelectorAll('#dashboard [data-tab]').forEach(function(el){
+    if(el.dataset.ndBound==='1') return;
+    el.dataset.ndBound='1';
+    el.addEventListener('click',function(e){
+      e.preventDefault();
+      navigate(el.getAttribute('data-tab'));
+    });
+  });
+  function pct(v){var n=parseFloat(String(v).replace('%',''));return Number.isFinite(n)?Math.max(0,Math.min(100,n)):0;}
+  function setRing(id,value){var el=document.getElementById(id);if(!el)return;var n=pct(value);el.style.strokeDashoffset=(251.33-(251.33*n/100)).toFixed(2);}
+  function syncRings(){
+    setRing('nd-ring-attendance',document.getElementById('dashboard-attendance-rate')?.textContent||0);
+    var total=parseFloat(document.getElementById('dashboard-total-count')?.textContent||0)||0;
+    var verified=parseFloat(document.getElementById('dashboard-verified-count')?.textContent||0)||0;
+    var pending=parseFloat(document.getElementById('dashboard-pending-count')?.textContent||0)||0;
+    setRing('nd-ring-verified',total?verified/total*100:0);
+    setRing('nd-ring-pending',total?pending/total*100:0);
+    setRing('nd-ring-exams',document.getElementById('dashboard-upcoming-exam')?.textContent||0);
+  }
+  if(window.MutationObserver){var root=document.getElementById('dashboard');if(root){new MutationObserver(function(){syncRings();}).observe(root,{subtree:true,childList:true,characterData:true});}}
+  setTimeout(syncRings,500);setTimeout(syncRings,1500);setTimeout(syncRings,3000);
+})();
+</script>
+</section>
 <!-- END DASHBOARD SECTION -->
 <!-- ========== STYLES ========== -->
 <style>
