@@ -680,6 +680,24 @@ html,body{min-height:100%;background:#f4f8fc!important}
 }
 </style>
 
+
+<style id="nchsm-learning-hub-dropdown-fix">
+/* My Learning Hub dropdown — uses the existing navigation controller */
+.has-dropdown.has-dropdown-premium{position:relative;}
+.has-dropdown .dropdown-toggle-premium{cursor:pointer;}
+.has-dropdown .dropdown-arrow-premium{margin-left:auto;transition:transform .2s ease;}
+.has-dropdown.open .dropdown-arrow-premium{transform:rotate(180deg);}
+.dropdown-submenu.dropdown-submenu-premium{display:none;margin:4px 10px 8px 42px;padding:5px 0;list-style:none;border-left:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.035);border-radius:0 8px 8px 0;}
+.has-dropdown.open>.dropdown-submenu.dropdown-submenu-premium{display:block!important;}
+.dropdown-submenu-premium li{margin:0;padding:0;list-style:none;}
+.dropdown-submenu-premium a{display:flex!important;align-items:center;gap:9px;padding:8px 10px;color:rgba(255,255,255,.78)!important;text-decoration:none!important;font-size:12px;border-radius:6px;margin:1px 5px;white-space:nowrap;}
+.dropdown-submenu-premium a:hover,.dropdown-submenu-premium a.active{background:rgba(255,255,255,.10);color:#FDB913!important;}
+.dropdown-submenu-premium a i{width:16px;text-align:center;font-size:11px;}
+.dropdown-divider-premium{height:1px;background:rgba(255,255,255,.10);margin:5px 10px!important;}
+@media(max-width:1023px){
+ .dropdown-submenu.dropdown-submenu-premium{margin-left:28px;}
+}
+</style>
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -861,12 +879,24 @@ html,body{min-height:100%;background:#f4f8fc!important}
 <span class="nav-text">Academic Calendar</span>
 </a>
 </li>
-<li role="none">
-<a data-tab="hub-online-learning" href="#" role="menuitem">
+<li class="has-dropdown has-dropdown-premium" role="none">
+<a aria-expanded="false" aria-haspopup="true" class="dropdown-toggle-premium" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-graduation-cap"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">My Learning Hub</span>
 <i aria-hidden="true" class="fas fa-chevron-down dropdown-arrow-premium"></i>
 </a>
+<ul class="dropdown-submenu dropdown-submenu-premium" style="display:none;">
+<li role="none"><a data-tab="hub-register" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-plus-circle"></i><span>Register Units</span></a></li>
+<li role="none"><a data-tab="hub-courses" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-book-open"></i><span>My Units</span></a></li>
+<li class="dropdown-divider-premium" role="separator"></li>
+<li role="none"><a data-tab="hub-lecture-card" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-chalkboard-teacher"></i><span>Lecture Card</span></a></li>
+<li role="none"><a data-tab="hub-exam-card" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-id-card"></i><span>Exam Card</span></a></li>
+<li class="dropdown-divider-premium" role="separator"></li>
+<li role="none"><a data-tab="academic-reports" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-file-alt"></i><span>Academic Reports</span></a></li>
+<li role="none"><a data-tab="nurseiq" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-brain"></i><span>NurseIQ</span></a></li>
+<li role="none"><a data-tab="resources" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-folder-open"></i><span>Resources</span></a></li>
+<li role="none"><a data-tab="hub-online-learning" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-video"></i><span>Online Learning</span></a></li>
+</ul>
 </li>
 <li role="none">
 <a data-tab="attendance" href="#" role="menuitem">
