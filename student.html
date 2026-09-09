@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 
 <html lang="en">
@@ -101,7 +100,6 @@
 <link href="images/Logo_NCHSM.png" rel="apple-touch-icon" sizes="120x120"/>
 <meta content="images/Logo_NCHSM.png" name="msapplication-TileImage"/>
 <meta content="telephone=no" name="format-detection"/>
-
 <style id="nchsm-dashboard-visual-upgrade">
 /* ============================================================
    NCHSM DASHBOARD VISUAL UPGRADE — UI ONLY
@@ -410,13 +408,13 @@
 </div>
 <!-- ===== SIDEBAR SEARCH ===== -->
 <div class="sidebar-search-premium" id="sidebarSearchWrap">
-  <div class="sidebar-search-box">
-    <i class="fas fa-search" aria-hidden="true"></i>
-    <input id="sidebarPortalSearch" type="search" placeholder="Search portal..." autocomplete="off" aria-label="Search portal sections">
-    <button id="sidebarSearchClear" type="button" aria-label="Clear search" title="Clear search"><i class="fas fa-times" aria-hidden="true"></i></button>
-  </div>
-  <div id="sidebarSearchResults" class="sidebar-search-results" role="listbox" aria-label="Portal search results" hidden></div>
-  <div id="sidebarSearchEmpty" class="sidebar-search-empty" role="status" hidden>No matching portal sections</div>
+<div class="sidebar-search-box">
+<i aria-hidden="true" class="fas fa-search"></i>
+<input aria-label="Search portal sections" autocomplete="off" id="sidebarPortalSearch" placeholder="Search portal..." type="search"/>
+<button aria-label="Clear search" id="sidebarSearchClear" title="Clear search" type="button"><i aria-hidden="true" class="fas fa-times"></i></button>
+</div>
+<div aria-label="Portal search results" class="sidebar-search-results" hidden="" id="sidebarSearchResults" role="listbox"></div>
+<div class="sidebar-search-empty" hidden="" id="sidebarSearchEmpty" role="status">No matching portal sections</div>
 </div>
 <!-- ===== NAVIGATION ===== -->
 <nav aria-label="Primary navigation" class="sidebar-nav-premium">
@@ -539,13 +537,13 @@
 <!-- ===== SIDEBAR FOOTER ===== -->
 <div class="sidebar-footer-premium">
 <div class="footer-actions">
-<button type="button" class="footer-btn" id="sidebarRefreshBtn" title="Refresh Dashboard" aria-label="Refresh Dashboard">
+<button aria-label="Refresh Dashboard" class="footer-btn" id="sidebarRefreshBtn" title="Refresh Dashboard" type="button">
 <i class="fas fa-sync-alt"></i>
 </button>
-<button type="button" class="footer-btn" id="sidebarThemeBtn" title="Switch to Dark Theme" aria-label="Switch to Dark Theme" aria-pressed="false">
+<button aria-label="Switch to Dark Theme" aria-pressed="false" class="footer-btn" id="sidebarThemeBtn" title="Switch to Dark Theme" type="button">
 <i class="fas fa-moon"></i>
 </button>
-<button type="button" class="footer-btn" id="sidebarLogoutBtn" title="Logout" aria-label="Logout">
+<button aria-label="Logout" class="footer-btn" id="sidebarLogoutBtn" title="Logout" type="button">
 <i class="fas fa-sign-out-alt"></i>
 </button>
 </div>
@@ -561,298 +559,26 @@
 <!-- MAIN CONTENT AREA -->
 <main class="main" id="main-content">
 <!-- ==================== DASHBOARD SECTION - FULL DARK THEME ==================== -->
-<section class="tab-content active" id="dashboard" style="padding: 20px; max-width: 100%; overflow-x: hidden; background: #f1f5f9;">
-<!-- ========== WELCOME - DYNAMIC GREETING (.welcome class added) ========== -->
-<div class="welcome dashboard-hero" style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-<div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px;">
-<div>
-<h1 style="color: white; margin: 0; font-weight: 700; font-size: clamp(1.2rem, 3vw, 2rem);">
-<span id="greeting-text">Good Morning</span>, <span id="welcome-student-name" style="color: #FDB913;">Student</span>! <span id="greeting-emoji">🎉</span>
-</h1>
-<p id="student-welcome-message" style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
-<i class="fas fa-check-circle" style="color: #FDB913;"></i> Access your courses, schedule, and check your attendance status.
-                </p>
-</div>
-<div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-<span style="background: rgba(255,255,255,0.15); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
-<i class="fas fa-circle" style="color: #10b981; font-size: 8px;"></i> Online
-                </span>
-<span id="header-time-dashboard" data-legacy-id="header-time" style="background: rgba(255,255,255,0.1); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px;">
-<i class="fas fa-clock"></i> Loading...
-                </span>
-</div>
-</div>
-</div>
-<!-- ========== LAST LOGIN DISPLAY ========== -->
-<div style="background: white; border-radius: 8px; padding: 8px 16px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #475569;">
-<i class="fas fa-history" style="color: #4C1D95;"></i>
-<span>Last login: <strong id="last-login-time">Loading...</strong></span>
-</div>
-<!-- ========== NEXT CLASS CARD ========== -->
-<div id="quick-next-class" style="display: none; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px; cursor: pointer;">
-<div style="padding: 16px 20px; background: linear-gradient(135deg, #4C1D95, #7c3aed); color: white; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;">
-<div style="display: flex; align-items: center; gap: 14px;">
-<div style="width: 44px; height: 44px; border-radius: 50%; background: rgba(255,255,255,0.2); display: flex; align-items: center; justify-content: center;">
-<i class="fas fa-hourglass-half" style="font-size: 20px; color: #FDB913;"></i>
-</div>
-<div>
-<div style="font-size: 10px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8;">Next Class</div>
-<div id="quick-next-class-time" style="font-size: 18px; font-weight: 700;">--:-- --:--</div>
-</div>
-</div>
-<div style="flex: 1; min-width: 100px;">
-<div id="quick-next-class-name" style="font-size: 15px; font-weight: 600;">--</div>
-<code id="quick-next-class-code" style="background: rgba(255,255,255,0.15); padding: 2px 10px; border-radius: 4px; font-size: 12px;">--</code>
-<div style="font-size: 12px; opacity: 0.8; margin-top: 4px; display: flex; gap: 12px; flex-wrap: wrap;">
-<span><i class="fas fa-user-graduate"></i> <span id="quick-next-class-lecturer">--</span></span>
-<span><i class="fas fa-map-marker-alt"></i> <span id="quick-next-class-venue">--</span></span>
-</div>
-</div>
-<div id="quick-next-class-day-container" style="background: rgba(255,255,255,0.15); padding: 6px 16px; border-radius: 20px; text-align: center;">
-<i class="fas fa-calendar-day"></i>
-<span id="quick-next-class-day" style="font-weight: 600; margin-left: 4px;">--</span>
-</div>
-</div>
-</div>
-<!-- ========== NEXT EXAM WIDGET ========== -->
-<div class="next-exam-widget" id="next-exam-widget" style="display: none; background: linear-gradient(135deg, #dc2626, #b91c1c); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; color: white; cursor: pointer;">
-<div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-<i class="fas fa-graduation-cap" style="font-size: 24px; color: #FDB913;"></i>
-<h4 style="margin: 0; font-weight: 600; font-size: 15px;">📝 Next Exam</h4>
-<div id="next-exam-details" style="flex: 1;">
-<span style="font-weight: 500;">Loading...</span>
-</div>
-</div>
-</div>
-<!-- ========== STATS ROW ========== -->
-<div class="dashboard-metric-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
-<div style="background: white; border-radius: 12px; padding: 12px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-<div style="display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569; margin-bottom: 4px;">
-<i class="fas fa-star" style="color: #FDB913;"></i> Level <span id="user-level" style="font-weight: 700; color: #0A3D62;">4</span> · <span id="user-xp" style="font-weight: 600; color: #0A3D62;">30</span>/<span id="user-xp-max" style="color: #94a3b8;">100</span> XP
-            </div>
-<div style="height: 6px; background: #e5e7eb; border-radius: 3px; overflow: hidden;">
-<div id="xp-progress-fill" style="height: 100%; background: linear-gradient(90deg, #FDB913, #4C1D95); width: 30%; border-radius: 3px; transition: width 0.5s ease;"></div>
-</div>
-</div>
-<div style="background: white; border-radius: 12px; padding: 12px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 10px;">
-<i class="fas fa-brain" style="color: #4C1D95;"></i>
-<span style="font-size: 13px; color: #475569;">NurseIQ: <strong id="dashboard-nurseiq-points" style="color: #0A3D62;">0</strong> pts</span>
-</div>
-<div style="background: white; border-radius: 12px; padding: 12px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 10px;">
-<i class="fas fa-calendar-check" style="color: #059669;"></i>
-<span style="font-size: 13px; color: #475569;">Attendance: <strong id="attendance-points-value" style="color: #0A3D62;">200</strong> pts</span>
-</div>
-<div style="background: linear-gradient(135deg, #ede9fe, #f3e8ff); border-radius: 12px; padding: 12px 16px; border: 1px solid #c4b5fd; display: flex; align-items: center; gap: 10px;">
-<i class="fas fa-sign-in-alt" style="color: #4C1D95;"></i>
-<span style="font-size: 13px; color: #475569;">Login: <strong id="login-points-display" style="color: #4C1D95;">110</strong> pts <span style="font-size: 10px; color: #94a3b8;">(<span id="login-count-display">11</span> logins)</span></span>
-</div>
-<div style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border-radius: 12px; padding: 12px 16px; border: 1px solid #f59e0b; display: flex; align-items: center; gap: 10px;">
-<i class="fas fa-trophy" style="color: #f59e0b;"></i>
-<span style="font-size: 13px; color: #92400e;">Total: <strong id="total-points-display" style="color: #d97706;">310</strong> pts</span>
-</div>
-</div>
-<!-- ========== ANNOUNCEMENT ========== -->
-<div class="dashboard-announcement" style="background: linear-gradient(135deg, #fef3c7, #fffbeb); border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; border: 1px solid #f59e0b; border-left: 4px solid #f59e0b; display: flex; align-items: flex-start; gap: 12px;">
-<i class="fas fa-bullhorn" style="color: #f59e0b; font-size: 18px; margin-top: 2px;"></i>
-<div>
-<div style="font-weight: 700; color: #92400e; font-size: 14px;">Official Announcement</div>
-<div id="student-announcement" style="color: #78350f; font-size: 13px; margin-top: 2px;">Loading latest announcement...</div>
-</div>
-</div>
-<!-- ========== DAILY STREAK CARD - MEDIUM + FULL GRADIENT ========== -->
-<div class="dashboard-streak-card" style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); box-shadow: 0 4px 15px rgba(10,61,98,0.2); overflow: hidden; margin-bottom: 20px;">
-<div style="padding: 12px 16px; background: rgba(255,255,255,0.08); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px; border-bottom: 1px solid rgba(255,255,255,0.08);">
-<div style="display: flex; align-items: center; gap: 8px;">
-<span id="streak-emoji" style="font-size: 20px;">🔥</span>
-<span style="font-weight: 600; font-size: 14px; color: white;">Daily Streak</span>
-</div>
-<div style="display: flex; align-items: center; gap: 4px; background: rgba(255,255,255,0.15); padding: 2px 12px; border-radius: 16px;">
-<span id="daily-streak-display" style="font-size: 22px; font-weight: 700; color: #FDB913;">0</span>
-<span style="font-size: 11px; opacity: 0.8; color: white;">days</span>
-</div>
-</div>
-<div style="padding: 12px 16px;">
-<div style="height: 6px; background: rgba(255,255,255,0.15); border-radius: 3px; overflow: hidden; margin-bottom: 10px;">
-<div id="streak-progress-fill" style="height: 100%; background: linear-gradient(90deg, #FDB913, #FF6B6B); width: 0%; border-radius: 3px; transition: width 0.5s ease;"></div>
-</div>
-<div style="display: flex; gap: 6px; flex-wrap: wrap; justify-content: space-between; margin-bottom: 10px;">
-<span class="milestone" data-day="1" style="font-size: 10px; padding: 2px 10px; border-radius: 16px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;">🔥 1</span>
-<span class="milestone" data-day="3" style="font-size: 10px; padding: 2px 10px; border-radius: 16px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;">🌱 3</span>
-<span class="milestone" data-day="7" style="font-size: 10px; padding: 2px 10px; border-radius: 16px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;">🌿 7</span>
-<span class="milestone" data-day="14" style="font-size: 10px; padding: 2px 10px; border-radius: 16px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;">💎 14</span>
-<span class="milestone" data-day="30" style="font-size: 10px; padding: 2px 10px; border-radius: 16px; background: rgba(255,255,255,0.1); color: rgba(255,255,255,0.6); border: 1px solid rgba(255,255,255,0.05); transition: all 0.3s ease;">👑 30</span>
-</div>
-<div style="display: flex; gap: 6px; justify-content: center; margin-bottom: 8px;">
-<span class="streak-light" id="light-1" style="font-size: 16px; opacity: 0.2; transition: all 0.3s ease; color: rgba(255,255,255,0.5);">⭐</span>
-<span class="streak-light" id="light-2" style="font-size: 16px; opacity: 0.2; transition: all 0.3s ease; color: rgba(255,255,255,0.5);">⭐</span>
-<span class="streak-light" id="light-3" style="font-size: 16px; opacity: 0.2; transition: all 0.3s ease; color: rgba(255,255,255,0.5);">⭐</span>
-<span class="streak-light" id="light-4" style="font-size: 16px; opacity: 0.2; transition: all 0.3s ease; color: rgba(255,255,255,0.5);">⭐</span>
-<span class="streak-light" id="light-5" style="font-size: 16px; opacity: 0.2; transition: all 0.3s ease; color: rgba(255,255,255,0.5);">⭐</span>
-</div>
-<div id="streak-message" style="text-align: center; font-size: 11px; color: rgba(255,255,255,0.7);">
-<span id="streak-status-text">✨ Login today to start your streak!</span>
-</div>
-<button id="streak-restore-btn" onmouseout="this.style.transform='none'; this.style.background='rgba(255,255,255,0.15)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.background='rgba(255,255,255,0.25)'" style="display: none; margin: 8px auto 0; padding: 6px 18px; background: rgba(255,255,255,0.15); color: white; border: 1px solid rgba(255,255,255,0.2); border-radius: 16px; cursor: pointer; font-weight: 500; font-size: 11px; transition: all 0.3s ease;">
-<i class="fas fa-undo"></i> 💫 Restore Streak
-            </button>
-</div>
-</div>
-<!-- ========== QUICK SNAPSHOT ========== -->
-<h4 style="color: #0A3D62; margin: 0 0 16px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-chart-simple" style="color: #FDB913;"></i> Quick Snapshot
-        <span class="view-all" style="font-size: 11px; color: #4C1D95; font-weight: 400; margin-left: auto; cursor: pointer;">View All →</span>
-</h4>
-<!-- ========== ATTENDANCE CARD - DARK THEME ========== -->
-<div class="attendance-card" onclick="window.location.href='#attendance'" style="background: #1e293b; border-radius: 12px; border: 1px solid #334155; box-shadow: 0 1px 3px rgba(0,0,0,0.3); overflow: hidden; margin-bottom: 16px; cursor: pointer;">
-<div style="padding: 16px 20px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; border-bottom: 1px solid #334155;">
-<div>
-<span class="attendance-percent" id="dashboard-attendance-rate" style="font-size: 32px; font-weight: 700; transition: color 0.3s ease; color: #f1f5f9;">0%</span>
-<span style="font-size: 14px; color: #94a3b8; margin-left: 8px;">Attendance</span>
-</div>
-<div id="attendance-warning-badge" style="padding: 6px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; background: #fef3c7; color: #92400e; transition: all 0.3s ease;">
-<i class="fas fa-exclamation-triangle"></i> <span id="warning-text">LOADING...</span>
-</div>
-</div>
-<div style="padding: 12px 20px 16px 20px; display: flex; gap: 24px; flex-wrap: wrap; font-size: 13px; color: #94a3b8; background: #0f172a;">
-<span><strong id="dashboard-verified-count" style="color: #34d399;">0</strong> verified</span>
-<span><strong id="dashboard-total-count" style="color: #94a3b8;">0</strong> total</span>
-<span>⏳ <strong id="dashboard-pending-count" style="color: #fbbf24;">0</strong> pending</span>
-<span><i class="fas fa-info-circle" style="color: #8b5cf6;"></i> +10 pts/verified</span>
-</div>
-</div>
-<!-- ========== MINI CARDS ROW 1 ========== -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
-<div class="mini-card" data-tab="cats" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
-<div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📝 Upcoming Exam</div>
-<div class="mini-card-value" id="dashboard-upcoming-exam" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">--</div>
-<div style="font-size: 11px; color: #94a3b8;">Next CAT/Exam date</div>
-</div>
-<div class="mini-card" data-tab="hub-courses" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
-<div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📚 Active Units</div> <div class="mini-card-value" id="dashboard-active-courses" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">0</div>
-<div style="font-size: 11px; color: #94a3b8;">Currently enrolled</div>
-</div>
-<div class="mini-card" data-tab="profile" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
-<div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📖 Current Block</div>
-<div class="mini-card-value" id="dashboard-current-block-value" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">--</div>
-<div style="font-size: 11px; color: #94a3b8;"><span id="dashboard-program-name">--</span> · Intake <span id="dashboard-intake-year">--</span></div>
-</div>
-</div>
-<!-- ========== MINI CARDS ROW 2 ========== -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 16px;">
-<div class="mini-card" data-tab="resources" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
-<i class="fas fa-folder-open" style="color: #4C1D95;"></i>
-<div class="mini-card-value" id="dashboard-new-resources" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">0</div>
-<div style="font-size: 11px; color: #94a3b8;">Resources</div>
-</div>
-<div class="mini-card" data-tab="nurseiq" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
-<i class="fas fa-brain" style="color: #4C1D95;"></i>
-<div class="mini-card-value" id="dashboard-nurseiq-progress" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">--%</div>
-<div style="font-size: 11px; color: #94a3b8;">
-                Accuracy: <span id="dashboard-nurseiq-accuracy">--</span>% · Questions: <span id="dashboard-nurseiq-questions">0</span>
-</div>
-</div>
-<div class="mini-card" data-tab="hub-exam-card" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
-<i class="fas fa-id-card" style="color: #4C1D95;"></i>
-<div class="mini-card-value" id="dashboard-exam-status" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">--</div>
-<div style="font-size: 11px; color: #94a3b8;">Approved: <span id="dashboard-approved-units">0</span> units</div>
-</div>
-</div>
-<!-- ========== MINI CARDS ROW 3 ========== -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 20px;">
-<div class="mini-card" data-tab="reviews" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
-<div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">⭐ Reviews</div>
-<div class="mini-card-value" id="dashboard-reviews-avg" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">0.0</div>
-<div style="font-size: 11px; color: #94a3b8;">
-<span id="dashboard-reviews-total">0</span> reviews · <span id="dashboard-reviews-pending">0</span> pending
-                <span id="reviewsBadge-dashboard" data-legacy-id="reviewsBadge" style="display: none;"></span>
-</div>
-</div>
-<div class="mini-card" data-tab="newsletter" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
-<div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">📧 Newsletter</div>
-<div class="mini-card-value" id="dashboard-newsletter-status" style="font-size: 14px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">📧 Not Subscribed</div>
-<div id="dashboard-newsletter-latest" style="font-size: 11px; color: #94a3b8;">No newsletters yet</div>
-</div>
-<div class="mini-card" data-tab="finance" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
-<div style="font-size: 11px; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.5px; font-weight: 600;">💰 Finance</div>
-<div class="mini-card-value" id="dashboard-finance-balance" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">KES 0</div>
-<div id="dashboard-finance-status" style="font-size: 11px; color: #94a3b8;">Balance</div>
-</div>
-</div>
-<!-- ========== ACHIEVEMENTS ========== -->
-<h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-trophy" style="color: #FDB913;"></i> Achievements
-        <span class="view-all" style="font-size: 11px; color: #94a3b8; font-weight: 400; margin-left: auto; cursor: pointer;">View All →</span>
-</h4>
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 8px; margin-bottom: 20px;">
-<div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
-<i class="fas fa-check-circle" style="color: #10b981;"></i> First Step <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+10</span>
-</div>
-<div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
-<i class="fas fa-fire" style="color: #f59e0b;"></i> On Fire! <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+50</span>
-</div>
-<div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
-<i class="fas fa-rocket" style="color: #8B5CF6;"></i> Unstoppable <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+100</span>
-</div>
-<div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
-<i class="fas fa-crown" style="color: #FDB913;"></i> Legendary <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+500</span>
-</div>
-<div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
-<i class="fas fa-calendar-week" style="color: #3B82F6;"></i> Perfect Week <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+100</span>
-</div>
-<div style="background: #f8fafc; border-radius: 8px; padding: 8px 12px; border: 1px solid #e5e7eb; display: flex; align-items: center; gap: 8px; font-size: 12px; color: #475569;">
-<i class="fas fa-graduation-cap" style="color: #059669;"></i> Course Master <span style="margin-left: auto; font-weight: 700; color: #4C1D95;">+200</span>
-</div>
-</div>
-<!-- ========== LEADERBOARD ========== -->
-<h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-trophy" style="color: #FDB913;"></i> Leaderboard
-        <span class="leaderboard-tabs" style="font-size: 11px; color: #94a3b8; font-weight: 400; display: flex; gap: 8px;">
-<span class="active" onclick="switchLeaderboardTab('weekly')" style="cursor: pointer; color: #4C1D95; font-weight: 600;">Weekly</span>
-<span onclick="switchLeaderboardTab('monthly')" style="cursor: pointer;">Monthly</span>
-<span onclick="switchLeaderboardTab('all')" style="cursor: pointer;">All Time</span>
-</span>
-</h4>
-<div id="leaderboard-container" style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
-<div style="padding: 20px; text-align: center; color: #94a3b8;">
-<i class="fas fa-spinner fa-spin"></i> Loading...
-        </div>
-</div>
-<!-- ========== ACTION REQUIRED ========== -->
-<h4 style="color: #0A3D62; margin: 0 0 12px 0; font-size: 16px; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-exclamation-triangle" style="color: #f59e0b;"></i> Action Required
-    </h4>
-<div style="background: #fef3c7; border-radius: 12px; padding: 14px 20px; margin-bottom: 12px; border: 1px solid #f59e0b; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-<i class="fas fa-book-medical" style="color: #f59e0b; font-size: 20px;"></i>
-<div style="flex: 1;">
-<strong style="color: #92400e;">Review New Course Material</strong>
-<p style="margin: 0; color: #78350f; font-size: 13px;">New study materials posted for this block.</p>
-</div>
-<button class="action-btn" data-tab="resources" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" style="padding: 6px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
-            View →
-        </button>
-</div>
-<div id="action-passport" style="display: none; background: #fee2e2; border-radius: 12px; padding: 14px 20px; margin-bottom: 16px; border: 1px solid #fecaca; display: flex; align-items: center; gap: 14px; flex-wrap: wrap;">
-<i class="fas fa-id-card" style="color: #dc2626; font-size: 20px;"></i>
-<div style="flex: 1;">
-<strong style="color: #991b1b;">Missing Passport Photo</strong>
-<p style="margin: 0; color: #7f1d1d; font-size: 13px;">Your profile is incomplete. Please upload your passport photo.</p>
-</div>
-<button class="action-btn" data-tab="profile" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.3)'" style="padding: 6px 20px; background: #4C1D95; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
-            Upload →
-        </button>
-</div>
-<!-- ========== FOOTER ========== -->
-<div style="margin-top: 20px; padding: 12px 0; border-top: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #94a3b8; flex-wrap: wrap; gap: 8px;">
-<span>
-<i class="fas fa-clock"></i> 
-            Last updated: <span id="dashboard-last-updated">Just now</span>
-</span>
-<span>
-<i class="fas fa-user"></i>
-<span id="dashboard-student-id">Loading...</span>
-</span>
-</div>
-</section>
+<section class="tab-content active" id="dashboard" style="padding:20px;max-width:100%;overflow-x:hidden;background:#f5f7fb;">
+<style>
+#dashboard .rd-shell{display:grid;gap:18px}#dashboard .rd-hero{position:relative;overflow:hidden;min-height:190px;border-radius:18px;background:#0a3d62;color:#fff;box-shadow:0 10px 30px rgba(10,61,98,.18)}#dashboard .rd-hero-bg{position:absolute;inset:0;background:linear-gradient(90deg,rgba(7,42,69,.98) 0%,rgba(10,61,98,.82) 46%,rgba(10,61,98,.22) 100%),url('images/campus-header.jpg') center/cover no-repeat}#dashboard .rd-hero-content{position:relative;z-index:1;padding:28px 30px;display:flex;align-items:center;justify-content:space-between;gap:24px;min-height:190px}#dashboard .rd-hero h1{margin:0;font-size:clamp(1.45rem,3vw,2.15rem);font-weight:800;letter-spacing:-.4px}#dashboard .rd-hero p{margin:8px 0 0;color:rgba(255,255,255,.86);font-size:13px;max-width:620px}#dashboard .rd-meta{display:flex;gap:8px;flex-wrap:wrap;margin-top:16px}#dashboard .rd-pill{display:inline-flex;align-items:center;gap:7px;padding:7px 11px;border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.16);font-size:11px;color:#fff}#dashboard .rd-hero-time{font-size:12px;color:rgba(255,255,255,.88)}#dashboard .rd-avatar{width:76px;height:76px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.4);font-size:28px;flex:0 0 auto}#dashboard .rd-last{display:flex;align-items:center;gap:9px;padding:9px 14px;background:var(--card-bg,#fff);border:1px solid #e5e7eb;border-radius:10px;color:#64748b;font-size:12px}#dashboard .rd-section-title{display:flex;align-items:center;gap:8px;margin:0 0 10px;color:#0a3d62;font-size:15px;font-weight:800}#dashboard .rd-section-title i{color:#fdb913}#dashboard .rd-points{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}.rd-point{background:#fff;border:1px solid #e5e7eb;border-radius:13px;padding:13px;min-width:0}.rd-point .label{font-size:11px;color:#64748b}.rd-point .value{font-size:20px;font-weight:800;color:#0a3d62;margin-top:4px}.rd-point .sub{font-size:10px;color:#94a3b8}.rd-xpbar{height:5px;background:#e5e7eb;border-radius:5px;overflow:hidden;margin-top:7px}.rd-xpbar span{display:block;height:100%;background:linear-gradient(90deg,#fdb913,#4c1d95);border-radius:5px;width:0}.rd-alert{display:flex;align-items:flex-start;gap:11px;padding:13px 16px;background:#fffbeb;border:1px solid #f5d58a;border-left:4px solid #f59e0b;border-radius:12px;color:#78350f}.rd-alert strong{display:block;font-size:13px;color:#92400e}.rd-alert span{display:block;font-size:12px;margin-top:2px}.rd-main-grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(300px,.85fr);gap:18px}.rd-card{background:#fff;border:1px solid #e5e7eb;border-radius:15px;box-shadow:0 2px 8px rgba(15,23,42,.04);overflow:hidden}.rd-card-head{padding:15px 17px;border-bottom:1px solid #eef2f7;display:flex;align-items:center;justify-content:space-between}.rd-card-head h3{margin:0;color:#0a3d62;font-size:14px}.rd-card-body{padding:16px}.rd-actions{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}.rd-action{border:1px solid #e5e7eb;background:#fff;border-radius:12px;padding:13px 8px;text-align:center;cursor:pointer;color:#334155;transition:.2s;text-decoration:none}.rd-action:hover{transform:translateY(-2px);box-shadow:0 7px 18px rgba(76,29,149,.1);border-color:#c4b5fd}.rd-action i{display:flex;align-items:center;justify-content:center;width:38px;height:38px;margin:0 auto 7px;border-radius:10px;background:#f3e8ff;color:#4c1d95;font-size:16px}.rd-action span{display:block;font-size:11px;font-weight:700}.rd-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}.rd-ring{position:relative;text-align:center}.rd-ring svg{width:78px;height:78px;transform:rotate(-90deg)}.rd-ring circle{fill:none;stroke-width:7}.rd-ring .track{stroke:#edf0f5}.rd-ring .fill{stroke:#4c1d95;stroke-linecap:round;stroke-dasharray:214;stroke-dashoffset:214}.rd-ring .ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#0a3d62}.rd-ring label{display:block;margin-top:6px;font-size:10px;color:#64748b;font-weight:700}.rd-two{display:grid;grid-template-columns:1fr 1fr;gap:18px}.rd-streak{background:linear-gradient(135deg,#0a3d62,#174f73);color:#fff}.rd-streak .rd-card-head h3{color:#fff}.rd-streak .rd-card-head{border-color:rgba(255,255,255,.1)}.rd-streak-body{padding:16px}.rd-streak-num{font-size:32px;font-weight:900;color:#fdb913}.rd-days{display:flex;gap:5px;margin-top:12px}.rd-day{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.1);font-size:10px}.rd-events{display:grid;gap:8px}.rd-event{display:flex;gap:10px;align-items:center;padding:9px;border-radius:10px;background:#f8fafc}.rd-event-date{width:42px;text-align:center;font-size:9px;font-weight:800;color:#4c1d95}.rd-event-main{min-width:0}.rd-event-main strong{display:block;font-size:11px;color:#334155;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rd-event-main span{font-size:9px;color:#94a3b8}.rd-course-list{display:grid;gap:8px}.rd-course{display:flex;align-items:center;gap:10px;padding:10px;border:1px solid #eef2f7;border-radius:10px}.rd-course-icon{width:34px;height:34px;border-radius:9px;background:#e0f2fe;color:#0369a1;display:flex;align-items:center;justify-content:center}.rd-course strong{display:block;font-size:11px;color:#334155}.rd-course span{font-size:9px;color:#94a3b8}.rd-mini-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.rd-mini{padding:12px;border:1px solid #e5e7eb;border-radius:11px;background:#fff;cursor:pointer}.rd-mini strong{display:block;font-size:16px;color:#0a3d62;margin-top:4px}.rd-mini span{font-size:10px;color:#94a3b8}.rd-footer{display:flex;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:10px 2px;border-top:1px solid #e5e7eb;color:#94a3b8;font-size:10px}@media(max-width:900px){#dashboard .rd-points{grid-template-columns:repeat(3,1fr)}.rd-main-grid,.rd-two{grid-template-columns:1fr}}@media(max-width:640px){#dashboard{padding:12px!important}.rd-hero-content{padding:22px 18px;min-height:175px}.rd-avatar{display:none}.rd-points{grid-template-columns:repeat(2,1fr)!important}.rd-actions{grid-template-columns:repeat(2,1fr)}.rd-progress{grid-template-columns:repeat(2,1fr)}.rd-mini-grid{grid-template-columns:1fr 1fr}.rd-last{font-size:11px}.rd-hero h1{font-size:1.35rem}}
+</style>
+<div class="rd-shell">
+<div class="rd-hero"><div class="rd-hero-bg"></div><div class="rd-hero-content"><div><h1><span id="greeting-text">Good Morning</span>, <span id="welcome-student-name">Student</span>! <span id="greeting-emoji">👋</span></h1><p id="student-welcome-message">Access your courses, schedule, attendance and academic services from one place.</p><div class="rd-meta"><span class="rd-pill"><i class="fas fa-circle" style="color:#10b981;font-size:7px"></i> Online</span><span class="rd-pill rd-hero-time"><i class="fas fa-clock"></i> <span id="header-time-dashboard">Loading...</span></span></div></div><div aria-hidden="true" class="rd-avatar"><i class="fas fa-user-graduate"></i></div></div></div>
+<div class="rd-last"><i class="fas fa-history" style="color:#4c1d95"></i><span>Last login: <strong id="last-login-time">Loading...</strong></span></div>
+<div class="rd-card" id="quick-next-class" style="display:none"><div class="rd-card-head"><h3><i class="fas fa-chalkboard-teacher"></i> Next Class</h3><span id="quick-next-class-day" style="font-size:11px;color:#64748b">--</span></div><div class="rd-card-body" style="display:flex;gap:14px;align-items:center;flex-wrap:wrap"><div><strong id="quick-next-class-time" style="font-size:18px;color:#4c1d95">--:--</strong></div><div style="flex:1"><strong id="quick-next-class-name">--</strong><div style="font-size:11px;color:#94a3b8"><span id="quick-next-class-code">--</span> · <span id="quick-next-class-lecturer">--</span> · <span id="quick-next-class-venue">--</span></div></div></div><div id="quick-next-class-day-container" style="display:none"></div></div>
+<div class="rd-alert" id="next-exam-widget" style="display:none"><i class="fas fa-graduation-cap" style="color:#dc2626"></i><div><strong>Next Exam</strong><div id="next-exam-details">Loading...</div></div></div>
+<div><h3 class="rd-section-title"><i class="fas fa-trophy"></i> My Points &amp; Progress</h3><div class="rd-points"><div class="rd-point"><div class="label"><i class="fas fa-star" style="color:#fdb913"></i> Level</div><div class="value"><span id="user-level">--</span></div><div class="sub"><span id="user-xp">--</span> / <span id="user-xp-max">--</span> XP</div><div class="rd-xpbar"><span id="xp-progress-fill"></span></div></div><div class="rd-point"><div class="label"><i class="fas fa-brain" style="color:#4c1d95"></i> NurseIQ</div><div class="value"><span id="dashboard-nurseiq-points">--</span></div><div class="sub">points</div></div><div class="rd-point"><div class="label"><i class="fas fa-calendar-check" style="color:#059669"></i> Attendance</div><div class="value"><span id="attendance-points-value">--</span></div><div class="sub">points</div></div><div class="rd-point"><div class="label"><i class="fas fa-sign-in-alt" style="color:#4c1d95"></i> Login</div><div class="value"><span id="login-points-display">--</span></div><div class="sub"><span id="login-count-display">--</span> logins</div></div><div class="rd-point"><div class="label"><i class="fas fa-medal" style="color:#f59e0b"></i> Total</div><div class="value"><span id="total-points-display">--</span></div><div class="sub">points</div></div></div></div>
+<div class="rd-alert"><i class="fas fa-bullhorn" style="color:#f59e0b"></i><div><strong>Official Announcement</strong><span id="student-announcement">Loading latest announcement...</span></div></div>
+<div class="rd-main-grid"><div class="rd-card"><div class="rd-card-head"><h3><i class="fas fa-bolt" style="color:#fdb913"></i> Quick Actions</h3></div><div class="rd-card-body"><div class="rd-actions"><button class="rd-action" data-tab="hub-online-learning" type="button"><i class="fas fa-book-open"></i><span>My Learning Hub</span></button><button class="rd-action" data-tab="attendance" type="button"><i class="fas fa-calendar-check"></i><span>Attendance</span></button><button class="rd-action" data-tab="hub-exam-card" type="button"><i class="fas fa-file-alt"></i><span>Exams &amp; Results</span></button><button class="rd-action" data-tab="finance" type="button"><i class="fas fa-wallet"></i><span>My Finance</span></button><button class="rd-action" data-tab="calendar" type="button"><i class="fas fa-calendar-alt"></i><span>Academic Calendar</span></button><button class="rd-action" data-tab="messages" type="button"><i class="fas fa-comments"></i><span>Messages</span></button><button class="rd-action" data-tab="support-tickets" type="button"><i class="fas fa-life-ring"></i><span>Support Tickets</span></button><button class="rd-action" data-tab="profile" type="button"><i class="fas fa-user-cog"></i><span>Profile Settings</span></button></div></div></div>
+<div class="rd-card"><div class="rd-card-head"><h3><i class="fas fa-chart-pie" style="color:#4c1d95"></i> My Progress</h3></div><div class="rd-card-body"><div class="rd-progress"><div class="rd-ring"><svg viewbox="0 0 80 80"><circle class="track" cx="40" cy="40" r="34"></circle><circle class="fill" cx="40" cy="40" r="34"></circle></svg><div class="ring-value" id="dashboard-attendance-rate">--%</div><label>Attendance</label></div><div class="rd-ring"><svg viewbox="0 0 80 80"><circle class="track" cx="40" cy="40" r="34"></circle><circle class="fill" cx="40" cy="40" r="34"></circle></svg><div class="ring-value" id="dashboard-verified-count">--</div><label>Verified</label></div><div class="rd-ring"><svg viewbox="0 0 80 80"><circle class="track" cx="40" cy="40" r="34"></circle><circle class="fill" cx="40" cy="40" r="34"></circle></svg><div class="ring-value" id="dashboard-pending-count">--</div><label>Pending</label></div><div class="rd-ring"><svg viewbox="0 0 80 80"><circle class="track" cx="40" cy="40" r="34"></circle><circle class="fill" cx="40" cy="40" r="34"></circle></svg><div class="ring-value" id="dashboard-upcoming-exam">--</div><label>Exams</label></div></div><div style="font-size:10px;color:#94a3b8;text-align:center;margin-top:10px"><span id="dashboard-total-count">--</span> total records</div></div></div></div>
+<div class="rd-two"><div class="rd-card rd-streak"><div class="rd-card-head"><h3><span id="streak-emoji">🔥</span> Daily Streak</h3><span><strong id="daily-streak-display" style="color:#fdb913;font-size:18px">--</strong> <small>days</small></span></div><div class="rd-streak-body"><div id="streak-message" style="font-size:12px;opacity:.9">Keep showing up and build your streak.</div><div class="rd-days"><span class="rd-day" id="light-1">1</span><span class="rd-day" id="light-2">2</span><span class="rd-day" id="light-3">3</span><span class="rd-day" id="light-4">4</span><span class="rd-day" id="light-5">5</span></div><div id="streak-status-text" style="font-size:10px;margin-top:10px;opacity:.7">Loading streak status...</div><button id="streak-restore-btn" style="display:none;margin-top:8px;border:0;border-radius:7px;padding:5px 10px;background:#fdb913;color:#0a3d62;font-size:10px;font-weight:700" type="button">Restore Streak</button><div id="streak-progress-fill" style="height:4px;width:0;margin-top:10px;background:#fdb913;border-radius:4px"></div></div></div>
+<div class="rd-card"><div class="rd-card-head"><h3><i class="fas fa-calendar-day" style="color:#4c1d95"></i> Upcoming Events</h3><span style="font-size:10px;color:#94a3b8">Calendar</span></div><div class="rd-card-body"><div class="rd-events"><div class="rd-event"><div class="rd-event-date"><i class="fas fa-calendar"></i></div><div class="rd-event-main"><strong id="dashboard-current-block-value">Current block</strong><span id="dashboard-program-name">Loading...</span></div></div><div class="rd-event"><div class="rd-event-date"><i class="fas fa-graduation-cap"></i></div><div class="rd-event-main"><strong id="dashboard-intake-year">--</strong><span data-dashboard-id="dashboard-upcoming-exam">Upcoming academic event</span></div></div></div></div></div></div>
+<div class="rd-card"><div class="rd-card-head"><h3><i class="fas fa-book-medical" style="color:#059669"></i> My Courses</h3><span style="font-size:10px;color:#94a3b8">Current enrolment</span></div><div class="rd-card-body"><div class="rd-course-list"><div class="rd-course"><div class="rd-course-icon"><i class="fas fa-book"></i></div><div style="flex:1"><strong id="dashboard-active-courses">--</strong><span>Active courses</span></div><i class="fas fa-chevron-right" style="font-size:10px;color:#cbd5e1"></i></div><div class="rd-course"><div class="rd-course-icon"><i class="fas fa-file-alt"></i></div><div style="flex:1"><strong><span id="dashboard-approved-units">--</span> approved units</strong><span>Ready for academic activity</span></div></div><div class="rd-course"><div class="rd-course-icon"><i class="fas fa-book-reader"></i></div><div style="flex:1"><strong><span id="dashboard-new-resources">--</span> new resources</strong><span>Available learning materials</span></div></div></div></div></div>
+<div class="rd-mini-grid"><div class="rd-mini" data-tab="nurseiq"><span>🧠 NurseIQ accuracy</span><strong id="dashboard-nurseiq-accuracy">--</strong><span><span id="dashboard-nurseiq-questions">--</span> questions</span></div><div class="rd-mini" data-tab="hub-exam-card"><span>🪪 Exam Card</span><strong id="dashboard-exam-status">--</strong><span>Approved: <span data-dashboard-id="dashboard-approved-units">--</span> units</span></div><div class="rd-mini" data-tab="reviews"><span>⭐ Reviews</span><strong id="dashboard-reviews-avg">--</strong><span><span id="dashboard-reviews-total">--</span> reviews · <span id="dashboard-reviews-pending">--</span> pending</span><span id="reviewsBadge-dashboard" style="display:none"></span></div><div class="rd-mini" data-tab="newsletter"><span>📧 Newsletter</span><strong id="dashboard-newsletter-status">--</strong><span id="dashboard-newsletter-latest">--</span></div><div class="rd-mini" data-tab="finance"><span>💰 Finance</span><strong id="dashboard-finance-balance">--</strong><span id="dashboard-finance-status">--</span></div><div class="rd-mini"><span>🩺 Attendance</span><strong id="attendance-warning-badge">--</strong><span id="warning-text">Status</span></div></div>
+<div id="action-passport" style="display:none"></div>
+<div class="rd-footer"><span><i class="fas fa-clock"></i> Last updated: <span id="dashboard-last-updated">--</span></span><span><i class="fas fa-id-card"></i> <span id="dashboard-student-id">Loading...</span></span></div>
+</div></section>
 <!-- END DASHBOARD SECTION -->
 <!-- ========== STYLES ========== -->
 <style>
@@ -1837,7 +1563,7 @@
 <button class="action-btn" id="view-completed-only" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: #f1f5f9; color: #475569;">
 <i class="fas fa-check-circle"></i> Completed Only
             </button>
-<button class="action-btn refresh" id="refresh-courses-btn-secondary" data-legacy-id="refresh-courses-btn" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: #f1f5f9; color: #475569;">
+<button class="action-btn refresh" data-legacy-id="refresh-courses-btn" id="refresh-courses-btn-secondary" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: #f1f5f9; color: #475569;">
 <i class="fas fa-sync-alt"></i> Refresh
             </button>
 </div>
@@ -2826,7 +2552,7 @@
                 <span style="background: rgba(255,255,255,0.25); padding: 0 8px; border-radius: 12px; font-size: 10px;">Pending</span>
 </button>
 <!-- ====== BUTTON 4: COMPLETED ONLY ====== -->
-<button id="view-completed-only-secondary" data-legacy-id="view-completed-only" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #10B981, #059669); color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.3); font-size: 13px;">
+<button data-legacy-id="view-completed-only" id="view-completed-only-secondary" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #10B981, #059669); color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.3); font-size: 13px;">
 <i class="fas fa-check-circle"></i> Completed Only
                 <span style="background: rgba(255,255,255,0.25); padding: 0 8px; border-radius: 12px; font-size: 10px;">Done</span>
 </button>
@@ -2899,7 +2625,7 @@
 <h3 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
 <i class="fas fa-check-circle" style="color: #059669;"></i> Completed Assessments
                     </h3>
-<span id="completed-count-secondary" data-legacy-id="completed-count" style="background: #059669; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 completed</span>
+<span data-legacy-id="completed-count" id="completed-count-secondary" style="background: #059669; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 completed</span>
 </div>
 <span id="completed-average" style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 12px;">
 <i class="fas fa-chart-line"></i> Average: --
@@ -5229,7 +4955,7 @@
 <i class="fas fa-user-plus" style="color: #FDB913;"></i> Enrollment
             </h2>
 <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-<i class="fas fa-exchange-alt"></i> Change of Program  |  <i class="fas fa-undo-alt"></i> Readmission  |  <i class="fas fa-calendar-check"></i> Session Reporting
+<i class="fas fa-exchange-alt"></i> Change of Program  |  <i class="fas fa-undo-alt"></i> Readmission  |  <i class="fas fa-calendar-check"></i> Session Reporting
             </p>
 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px;">
 <span style="background: rgba(255,255,255,0.12); padding: 2px 12px; border-radius: 12px; font-size: 10px; color: rgba(255,255,255,0.7);">
