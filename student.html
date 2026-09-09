@@ -376,13 +376,13 @@
 <!-- ===== SIDEBAR FOOTER ===== -->
 <div class="sidebar-footer-premium">
 <div class="footer-actions">
-<button class="footer-btn" id="sidebarRefreshBtn" title="Refresh Dashboard">
+<button type="button" class="footer-btn" id="sidebarRefreshBtn" title="Refresh Dashboard" aria-label="Refresh Dashboard">
 <i class="fas fa-sync-alt"></i>
 </button>
-<button class="footer-btn" id="sidebarThemeBtn" title="Toggle Theme">
+<button type="button" class="footer-btn" id="sidebarThemeBtn" title="Switch to Dark Theme" aria-label="Switch to Dark Theme" aria-pressed="false">
 <i class="fas fa-moon"></i>
 </button>
-<button class="footer-btn" id="sidebarLogoutBtn" title="Logout">
+<button type="button" class="footer-btn" id="sidebarLogoutBtn" title="Logout" aria-label="Logout">
 <i class="fas fa-sign-out-alt"></i>
 </button>
 </div>
@@ -414,7 +414,7 @@
 <span style="background: rgba(255,255,255,0.15); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px; display: flex; align-items: center; gap: 6px;">
 <i class="fas fa-circle" style="color: #10b981; font-size: 8px;"></i> Online
                 </span>
-<span id="header-time" style="background: rgba(255,255,255,0.1); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px;">
+<span id="header-time-dashboard" data-legacy-id="header-time" style="background: rgba(255,255,255,0.1); color: white; padding: 4px 14px; border-radius: 20px; font-size: 12px;">
 <i class="fas fa-clock"></i> Loading...
                 </span>
 </div>
@@ -601,7 +601,7 @@
 <div class="mini-card-value" id="dashboard-reviews-avg" style="font-size: 18px; font-weight: 700; color: #0A3D62; margin: 4px 0 2px;">0.0</div>
 <div style="font-size: 11px; color: #94a3b8;">
 <span id="dashboard-reviews-total">0</span> reviews · <span id="dashboard-reviews-pending">0</span> pending
-                <span id="reviewsBadge" style="display: none;"></span>
+                <span id="reviewsBadge-dashboard" data-legacy-id="reviewsBadge" style="display: none;"></span>
 </div>
 </div>
 <div class="mini-card" data-tab="newsletter" onmouseout="this.style.transform='none'; this.style.boxShadow='0 1px 3px rgba(0,0,0,0.04)'" onmouseover="this.style.transform='translateY(-3px)'; this.style.boxShadow='0 4px 12px rgba(0,0,0,0.08)'" style="background: white; border-radius: 12px; padding: 14px 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); cursor: pointer; transition: all 0.3s ease;">
@@ -1674,7 +1674,7 @@
 <button class="action-btn" id="view-completed-only" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: #f1f5f9; color: #475569;">
 <i class="fas fa-check-circle"></i> Completed Only
             </button>
-<button class="action-btn refresh" id="refresh-courses-btn" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: #f1f5f9; color: #475569;">
+<button class="action-btn refresh" id="refresh-courses-btn-secondary" data-legacy-id="refresh-courses-btn" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 500; cursor: pointer; transition: all 0.3s ease; background: #f1f5f9; color: #475569;">
 <i class="fas fa-sync-alt"></i> Refresh
             </button>
 </div>
@@ -2663,7 +2663,7 @@
                 <span style="background: rgba(255,255,255,0.25); padding: 0 8px; border-radius: 12px; font-size: 10px;">Pending</span>
 </button>
 <!-- ====== BUTTON 4: COMPLETED ONLY ====== -->
-<button id="view-completed-only" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #10B981, #059669); color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.3); font-size: 13px;">
+<button id="view-completed-only-secondary" data-legacy-id="view-completed-only" onmouseout="this.style.transform='translateY(0)'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" style="padding: 8px 18px; border-radius: 50px; border: none; font-weight: 600; cursor: pointer; transition: all 0.3s ease; background: linear-gradient(135deg, #10B981, #059669); color: white; box-shadow: 0 2px 8px rgba(16,185,129,0.3); font-size: 13px;">
 <i class="fas fa-check-circle"></i> Completed Only
                 <span style="background: rgba(255,255,255,0.25); padding: 0 8px; border-radius: 12px; font-size: 10px;">Done</span>
 </button>
@@ -2736,7 +2736,7 @@
 <h3 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
 <i class="fas fa-check-circle" style="color: #059669;"></i> Completed Assessments
                     </h3>
-<span id="completed-count" style="background: #059669; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 completed</span>
+<span id="completed-count-secondary" data-legacy-id="completed-count" style="background: #059669; color: white; padding: 2px 12px; border-radius: 20px; font-size: 12px;">0 completed</span>
 </div>
 <span id="completed-average" style="font-size: 12px; color: #64748b; background: #f1f5f9; padding: 4px 12px; border-radius: 12px;">
 <i class="fas fa-chart-line"></i> Average: --
@@ -6986,23 +6986,44 @@ document.addEventListener('DOMContentLoaded', function() {
 </script>
 <script>
 // ============================================
-// 🎨 THEME SWITCHER
+// 🎨 NCHSM THEME SYSTEM — SINGLE AUTHORITY
 // ============================================
-function setTheme(theme) {
+(function () {
+  'use strict';
+
+  function setTheme(theme) {
     const dark = theme === 'dark' || theme === 'dark-mode';
     document.body.classList.toggle('dark-mode', dark);
     document.body.setAttribute('data-theme', dark ? 'dark' : 'purple');
-    localStorage.setItem('nchsm_theme', dark ? 'dark' : 'purple');
-}
+    try { localStorage.setItem('nchsm_theme', dark ? 'dark' : 'purple'); } catch (_) {}
 
-function loadTheme() {
-    const saved = localStorage.getItem('nchsm_theme') || 'purple';
-    setTheme(saved);
-}
+    const btn = document.getElementById('sidebarThemeBtn');
+    if (btn) {
+      btn.setAttribute('aria-pressed', String(dark));
+      btn.setAttribute('title', dark ? 'Switch to Light Theme' : 'Switch to Dark Theme');
+      btn.setAttribute('aria-label', dark ? 'Switch to Light Theme' : 'Switch to Dark Theme');
+      const icon = btn.querySelector('i');
+      if (icon) icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
+    }
+    return dark;
+  }
 
-document.addEventListener('DOMContentLoaded', loadTheme);
-document.addEventListener('appReady', loadTheme);
-window.setTheme = setTheme;
+  function loadTheme() {
+    let saved = 'purple';
+    try { saved = localStorage.getItem('nchsm_theme') || 'purple'; } catch (_) {}
+    setTheme(saved === 'dark' ? 'dark' : 'purple');
+  }
+
+  window.setTheme = setTheme;
+  window.nchsmApplyTheme = setTheme;
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', loadTheme, { once: true });
+  } else {
+    loadTheme();
+  }
+  document.addEventListener('appReady', loadTheme, { once: true });
+})();
 </script>
 <script>
 // ========== PERMANENT SUPER FIX FOR LECTURE CARD ==========
@@ -7326,21 +7347,12 @@ window.addEventListener('appinstalled', () => {
     return candidates.find(c => c && typeof c.from === 'function' && c.auth && typeof c.auth.signOut === 'function') || null;
   }
 
-  function applyPortalTheme(theme) {
-    const dark = theme === 'dark';
+  const applyPortalTheme = window.setTheme || function (theme) {
+    const dark = theme === 'dark' || theme === 'dark-mode';
     document.body.classList.toggle('dark-mode', dark);
     document.body.setAttribute('data-theme', dark ? 'dark' : 'purple');
-    localStorage.setItem('nchsm_theme', dark ? 'dark' : 'purple');
-
-    const btn = document.getElementById('sidebarThemeBtn');
-    if (btn) {
-      btn.setAttribute('aria-pressed', String(dark));
-      btn.setAttribute('title', dark ? 'Switch to Light Theme' : 'Switch to Dark Theme');
-      btn.setAttribute('aria-label', dark ? 'Switch to Light Theme' : 'Switch to Dark Theme');
-      const icon = btn.querySelector('i');
-      if (icon) icon.className = dark ? 'fas fa-sun' : 'fas fa-moon';
-    }
-  }
+    try { localStorage.setItem('nchsm_theme', dark ? 'dark' : 'purple'); } catch (_) {}
+  };
 
   function initSidebarFooterControls() {
     const refresh = document.getElementById('sidebarRefreshBtn');
@@ -7410,7 +7422,8 @@ window.addEventListener('appinstalled', () => {
       }
     });
 
-    const saved = localStorage.getItem('nchsm_theme');
+    let saved = 'purple';
+    try { saved = localStorage.getItem('nchsm_theme') || 'purple'; } catch (_) {}
     applyPortalTheme(saved === 'dark' ? 'dark' : 'purple');
   }
 
