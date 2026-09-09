@@ -228,7 +228,6 @@
   #dashboard .dashboard-hero { min-height: 190px; }
 }
 </style>
-
 <style id="nchsm-dashboard-final-visual-fix">
 /* FINAL DASHBOARD HERO: real local campus asset, full image visible, dynamic greeting */
 #dashboard .nd-hero{
@@ -298,7 +297,283 @@
  #dashboard .nd-hero h1{font-size:26px!important}
 }
 </style>
-</head>
+<style id="nchsm-reference-exact-css">
+/* ================================================================
+   NCHSM REFERENCE DASHBOARD — HTML/UI PASS
+   JS/data logic intentionally left untouched for the next pass.
+   ================================================================ */
+:root{
+  --nchsm-blue:#062f55;
+  --nchsm-blue-2:#0a4a7b;
+  --nchsm-gold:#fdb913;
+  --nchsm-text:#14243d;
+  --nchsm-muted:#66809e;
+  --nchsm-border:#dbe7f1;
+  --nchsm-bg:#f4f8fc;
+}
+html,body{background:#f4f8fc!important;}
+.main-header.nchsm-reference-header{
+  height:58px!important; min-height:58px!important; box-sizing:border-box!important;
+  padding:7px 18px!important; display:flex!important; align-items:center!important;
+  justify-content:space-between!important; gap:18px!important; background:#fff!important;
+  border-bottom:1px solid #dce7f1!important; box-shadow:0 2px 10px rgba(22,60,94,.08)!important;
+  position:sticky!important; top:0!important; z-index:1100!important;
+}
+.nchsm-header-left,.nchsm-header-right{display:flex;align-items:center;min-width:0}
+.nchsm-header-left{gap:12px;flex:0 0 auto}
+.nchsm-header-brand{display:flex;align-items:center;gap:9px}
+.nchsm-header-logo{width:35px;height:35px;object-fit:contain}
+.nchsm-header-title{font-size:17px;font-weight:800;line-height:1;color:#15243c}
+.nchsm-header-subtitle{font-size:10px;color:#53708e;margin-top:3px}
+.nchsm-header-menu{display:none!important}
+.nchsm-header-search{
+  width:min(595px,46vw); height:40px; display:flex; align-items:center; gap:10px;
+  border:1px solid #cfe0ef; border-radius:10px; background:#f8fbfe; padding:0 10px 0 14px;
+  box-shadow:0 1px 4px rgba(35,79,117,.04);
+}
+.nchsm-header-search>i{color:#4b78a5;font-size:14px}
+.nchsm-header-search input{flex:1;border:0;outline:0;background:transparent;color:#17314f;font:500 12px Inter,sans-serif;min-width:0}
+.nchsm-header-search input::placeholder{color:#6f8ba7}
+.nchsm-header-search kbd{font:600 11px Inter,sans-serif;color:#58728d;background:#fff;border:1px solid #dbe7f1;border-radius:6px;padding:4px 8px;white-space:nowrap}
+.nchsm-header-right{gap:8px;flex:0 0 auto}
+.nchsm-header-icon{
+  position:relative;width:38px;height:38px;border:0;background:transparent;border-radius:50%;
+  color:#062f55;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;
+}
+.nchsm-header-icon:hover{background:#f1f6fa}
+.nchsm-sun-btn{color:#f4ad00;font-size:20px}
+.nchsm-notification-count{
+  position:absolute;right:1px;top:0px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;
+  display:flex;align-items:center;justify-content:center;background:#e31b23;color:#fff;
+  font:800 9px Inter,sans-serif;border:2px solid #fff;box-sizing:border-box;
+}
+.nchsm-header-profile{cursor:pointer}
+.nchsm-header-profile .profile-trigger{
+  display:flex!important;align-items:center!important;gap:9px!important;padding:2px 4px 2px 2px!important;
+  background:transparent!important;border:0!important;border-radius:28px!important;
+}
+.nchsm-header-profile .profile-avatar{width:36px!important;height:36px!important;border:0!important}
+.nchsm-header-user-copy{display:flex;flex-direction:column;line-height:1.15}
+.nchsm-header-user-copy .profile-name{font-size:12px!important;font-weight:800!important;color:#162840!important}
+.nchsm-header-user-copy .profile-role{font-size:9px;color:#66809e;margin-top:3px}
+.nchsm-header-profile .dropdown-icon{font-size:10px;color:#183553}
+
+#app-content>.container{margin-top:0!important}
+#sidebar.sidebar-premium{
+  background:linear-gradient(180deg,#062f55 0%,#032a4d 100%)!important;
+  color:#fff!important;
+}
+#sidebar .nav-section-label span{
+  color:rgba(255,255,255,.50)!important;font-size:10px!important;font-weight:800!important;
+  letter-spacing:1.1px!important;padding:9px 14px 5px!important;margin-top:3px!important;
+}
+#sidebar .nav-premium>li>a{min-height:34px!important;margin:2px 8px!important;padding:7px 10px!important;border-radius:7px!important}
+#sidebar .nav-premium>li>a .nav-text{font-size:12px!important;font-weight:500!important}
+#sidebar .nav-premium>li>a .nav-icon-wrapper{width:24px!important}
+#sidebar .nav-premium>li>a.active{
+  background:linear-gradient(90deg,#0878df,#075eb7)!important;
+  box-shadow:0 3px 10px rgba(0,111,220,.28)!important;
+}
+#sidebar .nav-premium>li>a:hover{background:rgba(255,255,255,.08)!important}
+#sidebar .nav-badge-premium{font-size:9px!important}
+#sidebar .sidebar-header-premium{padding-bottom:7px!important}
+#sidebar .sidebar-search-premium{padding-top:6px!important;padding-bottom:5px!important}
+
+#main-content.main{background:#f4f8fc!important;padding:12px 18px 20px!important}
+#dashboard.tab-content{padding:0!important;max-width:none!important;overflow:visible!important;background:transparent!important}
+.nchsm-dashboard{width:100%;max-width:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--nchsm-text)}
+.nchsm-hero{
+  position:relative;min-height:148px;border-radius:15px;overflow:hidden;background:#06345d;
+  box-shadow:0 4px 16px rgba(10,50,85,.14);isolation:isolate;
+}
+.nchsm-hero-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 52%;z-index:-2}
+.nchsm-hero-overlay{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(3,39,72,.98) 0%,rgba(4,55,95,.91) 34%,rgba(4,55,95,.42) 63%,rgba(4,55,95,.20) 100%)}
+.nchsm-hero-content{min-height:148px;padding:18px 26px;display:flex;align-items:center;justify-content:space-between;gap:20px;color:#fff}
+.nchsm-hero-copy{max-width:62%}
+.nchsm-hero-copy h1{margin:0;font-size:31px;line-height:1.1;font-weight:800;letter-spacing:-.7px;color:#fff}
+.nchsm-hero-copy p{margin:9px 0 0;font-size:15px;color:#fff}
+.nchsm-hero-tagline{margin-top:11px;font-size:14px;font-weight:800;font-style:italic;color:#ffc62a}
+.nchsm-hero-right{height:100%;min-width:300px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;text-align:right}
+.nchsm-hero-nav{font-size:13px;font-weight:800;letter-spacing:.3px}
+.nchsm-hero-nav span{opacity:.55;padding:0 7px}
+.nchsm-hero-message{margin-top:9px;font-size:12px;line-height:1.45}
+.nchsm-hero-script{font-family:"Segoe Script","Brush Script MT",cursive;font-size:14px;line-height:1.05;margin-top:6px;opacity:.96}
+.nchsm-hero-script span{font-size:10px}
+
+.nchsm-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:14px 0}
+.nchsm-metric{
+  min-height:70px;background:#fff;border:1px solid var(--nchsm-border);border-radius:12px;
+  display:flex;align-items:center;gap:10px;padding:9px 12px;box-sizing:border-box;
+  box-shadow:0 2px 8px rgba(25,63,97,.05)
+}
+.nchsm-metric-icon{width:42px;height:42px;flex:0 0 42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px}
+.metric-level .nchsm-metric-icon{background:#fff4d5;color:#f2aa00}
+.metric-nurseiq .nchsm-metric-icon{background:#eee6ff;color:#6d28d9}
+.metric-attendance .nchsm-metric-icon{background:#def7ec;color:#059669}
+.metric-login .nchsm-metric-icon{background:#eee6ff;color:#6d28d9}
+.metric-total{border-color:#f2bd39}.metric-total .nchsm-metric-icon{background:#fff1c7;color:#f59e0b}
+.nchsm-metric-body{min-width:0}
+.nchsm-metric-label{font-size:12px;color:#334b68;font-weight:600;white-space:nowrap}
+.nchsm-metric-value{font-size:15px;color:#132a48;font-weight:800;margin-top:2px}
+.nchsm-metric-sub{font-size:10px;color:#637c99;margin-top:2px}
+.nchsm-xpbar{height:7px;width:100%;min-width:90px;background:#dce7f0;border-radius:99px;margin-top:4px;overflow:hidden}
+.nchsm-xpbar span{display:block;width:0;height:100%;background:#c9d9e8;border-radius:99px}
+
+.nchsm-announcement{
+  min-height:58px;box-sizing:border-box;display:flex;align-items:center;gap:12px;
+  padding:9px 14px;border:1px solid #f0c03a;border-left:4px solid #ffb400;border-radius:11px;
+  background:linear-gradient(90deg,#fff5d8,#fffdf4);box-shadow:0 2px 7px rgba(120,87,12,.04)
+}
+.nchsm-announcement>i{font-size:21px;color:#f0a500}
+.nchsm-announcement strong{font-size:14px;color:#713d0b}
+.nchsm-announcement p{margin:2px 0 0;font-size:11px;color:#7c4a14}
+.nchsm-announcement-arrow{margin-left:auto;font-size:21px;color:#805117}
+
+.nchsm-top-grid{display:grid;grid-template-columns:1.14fr 1fr .72fr;gap:12px;margin-top:12px}
+.nchsm-bottom-grid{display:grid;grid-template-columns:1.05fr 1.08fr 1fr;gap:12px;margin-top:12px}
+.nchsm-card{background:#fff;border:1px solid var(--nchsm-border);border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(25,63,97,.05);min-width:0}
+.nchsm-card-head{height:56px;box-sizing:border-box;padding:9px 13px;border-bottom:1px solid #e6eef5;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nchsm-card-title{display:flex;align-items:center;gap:9px;min-width:0}
+.nchsm-card-title>i{font-size:23px;color:#f5aa00}
+.progress-card .nchsm-card-title>i,.events-card .nchsm-card-title>i,.courses-card .nchsm-card-title>i{color:#087bf0}
+.nchsm-card-title h2{margin:0;font-size:15px;font-weight:800;color:#152743;line-height:1.1}
+.nchsm-card-title small{display:block;font-size:10px;font-weight:500;color:#66809e;margin-top:3px}
+.nchsm-view-btn{border:0;background:#eaf5ff;color:#0875dc;border-radius:18px;padding:7px 12px;font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer}
+.nchsm-view-btn:hover{filter:brightness(.97)}
+.nchsm-card-body{padding:10px 12px}
+
+.nchsm-action-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+.nchsm-action{min-height:74px;border:0;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:700;cursor:pointer;box-shadow:inset 0 -2px 0 rgba(0,0,0,.08);transition:transform .16s ease,filter .16s ease}
+.nchsm-action:hover{transform:translateY(-2px);filter:brightness(1.03)}
+.nchsm-action i{font-size:20px}
+.action-green{background:#10b981}.action-blue{background:#087bf0}.action-purple{background:#9438e9}.action-orange{background:#ff9500}
+.action-pink{background:#fa4771}.action-teal{background:#0da5ae}.action-indigo{background:#4d43e6}.action-slate{background:#61758a}
+
+.nchsm-progress-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 8px 12px}
+.nchsm-progress-item{text-align:center;min-width:0}
+.nchsm-ring{position:relative;width:86px;height:86px;margin:0 auto 6px}
+.nchsm-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-track{fill:none;stroke:#e5eef6;stroke-width:8}
+.ring-fill{fill:none;stroke-width:8;stroke-linecap:round;stroke-dasharray:251.33;stroke-dashoffset:55.3}
+.ring-blue{stroke:#1684ed}.ring-green{stroke:#56d09c}.ring-purple{stroke:#a879ef}.ring-gold{stroke:#f6bf4a}
+.nchsm-ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#172742}
+.nchsm-progress-item>strong{display:block;font-size:11px;color:#132744}
+.nchsm-progress-item>span{display:block;font-size:11px;color:#66809e;margin-top:3px;font-weight:600}
+
+.nchsm-leaderboard{padding:0 8px 8px}
+.leader-row{display:grid;grid-template-columns:31px 1fr 48px;align-items:center;min-height:28px;border-bottom:1px solid #e7eef5;font-size:11px;color:#18304d}
+.leader-row:last-child{border-bottom:0}
+.leader-head{min-height:29px;background:#f2f7fb;color:#173250;font-weight:800}
+.leader-head span:nth-child(2){text-align:left}.leader-head span:last-child{text-align:right}
+.leader-row>strong{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leader-row>b:last-child{text-align:right}
+.rank{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;background:#eef3f7;color:#35526f}
+.rank-1{background:#ffc928;color:#725000}.rank-2{background:#dbe6ef}.rank-3{background:#f2c28c;color:#73430e}
+.leader-current{background:#e5f2ff;border-radius:7px;color:#0870db;margin:2px 0}
+
+.streak-card .nchsm-card-title>i{color:#ff6800}
+.nchsm-days-pill{background:#edf5ff;color:#587391;border-radius:18px;padding:6px 10px;font-size:10px;font-weight:800;white-space:nowrap}
+.nchsm-streak-body{padding:9px 15px 12px}
+.nchsm-milestones{display:flex;justify-content:space-between;gap:7px;margin:1px 0 10px}
+.streak-milestone{min-width:39px;padding:6px 8px;border-radius:16px;background:#eaf2fa;color:#58728d;font-size:10px;font-weight:800;text-align:center}
+.streak-milestone.active{background:#ffe08a;color:#7d5800;box-shadow:0 2px 6px rgba(244,181,20,.25)}
+.nchsm-streak-line{height:8px;background:#dbe7f2;border-radius:99px;overflow:hidden}
+.nchsm-streak-line span{display:block;width:26%;height:100%;background:#2c8ef4;border-radius:99px}
+.nchsm-start-streak{margin-top:10px;border:1px solid #9ccaf2;background:#eef8ff;color:#0875dc;border-radius:7px;padding:7px 11px;font-size:10px;font-weight:800;cursor:pointer}
+.nchsm-streak-status{display:block;margin-top:6px;color:#66809e;font-size:10px}
+
+.nchsm-events{padding:8px 12px 9px}
+.nchsm-event{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #edf2f7}
+.nchsm-event:last-child{border-bottom:0}
+.event-date{width:47px;height:43px;flex:0 0 47px;border:1px solid #e1eaf3;border-radius:7px;text-align:center;overflow:hidden;background:#fff}
+.event-date b{display:block;background:#ef3340;color:#fff;font-size:9px;padding:3px 0}
+.nchsm-event:nth-child(2) .event-date b{background:#087bf0}
+.event-date strong{display:block;color:#182d49;font-size:16px;line-height:22px}
+.event-info{min-width:0}.event-info>strong{display:block;font-size:11px;color:#162b47}
+.event-info>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:9px;color:#66809e;margin-top:3px}
+.event-info i{color:#6483a2}
+
+.nchsm-courses{padding:4px 9px 8px}
+.course-row{min-height:31px;display:grid;grid-template-columns:73px 1fr 14px;align-items:center;gap:7px;border-bottom:1px solid #edf2f7;font-size:11px}
+.course-row:last-child{border-bottom:0}
+.course-row>strong{font-weight:600;color:#18304d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.course-row>i{font-size:10px;color:#1b334e}
+.course-code{display:inline-flex;align-items:center;justify-content:center;border-radius:6px;padding:4px 5px;font-weight:800}
+.code-blue{background:#dceeff;color:#0875dc}.code-green{background:#d9f8eb;color:#07966a}.code-purple{background:#eadfff;color:#6d28d9}.code-orange{background:#ffe6c4;color:#e87800}
+
+.nchsm-brand-strip{
+  position:relative;overflow:hidden;min-height:64px;margin-top:12px;border-radius:10px;
+  background:linear-gradient(90deg,#063e70,#075894);color:#fff;display:flex;align-items:center;justify-content:space-between;
+  padding:10px 17px;box-sizing:border-box
+}
+.brand-strip-left{display:flex;align-items:center;gap:12px;z-index:2}
+.brand-strip-left>i{font-size:25px;color:#ffd36a}
+.brand-strip-left strong{display:block;font-size:15px}
+.brand-strip-left span{display:block;font-size:10px;margin-top:4px;opacity:.92}
+.brand-strip-right{text-align:right;font-family:"Segoe Script","Brush Script MT",cursive;font-size:12px;line-height:1.2;z-index:2}
+.brand-strip-right strong{font-size:14px}
+.brand-strip-wave{position:absolute;right:17%;top:0;width:31%;height:100%;opacity:.75;border-bottom:2px solid rgba(255,255,255,.55);transform:skewX(-23deg);pointer-events:none}
+
+.nchsm-dashboard-hooks{display:none!important}
+.nchsm-reference-footer{margin:0!important;padding:0!important;background:transparent!important;border:0!important;color:#fff!important}
+.nchsm-footer-main{
+  position:relative;min-height:64px;background:linear-gradient(90deg,#063e70,#075894);display:flex;align-items:center;justify-content:space-between;
+  padding:9px 22px;box-sizing:border-box;overflow:hidden
+}
+.nchsm-footer-brand{display:flex;align-items:center;gap:12px}
+.nchsm-footer-brand>i{font-size:24px;color:#ffd36a}
+.nchsm-footer-brand strong{display:block;font-size:15px}.nchsm-footer-brand span{display:block;font-size:10px;margin-top:3px}
+.nchsm-footer-wave{position:absolute;right:16%;width:26%;height:42px;border-bottom:2px solid rgba(255,255,255,.6);transform:skewX(-25deg)}
+.nchsm-footer-future{text-align:right;font-family:"Segoe Script","Brush Script MT",cursive;font-size:12px;line-height:1.15}
+.nchsm-footer-future strong{font-size:14px}
+.nchsm-footer-bottom{height:30px;background:#f4f8fc;color:#66809e;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:9px;box-sizing:border-box}
+.nchsm-footer-bottom nav{display:flex;gap:8px;align-items:center}.nchsm-footer-bottom a{color:#66809e;text-decoration:none}.nchsm-footer-bottom a:hover{color:#0875dc}
+.nchsm-system-online{font-weight:700}.nchsm-system-online i{color:#16c784;font-size:8px;margin-right:4px}
+
+@media(max-width:1200px){
+  .nchsm-top-grid{grid-template-columns:1.15fr 1fr}.leaderboard-card{grid-column:1/-1}
+  .nchsm-bottom-grid{grid-template-columns:1fr 1fr}.courses-card{grid-column:1/-1}
+}
+@media(max-width:900px){
+  .nchsm-header-search{width:min(430px,42vw)}
+  .nchsm-header-user-copy{display:none}
+  .nchsm-top-grid,.nchsm-bottom-grid{grid-template-columns:1fr}
+  .leaderboard-card,.courses-card{grid-column:auto}
+  .nchsm-hero-copy{max-width:100%}.nchsm-hero-right{display:none}
+  .nchsm-metrics{grid-template-columns:repeat(2,1fr)}
+  .nchsm-metric:last-child{grid-column:1/-1}
+}
+@media(max-width:1023px){
+  .main-header.nchsm-reference-header{height:60px!important}
+  .nchsm-header-menu{display:flex!important}
+  #main-content.main{margin-left:0!important;width:100%!important;max-width:100%!important;padding:10px 12px 18px!important}
+  #sidebar.sidebar-premium{top:60px!important}
+}
+@media(max-width:640px){
+  .nchsm-header-search{display:none}
+  .nchsm-header-title{font-size:15px}.nchsm-header-subtitle{font-size:9px}
+  .nchsm-header-right{gap:2px}.nchsm-header-icon{width:34px;height:34px}
+  .nchsm-hero,.nchsm-hero-content{min-height:145px}
+  .nchsm-hero-content{padding:17px}
+  .nchsm-hero-copy h1{font-size:22px}.nchsm-hero-copy p{font-size:12px}.nchsm-hero-tagline{font-size:11px}
+  .nchsm-metrics{grid-template-columns:1fr 1fr;gap:8px;margin:9px 0}
+  .nchsm-metric{min-height:66px;padding:8px}.nchsm-metric-icon{width:36px;height:36px;flex-basis:36px;font-size:16px}
+  .nchsm-metric-label{font-size:10px}.nchsm-metric-value{font-size:13px}.nchsm-metric-sub{font-size:9px}
+  .nchsm-announcement{min-height:54px;padding:8px 10px}.nchsm-announcement strong{font-size:12px}.nchsm-announcement p{font-size:10px}
+  .nchsm-top-grid,.nchsm-bottom-grid{gap:9px;margin-top:9px}
+  .nchsm-card-head{height:auto;min-height:51px;padding:8px 10px}
+  .nchsm-card-title h2{font-size:13px}.nchsm-card-title small{font-size:9px}.nchsm-card-title>i{font-size:19px}
+  .nchsm-view-btn{padding:6px 9px;font-size:9px}
+  .nchsm-action-grid{grid-template-columns:1fr 1fr;gap:7px;padding:9px}
+  .nchsm-action{min-height:68px;font-size:10px}.nchsm-action i{font-size:17px}
+  .nchsm-progress-grid{gap:0;padding:8px 3px 10px}.nchsm-ring{width:70px;height:70px}.nchsm-ring-value{font-size:13px}
+  .nchsm-progress-item>strong,.nchsm-progress-item>span{font-size:9px}
+  .nchsm-milestones{gap:4px}.streak-milestone{min-width:31px;padding:5px 4px;font-size:9px}
+  .nchsm-footer-main{min-height:61px;padding:8px 12px}.nchsm-footer-brand strong{font-size:11px}.nchsm-footer-brand span{font-size:8px}
+  .nchsm-footer-future{font-size:9px}.nchsm-footer-future strong{font-size:10px}
+  .nchsm-footer-bottom{font-size:8px;padding:0 9px}
+}
+</style></head>
 <body>
 <!-- LOADING SCREEN -->
 <div id="loading-screen">
@@ -334,7 +609,7 @@
 <div id="app-content" style="display: none;">
 <a class="nchsm-skip-link" href="#main-content">Skip to main content</a>
 <!-- ===== HEADER - HAMBURGER ON FAR LEFT ===== -->
-<header class="main-header" style="
+<header class="main-header nchsm-reference-header" id="main-header" style="
     display: flex;
     justify-content: space-between;
     align-items: center;
@@ -346,75 +621,41 @@
     z-index: 100;
     font-family: 'Inter', sans-serif;
 ">
-<!-- ===== LEFT SIDE: Menu Toggle FIRST ===== -->
-<div style="display: flex; align-items: center; gap: 12px;">
-<!-- ✅ MOBILE MENU TOGGLE - FAR LEFT -->
-<button aria-label="Toggle navigation" class="mobile-menu-toggle" id="mobile-menu-toggle" onmouseout="this.style.background='#f1f5f9'; this.style.transform='scale(1)'" onmouseover="this.style.background='#e2e8f0'; this.style.transform='scale(1.05)'" style="
-            display: none;
-            width: 40px;
-            height: 40px;
-            border-radius: 8px;
-            border: none;
-            background: #f1f5f9;
-            color: #4C1D95;
-            font-size: 18px;
-            cursor: pointer;
-            transition: all 0.2s;
-            flex-shrink: 0;
-            align-items: center;
-            justify-content: center;
-        ">
-<i class="fas fa-bars"></i>
+<div class="nchsm-header-left">
+<button aria-label="Toggle navigation" class="mobile-menu-toggle nchsm-header-menu" id="mobile-menu-toggle" type="button">
+<i aria-hidden="true" class="fas fa-bars"></i>
 </button>
-<!-- Logo Container -->
-<div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
-<img alt="NCHSM Logo" class="header-logo" src="images/Logo_NCHSM.png" style="
-                width: 36px;
-                height: 36px;
-                object-fit: contain;
-                border-radius: 8px;
-            "/>
-<div class="header-titles">
-<h1 class="main-title" style="
-                    font-size: 16px;
-                    font-weight: 700;
-                    color: #0F172A;
-                    margin: 0;
-                    line-height: 1.2;
-                ">NCHSM</h1>
-<h2 class="subtitle" style="
-                    font-size: 10px;
-                    color: #64748B;
-                    margin: 0;
-                    font-weight: 400;
-                ">Digital Student Portal</h2>
+<div class="nchsm-header-brand">
+<img alt="NCHSM Logo" class="nchsm-header-logo" src="images/Logo_NCHSM.png"/>
+<div>
+<div class="nchsm-header-title">NCHSM</div>
+<div class="nchsm-header-subtitle">Digital Student Portal</div>
 </div>
 </div>
 </div>
-<!-- ===== RIGHT SIDE ===== -->
-<div class="header-right" style="display: flex; align-items: center; gap: 12px;">
-<div class="user-profile-dropdown" style="position: relative; cursor: pointer;">
-<div class="profile-trigger" style="display: flex; align-items: center; gap: 10px; padding: 4px 10px 4px 4px; border-radius: 30px; background: #f8fafc; border: 1px solid #e5e7eb;">
-<img alt="Profile" class="profile-avatar round" id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student&amp;background=667eea&amp;color=fff&amp;size=100" style="width: 32px; height: 32px; border-radius: 50%; object-fit: cover; border: 2px solid #e5e7eb;"/>
-<div class="profile-info" style="display: none;">
-<span class="profile-name" id="header-user-name" style="font-size: 13px; font-weight: 600; color: #0F172A;">Student</span>
-<span class="profile-role" style="font-size: 10px; color: #94a3b8; display: block;">Student</span>
+<div class="nchsm-header-search">
+<i aria-hidden="true" class="fas fa-search"></i>
+<input aria-label="Search modules, pages, or resources" id="portalHeaderSearch" placeholder="Search modules, pages, or resources..." type="search"/>
+<kbd>Ctrl + K</kbd>
 </div>
-<i class="fas fa-chevron-down dropdown-icon" style="font-size: 10px; color: #94a3b8;"></i>
-</div>
-</div>
-<div class="current-time" style="font-size: 12px; color: #64748B; display: flex; align-items: center; gap: 6px; padding: 6px 12px; background: #f8fafc; border-radius: 20px; border: 1px solid #e5e7eb;">
-<i class="fas fa-clock" style="font-size: 12px; color: #4C1D95;"></i>
-<span id="header-time">Loading...</span>
-</div>
-<div class="header-actions" style="display: flex; align-items: center; gap: 2px;">
-<button class="icon-btn" id="notificationToggle" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="position: relative; background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: #4C1D95;" title="Notifications">
-<i class="fas fa-bell" style="font-size: 17px;"></i>
-<span id="notificationDot" style="position: absolute; top: 4px; right: 4px; width: 9px; height: 9px; background: #ef4444; border-radius: 50%; display: none; border: 2px solid white; animation: pulse-dot 2s infinite;"></span>
+<div class="nchsm-header-right">
+<button aria-label="Notifications" class="nchsm-header-icon" id="notificationToggle" title="Notifications" type="button">
+<i aria-hidden="true" class="fas fa-bell"></i>
+<span class="nchsm-notification-count">3</span>
+<span aria-hidden="true" id="notificationDot"></span>
 </button>
-<button class="icon-btn" id="header-refresh" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="background: none; border: none; cursor: pointer; padding: 8px; border-radius: 50%; color: #4C1D95;" title="Refresh Dashboard">
-<i class="fas fa-sync-alt" style="font-size: 15px;"></i>
+<button aria-label="Theme" class="nchsm-header-icon nchsm-sun-btn" id="header-theme-toggle" title="Theme" type="button">
+<i aria-hidden="true" class="fas fa-sun"></i>
 </button>
+<div class="user-profile-dropdown nchsm-header-profile" id="header-profile-dropdown">
+<div class="profile-trigger">
+<img alt="Profile" class="profile-avatar round" id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student&amp;background=4C1D95&amp;color=fff&amp;size=100"/>
+<div class="nchsm-header-user-copy">
+<span class="profile-name" id="header-user-name">Student</span>
+<span class="profile-role">Student</span>
+</div>
+<i aria-hidden="true" class="fas fa-chevron-down dropdown-icon"></i>
+</div>
 </div>
 </div>
 </header>
@@ -488,121 +729,112 @@
 </div>
 <!-- ===== NAVIGATION ===== -->
 <nav aria-label="Primary navigation" class="sidebar-nav-premium">
-<ul class="nav-premium" role="menubar"><li aria-hidden="true" class="nav-section-label" role="presentation"><span style="display:block;padding:14px 14px 7px;margin-top:4px;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.48);">OVERVIEW</span></li><li role="none">
+<ul class="nav-premium" role="menubar">
+<li aria-hidden="true" class="nav-section-label" role="presentation">
+<span>OVERVIEW</span>
+</li>
+<li role="none">
 <a class="active" data-tab="dashboard" href="#" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-home"></i>
-<span class="nav-icon-bg"></span>
-</span>
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-home"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Dashboard</span>
-<span class="nav-badge-premium">Home</span>
 </a>
-</li><li role="none">
+</li>
+<li role="none">
 <a data-tab="profile" href="#" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-user-circle"></i>
-<span class="nav-icon-bg"></span>
-</span>
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-user-circle"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Profile</span>
-<span class="nav-badge-premium" id="profileBadge" style="display:none;">!</span>
 </a>
-</li><li aria-hidden="true" class="nav-section-label" role="presentation"><span style="display:block;padding:14px 14px 7px;margin-top:4px;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.48);">ACADEMICS</span></li><li role="none">
+</li>
+<li aria-hidden="true" class="nav-section-label" role="presentation">
+<span>ACADEMICS</span>
+</li>
+<li role="none">
 <a data-tab="calendar" href="#" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-calendar-alt"></i>
-<span class="nav-icon-bg"></span>
-</span>
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-calendar-alt"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Academic Calendar</span>
-<span class="nav-badge-premium">📅</span>
 </a>
-</li><li class="has-dropdown-premium" role="none">
-<a aria-expanded="false" aria-haspopup="true" class="dropdown-toggle-premium" href="#" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-graduation-cap"></i>
-<span class="nav-icon-bg"></span>
-</span>
+</li>
+<li role="none">
+<a data-tab="hub-online-learning" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-graduation-cap"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">My Learning Hub</span>
-<i class="fas fa-chevron-down dropdown-arrow-premium"></i>
+<i aria-hidden="true" class="fas fa-chevron-down dropdown-arrow-premium"></i>
 </a>
-<ul class="dropdown-submenu-premium" style="display: none;">
-<li role="none"><a data-tab="hub-register" href="#" role="menuitem"><i class="fas fa-plus-circle"></i> Register Units</a></li>
-<li role="none"><a data-tab="hub-courses" href="#" role="menuitem"><i class="fas fa-book-open"></i> My Units</a></li>
-<li class="dropdown-divider-premium"></li>
-<li role="none"><a data-tab="hub-lecture-card" href="#" role="menuitem"><i class="fas fa-chalkboard-teacher"></i> Lecture Card</a></li>
-<li role="none"><a data-tab="hub-exam-card" href="#" role="menuitem"><i class="fas fa-id-card"></i> Exam Card</a></li>
-<li class="dropdown-divider-premium"></li>
-<li role="none"><a data-tab="cats" href="#" role="menuitem"><i class="fas fa-chart-line"></i> Exams &amp; Grades</a></li>
-<li role="none"><a data-tab="academic-reports" href="#" role="menuitem"><i class="fas fa-file-alt"></i> Academic Reports</a></li>
-<li role="none"><a data-tab="nurseiq" href="#" role="menuitem"><i class="fas fa-brain"></i> NurseIQ</a></li>
-<li role="none"><a data-tab="resources" href="#" role="menuitem"><i class="fas fa-folder-open"></i> Resources</a></li>
-<li role="none"><a data-tab="hub-online-learning" href="#" role="menuitem"><i class="fas fa-video"></i> Online Learning</a></li>
-</ul>
-</li><li role="none">
+</li>
+<li role="none">
 <a data-tab="attendance" href="#" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-check-double"></i>
-<span class="nav-icon-bg"></span>
-</span>
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-check-double"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Attendance</span>
-<span class="nav-badge-premium pulse-badge" id="attendanceBadge" style="display:none;">0</span>
 </a>
-</li><li aria-hidden="true" class="nav-section-label" role="presentation"><span style="display:block;padding:14px 14px 7px;margin-top:4px;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.48);">STUDENT SERVICES</span></li><li role="none">
-<a data-tab="finance" href="#" onclick="event.preventDefault(); showTab('finance'); loadStudentFinance();" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-coins"></i>
-<span class="nav-icon-bg"></span>
-</span>
+</li>
+<li role="none">
+<a data-tab="cats" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-file-alt"></i><span class="nav-icon-bg"></span></span>
+<span class="nav-text">Exams &amp; Results</span>
+</a>
+</li>
+<li role="none">
+<a data-tab="hub-courses" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-graduation-cap"></i><span class="nav-icon-bg"></span></span>
+<span class="nav-text">My Courses</span>
+</a>
+</li>
+<li aria-hidden="true" class="nav-section-label" role="presentation">
+<span>STUDENT SERVICES</span>
+</li>
+<li role="none">
+<a data-tab="finance" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-coins"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">My Finance</span>
-<span class="nav-badge-premium" id="financeBadge" style="display: none;">
-<span id="financeBadgeCount">0</span>
-</span>
 </a>
-</li><li role="none">
-<a data-tab="enrollment" href="#" onclick="event.preventDefault(); showTab('enrollment');" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-user-plus"></i>
-<span class="nav-icon-bg"></span>
-</span>
+</li>
+<li role="none">
+<a data-tab="enrollment" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-user-plus"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Enrollment</span>
-<span class="nav-badge-premium" id="enrollmentBadge" style="background: #f59e0b; color: #0A3D62; font-weight: 700; padding: 2px 10px; border-radius: 20px; font-size: 10px;">NEW</span>
+<span class="nav-badge-premium">NEW</span>
 </a>
-</li><li aria-hidden="true" class="nav-section-label" role="presentation"><span style="display:block;padding:14px 14px 7px;margin-top:4px;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.48);">COMMUNICATION &amp; SUPPORT</span></li><li role="none">
-<a data-tab="messages" href="#" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-comment-dots"></i>
-<span class="nav-icon-bg"></span>
-</span>
-<span class="nav-text">Messages</span>
-<span class="nav-badge-premium pulse-badge" id="messagesBadge" style="display:none;">0</span>
-</a>
-</li><li role="none">
+</li>
+<li role="none">
 <a data-tab="support-tickets" href="#" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-ticket-alt"></i>
-<span class="nav-icon-bg"></span>
-</span>
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-headset"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Support Tickets</span>
-<span class="nav-badge-premium" id="ticketsBadge" style="display:none;">0</span>
 </a>
-</li><li aria-hidden="true" class="nav-section-label" role="presentation"><span style="display:block;padding:14px 14px 7px;margin-top:4px;font-size:10px;font-weight:800;letter-spacing:1.2px;text-transform:uppercase;color:rgba(255,255,255,0.48);">FEEDBACK &amp; UPDATES</span></li><li role="none">
-<a data-tab="reviews" href="#" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-star"></i>
-<span class="nav-icon-bg"></span>
-</span>
-<span class="nav-text">Reviews</span>
-<span class="nav-badge-premium" id="reviewsBadge" style="display:none;">0</span>
+</li>
+<li aria-hidden="true" class="nav-section-label" role="presentation">
+<span>COMMUNICATION</span>
+</li>
+<li role="none">
+<a data-tab="messages" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-comments"></i><span class="nav-icon-bg"></span></span>
+<span class="nav-text">Messages</span>
 </a>
-</li><li role="none">
+</li>
+<li role="none">
 <a data-tab="newsletter" href="#" role="menuitem">
-<span class="nav-icon-wrapper">
-<i class="fas fa-envelope"></i>
-<span class="nav-icon-bg"></span>
-</span>
-<span class="nav-text">Newsletter</span>
-<span class="nav-badge-premium" id="newsletterBadge" style="display:none;">0</span>
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-bullhorn"></i><span class="nav-icon-bg"></span></span>
+<span class="nav-text">Announcements</span>
 </a>
-</li></ul>
+</li>
+<li aria-hidden="true" class="nav-section-label" role="presentation">
+<span>GAMIFICATION</span>
+</li>
+<li role="none">
+<a class="nchsm-leaderboard-nav" data-tab="dashboard" href="#leaderboard-container" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-trophy"></i><span class="nav-icon-bg"></span></span>
+<span class="nav-text">Leaderboard</span>
+</a>
+</li>
+<li aria-hidden="true" class="nav-section-label" role="presentation">
+<span>SETTINGS</span>
+</li>
+<li role="none">
+<a data-tab="profile" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-star"></i><span class="nav-icon-bg"></span></span>
+<span class="nav-text">Profile Settings</span>
+</a>
+</li>
+</ul>
 </nav>
 <!-- ===== SIDEBAR FOOTER ===== -->
 <div class="sidebar-footer-premium">
@@ -629,221 +861,296 @@
 <!-- MAIN CONTENT AREA -->
 <main class="main" id="main-content">
 <!-- ==================== DASHBOARD SECTION - FULL DARK THEME ==================== -->
-<section class="tab-content active" id="dashboard" style="padding:0;max-width:100%;overflow-x:hidden;background:#f4f8fc;">
-<style>
-/* NCHSM DASHBOARD — visual match to supplied reference */
-#dashboard{font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#0f2745;}
-#dashboard .nd-wrap{display:flex;flex-direction:column;gap:12px;padding:12px 0 0;}
-#dashboard .nd-hero{position:relative;min-height:148px;border-radius:16px;overflow:hidden;background:#07345a;box-shadow:0 5px 18px rgba(9,54,91,.14);}
-#dashboard .nd-hero::before{content:"";position:absolute;inset:0;background:linear-gradient(90deg,rgba(4,43,77,.98) 0%,rgba(4,43,77,.94) 27%,rgba(4,43,77,.62) 50%,rgba(4,43,77,.12) 77%,rgba(4,43,77,.18) 100%),url('images/campus-header.jpg') center 53%/cover no-repeat;}
-#dashboard .nd-hero::after{content:"";position:absolute;right:0;top:0;width:34%;height:100%;background:linear-gradient(90deg,transparent,rgba(4,43,77,.2));pointer-events:none;}
-#dashboard .nd-hero-inner{position:relative;z-index:2;min-height:148px;padding:20px 26px;display:flex;align-items:center;justify-content:space-between;gap:20px;color:#fff;}
-#dashboard .nd-hero-copy{max-width:58%;}
-#dashboard .nd-hero h1{margin:0;font-size:31px;line-height:1.12;font-weight:800;letter-spacing:-.7px;color:#fff;}
-#dashboard .nd-hero h1 #welcome-student-name{color:#fff;}
-#dashboard .nd-hero-sub{margin:8px 0 0;font-size:15px;color:rgba(255,255,255,.93);}
-#dashboard .nd-tagline{margin-top:13px;font-size:14px;font-weight:800;font-style:italic;color:#ffc928;}
-#dashboard .nd-hero-right{align-self:stretch;min-width:285px;display:flex;flex-direction:column;justify-content:center;align-items:flex-end;text-align:right;padding-right:4px;}
-#dashboard .nd-hero-nav{font-size:13px;font-weight:800;letter-spacing:.4px;color:#fff;white-space:nowrap;}
-#dashboard .nd-hero-nav span{opacity:.55;padding:0 9px;}
-#dashboard .nd-hero-message{margin-top:10px;font-size:12px;line-height:1.45;color:#fff;max-width:260px;}
-#dashboard .nd-last-login{display:none;}
-#dashboard .nd-points{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;}
-#dashboard .nd-point{min-height:74px;background:#fff;border:1px solid #dce6f0;border-radius:13px;box-shadow:0 2px 9px rgba(24,55,87,.06);padding:11px 14px;display:flex;align-items:center;gap:11px;min-width:0;}
-#dashboard .nd-point:nth-child(2){border-color:#dacbfa;background:linear-gradient(180deg,#fff,#fcf9ff);}
-#dashboard .nd-point:nth-child(4){border-color:#d9c9fa;background:#fbf9ff;}
-#dashboard .nd-point:nth-child(5){border-color:#f5bd32;background:linear-gradient(180deg,#fffdf7,#fff9e8);}
-#dashboard .nd-point-icon{width:43px;height:43px;flex:0 0 43px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px;background:#fff7df;color:#f2ad00;}
-#dashboard .nd-point:nth-child(2) .nd-point-icon{background:#f1e8ff;color:#6d28d9;}
-#dashboard .nd-point:nth-child(3) .nd-point-icon{background:#e3f8ef;color:#059669;}
-#dashboard .nd-point:nth-child(4) .nd-point-icon{background:#f0e7ff;color:#6d28d9;}
-#dashboard .nd-point:nth-child(5) .nd-point-icon{background:#fff3cf;color:#f59e0b;}
-#dashboard .nd-point-body{min-width:0;}
-#dashboard .nd-point-label{font-size:12px;font-weight:600;color:#344b68;white-space:nowrap;}
-#dashboard .nd-point-value{font-size:15px;font-weight:800;color:#142c4b;margin-top:3px;white-space:nowrap;}
-#dashboard .nd-point-sub{font-size:10px;color:#647c98;margin-top:1px;white-space:nowrap;}
-#dashboard .nd-xpbar{height:7px;background:#dbe4ee;border-radius:99px;margin-top:5px;width:100%;min-width:100px;overflow:hidden;}
-#dashboard .nd-xpbar span{display:block;width:0%;height:100%;background:#c5d5e5;border-radius:99px;transition:width .5s ease;}
-#dashboard .nd-announcement{display:flex;align-items:center;gap:13px;min-height:58px;background:linear-gradient(90deg,#fff7dc,#fffdf3);border:1px solid #f1c53b;border-left:4px solid #ffb400;border-radius:12px;padding:10px 16px;box-shadow:0 2px 7px rgba(120,87,12,.04);}
-#dashboard .nd-announcement-icon{font-size:21px;color:#f2a800;flex:0 0 auto;}
-#dashboard .nd-announcement-copy{min-width:0;}
-#dashboard .nd-announcement-title{font-size:14px;font-weight:800;color:#713d0b;}
-#dashboard .nd-announcement-text{font-size:12px;color:#7c4a14;margin-top:2px;}
-#dashboard .nd-arrow{margin-left:auto;font-size:16px;color:#7c4a14;}
-#dashboard .nd-grid-top{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,.92fr);gap:14px;}
-#dashboard .nd-card{background:#fff;border:1px solid #dce6f0;border-radius:13px;box-shadow:0 2px 9px rgba(24,55,87,.055);overflow:hidden;min-width:0;}
-#dashboard .nd-card-head{height:55px;padding:10px 18px;border-bottom:1px solid #e7eef5;display:flex;align-items:center;justify-content:space-between;gap:12px;}
-#dashboard .nd-card-title{display:flex;align-items:center;gap:10px;min-width:0;}
-#dashboard .nd-card-title i{font-size:23px;color:#fdb913;}
-#dashboard .nd-card-title h3{margin:0;font-size:15px;font-weight:800;color:#142d4e;}
-#dashboard .nd-card-title small{display:block;font-size:10px;font-weight:500;color:#7087a0;margin-top:2px;}
-#dashboard .nd-view{border:0;background:#edf6ff;color:#0875dc;border-radius:18px;padding:7px 13px;font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer;}
-#dashboard .nd-card-body{padding:10px 18px 14px;}
-#dashboard .nd-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px;}
-#dashboard .nd-action{min-height:76px;border:0;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;font-size:11px;font-weight:800;cursor:pointer;text-decoration:none;box-shadow:inset 0 -2px 0 rgba(0,0,0,.08);transition:transform .16s ease,filter .16s ease;}
-#dashboard .nd-action:hover{transform:translateY(-2px);filter:brightness(1.03);}
-#dashboard .nd-action i{font-size:20px;}
-#dashboard .nd-action:nth-child(1){background:#12b879;}#dashboard .nd-action:nth-child(2){background:#087bf0;}#dashboard .nd-action:nth-child(3){background:#9b35ee;}#dashboard .nd-action:nth-child(4){background:#ff9700;}#dashboard .nd-action:nth-child(5){background:#fa4771;}#dashboard .nd-action:nth-child(6){background:#12a8ae;}#dashboard .nd-action:nth-child(7){background:#4b3ee4;}#dashboard .nd-action:nth-child(8){background:#647a91;}#dashboard .nd-action:nth-child(9){background:#0f8b8d;}
-#dashboard .nd-progress{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;align-items:start;}
-#dashboard .nd-progress-item{text-align:center;min-width:0;}
-#dashboard .nd-ring{width:91px;height:91px;margin:0 auto 5px;position:relative;}
-#dashboard .nd-ring svg{width:100%;height:100%;transform:rotate(-90deg);overflow:visible;}
-#dashboard .nd-ring-track{fill:none;stroke:#e6f0f8;stroke-width:8;}
-#dashboard .nd-ring-fill{fill:none;stroke:#d8e7f5;stroke-width:8;stroke-linecap:round;stroke-dasharray:251.33;stroke-dashoffset:251.33;transition:stroke-dashoffset .6s ease;}
-#dashboard .nd-progress-item:nth-child(2) .nd-ring-fill{stroke:#bfe8d8;}.nd-progress-item:nth-child(3) .nd-ring-fill{stroke:#d9c7f6;}.nd-progress-item:nth-child(4) .nd-ring-fill{stroke:#f7c45a;}
-#dashboard .nd-ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#102846;}
-#dashboard .nd-progress-label{font-size:11px;font-weight:800;color:#122c4d;}
-#dashboard .nd-progress-sub{font-size:10px;color:#52708f;margin-top:2px;}
-#dashboard .nd-grid-bottom{display:grid;grid-template-columns:minmax(0,1.08fr) minmax(0,1fr) minmax(260px,.72fr);gap:14px;}
-#dashboard .nd-streak .nd-card-head i{color:#ff6a00;}
-#dashboard .nd-streak-body{padding:8px 18px 13px;}
-#dashboard .nd-streak-sub{font-size:10px;color:#7188a0;margin-top:-5px;margin-bottom:8px;}
-#dashboard .nd-streak-top{display:flex;justify-content:space-between;align-items:center;}
-#dashboard .nd-streak-days{display:flex;justify-content:space-between;gap:7px;margin:5px 0 10px;}
-#dashboard .nd-milestone{min-width:42px;padding:6px 8px;border-radius:18px;background:#eef5fb;color:#59738f;font-size:10px;font-weight:800;text-align:center;}
-#dashboard .nd-milestone.active{background:#fff0c2;color:#d98a00;box-shadow:0 2px 7px rgba(250,174,0,.18);}
-#dashboard .nd-streak-line{height:8px;background:#e4edf5;border-radius:99px;position:relative;overflow:hidden;margin:0 4px 10px;}
-#dashboard .nd-streak-line span{display:block;height:100%;width:0%;background:#f5b71b;border-radius:99px;transition:width .5s ease;}
-#dashboard .nd-streak-button{border:1px solid #b9dafa;background:#f2f8ff;color:#0874dc;border-radius:7px;padding:7px 13px;font-size:10px;font-weight:800;cursor:pointer;}
-#dashboard .nd-streak-status{font-size:10px;color:#647e99;margin-left:8px;}
-#dashboard .nd-events{padding:6px 18px 12px;display:grid;gap:4px;}
-#dashboard .nd-event{display:grid;grid-template-columns:54px minmax(0,1fr);gap:9px;align-items:center;padding:5px 0;border-bottom:1px solid #e8eef5;}
-#dashboard .nd-event:last-child{border-bottom:0;}
-#dashboard .nd-date{width:45px;border:1px solid #d8e4ef;border-radius:7px;overflow:hidden;text-align:center;background:#fff;}
-#dashboard .nd-date-month{background:#f44336;color:#fff;font-size:8px;font-weight:800;padding:2px;}.nd-date-day{font-size:15px;font-weight:900;color:#102a49;padding:2px;}
-#dashboard .nd-event-title{font-size:11px;font-weight:800;color:#193453;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#dashboard .nd-event-meta{font-size:9px;color:#6d849d;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#dashboard .nd-courses{padding:7px 18px 10px;}
-#dashboard .nd-course{display:grid;grid-template-columns:66px minmax(0,1fr) 12px;gap:8px;align-items:center;padding:5px 0;border-bottom:1px solid #e8eef5;}
-#dashboard .nd-course:last-child{border-bottom:0;}
-#dashboard .nd-code{border-radius:5px;padding:4px 7px;font-size:10px;font-weight:900;text-align:center;background:#dff2ff;color:#086ebc;}
-#dashboard .nd-course:nth-child(2) .nd-code{background:#d7f6e9;color:#009b6c;}.nd-course:nth-child(3) .nd-code{background:#eee3ff;color:#6d2dd8;}.nd-course:nth-child(4) .nd-code{background:#ffe3e7;color:#f0444f;}
-#dashboard .nd-course-name{font-size:10px;font-weight:700;color:#1b3554;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-#dashboard .nd-course-arrow{font-size:10px;color:#122d4d;}
-#dashboard .nd-brand-footer{min-height:64px;border-radius:12px;overflow:hidden;background:linear-gradient(90deg,#06437a,#0862aa);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:9px 20px;box-shadow:0 3px 10px rgba(7,61,108,.13);}
-#dashboard .nd-brand-left{display:flex;align-items:center;gap:14px;min-width:0;}.nd-brand-left i{font-size:28px;color:#ffd166;}.nd-brand-quote{font-size:14px;font-weight:800;white-space:nowrap;}.nd-brand-sub{font-size:10px;color:rgba(255,255,255,.78);margin-top:3px;}
-#dashboard .nd-brand-right{font-size:12px;font-style:italic;text-align:right;opacity:.95;}
-#dashboard .nd-hidden-data{position:absolute!important;width:1px!important;height:1px!important;padding:0!important;margin:-1px!important;overflow:hidden!important;clip:rect(0,0,0,0)!important;white-space:nowrap!important;border:0!important;}
-@media(max-width:1200px){#dashboard .nd-points{grid-template-columns:repeat(3,1fr)}#dashboard .nd-grid-bottom{grid-template-columns:1fr 1fr}.nd-grid-bottom .nd-card:last-child{grid-column:1/-1}.nd-hero-copy{max-width:64%!important}}
-@media(max-width:900px){#dashboard .nd-grid-top{grid-template-columns:1fr}#dashboard .nd-points{grid-template-columns:repeat(2,1fr)}#dashboard .nd-hero-right{display:none}#dashboard .nd-hero-copy{max-width:100%!important}.nd-hero h1{font-size:27px!important}}
-@media(max-width:640px){#dashboard .nd-wrap{padding:8px 0 0}#dashboard .nd-hero,#dashboard .nd-hero-inner{min-height:145px}#dashboard .nd-hero-inner{padding:18px}.nd-hero h1{font-size:22px!important}.nd-hero-sub{font-size:12px!important}.nd-tagline{font-size:11px!important}.nd-points{grid-template-columns:1fr 1fr!important;gap:8px!important}.nd-point{min-height:68px;padding:9px!important}.nd-point-icon{width:36px!important;height:36px!important;flex-basis:36px!important;font-size:16px!important}.nd-point-label{font-size:10px!important}.nd-point-value{font-size:13px!important}.nd-point-sub{font-size:9px!important}.nd-xpbar{min-width:60px!important}.nd-card-head{padding:9px 12px!important}.nd-card-body,.nd-events,.nd-courses,.nd-streak-body{padding-left:12px!important;padding-right:12px!important}.nd-actions{grid-template-columns:repeat(2,1fr)!important}.nd-progress{grid-template-columns:repeat(2,1fr)!important;row-gap:12px}.nd-ring{width:78px!important;height:78px!important}.nd-ring-value{font-size:14px!important}.nd-grid-bottom{grid-template-columns:1fr!important}.nd-grid-bottom .nd-card:last-child{grid-column:auto}.nd-brand-right{display:none}.nd-brand-quote{font-size:11px!important;white-space:normal}.nd-brand-sub{font-size:9px!important}}
-</style>
-<div class="nd-wrap">
-<div class="nd-hero" aria-label="NCHSM student welcome">
-<div class="nd-hero-image" aria-hidden="true">
-<img src="images/campus-header.jpg" alt="NCHSM campus" loading="eager" decoding="async"/>
-<div class="nd-hero-image-overlay"></div>
+
+<section aria-label="Student dashboard" class="tab-content active" id="dashboard">
+<div class="nchsm-dashboard">
+<!-- HERO -->
+<section class="nchsm-hero">
+<img alt="NCHSM campus" class="nchsm-hero-image" src="images/campus-header.jpg"/>
+<div class="nchsm-hero-overlay"></div>
+<div class="nchsm-hero-content">
+<div class="nchsm-hero-copy">
+<h1>
+<span id="greeting-text">Good Morning</span>,
+            <span id="welcome-student-name">Kevin</span>!
+            <span aria-hidden="true" id="greeting-emoji">👋</span>
+</h1>
+<p id="student-welcome-message">Stay focused, keep learning, and achieve your goals.</p>
+<div class="nchsm-hero-tagline">“Better Healthcare Through Competence” <span aria-hidden="true">🎓</span></div>
 </div>
-<div class="nd-hero-inner">
-<div class="nd-hero-copy">
-<h1><span id="greeting-text" aria-live="polite"></span><span class="nd-greeting-comma">, </span><span id="welcome-student-name" aria-live="polite"></span><span class="nd-greeting-mark">!</span> <span id="greeting-emoji" aria-hidden="true"></span></h1>
-<p class="nd-hero-sub" id="student-welcome-message">Stay focused, keep learning, and achieve your goals.</p>
-<div class="nd-tagline">“Better Healthcare Through Competence” 🎓</div>
-</div>
-<div class="nd-hero-right">
-<div class="nd-hero-nav">LEARN <span>|</span> PRACTICE <span>|</span> EXCEL</div>
-<div class="nd-hero-message">NCHSM – Shaping Future Healthcare<br/>Professionals</div>
+<div class="nchsm-hero-right">
+<div class="nchsm-hero-nav">LEARN <span>|</span> PRACTICE <span>|</span> EXCEL</div>
+<div class="nchsm-hero-message">NCHSM – Shaping Future<br/>Healthcare Professionals</div>
+<div class="nchsm-hero-script">Knowledge<br/>Skills<br/>Competence<br/><span>And A Healthier Tomorrow ♡</span></div>
 </div>
 </div>
-</div>
-<div class="nd-last-login"><i class="fas fa-history"></i><strong>Last login:</strong> <span id="last-login-time">Loading...</span></div>
-<div class="nd-hidden-data" id="quick-next-class" style="display:none">
-<span id="quick-next-class-time">--:--</span><span id="quick-next-class-name">--</span><span id="quick-next-class-code">--</span><span id="quick-next-class-lecturer">--</span><span id="quick-next-class-venue">--</span><span id="quick-next-class-day">--</span><span id="quick-next-class-day-container"></span>
-<span id="header-time-dashboard"></span><span id="leaderboard-container"></span><span id="reviewsBadge-dashboard"></span></div>
-<div class="nd-hidden-data" id="next-exam-widget" style="display:none"><span id="next-exam-details">Loading...</span></div>
-<div class="nd-points">
-<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-star"></i></div><div class="nd-point-body"><div class="nd-point-label">Level <span id="user-level">--</span></div><div class="nd-point-value"><span id="user-xp">--</span> / <span id="user-xp-max">--</span> XP</div><div class="nd-xpbar"><span id="xp-progress-fill"></span></div></div></div>
-<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-brain"></i></div><div class="nd-point-body"><div class="nd-point-label">NurseIQ: <strong id="dashboard-nurseiq-points">--</strong> pts</div><div class="nd-point-sub">Keep participating!</div></div></div>
-<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-calendar-check"></i></div><div class="nd-point-body"><div class="nd-point-label">Attendance: <strong id="attendance-points-value">--</strong> pts</div><div class="nd-point-sub">This semester</div></div></div>
-<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-sign-in-alt"></i></div><div class="nd-point-body"><div class="nd-point-label">Login: <strong id="login-points-display">--</strong> pts</div><div class="nd-point-sub">(<span id="login-count-display">--</span> logins)</div></div></div>
-<div class="nd-point"><div class="nd-point-icon"><i class="fas fa-trophy"></i></div><div class="nd-point-body"><div class="nd-point-label">Total: <strong id="total-points-display">--</strong> pts</div><div class="nd-point-sub">All activities</div></div></div>
-</div>
-<div class="nd-announcement"><i class="fas fa-bullhorn nd-announcement-icon"></i><div class="nd-announcement-copy"><div class="nd-announcement-title">Official Announcement</div><div class="nd-announcement-text" id="student-announcement">Loading latest announcement...</div></div><span class="nd-arrow">›</span></div>
-<div class="nd-grid-top">
-<div class="nd-card">
-<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-bolt"></i><div><h3>Quick Actions</h3><small>Access the most used portal features</small></div></div><button class="nd-view" data-tab="hub-online-learning" type="button">View All →</button></div>
-<div class="nd-card-body"><div class="nd-actions">
-<button class="nd-action" data-tab="hub-online-learning" type="button"><i class="fas fa-book-open"></i><span>My Learning Hub</span></button>
-<button class="nd-action" data-tab="attendance" type="button"><i class="fas fa-calendar-check"></i><span>Attendance</span></button>
-<button class="nd-action" data-tab="cats" type="button"><i class="fas fa-file-alt"></i><span>Exams &amp; Results</span></button>
-<button class="nd-action" data-tab="academic-reports" type="button"><i class="fas fa-chart-line"></i><span>Academic Reports</span></button>
-<button class="nd-action" data-tab="finance" type="button"><i class="fas fa-wallet"></i><span>My Finance</span></button>
-<button class="nd-action" data-tab="calendar" type="button"><i class="fas fa-calendar-alt"></i><span>Academic Calendar</span></button>
-<button class="nd-action" data-tab="messages" type="button"><i class="fas fa-comments"></i><span>Messages</span></button>
-<button class="nd-action" data-tab="support-tickets" type="button"><i class="fas fa-headset"></i><span>Support Tickets</span></button>
-<button class="nd-action" data-tab="profile" type="button"><i class="fas fa-cog"></i><span>Profile Settings</span></button>
-</div></div>
-</div>
-<div class="nd-card">
-<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-chart-bar" style="color:#087bf0"></i><div><h3>My Progress</h3><small>Your academic journey at a glance</small></div></div><button class="nd-view" data-tab="academic-reports" type="button">View Details →</button></div>
-<div class="nd-card-body"><div class="nd-progress">
-<div class="nd-progress-item"><div class="nd-ring"><svg viewbox="0 0 100 100"><circle class="nd-ring-track" cx="50" cy="50" r="40"></circle><circle class="nd-ring-fill" cx="50" cy="50" id="nd-ring-attendance" r="40"></circle></svg><div class="nd-ring-value" id="dashboard-attendance-rate">--%</div></div><div class="nd-progress-label">Attendance</div><div class="nd-progress-sub">Current record</div></div>
-<div class="nd-progress-item"><div class="nd-ring"><svg viewbox="0 0 100 100"><circle class="nd-ring-track" cx="50" cy="50" r="40"></circle><circle class="nd-ring-fill" cx="50" cy="50" id="nd-ring-verified" r="40"></circle></svg><div class="nd-ring-value" id="dashboard-verified-count">--</div></div><div class="nd-progress-label">Verified</div><div class="nd-progress-sub">Attendance records</div></div>
-<div class="nd-progress-item"><div class="nd-ring"><svg viewbox="0 0 100 100"><circle class="nd-ring-track" cx="50" cy="50" r="40"></circle><circle class="nd-ring-fill" cx="50" cy="50" id="nd-ring-pending" r="40"></circle></svg><div class="nd-ring-value" id="dashboard-pending-count">--</div></div><div class="nd-progress-label">Pending</div><div class="nd-progress-sub">Needs attention</div></div>
-<div class="nd-progress-item"><div class="nd-ring"><svg viewbox="0 0 100 100"><circle class="nd-ring-track" cx="50" cy="50" r="40"></circle><circle class="nd-ring-fill" cx="50" cy="50" id="nd-ring-exams" r="40"></circle></svg><div class="nd-ring-value" id="dashboard-upcoming-exam">--</div></div><div class="nd-progress-label">Exams</div><div class="nd-progress-sub">Upcoming</div></div>
-</div></div>
-</div>
-</div>
-<div class="nd-grid-bottom">
-<div class="nd-card nd-streak">
-<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-fire"></i><div><h3>Daily Streak</h3><small>Keep logging in to build your streak!</small></div></div><div class="nd-view"><span id="daily-streak-display">--</span> days</div></div>
-<div class="nd-streak-body"><div class="nd-streak-days"><span class="nd-milestone active" data-day="1">🔥 1</span><span class="nd-milestone" data-day="3">🌱 3</span><span class="nd-milestone" data-day="7">🌿 7</span><span class="nd-milestone" data-day="14">💎 14</span><span class="nd-milestone" data-day="30">👑 30</span></div><div class="nd-streak-line"><span id="streak-progress-fill"></span></div><div><button class="nd-streak-button" id="streak-restore-btn" style="display:none" type="button">↻ Restore Streak</button><span class="nd-streak-status" id="streak-status-text">Loading streak status...</span></div><span class="nd-hidden-data" id="streak-emoji">🔥</span><span class="nd-hidden-data" id="streak-message">Keep logging in to build your streak!</span><span class="nd-hidden-data" id="light-1"></span><span class="nd-hidden-data" id="light-2"></span><span class="nd-hidden-data" id="light-3"></span><span class="nd-hidden-data" id="light-4"></span><span class="nd-hidden-data" id="light-5"></span></div>
-</div>
-<div class="nd-card">
-<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-calendar-alt" style="color:#087bf0"></i><div><h3>Upcoming Events</h3><small>Your schedule and important dates</small></div></div><button class="nd-view" data-tab="calendar" type="button">View All →</button></div>
-<div class="nd-events">
-<div class="nd-event"><div class="nd-date"><div class="nd-date-month">DATE</div><div class="nd-date-day">--</div></div><div><div class="nd-event-title" id="dashboard-current-block-value">Loading...</div><div class="nd-event-meta"><i class="fas fa-clock"></i> <span id="dashboard-intake-year">--</span> · <span id="dashboard-program-name">Loading...</span></div></div></div>
-<div class="nd-event"><div class="nd-date"><div class="nd-date-month">NEXT</div><div class="nd-date-day">--</div></div><div><div class="nd-event-title">Academic schedule</div><div class="nd-event-meta">Check the calendar for confirmed events</div></div></div>
-</div>
-</div>
-<div class="nd-card">
-<div class="nd-card-head"><div class="nd-card-title"><i class="fas fa-layer-group" style="color:#087bf0"></i><div><h3>My Courses</h3><small>Currently enrolled units</small></div></div><button class="nd-view" data-tab="hub-courses" type="button">View All →</button></div>
-<div class="nd-courses">
-<div class="nd-course"><span class="nd-code">UNITS</span><span class="nd-course-name"><span id="dashboard-active-courses">--</span> active courses</span><i class="fas fa-chevron-right nd-course-arrow"></i></div>
-<div class="nd-course"><span class="nd-code">APPROVED</span><span class="nd-course-name"><span id="dashboard-approved-units">--</span> approved units</span><i class="fas fa-chevron-right nd-course-arrow"></i></div>
-<div class="nd-course"><span class="nd-code">RESOURCES</span><span class="nd-course-name"><span id="dashboard-new-resources">--</span> new resources</span><i class="fas fa-chevron-right nd-course-arrow"></i></div>
-<div class="nd-course"><span class="nd-code">STATUS</span><span class="nd-course-name" id="dashboard-exam-status">Loading...</span><i class="fas fa-chevron-right nd-course-arrow"></i></div>
-</div>
-</div>
-</div>
-<div class="nd-brand-footer"><div class="nd-brand-left"><i class="fas fa-graduation-cap"></i><div><div class="nd-brand-quote">“A Healthier Community Begins With A Well-Trained Nurse”</div><div class="nd-brand-sub">NCHSM – Committed to Excellence in Health Training</div></div></div><div class="nd-brand-right">Future Nurses<br/><strong>Brighter Communities</strong> ♡</div></div>
-<div class="nd-hidden-data">
-<span id="dashboard-total-count">--</span><span id="dashboard-last-updated">--</span><span id="dashboard-student-id">Loading...</span><span id="dashboard-nurseiq-accuracy">--</span><span id="dashboard-nurseiq-questions">--</span><span id="dashboard-reviews-avg">--</span><span id="dashboard-reviews-total">--</span><span id="dashboard-reviews-pending">--</span><span id="dashboard-newsletter-status">--</span><span id="dashboard-newsletter-latest">--</span><span id="dashboard-finance-balance">--</span><span id="dashboard-finance-status">--</span><span id="attendance-warning-badge">--</span><span id="warning-text">--</span><span id="dashboard-nurseiq-progress">--%</span><span id="action-passport"></span>
-</div>
-</div>
-<script>
-(function(){
-  function navigate(tab){
-    if(!tab) return;
-    if(typeof window.nchsmNavigateToTab==='function'){window.nchsmNavigateToTab(tab);return;}
-    if(typeof window.showTab==='function'){window.showTab(tab);return;}
-    var link=document.querySelector('[data-tab="'+CSS.escape(tab)+'"]');
-    if(link && typeof link.click==='function') link.click();
-  }
-  document.querySelectorAll('#dashboard [data-tab]').forEach(function(el){
-    if(el.dataset.ndBound==='1') return;
-    el.dataset.ndBound='1';
-    el.addEventListener('click',function(e){
-      e.preventDefault();
-      navigate(el.getAttribute('data-tab'));
-    });
-  });
-  function pct(v){var n=parseFloat(String(v).replace('%',''));return Number.isFinite(n)?Math.max(0,Math.min(100,n)):0;}
-  function setRing(id,value){var el=document.getElementById(id);if(!el)return;var n=pct(value);el.style.strokeDashoffset=(251.33-(251.33*n/100)).toFixed(2);}
-  function syncRings(){
-    setRing('nd-ring-attendance',document.getElementById('dashboard-attendance-rate')?.textContent||0);
-    var total=parseFloat(document.getElementById('dashboard-total-count')?.textContent||0)||0;
-    var verified=parseFloat(document.getElementById('dashboard-verified-count')?.textContent||0)||0;
-    var pending=parseFloat(document.getElementById('dashboard-pending-count')?.textContent||0)||0;
-    setRing('nd-ring-verified',total?verified/total*100:0);
-    setRing('nd-ring-pending',total?pending/total*100:0);
-    setRing('nd-ring-exams',document.getElementById('dashboard-upcoming-exam')?.textContent||0);
-  }
-  if(window.MutationObserver){var root=document.getElementById('dashboard');if(root){new MutationObserver(function(){syncRings();}).observe(root,{subtree:true,childList:true,characterData:true});}}
-  setTimeout(syncRings,500);setTimeout(syncRings,1500);setTimeout(syncRings,3000);
-})();
-</script>
 </section>
+<!-- KEY METRICS -->
+<section aria-label="Student points summary" class="nchsm-metrics">
+<div class="nchsm-metric metric-level">
+<div class="nchsm-metric-icon"><i aria-hidden="true" class="fas fa-star"></i></div>
+<div class="nchsm-metric-body">
+<div class="nchsm-metric-label">Level <strong id="user-level">1</strong></div>
+<div class="nchsm-metric-value"><span id="user-xp">0</span> / <span id="user-xp-max">100</span> XP</div>
+<div class="nchsm-xpbar"><span id="xp-progress-fill"></span></div>
+</div>
+</div>
+<div class="nchsm-metric metric-nurseiq">
+<div class="nchsm-metric-icon"><i aria-hidden="true" class="fas fa-book-open"></i></div>
+<div class="nchsm-metric-body">
+<div class="nchsm-metric-label">NurseIQ: <strong id="dashboard-nurseiq-points">42</strong> pts</div>
+<div class="nchsm-metric-sub">Keep participating!</div>
+</div>
+</div>
+<div class="nchsm-metric metric-attendance">
+<div class="nchsm-metric-icon"><i aria-hidden="true" class="fas fa-calendar-check"></i></div>
+<div class="nchsm-metric-body">
+<div class="nchsm-metric-label">Attendance: <strong id="attendance-points-value">0</strong> pts</div>
+<div class="nchsm-metric-sub">This semester</div>
+</div>
+</div>
+<div class="nchsm-metric metric-login">
+<div class="nchsm-metric-icon"><i aria-hidden="true" class="fas fa-sign-in-alt"></i></div>
+<div class="nchsm-metric-body">
+<div class="nchsm-metric-label">Login: <strong id="login-points-display">10</strong> pts</div>
+<div class="nchsm-metric-sub">(<span id="login-count-display">1</span> logins)</div>
+</div>
+</div>
+<div class="nchsm-metric metric-total">
+<div class="nchsm-metric-icon"><i aria-hidden="true" class="fas fa-trophy"></i></div>
+<div class="nchsm-metric-body">
+<div class="nchsm-metric-label">Total: <strong id="total-points-display">232</strong> pts</div>
+<div class="nchsm-metric-sub">All activities</div>
+</div>
+</div>
+</section>
+<!-- ANNOUNCEMENT -->
+<section aria-label="Official announcement" class="nchsm-announcement">
+<i aria-hidden="true" class="fas fa-bullhorn"></i>
+<div>
+<strong>Official Announcement</strong>
+<p id="student-announcement">Welcome to your dashboard! Keep an eye on announcements for important updates.</p>
+</div>
+<span aria-hidden="true" class="nchsm-announcement-arrow">›</span>
+</section>
+<!-- TOP THREE COLUMNS -->
+<section class="nchsm-top-grid">
+<!-- QUICK ACTIONS -->
+<article class="nchsm-card quick-actions-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-bolt"></i>
+<div><h2>Quick Actions</h2><small>Access the most used portal features</small></div>
+</div>
+<button class="nchsm-view-btn" data-tab="hub-online-learning" type="button">View All <span>→</span></button>
+</div>
+<div class="nchsm-card-body nchsm-action-grid">
+<button class="nchsm-action action-green" data-tab="hub-online-learning" type="button"><i class="fas fa-book-open"></i><span>My Learning Hub</span></button>
+<button class="nchsm-action action-blue" data-tab="attendance" type="button"><i class="fas fa-calendar-check"></i><span>Attendance</span></button>
+<button class="nchsm-action action-purple" data-tab="cats" type="button"><i class="fas fa-file-alt"></i><span>Exams &amp; Results</span></button>
+<button class="nchsm-action action-orange" data-tab="finance" type="button"><i class="fas fa-wallet"></i><span>My Finance</span></button>
+<button class="nchsm-action action-pink" data-tab="calendar" type="button"><i class="fas fa-calendar-alt"></i><span>Academic Calendar</span></button>
+<button class="nchsm-action action-teal" data-tab="messages" type="button"><i class="fas fa-comments"></i><span>Messages</span></button>
+<button class="nchsm-action action-indigo" data-tab="support-tickets" type="button"><i class="fas fa-headset"></i><span>Support Tickets</span></button>
+<button class="nchsm-action action-slate" data-tab="profile" type="button"><i class="fas fa-cog"></i><span>Profile Settings</span></button>
+</div>
+</article>
+<!-- MY PROGRESS -->
+<article class="nchsm-card progress-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-chart-bar"></i>
+<div><h2>My Progress</h2><small>Your academic journey at a glance</small></div>
+</div>
+<button class="nchsm-view-btn" data-tab="academic-reports" type="button">View Details <span>→</span></button>
+</div>
+<div class="nchsm-progress-grid">
+<div class="nchsm-progress-item">
+<div class="nchsm-ring">
+<svg aria-hidden="true" viewbox="0 0 100 100">
+<circle class="ring-track" cx="50" cy="50" r="40"></circle>
+<circle class="ring-fill ring-blue" cx="50" cy="50" id="nd-ring-attendance" r="40"></circle>
+</svg>
+<div class="nchsm-ring-value" id="dashboard-attendance-rate">78%</div>
+</div>
+<strong>Attendance</strong><span>78/100</span>
+</div>
+<div class="nchsm-progress-item">
+<div class="nchsm-ring">
+<svg aria-hidden="true" viewbox="0 0 100 100">
+<circle class="ring-track" cx="50" cy="50" r="40"></circle>
+<circle class="ring-fill ring-green" cx="50" cy="50" id="nd-ring-verified" r="40"></circle>
+</svg>
+<div class="nchsm-ring-value" id="dashboard-verified-count">65%</div>
+</div>
+<strong>Assignments</strong><span>65/100</span>
+</div>
+<div class="nchsm-progress-item">
+<div class="nchsm-ring">
+<svg aria-hidden="true" viewbox="0 0 100 100">
+<circle class="ring-track" cx="50" cy="50" r="40"></circle>
+<circle class="ring-fill ring-purple" cx="50" cy="50" id="nd-ring-pending" r="40"></circle>
+</svg>
+<div class="nchsm-ring-value" id="dashboard-pending-count">72%</div>
+</div>
+<strong>Exams</strong><span>72/100</span>
+</div>
+<div class="nchsm-progress-item">
+<div class="nchsm-ring">
+<svg aria-hidden="true" viewbox="0 0 100 100">
+<circle class="ring-track" cx="50" cy="50" r="40"></circle>
+<circle class="ring-fill ring-gold" cx="50" cy="50" id="nd-ring-exams" r="40"></circle>
+</svg>
+<div class="nchsm-ring-value" id="dashboard-upcoming-exam">72%</div>
+</div>
+<strong>Overall</strong><span>72/100</span>
+</div>
+</div>
+</article>
+<!-- LEADERBOARD -->
+<article class="nchsm-card leaderboard-card" id="leaderboard-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-trophy"></i>
+<div><h2>Leaderboard</h2><small>Top performing students</small></div>
+</div>
+<button class="nchsm-view-btn" data-tab="dashboard" type="button">View All <span>→</span></button>
+</div>
+<div class="nchsm-leaderboard">
+<div class="leader-row leader-head"><span>#</span><span>Student Name</span><span>Points</span></div>
+<div class="leader-row"><b class="rank rank-1">1</b><strong>Wanjiru K.</strong><b>485</b></div>
+<div class="leader-row"><b class="rank rank-2">2</b><strong>Otieno B.</strong><b>430</b></div>
+<div class="leader-row"><b class="rank rank-3">3</b><strong>Amina S.</strong><b>412</b></div>
+<div class="leader-row leader-current"><b class="rank rank-4">4</b><strong>Kevin M. Tiong’i</strong><b>232</b></div>
+<div class="leader-row"><b class="rank">5</b><strong>Mwangi P.</strong><b>215</b></div>
+<div hidden="" id="leaderboard-container"></div>
+</div>
+</article>
+</section>
+<!-- BOTTOM THREE COLUMNS -->
+<section class="nchsm-bottom-grid">
+<!-- DAILY STREAK -->
+<article class="nchsm-card streak-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-fire"></i>
+<div><h2>Daily Streak</h2><small>Keep logging in to build your streak!</small></div>
+</div>
+<div class="nchsm-days-pill">🔥 <span id="daily-streak-display">5</span> days</div>
+</div>
+<div class="nchsm-streak-body">
+<div class="nchsm-milestones">
+<span class="streak-milestone active" data-day="1">🔥 1</span>
+<span class="streak-milestone" data-day="3">♨ 3</span>
+<span class="streak-milestone" data-day="7">♨ 7</span>
+<span class="streak-milestone" data-day="14">💧 14</span>
+<span class="streak-milestone" data-day="30">👑 30</span>
+</div>
+<div class="nchsm-streak-line"><span id="streak-progress-fill"></span></div>
+<button class="nchsm-start-streak" id="streak-restore-btn" type="button">🔄 Start Streak (2 left)</button>
+<span class="nchsm-streak-status" id="streak-status-text">Keep logging in to build your streak!</span>
+<span hidden="" id="streak-emoji">🔥</span>
+<span hidden="" id="streak-message">Keep logging in to build your streak!</span>
+<span hidden="" id="light-1"></span><span hidden="" id="light-2"></span><span hidden="" id="light-3"></span><span hidden="" id="light-4"></span><span hidden="" id="light-5"></span>
+</div>
+</article>
+<!-- EVENTS -->
+<article class="nchsm-card events-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-calendar-alt"></i>
+<div><h2>Upcoming Events</h2><small>Your schedule and important dates</small></div>
+</div>
+<button class="nchsm-view-btn" data-tab="calendar" type="button">View All <span>→</span></button>
+</div>
+<div class="nchsm-events">
+<div class="nchsm-event">
+<div class="event-date"><b>SEP</b><strong>15</strong></div>
+<div class="event-info">
+<strong>Internal Examination</strong>
+<span><i class="fas fa-clock"></i> 8:00 AM - 5:00 PM <i class="fas fa-location-dot"></i> NCHSM Main Campus</span>
+</div>
+</div>
+<div class="nchsm-event">
+<div class="event-date"><b>SEP</b><strong>22</strong></div>
+<div class="event-info">
+<strong>Clinical Orientation</strong>
+<span><i class="fas fa-clock"></i> 9:00 AM - 12:00 PM <i class="fas fa-location-dot"></i> NCHSM Lecture Hall</span>
+</div>
+</div>
+</div>
+<div hidden="" id="quick-next-class">
+<span id="quick-next-class-time">--:--</span><span id="quick-next-class-name">--</span>
+<span id="quick-next-class-code">--</span><span id="quick-next-class-lecturer">--</span>
+<span id="quick-next-class-venue">--</span><span id="quick-next-class-day">--</span>
+<span id="quick-next-class-day-container"></span>
+</div>
+</article>
+<!-- COURSES -->
+<article class="nchsm-card courses-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-layer-group"></i>
+<div><h2>My Courses</h2><small>Currently enrolled units</small></div>
+</div>
+<button class="nchsm-view-btn" data-tab="hub-courses" type="button">View All <span>→</span></button>
+</div>
+<div class="nchsm-courses">
+<div class="course-row"><span class="course-code code-blue">NUR 101</span><strong>Foundation of Nursing</strong><i class="fas fa-chevron-right"></i></div>
+<div class="course-row"><span class="course-code code-green">NUR 102</span><strong>Anatomy &amp; Physiology</strong><i class="fas fa-chevron-right"></i></div>
+<div class="course-row"><span class="course-code code-purple">NUR 103</span><strong>Microbiology</strong><i class="fas fa-chevron-right"></i></div>
+<div class="course-row"><span class="course-code code-orange">NUR 104</span><strong>Pharmacology</strong><i class="fas fa-chevron-right"></i></div>
+</div>
+<div class="nchsm-course-hooks" hidden="">
+<span id="dashboard-active-courses">--</span>
+<span id="dashboard-approved-units">--</span>
+<span id="dashboard-new-resources">--</span>
+<span id="dashboard-exam-status">Loading...</span>
+</div>
+</article>
+</section>
+<!-- BRAND STRIP -->
+<section class="nchsm-brand-strip">
+<div class="brand-strip-left">
+<i aria-hidden="true" class="fas fa-graduation-cap"></i>
+<div>
+<strong>“A Healthier Community Begins With A Well-Trained Nurse”</strong>
+<span>NCHSM – Committed to Excellence in Health Training</span>
+</div>
+</div>
+<div class="brand-strip-right">Future Nurses<br/><strong>Brighter Communities</strong> ♡</div>
+<div aria-hidden="true" class="brand-strip-wave"></div>
+</section>
+<!-- Compatibility hooks for the existing dashboard/database JS.
+         These remain hidden until the dashboard JS is updated. -->
+<div class="nchsm-dashboard-hooks" hidden="">
+<span id="last-login-time">Loading...</span>
+<span id="header-time-dashboard"></span>
+<span id="reviewsBadge-dashboard"></span>
+<span id="next-exam-widget"><span id="next-exam-details">Loading...</span></span>
+<span id="dashboard-current-block-value">Loading...</span>
+<span id="dashboard-intake-year">--</span>
+<span id="dashboard-program-name">Loading...</span>
+<span id="dashboard-total-count">--</span>
+<span id="dashboard-last-updated">--</span>
+<span id="dashboard-student-id">Loading...</span>
+<span id="dashboard-nurseiq-accuracy">--</span>
+<span id="dashboard-nurseiq-questions">--</span>
+<span id="dashboard-reviews-avg">--</span>
+<span id="dashboard-reviews-total">--</span>
+<span id="dashboard-reviews-pending">--</span>
+<span id="dashboard-newsletter-status">--</span>
+<span id="dashboard-newsletter-latest">--</span>
+<span id="dashboard-finance-balance">--</span>
+<span id="dashboard-finance-status">--</span>
+<span id="attendance-warning-badge">--</span>
+<span id="warning-text">--</span>
+<span id="dashboard-nurseiq-progress">--%</span>
+<span id="action-passport"></span>
+</div>
+</div>
+</section>
+
 <!-- END DASHBOARD SECTION -->
 <!-- ========== STYLES ========== -->
 <style>
@@ -6537,7 +6844,7 @@
 </main>
 </div><!-- /.container -->
 <!-- ========== FOOTER - MATCHING SUPER ADMIN ========== -->
-<footer class="app-footer" style="
+<footer class="app-footer nchsm-reference-footer" style="
     background: #0A3D62;
     color: rgba(255,255,255,0.9);
     margin-left: 0;
@@ -6545,167 +6852,23 @@
     border-top: 3px solid #FDB913;
     margin-top: 40px;
 ">
-<div style="max-width: 1400px; margin: 0 auto;">
-<!-- ===== FOOTER CONTENT ===== -->
-<div style="
-            display: grid;
-            grid-template-columns: 2fr 1fr 1fr 1fr;
-            gap: 40px;
-            margin-bottom: 30px;
-        ">
-<!-- Column 1: About -->
+<div class="nchsm-footer-main">
+<div class="nchsm-footer-brand">
+<i aria-hidden="true" class="fas fa-graduation-cap"></i>
 <div>
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-<img alt="NCHSM Logo" onerror="this.style.display='none'" src="images/Logo_NCHSM.png" style="width: 48px; height: 48px; background: white; border-radius: 12px; padding: 8px; object-fit: contain;"/>
-<h3 style="color: white; margin: 0; font-size: 18px; font-weight: 700;">NCHSM</h3>
-</div>
-<p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
-                    Nakuru College of Health Sciences and Management<br/>
-                    Providing quality health sciences and management education with practical skills and digital innovation.
-                </p>
-<div style="display: flex; align-items: flex-start; gap: 10px; color: rgba(255,255,255,0.7); font-size: 13px; margin-bottom: 8px;">
-<i class="fas fa-map-marker-alt" style="color: #FDB913; margin-top: 3px;"></i>
-<span>Kiamunyi Off Nakuru - Kabarak Rd, Along Canon Ndungu Street, Nakuru</span>
+<strong>“A Healthier Community Begins With A Well-Trained Nurse”</strong>
+<span>NCHSM – Committed to Excellence in Health Training</span>
 </div>
 </div>
-<!-- Column 2: Contact -->
-<div>
-<h3 style="color: white; font-size: 16px; font-weight: 700; margin: 0 0 16px 0; border-bottom: 2px solid rgba(253,185,19,0.3); padding-bottom: 8px;">
-<i class="fas fa-address-card" style="color: #FDB913; margin-right: 8px;"></i> Contact Information
-                </h3>
-<div style="display: flex; flex-direction: column; gap: 10px;">
-<div style="display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.8); font-size: 13px;">
-<i class="fas fa-envelope" style="color: #FDB913; width: 18px;"></i>
-<span>portal.nchsm@gmail.com</span>
+<div aria-hidden="true" class="nchsm-footer-wave"></div>
+<div class="nchsm-footer-future">Future Nurses<br/><strong>Brighter Communities</strong> ♡</div>
 </div>
-<div style="display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.8); font-size: 13px;">
-<i class="fas fa-phone" style="color: #FDB913; width: 18px;"></i>
-<span>0790969743</span>
-</div>
-<div style="display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.8); font-size: 13px;">
-<i class="fas fa-map-pin" style="color: #FDB913; width: 18px;"></i>
-<span>P. O. Box 12906 - 20100, Nakuru</span>
-</div>
-<div style="display: flex; align-items: center; gap: 10px; color: rgba(255,255,255,0.8); font-size: 13px;">
-<i class="fas fa-clock" style="color: #FDB913; width: 18px;"></i>
-<span>Mon - Fri: 8:00 AM - 5:00 PM</span>
-</div>
-</div>
-</div>
-<!-- Column 3: Quick Links -->
-<div>
-<h3 style="color: white; font-size: 16px; font-weight: 700; margin: 0 0 16px 0; border-bottom: 2px solid rgba(253,185,19,0.3); padding-bottom: 8px;">
-<i class="fas fa-link" style="color: #FDB913; margin-right: 8px;"></i> Quick Links
-                </h3>
-<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-<li><a data-tab="dashboard" href="#" onmouseout="this.style.color='rgba(255,255,255,0.8)'; this.style.transform='none'" onmouseover="this.style.color='#FDB913'; this.style.transform='translateX(4px)'" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-home" style="color: #FDB913; width: 16px;"></i> Dashboard
-                    </a></li>
-<li><a data-tab="hub-courses" href="#" onmouseout="this.style.color='rgba(255,255,255,0.8)'; this.style.transform='none'" onmouseover="this.style.color='#FDB913'; this.style.transform='translateX(4px)'" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-book" style="color: #FDB913; width: 16px;"></i> My Learning Hub
-                    </a></li>
-<li><a data-tab="calendar" href="#" onmouseout="this.style.color='rgba(255,255,255,0.8)'; this.style.transform='none'" onmouseover="this.style.color='#FDB913'; this.style.transform='translateX(4px)'" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-calendar" style="color: #FDB913; width: 16px;"></i> Academic Calendar
-                    </a></li>
-<li><a data-tab="resources" href="#" onmouseout="this.style.color='rgba(255,255,255,0.8)'; this.style.transform='none'" onmouseover="this.style.color='#FDB913'; this.style.transform='translateX(4px)'" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-file-pdf" style="color: #FDB913; width: 16px;"></i> Resources
-                    </a></li>
-</ul>
-</div>
-<!-- Column 4: Support -->
-<div>
-<h3 style="color: white; font-size: 16px; font-weight: 700; margin: 0 0 16px 0; border-bottom: 2px solid rgba(253,185,19,0.3); padding-bottom: 8px;">
-<i class="fas fa-headset" style="color: #FDB913; margin-right: 8px;"></i> Support
-                </h3>
-<ul style="list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 8px;">
-<li><a data-tab="messages" href="#" onmouseout="this.style.color='rgba(255,255,255,0.8)'; this.style.transform='none'" onmouseover="this.style.color='#FDB913'; this.style.transform='translateX(4px)'" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-question-circle" style="color: #FDB913; width: 16px;"></i> Contact Admin
-                    </a></li>
-<li><a href="#" id="clearCacheBtn" onmouseout="this.style.color='rgba(255,255,255,0.8)'; this.style.transform='none'" onmouseover="this.style.color='#FDB913'; this.style.transform='translateX(4px)'" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-broom" style="color: #FDB913; width: 16px;"></i> Clear Cache
-                    </a></li>
-<li><a href="#" id="exportDataBtn" onmouseout="this.style.color='rgba(255,255,255,0.8)'; this.style.transform='none'" onmouseover="this.style.color='#FDB913'; this.style.transform='translateX(4px)'" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-download" style="color: #FDB913; width: 16px;"></i> Export Data
-                    </a></li>
-<li><a href="#" id="systemInfoBtn" onmouseout="this.style.color='rgba(255,255,255,0.8)'; this.style.transform='none'" onmouseover="this.style.color='#FDB913'; this.style.transform='translateX(4px)'" style="color: rgba(255,255,255,0.8); text-decoration: none; font-size: 13px; transition: all 0.3s ease; display: flex; align-items: center; gap: 8px;">
-<i class="fas fa-info-circle" style="color: #FDB913; width: 16px;"></i> System Info
-                    </a></li>
-</ul>
-</div>
-</div>
-<!-- ===== FOOTER BOTTOM ===== -->
-<div style="
-            border-top: 1px solid rgba(255,255,255,0.15);
-            padding-top: 20px;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            flex-wrap: wrap;
-            gap: 15px;
-        ">
-<div style="color: rgba(255,255,255,0.6); font-size: 13px;">
-                © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
-                <span id="appVersion" style="margin-left: 10px; background: rgba(255,255,255,0.1); padding: 2px 10px; border-radius: 12px; font-size: 11px; color: rgba(255,255,255,0.5);">v2.1</span>
-</div>
-<div style="display: flex; gap: 12px;">
-<a aria-label="Facebook" class="social-icon" href="#" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.7)'; this.style.transform='none'" onmouseover="this.style.background='#FDB913'; this.style.color='#0A3D62'; this.style.transform='translateY(-2px)'" style="
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 50%;
-                    background: rgba(255,255,255,0.1);
-                    color: rgba(255,255,255,0.7);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.3s ease;
-                    text-decoration: none;
-                ">
-<i class="fab fa-facebook-f"></i>
-</a>
-<a aria-label="Twitter" class="social-icon" href="#" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.7)'; this.style.transform='none'" onmouseover="this.style.background='#FDB913'; this.style.color='#0A3D62'; this.style.transform='translateY(-2px)'" style="
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 50%;
-                    background: rgba(255,255,255,0.1);
-                    color: rgba(255,255,255,0.7);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.3s ease;
-                    text-decoration: none;
-                ">
-<i class="fab fa-twitter"></i>
-</a>
-<a aria-label="Instagram" class="social-icon" href="#" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.7)'; this.style.transform='none'" onmouseover="this.style.background='#FDB913'; this.style.color='#0A3D62'; this.style.transform='translateY(-2px)'" style="
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 50%;
-                    background: rgba(255,255,255,0.1);
-                    color: rgba(255,255,255,0.7);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.3s ease;
-                    text-decoration: none;
-                ">
-<i class="fab fa-instagram"></i>
-</a>
-<a aria-label="Email" class="social-icon" href="mailto:portal.nchsm@gmail.com" onmouseout="this.style.background='rgba(255,255,255,0.1)'; this.style.color='rgba(255,255,255,0.7)'; this.style.transform='none'" onmouseover="this.style.background='#FDB913'; this.style.color='#0A3D62'; this.style.transform='translateY(-2px)'" style="
-                    width: 36px;
-                    height: 36px;
-                    border-radius: 50%;
-                    background: rgba(255,255,255,0.1);
-                    color: rgba(255,255,255,0.7);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    transition: all 0.3s ease;
-                    text-decoration: none;
-                ">
-<i class="fas fa-envelope"></i>
-</a>
-</div>
-</div>
+<div class="nchsm-footer-bottom">
+<span>© 2026 Nakuru College of Health Sciences &amp; Management. All rights reserved.</span>
+<nav aria-label="Footer links">
+<a href="#">Privacy</a><span>|</span><a href="#">Terms</a><span>|</span><a href="#">Support</a>
+</nav>
+<span class="nchsm-system-online"><i aria-hidden="true" class="fas fa-circle"></i> System Online</span>
 </div>
 </footer>
 <!-- TRANSCRIPT MODAL -->
@@ -7588,6 +7751,41 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   else initSidebarFooterControls();
   document.addEventListener('appReady', initSidebarFooterControls);
   new MutationObserver(initSidebarFooterControls).observe(document.body, { childList:true, subtree:true });
+})();
+</script><script id="nchsm-reference-dashboard-nav">
+(function(){
+  function go(tab){
+    if(!tab) return;
+    if(typeof window.nchsmNavigateToTab === 'function'){ window.nchsmNavigateToTab(tab); return; }
+    if(typeof window.showTab === 'function'){ window.showTab(tab); return; }
+    var el=document.querySelector('[data-tab="'+tab+'"]');
+    if(el && typeof el.click==='function') el.click();
+  }
+  document.addEventListener('click',function(e){
+    var el=e.target.closest && e.target.closest('#dashboard [data-tab]');
+    if(!el) return;
+    e.preventDefault();
+    go(el.getAttribute('data-tab'));
+  });
+  var search=document.getElementById('portalHeaderSearch');
+  if(search){
+    search.addEventListener('keydown',function(e){
+      if(e.key==='Enter'){
+        var q=(search.value||'').trim().toLowerCase();
+        if(!q) return;
+        var links=[...document.querySelectorAll('#sidebar a[data-tab]')];
+        var hit=links.find(function(a){return (a.textContent||'').toLowerCase().includes(q);});
+        if(hit) hit.click();
+      }
+    });
+  }
+  document.addEventListener('keydown',function(e){
+    if((e.ctrlKey||e.metaKey) && e.key.toLowerCase()==='k'){
+      e.preventDefault();
+      var s=document.getElementById('portalHeaderSearch');
+      if(s){s.focus();s.select();}
+    }
+  });
 })();
 </script></body>
 </html>
