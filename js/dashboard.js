@@ -149,14 +149,18 @@ class DashboardModule {
             greeting = 'Good Night';
             emoji = '🌙';
         }
-        
-        const welcomeH1 = document.querySelector('.welcome h1');
-        if (welcomeH1) {
-            const studentName = this.elements.welcomeStudentName?.innerText || 'Student';
-            welcomeH1.innerHTML = `${greeting}, ${studentName}! ${emoji}`;
+        if (this.elements.dashboardHeroGreeting) {
+            this.elements.dashboardHeroGreeting.textContent = greeting;
         }
-        
-        const headerTime = this.elements.headerTime;
+        if (this.elements.dashboardHeroName) {
+            this.elements.dashboardHeroName.textContent =
+                this.userProfile?.full_name || this.elements.welcomeStudentName?.textContent || 'Student';
+        }
+        if (this.elements.dashboardHeroEmoji) {
+            this.elements.dashboardHeroEmoji.textContent = '👋';
+        }
+
+        const headerTime = this.elements.headerTime || document.getElementById('header-time-dashboard');
         if (headerTime) {
             headerTime.textContent = kenyaNow.toLocaleTimeString('en-KE', {
                 hour: '2-digit',
@@ -206,7 +210,7 @@ class DashboardModule {
             nextExamWidget: document.querySelector('.next-exam-widget'),
             nextExamDetails: document.getElementById('next-exam-details'),
             lastLoginTime: document.getElementById('last-login-time'),
-            headerTime: document.getElementById('header-time'),
+            headerTime: document.getElementById('header-time') || document.getElementById('header-time-dashboard'),
             dashboardLastUpdated: document.getElementById('dashboard-last-updated'),
             dashboardStudentId: document.getElementById('dashboard-student-id'),
             dailyStreakDisplay: document.getElementById('daily-streak-display'),
@@ -221,7 +225,24 @@ class DashboardModule {
             loginCountDisplay: document.getElementById('login-count-display'),
             totalPointsDisplay: document.getElementById('total-points-display'),
             gamificationPointsDisplay: document.getElementById('gamification-points-display'),
-            nurseiqStatsDisplay: document.querySelector('.nurseiq-stats') || document.getElementById('nurseiq-stats')
+            nurseiqStatsDisplay: document.querySelector('.nurseiq-stats') || document.getElementById('nurseiq-stats'),
+
+            dashboardNurseIQPoints: document.getElementById('dashboard-nurseiq-points'),
+            progressAttendance: document.getElementById('dashboard-attendance-rate'),
+            progressAssignments: document.getElementById('dashboard-verified-count'),
+            progressExams: document.getElementById('dashboard-pending-count'),
+            progressOverall: document.getElementById('dashboard-upcoming-exam'),
+            progressAttendanceRing: document.getElementById('nd-ring-attendance'),
+            progressAssignmentsRing: document.getElementById('nd-ring-verified'),
+            progressExamsRing: document.getElementById('nd-ring-pending'),
+            progressOverallRing: document.getElementById('nd-ring-exams'),
+            dashboardEvents: document.querySelector('.nchsm-events'),
+            dashboardCourses: document.querySelector('.nchsm-courses'),
+            dashboardLeaderboard: document.querySelector('.nchsm-leaderboard'),
+            dashboardHeroGreeting: document.getElementById('greeting-text'),
+            dashboardHeroName: document.getElementById('welcome-student-name'),
+            dashboardHeroEmoji: document.getElementById('greeting-emoji'),
+            dashboardHeroMessage: document.getElementById('student-welcome-message')
         };
     }
     
@@ -262,6 +283,18 @@ class DashboardModule {
             });
         });
         
+        document.querySelectorAll('.nchsm-action[data-tab], .nchsm-view-btn[data-tab]').forEach(el => {
+            if (el.dataset.dashboardBound === '1') return;
+            el.dataset.dashboardBound = '1';
+            const tabId = el.dataset.tab;
+            el.style.cursor = 'pointer';
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                navigateToSection(tabId, el);
+            });
+        });
+
         document.querySelectorAll('.action-btn[data-tab]').forEach(el => {
             const tabId = el.dataset.tab;
             el.style.cursor = 'pointer';
@@ -778,8 +811,11 @@ class DashboardModule {
             // ✅ Update the UI elements directly
             if (this.elements.nurseiqPoints) {
                 this.elements.nurseiqPoints.innerText = nurseiqPoints;
-                console.log(`✅ NurseIQ points set to: ${nurseiqPoints}`);
-            } else {
+            }
+            if (this.elements.dashboardNurseIQPoints) {
+                this.elements.dashboardNurseIQPoints.textContent = nurseiqPoints;
+            }
+            if (!this.elements.nurseiqPoints && !this.elements.dashboardNurseIQPoints) {
                 console.warn('⚠️ NurseIQ points element not found');
             }
             
@@ -1338,7 +1374,18 @@ class DashboardModule {
             // Store NurseIQ points separately for easy access
             this.nurseIQPoints = this.metrics.nurseiq.points;
             this.metrics.nurseiqPoints = this.nurseIQPoints;
-            
+
+            this.metrics.assignments = this.firstNumeric(data, [
+                'assignments', 'assignment', 'assignment_score', 'assignments_score',
+                'assignment_percentage', 'assignments_percentage'
+            ]);
+            this.metrics.examScore = this.firstNumeric(data, [
+                'examScore', 'exam_score', 'exam_percentage', 'exams_percentage'
+            ]);
+            this.metrics.overall = this.firstNumeric(data, [
+                'overall', 'overall_score', 'overall_percentage'
+            ]);
+
             // If progress is 0 but questions > 0, calculate it
             if (this.metrics.nurseiq.questions > 0 && this.metrics.nurseiq.progress === 0) {
                 this.metrics.nurseiq.progress = Math.min(Math.round((this.metrics.nurseiq.questions / 105) * 100), 100);
@@ -1393,7 +1440,7 @@ class DashboardModule {
             
             // Update announcement
             if (this.elements.announcementText) {
-                this.elements.announcementText.textContent = data?.announcement || 'Welcome to your dashboard!';
+                this.elements.announcementText.textContent = data?.announcement || 'No new announcements at this time.';
             }
             
             // Update last updated time
@@ -1471,7 +1518,9 @@ class DashboardModule {
             this.loadXPMetrics(),
             this.loadAnnouncement(),
             this.loadReviewsSnapshot(),
-            this.loadNewsletterSnapshot()
+            this.loadNewsletterSnapshot(),
+            this.loadDashboardCourses(),
+            this.loadDashboardEvents()
         ]);
         this.updateUIFromMetrics();
         this.updateStreakUI();
@@ -2013,14 +2062,14 @@ class DashboardModule {
                 if (announcements && announcements.length > 0) {
                     this.elements.announcementText.innerHTML = announcements[0].message || announcements[0].content || 'No new announcements';
                 } else {
-                    this.elements.announcementText.innerHTML = `📢 Welcome to Block ${userBlock}. Check your schedule and stay updated!`;
+                    this.elements.announcementText.textContent = 'No new announcements at this time.';
                 }
             }
             
         } catch (error) {
             console.error('Announcement error:', error);
             if (this.elements.announcementText) {
-                this.elements.announcementText.innerHTML = 'Welcome to your dashboard! Stay tuned for updates.';
+                this.elements.announcementText.textContent = 'No new announcements at this time.';
             }
         }
     }
@@ -2030,106 +2079,220 @@ class DashboardModule {
     // ============================================================
     
     async loadLeaderboardData(period = 'all') {
-        const container = document.getElementById('leaderboard-container');
-        if (!container) return;
-        
-        container.innerHTML = '<div style="padding: 20px; text-align: center; color: #94a3b8;"><i class="fas fa-spinner fa-spin"></i> Loading...</div>';
-        
+        const container = this.elements?.dashboardLeaderboard || document.querySelector('.nchsm-leaderboard');
+        if (!container || !this.sb) return;
+
+        container.querySelectorAll('.leader-row:not(.leader-head)').forEach(row => row.remove());
+
         try {
             const { data: users, error } = await this.sb
                 .from('consolidated_user_profiles_table')
-                .select('id, full_name, login_count, gamification_points, total_points, earned_badges')
+                .select('user_id, full_name, login_count, gamification_points, total_points, earned_badges')
                 .eq('role', 'student')
                 .order('total_points', { ascending: false })
-                .limit(10);
-            
+                .limit(5);
+
             if (error) throw error;
-            
+
             if (!users || users.length === 0) {
-                container.innerHTML = '<div style="text-align:center;padding:30px;color:#94a3b8;">📊 No students found</div>';
+                container.insertAdjacentHTML(
+                    'beforeend',
+                    '<div class="leader-row"><span>—</span><strong>No students found</strong><b>—</b></div>'
+                );
                 return;
             }
-            
-            const processedUsers = users.map(user => {
-                const points = user.total_points || ((user.login_count || 0) * 10 + (user.gamification_points || 0));
-                const displayName = user.full_name || 'Student';
-                return { ...user, points, displayName };
-            });
-            
-            processedUsers.sort((a, b) => b.points - a.points);
-            
-            let html = `
-                <div style="padding: 10px 16px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
-                    <span style="font-weight: 600; color: #0A3D62; font-size: 13px;">
-                        ${period === 'weekly' ? '📅 This Week' : period === 'monthly' ? '📆 This Month' : '🏆 All Time'}
-                    </span>
-                    <span style="font-size: 11px; color: #94a3b8;">${processedUsers.length} students</span>
-                </div>
-            `;
-            
-            processedUsers.forEach((user, index) => {
+
+            users.forEach((user, index) => {
                 const rank = index + 1;
-                let rankDisplay = `${rank}`;
-                let bgColor = 'transparent';
-                
-                if (rank === 1) {
-                    rankDisplay = '👑';
-                    bgColor = '#ede9fe';
-                } else if (rank === 2) {
-                    rankDisplay = '🥈';
-                    bgColor = '#fef3c7';
-                } else if (rank === 3) {
-                    rankDisplay = '🥉';
-                    bgColor = '#fce4ec';
+                const points = Number(user.total_points ?? 0);
+                const current = String(user.user_id) === String(this.userId);
+
+                const row = document.createElement('div');
+                row.className = `leader-row${current ? ' leader-current' : ''}`;
+
+                const rankEl = document.createElement('b');
+                rankEl.className = `rank rank-${rank}`;
+                rankEl.textContent = rank;
+
+                const nameEl = document.createElement('strong');
+                nameEl.textContent = user.full_name || 'Student';
+
+                if (current) {
+                    const you = document.createElement('span');
+                    you.className = 'leader-you';
+                    you.textContent = ' You';
+                    nameEl.appendChild(you);
                 }
-                
-                const isCurrentUser = user.id === this.userId;
-                
-                const badgeCount = user.earned_badges?.length || 0;
-                
-                html += `
-                    <div style="
-                        display: flex; 
-                        align-items: center; 
-                        gap: 12px; 
-                        padding: 8px 16px; 
-                        border-bottom: 1px solid #f1f5f9;
-                        background: ${isCurrentUser ? '#ede9fe' : bgColor};
-                        ${isCurrentUser ? 'border-left: 3px solid #4C1D95;' : ''}
-                    ">
-                        <span style="font-weight: 700; min-width: 32px; text-align: center; font-size: 18px;">${rankDisplay}</span>
-                        <div style="flex: 1;">
-                            <span style="font-weight: 500; color: #1e293b; font-size: 14px;">
-                                ${this.escapeHtml(user.displayName)}
-                                ${isCurrentUser ? ' <span style="font-size: 10px; background: #4C1D95; color: white; padding: 1px 8px; border-radius: 10px;">You</span>' : ''}
-                            </span>
-                            <div style="font-size: 9px; color: #94a3b8; margin-top: 2px;">
-                                ${user.login_count || 0} logins · ${user.gamification_points || 0} bonus pts · ${badgeCount} badges
-                            </div>
-                        </div>
-                        <div style="text-align: right;">
-                            <div style="font-weight: 700; color: #4C1D95; font-size: 16px;">${user.points}</div>
-                            <div style="font-size: 9px; color: #94a3b8;">pts</div>
-                        </div>
-                        ${rank === 1 ? '<span style="font-size: 11px; color: #f59e0b; background: #fef3c7; padding: 2px 10px; border-radius: 12px;">🏆 Top</span>' : ''}
-                    </div>
-                `;
+
+                const pointsEl = document.createElement('b');
+                pointsEl.textContent = Number.isFinite(points) ? points.toLocaleString() : '0';
+
+                row.append(rankEl, nameEl, pointsEl);
+                container.appendChild(row);
             });
-            
-            html += `
-                <div style="padding: 6px 16px; background: #f8fafc; border-top: 1px solid #e5e7eb; text-align: center; font-size: 10px; color: #94a3b8;">
-                    💡 Points = (Logins × 10) + Attendance + NurseIQ + Gamification Bonus
-                </div>
-            `;
-            
-            container.innerHTML = html;
-            
+
+            this.metrics.leaderboard = users.map((u, i) => ({
+                rank: i + 1,
+                userId: u.user_id,
+                name: u.full_name || 'Student',
+                points: Number(u.total_points ?? 0)
+            }));
         } catch (error) {
             console.error('Leaderboard error:', error);
-            container.innerHTML = '<div style="padding: 30px; text-align: center; color: #94a3b8;">⚠️ Failed to load leaderboard</div>';
+            container.insertAdjacentHTML(
+                'beforeend',
+                '<div class="leader-row"><span>—</span><strong>Unable to load leaderboard</strong><b>—</b></div>'
+            );
         }
     }
-    
+
+    // ============================================================
+    // 📚 REDESIGNED DASHBOARD COURSES
+    // ============================================================
+
+    async loadDashboardCourses() {
+        const container = this.elements?.dashboardCourses || document.querySelector('.nchsm-courses');
+        if (!container) return;
+
+        try {
+            let courses = [];
+
+            if (window.db && typeof window.db.getCourses === 'function') {
+                const result = await window.db.getCourses();
+                if (Array.isArray(result)) courses = result;
+            }
+
+            const normalized = courses.map(course => ({
+                code: course.code || course.course_code || course.unit_code || course.unitCode || '',
+                name: course.name || course.course_name || course.title || course.unit_name || course.unitName || ''
+            })).filter(c => c.code || c.name).slice(0, 4);
+
+            container.innerHTML = '';
+
+            if (!normalized.length) {
+                container.innerHTML =
+                    '<div class="course-row"><span class="course-code code-blue">—</span><strong>No enrolled units</strong><i class="fas fa-chevron-right" aria-hidden="true"></i></div>';
+                return;
+            }
+
+            const codeClasses = ['code-blue', 'code-green', 'code-purple', 'code-orange'];
+
+            normalized.forEach((course, index) => {
+                const row = document.createElement('div');
+                row.className = 'course-row';
+
+                const code = document.createElement('span');
+                code.className = `course-code ${codeClasses[index % codeClasses.length]}`;
+                code.textContent = course.code || 'UNIT';
+
+                const name = document.createElement('strong');
+                name.textContent = course.name || 'Unit';
+
+                const icon = document.createElement('i');
+                icon.className = 'fas fa-chevron-right';
+                icon.setAttribute('aria-hidden', 'true');
+
+                row.append(code, name, icon);
+                container.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Dashboard courses error:', error);
+        }
+    }
+
+    // ============================================================
+    // 📅 REDESIGNED DASHBOARD EVENTS
+    // ============================================================
+
+    async loadDashboardEvents() {
+        const container = this.elements?.dashboardEvents || document.querySelector('.nchsm-events');
+        if (!container || !this.sb) return;
+
+        try {
+            const studentBlock = this.userProfile?.block || this.userProfile?.current_block;
+
+            let query = this.sb
+                .from('timetables')
+                .select('*')
+                .gte('class_date', this.getKenyaNow().toISOString().split('T')[0])
+                .order('class_date', { ascending: true })
+                .order('start_time', { ascending: true })
+                .limit(8);
+
+            if (studentBlock) query = query.eq('block', studentBlock);
+
+            const { data: events, error } = await query;
+            if (error) throw error;
+
+            const now = this.getKenyaNow();
+            const upcoming = (events || []).filter(event => {
+                if (!event.class_date) return false;
+                const date = new Date(`${event.class_date}T${event.start_time || '00:00:00'}`);
+                return date >= now;
+            }).slice(0, 2);
+
+            container.innerHTML = '';
+
+            if (!upcoming.length) {
+                container.innerHTML =
+                    '<div class="nchsm-event"><div class="event-date"><b>DATE</b><strong>—</strong></div><div class="event-info"><strong>No upcoming events</strong><span>Check the Academic Calendar for updates.</span></div></div>';
+                return;
+            }
+
+            upcoming.forEach((event, index) => {
+                const d = new Date(`${event.class_date}T00:00:00`);
+                const month = d.toLocaleDateString('en-KE', { month: 'short', timeZone: 'Africa/Nairobi' }).toUpperCase();
+                const day = d.toLocaleDateString('en-KE', { day: '2-digit', timeZone: 'Africa/Nairobi' });
+                const startTime = (event.start_time || '').slice(0, 5) || '—';
+                const endTime = (event.end_time || '').slice(0, 5) || '';
+                const title = event.session_name || event.course_name || event.title || 'Scheduled session';
+                const venue = event.venue || event.location || 'Venue TBA';
+
+                const row = document.createElement('div');
+                row.className = 'nchsm-event';
+
+                const date = document.createElement('div');
+                date.className = 'event-date';
+
+                const label = document.createElement('b');
+                label.textContent = index === 0 ? 'NEXT' : month;
+
+                const dayEl = document.createElement('strong');
+                dayEl.textContent = day;
+                date.append(label, dayEl);
+
+                const info = document.createElement('div');
+                info.className = 'event-info';
+
+                const titleEl = document.createElement('strong');
+                titleEl.textContent = title;
+
+                const details = document.createElement('span');
+                const clock = document.createElement('i');
+                clock.className = 'fas fa-clock';
+                clock.setAttribute('aria-hidden', 'true');
+
+                const location = document.createElement('i');
+                location.className = 'fas fa-location-dot';
+                location.setAttribute('aria-hidden', 'true');
+
+                details.append(
+                    clock,
+                    document.createTextNode(` ${startTime}${endTime ? ` — ${endTime}` : ''} `),
+                    location,
+                    document.createTextNode(` ${venue}`)
+                );
+
+                info.append(titleEl, details);
+                row.append(date, info);
+                row.addEventListener('click', () => this.navigateTo('calendar'));
+                container.appendChild(row);
+            });
+        } catch (error) {
+            console.error('Dashboard events error:', error);
+        }
+    }
+
     // ============================================================
     // 📅 NEXT CLASS
     // ============================================================
@@ -2271,7 +2434,9 @@ class DashboardModule {
         
         this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
         this.metrics.login = { count: loginCount, points: loginPoints };
-        this.metrics.totalPoints = totalXP;
+        if (!Number.isFinite(Number(this.metrics.totalPoints)) || this.metrics.totalPoints === 0) {
+            this.metrics.totalPoints = totalXP;
+        }
         
         if (this.elements.userLevel) this.elements.userLevel.innerText = level;
         if (this.elements.userXp) this.elements.userXp.innerText = currentXP;
@@ -2283,133 +2448,130 @@ class DashboardModule {
     // 🎨 UPDATE UI FROM METRICS - FIXED!
     // ============================================================
     
+    firstNumeric(source, keys) {
+        for (const key of keys) {
+            const value = Number(source?.[key]);
+            if (Number.isFinite(value) && value >= 0 && value <= 100) return Math.round(value);
+        }
+        return null;
+    }
+
+    getProgressValue(metrics, keys) {
+        for (const key of keys) {
+            const value = Number(metrics?.[key]);
+            if (Number.isFinite(value) && value >= 0 && value <= 100) return Math.round(value);
+
+            const nested = Number(metrics?.academic?.[key]);
+            if (Number.isFinite(nested) && nested >= 0 && nested <= 100) return Math.round(nested);
+        }
+        return null;
+    }
+
+    setProgressRing(valueEl, ringEl, value) {
+        if (value == null || !Number.isFinite(Number(value))) {
+            if (valueEl) valueEl.textContent = '--%';
+            if (ringEl) ringEl.style.strokeDashoffset = '251.33';
+            return;
+        }
+
+        const pct = Math.max(0, Math.min(100, Number(value)));
+        if (valueEl) valueEl.textContent = `${pct}%`;
+
+        if (ringEl) {
+            const circumference = 2 * Math.PI * 40;
+            ringEl.style.strokeDasharray = circumference.toFixed(2);
+            ringEl.style.strokeDashoffset = (circumference * (1 - pct / 100)).toFixed(2);
+        }
+    }
+
     updateUIFromMetrics() {
-        const m = this.metrics;
-        
-        // Attendance
-        if (this.elements.attendanceRate) this.elements.attendanceRate.innerText = m.attendance.rate + '%';
-        if (this.elements.verifiedCount) this.elements.verifiedCount.innerText = m.attendance.verified;
-        if (this.elements.totalCount) this.elements.totalCount.innerText = m.attendance.total;
-        if (this.elements.pendingCount) this.elements.pendingCount.innerText = m.attendance.pending;
-        if (this.elements.attendancePoints) this.elements.attendancePoints.innerText = m.attendance.points;
-        
-        // Login points
-        if (this.elements.loginPointsDisplay) {
-            this.elements.loginPointsDisplay.innerText = m.login?.points || 0;
+        const m = this.metrics || {};
+        const attendance = m.attendance || {};
+        const nurseiq = m.nurseiq || {};
+        const login = m.login || {};
+        const xp = m.xp || {};
+
+        const setText = (el, value, fallback = '0') => {
+            if (el) el.textContent = value ?? fallback;
+        };
+
+        if (this.elements.dashboardHeroName) {
+            this.elements.dashboardHeroName.textContent = this.userProfile?.full_name || 'Student';
         }
-        if (this.elements.loginCountDisplay) {
-            this.elements.loginCountDisplay.innerText = m.login?.count || 0;
+
+        setText(this.elements.userLevel, xp.level || 1);
+        setText(this.elements.userXp, xp.current || 0);
+        setText(this.elements.userXpMax, xp.max || 100);
+
+        if (this.elements.xpProgressFill) {
+            this.elements.xpProgressFill.style.width =
+                `${Math.max(0, Math.min(100, Number(xp.percent) || 0))}%`;
         }
-        
-        // ✅ TOTAL POINTS
-        if (this.elements.totalPointsDisplay) {
-            const total = this.metrics.totalPoints || this.calculateTotalPoints();
-            this.elements.totalPointsDisplay.innerText = total;
-        }
-        
-        // ✅ Gamification points display
-        if (this.elements.gamificationPointsDisplay) {
-            const points = m.gamification?.points || this.gamificationPoints || 0;
-            this.elements.gamificationPointsDisplay.innerText = points;
-        }
-        
-        // ✅ FIXED: NurseIQ - Show ALL fields correctly
-        if (this.elements.nurseiqProgress) {
-            this.elements.nurseiqProgress.innerText = (m.nurseiq?.progress || 0) + '%';
-        }
-        if (this.elements.nurseiqAccuracy) {
-            this.elements.nurseiqAccuracy.innerText = (m.nurseiq?.accuracy || 0) + '%';
-        }
-        if (this.elements.nurseiqQuestions) {
-            this.elements.nurseiqQuestions.innerText = m.nurseiq?.questions || 0;
-        }
-        if (this.elements.nurseiqPoints) {
-            // ✅ Get points from nurseiq.points (this is the fix!)
-            let points = m.nurseiq?.points || 0;
-            
-            // If points is 0 but score has value, calculate from score
-            if (points === 0 && m.nurseiq?.score > 0) {
-                points = m.nurseiq.score * 2;
-            }
-            
-            // If still 0, try from this.nurseIQPoints
-            if (points === 0 && this.nurseIQPoints > 0) {
-                points = this.nurseIQPoints;
-            }
-            
-            this.elements.nurseiqPoints.innerText = points;
-            console.log(`📊 NurseIQ Points set to: ${points}`);
-        }
-        
-        // Attendance color coding
-        const rate = m.attendance.rate || 0;
-        const percentEl = document.querySelector('.attendance-percent');
-        if (percentEl) {
-            percentEl.classList.remove('attendance-critical', 'attendance-warning', 'attendance-good');
-            if (rate < 50) percentEl.classList.add('attendance-critical');
-            else if (rate < 75) percentEl.classList.add('attendance-warning');
-            else percentEl.classList.add('attendance-good');
-        }
-        
+
+        setText(this.elements.dashboardNurseIQPoints, nurseiq.points ?? this.nurseIQPoints ?? 0);
+        setText(this.elements.attendancePoints, attendance.points ?? 0);
+        setText(this.elements.loginPointsDisplay, login.points ?? 0);
+        setText(this.elements.loginCountDisplay, login.count ?? 0);
+        setText(this.elements.totalPointsDisplay, this.metrics.totalPoints ?? this.calculateTotalPoints());
+
+        const attendanceRate = Number(attendance.rate);
+
+        this.setProgressRing(
+            this.elements.progressAttendance,
+            this.elements.progressAttendanceRing,
+            Number.isFinite(attendanceRate) ? attendanceRate : null
+        );
+
+        this.setProgressRing(
+            this.elements.progressAssignments,
+            this.elements.progressAssignmentsRing,
+            this.getProgressValue(m, ['assignments', 'assignment', 'assignment_score', 'assignments_score'])
+        );
+
+        this.setProgressRing(
+            this.elements.progressExams,
+            this.elements.progressExamsRing,
+            this.getProgressValue(m, ['examScore', 'exam_score', 'exam_percentage', 'exams_percentage'])
+        );
+
+        this.setProgressRing(
+            this.elements.progressOverall,
+            this.elements.progressOverallRing,
+            this.getProgressValue(m, ['overall', 'overall_score', 'overall_percentage'])
+        );
+
+        // Existing compatibility hooks.
+        setText(this.elements.attendanceRate, Number.isFinite(attendanceRate) ? `${attendanceRate}%` : '--%');
+        setText(this.elements.verifiedCount, attendance.verified ?? 0);
+        setText(this.elements.totalCount, attendance.total ?? 0);
+        setText(this.elements.pendingCount, attendance.pending ?? 0);
+        setText(this.elements.activeCourses, m.courses ?? 0);
+        setText(this.elements.approvedUnits, m.examCard?.approved ?? 0);
+        setText(this.elements.resources, m.resources ?? 0);
+        setText(this.elements.upcomingExam, m.exams || 'No upcoming exams');
+
         const warningText = document.getElementById('warning-text');
         if (warningText) {
-            if (rate < 50) warningText.innerText = 'CRITICAL';
-            else if (rate < 75) warningText.innerText = 'BELOW 75%';
-            else warningText.innerText = 'GOOD';
+            warningText.textContent =
+                !Number.isFinite(attendanceRate) ? '—' :
+                attendanceRate < 50 ? 'CRITICAL' :
+                attendanceRate < 75 ? 'BELOW 75%' : 'GOOD';
         }
-        
-        // Exam Card
-        const approved = m.examCard.approved || 0;
-        if (this.elements.activeCourses) this.elements.activeCourses.innerText = approved;
-        if (this.elements.examStatus) {
-            this.elements.examStatus.innerText = approved > 0 ? 'ELIGIBLE' : 'NOT ELIGIBLE';
-            this.elements.examStatus.style.color = approved > 0 ? '#059669' : '#dc2626';
-        }
-        if (this.elements.approvedUnits) this.elements.approvedUnits.innerText = approved;
-        
-        // Resources & Exams
-        if (this.elements.resources) this.elements.resources.innerText = m.resources;
-        if (this.elements.upcomingExam) this.elements.upcomingExam.innerText = m.exams;
-        
-        // XP
-        if (this.elements.userLevel) {
-            this.elements.userLevel.innerText = m.xp.level || 1;
-        }
-        if (this.elements.userXp) {
-            this.elements.userXp.innerText = m.xp.current || 0;
-        }
-        if (this.elements.userXpMax) {
-            this.elements.userXpMax.innerText = m.xp.max || 100;
-        }
-        if (this.elements.xpProgressFill) {
-            const percent = m.xp.percent || 0;
-            this.elements.xpProgressFill.style.width = percent + '%';
-        }
-        
-        // Update last updated time
+
         if (this.elements.dashboardLastUpdated) {
-            const now = this.getKenyaNow();
-            this.elements.dashboardLastUpdated.textContent = now.toLocaleTimeString('en-KE', {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true,
-                timeZone: 'Africa/Nairobi'
-            });
+            this.elements.dashboardLastUpdated.textContent =
+                this.getKenyaNow().toLocaleTimeString('en-KE', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    hour12: true,
+                    timeZone: 'Africa/Nairobi'
+                });
         }
-        
-        // ✅ Log NurseIQ display values
-        console.log('📊 NurseIQ displayed:', {
-            progress: m.nurseiq?.progress || 0,
-            accuracy: m.nurseiq?.accuracy || 0,
-            questions: m.nurseiq?.questions || 0,
-            points: this.elements.nurseiqPoints?.innerText || 0
-        });
-        
-        // ✅ Also update any NurseIQ stats in the XP area
-        this.updateNurseIQStats(this.elements.nurseiqPoints?.innerText || 0);
+
+        this.updateNurseIQStats(nurseiq.points ?? this.nurseIQPoints ?? 0);
     }
-    
+
     // ============================================================
     // 💾 SAVE TO CACHE
     // ============================================================
