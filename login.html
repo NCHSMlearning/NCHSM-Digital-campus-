@@ -23,7 +23,7 @@
     <meta name="csrf-token" content="">
     
     <!-- Favicon -->
-    <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png">
+    <link rel="icon" type="image/png" href="images/Logo_NCHSM.png">
     
     <!-- Preconnect -->
     <link rel="preconnect" href="https://cdn.jsdelivr.net">
@@ -33,7 +33,7 @@
     <!-- Preload background -->
     <link rel="preload" 
           as="image" 
-          href="https://nakurucollegeofhealth.ac.ke/wp-content/uploads/2026/02/IMG_20251219_080858_996-rotated.jpg">
+          href="images/campus-header.jpg">
     
     <!-- External CSS -->
     <link rel="stylesheet" href="login-styles.css">
@@ -192,6 +192,272 @@
         }
     })();
     </script>
+
+<style id="nchsm-modern-login">
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+:root{
+  --navy:#073b5c;
+  --blue:#0b6596;
+  --blue2:#1686c1;
+  --gold:#f7b718;
+  --ink:#102a43;
+  --muted:#64748b;
+  --line:#dbe5ee;
+  --surface:#ffffff;
+  --soft:#f4f8fb;
+}
+
+*{box-sizing:border-box}
+html,body{min-height:100%;margin:0}
+body{
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
+  background:#eef4f7!important;
+  color:var(--ink)!important;
+}
+body:before{
+  content:"";position:fixed;inset:0;z-index:-2;
+  background:
+    radial-gradient(circle at 15% 10%,rgba(22,134,193,.10),transparent 30%),
+    radial-gradient(circle at 90% 85%,rgba(247,183,24,.08),transparent 28%);
+}
+.particles{display:none!important}
+.container{
+  width:min(1440px,100%);
+  min-height:100vh;
+  margin:0 auto;
+  display:grid!important;
+  grid-template-columns:minmax(0,1.08fr) minmax(480px,.92fr)!important;
+  background:#fff;
+  box-shadow:0 0 60px rgba(7,59,92,.10);
+}
+.left-panel{
+  min-height:100vh!important;
+  position:relative;
+  overflow:hidden;
+  background:
+    linear-gradient(180deg,rgba(4,49,76,.78),rgba(4,62,91,.90)),
+    url("images/campus-header.jpg") center/cover no-repeat!important;
+}
+.left-panel:after{
+  content:"";position:absolute;inset:0;pointer-events:none;
+  background:linear-gradient(135deg,rgba(3,35,55,.15),rgba(7,104,151,.20) 55%,rgba(247,183,24,.05));
+}
+.panel-content{
+  position:relative;z-index:2;
+  min-height:100vh;
+  padding:54px clamp(36px,5vw,82px) 38px;
+  display:flex;flex-direction:column;
+  justify-content:center;
+}
+.logo-wrapper{text-align:left!important;margin:0 0 34px!important}
+.logo-wrapper .logo{
+  width:74px!important;height:74px!important;
+  margin:0 0 18px!important;
+  border-radius:50%!important;
+  background:rgba(255,255,255,.96)!important;
+  padding:7px!important;
+  box-shadow:0 10px 30px rgba(0,0,0,.18);
+}
+.logo-wrapper .logo img{
+  width:100%!important;height:100%!important;object-fit:contain!important;
+}
+.college-name{
+  color:#fff!important;
+  font-size:clamp(20px,2.1vw,30px)!important;
+  line-height:1.12!important;
+  letter-spacing:.02em!important;
+  margin:0!important;
+  font-weight:800!important;
+}
+.college-name .gold,.gold{color:var(--gold)!important}
+.motto{
+  color:rgba(255,255,255,.78)!important;
+  margin:12px 0 0!important;
+  font-size:13px!important;
+  letter-spacing:.02em;
+}
+.welcome-section{margin-top:20px!important}
+.left-panel .welcome-section h2{
+  color:#fff!important;font-size:clamp(31px,4vw,52px)!important;
+  line-height:1.02!important;margin:0 0 13px!important;font-weight:800!important;
+  max-width:700px;
+}
+.left-panel .tagline{
+  color:rgba(255,255,255,.86)!important;
+  font-size:16px!important;line-height:1.65!important;
+  max-width:590px!important;margin:0 0 27px!important;
+}
+.features-list{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  gap:12px!important;max-width:700px!important;
+}
+.feature{
+  display:flex!important;align-items:flex-start!important;gap:13px!important;
+  padding:17px!important;border-radius:15px!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  background:rgba(255,255,255,.10)!important;
+  backdrop-filter:blur(10px)!important;
+  min-height:92px!important;
+}
+.feature:hover{transform:translateY(-2px);background:rgba(255,255,255,.14)!important}
+.feature>svg{flex:0 0 auto;color:#fff!important;width:22px!important;height:22px!important}
+.feature h3{color:#fff!important;margin:0 0 5px!important;font-size:14px!important}
+.feature p{color:rgba(255,255,255,.68)!important;margin:0!important;font-size:11px!important;line-height:1.5!important}
+.accreditation-scroll{margin-top:24px!important;overflow:hidden!important;max-width:700px}
+.badge-track{display:flex!important;gap:8px!important;flex-wrap:wrap!important}
+.badge{
+  border:1px solid rgba(255,255,255,.20)!important;
+  background:rgba(255,255,255,.08)!important;
+  color:rgba(255,255,255,.86)!important;
+  border-radius:999px!important;padding:7px 11px!important;
+  font-size:10px!important;
+}
+.badge.gold{color:#132f42!important;background:var(--gold)!important;border-color:var(--gold)!important}
+.stats{
+  margin-top:30px!important;padding-top:20px!important;
+  border-top:1px solid rgba(255,255,255,.18)!important;
+  display:grid!important;grid-template-columns:repeat(3,1fr)!important;
+  max-width:700px!important;gap:20px!important;
+}
+.stat{text-align:left!important}
+.stat .number{display:block;color:var(--gold)!important;font-size:25px!important;font-weight:800!important}
+.stat .label{display:block;color:rgba(255,255,255,.66)!important;font-size:10px!important;margin-top:3px!important}
+
+.right-panel{
+  min-height:100vh!important;background:#fff!important;
+  display:flex!important;flex-direction:column!important;
+}
+.mobile-header{display:none!important}
+.main-content{
+  flex:1!important;display:flex!important;align-items:center!important;justify-content:center!important;
+  padding:38px clamp(24px,5vw,78px)!important;
+}
+.login-card{
+  width:min(510px,100%)!important;
+  margin:0 auto!important;padding:0!important;
+  background:transparent!important;box-shadow:none!important;border:none!important;
+}
+.top-controls{
+  width:100%!important;max-width:none!important;margin:0 0 34px!important;
+  display:flex!important;justify-content:flex-end!important;gap:8px!important;
+}
+.top-controls .left-group{margin-right:auto}
+.top-controls a,.top-controls button{
+  border-radius:10px!important;padding:9px 13px!important;
+  font-size:11px!important;background:#f7fafc!important;
+}
+.top-controls .blog-btn{background:var(--gold)!important;color:#17324a!important}
+.login-card>.welcome-section{text-align:center!important;margin:0 0 24px!important}
+.welcome-icon{
+  width:58px!important;height:58px!important;margin:0 auto 15px!important;
+  display:grid!important;place-items:center!important;border-radius:50%!important;
+  background:linear-gradient(135deg,#e4f3fb,#f7fbfd)!important;
+  border:1px solid #d6eaf4!important;
+}
+.welcome-icon svg{color:var(--blue)!important;width:25px!important;height:25px!important}
+.welcome-title{
+  font-size:31px!important;color:var(--navy)!important;
+  font-weight:800!important;margin:0 0 7px!important;
+}
+.welcome-subtitle{font-size:13px!important;color:var(--muted)!important;margin:0!important}
+.last-login-info{
+  border:1px solid #e4edf3!important;background:#f8fbfd!important;
+  color:#789!important;border-radius:10px!important;padding:9px 12px!important;
+  font-size:10px!important;margin-bottom:18px!important;
+}
+.form-group{margin-bottom:17px!important}
+.form-label{
+  display:flex!important;gap:7px!important;align-items:center!important;
+  color:#29445b!important;font-size:12px!important;font-weight:700!important;margin-bottom:8px!important;
+}
+.form-label svg{width:14px!important;height:14px!important;color:var(--blue)!important}
+.input-wrapper{position:relative!important}
+.input-icon{
+  position:absolute!important;left:15px!important;top:50%!important;transform:translateY(-50%)!important;
+  color:#8ba0b1!important;width:18px!important;height:18px!important;z-index:2;
+}
+.form-input{
+  width:100%!important;height:51px!important;
+  border:1px solid #d5e1e9!important;border-radius:12px!important;
+  background:#fff!important;color:#17324a!important;
+  padding:0 45px!important;font-size:13px!important;
+  outline:none!important;transition:.2s ease!important;
+}
+.form-input:focus{
+  border-color:#1691cc!important;box-shadow:0 0 0 4px rgba(22,145,204,.10)!important;
+}
+.password-strength{margin-top:6px!important}
+.strength-bar{height:3px!important;border-radius:99px!important;background:#edf2f5!important}
+.strength-progress{height:100%!important;border-radius:99px!important}
+.strength-text{font-size:9px!important;color:#8a9aaa!important}
+.form-options{
+  display:flex!important;justify-content:space-between!important;align-items:center!important;
+  margin:3px 0 20px!important;font-size:11px!important;
+}
+.stay-signed-in{display:flex!important;align-items:center!important;gap:6px!important}
+.forgot-link{color:#0877b8!important;font-weight:700!important;text-decoration:none!important}
+.login-button{
+  width:100%!important;height:52px!important;border:0!important;border-radius:12px!important;
+  background:linear-gradient(135deg,#0876aa,#07547e)!important;
+  color:#fff!important;font-weight:800!important;font-size:14px!important;
+  box-shadow:0 10px 24px rgba(7,84,126,.20)!important;
+}
+.login-button:hover{transform:translateY(-1px)!important;box-shadow:0 14px 28px rgba(7,84,126,.24)!important}
+.divider{margin:22px 0 15px!important;color:#9aa9b5!important;font-size:10px!important}
+.sso-options{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:9px!important}
+.sso-btn{
+  height:44px!important;border:1px solid #dce6ed!important;border-radius:10px!important;
+  background:#fff!important;color:#334e68!important;display:flex!important;align-items:center!important;
+  justify-content:center!important;gap:7px!important;font-weight:600!important;font-size:11px!important;
+}
+.sso-btn:hover{background:#f8fbfd!important;border-color:#c7d9e4!important}
+.sso-btn img{width:17px!important;height:17px!important}
+.signup-section{display:flex!important;justify-content:center!important}
+.signup-link{
+  width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;
+  gap:8px!important;border:1px solid #cde1ed!important;border-radius:11px!important;
+  background:#f4fafc!important;color:#0871a7!important;padding:12px!important;
+  text-decoration:none!important;font-size:12px!important;font-weight:700!important;
+}
+#enable2FABtn{margin-top:16px!important;background:linear-gradient(135deg,#0a3d62,#116d9b)!important;border-radius:11px!important}
+.keyboard-hints{opacity:.5!important;font-size:9px!important;margin-top:12px!important}
+.footer{
+  background:#fff!important;border-top:1px solid #edf2f5!important;
+  padding:16px 28px!important;
+}
+.footer-content{max-width:510px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
+.copyright{margin:0!important;color:#9aa9b5!important;font-size:9px!important}
+.footer-links{display:flex;gap:14px}
+.footer-link{color:#789!important;font-size:9px!important;text-decoration:none!important}
+.footer-link:hover{color:var(--blue)!important}
+
+.modal-overlay{backdrop-filter:blur(8px)!important;background:rgba(5,29,44,.55)!important}
+.modal-content{border-radius:20px!important;box-shadow:0 30px 80px rgba(0,0,0,.25)!important}
+
+@media(max-width:900px){
+  .container{grid-template-columns:1fr!important}
+  .left-panel{min-height:auto!important}
+  .panel-content{min-height:auto!important;padding:38px 26px!important}
+  .features-list{grid-template-columns:1fr 1fr!important}
+  .right-panel{min-height:auto!important}
+  .main-content{padding:34px 22px 26px!important}
+  .footer-content{flex-direction:column!important;text-align:center!important}
+}
+@media(max-width:620px){
+  .left-panel{display:none!important}
+  .main-content{padding:25px 18px!important}
+  .top-controls{justify-content:space-between!important;margin-bottom:25px!important}
+  .top-controls .left-group{margin-right:0}
+  .top-controls .main-site-btn{display:none!important}
+  .welcome-title{font-size:28px!important}
+  .sso-options{grid-template-columns:1fr!important}
+  .sso-btn{height:46px!important}
+  .footer-links{flex-wrap:wrap;justify-content:center}
+}
+</style>
+
 </head>
 <body>
     <!-- Skip to content -->
@@ -215,7 +481,7 @@
                 <!-- Logo -->
                 <div class="logo-wrapper">
                     <div class="logo">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                        <img src="images/Logo_NCHSM.png" 
                              alt="NCHSM Logo" 
                              loading="eager">
                     </div>
@@ -300,7 +566,7 @@
             <header class="mobile-header">
                 <div class="header-content">
                     <div class="logo">
-                        <img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" 
+                        <img src="images/Logo_NCHSM.png" 
                              alt="NCHSM Logo" 
                              loading="eager">
                     </div>
@@ -313,7 +579,8 @@
 
             <!-- ===== MAIN CONTENT ===== -->
             <main id="main-content" class="main-content">
-                <div class="login-card">
+                <div class="login-card" data-login-mode="unified">
+                    <!-- Unified NCHSM login: the account role is resolved after authentication. -->
                     <!-- ===== TOP CONTROLS - FIXED WITH PROPER SPACING ===== -->
                     <div class="top-controls" id="topControls">
                                                <!-- Left Group: Main Site + Blog -->
