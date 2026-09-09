@@ -59,6 +59,29 @@
             .header-titles .main-title{font-size:15px!important}
             .nchsm-skip-link{font-size:12px}
         }
+
+        /* ===== NCHSM SIDEBAR SEARCH / FOOTER / DESKTOP GAP FIX ===== */
+        .sidebar-search-premium{padding:10px 12px 12px;flex-shrink:0}
+        .sidebar-search-box{position:relative;display:flex;align-items:center}
+        .sidebar-search-box>i{position:absolute;left:12px;color:rgba(255,255,255,.55);font-size:13px;pointer-events:none}
+        #sidebarPortalSearch{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:10px 34px;font:500 12px Inter,sans-serif;outline:none}
+        #sidebarPortalSearch::placeholder{color:rgba(255,255,255,.52)}
+        #sidebarPortalSearch:focus{border-color:rgba(253,185,19,.65);background:rgba(255,255,255,.11);box-shadow:0 0 0 3px rgba(253,185,19,.10)}
+        #sidebarSearchClear{position:absolute;right:6px;width:26px;height:26px;border:0;background:transparent;color:rgba(255,255,255,.6);cursor:pointer;border-radius:7px;display:none}
+        .sidebar-search-results{margin-top:6px;max-height:180px;overflow:auto;border-radius:10px;background:#fff;box-shadow:0 8px 25px rgba(0,0,0,.22);color:#0f172a}
+        .sidebar-search-result{display:block;width:100%;text-align:left;border:0;background:transparent;padding:9px 11px;cursor:pointer;font:600 12px Inter,sans-serif;color:#0f172a}
+        .sidebar-search-result:hover{background:#f1f5f9}
+        .sidebar-search-empty{padding:8px 10px;color:rgba(255,255,255,.6);font-size:11px}
+        .sidebar-premium .sidebar-nav-premium{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important}
+        .sidebar-premium .sidebar-footer-premium{flex:0 0 auto!important;display:block!important;position:relative!important;z-index:3!important}
+        .sidebar-premium .footer-actions{display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important}
+        .sidebar-premium .footer-btn{display:flex!important;align-items:center!important;justify-content:center!important;width:38px!important;height:38px!important;flex:0 0 38px!important;cursor:pointer!important}
+        @media (min-width:1024px){
+          .sidebar-premium.sidebar{position:fixed!important;left:0!important;top:70px!important;bottom:0!important;width:260px!important;height:auto!important;max-height:none!important;transform:none!important;overflow:hidden!important}
+          .main,#main-content,main.main{margin-left:260px!important;width:calc(100% - 260px)!important;max-width:calc(100% - 260px)!important;padding-left:0!important;box-sizing:border-box!important}
+          #main-content>.tab-content{margin-left:0!important}
+        }
+        @media (max-width:1023px){.sidebar-premium.sidebar{height:calc(100vh - 60px)!important;bottom:0!important;overflow:hidden!important}}
     </style>
 <!-- Chart.js for Academic Reports -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -71,11 +94,11 @@
 <meta content="#4C1D95" name="msapplication-TileColor"/>
 <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
 <link href="./manifest.json" rel="manifest"/>
-<link href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" rel="icon" sizes="192x192" type="image/png"/>
-<link href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" rel="icon" sizes="512x512" type="image/png"/>
-<link href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" rel="apple-touch-icon" sizes="180x180"/>
-<link href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" rel="apple-touch-icon" sizes="120x120"/>
-<meta content="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" name="msapplication-TileImage"/>
+<link href="images/Logo_NCHSM.png" rel="icon" sizes="192x192" type="image/png"/>
+<link href="images/Logo_NCHSM.png" rel="icon" sizes="512x512" type="image/png"/>
+<link href="images/Logo_NCHSM.png" rel="apple-touch-icon" sizes="180x180"/>
+<link href="images/Logo_NCHSM.png" rel="apple-touch-icon" sizes="120x120"/>
+<meta content="images/Logo_NCHSM.png" name="msapplication-TileImage"/>
 <meta content="telephone=no" name="format-detection"/>
 </head>
 <body>
@@ -147,7 +170,7 @@
 </button>
 <!-- Logo Container -->
 <div class="logo-container" style="display: flex; align-items: center; gap: 10px;">
-<img alt="NCHSM Logo" class="header-logo" src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" style="
+<img alt="NCHSM Logo" class="header-logo" src="images/Logo_NCHSM.png" style="
                 width: 36px;
                 height: 36px;
                 object-fit: contain;
@@ -206,7 +229,7 @@
 <div class="sidebar-header-premium">
 <div class="logo-section">
 <div class="logo-wrapper">
-<img alt="NCHSM Logo" class="sidebar-logo" src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png"/>
+<img alt="NCHSM Logo" class="sidebar-logo" src="images/Logo_NCHSM.png"/>
 <div class="logo-glow"></div>
 </div>
 <div class="brand-text">
@@ -254,6 +277,16 @@
 <div class="xp-progress-glow"></div>
 </div>
 </div>
+</div>
+<!-- ===== SIDEBAR SEARCH ===== -->
+<div class="sidebar-search-premium" id="sidebarSearchWrap">
+  <div class="sidebar-search-box">
+    <i class="fas fa-search" aria-hidden="true"></i>
+    <input id="sidebarPortalSearch" type="search" placeholder="Search portal..." autocomplete="off" aria-label="Search portal sections">
+    <button id="sidebarSearchClear" type="button" aria-label="Clear search" title="Clear search"><i class="fas fa-times" aria-hidden="true"></i></button>
+  </div>
+  <div id="sidebarSearchResults" class="sidebar-search-results" role="listbox" aria-label="Portal search results" hidden></div>
+  <div id="sidebarSearchEmpty" class="sidebar-search-empty" role="status" hidden>No matching portal sections</div>
 </div>
 <!-- ===== NAVIGATION ===== -->
 <nav aria-label="Primary navigation" class="sidebar-nav-premium">
@@ -6402,7 +6435,7 @@
 <!-- Column 1: About -->
 <div>
 <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-<img alt="NCHSM Logo" onerror="this.style.display='none'" src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" style="width: 48px; height: 48px; background: white; border-radius: 12px; padding: 8px; object-fit: contain;"/>
+<img alt="NCHSM Logo" onerror="this.style.display='none'" src="images/Logo_NCHSM.png" style="width: 48px; height: 48px; background: white; border-radius: 12px; padding: 8px; object-fit: contain;"/>
 <h3 style="color: white; margin: 0; font-size: 18px; font-weight: 700;">NCHSM</h3>
 </div>
 <p style="color: rgba(255,255,255,0.8); font-size: 14px; line-height: 1.6; margin: 0 0 16px 0;">
@@ -7333,6 +7366,21 @@ window.addEventListener('appinstalled', () => {
 })();
 </script>
 </div><script>
+// NCHSM SIDEBAR SEARCH — surgical HTML enhancement
+(function(){
+'use strict';
+function initSidebarSearch(){
+ const input=document.getElementById('sidebarPortalSearch'),clear=document.getElementById('sidebarSearchClear'),results=document.getElementById('sidebarSearchResults'),empty=document.getElementById('sidebarSearchEmpty'),nav=document.querySelector('.sidebar-nav-premium');
+ if(!input||!clear||!results||!empty||!nav||input.dataset.bound==='1')return;
+ input.dataset.bound='1';
+ const getItems=()=>Array.from(nav.querySelectorAll('a[data-tab]')).map(a=>({a,label:(a.querySelector('.nav-text')?.textContent||a.textContent||'').replace(/\s+/g,' ').trim(),tab:a.getAttribute('data-tab')})).filter(x=>x.label);
+ const close=()=>{results.hidden=true;results.innerHTML='';empty.hidden=true;};
+ const render=()=>{const q=input.value.trim().toLowerCase();clear.style.display=q?'block':'none';if(!q){close();return;}const m=getItems().filter(x=>x.label.toLowerCase().includes(q)).slice(0,8);results.innerHTML='';empty.hidden=m.length>0;if(!m.length){results.hidden=true;return;}m.forEach(x=>{const b=document.createElement('button');b.type='button';b.className='sidebar-search-result';b.setAttribute('role','option');b.textContent=x.label;b.onclick=()=>{input.value='';clear.style.display='none';close();if(typeof window.nchsmNavigateToTab==='function')window.nchsmNavigateToTab(x.tab);else if(typeof window.showTab==='function')window.showTab(x.tab);else x.a.click();};results.appendChild(b);});results.hidden=false;};
+ input.addEventListener('input',render);clear.addEventListener('click',()=>{input.value='';clear.style.display='none';close();input.focus();});input.addEventListener('keydown',e=>{if(e.key==='Escape'){input.value='';clear.style.display='none';close();input.blur();}else if(e.key==='Enter'){const b=results.querySelector('.sidebar-search-result');if(b){e.preventDefault();b.click();}}});document.addEventListener('click',e=>{if(!e.target.closest('#sidebarSearchWrap'))close();});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initSidebarSearch,{once:true});else initSidebarSearch();document.addEventListener('appReady',initSidebarSearch);
+})();
+
 // NCHSM SIDEBAR FOOTER CONTROLS — surgical HTML enhancement
 (function () {
   'use strict';
