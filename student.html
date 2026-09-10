@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 
 <html lang="en">
@@ -771,6 +772,199 @@ html,body{max-width:100%;overflow-x:hidden!important}
   }
 }
 </style>
+<style id="nchsm-reference-match-final">
+/* FINAL VISUAL MATCH — based on the supplied NCHSM dashboard reference. */
+html,body{background:#f4f8fc!important}
+
+/* Keep the portal header visible and aligned above the desktop shell. */
+.main-header.nchsm-reference-header{
+  position:fixed!important;left:0!important;right:0!important;top:0!important;
+  width:100%!important;height:60px!important;min-height:60px!important;
+  z-index:5000!important;background:#fff!important;
+}
+@media(min-width:1024px){
+  #app-content>.container{padding-top:60px!important}
+  #sidebar.sidebar-premium{
+    top:60px!important;height:calc(100vh - 60px)!important;max-height:calc(100vh - 60px)!important;
+    width:260px!important;
+  }
+  #main-content.main{
+    margin-left:260px!important;width:calc(100% - 260px)!important;
+    max-width:calc(100% - 260px)!important;padding:12px 18px 22px!important;
+  }
+}
+
+/* Dashboard page rhythm and card sizing. */
+#dashboard .nchsm-dashboard{width:100%!important}
+#dashboard .nchsm-hero{height:148px!important;min-height:148px!important;border-radius:15px!important}
+#dashboard .nchsm-hero-content{height:148px!important;min-height:148px!important}
+#dashboard .nchsm-metrics{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:12px!important;margin:14px 0!important}
+#dashboard .nchsm-metric{min-width:0!important;min-height:76px!important;padding:10px 12px!important}
+#dashboard .nchsm-metric-icon{width:42px!important;height:42px!important;flex-basis:42px!important}
+#dashboard .metric-finance{background:linear-gradient(135deg,#0eb5ad,#08a7c4)!important;color:#fff!important;border-color:#13b8b0!important}
+#dashboard .metric-finance .nchsm-metric-icon{background:rgba(255,255,255,.18)!important;color:#fff!important}
+#dashboard .metric-finance .nchsm-metric-label,#dashboard .metric-finance .nchsm-metric-sub,#dashboard .metric-finance strong{color:#fff!important}
+
+#dashboard .nchsm-announcement{margin:0!important;min-height:58px!important}
+
+/* Purple Next Class — prominent, compact and readable. */
+#dashboard .next-class-card{
+  margin-top:12px!important;min-height:132px!important;border:0!important;border-radius:13px!important;
+  overflow:hidden!important;position:relative!important;
+  background:linear-gradient(110deg,#4c18d9 0%,#6d27e8 48%,#9a43ff 100%)!important;
+  box-shadow:0 10px 25px rgba(91,39,211,.22)!important;color:#fff!important;
+}
+#dashboard .next-class-card:after{content:""!important;position:absolute!important;inset:0!important;pointer-events:none!important;background:radial-gradient(circle at 86% 20%,rgba(255,255,255,.18),transparent 25%),radial-gradient(circle at 15% 120%,rgba(255,255,255,.12),transparent 32%)!important}
+#dashboard .next-class-card .nchsm-card-head{height:54px!important;border-bottom:1px solid rgba(255,255,255,.28)!important;background:transparent!important;position:relative!important;z-index:2!important}
+#dashboard .next-class-card .nchsm-card-title>i,#dashboard .next-class-card h2,#dashboard .next-class-card small{color:#fff!important}
+#dashboard .next-class-card .nchsm-view-btn{color:#fff!important;background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.30)!important}
+#dashboard .nchsm-next-class-body{position:relative!important;z-index:2!important;min-height:78px!important;display:grid!important;grid-template-columns:145px minmax(0,1.5fr) minmax(240px,1fr)!important;align-items:center!important;gap:18px!important;padding:12px 18px!important;background:transparent!important}
+#dashboard .next-class-time{font-size:28px!important;font-weight:900!important;line-height:1.02!important;color:#fff!important}
+#dashboard .next-class-main strong{font-size:19px!important;color:#fff!important}
+#dashboard .next-class-main span{font-size:12px!important;color:rgba(255,255,255,.82)!important}
+#dashboard .next-class-details{font-size:11px!important;color:rgba(255,255,255,.94)!important;gap:6px!important}
+#dashboard .next-class-details i,#dashboard .next-class-details b{color:#fff!important}
+#dashboard .next-class-card.no-upcoming .nchsm-next-class-body{grid-template-columns:1fr!important;min-height:78px!important;padding:18px!important}
+#dashboard .next-class-card.no-upcoming .next-class-main strong{font-size:20px!important}
+
+/* Quick Actions — six clean tiles, like the final reference. */
+#dashboard .quick-actions-card{margin-top:12px!important}
+#dashboard .quick-actions-card .nchsm-card-body{padding:10px 12px 12px!important}
+#dashboard .nchsm-action-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:10px!important}
+#dashboard .nchsm-action{min-height:72px!important;border-radius:9px!important}
+#dashboard .nchsm-action-compat{display:none!important}
+
+/* Next Exam + My Progress side-by-side. */
+#dashboard .nchsm-exam-progress-grid{grid-template-columns:minmax(0,1fr) minmax(0,1.15fr)!important;gap:12px!important;margin-top:12px!important}
+#dashboard .next-exam-card{min-height:150px!important;border-radius:12px!important}
+#dashboard .next-exam-body{min-height:78px!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important}
+#dashboard .progress-card{min-height:150px!important}
+#dashboard .nchsm-progress-grid{padding:10px 8px 12px!important}
+#dashboard .nchsm-ring{width:82px!important;height:82px!important}
+
+/* Lower dashboard row and leaderboard. */
+#dashboard .nchsm-bottom-grid{grid-template-columns:1.05fr 1.08fr 1fr!important;gap:12px!important;margin-top:12px!important}
+#dashboard .streak-card,#dashboard .events-card,#dashboard .courses-card{min-height:145px!important}
+#dashboard .leaderboard-card{margin-top:12px!important;grid-column:1/-1!important}
+#dashboard .nchsm-leaderboard{max-height:290px!important;overflow:auto!important}
+#dashboard .leader-row{min-height:28px!important}
+#dashboard .nchsm-brand-strip{margin-top:12px!important;min-height:64px!important}
+
+@media(max-width:1200px){
+  #dashboard .nchsm-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #dashboard .nchsm-action-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+@media(max-width:900px){
+  #dashboard .nchsm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #dashboard .nchsm-next-class-body{grid-template-columns:1fr 1.5fr!important}
+  #dashboard .next-class-details{grid-column:1/-1!important;display:grid!important;grid-template-columns:repeat(3,1fr)!important}
+  #dashboard .nchsm-exam-progress-grid,#dashboard .nchsm-bottom-grid{grid-template-columns:1fr!important}
+  #dashboard .courses-card{grid-column:auto!important}
+}
+@media(max-width:640px){
+  #dashboard .nchsm-metrics{grid-template-columns:1fr 1fr!important}
+  #dashboard .nchsm-action-grid{grid-template-columns:1fr 1fr!important}
+  #dashboard .nchsm-next-class-body{grid-template-columns:1fr!important}
+  #dashboard .next-class-details{grid-column:auto!important;grid-template-columns:1fr!important}
+  #dashboard .nchsm-hero,#dashboard .nchsm-hero-content{height:145px!important;min-height:145px!important}
+}
+</style>
+
+<style id="nchsm-exact-reference-dashboard">
+/* ============================================================
+   NCHSM FINAL REFERENCE DASHBOARD
+   Visual layout based on the supplied reference screenshot.
+   Data/auth/backend hooks remain unchanged.
+   ============================================================ */
+html,body{background:#f4f8fc!important}
+@media(min-width:800px){
+  .main-header.nchsm-reference-header{height:60px!important;min-height:60px!important;position:fixed!important;top:0!important;left:0!important;right:0!important;z-index:5000!important;padding:7px 16px!important;box-sizing:border-box!important}
+  #app-content>.container{padding-top:60px!important}
+  #sidebar.sidebar-premium{top:60px!important;height:calc(100vh - 60px)!important;max-height:calc(100vh - 60px)!important;width:180px!important}
+  #main-content.main{margin-left:180px!important;width:calc(100% - 180px)!important;max-width:calc(100% - 180px)!important;padding:10px 12px 18px!important;box-sizing:border-box!important}
+}
+#dashboard .nchsm-dashboard{width:100%!important;max-width:none!important}
+#dashboard .nchsm-hero{height:156px!important;min-height:156px!important;margin:0!important;border-radius:14px!important}
+#dashboard .nchsm-hero-content{height:156px!important;min-height:156px!important;padding:18px 22px!important}
+#dashboard .nchsm-metrics{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:10px!important;margin:10px 0!important}
+#dashboard .nchsm-metric{height:82px!important;min-height:82px!important;padding:9px 10px!important;border-radius:10px!important;box-sizing:border-box!important}
+#dashboard .nchsm-metric-icon{width:40px!important;height:40px!important;flex:0 0 40px!important}
+#dashboard .metric-finance{background:linear-gradient(135deg,#10b7b0,#08a9be)!important;color:#fff!important;border-color:#10b7b0!important}
+#dashboard .metric-finance *{color:#fff!important}
+#dashboard .nchsm-announcement{margin:0!important;min-height:56px!important;height:auto!important;border-radius:10px!important}
+
+/* Side-by-side half-width Next Class / Next Exam */
+#dashboard .nchsm-class-exam-grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important;margin-top:10px!important;align-items:stretch!important}
+#dashboard .nchsm-class-exam-grid>.next-class-card,#dashboard .nchsm-class-exam-grid>.next-exam-card{margin:0!important;min-width:0!important;height:178px!important;min-height:178px!important;border-radius:12px!important;overflow:hidden!important;box-sizing:border-box!important}
+#dashboard .nchsm-class-exam-grid>.next-class-card{background:linear-gradient(115deg,#4b18d6 0%,#7029e9 52%,#9b48ff 100%)!important;border:0!important;box-shadow:0 9px 22px rgba(93,43,214,.22)!important;color:#fff!important;position:relative!important}
+#dashboard .nchsm-class-exam-grid>.next-class-card:after{content:""!important;position:absolute!important;inset:0!important;pointer-events:none!important;background:radial-gradient(circle at 88% 16%,rgba(255,255,255,.16),transparent 25%),radial-gradient(circle at 14% 120%,rgba(255,255,255,.10),transparent 35%)!important}
+#dashboard .next-class-card .nchsm-card-head,#dashboard .next-exam-card .nchsm-card-head{height:50px!important;min-height:50px!important;padding:0 14px!important;box-sizing:border-box!important;position:relative!important;z-index:2!important}
+#dashboard .next-class-card .nchsm-card-title h2,#dashboard .next-class-card .nchsm-card-title small,#dashboard .next-class-card .nchsm-card-title>i{color:#fff!important}
+#dashboard .next-class-card .nchsm-view-btn{color:#fff!important;background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.30)!important}
+#dashboard .nchsm-next-class-body{position:relative!important;z-index:2!important;height:128px!important;min-height:128px!important;padding:12px 15px!important;display:grid!important;grid-template-columns:82px minmax(0,1fr) 180px!important;gap:12px!important;align-items:center!important;box-sizing:border-box!important}
+#dashboard .next-class-time{font-size:25px!important;font-weight:900!important;line-height:1.03!important;color:#fff!important}
+#dashboard .next-class-main strong{display:block!important;font-size:16px!important;line-height:1.18!important;color:#fff!important}
+#dashboard .next-class-main span{display:block!important;margin-top:5px!important;font-size:10px!important;color:rgba(255,255,255,.82)!important}
+#dashboard .next-class-details{display:flex!important;flex-direction:column!important;gap:6px!important;font-size:10px!important;color:#fff!important}
+#dashboard .next-class-details span{color:#fff!important}
+#dashboard .next-class-details i,#dashboard .next-class-details b{color:#fff!important}
+#dashboard .next-class-card.no-upcoming .nchsm-next-class-body{grid-template-columns:1fr!important;text-align:center!important}
+
+#dashboard .next-exam-card{background:linear-gradient(115deg,#176fe8 0%,#355eea 52%,#6758ee 100%)!important;color:#fff!important;border:0!important;box-shadow:0 9px 22px rgba(45,88,220,.18)!important;position:relative!important}
+#dashboard .next-exam-card:after{content:""!important;position:absolute!important;inset:0!important;pointer-events:none!important;background:radial-gradient(circle at 86% 20%,rgba(255,255,255,.13),transparent 27%),radial-gradient(circle at 70% 100%,rgba(255,255,255,.08),transparent 30%)!important}
+#dashboard .next-exam-card .nchsm-card-head{border-bottom-color:rgba(255,255,255,.30)!important}
+#dashboard .next-exam-card .nchsm-card-title h2,#dashboard .next-exam-card .nchsm-card-title small,#dashboard .next-exam-card .nchsm-card-title>i{color:#fff!important}
+#dashboard .next-exam-card .nchsm-view-btn{color:#fff!important;background:rgba(255,255,255,.15)!important;border:1px solid rgba(255,255,255,.28)!important}
+#dashboard .next-exam-body{position:relative!important;z-index:2!important;height:91px!important;min-height:91px!important;display:flex!important;align-items:center!important;justify-content:center!important;text-align:center!important;color:#fff!important;padding:8px 16px!important;box-sizing:border-box!important}
+#dashboard .next-exam-body *{color:#fff!important}
+#dashboard .next-exam-status{position:relative!important;z-index:2!important;text-align:center!important;color:rgba(255,255,255,.90)!important;font-size:10px!important}
+
+/* Quick Actions */
+#dashboard .quick-actions-card{margin-top:10px!important;border-radius:11px!important}
+#dashboard .quick-actions-card .nchsm-card-body{padding:9px 10px 10px!important}
+#dashboard .nchsm-action-grid{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:9px!important}
+#dashboard .nchsm-action{height:70px!important;min-height:70px!important;border-radius:8px!important;box-sizing:border-box!important}
+#dashboard .nchsm-action i{font-size:19px!important}
+#dashboard .nchsm-action span{font-size:10px!important}
+#dashboard .nchsm-action-compat{display:none!important}
+
+/* Progress, streak, events — three equal columns */
+#dashboard .nchsm-dashboard-bottom-grid{display:grid!important;grid-template-columns:1.05fr 1fr 1.05fr!important;gap:12px!important;margin-top:10px!important;align-items:stretch!important}
+#dashboard .nchsm-dashboard-bottom-grid>.nchsm-card{min-width:0!important;height:180px!important;min-height:180px!important;margin:0!important;border-radius:11px!important}
+#dashboard .nchsm-dashboard-bottom-grid .nchsm-card-head{height:48px!important;min-height:48px!important}
+#dashboard .nchsm-progress-grid{padding:8px 7px 10px!important;grid-template-columns:repeat(4,1fr)!important;gap:2px!important}
+#dashboard .nchsm-ring{width:72px!important;height:72px!important;margin-bottom:4px!important}
+#dashboard .nchsm-progress-item>strong{font-size:10px!important}
+#dashboard .nchsm-progress-item>span{font-size:9px!important}
+#dashboard .nchsm-streak-body{padding:7px 12px!important}
+#dashboard .nchsm-events{padding:4px 8px!important}
+
+/* Courses full-width */
+#dashboard .nchsm-courses-full-grid{display:grid!important;grid-template-columns:1fr!important;margin-top:10px!important}
+#dashboard .nchsm-courses-full-grid>.courses-card{height:150px!important;min-height:150px!important;margin:0!important;border-radius:11px!important}
+#dashboard .nchsm-courses-full-grid .nchsm-courses{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important;padding:7px 9px 9px!important}
+#dashboard .nchsm-courses-full-grid .course-row{min-height:74px!important;border:1px solid #e7eef5!important;border-radius:8px!important;padding:7px 9px!important;grid-template-columns:1fr 14px!important;box-sizing:border-box!important;background:#fff!important}
+#dashboard .nchsm-courses-full-grid .course-code{justify-self:start!important}
+
+/* Leaderboard stays last */
+#dashboard .leaderboard-card{margin-top:10px!important;width:100%!important;grid-column:auto!important;border-radius:11px!important}
+#dashboard .nchsm-leaderboard{max-height:none!important;overflow:visible!important;padding:0 8px 8px!important}
+#dashboard .leader-row{min-height:29px!important}
+#dashboard .nchsm-brand-strip{margin-top:10px!important;min-height:64px!important}
+
+/* Keep desktop composition even when browser zoom makes CSS viewport narrower. */
+@media(max-width:799px){
+  #dashboard .nchsm-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #dashboard .nchsm-action-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #dashboard .nchsm-class-exam-grid{grid-template-columns:1fr!important}
+  #dashboard .nchsm-dashboard-bottom-grid{grid-template-columns:1fr!important}
+  #dashboard .nchsm-courses-full-grid .nchsm-courses{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:560px){
+  #dashboard .nchsm-metrics,#dashboard .nchsm-action-grid{grid-template-columns:1fr 1fr!important}
+  #dashboard .nchsm-courses-full-grid .nchsm-courses{grid-template-columns:1fr!important}
+}
+</style>
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -1150,6 +1344,8 @@ html,body{max-width:100%;overflow-x:hidden!important}
 </div>
 <span aria-hidden="true" class="nchsm-announcement-arrow">›</span>
 </section>
+<!-- NEXT CLASS + NEXT EXAM -->
+<section class="nchsm-class-exam-grid">
 <!-- NEXT CLASS -->
 <article class="nchsm-card next-class-card" id="quick-next-class">
 <div class="nchsm-card-head">
@@ -1172,30 +1368,6 @@ html,body{max-width:100%;overflow-x:hidden!important}
 </div>
 </div>
 </article>
-<!-- QUICK ACTIONS -->
-<article class="nchsm-card quick-actions-card dashboard-full-card">
-<div class="nchsm-card-head">
-<div class="nchsm-card-title">
-<i aria-hidden="true" class="fas fa-bolt"></i>
-<div><h2>Quick Actions</h2><small>Access the most used portal features</small></div>
-</div>
-<button class="nchsm-view-btn" data-tab="hub-online-learning" type="button">View All <span>→</span></button>
-</div>
-<div class="nchsm-card-body nchsm-action-grid">
-<button class="nchsm-action action-green" data-tab="hub-online-learning" type="button"><i class="fas fa-book-open"></i><span>My Learning Hub</span></button>
-<button class="nchsm-action action-blue" data-tab="attendance" type="button"><i class="fas fa-calendar-check"></i><span>Attendance</span></button>
-<button class="nchsm-action action-purple" data-tab="cats" type="button"><i class="fas fa-file-alt"></i><span>Exams &amp; Results</span></button>
-<button class="nchsm-action action-orange" data-tab="finance" type="button"><i class="fas fa-wallet"></i><span>My Finance</span></button>
-<button class="nchsm-action action-pink" data-tab="calendar" type="button"><i class="fas fa-calendar-alt"></i><span>Academic Calendar</span></button>
-<button class="nchsm-action action-teal" data-tab="messages" type="button"><i class="fas fa-comments"></i><span>Messages</span></button>
-<button class="nchsm-action action-indigo" data-tab="support-tickets" type="button"><i class="fas fa-headset"></i><span>Support Tickets</span></button>
-<button class="nchsm-action action-slate" data-tab="profile" type="button"><i class="fas fa-cog"></i><span>Profile Settings</span></button>
-<button class="nchsm-action action-report" data-tab="academic-reports" type="button"><i class="fas fa-chart-line"></i><span>Academic Reports</span></button>
-</div>
-</article>
-
-<!-- NEXT EXAM + ACADEMIC SNAPSHOT -->
-<section class="nchsm-exam-progress-grid">
 <article class="nchsm-card next-exam-card next-exam-widget" id="next-exam-widget">
 <div class="nchsm-card-head">
 <div class="nchsm-card-title">
@@ -1207,7 +1379,32 @@ html,body{max-width:100%;overflow-x:hidden!important}
 <div class="next-exam-body" id="next-exam-details">Loading...</div>
 <div class="next-exam-status" id="dashboard-exam-status">Loading...</div>
 </article>
+</section>
 
+<!-- QUICK ACTIONS -->
+<article class="nchsm-card quick-actions-card dashboard-full-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-bolt"></i>
+<div><h2>Quick Actions</h2><small>Access the most used portal features</small></div>
+</div>
+<button class="nchsm-view-btn" data-tab="hub-online-learning" type="button">View All <span>→</span></button>
+</div>
+<div class="nchsm-card-body nchsm-action-grid">
+<button class="nchsm-action action-green" data-tab="hub-online-learning" type="button"><i class="fas fa-book-open"></i><span>My Learning Hub</span></button>
+<button class="nchsm-action action-blue" data-tab="hub-online-learning" type="button"><i class="fas fa-file-upload"></i><span>Submit Assignment</span></button>
+<button class="nchsm-action action-report" data-tab="academic-reports" type="button"><i class="fas fa-chart-line"></i><span>Academic Reports</span></button>
+<button class="nchsm-action action-orange" data-tab="finance" type="button"><i class="fas fa-wallet"></i><span>Pay Fees</span></button>
+<button class="nchsm-action action-purple" data-tab="resources" type="button"><i class="fas fa-download"></i><span>Download Resources</span></button>
+<button class="nchsm-action action-teal" data-tab="messages" type="button"><i class="fas fa-user-tie"></i><span>Contact Lecturer</span></button>
+<span class="nchsm-action-compat" hidden></span>
+<span class="nchsm-action-compat" hidden></span>
+<span class="nchsm-action-compat" hidden></span>
+</div>
+</article>
+
+<!-- MY PROGRESS + DAILY STREAK + UPCOMING EVENTS -->
+<section class="nchsm-dashboard-bottom-grid">
 <article class="nchsm-card progress-card">
 <div class="nchsm-card-head">
 <div class="nchsm-card-title">
@@ -1237,8 +1434,7 @@ html,body{max-width:100%;overflow-x:hidden!important}
 </article>
 </section>
 
-<!-- DAILY STREAK + UPCOMING EVENTS + MY COURSES -->
-<section class="nchsm-bottom-grid">
+
 <article class="nchsm-card streak-card">
 <div class="nchsm-card-head">
 <div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-fire"></i><div><h2>Daily Streak</h2><small>Keep logging in to build your streak!</small></div></div>
@@ -1253,12 +1449,14 @@ html,body{max-width:100%;overflow-x:hidden!important}
 <span hidden="" id="light-1"></span><span hidden="" id="light-2"></span><span hidden="" id="light-3"></span><span hidden="" id="light-4"></span><span hidden="" id="light-5"></span>
 </div>
 </article>
-
 <article class="nchsm-card events-card">
 <div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-calendar-alt"></i><div><h2>Upcoming Events</h2><small>Your schedule and important dates</small></div></div><button class="nchsm-view-btn" data-tab="calendar" type="button">View All <span>→</span></button></div>
 <div class="nchsm-events"></div>
 </article>
+</section>
 
+<!-- MY COURSES -->
+<section class="nchsm-courses-full-grid">
 <article class="nchsm-card courses-card">
 <div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-layer-group"></i><div><h2>My Courses</h2><small>Currently enrolled units</small></div></div><button class="nchsm-view-btn" data-tab="hub-courses" type="button">View All <span>→</span></button></div>
 <div class="nchsm-courses"></div>
@@ -1271,7 +1469,6 @@ html,body{max-width:100%;overflow-x:hidden!important}
 <div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-trophy"></i><div><h2>Leaderboard</h2><small>Top performing students this term</small></div></div><button class="nchsm-view-btn" data-tab="dashboard" type="button">View Full Leaderboard <span>→</span></button></div>
 <div class="nchsm-leaderboard" id="leaderboard-container"><div class="leader-row leader-head"><span>#</span><span>Student Name</span><span>Points</span></div></div>
 </article>
-
 <!-- BRAND STRIP -->
 <section class="nchsm-brand-strip">
 <div class="brand-strip-left">
