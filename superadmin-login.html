@@ -1,0 +1,1091 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#062b46">
+<title>NCHSM | Super Administrator Login</title>
+<link rel="icon" type="image/png" href="images/Logo_NCHSM.png">
+
+<style>
+:root{
+  --navy:#062b46;
+  --navy2:#0a4266;
+  --blue:#087fc5;
+  --blue2:#13a1ee;
+  --gold:#ffb511;
+  --gold2:#ffc83d;
+  --ink:#103a58;
+  --muted:#627b8e;
+  --line:#a9c2d2;
+  --surface:#ffffff;
+  --soft:#edf7fc;
+  --page:#eaf4f9;
+  --danger:#b42318;
+  --shadow:0 24px 70px rgba(4,43,72,.22);
+}
+
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  margin:0;
+  min-height:100vh;
+  overflow-x:hidden;
+  overflow-y:auto;
+  font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;
+  color:var(--ink);
+  background:var(--page);
+}
+button,input{font:inherit}
+
+.page{
+  min-height:100vh;
+  display:grid;
+  grid-template-columns:minmax(0,1.08fr) minmax(420px,.72fr);
+}
+
+/* ---------- HERO ---------- */
+.hero{
+  position:relative;
+  min-height:100vh;
+  padding:34px 6vw 38px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  overflow:hidden;
+  color:#fff;
+  background:
+    linear-gradient(135deg,rgba(3,38,62,.90),rgba(4,87,124,.63)),
+    url("images/campus-header.jpg") center/cover no-repeat;
+}
+.hero:after{
+  content:"";
+  position:absolute;
+  inset:auto -10% -18% 15%;
+  height:42%;
+  background:radial-gradient(ellipse,rgba(255,181,17,.22),transparent 65%);
+  pointer-events:none;
+}
+.brand{
+  position:relative;
+  z-index:2;
+  display:flex;
+  align-items:center;
+  gap:16px;
+}
+.brand img{
+  width:92px;
+  height:92px;
+  object-fit:contain;
+  filter:drop-shadow(0 7px 14px rgba(0,0,0,.22));
+}
+.brand-copy h1{
+  margin:0;
+  font-size:clamp(22px,2.2vw,37px);
+  line-height:1.02;
+  font-weight:900;
+  letter-spacing:-.7px;
+}
+.brand-copy .gold{color:var(--gold)}
+.brand-copy p{
+  margin:8px 0 0;
+  font-size:14px;
+  font-style:italic;
+  opacity:.92;
+}
+
+.hero-main{
+  position:relative;
+  z-index:2;
+  max-width:760px;
+  margin-top:40px;
+}
+.admin-badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 13px;
+  border:1px solid rgba(255,255,255,.3);
+  border-radius:999px;
+  background:rgba(5,35,55,.36);
+  backdrop-filter:blur(12px);
+  font-size:12px;
+  font-weight:800;
+  letter-spacing:1px;
+  text-transform:uppercase;
+}
+.admin-badge svg{color:var(--gold)}
+.hero h2{
+  margin:20px 0 10px;
+  font-size:clamp(42px,5vw,76px);
+  line-height:.92;
+  letter-spacing:-3px;
+  font-weight:950;
+}
+.hero h2 span{color:var(--gold)}
+.hero-description{
+  max-width:650px;
+  margin:0;
+  font-size:18px;
+  line-height:1.55;
+  color:rgba(255,255,255,.9);
+}
+
+.admin-features{
+  display:grid;
+  grid-template-columns:repeat(3,minmax(0,1fr));
+  gap:12px;
+  margin-top:30px;
+}
+.feature{
+  padding:17px;
+  border:1px solid rgba(255,255,255,.2);
+  border-radius:17px;
+  background:rgba(4,47,74,.43);
+  backdrop-filter:blur(14px);
+  box-shadow:0 12px 30px rgba(0,0,0,.12);
+}
+.feature svg{width:22px;height:22px;color:var(--gold);margin-bottom:10px}
+.feature strong{display:block;font-size:13px;margin-bottom:5px}
+.feature small{display:block;line-height:1.4;color:rgba(255,255,255,.72)}
+
+.hero-footer{
+  position:relative;
+  z-index:2;
+  display:flex;
+  justify-content:space-between;
+  align-items:end;
+  gap:20px;
+  margin-top:30px;
+}
+.security-note{
+  display:flex;
+  align-items:center;
+  gap:9px;
+  font-size:12px;
+  color:rgba(255,255,255,.76);
+}
+.security-note svg{color:#7de2a8}
+.version{
+  font-size:11px;
+  opacity:.65;
+}
+
+/* ---------- LOGIN SIDE ---------- */
+.auth-side{
+  min-width:0;
+  min-height:100vh;
+  padding:22px clamp(18px,4vw,55px) 28px;
+  display:flex;
+  flex-direction:column;
+  background:var(--surface);
+}
+.topbar{
+  display:flex;
+  justify-content:flex-end;
+  align-items:center;
+  gap:9px;
+  min-height:48px;
+}
+.topbar a,.theme-btn{
+  border:0;
+  text-decoration:none;
+  color:var(--ink);
+  background:transparent;
+  padding:9px 11px;
+  border-radius:10px;
+  cursor:pointer;
+  font-weight:700;
+  font-size:12px;
+}
+.topbar a:hover,.theme-btn:hover{background:#edf6fb}
+.theme-btn{
+  display:flex;
+  align-items:center;
+  gap:7px;
+  background:var(--gold);
+  color:#17354b;
+}
+.auth-wrap{
+  width:100%;
+  max-width:500px;
+  margin:auto;
+}
+.login-card{
+  background:#fff;
+  border:1px solid #d4e1e9;
+  border-radius:28px;
+  padding:30px 34px 28px;
+  box-shadow:var(--shadow);
+}
+.logo-small{
+  width:76px;height:76px;
+  margin:0 auto 13px;
+}
+.logo-small img{width:100%;height:100%;object-fit:contain}
+.heading{text-align:center}
+.heading h3{
+  margin:0;
+  font-size:30px;
+  line-height:1.05;
+  letter-spacing:-1px;
+  color:#0a3553;
+}
+.heading h3 span{color:var(--gold)}
+.heading p{
+  margin:9px 0 0;
+  font-size:12px;
+  color:var(--muted);
+}
+.admin-warning{
+  margin:18px 0 20px;
+  padding:11px 13px;
+  display:flex;
+  align-items:flex-start;
+  gap:10px;
+  border:1px solid #f2d28a;
+  border-radius:12px;
+  background:#fff8e5;
+  color:#76520b;
+  font-size:11px;
+  line-height:1.45;
+}
+.admin-warning svg{flex:0 0 17px;color:#c98500}
+
+.form-group{margin-bottom:15px}
+label{
+  display:block;
+  margin-bottom:7px;
+  color:#234963;
+  font-size:12px;
+  font-weight:800;
+}
+.input-wrap{position:relative}
+.input-wrap>svg{
+  position:absolute;
+  left:14px;
+  top:50%;
+  transform:translateY(-50%);
+  width:18px;height:18px;
+  color:#668ba4;
+  pointer-events:none;
+}
+input[type="email"],input[type="password"],input[type="text"]{
+  width:100%;
+  height:51px;
+  border:1.5px solid #9db8ca;
+  border-radius:12px;
+  outline:none;
+  background:#fff;
+  color:#123b58;
+  padding:0 43px 0 43px;
+  font-size:14px;
+  transition:.2s ease;
+}
+input:focus{
+  border-color:#087fc5;
+  box-shadow:0 0 0 4px rgba(8,127,197,.12);
+}
+.password-toggle{
+  position:absolute;
+  right:8px;top:50%;
+  transform:translateY(-50%);
+  border:0;background:transparent;
+  width:35px;height:35px;
+  cursor:pointer;color:#67879b;
+}
+.form-row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin:3px 0 16px;
+  font-size:11px;
+}
+.remember{display:flex;align-items:center;gap:7px;color:#527087}
+.remember input{accent-color:#087fc5}
+.forgot{color:#087fc5;text-decoration:none;font-weight:800}
+.signin{
+  width:100%;
+  height:52px;
+  border:0;
+  border-radius:12px;
+  cursor:pointer;
+  color:#fff;
+  font-weight:900;
+  font-size:15px;
+  background:linear-gradient(135deg,#075486,#0b8bcf);
+  box-shadow:0 12px 24px rgba(8,112,171,.22);
+  transition:.2s ease;
+}
+.signin:hover{transform:translateY(-1px);filter:brightness(1.05)}
+.signin:disabled{opacity:.65;cursor:not-allowed;transform:none}
+
+.divider{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:20px 0 12px;
+  color:#56728a;
+  font-size:10px;
+  font-weight:700;
+}
+.divider:before,.divider:after{
+  content:"";
+  height:1px;
+  flex:1;
+  background:#9db4c3;
+}
+.sso{
+  display:grid;
+  grid-template-columns:repeat(3,1fr);
+  gap:8px;
+}
+.sso button{
+  height:43px;
+  border:1.5px solid #9db8ca;
+  border-radius:11px;
+  background:#fff;
+  color:#163d59;
+  cursor:pointer;
+  font-size:11px;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+.sso button:hover{background:#f3faff;border-color:#087fc5}
+.sso svg{width:17px;height:17px}
+
+.superadmin-tools{
+  margin-top:15px;
+  display:grid;
+  grid-template-columns:1fr 1fr;
+  gap:8px;
+}
+.tool-btn{
+  min-height:42px;
+  border:1px solid #9db8ca;
+  border-radius:11px;
+  background:#f7fbfd;
+  color:#214a63;
+  cursor:pointer;
+  font-size:11px;
+  font-weight:800;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  gap:7px;
+}
+.tool-btn:hover{border-color:#087fc5;background:#eef9ff}
+
+.card-footer{
+  margin-top:22px;
+  padding-top:17px;
+  border-top:1px solid #d4e1e9;
+  text-align:center;
+  color:#607c90;
+  font-size:9px;
+  line-height:1.6;
+}
+.card-footer a{color:#087fc5;text-decoration:none;margin:0 5px}
+
+.auth-footer{
+  text-align:center;
+  margin-top:16px;
+  color:#718899;
+  font-size:9px;
+}
+
+/* ---------- DARK ---------- */
+[data-theme="dark"]{
+  --surface:#08253b;
+  --page:#041a2b;
+  --ink:#e8f5ff;
+  --muted:#a8c3d3;
+}
+[data-theme="dark"] body{background:#041a2b;color:#e8f5ff}
+[data-theme="dark"] .auth-side{background:#061f33}
+[data-theme="dark"] .topbar a,[data-theme="dark"] .theme-btn{color:#e8f5ff}
+[data-theme="dark"] .topbar a:hover{background:#0d3049}
+[data-theme="dark"] .login-card{
+  background:#082b44;
+  border-color:#31566d;
+  box-shadow:0 25px 70px rgba(0,0,0,.42);
+}
+[data-theme="dark"] .heading h3{color:#fff}
+[data-theme="dark"] .heading p{color:#a8c3d3}
+[data-theme="dark"] .admin-warning{
+  background:#3a2d0d;
+  border-color:#735d23;
+  color:#ffe3a0;
+}
+[data-theme="dark"] label{color:#cde2ef}
+[data-theme="dark"] input[type="email"],
+[data-theme="dark"] input[type="password"],
+[data-theme="dark"] input[type="text"]{
+  background:#0b3450;
+  border-color:#52748a;
+  color:#eef9ff;
+}
+[data-theme="dark"] input::placeholder{color:#7f9caf}
+[data-theme="dark"] .input-wrap>svg{color:#8fb0c3}
+[data-theme="dark"] .password-toggle{color:#9bb9ca}
+[data-theme="dark"] .remember{color:#a9c3d2}
+[data-theme="dark"] .forgot{color:#51b9fa}
+[data-theme="dark"] .divider{color:#a9c5d6}
+[data-theme="dark"] .divider:before,
+[data-theme="dark"] .divider:after{background:#527184}
+[data-theme="dark"] .sso button,
+[data-theme="dark"] .tool-btn{
+  background:#0b3450;
+  color:#eaf7ff;
+  border-color:#52748a;
+}
+[data-theme="dark"] .sso button:hover,
+[data-theme="dark"] .tool-btn:hover{background:#10415f;border-color:#18a0ec}
+[data-theme="dark"] .card-footer{border-color:#31566d;color:#a7c0cf}
+[data-theme="dark"] .auth-footer{color:#8faabc}
+[data-theme="dark"] .card-footer a{color:#54bcfa}
+
+/* ---------- RESPONSIVE ---------- */
+@media(max-width:1000px){
+  .page{grid-template-columns:1fr}
+  .hero{min-height:440px;padding:25px 6vw 28px}
+  .auth-side{min-height:auto;padding:0 18px 28px}
+  .topbar{margin-bottom:8px}
+  .auth-wrap{margin:0 auto}
+}
+@media(max-width:600px){
+  .hero{
+    min-height:285px;
+    padding:17px 18px 24px;
+  }
+  .brand{gap:9px}
+  .brand img{width:53px;height:53px}
+  .brand-copy h1{font-size:11px;letter-spacing:0}
+  .brand-copy p{display:none}
+  .hero-main{margin-top:25px}
+  .admin-badge{font-size:8px;padding:6px 9px}
+  .hero h2{
+    margin:11px 0 6px;
+    font-size:38px;
+    letter-spacing:-1.8px;
+  }
+  .hero-description{font-size:10px;line-height:1.4;max-width:310px}
+  .admin-features{display:none}
+  .hero-footer{margin-top:20px}
+  .security-note{font-size:9px}
+  .version{font-size:8px}
+  .auth-side{padding:0 12px 20px}
+  .topbar{
+    justify-content:flex-end;
+    min-height:44px;
+  }
+  .topbar a{display:none}
+  .theme-btn{font-size:10px;padding:8px 11px}
+  .auth-wrap{margin-top:-14px;position:relative;z-index:3}
+  .login-card{
+    padding:20px 15px 17px;
+    border-radius:21px;
+  }
+  .logo-small{width:62px;height:62px;margin-bottom:8px}
+  .heading h3{font-size:24px}
+  .heading p{font-size:9px}
+  .admin-warning{font-size:9px;margin:13px 0 15px;padding:9px}
+  label{font-size:10px}
+  input[type="email"],input[type="password"],input[type="text"]{
+    height:47px;font-size:12px;
+  }
+  .form-row{font-size:9px}
+  .signin{height:48px;font-size:13px}
+  .divider{margin:15px 0 9px;font-size:8px}
+  .sso button{height:40px;font-size:8px}
+  .superadmin-tools{display:none}
+  .card-footer{margin-top:15px;padding-top:13px}
+  .auth-footer{font-size:8px}
+}
+@media(max-width:390px){
+  .hero{min-height:260px}
+  .hero h2{font-size:33px}
+  .hero-description{font-size:9px}
+  .login-card{padding:17px 13px}
+}
+
+.twofa-panel{
+  display:none;
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  align-items:center;
+  justify-content:center;
+  padding:20px;
+  background:rgba(3,24,39,.62);
+  backdrop-filter:blur(8px);
+}
+.twofa-panel.active{display:flex}
+.twofa-box{
+  width:min(420px,100%);
+  padding:28px;
+  border-radius:22px;
+  background:#fff;
+  border:1px solid #c9dce8;
+  box-shadow:0 30px 90px rgba(0,0,0,.3);
+  text-align:center;
+}
+.twofa-icon{
+  width:54px;height:54px;margin:0 auto 12px;
+  display:grid;place-items:center;
+  border-radius:50%;
+  background:#eaf6fc;color:#087fc5;
+}
+.twofa-icon svg{width:25px;height:25px}
+.twofa-box h4{margin:0;color:#103a58;font-size:22px}
+.twofa-box p{margin:7px 0 16px;color:#607c90;font-size:11px}
+.twofa-box input{
+  width:100%;
+  height:52px;
+  margin-bottom:10px;
+  padding:0 15px;
+  text-align:center;
+  letter-spacing:7px;
+  font-size:20px;
+  font-weight:800;
+  border:1.5px solid #9db8ca;
+  border-radius:12px;
+  outline:none;
+  color:#123b58;
+  background:#fff;
+}
+.twofa-box .tool-btn{width:100%;margin-top:8px}
+[data-theme="dark"] .twofa-box{background:#082b44;border-color:#31566d}
+[data-theme="dark"] .twofa-box h4{color:#fff}
+[data-theme="dark"] .twofa-box p{color:#a8c3d3}
+[data-theme="dark"] .twofa-icon{background:#103d5a;color:#62c4fa}
+[data-theme="dark"] .twofa-box input{background:#0b3450;color:#fff;border-color:#52748a}
+
+</style>
+</head>
+
+<body>
+<div class="page">
+
+  <section class="hero">
+    <div class="brand">
+      <img src="images/Logo_NCHSM.png" alt="NCHSM Logo">
+      <div class="brand-copy">
+        <h1>NAKURU COLLEGE OF <span class="gold">HEALTH SCIENCES</span><br>AND MANAGEMENT</h1>
+        <p>"Excellence in Healthcare Education Since 1978"</p>
+      </div>
+    </div>
+
+    <div class="hero-main">
+      <div class="admin-badge">
+        <i data-lucide="shield-check"></i>
+        Restricted Administration Area
+      </div>
+      <h2>Super <span>Administrator</span><br>Portal</h2>
+      <p class="hero-description">
+        Secure administrative access for authorized NCHSM system administrators,
+        institutional management and platform operations.
+      </p>
+
+      <div class="admin-features">
+        <div class="feature">
+          <i data-lucide="database"></i>
+          <strong>System Management</strong>
+          <small>Manage portal services, configurations and institutional data.</small>
+        </div>
+        <div class="feature">
+          <i data-lucide="users"></i>
+          <strong>User Administration</strong>
+          <small>Control accounts, permissions, roles and access.</small>
+        </div>
+        <div class="feature">
+          <i data-lucide="activity"></i>
+          <strong>Audit & Monitoring</strong>
+          <small>Review system activity and administrative events.</small>
+        </div>
+      </div>
+    </div>
+
+    <div class="hero-footer">
+      <div class="security-note">
+        <i data-lucide="lock-keyhole"></i>
+        Protected administrative environment
+      </div>
+      <div class="version">NCHSM Digital Portal • Admin Console</div>
+    </div>
+  </section>
+
+  <section class="auth-side">
+    <nav class="topbar" aria-label="Portal navigation">
+      <a href="index.html"><i data-lucide="home"></i> Main Site</a>
+      <a href="support.html"><i data-lucide="circle-help"></i> Support</a>
+      <button class="theme-btn" id="themeToggle" type="button">
+        <i data-lucide="moon" id="themeIcon"></i>
+        <span id="themeLabel">Dark</span>
+      </button>
+    </nav>
+
+    <main class="auth-wrap">
+      <div class="login-card">
+
+        <div class="logo-small">
+          <img src="images/Logo_NCHSM.png" alt="NCHSM">
+        </div>
+
+        <div class="heading">
+          <h3>Super <span>Administrator</span> 🔐</h3>
+          <p>Sign in to access the NCHSM administration console</p>
+        </div>
+
+        <div class="admin-warning">
+          <i data-lucide="triangle-alert"></i>
+          <span><strong>Authorized personnel only.</strong> Administrative activity may be logged and audited for security purposes.</span>
+        </div>
+
+        <form id="superAdminLoginForm" autocomplete="on" novalidate>
+
+          <div class="form-group">
+            <label for="adminEmail">Administrator Email</label>
+            <div class="input-wrap">
+              <i data-lucide="mail"></i>
+              <input
+                id="adminEmail"
+                name="email"
+                type="email"
+                placeholder="administrator@nchsm.ac.ke"
+                autocomplete="username"
+                required>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="adminPassword">Password</label>
+            <div class="input-wrap">
+              <i data-lucide="lock"></i>
+              <input
+                id="adminPassword"
+                name="password"
+                type="password"
+                placeholder="Enter administrator password"
+                autocomplete="current-password"
+                minlength="8"
+                required>
+              <button class="password-toggle" id="passwordToggle" type="button" aria-label="Show password">
+                <i data-lucide="eye" id="passwordIcon"></i>
+              </button>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label class="remember">
+              <input type="checkbox" id="rememberAdmin">
+              <span>Keep me signed in</span>
+            </label>
+            <a class="forgot" href="forgot-password.html">Forgot Password?</a>
+          </div>
+
+          <button class="signin" id="superAdminLoginButton" type="submit">
+            Sign In to Admin Console <span aria-hidden="true">→</span>
+          </button>
+
+          <div class="divider"><span>secure access options</span></div>
+
+          <div class="sso" aria-label="Single sign-on options">
+            <button type="button" id="googleAdminSignIn">
+              <i data-lucide="chrome"></i> Google
+            </button>
+            <button type="button" id="microsoftAdminSignIn">
+              <i data-lucide="grid-2x2"></i> Microsoft
+            </button>
+            <button type="button" id="appleAdminSignIn">
+              <i data-lucide="apple"></i> Apple
+            </button>
+          </div>
+
+          <div class="superadmin-tools">
+            <button class="tool-btn" type="button" id="twoFactorBtn">
+              <i data-lucide="shield-check"></i> 2FA Security
+            </button>
+            <button class="tool-btn" type="button" id="securityHelpBtn">
+              <i data-lucide="life-buoy"></i> Security Help
+            </button>
+          </div>
+
+          <div id="loginMessage" role="alert" aria-live="polite" style="display:none;margin-top:12px;padding:10px;border-radius:10px;font-size:11px;"></div>
+        </form>
+
+        <div class="card-footer">
+          <div>© 2026 Nakuru College of Health Sciences and Management</div>
+          <div>
+            <a href="privacy.html">Privacy</a> |
+            <a href="terms.html">Terms</a> |
+            <a href="contact.html">Contact</a>
+          </div>
+        </div>
+      </div>
+
+      <div class="auth-footer">
+        <i data-lucide="shield"></i> NCHSM Super Administrator Portal
+      </div>
+    </main>
+  </section>
+</div>
+
+<!-- Icons + Supabase -->
+<script src="https://unpkg.com/lucide@latest"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/otplib@12.0.1/dist/otplib-browser.js"></script>
+
+<script>
+/*
+============================================================
+NCHSM SUPER ADMIN AUTHENTICATION
+============================================================
+Adapted from the supplied NCHSM Secure Login System v5.1.
+
+Important finding from the supplied login script:
+- It DOES contain the role redirect "superadmin -> superadmin.html".
+- It does NOT contain a dedicated Super Admin authentication
+  function or a Super Admin-specific credential check.
+- The existing staff verifier maps non-Lecturer staff to "staff",
+  not "superadmin".
+
+Therefore this page uses the same Supabase/profile authentication
+pattern already used by the supplied system, then explicitly
+requires profile.role to be "superadmin" or "admin".
+============================================================
+*/
+
+(function () {
+  "use strict";
+
+  const SUPABASE_URL = "https://lwhtjozfsmbyihenfunw.supabase.co";
+  const SUPABASE_ANON_KEY =
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk";
+
+  const supabase = window.supabase.createClient(
+    SUPABASE_URL,
+    SUPABASE_ANON_KEY,
+    {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: false
+      },
+      db: { schema: "public" }
+    }
+  );
+
+  const $ = (id) => document.getElementById(id);
+
+  function icons() {
+    if (window.lucide) lucide.createIcons();
+  }
+
+  function theme(themeName) {
+    document.documentElement.setAttribute("data-theme", themeName);
+    localStorage.setItem("nchsm_theme", themeName);
+    const label = $("themeLabel");
+    if (label) label.textContent = themeName === "dark" ? "Light" : "Dark";
+    icons();
+  }
+
+  function initTheme() {
+    const saved = localStorage.getItem("nchsm_theme") || "light";
+    theme(saved);
+    $("themeToggle")?.addEventListener("click", () => {
+      theme(document.documentElement.getAttribute("data-theme") === "dark" ? "light" : "dark");
+    });
+  }
+
+  function showMessage(text, type = "error") {
+    const el = $("loginMessage");
+    if (!el) return;
+    el.textContent = text;
+    el.style.display = "block";
+
+    const dark = document.documentElement.getAttribute("data-theme") === "dark";
+    if (type === "success") {
+      el.style.background = dark ? "#123d2b" : "#effbf4";
+      el.style.color = dark ? "#9de0ba" : "#176b3a";
+      el.style.border = "1px solid #9ed2b4";
+    } else {
+      el.style.background = dark ? "#421f22" : "#fff1f0";
+      el.style.color = dark ? "#ffb4ae" : "#9f2017";
+      el.style.border = "1px solid " + (dark ? "#7d3833" : "#f2b8b2");
+    }
+  }
+
+  function clearMessage() {
+    const el = $("loginMessage");
+    if (el) el.style.display = "none";
+  }
+
+  function setBusy(busy) {
+    const btn = $("superAdminLoginButton");
+    if (!btn) return;
+    btn.disabled = busy;
+    btn.innerHTML = busy
+      ? "Authenticating Securely…"
+      : 'Sign In to Admin Console <span aria-hidden="true">→</span>';
+  }
+
+  async function fetchProfile(email) {
+    const { data, error } = await supabase
+      .from("consolidated_user_profiles_table")
+      .select(
+        "user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified"
+      )
+      .eq("email", email)
+      .maybeSingle();
+
+    if (error) throw new Error("Unable to load administrator profile.");
+    if (!data) throw new Error("Administrator profile was not found.");
+    return data;
+  }
+
+  async function saveAdminSession(profile) {
+    const sessionToken = Array.from(crypto.getRandomValues(new Uint8Array(32)))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+
+    localStorage.setItem("userProfile", JSON.stringify({
+      user_id: profile.user_id,
+      email: profile.email,
+      full_name: profile.full_name || "Administrator",
+      role: String(profile.role || "").toLowerCase(),
+      program: profile.program || profile.department || "",
+      staff_id: profile.staff_id || null,
+      is_staff: true,
+      two_factor_enabled: !!profile.two_factor_enabled,
+      two_factor_verified: !!profile.two_factor_verified,
+      auth_provider: "password"
+    }));
+
+    localStorage.setItem("currentUserId", profile.user_id);
+    localStorage.setItem("userEmail", profile.email);
+
+    try {
+      const { data } = await supabase
+        .from("user_sessions")
+        .insert({
+          user_id: profile.user_id,
+          session_token: sessionToken,
+          user_agent: navigator.userAgent || "Unknown",
+          login_time: new Date().toISOString(),
+          last_activity: new Date().toISOString(),
+          expires_at: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
+          is_active: true,
+          login_type: "staff",
+          created_at: new Date().toISOString()
+        })
+        .select()
+        .maybeSingle();
+
+      if (data?.id) localStorage.setItem("session_id", data.id);
+    } catch (e) {
+      console.warn("Session audit record could not be created.");
+    }
+  }
+
+  async function completeAdminLogin(profile) {
+    await saveAdminSession(profile);
+    showMessage("Authentication successful. Opening Super Admin Console…", "success");
+
+    setTimeout(() => {
+      window.location.replace("superadmin.html");
+    }, 500);
+  }
+
+  async function handleLogin(event) {
+    event.preventDefault();
+    clearMessage();
+
+    const email = $("adminEmail").value.trim().toLowerCase();
+    const password = $("adminPassword").value;
+
+    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      showMessage("Enter a valid administrator email address.");
+      $("adminEmail").focus();
+      return;
+    }
+
+    if (!password || password.length < 8) {
+      showMessage("Administrator password must contain at least 8 characters.");
+      $("adminPassword").focus();
+      return;
+    }
+
+    setBusy(true);
+
+    try {
+      /*
+       * Use Supabase Auth for the administrator credential check.
+       * The password is never stored or compared in this page.
+       */
+      const { data: authData, error: authError } =
+        await supabase.auth.signInWithPassword({ email, password });
+
+      if (authError || !authData?.user) {
+        throw new Error("Invalid administrator email or password.");
+      }
+
+      const profile = await fetchProfile(email);
+      const role = String(profile.role || "").trim().toLowerCase();
+      const status = String(profile.status || "").trim().toLowerCase();
+
+      /*
+       * Explicit authorization gate:
+       * successful Supabase authentication alone is NOT enough.
+       */
+      if (!["superadmin", "admin"].includes(role)) {
+        await supabase.auth.signOut();
+        throw new Error("This account is not authorized for the Super Admin Portal.");
+      }
+
+      if (!["approved", "active"].includes(status)) {
+        await supabase.auth.signOut();
+        throw new Error("Administrator account is not active.");
+      }
+
+      /*
+       * If the account has 2FA enabled, stop before creating the
+       * final application session and require the verification step.
+       */
+      if (profile.two_factor_enabled && profile.two_factor_secret) {
+        sessionStorage.setItem("superadmin_pending_profile", JSON.stringify(profile));
+        $("twoFactorPanel")?.classList.add("active");
+        $("adminPassword").value = "";
+        showMessage("Two-factor authentication is required to continue.", "success");
+        setBusy(false);
+        return;
+      }
+
+      await completeAdminLogin(profile);
+
+    } catch (error) {
+      console.error("Super Admin login failed:", error);
+      try { await supabase.auth.signOut(); } catch (_) {}
+      showMessage(error.message || "Super Admin login failed. Please try again.");
+      setBusy(false);
+    }
+  }
+
+  function togglePassword() {
+    const input = $("adminPassword");
+    const button = $("passwordToggle");
+    if (!input) return;
+
+    const visible = input.type === "text";
+    input.type = visible ? "password" : "text";
+    button?.setAttribute("aria-label", visible ? "Show password" : "Hide password");
+    icons();
+  }
+
+  function initTwoFactor() {
+    const panel = $("twoFactorPanel");
+    const verify = $("verifySuperAdmin2FA");
+    const cancel = $("cancelSuperAdmin2FA");
+
+    if (!panel) return;
+
+    verify?.addEventListener("click", async () => {
+      const code = $("superAdminOTP")?.value.trim() || "";
+      if (!/^\d{6}$/.test(code)) {
+        showMessage("Enter the 6-digit authentication code.");
+        return;
+      }
+
+      const pending = JSON.parse(sessionStorage.getItem("superadmin_pending_profile") || "null");
+      if (!pending?.two_factor_secret) {
+        showMessage("The administrator authentication session has expired.");
+        return;
+      }
+
+      let valid = false;
+
+      /*
+       * Prefer otplib when available. A small format check is NOT
+       * treated as successful TOTP verification.
+       */
+      if (window.otplib?.authenticator) {
+        valid = window.otplib.authenticator.check(code, pending.two_factor_secret);
+      } else {
+        showMessage("Two-factor verification service is unavailable. Please refresh and try again.");
+        return;
+      }
+
+      if (!valid) {
+        showMessage("Invalid authentication code. Please try again.");
+        return;
+      }
+
+      await completeAdminLogin(pending);
+      sessionStorage.removeItem("superadmin_pending_profile");
+      panel.classList.remove("active");
+    });
+
+    cancel?.addEventListener("click", async () => {
+      sessionStorage.removeItem("superadmin_pending_profile");
+      panel.classList.remove("active");
+      try { await supabase.auth.signOut(); } catch (_) {}
+      clearMessage();
+      setBusy(false);
+    });
+  }
+
+  function init() {
+    initTheme();
+    $("superAdminLoginForm")?.addEventListener("submit", handleLogin);
+    $("passwordToggle")?.addEventListener("click", togglePassword);
+    initTwoFactor();
+    icons();
+
+    /*
+     * Do not redirect based only on localStorage. Verify the actual
+     * Supabase session and role before allowing an existing session
+     * into the Super Admin console.
+     */
+    supabase.auth.getSession().then(async ({ data }) => {
+      if (!data?.session?.user?.email) return;
+
+      try {
+        const profile = await fetchProfile(data.session.user.email);
+        const role = String(profile.role || "").toLowerCase();
+
+        if (["superadmin", "admin"].includes(role) &&
+            ["approved", "active"].includes(String(profile.status || "").toLowerCase())) {
+          showMessage("Active administrator session found. Opening console…", "success");
+          setTimeout(() => window.location.replace("superadmin.html"), 500);
+        }
+      } catch (_) {}
+    });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
+})();
+</script>
+
+
+<div id="twoFactorPanel" class="twofa-panel" aria-live="polite">
+  <div class="twofa-box">
+    <div class="twofa-icon"><i data-lucide="shield-check"></i></div>
+    <h4>Two-Factor Authentication</h4>
+    <p>Enter the 6-digit code from your authenticator app.</p>
+    <input id="superAdminOTP" inputmode="numeric" maxlength="6" autocomplete="one-time-code" placeholder="000000">
+    <button id="verifySuperAdmin2FA" class="signin" type="button">Verify & Continue →</button>
+    <button id="cancelSuperAdmin2FA" class="tool-btn" type="button">Cancel</button>
+  </div>
+</div>
+
+</body>
+</html>
