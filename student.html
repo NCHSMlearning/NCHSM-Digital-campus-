@@ -8355,4 +8355,54 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   });
 })();
 </script></body>
+
+<style id="nchsm-final-reference-lock">
+/* FINAL VISUAL LOCK — keeps the desktop dashboard close to the supplied reference image. */
+@media (min-width: 901px){
+  #dashboard .nchsm-metrics{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:10px!important}
+  #dashboard .nchsm-action-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important}
+  #dashboard .nchsm-class-exam-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important}
+  #dashboard .nchsm-dashboard-bottom-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:10px!important}
+  #dashboard .nchsm-courses-full-grid .nchsm-courses{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:8px!important}
+  #dashboard .nchsm-leaderboard{grid-template-columns:repeat(5,minmax(0,1fr))!important;gap:8px!important}
+}
+/* Compact reference proportions */
+#dashboard .nchsm-card-head{padding:0 12px!important}
+#dashboard .nchsm-card-title h2{font-size:15px!important;line-height:1.1!important}
+#dashboard .nchsm-card-title small{font-size:9px!important;line-height:1.15!important}
+#dashboard .nchsm-view-btn{font-size:9px!important;border-radius:999px!important;padding:6px 10px!important}
+#dashboard .quick-actions-card .nchsm-card-head{height:45px!important;min-height:45px!important}
+#dashboard .nchsm-action{height:70px!important;min-height:70px!important;padding:8px 5px!important}
+#dashboard .nchsm-action i{font-size:18px!important;margin-bottom:4px!important}
+#dashboard .nchsm-action span{font-size:9px!important;font-weight:700!important}
+#dashboard .nchsm-dashboard-bottom-grid>.nchsm-card{height:170px!important;min-height:170px!important}
+#dashboard .nchsm-dashboard-bottom-grid .nchsm-card-head{height:45px!important;min-height:45px!important}
+#dashboard .nchsm-progress-grid{padding:6px!important}
+#dashboard .nchsm-ring{width:72px!important;height:72px!important}
+#dashboard .nchsm-courses-full-grid>.courses-card{height:142px!important;min-height:142px!important}
+#dashboard .nchsm-courses-full-grid .course-row{height:78px!important;min-height:78px!important}
+#dashboard .leaderboard-card .nchsm-card-head{height:48px!important;min-height:48px!important}
+#dashboard .nchsm-leaderboard .leader-row:not(.leader-head){min-height:58px!important}
+#dashboard .nchsm-brand-strip{height:62px!important;min-height:62px!important}
+/* Keep the two feature cards visually equal, with illustrations on the right. */
+#dashboard .nchsm-class-exam-grid>.next-class-card,
+#dashboard .nchsm-class-exam-grid>.next-exam-card{height:178px!important;min-height:178px!important}
+#dashboard .next-class-illustration{right:4px!important;bottom:0!important;width:128px!important;height:104px!important}
+#dashboard .next-exam-illustration{right:5px!important;bottom:0!important;width:122px!important;height:106px!important}
+#dashboard .next-exam-body{padding-right:135px!important}
+@media(max-width:900px) and (min-width:641px){
+  #dashboard .nchsm-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #dashboard .nchsm-action-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #dashboard .nchsm-class-exam-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #dashboard .nchsm-dashboard-bottom-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #dashboard .nchsm-courses-full-grid .nchsm-courses{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #dashboard .nchsm-leaderboard{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:640px){
+  #dashboard .nchsm-metrics,#dashboard .nchsm-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #dashboard .nchsm-class-exam-grid,#dashboard .nchsm-dashboard-bottom-grid{grid-template-columns:1fr!important}
+  #dashboard .nchsm-courses-full-grid .nchsm-courses,#dashboard .nchsm-leaderboard{grid-template-columns:1fr!important}
+}
+</style>
+
 </html>
