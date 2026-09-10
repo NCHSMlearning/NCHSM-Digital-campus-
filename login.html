@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -197,6 +196,221 @@ body:before{display:none!important}
   [data-theme="dark"] .right-panel,[data-theme="dark"] .main-content,[data-theme="dark"] .footer{background:#061f35!important}[data-theme="dark"] .top-controls{background:rgba(7,30,50,.92)!important}[data-theme="dark"] .top-controls a{color:#dcecf7!important}
 }
 @media(max-width:420px){.left-panel{min-height:520px!important}.panel-content{min-height:520px!important}.features-list{display:none!important}.left-panel .welcome-section{margin-bottom:18px!important}.left-panel .welcome-section>h2{font-size:29px!important}.stats{margin-top:15px!important}.login-card{margin-top:-18px!important}.sso-options{gap:5px!important}}
+
+
+/* ==========================================================
+   FINAL NCHSM RESPONSIVE LAYOUT — PAGE SCROLL, NO INNER SCROLL
+   ========================================================== */
+html,body{overflow-x:hidden!important;overflow-y:auto!important}
+body{min-width:320px!important}
+.container{
+  position:relative!important;
+  width:100%!important;
+  min-height:100vh!important;
+  height:auto!important;
+  overflow:visible!important;
+  display:block!important;
+}
+.left-panel{
+  position:absolute!important;
+  inset:0!important;
+  width:56%!important;
+  min-height:100%!important;
+  height:100%!important;
+  overflow:hidden!important;
+  background-position:center center!important;
+}
+.panel-content{
+  width:100%!important;
+  min-height:100vh!important;
+  height:auto!important;
+  padding:30px clamp(34px,4vw,68px) 32px!important;
+  max-width:none!important;
+}
+.logo-wrapper{max-width:690px!important}
+.logo-wrapper .logo{flex-shrink:0!important}
+.logo-wrapper .college-name{max-width:510px!important}
+.motto{white-space:nowrap!important}
+.left-panel .welcome-section{
+  width:100%!important;
+  max-width:700px!important;
+  margin-top:auto!important;
+  margin-bottom:22px!important;
+}
+.hero-kicker{
+  display:block!important;
+  color:#fff!important;
+  font-size:clamp(14px,1.15vw,20px)!important;
+  font-weight:800!important;
+  letter-spacing:.01em!important;
+  margin:0 0 4px!important;
+}
+.left-panel .welcome-section>h2{
+  font-size:0!important;
+  width:100%!important;
+  overflow:visible!important;
+  margin:0!important;
+}
+.left-panel .welcome-section>h2 span{
+  display:block!important;
+  font-size:clamp(40px,4vw,66px)!important;
+  line-height:.94!important;
+  white-space:nowrap!important;
+}
+.left-panel .welcome-section>h2 strong{
+  display:block!important;
+  font-size:clamp(47px,5vw,80px)!important;
+  line-height:.93!important;
+  white-space:nowrap!important;
+}
+.left-panel .tagline{
+  max-width:590px!important;
+  margin:16px 0 22px!important;
+  font-size:clamp(16px,1.35vw,21px)!important;
+  line-height:1.3!important;
+}
+.features-list{
+  width:100%!important;
+  max-width:690px!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  gap:12px!important;
+  margin-top:0!important;
+}
+.feature{min-width:0!important}
+.feature h3,.feature p{max-width:100%!important}
+.stats{
+  width:100%!important;
+  max-width:690px!important;
+  margin-top:18px!important;
+  grid-template-columns:repeat(4,minmax(0,1fr))!important;
+}
+.stat{min-width:0!important}
+.hero-signature{max-width:690px!important;margin-top:22px!important}
+.right-panel{
+  position:relative!important;
+  z-index:10!important;
+  top:auto!important;
+  right:auto!important;
+  margin-left:56%!important;
+  width:44%!important;
+  min-width:0!important;
+  height:auto!important;
+  min-height:100vh!important;
+  display:flex!important;
+  flex-direction:column!important;
+  background:transparent!important;
+}
+.top-controls{
+  position:relative!important;
+  top:auto!important;
+  right:auto!important;
+  width:100%!important;
+  height:78px!important;
+  flex:0 0 78px!important;
+  padding:0 clamp(22px,3vw,48px)!important;
+  justify-content:flex-end!important;
+  background:transparent!important;
+  z-index:30!important;
+}
+.main-content{
+  flex:0 0 auto!important;
+  width:100%!important;
+  min-height:0!important;
+  padding:16px clamp(22px,3vw,48px) 28px!important;
+  display:flex!important;
+  align-items:flex-start!important;
+  justify-content:center!important;
+  overflow:visible!important;
+}
+.login-card{
+  width:100%!important;
+  max-width:540px!important;
+  max-height:none!important;
+  height:auto!important;
+  overflow:visible!important;
+  scrollbar-width:auto!important;
+  margin:0 auto!important;
+  padding:24px 28px 20px!important;
+}
+.login-card::-webkit-scrollbar{display:none!important}
+.login-card>.welcome-section{margin-bottom:14px!important}
+.footer{
+  position:relative!important;
+  width:100%!important;
+  padding:4px 24px 22px!important;
+  background:transparent!important;
+}
+.footer-content{max-width:540px!important;margin:0 auto!important}
+
+/* Keep the hero readable and centered on medium desktops. */
+@media (max-width:1250px) and (min-width:821px){
+  .left-panel{width:55%!important}
+  .right-panel{margin-left:55%!important;width:45%!important}
+  .panel-content{padding-left:34px!important;padding-right:34px!important}
+  .logo-wrapper .logo{width:82px!important;height:82px!important;flex-basis:82px!important}
+  .logo-wrapper .college-name{font-size:clamp(18px,2vw,27px)!important}
+  .left-panel .welcome-section>h2 span{font-size:clamp(35px,3.8vw,54px)!important}
+  .left-panel .welcome-section>h2 strong{font-size:clamp(41px,4.4vw,63px)!important}
+  .feature{padding:14px 9px!important;min-height:132px!important}
+  .feature h3{font-size:12px!important}
+  .feature p{font-size:9px!important}
+  .stat .number{font-size:18px!important}
+}
+
+/* Tablet/mobile becomes one natural document flow. */
+@media (max-width:820px){
+  .container{display:block!important;min-height:0!important}
+  .left-panel{
+    position:relative!important;
+    inset:auto!important;
+    width:100%!important;
+    height:auto!important;
+    min-height:0!important;
+    background-position:center top!important;
+  }
+  .panel-content{
+    min-height:0!important;
+    height:auto!important;
+    padding:22px 20px 26px!important;
+  }
+  .logo-wrapper{max-width:100%!important}
+  .motto{white-space:normal!important}
+  .left-panel .welcome-section{margin-top:120px!important;margin-bottom:14px!important}
+  .hero-kicker{font-size:12px!important}
+  .left-panel .welcome-section>h2 span{font-size:clamp(34px,9vw,48px)!important}
+  .left-panel .welcome-section>h2 strong{font-size:clamp(41px,11vw,57px)!important}
+  .left-panel .tagline{font-size:13px!important;margin:10px 0 14px!important}
+  .features-list{grid-template-columns:repeat(2,minmax(0,1fr))!important;max-width:none!important}
+  .stats{max-width:none!important}
+  .right-panel{
+    margin-left:0!important;
+    width:100%!important;
+    min-height:0!important;
+    background:#eef6fb!important;
+  }
+  .top-controls{height:54px!important;flex-basis:54px!important;padding:0 17px!important}
+  .main-content{padding:0 14px 20px!important}
+  .login-card{max-width:none!important;margin:-22px auto 0!important;padding:20px 16px 16px!important}
+  .footer{padding:0 15px 18px!important;background:#eef6fb!important}
+  [data-theme="dark"] .right-panel,[data-theme="dark"] .footer{background:#061f35!important}
+}
+@media (max-width:520px){
+  .left-panel .welcome-section{margin-top:100px!important}
+  .features-list{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  .feature{min-height:100px!important}
+  .stats{grid-template-columns:repeat(2,minmax(0,1fr))!important;row-gap:12px!important}
+  .stat:nth-child(2){border-right:0!important}
+  .stat:nth-child(3){padding-left:0!important}
+  .hero-signature{font-size:15px!important}
+}
+@media (max-width:390px){
+  .features-list{display:none!important}
+  .left-panel .welcome-section{margin-top:110px!important}
+  .stats{margin-top:16px!important}
+  .logo-wrapper .college-name{font-size:11px!important}
+  .logo-wrapper .logo{width:54px!important;height:54px!important;flex-basis:54px!important}
+}
+
 </style>
 </head>
 <body>
