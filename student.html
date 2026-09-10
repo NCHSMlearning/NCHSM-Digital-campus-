@@ -1133,6 +1133,13 @@ html,body{max-width:100%;overflow-x:hidden!important}
 <div class="nchsm-metric-sub">All activities</div>
 </div>
 </div>
+<div class="nchsm-metric metric-finance" id="dashboard-finance-metric">
+<div class="nchsm-metric-icon"><i aria-hidden="true" class="fas fa-wallet"></i></div>
+<div class="nchsm-metric-body">
+<div class="nchsm-metric-label">Finance: <strong id="dashboard-finance-balance-display">--</strong></div>
+<div class="nchsm-metric-sub"><span id="dashboard-finance-status-display">Loading...</span></div>
+</div>
+</div>
 </section>
 <!-- ANNOUNCEMENT -->
 <section aria-label="Official announcement" class="nchsm-announcement">
@@ -1143,6 +1150,28 @@ html,body{max-width:100%;overflow-x:hidden!important}
 </div>
 <span aria-hidden="true" class="nchsm-announcement-arrow">›</span>
 </section>
+<!-- NEXT CLASS -->
+<article class="nchsm-card next-class-card" id="quick-next-class">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-chalkboard-teacher"></i>
+<div><h2>Next Class</h2><small>Your upcoming scheduled class</small></div>
+</div>
+<button class="nchsm-view-btn" data-tab="calendar" type="button">View Calendar <span>→</span></button>
+</div>
+<div class="nchsm-next-class-body">
+<div class="next-class-time" id="quick-next-class-time">--:--</div>
+<div class="next-class-main">
+<strong id="quick-next-class-name">Loading...</strong>
+<span id="quick-next-class-code">--</span>
+</div>
+<div class="next-class-details">
+<span><i class="fas fa-user-tie"></i> <b>Lecturer:</b> <span id="quick-next-class-lecturer">--</span></span>
+<span><i class="fas fa-map-marker-alt"></i> <b>Venue:</b> <span id="quick-next-class-venue">--</span></span>
+<span id="quick-next-class-day-container"><i class="fas fa-calendar-day"></i> <b>Day:</b> <span id="quick-next-class-day">--</span></span>
+</div>
+</div>
+</article>
 <!-- TOP THREE COLUMNS -->
 <section class="nchsm-top-grid">
 <!-- QUICK ACTIONS -->
@@ -1167,6 +1196,64 @@ html,body{max-width:100%;overflow-x:hidden!important}
 </div>
 </article>
 <!-- MY PROGRESS -->
+
+</section>
+<!-- BOTTOM THREE COLUMNS -->
+<section class="nchsm-bottom-grid">
+<!-- DAILY STREAK -->
+<article class="nchsm-card streak-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-fire"></i>
+<div><h2>Daily Streak</h2><small>Keep logging in to build your streak!</small></div>
+</div>
+<div class="nchsm-days-pill">🔥 <span id="daily-streak-display">--</span> days</div>
+</div>
+<div class="nchsm-streak-body">
+<div class="nchsm-milestones">
+<span class="streak-milestone active" data-day="1">🔥 1</span>
+<span class="streak-milestone" data-day="3">♨ 3</span>
+<span class="streak-milestone" data-day="7">♨ 7</span>
+<span class="streak-milestone" data-day="14">💧 14</span>
+<span class="streak-milestone" data-day="30">👑 30</span>
+</div>
+<div class="nchsm-streak-line"><span id="streak-progress-fill"></span></div>
+<button class="nchsm-start-streak" id="streak-restore-btn" type="button">🔄 Start Streak</button>
+<span class="nchsm-streak-status" id="streak-status-text">Keep logging in to build your streak!</span>
+<span hidden="" id="streak-emoji">🔥</span>
+<span hidden="" id="streak-message">Keep logging in to build your streak!</span>
+<span hidden="" id="light-1"></span><span hidden="" id="light-2"></span><span hidden="" id="light-3"></span><span hidden="" id="light-4"></span><span hidden="" id="light-5"></span>
+</div>
+</article>
+<!-- EVENTS -->
+<article class="nchsm-card events-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-calendar-alt"></i>
+<div><h2>Upcoming Events</h2><small>Your schedule and important dates</small></div>
+</div>
+<button class="nchsm-view-btn" data-tab="calendar" type="button">View All <span>→</span></button>
+</div>
+<div class="nchsm-events"></div>
+</article>
+<!-- COURSES -->
+<article class="nchsm-card courses-card">
+<div class="nchsm-card-head">
+<div class="nchsm-card-title">
+<i aria-hidden="true" class="fas fa-layer-group"></i>
+<div><h2>My Courses</h2><small>Currently enrolled units</small></div>
+</div>
+<button class="nchsm-view-btn" data-tab="hub-courses" type="button">View All <span>→</span></button>
+</div>
+<div class="nchsm-courses"></div>
+<div class="nchsm-course-hooks" hidden="">
+<span id="dashboard-active-courses">--</span>
+<span id="dashboard-approved-units">--</span>
+<span id="dashboard-new-resources">--</span>
+<span id="dashboard-exam-status">Loading...</span>
+</div>
+</article>
+</section>
 <article class="nchsm-card progress-card">
 <div class="nchsm-card-head">
 <div class="nchsm-card-title">
@@ -1231,69 +1318,7 @@ html,body{max-width:100%;overflow-x:hidden!important}
 <div class="leader-row leader-head"><span>#</span><span>Student Name</span><span>Points</span></div>
 </div>
 </article>
-</section>
-<!-- BOTTOM THREE COLUMNS -->
-<section class="nchsm-bottom-grid">
-<!-- DAILY STREAK -->
-<article class="nchsm-card streak-card">
-<div class="nchsm-card-head">
-<div class="nchsm-card-title">
-<i aria-hidden="true" class="fas fa-fire"></i>
-<div><h2>Daily Streak</h2><small>Keep logging in to build your streak!</small></div>
-</div>
-<div class="nchsm-days-pill">🔥 <span id="daily-streak-display">--</span> days</div>
-</div>
-<div class="nchsm-streak-body">
-<div class="nchsm-milestones">
-<span class="streak-milestone active" data-day="1">🔥 1</span>
-<span class="streak-milestone" data-day="3">♨ 3</span>
-<span class="streak-milestone" data-day="7">♨ 7</span>
-<span class="streak-milestone" data-day="14">💧 14</span>
-<span class="streak-milestone" data-day="30">👑 30</span>
-</div>
-<div class="nchsm-streak-line"><span id="streak-progress-fill"></span></div>
-<button class="nchsm-start-streak" id="streak-restore-btn" type="button">🔄 Start Streak</button>
-<span class="nchsm-streak-status" id="streak-status-text">Keep logging in to build your streak!</span>
-<span hidden="" id="streak-emoji">🔥</span>
-<span hidden="" id="streak-message">Keep logging in to build your streak!</span>
-<span hidden="" id="light-1"></span><span hidden="" id="light-2"></span><span hidden="" id="light-3"></span><span hidden="" id="light-4"></span><span hidden="" id="light-5"></span>
-</div>
-</article>
-<!-- EVENTS -->
-<article class="nchsm-card events-card">
-<div class="nchsm-card-head">
-<div class="nchsm-card-title">
-<i aria-hidden="true" class="fas fa-calendar-alt"></i>
-<div><h2>Upcoming Events</h2><small>Your schedule and important dates</small></div>
-</div>
-<button class="nchsm-view-btn" data-tab="calendar" type="button">View All <span>→</span></button>
-</div>
-<div class="nchsm-events"></div>
-<div hidden="" id="quick-next-class">
-<span id="quick-next-class-time">--:--</span><span id="quick-next-class-name">--</span>
-<span id="quick-next-class-code">--</span><span id="quick-next-class-lecturer">--</span>
-<span id="quick-next-class-venue">--</span><span id="quick-next-class-day">--</span>
-<span id="quick-next-class-day-container"></span>
-</div>
-</article>
-<!-- COURSES -->
-<article class="nchsm-card courses-card">
-<div class="nchsm-card-head">
-<div class="nchsm-card-title">
-<i aria-hidden="true" class="fas fa-layer-group"></i>
-<div><h2>My Courses</h2><small>Currently enrolled units</small></div>
-</div>
-<button class="nchsm-view-btn" data-tab="hub-courses" type="button">View All <span>→</span></button>
-</div>
-<div class="nchsm-courses"></div>
-<div class="nchsm-course-hooks" hidden="">
-<span id="dashboard-active-courses">--</span>
-<span id="dashboard-approved-units">--</span>
-<span id="dashboard-new-resources">--</span>
-<span id="dashboard-exam-status">Loading...</span>
-</div>
-</article>
-</section>
+
 <!-- BRAND STRIP -->
 <section class="nchsm-brand-strip">
 <div class="brand-strip-left">
@@ -1336,6 +1361,39 @@ html,body{max-width:100%;overflow-x:hidden!important}
 </div>
 </section>
 
+<script>
+(function(){
+  function syncFinanceMetric(){
+    var src=document.getElementById('dashboard-finance-balance');
+    var status=document.getElementById('dashboard-finance-status');
+    var out=document.getElementById('dashboard-finance-balance-display');
+    var sout=document.getElementById('dashboard-finance-status-display');
+    if(out && src) out.textContent = src.textContent || '--';
+    if(sout && status) sout.textContent = status.textContent || 'Loading...';
+  }
+  syncFinanceMetric();
+  setInterval(syncFinanceMetric, 1000);
+})();
+</script>
+<style id="nchsm-dashboard-final-layout">
+.nchsm-metrics{grid-template-columns:repeat(6,minmax(0,1fr))}
+.metric-finance{border-color:#b9d7f5}.metric-finance .nchsm-metric-icon{background:#e6f3ff;color:#087bf0}
+.next-class-card{margin-top:12px;border-color:#b9d7f5;box-shadow:0 4px 14px rgba(25,63,97,.08)}
+.next-class-card .nchsm-card-title>i{color:#087bf0}
+.nchsm-next-class-body{display:grid;grid-template-columns:150px 1.2fr 1.5fr;align-items:center;gap:18px;padding:14px 16px;background:linear-gradient(90deg,#f5faff,#fff)}
+.next-class-time{font-size:28px;font-weight:900;color:#087bf0;line-height:1}
+.next-class-main{display:flex;flex-direction:column;gap:5px;min-width:0}
+.next-class-main strong{font-size:18px;color:#152743;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.next-class-main span{font-size:11px;font-weight:800;color:#66809e}
+.next-class-details{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#526d89}
+.next-class-details span{display:block}
+.next-class-details i{width:16px;color:#087bf0}
+.next-class-details b{color:#294661}
+#leaderboard-card{margin-top:12px;grid-column:auto}
+@media(max-width:1100px){.nchsm-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
+@media(max-width:900px){.nchsm-metrics{grid-template-columns:repeat(2,1fr)}.nchsm-next-class-body{grid-template-columns:1fr 1.5fr}.next-class-details{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr)}}
+@media(max-width:640px){.nchsm-metrics{grid-template-columns:1fr 1fr}.nchsm-next-class-body{grid-template-columns:1fr;gap:10px}.next-class-time{font-size:25px}.next-class-details{grid-template-columns:1fr;gap:6px}.next-class-main strong{font-size:16px}}
+</style>
 <!-- END DASHBOARD SECTION -->
 <!-- ========== STYLES ========== -->
 <style>
