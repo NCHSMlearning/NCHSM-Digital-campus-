@@ -1,3 +1,4 @@
+
 <!DOCTYPE html> 
 <html lang="en"> 
 <head>  
@@ -476,6 +477,374 @@
         }
     }
 </style>
+
+<style id="nchsm-careful-redesign">
+/* ============================================================
+   NCHSM SUPER ADMIN — CAREFUL VISUAL REDESIGN
+   Visual layer only: preserves existing IDs, JS hooks and data.
+   ============================================================ */
+
+:root {
+    --nchsm-navy: #0b1f3a;
+    --nchsm-navy-2: #12345a;
+    --nchsm-blue: #2563eb;
+    --nchsm-blue-soft: #eff6ff;
+    --nchsm-gold: #fdb913;
+    --nchsm-green: #059669;
+    --nchsm-red: #dc2626;
+    --nchsm-bg: #f5f7fb;
+    --nchsm-card: #ffffff;
+    --nchsm-text: #14213d;
+    --nchsm-muted: #64748b;
+    --nchsm-border: #e6eaf0;
+    --nchsm-shadow: 0 8px 30px rgba(15, 23, 42, .06);
+    --nchsm-shadow-hover: 0 14px 40px rgba(15, 23, 42, .10);
+    --nchsm-radius: 16px;
+}
+
+/* ---------- PAGE SHELL ---------- */
+html, body {
+    width: 100%;
+    min-height: 100%;
+}
+
+body {
+    background: var(--nchsm-bg) !important;
+    color: var(--nchsm-text);
+    overflow-x: hidden;
+}
+
+.container {
+    width: 100% !important;
+    max-width: none !important;
+    min-height: 100vh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+}
+
+/* ---------- SIDEBAR ---------- */
+.sidebar,
+#sidebar {
+    width: 270px !important;
+    max-width: 270px !important;
+    box-sizing: border-box !important;
+    background: linear-gradient(180deg, #071b35 0%, #0d2c50 58%, #123c66 100%);
+    box-shadow: 6px 0 28px rgba(7, 27, 53, .16) !important;
+    border-right: 1px solid rgba(255,255,255,.08) !important;
+}
+
+.sidebar-header {
+    padding-bottom: 18px !important;
+    margin-bottom: 14px !important;
+}
+
+.sidebar-header img {
+    width: 46px !important;
+    height: 46px !important;
+    border-radius: 12px !important;
+}
+
+.sidebar-header h2 {
+    letter-spacing: -.2px;
+}
+
+.sidebar .nav {
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.20) transparent;
+}
+
+.sidebar .nav::-webkit-scrollbar {
+    width: 5px;
+}
+
+.sidebar .nav::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.sidebar .nav::-webkit-scrollbar-thumb {
+    background: rgba(255,255,255,.20);
+    border-radius: 20px;
+}
+
+.sidebar .nav a {
+    transition: background .18s ease, transform .18s ease, border-color .18s ease !important;
+}
+
+.sidebar .nav a:hover {
+    transform: translateX(2px);
+}
+
+.sidebar .nav a.active {
+    box-shadow: 0 5px 18px rgba(37,99,235,.20);
+}
+
+/* Keep the existing theme picker, but make it quieter. */
+#sidebar > div:nth-of-type(2) {
+    opacity: .92;
+}
+
+/* ---------- MAIN CONTENT ---------- */
+.main {
+    margin-left: 270px !important;
+    width: calc(100% - 270px) !important;
+    max-width: none !important;
+    min-height: 100vh !important;
+    box-sizing: border-box !important;
+    padding: 24px 28px 40px !important;
+    background:
+        radial-gradient(circle at 85% 0%, rgba(37,99,235,.055), transparent 30%),
+        var(--nchsm-bg) !important;
+}
+
+/* ---------- TOP HEADER ---------- */
+.main > header {
+    max-width: 100% !important;
+    margin: 0 0 18px !important;
+    padding: 0 2px !important;
+}
+
+.main > header h1 {
+    font-size: clamp(22px, 2vw, 30px) !important;
+    line-height: 1.15 !important;
+    margin: 0 0 5px !important;
+    letter-spacing: -.6px !important;
+}
+
+.main > header .subtitle {
+    font-size: 13px !important;
+    color: var(--nchsm-muted) !important;
+}
+
+.main > header .header-right {
+    gap: 14px !important;
+}
+
+/* ---------- TABS: ONE SECTION AT A TIME ---------- */
+.tab-content {
+    display: none;
+    width: 100% !important;
+    max-width: none !important;
+    box-sizing: border-box !important;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+/* ---------- DASHBOARD ---------- */
+#dashboard {
+    width: 100% !important;
+    max-width: none !important;
+}
+
+/* Dashboard command center becomes a compact responsive toolbar. */
+#dashboard > div:first-of-type {
+    border-radius: 18px !important;
+    padding: 16px 20px !important;
+    margin-bottom: 16px !important;
+    min-height: 0 !important;
+}
+
+/* Welcome strip */
+#student-welcome-message {
+    border-radius: 14px !important;
+    padding: 12px 16px !important;
+    margin-bottom: 16px !important;
+}
+
+/* Metric rows: preserve their contents and IDs, improve the grid. */
+#dashboard > div[style*="grid-template-columns"] {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 14px !important;
+    margin-bottom: 16px !important;
+}
+
+/* Existing dashboard cards */
+#dashboard .dashboard-card {
+    min-width: 0 !important;
+    border-radius: 15px !important;
+    padding: 17px 18px !important;
+    box-shadow: var(--nchsm-shadow) !important;
+}
+
+#dashboard .dashboard-card:hover {
+    box-shadow: var(--nchsm-shadow-hover) !important;
+}
+
+/* Keep numbers prominent without making cards oversized. */
+#dashboard .dashboard-card .data {
+    font-size: 28px !important;
+    line-height: 1.1 !important;
+}
+
+/* Charts / lower dashboard panels */
+#dashboard canvas {
+    max-width: 100% !important;
+}
+
+/* ---------- COMMON CARDS / PANELS ---------- */
+.card,
+.health-card,
+.analytics-card,
+.task-item {
+    border: 1px solid var(--nchsm-border) !important;
+    box-shadow: var(--nchsm-shadow) !important;
+    border-radius: var(--nchsm-radius) !important;
+}
+
+.card:hover {
+    box-shadow: var(--nchsm-shadow-hover) !important;
+}
+
+/* ---------- TABLES ---------- */
+.table-responsive {
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+table {
+    border: 1px solid var(--nchsm-border);
+    box-shadow: 0 3px 15px rgba(15,23,42,.04);
+}
+
+th {
+    color: #334155;
+    font-size: 12px;
+    letter-spacing: .15px;
+}
+
+td {
+    font-size: 13px;
+}
+
+tbody tr {
+    transition: background .15s ease;
+}
+
+tbody tr:hover {
+    background: #f8fafc;
+}
+
+/* ---------- FORMS ---------- */
+input,
+select,
+textarea {
+    box-sizing: border-box;
+}
+
+input:focus,
+select:focus,
+textarea:focus {
+    outline: none;
+    border-color: rgba(37,99,235,.55) !important;
+    box-shadow: 0 0 0 3px rgba(37,99,235,.10) !important;
+}
+
+/* ---------- BUTTONS ---------- */
+button {
+    transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
+}
+
+button:hover:not(:disabled) {
+    filter: brightness(1.015);
+}
+
+button:active:not(:disabled) {
+    transform: translateY(0) !important;
+}
+
+/* ---------- MODALS ---------- */
+.modal {
+    backdrop-filter: blur(5px);
+}
+
+.modal-content {
+    border: 1px solid rgba(226,232,240,.9);
+    box-shadow: 0 25px 80px rgba(15,23,42,.22);
+}
+
+/* ---------- BADGES ---------- */
+.badge,
+[id*="Badge"] {
+    line-height: 1.35;
+}
+
+/* ---------- TOAST ---------- */
+#toast-container {
+    max-width: min(420px, calc(100vw - 30px));
+}
+
+/* ---------- MOBILE / TABLET ---------- */
+@media (max-width: 1100px) {
+    .main {
+        padding: 20px !important;
+    }
+
+    #dashboard > div[style*="grid-template-columns"] {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .sidebar,
+    #sidebar {
+        width: 270px !important;
+        max-width: 270px !important;
+    }
+
+    .main {
+        width: 100% !important;
+        margin-left: 0 !important;
+        padding: 70px 14px 28px !important;
+    }
+
+    .main > header {
+        margin-bottom: 14px !important;
+    }
+
+    .main > header > div {
+        align-items: flex-start !important;
+    }
+
+    #dashboard > div[style*="grid-template-columns"] {
+        grid-template-columns: 1fr !important;
+    }
+
+    #dashboard > div:first-of-type {
+        padding: 15px !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .main {
+        padding-left: 10px !important;
+        padding-right: 10px !important;
+    }
+
+    #dashboard .dashboard-card {
+        padding: 15px !important;
+    }
+
+    .header-right {
+        width: 100%;
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+}
+
+/* ---------- REDUCED MOTION ---------- */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: .01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: .01ms !important;
+    }
+}
+</style>
+
 </head>
 <body>
     <div class="container">
@@ -673,7 +1042,7 @@
     style="
         display: none;
         position: absolute;
-        top: 100%;  <!-- THIS IS THE KEY FIX - puts it below the input -->
+        top: 100%;
         left: 0;
         right: 0;
         background: white;
@@ -6089,7 +6458,7 @@
 <!-- ============================================================ -->
 <!-- 🎓 GRADUATION & CERTIFICATE MANAGEMENT WITH AUTO-GENERATION  -->
 <!-- ============================================================ -->
-<section id="certificate-management" class="tab-content" style="display: none; padding: 0 4px;">
+<section id="certificate-management" class="tab-content" style="padding: 0 4px;">
     
     <!-- Header -->
     <div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 20px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 8px 40px rgba(10,61,98,0.25);">
@@ -13217,7 +13586,7 @@
                         <!-- ============================================================ -->
 <!-- 🧑‍💼 SUPER ADMIN PROFILE PAGE                                  -->
 <!-- ============================================================ -->
-<section id="profile" class="tab-content" style="padding: 0 4px; display: none;">
+<section id="profile" class="tab-content" style="padding: 0 4px;">
     
     <!-- ===== HEADER ===== -->
     <div style="
@@ -14904,7 +15273,6 @@ function resetSidebarColor() {
 
 console.log('✅ Sidebar color functions loaded');
 </script>
-</script>
 <!-- ============================================ -->
 <!-- SEARCH FUNCTION - ADD TO YOUR PAGE           -->
 <!-- ============================================ -->
@@ -15167,5 +15535,25 @@ console.log('✅ Search function loaded successfully!');
         console.log('✅ All modules initialized!');
     });
 </script>
+
+<script id="nchsm-careful-tab-safety">
+document.addEventListener('DOMContentLoaded', function () {
+    /* Ensure the initial screen contains only the intended active tab.
+       Existing showTab() remains responsible for all subsequent navigation. */
+    const tabs = document.querySelectorAll('.tab-content');
+    const active = document.querySelector('.tab-content.active') || document.getElementById('dashboard');
+
+    tabs.forEach(function (tab) {
+        tab.classList.remove('active');
+        tab.style.display = 'none';
+    });
+
+    if (active) {
+        active.classList.add('active');
+        active.style.display = 'block';
+    }
+});
+</script>
+
 </body>
 </html>
