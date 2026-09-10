@@ -706,6 +706,12 @@ class DashboardModule {
         this.userId = userId;
         this.userProfile = userProfile;
         this.cacheKey = `dashboard_${this.userId}`;
+
+        const displayName = userProfile?.full_name || 'Student';
+        ['header-user-name','sidebarUserName'].forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = displayName;
+        });
         
         if (!userId || !userProfile) return false;
         
@@ -1331,11 +1337,42 @@ class DashboardModule {
             if (error) throw error;
             
             // ✅ Store total points from RPC
-            this.metrics.totalPoints = data?.total_points || 0;
+            this.metrics.totalPoints = Number(data?.total_points ?? 0);
             this.totalPoints = this.metrics.totalPoints;
+
+            // If the RPC omits point fields, recover them from the student's profile.
+            // This does not fabricate values; it only reads the existing profile totals.
+            try {
+                const { data: profilePoints } = await this.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('login_count, gamification_points, total_points, nurseiq_points, full_name')
+                    .eq('user_id', this.userId)
+                    .maybeSingle();
+                if (profilePoints) {
+                    if (!this.metrics.totalPoints && profilePoints.total_points != null) {
+                        this.metrics.totalPoints = Number(profilePoints.total_points) || 0;
+                        this.totalPoints = this.metrics.totalPoints;
+                    }
+                    if (!this.gamificationPoints && profilePoints.gamification_points != null) {
+                        this.gamificationPoints = Number(profilePoints.gamification_points) || 0;
+                    }
+                    if (!this.nurseIQPoints && profilePoints.nurseiq_points != null) {
+                        this.nurseIQPoints = Number(profilePoints.nurseiq_points) || 0;
+                    }
+                    if ((!data?.login?.count || !data?.login?.points) && profilePoints.login_count != null) {
+                        const count = Number(profilePoints.login_count) || 0;
+                        this.metrics.login = { ...(this.metrics.login || {}), count, points: count * 10 };
+                    }
+                    if (profilePoints.full_name && this.userProfile) {
+                        this.userProfile.full_name = this.userProfile.full_name || profilePoints.full_name;
+                    }
+                }
+            } catch (profilePointError) {
+                console.warn('Profile point fallback unavailable:', profilePointError);
+            }
             
             // ✅ Store gamification data
-            this.gamificationPoints = data?.gamification?.points || 0;
+            this.gamificationPoints = Number(data?.gamification?.points ?? this.gamificationPoints ?? 0);
             this.metrics.gamification = {
                 points: this.gamificationPoints,
                 achievements: data?.gamification?.badges || []
@@ -1368,7 +1405,7 @@ class DashboardModule {
                 score: data?.nurseiq?.score || 0,
                 accuracy: data?.nurseiq?.accuracy || 0,
                 progress: data?.nurseiq?.progress || 0,
-                points: data?.nurseiq?.points || 0
+                points: Number(data?.nurseiq?.points ?? this.nurseIQPoints ?? 0)
             };
             
             // Store NurseIQ points separately for easy access
@@ -2087,10 +2124,10 @@ class DashboardModule {
         try {
             const { data: users, error } = await this.sb
                 .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, login_count, gamification_points, total_points, earned_badges')
+                .select('id, full_name, login_count, gamification_points, total_points, earned_badges')
                 .eq('role', 'student')
                 .order('total_points', { ascending: false })
-                .limit(5);
+                .limit(10);
 
             if (error) throw error;
 
@@ -2105,7 +2142,7 @@ class DashboardModule {
             users.forEach((user, index) => {
                 const rank = index + 1;
                 const points = Number(user.total_points ?? 0);
-                const current = String(user.user_id) === String(this.userId);
+                const current = String(user.id) === String(this.userId) || String(user.user_id ?? '') === String(this.userId);
 
                 const row = document.createElement('div');
                 row.className = `leader-row${current ? ' leader-current' : ''}`;
@@ -2133,7 +2170,7 @@ class DashboardModule {
 
             this.metrics.leaderboard = users.map((u, i) => ({
                 rank: i + 1,
-                userId: u.user_id,
+                userId: u.id,
                 name: u.full_name || 'Student',
                 points: Number(u.total_points ?? 0)
             }));
@@ -2152,51 +2189,67 @@ class DashboardModule {
 
     async loadDashboardCourses() {
         const container = this.elements?.dashboardCourses || document.querySelector('.nchsm-courses');
-        if (!container) return;
+        if (!container || !this.sb || !this.userId) return;
 
         try {
             let courses = [];
 
-            if (window.db && typeof window.db.getCourses === 'function') {
-                const result = await window.db.getCourses();
-                if (Array.isArray(result)) courses = result;
+            // The dashboard card is "Currently enrolled units", so read the student's
+            // actual registrations first. No demo/static course names are inserted.
+            const { data: registrations, error: regError } = await this.sb
+                .from('student_unit_registrations')
+                .select('unit_code, unit_name, status, block, created_at, submitted_date')
+                .eq('student_id', this.userId)
+                .order('created_at', { ascending: false });
+
+            if (!regError && Array.isArray(registrations)) {
+                courses = registrations
+                    .filter(r => !r.status || ['approved','active','registered','pending'].includes(String(r.status).toLowerCase()))
+                    .map(r => ({
+                        code: r.unit_code || '',
+                        name: r.unit_name || ''
+                    }))
+                    .filter(c => c.code || c.name);
             }
 
-            const normalized = courses.map(course => ({
-                code: course.code || course.course_code || course.unit_code || course.unitCode || '',
-                name: course.name || course.course_name || course.title || course.unit_name || course.unitName || ''
-            })).filter(c => c.code || c.name).slice(0, 4);
+            // Fall back to the existing database module if registrations are unavailable.
+            if (!courses.length && window.db && typeof window.db.getCourses === 'function') {
+                const result = await window.db.getCourses();
+                if (Array.isArray(result)) {
+                    courses = result.map(course => ({
+                        code: course.unit_code || course.course_code || course.code || '',
+                        name: course.unit_name || course.course_name || course.name || course.title || ''
+                    })).filter(c => c.code || c.name);
+                }
+            }
 
+            const normalized = courses.slice(0, 4);
             container.innerHTML = '';
 
             if (!normalized.length) {
-                container.innerHTML =
-                    '<div class="course-row"><span class="course-code code-blue">—</span><strong>No enrolled units</strong><i class="fas fa-chevron-right" aria-hidden="true"></i></div>';
+                container.innerHTML = '<div class="course-row"><span class="course-code code-blue">—</span><strong>No enrolled units</strong><i class="fas fa-chevron-right" aria-hidden="true"></i></div>';
                 return;
             }
 
             const codeClasses = ['code-blue', 'code-green', 'code-purple', 'code-orange'];
-
             normalized.forEach((course, index) => {
                 const row = document.createElement('div');
                 row.className = 'course-row';
-
                 const code = document.createElement('span');
                 code.className = `course-code ${codeClasses[index % codeClasses.length]}`;
                 code.textContent = course.code || 'UNIT';
-
                 const name = document.createElement('strong');
-                name.textContent = course.name || 'Unit';
-
+                name.textContent = course.name || course.code || 'Unit';
                 const icon = document.createElement('i');
                 icon.className = 'fas fa-chevron-right';
                 icon.setAttribute('aria-hidden', 'true');
-
                 row.append(code, name, icon);
+                row.addEventListener('click', () => this.navigateTo('hub-courses'));
                 container.appendChild(row);
             });
         } catch (error) {
             console.error('Dashboard courses error:', error);
+            container.innerHTML = '<div class="course-row"><span class="course-code code-blue">—</span><strong>Unable to load units</strong><i class="fas fa-exclamation-circle" aria-hidden="true"></i></div>';
         }
     }
 
@@ -2290,6 +2343,7 @@ class DashboardModule {
             });
         } catch (error) {
             console.error('Dashboard events error:', error);
+            container.innerHTML = '<div class="nchsm-event"><div class="event-date"><b>DATE</b><strong>—</strong></div><div class="event-info"><strong>Unable to load events</strong><span>Open the Academic Calendar for details.</span></div></div>';
         }
     }
 
