@@ -1,7 +1,6 @@
-<br>
--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
 <!DOCTYPE html>
-<br>
+
 <html lang="en">
 <head>
 <meta charset="utf-8"/>
@@ -23,67 +22,67 @@
 <link href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf_viewer.min.css" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
-<script src="https://nchsm.co.ke/config.js"></script>
+<script src="./config.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/otplib@12.0.1/otplib.min.js"></script>
 <!-- Fonts & Icons -->
-<link href="https://fonts.googleapis.com/css2?family=Inter\:wght@300;400;500;600;700;800\&display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&amp;display=swap" rel="stylesheet"/>
 <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet"/>
-<link href="https://nchsm.co.ke/css/dashboard.css" rel="stylesheet"/>
-<link href="https://nchsm.co.ke/css/main.css" rel="stylesheet"/>
+<link href="css/dashboard.css" rel="stylesheet"/>
+<link href="css/main.css" rel="stylesheet"/>
 <!-- ===== HTML-ONLY UI ENHANCEMENTS =====
          Keeps the existing portal architecture and old CSS compatible. ===== -->
 <style id="nchsm-html-enhancements">
-        .nchsm-skip-link{position\:fixed;left:12px;top:8px;z-index:100000;padding:10px 14px;border-radius:8px;background:#0A3D62;color:#fff;text-decoration\:none;transform\:translateY(-150%);transition\:transform .2s ease;font-weight:700}
-        .nchsm-skip-link\:focus{transform\:translateY(0)}
-        .sidebar-premium.sidebar{z-index:1001;box-sizing\:border-box;display\:flex;flex-direction\:column;overflow\:hidden}
-        .sidebar-premium .sidebar-nav-premium{flex:1;min-height:0;overflow-y\:auto;overflow-x\:hidden;scrollbar-width\:thin}
-        .sidebar-premium .sidebar-nav-premium a{transition\:background-color .18s ease,color .18s ease,transform .18s ease}
-        .sidebar-premium .sidebar-nav-premium a\:hover{transform\:translateX(2px)}
+        .nchsm-skip-link{position:fixed;left:12px;top:8px;z-index:100000;padding:10px 14px;border-radius:8px;background:#0A3D62;color:#fff;text-decoration:none;transform:translateY(-150%);transition:transform .2s ease;font-weight:700}
+        .nchsm-skip-link:focus{transform:translateY(0)}
+        .sidebar-premium.sidebar{z-index:1001;box-sizing:border-box;display:flex;flex-direction:column;overflow:hidden}
+        .sidebar-premium .sidebar-nav-premium{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;scrollbar-width:thin}
+        .sidebar-premium .sidebar-nav-premium a{transition:background-color .18s ease,color .18s ease,transform .18s ease}
+        .sidebar-premium .sidebar-nav-premium a:hover{transform:translateX(2px)}
         .sidebar-premium .sidebar-footer-premium{flex-shrink:0}
-        .nchsm-mobile-close{display\:none;position\:absolute;right:10px;top:10px;width:36px;height:36px;border:0;border-radius:9px;background\:rgba(255,255,255,.12);color:#fff;cursor\:pointer;z-index:5}
-        .nchsm-mobile-close\:focus-visible,.mobile-menu-toggle\:focus-visible,.sidebar-premium a\:focus-visible,.sidebar-premium button\:focus-visible{outline:3px solid rgba(253,185,19,.75);outline-offset:2px}
+        .nchsm-mobile-close{display:none;position:absolute;right:10px;top:10px;width:36px;height:36px;border:0;border-radius:9px;background:rgba(255,255,255,.12);color:#fff;cursor:pointer;z-index:5}
+        .nchsm-mobile-close:focus-visible,.mobile-menu-toggle:focus-visible,.sidebar-premium a:focus-visible,.sidebar-premium button:focus-visible{outline:3px solid rgba(253,185,19,.75);outline-offset:2px}
         @media (max-width:1023px){
-            .sidebar-premium.sidebar{position\:fixed;left:0;top:60px;bottom:0;width\:min(85vw,320px);height\:calc(100vh - 60px);transform\:translateX(-105%);transition\:transform .25s ease;box-shadow:8px 0 30px rgba(15,23,42,.18)}
-            .sidebar-premium.sidebar.active{transform\:translateX(0)}
-            .nchsm-mobile-close{display\:block}
-            body.nchsm-nav-open{overflow\:hidden}
+            .sidebar-premium.sidebar{position:fixed;left:0;top:60px;bottom:0;width:min(85vw,320px);height:calc(100vh - 60px);transform:translateX(-105%);transition:transform .25s ease;box-shadow:8px 0 30px rgba(15,23,42,.18)}
+            .sidebar-premium.sidebar.active{transform:translateX(0)}
+            .nchsm-mobile-close{display:block}
+            body.nchsm-nav-open{overflow:hidden}
             #overlay{z-index:1000}
-            #overlay.active{display\:block}
+            #overlay.active{display:block}
             .main{width:100%;margin-left:0}
         }
         @media (min-width:1024px){
-            .sidebar-premium.sidebar{position\:fixed;left:0;top:70px;bottom:0;width:260px;transform\:translateX(0);}
-            .nchsm-mobile-close{display\:none}
-            .main{margin-left:260px;width\:calc(100% - 260px);}
+            .sidebar-premium.sidebar{position:fixed;left:0;top:70px;bottom:0;width:260px;transform:translateX(0);}
+            .nchsm-mobile-close{display:none}
+            .main{margin-left:260px;width:calc(100% - 260px);}
         }
         @media (max-width:640px){
             .main-header{padding:8px 12px!important}
             .header-titles .main-title{font-size:15px!important}
             .nchsm-skip-link{font-size:12px}
         }
-<br>
+
         /* ===== NCHSM SIDEBAR SEARCH / FOOTER / DESKTOP GAP FIX ===== */
         .sidebar-search-premium{padding:10px 12px 12px;flex-shrink:0}
-        .sidebar-search-box{position\:relative;display\:flex;align-items\:center}
-        .sidebar-search-box>i{position\:absolute;left:12px;color\:rgba(255,255,255,.55);font-size:13px;pointer-events\:none}
-        #sidebarPortalSearch{width:100%;box-sizing\:border-box;border:1px solid rgba(255,255,255,.12);background\:rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:10px 34px;font:500 12px Inter,sans-serif;outline\:none}
-        #sidebarPortalSearch::placeholder{color\:rgba(255,255,255,.52)}
-        #sidebarPortalSearch\:focus{border-color\:rgba(253,185,19,.65);background\:rgba(255,255,255,.11);box-shadow:0 0 0 3px rgba(253,185,19,.10)}
-        #sidebarSearchClear{position\:absolute;right:6px;width:26px;height:26px;border:0;background\:transparent;color\:rgba(255,255,255,.6);cursor\:pointer;border-radius:7px;display\:none}
-        .sidebar-search-results{margin-top:6px;max-height:180px;overflow\:auto;border-radius:10px;background:#fff;box-shadow:0 8px 25px rgba(0,0,0,.22);color:#0f172a}
-        .sidebar-search-result{display\:block;width:100%;text-align\:left;border:0;background\:transparent;padding:9px 11px;cursor\:pointer;font:600 12px Inter,sans-serif;color:#0f172a}
-        .sidebar-search-result\:hover{background:#f1f5f9}
-        .sidebar-search-empty{padding:8px 10px;color\:rgba(255,255,255,.6);font-size:11px}
-        .sidebar-premium .sidebar-nav-premium{flex:1 1 auto!important;min-height:0!important;overflow-y\:auto!important;overflow-x\:hidden!important}
-        .sidebar-premium .sidebar-footer-premium{flex:0 0 auto!important;display\:block!important;position\:relative!important;z-index:3!important}
-        .sidebar-premium .footer-actions{display\:flex!important;align-items\:center!important;justify-content\:center!important;gap:8px!important}
-        .sidebar-premium .footer-btn{display\:flex!important;align-items\:center!important;justify-content\:center!important;width:38px!important;height:38px!important;flex:0 0 38px!important;cursor\:pointer!important}
+        .sidebar-search-box{position:relative;display:flex;align-items:center}
+        .sidebar-search-box>i{position:absolute;left:12px;color:rgba(255,255,255,.55);font-size:13px;pointer-events:none}
+        #sidebarPortalSearch{width:100%;box-sizing:border-box;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.08);color:#fff;border-radius:10px;padding:10px 34px;font:500 12px Inter,sans-serif;outline:none}
+        #sidebarPortalSearch::placeholder{color:rgba(255,255,255,.52)}
+        #sidebarPortalSearch:focus{border-color:rgba(253,185,19,.65);background:rgba(255,255,255,.11);box-shadow:0 0 0 3px rgba(253,185,19,.10)}
+        #sidebarSearchClear{position:absolute;right:6px;width:26px;height:26px;border:0;background:transparent;color:rgba(255,255,255,.6);cursor:pointer;border-radius:7px;display:none}
+        .sidebar-search-results{margin-top:6px;max-height:180px;overflow:auto;border-radius:10px;background:#fff;box-shadow:0 8px 25px rgba(0,0,0,.22);color:#0f172a}
+        .sidebar-search-result{display:block;width:100%;text-align:left;border:0;background:transparent;padding:9px 11px;cursor:pointer;font:600 12px Inter,sans-serif;color:#0f172a}
+        .sidebar-search-result:hover{background:#f1f5f9}
+        .sidebar-search-empty{padding:8px 10px;color:rgba(255,255,255,.6);font-size:11px}
+        .sidebar-premium .sidebar-nav-premium{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important}
+        .sidebar-premium .sidebar-footer-premium{flex:0 0 auto!important;display:block!important;position:relative!important;z-index:3!important}
+        .sidebar-premium .footer-actions{display:flex!important;align-items:center!important;justify-content:center!important;gap:8px!important}
+        .sidebar-premium .footer-btn{display:flex!important;align-items:center!important;justify-content:center!important;width:38px!important;height:38px!important;flex:0 0 38px!important;cursor:pointer!important}
         @media (min-width:1024px){
-          .sidebar-premium.sidebar{position\:fixed!important;left:0!important;top:70px!important;bottom:0!important;width:260px!important;height\:auto!important;max-height\:none!important;transform\:none!important;overflow\:hidden!important}
-          .main,#main-content,main.main{margin-left:260px!important;width\:calc(100% - 260px)!important;max-width\:calc(100% - 260px)!important;padding-left:0!important;box-sizing\:border-box!important}
+          .sidebar-premium.sidebar{position:fixed!important;left:0!important;top:70px!important;bottom:0!important;width:260px!important;height:auto!important;max-height:none!important;transform:none!important;overflow:hidden!important}
+          .main,#main-content,main.main{margin-left:260px!important;width:calc(100% - 260px)!important;max-width:calc(100% - 260px)!important;padding-left:0!important;box-sizing:border-box!important}
           #main-content>.tab-content{margin-left:0!important}
         }
-        @media (max-width:1023px){.sidebar-premium.sidebar{height\:calc(100vh - 60px)!important;bottom:0!important;overflow\:hidden!important}}
+        @media (max-width:1023px){.sidebar-premium.sidebar{height:calc(100vh - 60px)!important;bottom:0!important;overflow:hidden!important}}
     </style>
 <!-- Chart.js for Academic Reports -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
@@ -95,11 +94,11 @@
 <meta content="#4C1D95" name="theme-color"/>
 <meta content="#4C1D95" name="msapplication-TileColor"/>
 <meta content="black-translucent" name="apple-mobile-web-app-status-bar-style"/>
-<link href="https://nchsm.co.ke/manifest.json" rel="manifest"/>
-<link href="https://nchsm.co.ke/images/Logo_NCHSM.png" rel="icon" sizes="192x192" type="image/png"/>
-<link href="https://nchsm.co.ke/images/Logo_NCHSM.png" rel="icon" sizes="512x512" type="image/png"/>
-<link href="https://nchsm.co.ke/images/Logo_NCHSM.png" rel="apple-touch-icon" sizes="180x180"/>
-<link href="https://nchsm.co.ke/images/Logo_NCHSM.png" rel="apple-touch-icon" sizes="120x120"/>
+<link href="./manifest.json" rel="manifest"/>
+<link href="images/Logo_NCHSM.png" rel="icon" sizes="192x192" type="image/png"/>
+<link href="images/Logo_NCHSM.png" rel="icon" sizes="512x512" type="image/png"/>
+<link href="images/Logo_NCHSM.png" rel="apple-touch-icon" sizes="180x180"/>
+<link href="images/Logo_NCHSM.png" rel="apple-touch-icon" sizes="120x120"/>
 <meta content="images/Logo_NCHSM.png" name="msapplication-TileImage"/>
 <meta content="telephone=no" name="format-detection"/>
 <style id="nchsm-dashboard-visual-upgrade">
@@ -146,7 +145,7 @@
   letter-spacing: -.025em;
 }
 #dashboard .dashboard-hero p { font-size: 14px !important; }
-<br>
+
 /* Five key metrics remain visible together on desktop. */
 #dashboard .dashboard-metric-grid {
   grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
@@ -164,18 +163,18 @@
   box-shadow: 0 5px 18px rgba(15,23,42,.06) !important;
   transition: transform .2s ease, box-shadow .2s ease;
 }
-#dashboard .dashboard-metric-grid > div\:hover {
+#dashboard .dashboard-metric-grid > div:hover {
   transform: translateY(-2px);
   box-shadow: 0 9px 24px rgba(15,23,42,.10) !important;
 }
-#dashboard .dashboard-metric-grid > div\:nth-child(2) { background: linear-gradient(135deg,#fff,#f5f3ff) !important; }
-#dashboard .dashboard-metric-grid > div\:nth-child(3) { background: linear-gradient(135deg,#fff,#ecfdf5) !important; }
-#dashboard .dashboard-metric-grid > div\:nth-child(4) { background: linear-gradient(135deg,#fff,#f5f3ff) !important; }
-#dashboard .dashboard-metric-grid > div\:nth-child(5) { background: linear-gradient(135deg,#fff,#fffbeb) !important; }
+#dashboard .dashboard-metric-grid > div:nth-child(2) { background: linear-gradient(135deg,#fff,#f5f3ff) !important; }
+#dashboard .dashboard-metric-grid > div:nth-child(3) { background: linear-gradient(135deg,#fff,#ecfdf5) !important; }
+#dashboard .dashboard-metric-grid > div:nth-child(4) { background: linear-gradient(135deg,#fff,#f5f3ff) !important; }
+#dashboard .dashboard-metric-grid > div:nth-child(5) { background: linear-gradient(135deg,#fff,#fffbeb) !important; }
 #dashboard .dashboard-metric-grid strong { font-size: 17px !important; }
 #dashboard #user-level, #dashboard #user-xp, #dashboard #user-xp-max { font-size: 16px !important; }
 #dashboard #xp-progress-fill { height: 7px !important; }
-<br>
+
 #dashboard .dashboard-announcement {
   border-radius: 14px !important;
   box-shadow: 0 4px 14px rgba(245,158,11,.08) !important;
@@ -184,7 +183,7 @@
   border-radius: 16px !important;
   box-shadow: 0 10px 26px rgba(10,61,98,.16) !important;
 }
-<br>
+
 /* Section headings and snapshot content */
 #dashboard h4 {
   letter-spacing: -.01em;
@@ -195,7 +194,7 @@
   border-color: #e2e8f0 !important;
   box-shadow: 0 4px 14px rgba(15,23,42,.05) !important;
 }
-#dashboard .mini-card\:hover {
+#dashboard .mini-card:hover {
   transform: translateY(-3px) !important;
   box-shadow: 0 10px 24px rgba(15,23,42,.10) !important;
 }
@@ -203,7 +202,7 @@
   border-radius: 16px !important;
   box-shadow: 0 8px 22px rgba(15,23,42,.12) !important;
 }
-<br>
+
 /* Make all existing dashboard data readable without changing its values. */
 #dashboard .data,
 #dashboard .mini-card-value,
@@ -214,14 +213,14 @@
   font-variant-numeric: tabular-nums;
 }
 #dashboard #dashboard-attendance-rate { font-size: 34px !important; }
-<br>
+
 @media (max-width: 1200px) {
   #dashboard .dashboard-metric-grid { grid-template-columns: repeat(3, minmax(0,1fr)) !important; }
 }
 @media (max-width: 760px) {
   #dashboard { padding: 14px 12px 24px !important; }
   #dashboard .dashboard-hero { min-height: 180px; padding: 24px 20px !important; }
-  #dashboard .dashboard-hero::after { display\:none; }
+  #dashboard .dashboard-hero::after { display:none; }
   #dashboard .dashboard-metric-grid { grid-template-columns: repeat(2, minmax(0,1fr)) !important; }
 }
 @media (max-width: 480px) {
@@ -233,69 +232,69 @@
 <style id="nchsm-dashboard-final-visual-fix">
 /* FINAL DASHBOARD HERO: real local campus asset, full image visible, dynamic greeting */
 #dashboard .nd-hero{
-  position\:relative!important;
+  position:relative!important;
   min-height:148px!important;
-  overflow\:hidden!important;
+  overflow:hidden!important;
   border-radius:16px!important;
   background:#07345a!important;
-  isolation\:isolate!important;
+  isolation:isolate!important;
 }
 #dashboard .nd-hero-image{
-  position\:absolute!important;
+  position:absolute!important;
   inset:0 0 0 auto!important;
   width:48%!important;
   height:100%!important;
   z-index:0!important;
-  display\:flex!important;
-  align-items\:center!important;
-  justify-content\:flex-end!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
   background:#07345a!important;
-  overflow\:hidden!important;
+  overflow:hidden!important;
 }
 #dashboard .nd-hero-image img{
-  display\:block!important;
+  display:block!important;
   width:100%!important;
   height:100%!important;
   max-width:100%!important;
   max-height:100%!important;
-  object-fit\:contain!important;
-  object-position\:center right!important;
+  object-fit:contain!important;
+  object-position:center right!important;
   background:#07345a!important;
 }
 #dashboard .nd-hero-image-overlay{
-  position\:absolute!important;
+  position:absolute!important;
   inset:0!important;
-  background\:linear-gradient(90deg,rgba(4,43,77,.96) 0%,rgba(4,43,77,.58) 30%,rgba(4,43,77,.12) 72%,rgba(4,43,77,.08) 100%)!important;
-  pointer-events\:none!important;
+  background:linear-gradient(90deg,rgba(4,43,77,.96) 0%,rgba(4,43,77,.58) 30%,rgba(4,43,77,.12) 72%,rgba(4,43,77,.08) 100%)!important;
+  pointer-events:none!important;
 }
 #dashboard .nd-hero-inner{
-  position\:relative!important;
+  position:relative!important;
   z-index:2!important;
   min-height:148px!important;
   padding:20px 26px!important;
-  display\:flex!important;
-  align-items\:center!important;
-  justify-content\:space-between!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
   gap:20px!important;
   color:#fff!important;
 }
-#dashboard .nd-hero-copy{max-width:56%!important;position\:relative!important;z-index:3!important}
+#dashboard .nd-hero-copy{max-width:56%!important;position:relative!important;z-index:3!important}
 #dashboard .nd-hero h1{margin:0!important;font-size:31px!important;line-height:1.12!important;font-weight:800!important;letter-spacing:-.7px!important;color:#fff!important}
 #dashboard .nd-hero h1 #greeting-text,#dashboard .nd-hero h1 #welcome-student-name{color:#fff!important}
 #dashboard .nd-greeting-comma,#dashboard .nd-greeting-mark{color:#fff!important}
-#dashboard .nd-hero-sub{margin:8px 0 0!important;font-size:15px!important;color\:rgba(255,255,255,.93)!important}
-#dashboard .nd-tagline{margin-top:13px!important;font-size:14px!important;font-weight:800!important;font-style\:italic!important;color:#ffc928!important}
-#dashboard .nd-hero-right{position\:relative!important;z-index:3!important;align-self\:stretch!important;min-width:285px!important;display\:flex!important;flex-direction\:column!important;justify-content\:center!important;align-items\:flex-end!important;text-align\:right!important;padding-right:4px!important}
-#dashboard .nd-hero-nav{font-size:13px!important;font-weight:800!important;letter-spacing:.4px!important;color:#fff!important;white-space\:nowrap!important;text-shadow:0 1px 5px rgba(0,0,0,.35)!important}
+#dashboard .nd-hero-sub{margin:8px 0 0!important;font-size:15px!important;color:rgba(255,255,255,.93)!important}
+#dashboard .nd-tagline{margin-top:13px!important;font-size:14px!important;font-weight:800!important;font-style:italic!important;color:#ffc928!important}
+#dashboard .nd-hero-right{position:relative!important;z-index:3!important;align-self:stretch!important;min-width:285px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;align-items:flex-end!important;text-align:right!important;padding-right:4px!important}
+#dashboard .nd-hero-nav{font-size:13px!important;font-weight:800!important;letter-spacing:.4px!important;color:#fff!important;white-space:nowrap!important;text-shadow:0 1px 5px rgba(0,0,0,.35)!important}
 #dashboard .nd-hero-nav span{opacity:.7!important;padding:0 9px!important}
 #dashboard .nd-hero-message{margin-top:10px!important;font-size:12px!important;line-height:1.45!important;color:#fff!important;max-width:260px!important;text-shadow:0 1px 5px rgba(0,0,0,.35)!important}
 @media(max-width:760px){
  #dashboard .nd-hero{min-height:190px!important}
  #dashboard .nd-hero-image{width:100%!important;opacity:.62!important}
- #dashboard .nd-hero-image img{object-fit\:contain!important;object-position\:center right!important}
- #dashboard .nd-hero-inner{min-height:190px!important;padding:20px 18px!important;align-items\:flex-start!important}
+ #dashboard .nd-hero-image img{object-fit:contain!important;object-position:center right!important}
+ #dashboard .nd-hero-inner{min-height:190px!important;padding:20px 18px!important;align-items:flex-start!important}
  #dashboard .nd-hero-copy{max-width:100%!important;padding-top:6px!important}
- #dashboard .nd-hero-right{display\:none!important}
+ #dashboard .nd-hero-right{display:none!important}
  #dashboard .nd-hero h1{font-size:26px!important}
 }
 </style>
@@ -315,244 +314,244 @@
 }
 html,body{background:#f4f8fc!important;}
 .main-header.nchsm-reference-header{
-  height:58px!important; min-height:58px!important; box-sizing\:border-box!important;
-  padding:7px 18px!important; display\:flex!important; align-items\:center!important;
-  justify-content\:space-between!important; gap:18px!important; background:#fff!important;
+  height:58px!important; min-height:58px!important; box-sizing:border-box!important;
+  padding:7px 18px!important; display:flex!important; align-items:center!important;
+  justify-content:space-between!important; gap:18px!important; background:#fff!important;
   border-bottom:1px solid #dce7f1!important; box-shadow:0 2px 10px rgba(22,60,94,.08)!important;
-  position\:sticky!important; top:0!important; z-index:1100!important;
+  position:sticky!important; top:0!important; z-index:1100!important;
 }
-.nchsm-header-left,.nchsm-header-right{display\:flex;align-items\:center;min-width:0}
+.nchsm-header-left,.nchsm-header-right{display:flex;align-items:center;min-width:0}
 .nchsm-header-left{gap:12px;flex:0 0 auto}
-.nchsm-header-brand{display\:flex;align-items\:center;gap:9px}
-.nchsm-header-logo{width:35px;height:35px;object-fit\:contain}
+.nchsm-header-brand{display:flex;align-items:center;gap:9px}
+.nchsm-header-logo{width:35px;height:35px;object-fit:contain}
 .nchsm-header-title{font-size:17px;font-weight:800;line-height:1;color:#15243c}
 .nchsm-header-subtitle{font-size:10px;color:#53708e;margin-top:3px}
-.nchsm-header-menu{display\:none!important}
+.nchsm-header-menu{display:none!important}
 .nchsm-header-search{
-  width\:min(595px,46vw); height:40px; display\:flex; align-items\:center; gap:10px;
+  width:min(595px,46vw); height:40px; display:flex; align-items:center; gap:10px;
   border:1px solid #cfe0ef; border-radius:10px; background:#f8fbfe; padding:0 10px 0 14px;
   box-shadow:0 1px 4px rgba(35,79,117,.04);
 }
 .nchsm-header-search>i{color:#4b78a5;font-size:14px}
-.nchsm-header-search input{flex:1;border:0;outline:0;background\:transparent;color:#17314f;font:500 12px Inter,sans-serif;min-width:0}
+.nchsm-header-search input{flex:1;border:0;outline:0;background:transparent;color:#17314f;font:500 12px Inter,sans-serif;min-width:0}
 .nchsm-header-search input::placeholder{color:#6f8ba7}
-.nchsm-header-search kbd{font:600 11px Inter,sans-serif;color:#58728d;background:#fff;border:1px solid #dbe7f1;border-radius:6px;padding:4px 8px;white-space\:nowrap}
+.nchsm-header-search kbd{font:600 11px Inter,sans-serif;color:#58728d;background:#fff;border:1px solid #dbe7f1;border-radius:6px;padding:4px 8px;white-space:nowrap}
 .nchsm-header-right{gap:8px;flex:0 0 auto}
 .nchsm-header-icon{
-  position\:relative;width:38px;height:38px;border:0;background\:transparent;border-radius:50%;
-  color:#062f55;cursor\:pointer;display\:flex;align-items\:center;justify-content\:center;font-size:18px;
+  position:relative;width:38px;height:38px;border:0;background:transparent;border-radius:50%;
+  color:#062f55;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;
 }
-.nchsm-header-icon\:hover{background:#f1f6fa}
+.nchsm-header-icon:hover{background:#f1f6fa}
 .nchsm-sun-btn{color:#f4ad00;font-size:20px}
 .nchsm-notification-count{
-  position\:absolute;right:1px;top:0px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;
-  display\:flex;align-items\:center;justify-content\:center;background:#e31b23;color:#fff;
-  font:800 9px Inter,sans-serif;border:2px solid #fff;box-sizing\:border-box;
+  position:absolute;right:1px;top:0px;min-width:17px;height:17px;padding:0 4px;border-radius:99px;
+  display:flex;align-items:center;justify-content:center;background:#e31b23;color:#fff;
+  font:800 9px Inter,sans-serif;border:2px solid #fff;box-sizing:border-box;
 }
-.nchsm-header-profile{cursor\:pointer}
+.nchsm-header-profile{cursor:pointer}
 .nchsm-header-profile .profile-trigger{
-  display\:flex!important;align-items\:center!important;gap:9px!important;padding:2px 4px 2px 2px!important;
-  background\:transparent!important;border:0!important;border-radius:28px!important;
+  display:flex!important;align-items:center!important;gap:9px!important;padding:2px 4px 2px 2px!important;
+  background:transparent!important;border:0!important;border-radius:28px!important;
 }
 .nchsm-header-profile .profile-avatar{width:36px!important;height:36px!important;border:0!important}
-.nchsm-header-user-copy{display\:flex;flex-direction\:column;line-height:1.15}
+.nchsm-header-user-copy{display:flex;flex-direction:column;line-height:1.15}
 .nchsm-header-user-copy .profile-name{font-size:12px!important;font-weight:800!important;color:#162840!important}
 .nchsm-header-user-copy .profile-role{font-size:9px;color:#66809e;margin-top:3px}
 .nchsm-header-profile .dropdown-icon{font-size:10px;color:#183553}
-<br>
+
 #app-content>.container{margin-top:0!important}
 #sidebar.sidebar-premium{
-  background\:linear-gradient(180deg,#062f55 0%,#032a4d 100%)!important;
+  background:linear-gradient(180deg,#062f55 0%,#032a4d 100%)!important;
   color:#fff!important;
 }
 #sidebar .nav-section-label span{
-  color\:rgba(255,255,255,.50)!important;font-size:10px!important;font-weight:800!important;
+  color:rgba(255,255,255,.50)!important;font-size:10px!important;font-weight:800!important;
   letter-spacing:1.1px!important;padding:9px 14px 5px!important;margin-top:3px!important;
 }
 #sidebar .nav-premium>li>a{min-height:34px!important;margin:2px 8px!important;padding:7px 10px!important;border-radius:7px!important}
 #sidebar .nav-premium>li>a .nav-text{font-size:12px!important;font-weight:500!important}
 #sidebar .nav-premium>li>a .nav-icon-wrapper{width:24px!important}
 #sidebar .nav-premium>li>a.active{
-  background\:linear-gradient(90deg,#0878df,#075eb7)!important;
+  background:linear-gradient(90deg,#0878df,#075eb7)!important;
   box-shadow:0 3px 10px rgba(0,111,220,.28)!important;
 }
-#sidebar .nav-premium>li>a\:hover{background\:rgba(255,255,255,.08)!important}
+#sidebar .nav-premium>li>a:hover{background:rgba(255,255,255,.08)!important}
 #sidebar .nav-badge-premium{font-size:9px!important}
 #sidebar .sidebar-header-premium{padding-bottom:7px!important}
 #sidebar .sidebar-search-premium{padding-top:6px!important;padding-bottom:5px!important}
-<br>
+
 #main-content.main{background:#f4f8fc!important;padding:12px 18px 20px!important}
-#dashboard.tab-content{padding:0!important;max-width\:none!important;overflow\:visible!important;background\:transparent!important}
-.nchsm-dashboard{width:100%;max-width:100%;font-family\:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color\:var(--nchsm-text)}
+#dashboard.tab-content{padding:0!important;max-width:none!important;overflow:visible!important;background:transparent!important}
+.nchsm-dashboard{width:100%;max-width:100%;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:var(--nchsm-text)}
 .nchsm-hero{
-  position\:relative;min-height:148px;border-radius:15px;overflow\:hidden;background:#06345d;
-  box-shadow:0 4px 16px rgba(10,50,85,.14);isolation\:isolate;
+  position:relative;min-height:148px;border-radius:15px;overflow:hidden;background:#06345d;
+  box-shadow:0 4px 16px rgba(10,50,85,.14);isolation:isolate;
 }
-.nchsm-hero-image{position\:absolute;inset:0;width:100%;height:100%;object-fit\:cover;object-position\:center 52%;z-index:-2}
-.nchsm-hero-overlay{position\:absolute;inset:0;z-index:-1;background\:linear-gradient(90deg,rgba(3,39,72,.98) 0%,rgba(4,55,95,.91) 34%,rgba(4,55,95,.42) 63%,rgba(4,55,95,.20) 100%)}
-.nchsm-hero-content{min-height:148px;padding:18px 26px;display\:flex;align-items\:center;justify-content\:space-between;gap:20px;color:#fff}
+.nchsm-hero-image{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;object-position:center 52%;z-index:-2}
+.nchsm-hero-overlay{position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(3,39,72,.98) 0%,rgba(4,55,95,.91) 34%,rgba(4,55,95,.42) 63%,rgba(4,55,95,.20) 100%)}
+.nchsm-hero-content{min-height:148px;padding:18px 26px;display:flex;align-items:center;justify-content:space-between;gap:20px;color:#fff}
 .nchsm-hero-copy{max-width:62%}
 .nchsm-hero-copy h1{margin:0;font-size:31px;line-height:1.1;font-weight:800;letter-spacing:-.7px;color:#fff}
 .nchsm-hero-copy p{margin:9px 0 0;font-size:15px;color:#fff}
-.nchsm-hero-tagline{margin-top:11px;font-size:14px;font-weight:800;font-style\:italic;color:#ffc62a}
-.nchsm-hero-right{height:100%;min-width:300px;display\:flex;flex-direction\:column;align-items\:flex-end;justify-content\:center;text-align\:right}
+.nchsm-hero-tagline{margin-top:11px;font-size:14px;font-weight:800;font-style:italic;color:#ffc62a}
+.nchsm-hero-right{height:100%;min-width:300px;display:flex;flex-direction:column;align-items:flex-end;justify-content:center;text-align:right}
 .nchsm-hero-nav{font-size:13px;font-weight:800;letter-spacing:.3px}
 .nchsm-hero-nav span{opacity:.55;padding:0 7px}
 .nchsm-hero-message{margin-top:9px;font-size:12px;line-height:1.45}
 .nchsm-hero-script{font-family:"Segoe Script","Brush Script MT",cursive;font-size:14px;line-height:1.05;margin-top:6px;opacity:.96}
 .nchsm-hero-script span{font-size:10px}
-<br>
-.nchsm-metrics{display\:grid;grid-template-columns\:repeat(5,minmax(0,1fr));gap:12px;margin:14px 0}
+
+.nchsm-metrics{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin:14px 0}
 .nchsm-metric{
   min-height:70px;background:#fff;border:1px solid var(--nchsm-border);border-radius:12px;
-  display\:flex;align-items\:center;gap:10px;padding:9px 12px;box-sizing\:border-box;
+  display:flex;align-items:center;gap:10px;padding:9px 12px;box-sizing:border-box;
   box-shadow:0 2px 8px rgba(25,63,97,.05)
 }
-.nchsm-metric-icon{width:42px;height:42px;flex:0 0 42px;border-radius:50%;display\:flex;align-items\:center;justify-content\:center;font-size:19px}
+.nchsm-metric-icon{width:42px;height:42px;flex:0 0 42px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:19px}
 .metric-level .nchsm-metric-icon{background:#fff4d5;color:#f2aa00}
 .metric-nurseiq .nchsm-metric-icon{background:#eee6ff;color:#6d28d9}
 .metric-attendance .nchsm-metric-icon{background:#def7ec;color:#059669}
 .metric-login .nchsm-metric-icon{background:#eee6ff;color:#6d28d9}
 .metric-total{border-color:#f2bd39}.metric-total .nchsm-metric-icon{background:#fff1c7;color:#f59e0b}
 .nchsm-metric-body{min-width:0}
-.nchsm-metric-label{font-size:12px;color:#334b68;font-weight:600;white-space\:nowrap}
+.nchsm-metric-label{font-size:12px;color:#334b68;font-weight:600;white-space:nowrap}
 .nchsm-metric-value{font-size:15px;color:#132a48;font-weight:800;margin-top:2px}
 .nchsm-metric-sub{font-size:10px;color:#637c99;margin-top:2px}
-.nchsm-xpbar{height:7px;width:100%;min-width:90px;background:#dce7f0;border-radius:99px;margin-top:4px;overflow\:hidden}
-.nchsm-xpbar span{display\:block;width:0;height:100%;background:#c9d9e8;border-radius:99px}
-<br>
+.nchsm-xpbar{height:7px;width:100%;min-width:90px;background:#dce7f0;border-radius:99px;margin-top:4px;overflow:hidden}
+.nchsm-xpbar span{display:block;width:0;height:100%;background:#c9d9e8;border-radius:99px}
+
 .nchsm-announcement{
-  min-height:58px;box-sizing\:border-box;display\:flex;align-items\:center;gap:12px;
+  min-height:58px;box-sizing:border-box;display:flex;align-items:center;gap:12px;
   padding:9px 14px;border:1px solid #f0c03a;border-left:4px solid #ffb400;border-radius:11px;
-  background\:linear-gradient(90deg,#fff5d8,#fffdf4);box-shadow:0 2px 7px rgba(120,87,12,.04)
+  background:linear-gradient(90deg,#fff5d8,#fffdf4);box-shadow:0 2px 7px rgba(120,87,12,.04)
 }
 .nchsm-announcement>i{font-size:21px;color:#f0a500}
 .nchsm-announcement strong{font-size:14px;color:#713d0b}
 .nchsm-announcement p{margin:2px 0 0;font-size:11px;color:#7c4a14}
-.nchsm-announcement-arrow{margin-left\:auto;font-size:21px;color:#805117}
-<br>
-.nchsm-top-grid{display\:grid;grid-template-columns:1.14fr 1fr .72fr;gap:12px;margin-top:12px}
-.nchsm-bottom-grid{display\:grid;grid-template-columns:1.05fr 1.08fr 1fr;gap:12px;margin-top:12px}
-.nchsm-card{background:#fff;border:1px solid var(--nchsm-border);border-radius:12px;overflow\:hidden;box-shadow:0 2px 8px rgba(25,63,97,.05);min-width:0}
-.nchsm-card-head{height:56px;box-sizing\:border-box;padding:9px 13px;border-bottom:1px solid #e6eef5;display\:flex;align-items\:center;justify-content\:space-between;gap:8px}
-.nchsm-card-title{display\:flex;align-items\:center;gap:9px;min-width:0}
+.nchsm-announcement-arrow{margin-left:auto;font-size:21px;color:#805117}
+
+.nchsm-top-grid{display:grid;grid-template-columns:1.14fr 1fr .72fr;gap:12px;margin-top:12px}
+.nchsm-bottom-grid{display:grid;grid-template-columns:1.05fr 1.08fr 1fr;gap:12px;margin-top:12px}
+.nchsm-card{background:#fff;border:1px solid var(--nchsm-border);border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(25,63,97,.05);min-width:0}
+.nchsm-card-head{height:56px;box-sizing:border-box;padding:9px 13px;border-bottom:1px solid #e6eef5;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.nchsm-card-title{display:flex;align-items:center;gap:9px;min-width:0}
 .nchsm-card-title>i{font-size:23px;color:#f5aa00}
 .progress-card .nchsm-card-title>i,.events-card .nchsm-card-title>i,.courses-card .nchsm-card-title>i{color:#087bf0}
 .nchsm-card-title h2{margin:0;font-size:15px;font-weight:800;color:#152743;line-height:1.1}
-.nchsm-card-title small{display\:block;font-size:10px;font-weight:500;color:#66809e;margin-top:3px}
-.nchsm-view-btn{border:0;background:#eaf5ff;color:#0875dc;border-radius:18px;padding:7px 12px;font-size:10px;font-weight:800;white-space\:nowrap;cursor\:pointer}
-.nchsm-view-btn\:hover{filter\:brightness(.97)}
+.nchsm-card-title small{display:block;font-size:10px;font-weight:500;color:#66809e;margin-top:3px}
+.nchsm-view-btn{border:0;background:#eaf5ff;color:#0875dc;border-radius:18px;padding:7px 12px;font-size:10px;font-weight:800;white-space:nowrap;cursor:pointer}
+.nchsm-view-btn:hover{filter:brightness(.97)}
 .nchsm-card-body{padding:10px 12px}
-<br>
-.nchsm-action-grid{display\:grid;grid-template-columns\:repeat(3,minmax(0,1fr));gap:9px}
-.nchsm-action{min-height:74px;border:0;border-radius:8px;color:#fff;display\:flex;flex-direction\:column;align-items\:center;justify-content\:center;gap:7px;font-size:11px;font-weight:700;cursor\:pointer;box-shadow\:inset 0 -2px 0 rgba(0,0,0,.08);transition\:transform .16s ease,filter .16s ease}
-.nchsm-action\:hover{transform\:translateY(-2px);filter\:brightness(1.03)}
+
+.nchsm-action-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:9px}
+.nchsm-action{min-height:74px;border:0;border-radius:8px;color:#fff;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:7px;font-size:11px;font-weight:700;cursor:pointer;box-shadow:inset 0 -2px 0 rgba(0,0,0,.08);transition:transform .16s ease,filter .16s ease}
+.nchsm-action:hover{transform:translateY(-2px);filter:brightness(1.03)}
 .nchsm-action i{font-size:20px}
 .action-green{background:#10b981}.action-blue{background:#087bf0}.action-purple{background:#9438e9}.action-orange{background:#ff9500}
 .action-pink{background:#fa4771}.action-teal{background:#0da5ae}.action-indigo{background:#4d43e6}.action-slate{background:#61758a}.action-report{background:#0f766e}
-<br>
-.nchsm-progress-grid{display\:grid;grid-template-columns\:repeat(4,1fr);gap:4px;padding:8px 8px 12px}
-.nchsm-progress-item{text-align\:center;min-width:0}
-.nchsm-ring{position\:relative;width:86px;height:86px;margin:0 auto 6px}
-.nchsm-ring svg{width:100%;height:100%;transform\:rotate(-90deg)}
-.ring-track{fill\:none;stroke:#e5eef6;stroke-width:8}
-.ring-fill{fill\:none;stroke-width:8;stroke-linecap\:round;stroke-dasharray:251.33;stroke-dashoffset:55.3}
+
+.nchsm-progress-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:4px;padding:8px 8px 12px}
+.nchsm-progress-item{text-align:center;min-width:0}
+.nchsm-ring{position:relative;width:86px;height:86px;margin:0 auto 6px}
+.nchsm-ring svg{width:100%;height:100%;transform:rotate(-90deg)}
+.ring-track{fill:none;stroke:#e5eef6;stroke-width:8}
+.ring-fill{fill:none;stroke-width:8;stroke-linecap:round;stroke-dasharray:251.33;stroke-dashoffset:55.3}
 .ring-blue{stroke:#1684ed}.ring-green{stroke:#56d09c}.ring-purple{stroke:#a879ef}.ring-gold{stroke:#f6bf4a}
-.nchsm-ring-value{position\:absolute;inset:0;display\:flex;align-items\:center;justify-content\:center;font-size:16px;font-weight:800;color:#172742}
-.nchsm-progress-item>strong{display\:block;font-size:11px;color:#132744}
-.nchsm-progress-item>span{display\:block;font-size:11px;color:#66809e;margin-top:3px;font-weight:600}
-<br>
+.nchsm-ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:800;color:#172742}
+.nchsm-progress-item>strong{display:block;font-size:11px;color:#132744}
+.nchsm-progress-item>span{display:block;font-size:11px;color:#66809e;margin-top:3px;font-weight:600}
+
 .nchsm-leaderboard{padding:0 8px 8px}
-.leader-row{display\:grid;grid-template-columns:31px 1fr 48px;align-items\:center;min-height:28px;border-bottom:1px solid #e7eef5;font-size:11px;color:#18304d}
-.leader-row\:last-child{border-bottom:0}
+.leader-row{display:grid;grid-template-columns:31px 1fr 48px;align-items:center;min-height:28px;border-bottom:1px solid #e7eef5;font-size:11px;color:#18304d}
+.leader-row:last-child{border-bottom:0}
 .leader-head{min-height:29px;background:#f2f7fb;color:#173250;font-weight:800}
-.leader-head span\:nth-child(2){text-align\:left}.leader-head span\:last-child{text-align\:right}
-.leader-row>strong{font-weight:600;white-space\:nowrap;overflow\:hidden;text-overflow\:ellipsis}
-.leader-row>b\:last-child{text-align\:right}
-.rank{width:20px;height:20px;border-radius:50%;display\:flex;align-items\:center;justify-content\:center;font-size:10px;background:#eef3f7;color:#35526f}
+.leader-head span:nth-child(2){text-align:left}.leader-head span:last-child{text-align:right}
+.leader-row>strong{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.leader-row>b:last-child{text-align:right}
+.rank{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;background:#eef3f7;color:#35526f}
 .rank-1{background:#ffc928;color:#725000}.rank-2{background:#dbe6ef}.rank-3{background:#f2c28c;color:#73430e}
 .leader-current{background:#e5f2ff;border-radius:7px;color:#0870db;margin:2px 0}
-<br>
+
 .streak-card .nchsm-card-title>i{color:#ff6800}
-.nchsm-days-pill{background:#edf5ff;color:#587391;border-radius:18px;padding:6px 10px;font-size:10px;font-weight:800;white-space\:nowrap}
+.nchsm-days-pill{background:#edf5ff;color:#587391;border-radius:18px;padding:6px 10px;font-size:10px;font-weight:800;white-space:nowrap}
 .nchsm-streak-body{padding:9px 15px 12px}
-.nchsm-milestones{display\:flex;justify-content\:space-between;gap:7px;margin:1px 0 10px}
-.streak-milestone{min-width:39px;padding:6px 8px;border-radius:16px;background:#eaf2fa;color:#58728d;font-size:10px;font-weight:800;text-align\:center}
+.nchsm-milestones{display:flex;justify-content:space-between;gap:7px;margin:1px 0 10px}
+.streak-milestone{min-width:39px;padding:6px 8px;border-radius:16px;background:#eaf2fa;color:#58728d;font-size:10px;font-weight:800;text-align:center}
 .streak-milestone.active{background:#ffe08a;color:#7d5800;box-shadow:0 2px 6px rgba(244,181,20,.25)}
-.nchsm-streak-line{height:8px;background:#dbe7f2;border-radius:99px;overflow\:hidden}
-.nchsm-streak-line span{display\:block;width:26%;height:100%;background:#2c8ef4;border-radius:99px}
-.nchsm-start-streak{margin-top:10px;border:1px solid #9ccaf2;background:#eef8ff;color:#0875dc;border-radius:7px;padding:7px 11px;font-size:10px;font-weight:800;cursor\:pointer}
-.nchsm-streak-status{display\:block;margin-top:6px;color:#66809e;font-size:10px}
-<br>
+.nchsm-streak-line{height:8px;background:#dbe7f2;border-radius:99px;overflow:hidden}
+.nchsm-streak-line span{display:block;width:26%;height:100%;background:#2c8ef4;border-radius:99px}
+.nchsm-start-streak{margin-top:10px;border:1px solid #9ccaf2;background:#eef8ff;color:#0875dc;border-radius:7px;padding:7px 11px;font-size:10px;font-weight:800;cursor:pointer}
+.nchsm-streak-status{display:block;margin-top:6px;color:#66809e;font-size:10px}
+
 .nchsm-events{padding:8px 12px 9px}
-.nchsm-event{display\:flex;align-items\:center;gap:10px;padding:6px 0;border-bottom:1px solid #edf2f7}
-.nchsm-event\:last-child{border-bottom:0}
-.event-date{width:47px;height:43px;flex:0 0 47px;border:1px solid #e1eaf3;border-radius:7px;text-align\:center;overflow\:hidden;background:#fff}
-.event-date b{display\:block;background:#ef3340;color:#fff;font-size:9px;padding:3px 0}
-.nchsm-event\:nth-child(2) .event-date b{background:#087bf0}
-.event-date strong{display\:block;color:#182d49;font-size:16px;line-height:22px}
-.event-info{min-width:0}.event-info>strong{display\:block;font-size:11px;color:#162b47}
-.event-info>span{display\:flex;align-items\:center;gap:6px;flex-wrap\:wrap;font-size:9px;color:#66809e;margin-top:3px}
+.nchsm-event{display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid #edf2f7}
+.nchsm-event:last-child{border-bottom:0}
+.event-date{width:47px;height:43px;flex:0 0 47px;border:1px solid #e1eaf3;border-radius:7px;text-align:center;overflow:hidden;background:#fff}
+.event-date b{display:block;background:#ef3340;color:#fff;font-size:9px;padding:3px 0}
+.nchsm-event:nth-child(2) .event-date b{background:#087bf0}
+.event-date strong{display:block;color:#182d49;font-size:16px;line-height:22px}
+.event-info{min-width:0}.event-info>strong{display:block;font-size:11px;color:#162b47}
+.event-info>span{display:flex;align-items:center;gap:6px;flex-wrap:wrap;font-size:9px;color:#66809e;margin-top:3px}
 .event-info i{color:#6483a2}
-<br>
+
 .nchsm-courses{padding:4px 9px 8px}
-.course-row{min-height:31px;display\:grid;grid-template-columns:73px 1fr 14px;align-items\:center;gap:7px;border-bottom:1px solid #edf2f7;font-size:11px}
-.course-row\:last-child{border-bottom:0}
-.course-row>strong{font-weight:600;color:#18304d;white-space\:nowrap;overflow\:hidden;text-overflow\:ellipsis}
+.course-row{min-height:31px;display:grid;grid-template-columns:73px 1fr 14px;align-items:center;gap:7px;border-bottom:1px solid #edf2f7;font-size:11px}
+.course-row:last-child{border-bottom:0}
+.course-row>strong{font-weight:600;color:#18304d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .course-row>i{font-size:10px;color:#1b334e}
-.course-code{display\:inline-flex;align-items\:center;justify-content\:center;border-radius:6px;padding:4px 5px;font-weight:800}
+.course-code{display:inline-flex;align-items:center;justify-content:center;border-radius:6px;padding:4px 5px;font-weight:800}
 .code-blue{background:#dceeff;color:#0875dc}.code-green{background:#d9f8eb;color:#07966a}.code-purple{background:#eadfff;color:#6d28d9}.code-orange{background:#ffe6c4;color:#e87800}
-<br>
+
 .nchsm-brand-strip{
-  position\:relative;overflow\:hidden;min-height:64px;margin-top:12px;border-radius:10px;
-  background\:linear-gradient(90deg,#063e70,#075894);color:#fff;display\:flex;align-items\:center;justify-content\:space-between;
-  padding:10px 17px;box-sizing\:border-box
+  position:relative;overflow:hidden;min-height:64px;margin-top:12px;border-radius:10px;
+  background:linear-gradient(90deg,#063e70,#075894);color:#fff;display:flex;align-items:center;justify-content:space-between;
+  padding:10px 17px;box-sizing:border-box
 }
-.brand-strip-left{display\:flex;align-items\:center;gap:12px;z-index:2}
+.brand-strip-left{display:flex;align-items:center;gap:12px;z-index:2}
 .brand-strip-left>i{font-size:25px;color:#ffd36a}
-.brand-strip-left strong{display\:block;font-size:15px}
-.brand-strip-left span{display\:block;font-size:10px;margin-top:4px;opacity:.92}
-.brand-strip-right{text-align\:right;font-family:"Segoe Script","Brush Script MT",cursive;font-size:12px;line-height:1.2;z-index:2}
+.brand-strip-left strong{display:block;font-size:15px}
+.brand-strip-left span{display:block;font-size:10px;margin-top:4px;opacity:.92}
+.brand-strip-right{text-align:right;font-family:"Segoe Script","Brush Script MT",cursive;font-size:12px;line-height:1.2;z-index:2}
 .brand-strip-right strong{font-size:14px}
-.brand-strip-wave{position\:absolute;right:17%;top:0;width:31%;height:100%;opacity:.75;border-bottom:2px solid rgba(255,255,255,.55);transform\:skewX(-23deg);pointer-events\:none}
-<br>
-.nchsm-dashboard-hooks{display\:none!important}
-.nchsm-reference-footer{margin:0!important;padding:0!important;background\:transparent!important;border:0!important;color:#fff!important}
+.brand-strip-wave{position:absolute;right:17%;top:0;width:31%;height:100%;opacity:.75;border-bottom:2px solid rgba(255,255,255,.55);transform:skewX(-23deg);pointer-events:none}
+
+.nchsm-dashboard-hooks{display:none!important}
+.nchsm-reference-footer{margin:0!important;padding:0!important;background:transparent!important;border:0!important;color:#fff!important}
 .nchsm-footer-main{
-  position\:relative;min-height:64px;background\:linear-gradient(90deg,#063e70,#075894);display\:flex;align-items\:center;justify-content\:space-between;
-  padding:9px 22px;box-sizing\:border-box;overflow\:hidden
+  position:relative;min-height:64px;background:linear-gradient(90deg,#063e70,#075894);display:flex;align-items:center;justify-content:space-between;
+  padding:9px 22px;box-sizing:border-box;overflow:hidden
 }
-.nchsm-footer-brand{display\:flex;align-items\:center;gap:12px}
+.nchsm-footer-brand{display:flex;align-items:center;gap:12px}
 .nchsm-footer-brand>i{font-size:24px;color:#ffd36a}
-.nchsm-footer-brand strong{display\:block;font-size:15px}.nchsm-footer-brand span{display\:block;font-size:10px;margin-top:3px}
-.nchsm-footer-wave{position\:absolute;right:16%;width:26%;height:42px;border-bottom:2px solid rgba(255,255,255,.6);transform\:skewX(-25deg)}
-.nchsm-footer-future{text-align\:right;font-family:"Segoe Script","Brush Script MT",cursive;font-size:12px;line-height:1.15}
+.nchsm-footer-brand strong{display:block;font-size:15px}.nchsm-footer-brand span{display:block;font-size:10px;margin-top:3px}
+.nchsm-footer-wave{position:absolute;right:16%;width:26%;height:42px;border-bottom:2px solid rgba(255,255,255,.6);transform:skewX(-25deg)}
+.nchsm-footer-future{text-align:right;font-family:"Segoe Script","Brush Script MT",cursive;font-size:12px;line-height:1.15}
 .nchsm-footer-future strong{font-size:14px}
-.nchsm-footer-bottom{height:30px;background:#f4f8fc;color:#66809e;display\:flex;align-items\:center;justify-content\:space-between;padding:0 18px;font-size:9px;box-sizing\:border-box}
-.nchsm-footer-bottom nav{display\:flex;gap:8px;align-items\:center}.nchsm-footer-bottom a{color:#66809e;text-decoration\:none}.nchsm-footer-bottom a\:hover{color:#0875dc}
+.nchsm-footer-bottom{height:30px;background:#f4f8fc;color:#66809e;display:flex;align-items:center;justify-content:space-between;padding:0 18px;font-size:9px;box-sizing:border-box}
+.nchsm-footer-bottom nav{display:flex;gap:8px;align-items:center}.nchsm-footer-bottom a{color:#66809e;text-decoration:none}.nchsm-footer-bottom a:hover{color:#0875dc}
 .nchsm-system-online{font-weight:700}.nchsm-system-online i{color:#16c784;font-size:8px;margin-right:4px}
-<br>
+
 @media(max-width:1200px){
   .nchsm-top-grid{grid-template-columns:1.15fr 1fr}.leaderboard-card{grid-column:1/-1}
   .nchsm-bottom-grid{grid-template-columns:1fr 1fr}.courses-card{grid-column:1/-1}
 }
 @media(max-width:900px){
-  .nchsm-header-search{width\:min(430px,42vw)}
-  .nchsm-header-user-copy{display\:none}
+  .nchsm-header-search{width:min(430px,42vw)}
+  .nchsm-header-user-copy{display:none}
   .nchsm-top-grid,.nchsm-bottom-grid{grid-template-columns:1fr}
-  .leaderboard-card,.courses-card{grid-column\:auto}
-  .nchsm-hero-copy{max-width:100%}.nchsm-hero-right{display\:none}
-  .nchsm-metrics{grid-template-columns\:repeat(2,1fr)}
-  .nchsm-metric\:last-child{grid-column:1/-1}
+  .leaderboard-card,.courses-card{grid-column:auto}
+  .nchsm-hero-copy{max-width:100%}.nchsm-hero-right{display:none}
+  .nchsm-metrics{grid-template-columns:repeat(2,1fr)}
+  .nchsm-metric:last-child{grid-column:1/-1}
 }
 @media(max-width:1023px){
   .main-header.nchsm-reference-header{height:60px!important}
-  .nchsm-header-menu{display\:flex!important}
+  .nchsm-header-menu{display:flex!important}
   #main-content.main{margin-left:0!important;width:100%!important;max-width:100%!important;padding:10px 12px 18px!important}
   #sidebar.sidebar-premium{top:60px!important}
 }
 @media(max-width:640px){
-  .nchsm-header-search{display\:none}
+  .nchsm-header-search{display:none}
   .nchsm-header-title{font-size:15px}.nchsm-header-subtitle{font-size:9px}
   .nchsm-header-right{gap:2px}.nchsm-header-icon{width:34px;height:34px}
   .nchsm-hero,.nchsm-hero-content{min-height:145px}
@@ -563,7 +562,7 @@ html,body{background:#f4f8fc!important;}
   .nchsm-metric-label{font-size:10px}.nchsm-metric-value{font-size:13px}.nchsm-metric-sub{font-size:9px}
   .nchsm-announcement{min-height:54px;padding:8px 10px}.nchsm-announcement strong{font-size:12px}.nchsm-announcement p{font-size:10px}
   .nchsm-top-grid,.nchsm-bottom-grid{gap:9px;margin-top:9px}
-  .nchsm-card-head{height\:auto;min-height:51px;padding:8px 10px}
+  .nchsm-card-head{height:auto;min-height:51px;padding:8px 10px}
   .nchsm-card-title h2{font-size:13px}.nchsm-card-title small{font-size:9px}.nchsm-card-title>i{font-size:19px}
   .nchsm-view-btn{padding:6px 9px;font-size:9px}
   .nchsm-action-grid{grid-template-columns:1fr 1fr;gap:7px;padding:9px}
@@ -585,76 +584,76 @@ html,body{background:#f4f8fc!important;}
    - No demo data added
    ================================================================ */
 html,body{min-height:100%;background:#f4f8fc!important}
-<br>
+
 /* Desktop shell: header, fixed sidebar, content beside it. */
 @media (min-width:1024px){
   .main-header.nchsm-reference-header{height:58px!important;min-height:58px!important}
   #sidebar.sidebar-premium{
-    position\:fixed!important;left:0!important;top:58px!important;bottom:0!important;
-    width:260px!important;height\:calc(100vh - 58px)!important;max-height\:calc(100vh - 58px)!important;
-    display\:flex!important;flex-direction\:column!important;overflow\:hidden!important;
-    z-index:1001!important;transform\:none!important;
+    position:fixed!important;left:0!important;top:58px!important;bottom:0!important;
+    width:260px!important;height:calc(100vh - 58px)!important;max-height:calc(100vh - 58px)!important;
+    display:flex!important;flex-direction:column!important;overflow:hidden!important;
+    z-index:1001!important;transform:none!important;
   }
   #sidebar .sidebar-nav-premium{
-    flex:1 1 auto!important;min-height:0!important;overflow-y\:auto!important;overflow-x\:hidden!important;
+    flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;overflow-x:hidden!important;
   }
   #sidebar .sidebar-footer-premium{
-    flex:0 0 auto!important;display\:block!important;visibility\:visible!important;
+    flex:0 0 auto!important;display:block!important;visibility:visible!important;
     min-height:74px!important;padding:7px 10px 8px!important;
     border-top:1px solid rgba(255,255,255,.12)!important;
-    background\:rgba(0,0,0,.12)!important;
+    background:rgba(0,0,0,.12)!important;
   }
   #main-content.main,main.main{
-    margin-left:260px!important;width\:calc(100% - 260px)!important;
-    max-width\:calc(100% - 260px)!important;box-sizing\:border-box!important;
+    margin-left:260px!important;width:calc(100% - 260px)!important;
+    max-width:calc(100% - 260px)!important;box-sizing:border-box!important;
   }
 }
-<br>
+
 /* Sidebar bottom controls — icon above label, always visible. */
 #sidebar .footer-actions{
-  display\:grid!important;grid-template-columns\:repeat(3,1fr)!important;
-  gap:4px!important;align-items\:stretch!important;justify-content\:stretch!important;
+  display:grid!important;grid-template-columns:repeat(3,1fr)!important;
+  gap:4px!important;align-items:stretch!important;justify-content:stretch!important;
 }
 #sidebar .footer-btn{
-  width\:auto!important;height:48px!important;min-width:0!important;flex:1 1 0!important;
+  width:auto!important;height:48px!important;min-width:0!important;flex:1 1 0!important;
   padding:4px 2px!important;border:0!important;border-radius:8px!important;
-  background\:transparent!important;color:#fff!important;
-  display\:flex!important;flex-direction\:column!important;align-items\:center!important;justify-content\:center!important;
-  gap:4px!important;cursor\:pointer!important;font-family\:Inter,system-ui,sans-serif!important;
+  background:transparent!important;color:#fff!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+  gap:4px!important;cursor:pointer!important;font-family:Inter,system-ui,sans-serif!important;
 }
 #sidebar .footer-btn i{font-size:15px!important;line-height:1!important}
 #sidebar .footer-btn span{font-size:9px!important;font-weight:700!important;line-height:1!important}
 #sidebar #sidebarThemeBtn{color:#ffd12a!important}
 #sidebar #sidebarRefreshBtn{color:#16d77a!important}
 #sidebar #sidebarLogoutBtn{color:#ff4c5a!important}
-#sidebar .footer-btn\:hover{background\:rgba(255,255,255,.08)!important}
+#sidebar .footer-btn:hover{background:rgba(255,255,255,.08)!important}
 #sidebar .footer-version{
-  display\:flex!important;align-items\:center!important;justify-content\:center!important;gap:5px!important;
-  margin-top:4px!important;font-size:9px!important;color\:rgba(255,255,255,.62)!important;
+  display:flex!important;align-items:center!important;justify-content:center!important;gap:5px!important;
+  margin-top:4px!important;font-size:9px!important;color:rgba(255,255,255,.62)!important;
 }
-<br>
+
 /* Full campus hero image — never use contain here. */
 #dashboard .nchsm-hero{
-  position\:relative!important;min-height:148px!important;height:148px!important;
-  overflow\:hidden!important;border-radius:15px!important;background:#06345d!important;
-  isolation\:isolate!important;
+  position:relative!important;min-height:148px!important;height:148px!important;
+  overflow:hidden!important;border-radius:15px!important;background:#06345d!important;
+  isolation:isolate!important;
 }
 #dashboard .nchsm-hero-image{
-  position\:absolute!important;inset:0!important;width:100%!important;height:100%!important;
-  max-width\:none!important;max-height\:none!important;display\:block!important;
-  object-fit\:cover!important;object-position\:center center!important;
+  position:absolute!important;inset:0!important;width:100%!important;height:100%!important;
+  max-width:none!important;max-height:none!important;display:block!important;
+  object-fit:cover!important;object-position:center center!important;
   z-index:0!important;background:#06345d!important;
 }
 #dashboard .nchsm-hero-overlay{
-  position\:absolute!important;inset:0!important;z-index:1!important;pointer-events\:none!important;
-  background\:linear-gradient(90deg,rgba(3,39,72,.96) 0%,rgba(4,55,95,.84) 35%,rgba(4,55,95,.40) 68%,rgba(4,55,95,.18) 100%)!important;
+  position:absolute!important;inset:0!important;z-index:1!important;pointer-events:none!important;
+  background:linear-gradient(90deg,rgba(3,39,72,.96) 0%,rgba(4,55,95,.84) 35%,rgba(4,55,95,.40) 68%,rgba(4,55,95,.18) 100%)!important;
 }
 #dashboard .nchsm-hero-content{
-  position\:relative!important;z-index:2!important;min-height:148px!important;height:148px!important;
-  box-sizing\:border-box!important;padding:18px 26px!important;
+  position:relative!important;z-index:2!important;min-height:148px!important;height:148px!important;
+  box-sizing:border-box!important;padding:18px 26px!important;
 }
-#dashboard .nchsm-hero-copy,#dashboard .nchsm-hero-right{position\:relative!important;z-index:3!important}
-<br>
+#dashboard .nchsm-hero-copy,#dashboard .nchsm-hero-right{position:relative!important;z-index:3!important}
+
 /* Keep the dashboard brand strip as the single blue slogan banner. */
 #dashboard .nchsm-brand-strip{margin-top:12px!important}
 .nchsm-compact-global-footer{
@@ -664,15 +663,15 @@ html,body{min-height:100%;background:#f4f8fc!important}
   min-height:30px!important;height:30px!important;background:#f4f8fc!important;
   padding:0 18px!important;margin:0!important;
 }
-<br>
+
 /* Leaderboard is rendered by dashboard.js into this real target. */
-#leaderboard-container{display\:block!important}
-<br>
+#leaderboard-container{display:block!important}
+
 @media(max-width:1023px){
-  #sidebar.sidebar-premium{height\:calc(100vh - 60px)!important;max-height\:calc(100vh - 60px)!important;top:60px!important;bottom:0!important;
-    display\:flex!important;flex-direction\:column!important;overflow\:hidden!important}
-  #sidebar .sidebar-nav-premium{flex:1 1 auto!important;min-height:0!important;overflow-y\:auto!important}
-  #sidebar .sidebar-footer-premium{flex:0 0 auto!important;display\:block!important;visibility\:visible!important}
+  #sidebar.sidebar-premium{height:calc(100vh - 60px)!important;max-height:calc(100vh - 60px)!important;top:60px!important;bottom:0!important;
+    display:flex!important;flex-direction:column!important;overflow:hidden!important}
+  #sidebar .sidebar-nav-premium{flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important}
+  #sidebar .sidebar-footer-premium{flex:0 0 auto!important;display:block!important;visibility:visible!important}
   #dashboard .nchsm-hero{height:160px!important;min-height:160px!important}
   #dashboard .nchsm-hero-content{height:160px!important;min-height:160px!important}
 }
@@ -681,253 +680,97 @@ html,body{min-height:100%;background:#f4f8fc!important}
   #dashboard .nchsm-hero-content{height:145px!important;min-height:145px!important;padding:17px!important}
 }
 </style>
-<br>
-<br>
+
+
 <style id="nchsm-learning-hub-dropdown-fix">
 /* My Learning Hub dropdown — uses the existing navigation controller */
-.has-dropdown.has-dropdown-premium{position\:relative;}
-.has-dropdown .dropdown-toggle-premium{cursor\:pointer;}
-.has-dropdown .dropdown-arrow-premium{margin-left\:auto;transition\:transform .2s ease;}
-.has-dropdown.open .dropdown-arrow-premium{transform\:rotate(180deg);}
-.dropdown-submenu.dropdown-submenu-premium{display\:none;margin:4px 10px 8px 42px;padding:5px 0;list-style\:none;border-left:1px solid rgba(255,255,255,.16);background\:rgba(255,255,255,.035);border-radius:0 8px 8px 0;}
-.has-dropdown.open>.dropdown-submenu.dropdown-submenu-premium{display\:block!important;}
-.dropdown-submenu-premium li{margin:0;padding:0;list-style\:none;}
-.dropdown-submenu-premium a{display\:flex!important;align-items\:center;gap:9px;padding:8px 10px;color\:rgba(255,255,255,.78)!important;text-decoration\:none!important;font-size:12px;border-radius:6px;margin:1px 5px;white-space\:nowrap;}
-.dropdown-submenu-premium a\:hover,.dropdown-submenu-premium a.active{background\:rgba(255,255,255,.10);color:#FDB913!important;}
-.dropdown-submenu-premium a i{width:16px;text-align\:center;font-size:11px;}
-.dropdown-divider-premium{height:1px;background\:rgba(255,255,255,.10);margin:5px 10px!important;}
+.has-dropdown.has-dropdown-premium{position:relative;}
+.has-dropdown .dropdown-toggle-premium{cursor:pointer;}
+.has-dropdown .dropdown-arrow-premium{margin-left:auto;transition:transform .2s ease;}
+.has-dropdown.open .dropdown-arrow-premium{transform:rotate(180deg);}
+.dropdown-submenu.dropdown-submenu-premium{display:none;margin:4px 10px 8px 42px;padding:5px 0;list-style:none;border-left:1px solid rgba(255,255,255,.16);background:rgba(255,255,255,.035);border-radius:0 8px 8px 0;}
+.has-dropdown.open>.dropdown-submenu.dropdown-submenu-premium{display:block!important;}
+.dropdown-submenu-premium li{margin:0;padding:0;list-style:none;}
+.dropdown-submenu-premium a{display:flex!important;align-items:center;gap:9px;padding:8px 10px;color:rgba(255,255,255,.78)!important;text-decoration:none!important;font-size:12px;border-radius:6px;margin:1px 5px;white-space:nowrap;}
+.dropdown-submenu-premium a:hover,.dropdown-submenu-premium a.active{background:rgba(255,255,255,.10);color:#FDB913!important;}
+.dropdown-submenu-premium a i{width:16px;text-align:center;font-size:11px;}
+.dropdown-divider-premium{height:1px;background:rgba(255,255,255,.10);margin:5px 10px!important;}
 @media(max-width:1023px){
  .dropdown-submenu.dropdown-submenu-premium{margin-left:28px;}
 }
 </style>
-<br>
+
 <style id="nchsm-final-repair">
 /* FINAL STABLE LAYOUT REPAIR */
-html,body{max-width:100%;overflow-x\:hidden!important}
-#app-content{width:100%!important;max-width:100%!important;overflow-x\:hidden!important}
-#app-content>.container{width:100%!important;max-width\:none!important;margin:0!important;padding:0!important;box-sizing\:border-box!important}
+html,body{max-width:100%;overflow-x:hidden!important}
+#app-content{width:100%!important;max-width:100%!important;overflow-x:hidden!important}
+#app-content>.container{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;box-sizing:border-box!important}
 @media(min-width:1024px){
-  #main-header{width:100%!important;box-sizing\:border-box!important}
-  #sidebar.sidebar-premium{left:0!important;top:60px!important;width:260px!important;height\:calc(100vh - 60px)!important;max-height\:calc(100vh - 60px)!important;position\:fixed!important;transform\:none!important;z-index:1001!important}
-  #main-content.main{margin-left:260px!important;width\:calc(100% - 260px)!important;max-width\:calc(100% - 260px)!important;box-sizing\:border-box!important;min-width:0!important}
+  #main-header{width:100%!important;box-sizing:border-box!important}
+  #sidebar.sidebar-premium{left:0!important;top:60px!important;width:260px!important;height:calc(100vh - 60px)!important;max-height:calc(100vh - 60px)!important;position:fixed!important;transform:none!important;z-index:1001!important}
+  #main-content.main{margin-left:260px!important;width:calc(100% - 260px)!important;max-width:calc(100% - 260px)!important;box-sizing:border-box!important;min-width:0!important}
   #main-content.main>*{min-width:0!important;max-width:100%!important}
-  .app-footer.nchsm-compact-global-footer{margin-left:260px!important;width\:calc(100% - 260px)!important;box-sizing\:border-box!important}
+  .app-footer.nchsm-compact-global-footer{margin-left:260px!important;width:calc(100% - 260px)!important;box-sizing:border-box!important}
 }
 @media(max-width:1023px){
-  #main-content.main{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing\:border-box!important}
+  #main-content.main{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
   .app-footer.nchsm-compact-global-footer{width:100%!important}
 }
 /* Keep the complete campus visible as far as the banner aspect ratio allows. */
-#dashboard .nchsm-hero-image{object-fit\:cover!important;object-position\:center 58%!important}
+#dashboard .nchsm-hero-image{object-fit:cover!important;object-position:center 58%!important}
 /* Never leave fake loading placeholders on a completed dashboard. */
 .nchsm-courses,.nchsm-events{min-height:0!important}
 </style>
-<br>
+
 <style id="nchsm-learning-hub-final-fix">
 /* FINAL My Learning Hub dropdown repair: keep submenu inside the sidebar flow. */
 #sidebar .sidebar-nav-premium .has-dropdown.has-dropdown-premium{
-  display\:block!important; position\:relative!important; width:100%!important;
+  display:block!important; position:relative!important; width:100%!important;
 }
 #sidebar .sidebar-nav-premium .has-dropdown.has-dropdown-premium > .dropdown-toggle-premium{
-  position\:relative!important; display\:flex!important; width:100%!important; box-sizing\:border-box!important;
+  position:relative!important; display:flex!important; width:100%!important; box-sizing:border-box!important;
 }
 #sidebar .sidebar-nav-premium .dropdown-submenu.dropdown-submenu-premium{
-  position\:static!important; left\:auto!important; right\:auto!important; top\:auto!important; bottom\:auto!important;
-  float\:none!important; display\:none!important; visibility\:visible!important; opacity:1!important;
-  width\:auto!important; min-width:0!important; max-width\:calc(100% - 28px)!important;
-  height\:auto!important; max-height\:none!important;
+  position:static!important; left:auto!important; right:auto!important; top:auto!important; bottom:auto!important;
+  float:none!important; display:none!important; visibility:visible!important; opacity:1!important;
+  width:auto!important; min-width:0!important; max-width:calc(100% - 28px)!important;
+  height:auto!important; max-height:none!important;
   margin:3px 10px 8px 42px!important; padding:4px 0!important;
-  overflow\:hidden!important;
-  background\:rgba(255,255,255,.045)!important;
+  overflow:hidden!important;
+  background:rgba(255,255,255,.045)!important;
   color:#fff!important; border-left:2px solid rgba(253,185,19,.55)!important;
   border-radius:0 8px 8px 0!important;
-  box-shadow\:none!important;
-  transform\:none!important;
+  box-shadow:none!important;
+  transform:none!important;
 }
 #sidebar .sidebar-nav-premium .has-dropdown.has-dropdown-premium.open > .dropdown-submenu.dropdown-submenu-premium{
-  display\:block!important;
+  display:block!important;
 }
 #sidebar .sidebar-nav-premium .dropdown-submenu-premium li{
-  display\:block!important; width:100%!important; margin:0!important; padding:0!important;
+  display:block!important; width:100%!important; margin:0!important; padding:0!important;
 }
 #sidebar .sidebar-nav-premium .dropdown-submenu-premium a{
-  position\:static!important; display\:flex!important; width\:auto!important; min-height:30px!important;
-  box-sizing\:border-box!important; margin:1px 5px!important; padding:7px 9px!important;
-  background\:transparent!important; color\:rgba(255,255,255,.82)!important;
-  font-size:12px!important; line-height:1.2!important; white-space\:nowrap!important;
-  overflow\:hidden!important; text-overflow\:ellipsis!important;
-  box-shadow\:none!important; transform\:none!important;
+  position:static!important; display:flex!important; width:auto!important; min-height:30px!important;
+  box-sizing:border-box!important; margin:1px 5px!important; padding:7px 9px!important;
+  background:transparent!important; color:rgba(255,255,255,.82)!important;
+  font-size:12px!important; line-height:1.2!important; white-space:nowrap!important;
+  overflow:hidden!important; text-overflow:ellipsis!important;
+  box-shadow:none!important; transform:none!important;
 }
-#sidebar .sidebar-nav-premium .dropdown-submenu-premium a\:hover,
+#sidebar .sidebar-nav-premium .dropdown-submenu-premium a:hover,
 #sidebar .sidebar-nav-premium .dropdown-submenu-premium a.active{
-  background\:rgba(255,255,255,.10)!important; color:#FDB913!important;
+  background:rgba(255,255,255,.10)!important; color:#FDB913!important;
 }
 #sidebar .sidebar-nav-premium .dropdown-divider-premium{
-  display\:block!important; width\:auto!important; height:1px!important;
-  background\:rgba(255,255,255,.10)!important; margin:4px 10px!important;
+  display:block!important; width:auto!important; height:1px!important;
+  background:rgba(255,255,255,.10)!important; margin:4px 10px!important;
 }
 @media(max-width:1023px){
   #sidebar .sidebar-nav-premium .dropdown-submenu.dropdown-submenu-premium{
-    margin-left:28px!important; max-width\:calc(100% - 38px)!important;
+    margin-left:28px!important; max-width:calc(100% - 38px)!important;
   }
 }
 </style>
-
-<style id="nchsm-dashboard-next-class-finance">
-/* Finance metric */
-.nchsm-metric.metric-finance{
-  border-color:#d9e5ef;
-  background:linear-gradient(135deg,#ffffff 0%,#f0f9ff 100%);
-  cursor:pointer;
-}
-.metric-finance .nchsm-metric-icon{
-  background:#e3f2ff;
-  color:#087bf0;
-}
-.metric-finance .nchsm-metric-value{
-  color:#0b5ea8;
-}
-
-/* Next class: directly below Official Announcement */
-.nchsm-next-class-card{
-  position:relative;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:18px;
-  min-height:92px;
-  margin-top:12px;
-  padding:14px 16px;
-  box-sizing:border-box;
-  background:linear-gradient(135deg,#06345d 0%,#075a92 100%);
-  color:#fff;
-  border:1px solid rgba(7,91,148,.35);
-  border-radius:13px;
-  box-shadow:0 6px 18px rgba(8,62,103,.12);
-  overflow:hidden;
-}
-.nchsm-next-class-card::after{
-  content:"";
-  position:absolute;
-  width:170px;height:170px;
-  right:-70px;top:-85px;
-  border-radius:50%;
-  background:rgba(255,255,255,.06);
-  pointer-events:none;
-}
-.nchsm-next-class-main{
-  min-width:0;
-  display:flex;
-  align-items:center;
-  gap:13px;
-  position:relative;
-  z-index:1;
-}
-.nchsm-next-class-icon{
-  width:46px;height:46px;flex:0 0 46px;
-  display:flex;align-items:center;justify-content:center;
-  border-radius:12px;
-  background:rgba(255,255,255,.14);
-  color:#ffc62a;
-  font-size:20px;
-}
-.nchsm-next-class-copy{min-width:0}
-.nchsm-next-class-kicker{
-  font-size:9px;
-  font-weight:800;
-  letter-spacing:1.2px;
-  color:#ffd65b;
-  margin-bottom:3px;
-}
-.nchsm-next-class-copy h2{
-  margin:0;
-  color:#fff;
-  font-size:16px;
-  line-height:1.2;
-  font-weight:800;
-  white-space:nowrap;
-  overflow:hidden;
-  text-overflow:ellipsis;
-}
-.nchsm-next-class-meta{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  margin-top:5px;
-  font-size:10px;
-  color:rgba(255,255,255,.82);
-  white-space:nowrap;
-}
-.nchsm-next-class-separator{opacity:.45}
-.nchsm-next-class-details{
-  position:relative;
-  z-index:1;
-  display:flex;
-  flex-direction:column;
-  gap:7px;
-  min-width:180px;
-  font-size:10px;
-  color:rgba(255,255,255,.9);
-}
-.nchsm-next-class-details div{
-  display:flex;
-  align-items:center;
-  gap:7px;
-  min-width:0;
-}
-.nchsm-next-class-details i{
-  width:14px;
-  text-align:center;
-  color:#ffc62a;
-}
-.nchsm-next-class-details span{
-  overflow:hidden;
-  text-overflow:ellipsis;
-  white-space:nowrap;
-}
-.nchsm-next-class-status{
-  position:relative;
-  z-index:1;
-  flex:0 0 auto;
-  padding:7px 10px;
-  border-radius:20px;
-  background:rgba(255,255,255,.12);
-  color:#fff;
-  font-size:9px;
-  font-weight:800;
-  white-space:nowrap;
-}
-.nchsm-next-class-status i{color:#ffc62a;margin-right:4px}
-
-@media(max-width:760px){
-  .nchsm-next-class-card{
-    align-items:flex-start;
-    flex-direction:column;
-    gap:11px;
-    padding:13px;
-  }
-  .nchsm-next-class-details{
-    width:100%;
-    min-width:0;
-    padding-left:59px;
-    box-sizing:border-box;
-  }
-  .nchsm-next-class-status{
-    position:absolute;
-    right:12px;
-    top:12px;
-  }
-  .nchsm-next-class-copy h2{font-size:14px;padding-right:72px}
-}
-
-@media(min-width:1201px){
-  .nchsm-metrics{grid-template-columns:repeat(6,minmax(0,1fr))!important}
-}
-@media(min-width:761px) and (max-width:1200px){
-  .nchsm-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}
-}
-</style>
-
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -962,7 +805,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </div>
 <!-- MAIN APP CONTENT -->
 <div id="app-content" style="display: none;">
-<a class="nchsm-skip-link" href="https://nchsm.co.ke/student?debug=true#main-content">Skip to main content</a>
+<a class="nchsm-skip-link" href="#main-content">Skip to main content</a>
 <!-- ===== HEADER - HAMBURGER ON FAR LEFT ===== -->
 <header class="main-header nchsm-reference-header" id="main-header" style="
     display: flex;
@@ -981,7 +824,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <i aria-hidden="true" class="fas fa-bars"></i>
 </button>
 <div class="nchsm-header-brand">
-<img alt="NCHSM Logo" class="nchsm-header-logo" src="https://nchsm.co.ke/images/Logo_NCHSM.png"/>
+<img alt="NCHSM Logo" class="nchsm-header-logo" src="images/Logo_NCHSM.png"/>
 <div>
 <div class="nchsm-header-title">NCHSM</div>
 <div class="nchsm-header-subtitle">Digital Student Portal</div>
@@ -1004,7 +847,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </button>
 <div class="user-profile-dropdown nchsm-header-profile" id="header-profile-dropdown">
 <div class="profile-trigger">
-<img alt="Profile" class="profile-avatar round" id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student\&background=4C1D95\&color=fff\&size=100"/>
+<img alt="Profile" class="profile-avatar round" id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student&amp;background=4C1D95&amp;color=fff&amp;size=100"/>
 <div class="nchsm-header-user-copy">
 <span class="profile-name" id="header-user-name">Loading...</span>
 <span class="profile-role">Student</span>
@@ -1023,7 +866,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <div class="sidebar-header-premium">
 <div class="logo-section">
 <div class="logo-wrapper">
-<img alt="NCHSM Logo" class="sidebar-logo" src="https://nchsm.co.ke/images/Logo_NCHSM.png"/>
+<img alt="NCHSM Logo" class="sidebar-logo" src="images/Logo_NCHSM.png"/>
 <div class="logo-glow"></div>
 </div>
 <div class="brand-text">
@@ -1034,7 +877,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <!-- User Profile Mini -->
 <div class="user-profile-mini" id="sidebarUserProfile">
 <div class="user-avatar-wrapper">
-<img alt="Profile" class="user-avatar" id="sidebar-avatar" src="https://ui-avatars.com/api/?name=Student\&background=4C1D95\&color=fff\&size=100\&bold=true"/>
+<img alt="Profile" class="user-avatar" id="sidebar-avatar" src="https://ui-avatars.com/api/?name=Student&amp;background=4C1D95&amp;color=fff&amp;size=100&amp;bold=true"/>
 <span class="online-status-dot"></span>
 </div>
 <div class="user-info-mini">
@@ -1089,13 +932,13 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <span>OVERVIEW</span>
 </li>
 <li role="none">
-<a class="active" data-tab="dashboard" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a class="active" data-tab="dashboard" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-home"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Dashboard</span>
 </a>
 </li>
 <li role="none">
-<a data-tab="profile" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="profile" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-user-circle"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Profile</span>
 </a>
@@ -1104,44 +947,44 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <span>ACADEMICS</span>
 </li>
 <li role="none">
-<a data-tab="calendar" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="calendar" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-calendar-alt"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Academic Calendar</span>
 </a>
 </li>
 <li class="has-dropdown has-dropdown-premium" role="none">
-<a aria-expanded="false" aria-haspopup="true" class="dropdown-toggle-premium" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a aria-expanded="false" aria-haspopup="true" class="dropdown-toggle-premium" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-graduation-cap"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">My Learning Hub</span>
 <i aria-hidden="true" class="fas fa-chevron-down dropdown-arrow-premium"></i>
 </a>
 <ul class="dropdown-submenu dropdown-submenu-premium">
-<li role="none"><a data-tab="hub-register" href="https://nchsm.co.ke/student?debug=true#" role="menuitem"><i aria-hidden="true" class="fas fa-plus-circle"></i><span>Register Units</span></a></li>
-<li role="none"><a data-tab="hub-courses" href="https://nchsm.co.ke/student?debug=true#" role="menuitem"><i aria-hidden="true" class="fas fa-book-open"></i><span>My Units</span></a></li>
+<li role="none"><a data-tab="hub-register" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-plus-circle"></i><span>Register Units</span></a></li>
+<li role="none"><a data-tab="hub-courses" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-book-open"></i><span>My Units</span></a></li>
 <li class="dropdown-divider-premium" role="separator"></li>
-<li role="none"><a data-tab="hub-lecture-card" href="https://nchsm.co.ke/student?debug=true#" role="menuitem"><i aria-hidden="true" class="fas fa-chalkboard-teacher"></i><span>Lecture Card</span></a></li>
-<li role="none"><a data-tab="hub-exam-card" href="https://nchsm.co.ke/student?debug=true#" role="menuitem"><i aria-hidden="true" class="fas fa-id-card"></i><span>Exam Card</span></a></li>
+<li role="none"><a data-tab="hub-lecture-card" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-chalkboard-teacher"></i><span>Lecture Card</span></a></li>
+<li role="none"><a data-tab="hub-exam-card" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-id-card"></i><span>Exam Card</span></a></li>
 <li class="dropdown-divider-premium" role="separator"></li>
-<li role="none"><a data-tab="academic-reports" href="https://nchsm.co.ke/student?debug=true#" role="menuitem"><i aria-hidden="true" class="fas fa-file-alt"></i><span>Academic Reports</span></a></li>
-<li role="none"><a data-tab="nurseiq" href="https://nchsm.co.ke/student?debug=true#" role="menuitem"><i aria-hidden="true" class="fas fa-brain"></i><span>NurseIQ</span></a></li>
-<li role="none"><a data-tab="resources" href="https://nchsm.co.ke/student?debug=true#" role="menuitem"><i aria-hidden="true" class="fas fa-folder-open"></i><span>Resources</span></a></li>
-<li role="none"><a data-tab="hub-online-learning" href="https://nchsm.co.ke/student?debug=true#" role="menuitem"><i aria-hidden="true" class="fas fa-video"></i><span>Online Learning</span></a></li>
+<li role="none"><a data-tab="academic-reports" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-file-alt"></i><span>Academic Reports</span></a></li>
+<li role="none"><a data-tab="nurseiq" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-brain"></i><span>NurseIQ</span></a></li>
+<li role="none"><a data-tab="resources" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-folder-open"></i><span>Resources</span></a></li>
+<li role="none"><a data-tab="hub-online-learning" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-video"></i><span>Online Learning</span></a></li>
 </ul>
 </li>
 <li role="none">
-<a data-tab="attendance" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="attendance" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-check-double"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Attendance</span>
 </a>
 </li>
 <li role="none">
-<a data-tab="cats" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="cats" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-file-alt"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Exams &amp; Results</span>
 </a>
 </li>
 <li role="none">
-<a data-tab="hub-courses" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="hub-courses" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-graduation-cap"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">My Courses</span>
 </a>
@@ -1150,20 +993,20 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <span>STUDENT SERVICES</span>
 </li>
 <li role="none">
-<a data-tab="finance" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="finance" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-coins"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">My Finance</span>
 </a>
 </li>
 <li role="none">
-<a data-tab="enrollment" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="enrollment" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-user-plus"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Enrollment</span>
 <span class="nav-badge-premium">NEW</span>
 </a>
 </li>
 <li role="none">
-<a data-tab="support-tickets" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="support-tickets" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-headset"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Support Tickets</span>
 </a>
@@ -1172,13 +1015,13 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <span>COMMUNICATION</span>
 </li>
 <li role="none">
-<a data-tab="messages" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="messages" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-comments"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Messages</span>
 </a>
 </li>
 <li role="none">
-<a data-tab="newsletter" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="newsletter" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-bullhorn"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Announcements</span>
 </a>
@@ -1187,7 +1030,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <span>GAMIFICATION</span>
 </li>
 <li role="none">
-<a class="nchsm-leaderboard-nav" data-tab="dashboard" href="https://nchsm.co.ke/student?debug=true#leaderboard-container" role="menuitem">
+<a class="nchsm-leaderboard-nav" data-tab="dashboard" href="#leaderboard-container" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-trophy"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Leaderboard</span>
 </a>
@@ -1196,7 +1039,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <span>SETTINGS</span>
 </li>
 <li role="none">
-<a data-tab="profile" href="https://nchsm.co.ke/student?debug=true#" role="menuitem">
+<a data-tab="profile" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-star"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Profile Settings</span>
 </a>
@@ -1228,12 +1071,12 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <!-- MAIN CONTENT AREA -->
 <main class="main" id="main-content">
 <!-- ==================== DASHBOARD SECTION - FULL DARK THEME ==================== -->
-<br>
+
 <section aria-label="Student dashboard" class="tab-content active" id="dashboard">
 <div class="nchsm-dashboard">
 <!-- HERO -->
 <section class="nchsm-hero">
-<img alt="NCHSM campus" class="nchsm-hero-image" src="https://nchsm.co.ke/images/campus-header.jpg"/>
+<img alt="NCHSM campus" class="nchsm-hero-image" src="images/campus-header.jpg"/>
 <div class="nchsm-hero-overlay"></div>
 <div class="nchsm-hero-content">
 <div class="nchsm-hero-copy">
@@ -1290,14 +1133,6 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <div class="nchsm-metric-sub">All activities</div>
 </div>
 </div>
-<div class="nchsm-metric metric-finance" id="dashboard-finance-metric" data-tab="finance" role="button" tabindex="0" aria-label="Open My Finance">
-<div class="nchsm-metric-icon"><i aria-hidden="true" class="fas fa-wallet"></i></div>
-<div class="nchsm-metric-body">
-<div class="nchsm-metric-label">Finance</div>
-<div class="nchsm-metric-value">KSh <span id="dashboard-finance-balance">--</span></div>
-<div class="nchsm-metric-sub" id="dashboard-finance-status">Balance</div>
-</div>
-</div>
 </section>
 <!-- ANNOUNCEMENT -->
 <section aria-label="Official announcement" class="nchsm-announcement">
@@ -1307,28 +1142,6 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <p id="student-announcement">Welcome to your dashboard! Keep an eye on announcements for important updates.</p>
 </div>
 <span aria-hidden="true" class="nchsm-announcement-arrow">›</span>
-</section>
-<!-- NEXT CLASS -->
-<section class="nchsm-next-class-card" id="dashboard-next-class-card" aria-label="Next class">
-<div class="nchsm-next-class-main">
-<div class="nchsm-next-class-icon"><i aria-hidden="true" class="fas fa-chalkboard-teacher"></i></div>
-<div class="nchsm-next-class-copy">
-<div class="nchsm-next-class-kicker">NEXT CLASS</div>
-<h2 id="quick-next-class-name">Your next class</h2>
-<div class="nchsm-next-class-meta">
-<span id="quick-next-class-code">--</span>
-<span class="nchsm-next-class-separator">•</span>
-<span id="quick-next-class-day">--</span>
-<span class="nchsm-next-class-separator" id="quick-next-class-day-container">•</span>
-<span id="quick-next-class-time">--:--</span>
-</div>
-</div>
-</div>
-<div class="nchsm-next-class-details">
-<div><i class="fas fa-user-tie" aria-hidden="true"></i><span id="quick-next-class-lecturer">--</span></div>
-<div><i class="fas fa-location-dot" aria-hidden="true"></i><span id="quick-next-class-venue">--</span></div>
-</div>
-<div class="nchsm-next-class-status"><i class="fas fa-clock" aria-hidden="true"></i> Coming up</div>
 </section>
 <!-- TOP THREE COLUMNS -->
 <section class="nchsm-top-grid">
@@ -1456,6 +1269,12 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <button class="nchsm-view-btn" data-tab="calendar" type="button">View All <span>→</span></button>
 </div>
 <div class="nchsm-events"></div>
+<div hidden="" id="quick-next-class">
+<span id="quick-next-class-time">--:--</span><span id="quick-next-class-name">--</span>
+<span id="quick-next-class-code">--</span><span id="quick-next-class-lecturer">--</span>
+<span id="quick-next-class-venue">--</span><span id="quick-next-class-day">--</span>
+<span id="quick-next-class-day-container"></span>
+</div>
 </article>
 <!-- COURSES -->
 <article class="nchsm-card courses-card">
@@ -1507,7 +1326,8 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <span id="dashboard-reviews-pending">--</span>
 <span id="dashboard-newsletter-status">--</span>
 <span id="dashboard-newsletter-latest">--</span>
-
+<span id="dashboard-finance-balance">--</span>
+<span id="dashboard-finance-status">--</span>
 <span id="attendance-warning-badge">--</span>
 <span id="warning-text">--</span>
 <span id="dashboard-nurseiq-progress">--%</span>
@@ -1515,7 +1335,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </div>
 </div>
 </section>
-<br>
+
 <!-- END DASHBOARD SECTION -->
 <!-- ========== STYLES ========== -->
 <style>
@@ -1540,11 +1360,11 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         transform: scale(1.2);
         filter: drop-shadow(0 0 12px rgba(253, 185, 19, 0.8));
     }
-    .streak-light.active\:nth-child(1) { color: #FDB913 !important; }
-    .streak-light.active\:nth-child(2) { color: #FF6B6B !important; }
-    .streak-light.active\:nth-child(3) { color: #4ECDC4 !important; }
-    .streak-light.active\:nth-child(4) { color: #45B7D1 !important; }
-    .streak-light.active\:nth-child(5) { color: #96CEB4 !important; }
+    .streak-light.active:nth-child(1) { color: #FDB913 !important; }
+    .streak-light.active:nth-child(2) { color: #FF6B6B !important; }
+    .streak-light.active:nth-child(3) { color: #4ECDC4 !important; }
+    .streak-light.active:nth-child(4) { color: #45B7D1 !important; }
+    .streak-light.active:nth-child(5) { color: #96CEB4 !important; }
     @keyframes streakPulse {
         0% { transform: scale(1); }
         50% { transform: scale(1.3); }
@@ -1553,13 +1373,13 @@ html,body{max-width:100%;overflow-x\:hidden!important}
     .streak-light.active {
         animation: streakPulse 1.5s ease-in-out infinite;
     }
-    .streak-light.active\:nth-child(2) { animation-delay: 0.2s; }
-    .streak-light.active\:nth-child(3) { animation-delay: 0.4s; }
-    .streak-light.active\:nth-child(4) { animation-delay: 0.6s; }
-    .streak-light.active\:nth-child(5) { animation-delay: 0.8s; }
+    .streak-light.active:nth-child(2) { animation-delay: 0.2s; }
+    .streak-light.active:nth-child(3) { animation-delay: 0.4s; }
+    .streak-light.active:nth-child(4) { animation-delay: 0.6s; }
+    .streak-light.active:nth-child(5) { animation-delay: 0.8s; }
     #streak-progress-fill { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
     #xp-progress-fill { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
-<br>
+
     /* ============================================================
        ATTENDANCE STYLES
        ============================================================ */
@@ -1593,11 +1413,11 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         transform: scale(1.2);
         filter: drop-shadow(0 0 12px rgba(253, 185, 19, 0.8));
     }
-    .streak-light.active\:nth-child(1) { color: #FDB913 !important; }
-    .streak-light.active\:nth-child(2) { color: #FF6B6B !important; }
-    .streak-light.active\:nth-child(3) { color: #4ECDC4 !important; }
-    .streak-light.active\:nth-child(4) { color: #45B7D1 !important; }
-    .streak-light.active\:nth-child(5) { color: #96CEB4 !important; }
+    .streak-light.active:nth-child(1) { color: #FDB913 !important; }
+    .streak-light.active:nth-child(2) { color: #FF6B6B !important; }
+    .streak-light.active:nth-child(3) { color: #4ECDC4 !important; }
+    .streak-light.active:nth-child(4) { color: #45B7D1 !important; }
+    .streak-light.active:nth-child(5) { color: #96CEB4 !important; }
     @keyframes streakPulse {
         0% { transform: scale(1); }
         50% { transform: scale(1.3); }
@@ -1606,13 +1426,13 @@ html,body{max-width:100%;overflow-x\:hidden!important}
     .streak-light.active {
         animation: streakPulse 1.5s ease-in-out infinite;
     }
-    .streak-light.active\:nth-child(2) { animation-delay: 0.2s; }
-    .streak-light.active\:nth-child(3) { animation-delay: 0.4s; }
-    .streak-light.active\:nth-child(4) { animation-delay: 0.6s; }
-    .streak-light.active\:nth-child(5) { animation-delay: 0.8s; }
+    .streak-light.active:nth-child(2) { animation-delay: 0.2s; }
+    .streak-light.active:nth-child(3) { animation-delay: 0.4s; }
+    .streak-light.active:nth-child(4) { animation-delay: 0.6s; }
+    .streak-light.active:nth-child(5) { animation-delay: 0.8s; }
     #streak-progress-fill { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
     #xp-progress-fill { transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1); }
-<br>
+
     /* ============================================================
        ATTENDANCE STYLES
        ============================================================ */
@@ -1743,7 +1563,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <div style="display: flex; align-items: center; gap: 24px; flex-wrap: wrap; padding-bottom: 20px; border-bottom: 2px solid #f1f5f9; margin-bottom: 20px;">
 <!-- Profile Photo -->
 <div style="position: relative; flex-shrink: 0;">
-<img alt="Profile photo" id="passport-preview" src="https://ui-avatars.com/api/?name=Student\&background=4C1D95\&color=fff\&size=120" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid #4C1D95; box-shadow: 0 4px 15px rgba(76,29,149,0.2); display: block;"/>
+<img alt="Profile photo" id="passport-preview" src="https://ui-avatars.com/api/?name=Student&amp;background=4C1D95&amp;color=fff&amp;size=120" style="width: 100px; height: 100px; border-radius: 50%; object-fit: cover; border: 4px solid #4C1D95; box-shadow: 0 4px 15px rgba(76,29,149,0.2); display: block;"/>
 <label for="passport-file-input" onmouseout="this.style.transform='scale(1)'" onmouseover="this.style.transform='scale(1.1)'" style="position: absolute; bottom: 0; right: 0; background: #4C1D95; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; border: 3px solid white; transition: all 0.2s; font-size: 14px;">
 <i class="fas fa-camera"></i>
 </label>
@@ -3029,57 +2849,57 @@ html,body{max-width:100%;overflow-x\:hidden!important}
                 0% { transform: rotate(0deg); }
                 100% { transform: rotate(360deg); }
             }
-
+            
             input[type="checkbox"] {
                 accent-color: #B45309;
                 width: 16px;
                 height: 16px;
                 cursor: pointer;
             }
-
-            input[type="checkbox"]\:hover {
+            
+            input[type="checkbox"]:hover {
                 transform: scale(1.1);
             }
-
-            #suppRegType\:focus {
+            
+            #suppRegType:focus {
                 outline: none;
                 border-color: #B45309;
                 box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.1);
             }
-
+            
             .reg-sub-tab {
                 transition: all 0.3s ease;
             }
-
-            .reg-sub-tab\:hover {
+            
+            .reg-sub-tab:hover {
                 background: rgba(76, 29, 149, 0.05);
             }
-
+            
             /* Table row hover effect */
-            #availableUnitsBody tr\:hover,
-            #registeredUnitsBody tr\:hover,
-            #eligibleUnitsBody tr\:hover,
-            #suppRegisteredBody tr\:hover {
+            #availableUnitsBody tr:hover,
+            #registeredUnitsBody tr:hover,
+            #eligibleUnitsBody tr:hover,
+            #suppRegisteredBody tr:hover {
                 background: #f8fafc;
             }
-
+            
             /* Download button styles when enabled */
-            #downloadAllSuppExamCardsBtn\:not([disabled]) {
+            #downloadAllSuppExamCardsBtn:not([disabled]) {
                 opacity: 1 !important;
                 cursor: pointer !important;
             }
-
-            #downloadAllSuppExamCardsBtn\:not([disabled])\:hover {
+            
+            #downloadAllSuppExamCardsBtn:not([disabled]):hover {
                 transform: translateY(-2px);
                 box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
             }
-
+            
             #downloadAllSuppExamCardsBtn[disabled] {
                 opacity: 0.5 !important;
                 cursor: not-allowed !important;
                 transform: none !important;
             }
-
+            
             /* Status badge styles */
             .status-pending {
                 background: #fef3c7;
@@ -3090,7 +2910,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
                 font-weight: 600;
                 display: inline-block;
             }
-
+            
             .status-approved {
                 background: #dbeafe;
                 color: #1e40af;
@@ -3100,7 +2920,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
                 font-weight: 600;
                 display: inline-block;
             }
-
+            
             .status-completed {
                 background: #d1fae5;
                 color: #065f46;
@@ -3110,7 +2930,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
                 font-weight: 600;
                 display: inline-block;
             }
-
+            
             .status-available {
                 background: #d1fae5;
                 color: #065f46;
@@ -3120,7 +2940,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
                 font-weight: 600;
                 display: inline-block;
             }
-
+            
             .status-eligible {
                 background: #d1fae5;
                 color: #065f46;
@@ -3130,7 +2950,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
                 font-weight: 600;
                 display: inline-block;
             }
-
+            
             @media (max-width: 768px) {
                 table {
                     font-size: 12px !important;
@@ -3288,7 +3108,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
+        
         @media print {
             #examCardPrintArea {
                 display: block !important;
@@ -3307,7 +3127,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             #examCardStatusBanner {
                 display: none !important;
             }
-            section#hub-exam-card > div\:first-child {
+            section#hub-exam-card > div:first-child {
                 display: none !important;
             }
             .action-buttons {
@@ -3317,19 +3137,19 @@ html,body{max-width:100%;overflow-x\:hidden!important}
                 display: none !important;
             }
         }
-
+        
         /* Table row hover */
-        #pastExamRecordsBody tr\:hover {
+        #pastExamRecordsBody tr:hover {
             background: #f8fafc;
             transition: background 0.2s;
         }
-
+        
         #pastExamRecordsBody tr {
             transition: background 0.2s;
             border-bottom: 1px solid #f1f5f9;
         }
-
-        #pastExamRecordsBody tr\:last-child {
+        
+        #pastExamRecordsBody tr:last-child {
             border-bottom: none;
         }
     </style>
@@ -3411,7 +3231,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             .lecture-card-actions {
                 display: none !important;
             }
-            section#hub-lecture-card > div\:first-child {
+            section#hub-lecture-card > div:first-child {
                 display: none !important;
             }
             #lectureCardStatusBadge {
@@ -3547,7 +3367,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </tbody>
 </table>
 </div>
-<div id="current-empty" style="display\:none; text-align: center; padding: 40px 20px; color: #94a3b8;">
+<div id="current-empty" style="display:none; text-align: center; padding: 40px 20px; color: #94a3b8;">
 <i class="fas fa-clipboard-list" style="font-size: 36px; display: block; margin-bottom: 10px;"></i>
 <h3 style="margin: 0; color: #1e293b;">No Current Assessments</h3>
 <p style="margin: 4px 0 0 0;">You don't have any pending assessments at the moment.</p>
@@ -3591,7 +3411,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </tbody>
 </table>
 </div>
-<div id="completed-empty" style="display\:none; text-align: center; padding: 40px 20px; color: #94a3b8;">
+<div id="completed-empty" style="display:none; text-align: center; padding: 40px 20px; color: #94a3b8;">
 <i class="fas fa-graduation-cap" style="font-size: 36px; display: block; margin-bottom: 10px;"></i>
 <h3 style="margin: 0; color: #1e293b;">No Completed Assessments</h3>
 <p style="margin: 4px 0 0 0;">Your assessment results will appear here once graded.</p>
@@ -4018,7 +3838,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
                 transition: all 0.3s ease;
                 box-shadow: 0 4px 15px rgba(16, 185, 129, 0.3);
             ">
-<i class="fas fa-file-pdf" style="font-size: 20px;"></i>
+<i class="fas fa-file-pdf" style="font-size: 20px;"></i> 
                 Download Semester Report
                 <span style="font-size: 12px; opacity: 0.8; font-weight: 400;">(PDF)</span>
 </button>
@@ -4227,7 +4047,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         animation: spin 1s linear infinite;
         margin: 0 auto 10px;
     }
-
+    
     /* Hollow Star Indicator - Subtle */
     .hollow-star {
         display: inline-block;
@@ -4239,8 +4059,8 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         font-family: Arial, sans-serif;
         transition: opacity 0.2s ease;
     }
-
-    .hollow-star\:hover {
+    
+    .hollow-star:hover {
         opacity: 1;
     }
 </style>
@@ -4365,7 +4185,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </select>
 </div>
 <!-- Target Selection -->
-<div id="target-control-group" style="display\:none;">
+<div id="target-control-group" style="display:none;">
 <label id="target-label" style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">
 <i class="fas fa-bullseye"></i> <span id="target-text">Select Target:</span>
 </label>
@@ -4386,14 +4206,14 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <span><span style="color: #94a3b8;">Confidence:</span> <strong id="gps-confidence" style="color: #0A3D62;">--</strong></span>
 </div>
 <div id="gps-progress" style="margin-top: 4px;"></div>
-<div id="accuracy-warning" style="display\:none; margin-top: 4px; font-size: 11px; color: #f59e0b;">
+<div id="accuracy-warning" style="display:none; margin-top: 4px; font-size: 11px; color: #f59e0b;">
 <i class="fas fa-exclamation-triangle"></i> Low accuracy - GPS signal weak
                         </div>
 </div>
 </div>
 </div>
 <!-- Distance Status - HIDDEN from students -->
-<div id="distance-status" style="display\:none; margin-top: 12px;"></div>
+<div id="distance-status" style="display:none; margin-top: 12px;"></div>
 <!-- Check-in Button & Requirements -->
 <div style="margin-top: 18px; padding-top: 14px; border-top: 1px solid #e5e7eb;">
 <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px;">
@@ -4453,13 +4273,13 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </div>
 </div>
 <!-- Status Messages -->
-<div id="error-message" style="display\:none; margin-top: 12px; background: #fef2f2; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #dc2626;">
+<div id="error-message" style="display:none; margin-top: 12px; background: #fef2f2; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #dc2626;">
 <div style="display: flex; gap: 8px; color: #991b1b; font-size: 13px;">
 <i class="fas fa-exclamation-triangle"></i>
 <p id="error-text" style="margin: 0;"></p>
 </div>
 </div>
-<div id="success-message" style="display\:none; margin-top: 12px; background: #ecfdf5; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #10b981;">
+<div id="success-message" style="display:none; margin-top: 12px; background: #ecfdf5; padding: 10px 14px; border-radius: 8px; border-left: 3px solid #10b981;">
 <div style="display: flex; gap: 8px; color: #065f46; font-size: 13px;">
 <i class="fas fa-check-circle"></i>
 <p id="success-text" style="margin: 0;"></p>
@@ -4556,32 +4376,32 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         @keyframes spin {
             to { transform: rotate(360deg); }
         }
-
+        
         @keyframes slideUpToast {
             from { opacity: 0; transform: translateX(-50%) translateY(30px); }
             to { opacity: 1; transform: translateX(-50%) translateY(0); }
         }
-
+        
         @keyframes slideDownToast {
             from { opacity: 1; transform: translateX(-50%) translateY(0); }
             to { opacity: 0; transform: translateX(-50%) translateY(30px); }
         }
-
+        
         @keyframes fadeInBackdrop {
             from { opacity: 0; }
             to { opacity: 1; }
         }
-
+        
         @keyframes fadeOutBackdrop {
             from { opacity: 1; }
             to { opacity: 0; }
         }
-
+        
         @keyframes slideUpModal {
             from { opacity: 0; transform: translateY(40px) scale(0.96); }
             to { opacity: 1; transform: translateY(0) scale(1); }
         }
-
+        
         /* Status badges for table rows */
         .status-badge-present {
             background: #d1fae5;
@@ -4610,12 +4430,12 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             font-weight: 600;
             display: inline-block;
         }
-
+        
         /* Row hover */
-        #geo-attendance-history tr\:hover {
+        #geo-attendance-history tr:hover {
             background: #f8fafc;
         }
-
+        
         /* Distance colors */
         .distance-verified {
             color: #059669;
@@ -4626,7 +4446,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         .distance-absent {
             color: #dc2626;
         }
-
+        
         /* Scrollbar styling */
         ::-webkit-scrollbar {
             width: 4px;
@@ -4766,7 +4586,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </div>
 </div>
 <!-- ========== MOBILE READER ========== -->
-<div id="student-mobile-reader" style="display\:none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 99998; overflow-y: auto; padding: 20px;">
+<div id="student-mobile-reader" style="display:none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: white; z-index: 99998; overflow-y: auto; padding: 20px;">
 <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 16px; border-bottom: 2px solid #e5e7eb;">
 <button id="student-reader-back-btn" style="background: none; border: none; font-size: 20px; cursor: pointer; color: #475569; display: flex; align-items: center; gap: 8px;">
 <i class="fas fa-arrow-left"></i> Back
@@ -4889,22 +4709,22 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         0%, 100% { transform: scaleY(0.4); }
         50% { transform: scaleY(1); }
     }
-
+    
     @keyframes pulse-glow {
         0%, 100% { box-shadow: 0 0 0 0 rgba(76, 29, 149, 0.4); }
         50% { box-shadow: 0 0 20px 5px rgba(76, 29, 149, 0.2); }
     }
-
+    
     @keyframes spin {
         to { transform: rotate(360deg); }
     }
-
+    
     @keyframes gradientShift {
         0% { background-position: 0% 50%; }
         50% { background-position: 100% 50%; }
         100% { background-position: 0% 50%; }
     }
-
+    
     #audio-player-container {
         transform: translateY(0);
         transition: transform 0.3s ease;
@@ -4921,18 +4741,18 @@ html,body{max-width:100%;overflow-x\:hidden!important}
     #audio-player-container .fa-podcast {
         animation: pulse-glow 2s infinite;
     }
-
+    
     /* Podcast Button - Gradient Animation */
     .podcast-btn {
         background: linear-gradient(135deg, #4a90d9, #e84393) !important;
         background-size: 200% 200% !important;
         animation: gradientShift 3s ease infinite !important;
     }
-    .podcast-btn\:hover {
+    .podcast-btn:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 20px rgba(232, 67, 147, 0.4) !important;
     }
-
+    
     /* Resource Card Actions */
     .resource-actions {
         display: flex !important;
@@ -4968,36 +4788,36 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         color: white !important;
         margin: 0 !important;
     }
-
+    
     /* Read Now Button */
     .read-btn {
         background: #4C1D95 !important;
     }
-    .read-btn\:hover {
+    .read-btn:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 12px rgba(76, 29, 149, 0.3) !important;
     }
-
+    
     /* Podcast Button - matches NotebookLM style */
     .podcast-btn {
         background: linear-gradient(135deg, #4a90d9, #e84393) !important;
         background-size: 200% 200% !important;
         animation: gradientShift 3s ease infinite !important;
     }
-    .podcast-btn\:hover {
+    .podcast-btn:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 20px rgba(232, 67, 147, 0.4) !important;
     }
-
+    
     /* AI Summary Button */
     .summary-btn {
         background: #7c3aed !important;
     }
-    .summary-btn\:hover {
+    .summary-btn:hover {
         transform: translateY(-2px) !important;
         box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3) !important;
     }
-
+    
     /* Audio Controls */
     .audio-control-btn {
         width: 40px;
@@ -5012,13 +4832,13 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         align-items: center;
         justify-content: center;
     }
-    .audio-control-btn\:hover {
+    .audio-control-btn:hover {
         transform: scale(1.05);
     }
-    .audio-control-btn\:active {
+    .audio-control-btn:active {
         transform: scale(0.95);
     }
-
+    
     /* Resource Card */
     .resource-card {
         background: white;
@@ -5030,11 +4850,11 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         display: flex;
         flex-direction: column;
     }
-    .resource-card\:hover {
+    .resource-card:hover {
         transform: translateY(-4px);
         box-shadow: 0 8px 25px rgba(0,0,0,0.1);
     }
-
+    
     /* Mobile */
     @media (max-width: 768px) {
         #audio-player-container { padding: 8px 12px; }
@@ -5053,7 +4873,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         #audio-speaker-indicator { font-size: 10px; }
         #audio-status { display: none !important; }
     }
-
+    
     @media (max-width: 480px) {
         #audio-player-container { padding: 6px 10px; }
         #audio-wave { height: 20px; }
@@ -5114,8 +4934,8 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <div style="background: #f0f7ff; border-radius: 12px; padding: 14px 20px; margin-bottom: 20px; border-left: 4px solid #3B82F6; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
 <i class="fas fa-info-circle" style="color: #3B82F6; font-size: 18px;"></i>
 <div style="font-size: 13px; color: #475569;">
-<strong>Need help?</strong> For support requests or inquiries, please use the
-            <a data-tab="support-tickets" href="https://nchsm.co.ke/student?debug=true#" onmouseout="this.style.textDecoration='none'" onmouseover="this.style.textDecoration='underline'" style="color: #4C1D95; font-weight: 600; text-decoration: none;">Support Tickets</a> section.
+<strong>Need help?</strong> For support requests or inquiries, please use the 
+            <a data-tab="support-tickets" href="#" onmouseout="this.style.textDecoration='none'" onmouseover="this.style.textDecoration='underline'" style="color: #4C1D95; font-weight: 600; text-decoration: none;">Support Tickets</a> section.
         </div>
 </div>
 <!-- ========== TOOLBAR - MATCHING SUPER ADMIN ========== -->
@@ -5198,8 +5018,8 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <div>
 <h5 style="margin: 0; font-size: 13px; color: #1e293b;">Support</h5>
 <p style="margin: 0; font-size: 11px; color: #94a3b8;">
-                        For support requests, use
-                        <a data-tab="support-tickets" href="https://nchsm.co.ke/student?debug=true#" onmouseout="this.style.textDecoration='none'" onmouseover="this.style.textDecoration='underline'" style="color: #4C1D95; font-weight: 600; text-decoration: none;">Support Tickets</a>
+                        For support requests, use 
+                        <a data-tab="support-tickets" href="#" onmouseout="this.style.textDecoration='none'" onmouseover="this.style.textDecoration='underline'" style="color: #4C1D95; font-weight: 600; text-decoration: none;">Support Tickets</a>
 </p>
 </div>
 </div>
@@ -5269,17 +5089,17 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <i class="fas fa-filter"></i> Filter <i class="fas fa-chevron-down" style="font-size: 10px;"></i>
 </button>
 <div style="display: none; position: absolute; top: 100%; right: 0; background: white; border-radius: 8px; border: 1px solid #e5e7eb; box-shadow: 0 4px 20px rgba(0,0,0,0.1); min-width: 160px; z-index: 100; margin-top: 4px; overflow: hidden;">
-<a data-filter="all" href="https://nchsm.co.ke/student?debug=true#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">All Tickets</a>
-<a data-filter="open" href="https://nchsm.co.ke/student?debug=true#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">Open</a>
-<a data-filter="progress" href="https://nchsm.co.ke/student?debug=true#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">In Progress</a>
-<a data-filter="resolved" href="https://nchsm.co.ke/student?debug=true#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">Resolved</a>
-<a data-filter="urgent" href="https://nchsm.co.ke/student?debug=true#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#fef2f2'" style="display: block; padding: 10px 16px; color: #dc2626; text-decoration: none; font-weight: 600; transition: all 0.2s; border-top: 1px solid #e5e7eb;">Urgent Priority</a>
+<a data-filter="all" href="#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">All Tickets</a>
+<a data-filter="open" href="#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">Open</a>
+<a data-filter="progress" href="#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">In Progress</a>
+<a data-filter="resolved" href="#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#f1f5f9'" style="display: block; padding: 10px 16px; color: #475569; text-decoration: none; transition: all 0.2s;">Resolved</a>
+<a data-filter="urgent" href="#" onmouseout="this.style.background='transparent'" onmouseover="this.style.background='#fef2f2'" style="display: block; padding: 10px 16px; color: #dc2626; text-decoration: none; font-weight: 600; transition: all 0.2s; border-top: 1px solid #e5e7eb;">Urgent Priority</a>
 </div>
 </div>
 </div>
 </div>
 <!-- ========== NEW TICKET FORM - MATCHING SUPER ADMIN ========== -->
-<div id="new-ticket-form" style="display\:none; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
+<div id="new-ticket-form" style="display:none; background: white; border-radius: 12px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 20px;">
 <div style="padding: 16px 20px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center;">
 <h3 style="margin: 0; color: #0A3D62; display: flex; align-items: center; gap: 10px;">
 <i class="fas fa-ticket-alt" style="color: #4C1D95;"></i> Create New Support Ticket
@@ -5396,7 +5216,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </tbody>
 </table>
 </div>
-<div id="tickets-loading" style="display\:none; text-align: center; padding: 40px; color: #94a3b8;">
+<div id="tickets-loading" style="display:none; text-align: center; padding: 40px; color: #94a3b8;">
 <div style="width: 30px; height: 30px; border: 3px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 10px;"></div>
 <p style="margin: 0;">Loading tickets...</p>
 </div>
@@ -5412,7 +5232,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </div>
 </div>
 <!-- ========== TICKET DETAIL MODAL - MATCHING SUPER ADMIN ========== -->
-<div id="ticket-detail-modal" style="display\:none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; overflow-y: auto;">
+<div id="ticket-detail-modal" style="display:none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.6); z-index: 100000; align-items: center; justify-content: center; backdrop-filter: blur(4px); padding: 20px; overflow-y: auto;">
 <div style="background: white; border-radius: 16px; max-width: 750px; width: 95%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.3);">
 <!-- Modal Header -->
 <div style="padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; background: #f8fafc; border-radius: 16px 16px 0 0;">
@@ -5464,7 +5284,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </div>
 </div>
 <!-- Attachments -->
-<div id="attachments-section" style="display\:none; padding: 16px 0; border-bottom: 1px solid #e5e7eb;">
+<div id="attachments-section" style="display:none; padding: 16px 0; border-bottom: 1px solid #e5e7eb;">
 <h4 style="margin: 0 0 10px 0; color: #0A3D62; font-size: 14px;">
 <i class="fas fa-paperclip"></i> Attachments
                     </h4>
@@ -5506,10 +5326,10 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 </div>
 <!-- Modal Footer -->
 <div style="padding: 16px 20px; border-top: 1px solid #e5e7eb; background: #f8fafc; border-radius: 0 0 16px 16px; display: flex; justify-content: flex-end; gap: 10px;">
-<button id="close-ticket-btn" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(220,38,38,0.3)'" style="display\:none; padding: 8px 20px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
+<button id="close-ticket-btn" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(220,38,38,0.3)'" style="display:none; padding: 8px 20px; background: #dc2626; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
 <i class="fas fa-times-circle"></i> Close Ticket
                 </button>
-<button id="reopen-ticket-btn" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(5,150,105,0.3)'" style="display\:none; padding: 8px 20px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
+<button id="reopen-ticket-btn" onmouseout="this.style.transform='none'; this.style.boxShadow='none'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(5,150,105,0.3)'" style="display:none; padding: 8px 20px; background: #059669; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
 <i class="fas fa-redo"></i> Reopen Ticket
                 </button>
 <button class="close-modal-btn" onmouseout="this.style.background='#e5e7eb'" onmouseover="this.style.background='#d1d5db'" style="padding: 8px 20px; background: #e5e7eb; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 500; transition: all 0.3s ease;">
@@ -6273,7 +6093,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <!-- ========== NOSCRIPT FALLBACK ========== -->
 <noscript>
 <div style="padding: 16px; background: #fef2f2; border-radius: 8px; color: #991b1b; margin-bottom: 16px; border: 1px solid #fecaca; font-size: 13px;">
-<i class="fas fa-exclamation-triangle"></i>
+<i class="fas fa-exclamation-triangle"></i> 
             Please enable JavaScript to view your finance information.
         </div>
 </noscript>
@@ -6642,11 +6462,11 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         align-items: center !important;
         padding: 20px !important;
     }
-<br>
+
     .modal-overlay.active {
         display: flex !important;
     }
-<br>
+
     #finance-paymentModal .modal {
         position: relative !important;
         z-index: 1000000 !important;
@@ -6662,7 +6482,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15) !important;
         animation: slideUp 0.3s ease !important;
     }
-<br>
+
     .modal-actions {
         position: sticky !important;
         bottom: 0 !important;
@@ -6672,18 +6492,18 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         border-top: 2px solid #f1f5f9 !important;
         z-index: 10 !important;
     }
-<br>
+
     footer, .footer, .site-footer, #footer {
         position: relative !important;
         z-index: 1 !important;
     }
-<br>
+
     .payment-method-item.selected {
         border-color: #4C1D95 !important;
         background: #ede9fe !important;
         box-shadow: 0 0 0 2px rgba(76, 29, 149, 0.1) !important;
     }
-<br>
+
     /* ===== ANIMATIONS ===== */
     @keyframes finance-spin {
         to { transform: rotate(360deg); }
@@ -6692,7 +6512,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         from { transform: translateY(30px); opacity: 0; }
         to { transform: translateY(0); opacity: 1; }
     }
-<br>
+
     /* ===== MODAL HEADER ===== */
     .modal-header {
         display: flex;
@@ -6722,11 +6542,11 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         align-items: center;
         justify-content: center;
     }
-    .modal-header .close\:hover {
+    .modal-header .close:hover {
         background: #EF4444;
         color: #fff;
     }
-<br>
+
     /* ===== PAYMENT STATUS ===== */
     .payment-status {
         text-align: center;
@@ -6753,7 +6573,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         color: #94A3B8;
         margin: 4px 0;
     }
-<br>
+
     /* ===== BUTTONS ===== */
     .btn {
         padding: 10px 20px;
@@ -6773,7 +6593,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         color: #fff;
         box-shadow: 0 4px 16px rgba(76, 29, 149, 0.3);
     }
-    .btn-primary\:hover {
+    .btn-primary:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(76, 29, 149, 0.4);
     }
@@ -6781,7 +6601,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         background: linear-gradient(135deg, #EF4444, #DC2626);
         color: #fff;
     }
-    .btn-danger\:hover {
+    .btn-danger:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 24px rgba(239, 68, 68, 0.4);
     }
@@ -6790,11 +6610,11 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         color: #475569;
         border: 1px solid #E2E8F0;
     }
-    .btn-outline\:hover {
+    .btn-outline:hover {
         border-color: #4C1D95;
         color: #4C1D95;
     }
-<br>
+
     /* ===== FORM GROUP ===== */
     .form-row {
         display: grid;
@@ -6823,8 +6643,8 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         transition: all 0.3s ease;
         font-family: inherit;
     }
-    .finance-form-group select\:focus,
-    .finance-form-group input\:focus {
+    .finance-form-group select:focus,
+    .finance-form-group input:focus {
         border-color: #4C1D95;
         outline: none;
         box-shadow: 0 0 0 3px rgba(76, 29, 149, 0.1);
@@ -6841,7 +6661,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         font-size: 11px;
         margin-top: 3px;
     }
-<br>
+
     /* ===== PAYMENT METHODS GRID ===== */
     #finance-paymentMethodsContainer {
         display: grid;
@@ -6857,7 +6677,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         transition: all 0.3s ease;
         background: #f8fafc;
     }
-    .payment-method-item\:hover {
+    .payment-method-item:hover {
         border-color: #4C1D95;
         transform: translateY(-2px);
         box-shadow: 0 4px 12px rgba(76, 29, 149, 0.1);
@@ -6878,7 +6698,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         color: #94A3B8;
         display: block;
     }
-<br>
+
     /* ===== MODAL ACTIONS ===== */
     .modal-actions {
         display: flex;
@@ -6893,7 +6713,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
     .modal-actions .btn-primary {
         flex: 2;
     }
-<br>
+
     /* ===== RESPONSIVE ===== */
     @media (max-width: 768px) {
         .modal-overlay {
@@ -7196,7 +7016,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
         .course-card {
             transition: all 0.2s ease;
         }
-        .course-card\:hover {
+        .course-card:hover {
             transform: translateY(-3px);
             box-shadow: 0 8px 25px rgba(0,0,0,0.08);
         }
@@ -7213,70 +7033,70 @@ html,body{max-width:100%;overflow-x\:hidden!important}
   <div class="nchsm-footer-bottom">
     <span>© 2026 Nakuru College of Health Sciences &amp; Management. All rights reserved.</span>
     <nav aria-label="Footer links">
-      <a href="https://nchsm.co.ke/student?debug=true#">Privacy</a><span>|</span><a href="https://nchsm.co.ke/student?debug=true#">Terms</a><span>|</span><a href="https://nchsm.co.ke/student?debug=true#">Support</a>
+      <a href="#">Privacy</a><span>|</span><a href="#">Terms</a><span>|</span><a href="#">Support</a>
     </nav>
     <span class="nchsm-system-online"><i aria-hidden="true" class="fas fa-circle"></i> System Online</span>
   </div>
 </footer>
 <!-- TRANSCRIPT MODAL -->
-<div id="transcript-modal" style="display\:none; position\:fixed; top:0; left:0; width:100%; height:100%; background\:rgba(0,0,0,0.4); justify-content\:center; align-items\:center; z-index:1000;"><div style="background\:white; padding:16px; border-radius:8px; max-width:350px; width:90%; position\:relative; box-shadow:0 4px 20px rgba(0,0,0,0.15);"><button id="closeTranscriptBtn" style="position\:absolute; top:8px; right:8px; background\:none; border\:none; font-size:1.2em; cursor\:pointer; color:#6B7280; padding:4px; width:28px; height:28px; display\:flex; align-items\:center; justify-content\:center; border-radius:50%;">×</button><div style="text-align\:center; margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid var(--color-primary, #4F46E5);"><h4 style="margin:0; color: var(--color-primary, #4F46E5); font-size:1.1em; font-weight:600;"><i class="fas fa-file-alt" style="margin-right:6px;"></i> Exam Transcript</h4><p id="transcript-exam-name" style="margin:5px 0 0; font-size:0.85em; color:#6B7280;"></p></div><table style="width:100%; border-collapse\:collapse; font-size:0.9em; margin-bottom:10px;"><tr><td style="font-weight:600; padding:6px 0; width:50%;">CAT 1 (30):</td><td id="transcript-cat1" style="padding:6px 0; text-align\:right;">-</td></tr>
-<tr><td style="font-weight:600; padding:6px 0;">CAT 2 (30):</td><td id="transcript-cat2" style="padding:6px 0; text-align\:right;">-</td></tr>
-<tr><td style="font-weight:600; padding:6px 0;">Final (40):</td><td id="transcript-final" style="padding:6px 0; text-align\:right;">-</td></tr>
-<tr style="border-top:1px solid #e5e7eb;"><td style="font-weight:700; padding:8px 0;">Total Score:</td><td id="transcript-total" style="padding:8px 0; font-weight:700; text-align\:right;">-</td></tr>
-<tr><td style="font-weight:700; padding:6px 0;">Status:</td><td id="transcript-status" style="padding:6px 0; font-weight:700; text-align\:right;">-</td></tr>
+<div id="transcript-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); justify-content:center; align-items:center; z-index:1000;"><div style="background:white; padding:16px; border-radius:8px; max-width:350px; width:90%; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.15);"><button id="closeTranscriptBtn" style="position:absolute; top:8px; right:8px; background:none; border:none; font-size:1.2em; cursor:pointer; color:#6B7280; padding:4px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:50%;">×</button><div style="text-align:center; margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid var(--color-primary, #4F46E5);"><h4 style="margin:0; color: var(--color-primary, #4F46E5); font-size:1.1em; font-weight:600;"><i class="fas fa-file-alt" style="margin-right:6px;"></i> Exam Transcript</h4><p id="transcript-exam-name" style="margin:5px 0 0; font-size:0.85em; color:#6B7280;"></p></div><table style="width:100%; border-collapse:collapse; font-size:0.9em; margin-bottom:10px;"><tr><td style="font-weight:600; padding:6px 0; width:50%;">CAT 1 (30):</td><td id="transcript-cat1" style="padding:6px 0; text-align:right;">-</td></tr>
+<tr><td style="font-weight:600; padding:6px 0;">CAT 2 (30):</td><td id="transcript-cat2" style="padding:6px 0; text-align:right;">-</td></tr>
+<tr><td style="font-weight:600; padding:6px 0;">Final (40):</td><td id="transcript-final" style="padding:6px 0; text-align:right;">-</td></tr>
+<tr style="border-top:1px solid #e5e7eb;"><td style="font-weight:700; padding:8px 0;">Total Score:</td><td id="transcript-total" style="padding:8px 0; font-weight:700; text-align:right;">-</td></tr>
+<tr><td style="font-weight:700; padding:6px 0;">Status:</td><td id="transcript-status" style="padding:6px 0; font-weight:700; text-align:right;">-</td></tr>
 </table>
 <div style="margin-top:10px; padding:8px; background:#f0f9ff; border-radius:4px; font-size:0.8em; color:#0369a1; border-left:3px solid #0ea5e9;"><i class="fas fa-info-circle" style="margin-right:5px;"></i>Provisional - subject to moderation</div>
-<div style="margin-top:15px; text-align\:center;"><button id="closeTranscriptModalBtn" style="padding:8px 20px; background\:var(--color-primary, #4F46E5); color\:white; border\:none; border-radius:6px; cursor\:pointer; font-size:0.9em; font-weight:500; width:100%;">Close Transcript</button></div>
+<div style="margin-top:15px; text-align:center;"><button id="closeTranscriptModalBtn" style="padding:8px 20px; background:var(--color-primary, #4F46E5); color:white; border:none; border-radius:6px; cursor:pointer; font-size:0.9em; font-weight:500; width:100%;">Close Transcript</button></div>
 </div>
 </div>
 <!-- ===== 2️⃣ SECOND: Utilities and Helpers ===== -->
-<script src="https://nchsm.co.ke/js/utils.js"></script>
-<script src="https://nchsm.co.ke/js/ui.js"></script>
-<script src="https://nchsm.co.ke/code-protection.js"></script>
+<script src="./js/utils.js"></script>
+<script src="./js/ui.js"></script>
+<script src="code-protection.js"></script>
 <!-- ===== 3️⃣ THIRD: Database (Depends on utils.js) ===== -->
-<script src="https://nchsm.co.ke/js/database.js"></script>
+<script src="./js/database.js"></script>
 <!-- ===== 4️⃣ FOURTH: Core Modules ===== -->
-<script src="https://nchsm.co.ke/js/gamification.js"></script>
-<script src="https://nchsm.co.ke/js/dashboard.js"></script>
-<script src="https://nchsm.co.ke/js/profile.js"></script>
-<script src="https://nchsm.co.ke/js/attendance.js"></script>
-<script src="https://nchsm.co.ke/js/courses.js"></script>
-<script src="https://nchsm.co.ke/js/exams.js"></script>
-<script src="https://nchsm.co.ke/js/unit-registration.js"></script>
-<script src="https://nchsm.co.ke/js/resources.js"></script>
-<script src="https://nchsm.co.ke/js/calendar.js"></script>
-<script src="https://nchsm.co.ke/js/messages.js"></script>
-<script src="https://nchsm.co.ke/js/student-tickets.js"></script>
-<script src="https://nchsm.co.ke/js/nurseiq.js"></script>
-<script src="https://nchsm.co.ke/js/exam-card.js"></script>
-<script src="https://nchsm.co.ke/js/lecture-card.js"></script>
-<script src="https://nchsm.co.ke/js/academic-reports.js"></script>
-<script src="https://nchsm.co.ke/js/timetable-manager.js"></script>
-<script src="https://nchsm.co.ke/js/reviews-newsletter.js"></script>
+<script src="./js/gamification.js"></script>
+<script src="./js/dashboard.js"></script>
+<script src="./js/profile.js"></script>
+<script src="./js/attendance.js"></script>
+<script src="./js/courses.js"></script>
+<script src="./js/exams.js"></script>
+<script src="./js/unit-registration.js"></script>
+<script src="./js/resources.js"></script>
+<script src="./js/calendar.js"></script>
+<script src="./js/messages.js"></script>
+<script src="./js/student-tickets.js"></script>
+<script src="./js/nurseiq.js"></script>
+<script src="./js/exam-card.js"></script>
+<script src="./js/lecture-card.js"></script>
+<script src="./js/academic-reports.js"></script>
+<script src="./js/timetable-manager.js"></script>
+<script src="./js/reviews-newsletter.js"></script>
 <!-- ===== 5️⃣ FIFTH: Finance and Enrollment ===== -->
-<script src="https://nchsm.co.ke/js/student-finance.js"></script>
-<script src="https://nchsm.co.ke/js/enrollment.js"></script>
+<script src="./js/student-finance.js"></script>
+<script src="./js/enrollment.js"></script>
 <!-- ===== 6️⃣ SIXTH: Cleanup and Chatbot ===== -->
-<script src="https://nchsm.co.ke/js/cleanup.js"></script>
-<script src="https://nchsm.co.ke/js/chatbot.js"></script>
+<script src="js/cleanup.js"></script>
+<script src="./js/chatbot.js"></script>
 <!-- ============================================================ -->
 <!-- MAIN NAVIGATION HANDLER                                      -->
 <!-- ============================================================ -->
 <script>
 (function() {
     'use strict';
-
+    
     console.log('🎯 MAIN NAVIGATION HANDLER');
-<br>
-    // Hides the .html extension in the URL
+
+    // Hides the .html extension in the URL  
     if (window.location.pathname.endsWith('.html')) {
         const cleanPath = window.location.pathname.replace(/\.html$/, '');
         window.history.replaceState({}, '', cleanPath);
-    }
-
+    } 
+    
     function showTab(tabId) {
         console.log('📂 Opening tab:', tabId);
-
+        
         if (window.innerWidth <= 768) {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('overlay');
@@ -7284,27 +7104,27 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             if (overlay) overlay.classList.remove('active');
             document.body.style.overflow = '';
         }
-
+        
         document.querySelectorAll('.tab-content').forEach(tab => {
             tab.style.display = 'none';
             tab.classList.remove('active');
         });
-
+        
         const target = document.getElementById(tabId);
         if (target) {
             target.style.display = 'block';
             target.classList.add('active');
         }
-
+        
         document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
             link.classList.remove('active');
             if (link.getAttribute('data-tab') === tabId) {
                 link.classList.add('active');
             }
         });
-
+        
         localStorage.setItem('nchsm_current_tab', tabId);
-
+        
         setTimeout(() => {
             if (tabId === 'hub-courses' && window.coursesModule?.loadCourses) window.coursesModule.loadCourses();
             else if (tabId === 'hub-register' && window.unitRegistrationModule?.loadUnits) window.unitRegistrationModule.loadUnits();
@@ -7325,7 +7145,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             }
         }, 100);
     }
-
+    
     const dropdownParent = document.querySelector('.has-dropdown');
     const dropdownToggle = document.querySelector('.has-dropdown > a');
     const dropdownMenu = document.querySelector('.dropdown-submenu');
@@ -7341,7 +7161,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             dropdownMenu.style.removeProperty('display');
         });
     }
-
+    
     document.querySelectorAll('.dropdown-submenu a[data-tab]').forEach(item => {
         const tabId = item.getAttribute('data-tab');
         const newItem = item.cloneNode(true);
@@ -7356,7 +7176,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             showTab(tabId);
         });
     });
-
+    
     const hubLink = document.querySelector('.nav a[data-tab="learning-hub"]');
     if (hubLink) {
         const newLink = hubLink.cloneNode(true);
@@ -7378,7 +7198,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             }
         });
     }
-
+    
     document.querySelectorAll('.nav a[data-tab]').forEach(link => {
         if (link.getAttribute('data-tab') === 'learning-hub') return;
         const tabId = link.getAttribute('data-tab');
@@ -7390,7 +7210,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             showTab(tabId);
         });
     });
-
+    
     document.querySelectorAll('.stat-card[data-tab]').forEach(card => {
         const tabId = card.getAttribute('data-tab');
         const newCard = card.cloneNode(true);
@@ -7400,7 +7220,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             showTab(tabId);
         });
     });
-
+    
     document.addEventListener('click', function(e) {
         if (dropdownParent && !dropdownParent.contains(e.target) && dropdownParent.classList.contains('open')) {
             dropdownParent.classList.remove('open');
@@ -7409,38 +7229,38 @@ html,body{max-width:100%;overflow-x\:hidden!important}
             if (dropdownMenu) dropdownMenu.style.removeProperty('display');
         }
     });
-
+    
     // ========== FIXED: ALWAYS SHOW DASHBOARD ON PAGE LOAD ==========
     localStorage.setItem('nchsm_current_tab', 'dashboard');
-
+    
     function showDashboardOnLoad() {
         console.log('🔄 Showing dashboard on load...');
         const dashboard = document.getElementById('dashboard');
         if (dashboard) {
             dashboard.style.display = 'block';
             dashboard.classList.add('active');
-
+            
             document.querySelectorAll('.tab-content').forEach(tab => {
                 if (tab.id !== 'dashboard') {
                     tab.style.display = 'none';
                     tab.classList.remove('active');
                 }
             });
-
+            
             document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
                 link.classList.remove('active');
                 if (link.getAttribute('data-tab') === 'dashboard') {
                     link.classList.add('active');
                 }
             });
-
+            
             console.log('✅ Dashboard is now visible');
         } else {
             console.log('⚠️ Dashboard not found, retrying...');
             setTimeout(showDashboardOnLoad, 100);
         }
     }
-
+    
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(showDashboardOnLoad, 200);
@@ -7448,7 +7268,7 @@ html,body{max-width:100%;overflow-x\:hidden!important}
     } else {
         setTimeout(showDashboardOnLoad, 200);
     }
-
+    
     window.showTab = showTab;
 })();
 </script>
@@ -7457,62 +7277,62 @@ html,body{max-width:100%;overflow-x\:hidden!important}
 <!-- ============================================================ -->
 <script>
 window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
-<br>
+
 async function initializeApp() {
     try {
         console.log('🚀 Starting app initialization...');
         if (!window.APP_CONFIG) throw new Error('Configuration not loaded.');
-
+        
         const config = window.APP_CONFIG;
         window.app.config = config;
-
+        
         if (!config.SUPABASE_URL || config.SUPABASE_URL === '%%SUPABASE_URL%%') throw new Error('SUPABASE_URL not configured');
         if (!config.SUPABASE_ANON_KEY || config.SUPABASE_ANON_KEY === '%%SUPABASE_ANON_KEY%%') throw new Error('SUPABASE_ANON_KEY not configured');
-
+        
         if (typeof window.db === 'undefined') throw new Error('Database module not loaded');
-
+        
         const dbInstance = await window.db.initialize();
         if (!dbInstance) throw new Error('Database initialization failed');
-
+        
         console.log('✅ Database initialized');
-
+        
         let userSession = null;
         if (window.db.supabase) {
             const { data, error } = await window.db.supabase.auth.getSession();
             if (error) throw error;
             userSession = data.session;
         }
-
+        
         if (!userSession) {
             console.log('⚠️ No active session, redirecting...');
             window.location.href = '/login';
             return;
         }
-
+        
         window.db.currentUserId = userSession.user.id;
         await window.db.loadUserProfile();
-<br>
+
         // Populate dashboard greeting from the authenticated profile — never from hardcoded demo data.
         const dashboardName = document.getElementById('welcome-student-name');
         if (dashboardName && window.db.currentUserProfile?.full_name) {
             dashboardName.textContent = window.db.currentUserProfile.full_name.trim();
         }
-
+        
         console.log('✅ User authenticated');
-
+        
         if (window.db.currentUserId && window.ui && window.ui.recordNewLogin) {
             await window.ui.recordNewLogin(window.db.currentUserId);
         }
-
+        
         const loadingScreen = document.getElementById('loading-screen');
         if (loadingScreen) loadingScreen.style.display = 'none';
         const appContent = document.getElementById('app-content');
         if (appContent) appContent.style.display = 'block';
-
+        
         window.supabase = window.db.supabase;
         window.currentUserId = window.db.currentUserId;
         window.currentUserProfile = window.db.currentUserProfile;
-
+        
         const welcomeHeader = document.getElementById('welcome-header');
         if (welcomeHeader && window.db.currentUserProfile?.full_name) {
             welcomeHeader.textContent = 'Welcome back, ' + window.db.currentUserProfile.full_name + '!';
@@ -7524,9 +7344,9 @@ async function initializeApp() {
         if (window.db.currentUserProfile?.full_name) {
             const nameForAvatar = window.db.currentUserProfile.full_name.replace(/\s+/g, '');
             const headerPhoto = document.getElementById('header-profile-photo');
-            if (headerPhoto) headerPhoto.src = \`https\://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100\`;
+            if (headerPhoto) headerPhoto.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(nameForAvatar)}&background=667eea&color=fff&size=100`;
         }
-
+        
         if (typeof initUI === 'function') initUI();
         if (typeof initProfileModule === 'function') setTimeout(() => initProfileModule(), 100);
         if (typeof initDashboardModule === 'function') {
@@ -7542,26 +7362,26 @@ async function initializeApp() {
                 }
             }, 200);
         }
-
+        
         window.app.isInitialized = true;
         window.app.supabase = window.db.supabase;
         window.app.user = window.db.currentUserProfile;
-
+        
         console.log('✅ Application initialized successfully');
         document.dispatchEvent(new CustomEvent('appReady', {
             detail: { userId: window.currentUserId, userProfile: window.currentUserProfile, database: window.db }
         }));
-
+        
         // ===== LOAD FINANCE DATA ON INIT =====
         if (typeof loadStudentFinance === 'function') {
             setTimeout(loadStudentFinance, 1000);
         }
-
+        
         // ===== INITIALIZE ENROLLMENT MODULE =====
         if (typeof initEnrollment === 'function') {
             setTimeout(initEnrollment, 1200);
         }
-
+        
     } catch (error) {
         console.error('❌ Initialization failed:', error);
         const loadingScreen = document.getElementById('loading-screen');
@@ -7572,7 +7392,7 @@ async function initializeApp() {
         if (welcomeSection) welcomeSection.innerHTML = '<h2>Application Error</h2><p>' + error.message + '</p><button onclick="location.reload()" class="profile-button">Retry</button>';
     }
 }
-<br>
+
 // FORCE DASHBOARD VISIBLE AFTER INITIALIZATION
 setTimeout(function() {
     const dashboard = document.getElementById('dashboard');
@@ -7588,7 +7408,7 @@ setTimeout(function() {
         }
     });
 }, 300);
-<br>
+
 document.addEventListener('DOMContentLoaded', function() {
     console.log('📱 DOM ready, starting app initialization...');
     document.querySelectorAll('.tab-content').forEach(tab => tab.style.removeProperty('display'));
@@ -7600,17 +7420,17 @@ document.addEventListener('DOMContentLoaded', function() {
 (function forceUIUpdate() {
     let attempts = 0;
     const maxAttempts = 30;
-
+    
     function updateUI() {
         attempts++;
-
+        
         if (window.dashboardModule && window.dashboardModule.metrics) {
             const m = window.dashboardModule.metrics;
-
+            
             const rateEl = document.getElementById('dashboard-attendance-rate');
             if (rateEl && rateEl.innerText === '--%') {
                 console.log('🔄 Updating dashboard UI...');
-
+                
                 document.getElementById('dashboard-attendance-rate').innerText = m.attendance.rate + '%';
                 document.getElementById('dashboard-verified-count').innerText = m.attendance.verified;
                 document.getElementById('dashboard-total-count').innerText = m.attendance.total;
@@ -7623,18 +7443,18 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('dashboard-nurseiq-accuracy').innerText = m.nurseiq.accuracy + '%';
                 document.getElementById('dashboard-nurseiq-questions').innerText = m.nurseiq.questions;
                 document.getElementById('dashboard-upcoming-exam').innerText = m.exams || 'No upcoming exams';
-
+                
                 if (window.currentUserProfile) {
                     document.getElementById('dashboard-current-block-value').innerText = window.currentUserProfile.block || '--';
                     document.getElementById('dashboard-program-name').innerText = window.currentUserProfile.program || '--';
                     document.getElementById('dashboard-intake-year').innerText = window.currentUserProfile.intake_year || '--';
                 }
-
+                
                 console.log('✅ Dashboard UI updated!');
                 return true;
             }
         }
-
+        
         if (attempts < maxAttempts) {
             setTimeout(updateUI, 200);
         } else {
@@ -7642,7 +7462,7 @@ document.addEventListener('DOMContentLoaded', function() {
         }
         return false;
     }
-
+    
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', function() {
             setTimeout(updateUI, 500);
@@ -7658,13 +7478,13 @@ document.addEventListener('DOMContentLoaded', function() {
 // ============================================
 (function () {
   'use strict';
-<br>
+
   function setTheme(theme) {
     const dark = theme === 'dark' || theme === 'dark-mode';
     document.body.classList.toggle('dark-mode', dark);
     document.body.setAttribute('data-theme', dark ? 'dark' : 'purple');
     try { localStorage.setItem('nchsm_theme', dark ? 'dark' : 'purple'); } catch (_) {}
-<br>
+
     const btn = document.getElementById('sidebarThemeBtn');
     if (btn) {
       btn.setAttribute('aria-pressed', String(dark));
@@ -7675,16 +7495,16 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     return dark;
   }
-<br>
+
   function loadTheme() {
     let saved = 'purple';
     try { saved = localStorage.getItem('nchsm_theme') || 'purple'; } catch (_) {}
     setTheme(saved === 'dark' ? 'dark' : 'purple');
   }
-<br>
+
   window.setTheme = setTheme;
   window.nchsmApplyTheme = setTheme;
-<br>
+
   if (document.readyState === 'loading') {
     document.addEventListener('DOMContentLoaded', loadTheme, { once: true });
   } else {
@@ -7697,9 +7517,9 @@ document.addEventListener('DOMContentLoaded', function() {
 // ========== PERMANENT SUPER FIX FOR LECTURE CARD ==========
 (function() {
     'use strict';
-
+    
     console.log('🔧 Installing PERMANENT SUPER FIX for Lecture Card...');
-
+    
     function installSuperFix() {
         const oldLink = document.querySelector('a[data-tab="hub-lecture-card"]');
         if (!oldLink) {
@@ -7707,9 +7527,9 @@ document.addEventListener('DOMContentLoaded', function() {
             setTimeout(installSuperFix, 200);
             return;
         }
-
+        
         console.log('Found Lecture Card link, applying SUPER FIX...');
-
+        
         const li = oldLink.parentElement;
         const newLink = document.createElement('a');
         newLink.href = '#';
@@ -7717,16 +7537,16 @@ document.addEventListener('DOMContentLoaded', function() {
         newLink.setAttribute('role', 'menuitem');
         newLink.innerHTML = '<i class="fas fa-chalkboard-teacher"></i> Lecture Card';
         newLink.className = oldLink.className;
-
+        
         li.replaceChild(newLink, oldLink);
-
+        
         newLink.onclick = function(e) {
             e.preventDefault();
             e.stopPropagation();
             e.stopImmediatePropagation();
-
+            
             console.log('🎯 Lecture Card clicked - OPENING NOW!');
-
+            
             const tab = document.getElementById('hub-lecture-card');
             if (tab) {
                 tab.removeAttribute('hidden');
@@ -7734,7 +7554,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 tab.classList.add('active');
                 console.log('✅ Lecture Card tab is now VISIBLE');
             }
-
+            
             document.querySelectorAll('.tab-content').forEach(t => {
                 if (t.id !== 'hub-lecture-card') {
                     t.style.display = 'none';
@@ -7742,35 +7562,35 @@ document.addEventListener('DOMContentLoaded', function() {
                     t.setAttribute('hidden', '');
                 }
             });
-
+            
             const ddParent = document.querySelector('.has-dropdown');
             if (ddParent) {
                 ddParent.classList.remove('open');
                 const ddMenu = ddParent.querySelector('.dropdown-submenu');
                 if (ddMenu) ddMenu.style.display = 'none';
             }
-
+            
             document.querySelectorAll('.nav a, .dropdown-submenu a').forEach(link => {
                 link.classList.remove('active');
             });
             newLink.classList.add('active');
-
+            
             if (window.lectureCardModule && window.lectureCardModule.loadLectureCard) {
                 setTimeout(() => window.lectureCardModule.loadLectureCard(), 50);
             }
-
+            
             return false;
         };
-
+        
         console.log('✅ PERMANENT SUPER FIX INSTALLED!');
     }
-
+    
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', installSuperFix);
     } else {
         installSuperFix();
     }
-
+    
     setTimeout(installSuperFix, 1000);
     setTimeout(installSuperFix, 3000);
 })();
@@ -7779,25 +7599,25 @@ document.addEventListener('DOMContentLoaded', function() {
 // NCHSM DYNAMIC GREETING — uses authenticated profile data only
 (function () {
     'use strict';
-<br>
+
     function updateGreeting() {
         const greetingText = document.getElementById('greeting-text');
         const greetingEmoji = document.getElementById('greeting-emoji');
         const nameEl = document.getElementById('welcome-student-name');
         const profile = window.currentUserProfile || window.db?.currentUserProfile || window.app?.user;
-<br>
+
         const hour = new Date().getHours();
         let greeting = 'Good Morning';
         let emoji = '🌅';
         if (hour >= 12 && hour < 17) { greeting = 'Good Afternoon'; emoji = '☀️'; }
         else if (hour >= 17 && hour < 21) { greeting = 'Good Evening'; emoji = '🌆'; }
         else if (hour >= 21 || hour < 5) { greeting = 'Good Night'; emoji = '🌙'; }
-<br>
+
         if (greetingText) greetingText.textContent = greeting;
         if (greetingEmoji) greetingEmoji.textContent = emoji;
         if (nameEl) nameEl.textContent = profile?.full_name ? profile.full_name.trim() : '';
     }
-<br>
+
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', updateGreeting, { once: true });
     } else {
@@ -7816,30 +7636,30 @@ document.addEventListener('DOMContentLoaded', function() {
         const tabs = document.querySelectorAll('.reg-sub-tab');
         const regular = document.getElementById('regular-registration');
         const supp = document.getElementById('supplementary-registration');
-
+        
         tabs.forEach(t => {
             t.classList.remove('active');
             t.style.color = '#6b7280';
             t.style.borderBottom = '3px solid transparent';
         });
-
-        const active = document.querySelector(\`.reg-sub-tab[data-subtab="${tab}"]\`);
+        
+        const active = document.querySelector(`.reg-sub-tab[data-subtab="${tab}"]`);
         if (active) {
             active.classList.add('active');
             active.style.color = '#4C1D95';
             active.style.borderBottom = '3px solid #4C1D95';
         }
-
+        
         if (regular) regular.style.display = tab === 'regular' ? 'block' : 'none';
         if (supp) supp.style.display = tab === 'supplementary' ? 'block' : 'none';
-
+        
         if (tab === 'supplementary' && window.studentDashboard) {
             window.studentDashboard.loadSupplementaryData();
         } else if (tab === 'regular' && window.studentDashboard) {
             window.studentDashboard.loadUnits();
         }
     };
-
+    
     document.querySelectorAll('.reg-sub-tab').forEach(tab => {
         if (!tab.onclick) {
             tab.onclick = function() {
@@ -7847,7 +7667,7 @@ document.addEventListener('DOMContentLoaded', function() {
             };
         }
     });
-
+    
     const form = document.getElementById('supplementaryRegForm');
     if (form) {
         form.onsubmit = function(e) {
@@ -7857,7 +7677,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         };
     }
-
+    
     console.log('✅ Supplementary tab fix applied');
 });
 </script>
@@ -7868,7 +7688,7 @@ if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js')
             .then(registration => {
                 console.log('✅ Service Worker registered successfully:', registration.scope);
-
+                
                 registration.addEventListener('updatefound', () => {
                     const newWorker = registration.installing;
                     console.log('🔄 New service worker installing...');
@@ -7893,17 +7713,17 @@ if ('serviceWorker' in navigator) {
             });
     });
 }
-<br>
+
 // PWA Install Prompt
 let deferredPrompt;
 const installBtn = document.createElement('button');
-<br>
+
 window.addEventListener('beforeinstallprompt', (e) => {
     e.preventDefault();
     deferredPrompt = e;
-
+    
     installBtn.innerHTML = '<i class="fab fa-windows"></i> Install NCHSM App';
-    installBtn.style.cssText = \`
+    installBtn.style.cssText = `
         position: fixed;
         bottom: 20px;
         right: 20px;
@@ -7921,8 +7741,8 @@ window.addEventListener('beforeinstallprompt', (e) => {
         align-items: center;
         gap: 8px;
         font-size: 14px;
-    \`;
-
+    `;
+    
     installBtn.onclick = async () => {
         if (deferredPrompt) {
             deferredPrompt.prompt();
@@ -7933,10 +7753,10 @@ window.addEventListener('beforeinstallprompt', (e) => {
             deferredPrompt = null;
         }
     };
-
+    
     document.body.appendChild(installBtn);
 });
-<br>
+
 window.addEventListener('appinstalled', () => {
     if (installBtn) installBtn.style.display = 'none';
     console.log('✅ App installed successfully');
@@ -7989,18 +7809,18 @@ function initSidebarSearch(){
  const input=document.getElementById('sidebarPortalSearch'),clear=document.getElementById('sidebarSearchClear'),results=document.getElementById('sidebarSearchResults'),empty=document.getElementById('sidebarSearchEmpty'),nav=document.querySelector('.sidebar-nav-premium');
  if(!input||!clear||!results||!empty||!nav||input.dataset.bound==='1')return;
  input.dataset.bound='1';
- const getItems=()=>Array.from(nav.querySelectorAll('a[data-tab]')).map(a=>({a,label:(a.querySelector('.nav-text')?.textContent||a.textContent||'').replace(/\s+/g,' ').trim(),tab\:a.getAttribute('data-tab')})).filter(x=>x.label);
+ const getItems=()=>Array.from(nav.querySelectorAll('a[data-tab]')).map(a=>({a,label:(a.querySelector('.nav-text')?.textContent||a.textContent||'').replace(/\s+/g,' ').trim(),tab:a.getAttribute('data-tab')})).filter(x=>x.label);
  const close=()=>{results.hidden=true;results.innerHTML='';empty.hidden=true;};
  const render=()=>{const q=input.value.trim().toLowerCase();clear.style.display=q?'block':'none';if(!q){close();return;}const m=getItems().filter(x=>x.label.toLowerCase().includes(q)).slice(0,8);results.innerHTML='';empty.hidden=m.length>0;if(!m.length){results.hidden=true;return;}m.forEach(x=>{const b=document.createElement('button');b.type='button';b.className='sidebar-search-result';b.setAttribute('role','option');b.textContent=x.label;b.onclick=()=>{input.value='';clear.style.display='none';close();if(typeof window.nchsmNavigateToTab==='function')window.nchsmNavigateToTab(x.tab);else if(typeof window.showTab==='function')window.showTab(x.tab);else x.a.click();};results.appendChild(b);});results.hidden=false;};
  input.addEventListener('input',render);clear.addEventListener('click',()=>{input.value='';clear.style.display='none';close();input.focus();});input.addEventListener('keydown',e=>{if(e.key==='Escape'){input.value='';clear.style.display='none';close();input.blur();}else if(e.key==='Enter'){const b=results.querySelector('.sidebar-search-result');if(b){e.preventDefault();b.click();}}});document.addEventListener('click',e=>{if(!e.target.closest('#sidebarSearchWrap'))close();});
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initSidebarSearch,{once\:true});else initSidebarSearch();document.addEventListener('appReady',initSidebarSearch);
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initSidebarSearch,{once:true});else initSidebarSearch();document.addEventListener('appReady',initSidebarSearch);
 })();
-<br>
+
 // NCHSM SIDEBAR FOOTER CONTROLS — surgical HTML enhancement
 (function () {
   'use strict';
-<br>
+
   function getSupabaseClient() {
     const candidates = [
       window.sb,
@@ -8010,29 +7830,29 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     ];
     return candidates.find(c => c && typeof c.from === 'function' && c.auth && typeof c.auth.signOut === 'function') || null;
   }
-<br>
+
   const applyPortalTheme = window.setTheme || function (theme) {
     const dark = theme === 'dark' || theme === 'dark-mode';
     document.body.classList.toggle('dark-mode', dark);
     document.body.setAttribute('data-theme', dark ? 'dark' : 'purple');
     try { localStorage.setItem('nchsm_theme', dark ? 'dark' : 'purple'); } catch (_) {}
   };
-<br>
+
   function initSidebarFooterControls() {
     const refresh = document.getElementById('sidebarRefreshBtn');
     const theme = document.getElementById('sidebarThemeBtn');
     const logout = document.getElementById('sidebarLogoutBtn');
     if (!refresh || !theme || !logout || refresh.dataset.nchsmBound === '1') return;
-<br>
+
     refresh.dataset.nchsmBound = '1';
     theme.dataset.nchsmBound = '1';
     logout.dataset.nchsmBound = '1';
-<br>
+
     theme.addEventListener('click', function (e) {
       e.preventDefault();
       applyPortalTheme(document.body.classList.contains('dark-mode') ? 'purple' : 'dark');
     });
-<br>
+
     refresh.addEventListener('click', async function (e) {
       e.preventDefault();
       const old = refresh.innerHTML;
@@ -8056,7 +7876,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         refresh.innerHTML = old;
       }
     });
-<br>
+
     logout.addEventListener('click', async function (e) {
       e.preventDefault();
       const proceed = async function () {
@@ -8085,17 +7905,17 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
         await proceed();
       }
     });
-<br>
+
     let saved = 'purple';
     try { saved = localStorage.getItem('nchsm_theme') || 'purple'; } catch (_) {}
     applyPortalTheme(saved === 'dark' ? 'dark' : 'purple');
   }
-<br>
+
   window.nchsmApplyTheme = applyPortalTheme;
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', initSidebarFooterControls);
   else initSidebarFooterControls();
   document.addEventListener('appReady', initSidebarFooterControls);
-  new MutationObserver(initSidebarFooterControls).observe(document.body, { childList\:true, subtree\:true });
+  new MutationObserver(initSidebarFooterControls).observe(document.body, { childList:true, subtree:true });
 })();
 </script><script id="nchsm-reference-dashboard-nav">
 (function(){
