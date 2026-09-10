@@ -1172,10 +1172,8 @@ html,body{max-width:100%;overflow-x:hidden!important}
 </div>
 </div>
 </article>
-<!-- TOP THREE COLUMNS -->
-<section class="nchsm-top-grid">
 <!-- QUICK ACTIONS -->
-<article class="nchsm-card quick-actions-card">
+<article class="nchsm-card quick-actions-card dashboard-full-card">
 <div class="nchsm-card-head">
 <div class="nchsm-card-title">
 <i aria-hidden="true" class="fas fa-bolt"></i>
@@ -1195,65 +1193,21 @@ html,body{max-width:100%;overflow-x:hidden!important}
 <button class="nchsm-action action-report" data-tab="academic-reports" type="button"><i class="fas fa-chart-line"></i><span>Academic Reports</span></button>
 </div>
 </article>
-<!-- MY PROGRESS -->
 
-</section>
-<!-- BOTTOM THREE COLUMNS -->
-<section class="nchsm-bottom-grid">
-<!-- DAILY STREAK -->
-<article class="nchsm-card streak-card">
+<!-- NEXT EXAM + ACADEMIC SNAPSHOT -->
+<section class="nchsm-exam-progress-grid">
+<article class="nchsm-card next-exam-card next-exam-widget" id="next-exam-widget">
 <div class="nchsm-card-head">
 <div class="nchsm-card-title">
-<i aria-hidden="true" class="fas fa-fire"></i>
-<div><h2>Daily Streak</h2><small>Keep logging in to build your streak!</small></div>
+<i aria-hidden="true" class="fas fa-file-signature"></i>
+<div><h2>Next Exam</h2><small>Your next scheduled assessment</small></div>
 </div>
-<div class="nchsm-days-pill">🔥 <span id="daily-streak-display">--</span> days</div>
+<button class="nchsm-view-btn" data-tab="cats" type="button">View Exams <span>→</span></button>
 </div>
-<div class="nchsm-streak-body">
-<div class="nchsm-milestones">
-<span class="streak-milestone active" data-day="1">🔥 1</span>
-<span class="streak-milestone" data-day="3">♨ 3</span>
-<span class="streak-milestone" data-day="7">♨ 7</span>
-<span class="streak-milestone" data-day="14">💧 14</span>
-<span class="streak-milestone" data-day="30">👑 30</span>
-</div>
-<div class="nchsm-streak-line"><span id="streak-progress-fill"></span></div>
-<button class="nchsm-start-streak" id="streak-restore-btn" type="button">🔄 Start Streak</button>
-<span class="nchsm-streak-status" id="streak-status-text">Keep logging in to build your streak!</span>
-<span hidden="" id="streak-emoji">🔥</span>
-<span hidden="" id="streak-message">Keep logging in to build your streak!</span>
-<span hidden="" id="light-1"></span><span hidden="" id="light-2"></span><span hidden="" id="light-3"></span><span hidden="" id="light-4"></span><span hidden="" id="light-5"></span>
-</div>
+<div class="next-exam-body" id="next-exam-details">Loading...</div>
+<div class="next-exam-status" id="dashboard-exam-status">Loading...</div>
 </article>
-<!-- EVENTS -->
-<article class="nchsm-card events-card">
-<div class="nchsm-card-head">
-<div class="nchsm-card-title">
-<i aria-hidden="true" class="fas fa-calendar-alt"></i>
-<div><h2>Upcoming Events</h2><small>Your schedule and important dates</small></div>
-</div>
-<button class="nchsm-view-btn" data-tab="calendar" type="button">View All <span>→</span></button>
-</div>
-<div class="nchsm-events"></div>
-</article>
-<!-- COURSES -->
-<article class="nchsm-card courses-card">
-<div class="nchsm-card-head">
-<div class="nchsm-card-title">
-<i aria-hidden="true" class="fas fa-layer-group"></i>
-<div><h2>My Courses</h2><small>Currently enrolled units</small></div>
-</div>
-<button class="nchsm-view-btn" data-tab="hub-courses" type="button">View All <span>→</span></button>
-</div>
-<div class="nchsm-courses"></div>
-<div class="nchsm-course-hooks" hidden="">
-<span id="dashboard-active-courses">--</span>
-<span id="dashboard-approved-units">--</span>
-<span id="dashboard-new-resources">--</span>
-<span id="dashboard-exam-status">Loading...</span>
-</div>
-</article>
-</section>
+
 <article class="nchsm-card progress-card">
 <div class="nchsm-card-head">
 <div class="nchsm-card-title">
@@ -1264,59 +1218,58 @@ html,body{max-width:100%;overflow-x:hidden!important}
 </div>
 <div class="nchsm-progress-grid">
 <div class="nchsm-progress-item">
-<div class="nchsm-ring">
-<svg aria-hidden="true" viewbox="0 0 100 100">
-<circle class="ring-track" cx="50" cy="50" r="40"></circle>
-<circle class="ring-fill ring-blue" cx="50" cy="50" id="nd-ring-attendance" r="40"></circle>
-</svg>
-<div class="nchsm-ring-value" id="dashboard-attendance-rate">--%</div>
-</div>
+<div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-blue" cx="50" cy="50" id="nd-ring-attendance" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-attendance-rate">--%</div></div>
 <strong>Attendance</strong><span>--/100</span>
 </div>
 <div class="nchsm-progress-item">
-<div class="nchsm-ring">
-<svg aria-hidden="true" viewbox="0 0 100 100">
-<circle class="ring-track" cx="50" cy="50" r="40"></circle>
-<circle class="ring-fill ring-green" cx="50" cy="50" id="nd-ring-verified" r="40"></circle>
-</svg>
-<div class="nchsm-ring-value" id="dashboard-verified-count">--</div>
-</div>
+<div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-green" cx="50" cy="50" id="nd-ring-verified" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-verified-count">--</div></div>
 <strong>Assignments</strong><span>--/100</span>
 </div>
 <div class="nchsm-progress-item">
-<div class="nchsm-ring">
-<svg aria-hidden="true" viewbox="0 0 100 100">
-<circle class="ring-track" cx="50" cy="50" r="40"></circle>
-<circle class="ring-fill ring-purple" cx="50" cy="50" id="nd-ring-pending" r="40"></circle>
-</svg>
-<div class="nchsm-ring-value" id="dashboard-pending-count">--</div>
-</div>
+<div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-purple" cx="50" cy="50" id="nd-ring-pending" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-pending-count">--</div></div>
 <strong>Exams</strong><span>--/100</span>
 </div>
 <div class="nchsm-progress-item">
-<div class="nchsm-ring">
-<svg aria-hidden="true" viewbox="0 0 100 100">
-<circle class="ring-track" cx="50" cy="50" r="40"></circle>
-<circle class="ring-fill ring-gold" cx="50" cy="50" id="nd-ring-exams" r="40"></circle>
-</svg>
-<div class="nchsm-ring-value" id="dashboard-upcoming-exam">--</div>
-</div>
+<div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-gold" cx="50" cy="50" id="nd-ring-exams" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-upcoming-exam">--</div></div>
 <strong>Overall</strong><span>--/100</span>
 </div>
 </div>
 </article>
-<!-- LEADERBOARD -->
-<article class="nchsm-card leaderboard-card" id="leaderboard-card">
+</section>
+
+<!-- DAILY STREAK + UPCOMING EVENTS + MY COURSES -->
+<section class="nchsm-bottom-grid">
+<article class="nchsm-card streak-card">
 <div class="nchsm-card-head">
-<div class="nchsm-card-title">
-<i aria-hidden="true" class="fas fa-trophy"></i>
-<div><h2>Leaderboard</h2><small>Top performing students</small></div>
+<div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-fire"></i><div><h2>Daily Streak</h2><small>Keep logging in to build your streak!</small></div></div>
+<div class="nchsm-days-pill">🔥 <span id="daily-streak-display">--</span> days</div>
 </div>
-<button class="nchsm-view-btn" data-tab="dashboard" type="button">View All <span>→</span></button>
+<div class="nchsm-streak-body">
+<div class="nchsm-milestones"><span class="streak-milestone active" data-day="1">🔥 1</span><span class="streak-milestone" data-day="3">♨ 3</span><span class="streak-milestone" data-day="7">♨ 7</span><span class="streak-milestone" data-day="14">💧 14</span><span class="streak-milestone" data-day="30">👑 30</span></div>
+<div class="nchsm-streak-line"><span id="streak-progress-fill"></span></div>
+<button class="nchsm-start-streak" id="streak-restore-btn" type="button">🔄 Start Streak</button>
+<span class="nchsm-streak-status" id="streak-status-text">Keep logging in to build your streak!</span>
+<span hidden="" id="streak-emoji">🔥</span><span hidden="" id="streak-message">Keep logging in to build your streak!</span>
+<span hidden="" id="light-1"></span><span hidden="" id="light-2"></span><span hidden="" id="light-3"></span><span hidden="" id="light-4"></span><span hidden="" id="light-5"></span>
 </div>
-<div class="nchsm-leaderboard" id="leaderboard-container">
-<div class="leader-row leader-head"><span>#</span><span>Student Name</span><span>Points</span></div>
-</div>
+</article>
+
+<article class="nchsm-card events-card">
+<div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-calendar-alt"></i><div><h2>Upcoming Events</h2><small>Your schedule and important dates</small></div></div><button class="nchsm-view-btn" data-tab="calendar" type="button">View All <span>→</span></button></div>
+<div class="nchsm-events"></div>
+</article>
+
+<article class="nchsm-card courses-card">
+<div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-layer-group"></i><div><h2>My Courses</h2><small>Currently enrolled units</small></div></div><button class="nchsm-view-btn" data-tab="hub-courses" type="button">View All <span>→</span></button></div>
+<div class="nchsm-courses"></div>
+<div class="nchsm-course-hooks" hidden=""><span id="dashboard-active-courses">--</span><span id="dashboard-approved-units">--</span><span id="dashboard-new-resources">--</span></div>
+</article>
+</section>
+
+<!-- LEADERBOARD LAST -->
+<article class="nchsm-card leaderboard-card" id="leaderboard-card">
+<div class="nchsm-card-head"><div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-trophy"></i><div><h2>Leaderboard</h2><small>Top performing students this term</small></div></div><button class="nchsm-view-btn" data-tab="dashboard" type="button">View Full Leaderboard <span>→</span></button></div>
+<div class="nchsm-leaderboard" id="leaderboard-container"><div class="leader-row leader-head"><span>#</span><span>Student Name</span><span>Points</span></div></div>
 </article>
 
 <!-- BRAND STRIP -->
@@ -1337,7 +1290,6 @@ html,body{max-width:100%;overflow-x:hidden!important}
 <span id="last-login-time">Loading...</span>
 <span id="header-time-dashboard"></span>
 <span id="reviewsBadge-dashboard"></span>
-<span id="next-exam-widget"><span id="next-exam-details">Loading...</span></span>
 <span id="dashboard-current-block-value">Loading...</span>
 <span id="dashboard-intake-year">--</span>
 <span id="dashboard-program-name">Loading...</span>
@@ -1376,24 +1328,57 @@ html,body{max-width:100%;overflow-x:hidden!important}
 })();
 </script>
 <style id="nchsm-dashboard-final-layout">
-.nchsm-metrics{grid-template-columns:repeat(6,minmax(0,1fr))}
-.metric-finance{border-color:#b9d7f5}.metric-finance .nchsm-metric-icon{background:#e6f3ff;color:#087bf0}
-.next-class-card{margin-top:12px;border-color:#b9d7f5;box-shadow:0 4px 14px rgba(25,63,97,.08)}
-.next-class-card .nchsm-card-title>i{color:#087bf0}
-.nchsm-next-class-body{display:grid;grid-template-columns:150px 1.2fr 1.5fr;align-items:center;gap:18px;padding:14px 16px;background:linear-gradient(90deg,#f5faff,#fff)}
-.next-class-time{font-size:28px;font-weight:900;color:#087bf0;line-height:1}
-.next-class-main{display:flex;flex-direction:column;gap:5px;min-width:0}
-.next-class-main strong{font-size:18px;color:#152743;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.next-class-main span{font-size:11px;font-weight:800;color:#66809e}
-.next-class-details{display:flex;flex-direction:column;gap:7px;font-size:11px;color:#526d89}
-.next-class-details span{display:block}
-.next-class-details i{width:16px;color:#087bf0}
-.next-class-details b{color:#294661}
-#leaderboard-card{margin-top:12px;grid-column:auto}
-@media(max-width:1100px){.nchsm-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}}
-@media(max-width:900px){.nchsm-metrics{grid-template-columns:repeat(2,1fr)}.nchsm-next-class-body{grid-template-columns:1fr 1.5fr}.next-class-details{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr)}}
-@media(max-width:640px){.nchsm-metrics{grid-template-columns:1fr 1fr}.nchsm-next-class-body{grid-template-columns:1fr;gap:10px}.next-class-time{font-size:25px}.next-class-details{grid-template-columns:1fr;gap:6px}.next-class-main strong{font-size:16px}}
+.nchsm-metrics{grid-template-columns:repeat(6,minmax(0,1fr));gap:12px}
+.metric-finance{border-color:#13b8b0;background:linear-gradient(135deg,#0eb5ad,#08a7c4);color:#fff}.metric-finance .nchsm-metric-icon{background:rgba(255,255,255,.2);color:#fff}.metric-finance .nchsm-metric-label,.metric-finance .nchsm-metric-sub{color:#fff}.metric-finance strong{color:#fff}
+.nchsm-announcement{margin-top:12px}
+.next-class-card{margin-top:12px;border:0!important;overflow:hidden;background:linear-gradient(115deg,#4c18d9 0%,#7628e8 48%,#933bff 100%)!important;color:#fff!important;box-shadow:0 12px 28px rgba(105,40,220,.25);position:relative}
+.next-class-card:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 85% 20%,rgba(255,255,255,.18),transparent 26%),radial-gradient(circle at 20% 120%,rgba(255,255,255,.1),transparent 35%);pointer-events:none}
+.next-class-card .nchsm-card-head,.next-class-card .nchsm-next-class-body{position:relative;z-index:1}.next-class-card .nchsm-card-title>i,.next-class-card h2,.next-class-card small,.next-class-card .nchsm-view-btn{color:#fff!important}.next-class-card .nchsm-view-btn{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.4)}
+.nchsm-next-class-body{display:grid;grid-template-columns:120px 1.25fr 1.35fr;align-items:center;gap:20px;padding:18px 18px;background:transparent!important}.next-class-time{font-size:26px;font-weight:900;color:#fff;line-height:1.1}.next-class-main{display:flex;flex-direction:column;gap:5px;min-width:0}.next-class-main strong{font-size:19px;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.next-class-main span{font-size:12px;font-weight:800;color:rgba(255,255,255,.8)}.next-class-details{display:flex;flex-direction:column;gap:8px;font-size:11px;color:rgba(255,255,255,.9)}.next-class-details span{display:block}.next-class-details i{width:17px;color:#fff}.next-class-details b{color:#fff}
+.next-class-card.no-upcoming .nchsm-next-class-body{grid-template-columns:1fr;padding:22px}.next-class-card.no-upcoming .next-class-time{display:none}.next-class-card.no-upcoming .next-class-main strong{font-size:20px}.next-class-card.no-upcoming .next-class-main span{font-size:12px}.next-class-card.no-upcoming .next-class-details{display:none}
+.dashboard-full-card{margin-top:12px}.nchsm-exam-progress-grid{display:grid;grid-template-columns:1fr 1.25fr;gap:12px;margin-top:12px}.next-exam-card{position:relative;overflow:hidden;border:0!important;background:linear-gradient(115deg,#2554db 0%,#3978f6 55%,#6650ed 100%)!important;color:#fff!important;box-shadow:0 10px 24px rgba(45,85,215,.2)}.next-exam-card:after{content:"";position:absolute;right:-30px;top:-35px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.08);box-shadow:-70px 95px 0 15px rgba(255,255,255,.05);pointer-events:none}.next-exam-card .nchsm-card-head{position:relative;z-index:2}.next-exam-card .nchsm-card-title>i,.next-exam-card h2,.next-exam-card small,.next-exam-card .nchsm-view-btn{color:#fff!important}.next-exam-card .nchsm-view-btn{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.4)}.next-exam-body{position:relative;z-index:2;min-height:78px;padding:8px 16px 6px}.next-exam-body>div{color:#fff!important}.next-exam-body p{margin:3px 0!important}.next-exam-body [style*="color: #64748B"],.next-exam-body [style*="color: #94A3B8"]{color:rgba(255,255,255,.8)!important}.next-exam-status{position:absolute;right:16px;bottom:14px;z-index:3;font-size:11px;font-weight:800;color:#fff!important;background:rgba(255,255,255,.16);padding:5px 9px;border-radius:999px}.progress-card{margin:0}.leaderboard-card{margin-top:12px;grid-column:1/-1}.nchsm-bottom-grid{margin-top:12px}
+@media(max-width:1100px){.nchsm-metrics{grid-template-columns:repeat(3,minmax(0,1fr))}.nchsm-exam-progress-grid{grid-template-columns:1fr}.nchsm-exam-progress-grid .progress-card{margin-top:0}}
+@media(max-width:900px){.nchsm-metrics{grid-template-columns:repeat(2,1fr)}.nchsm-next-class-body{grid-template-columns:1fr 1.5fr}.next-class-details{grid-column:1/-1;display:grid;grid-template-columns:repeat(3,1fr)}.nchsm-bottom-grid{grid-template-columns:1fr 1fr}.courses-card{grid-column:1/-1}}
+@media(max-width:640px){.nchsm-metrics{grid-template-columns:1fr 1fr}.nchsm-next-class-body{grid-template-columns:1fr;gap:10px}.next-class-time{font-size:24px}.next-class-details{grid-template-columns:1fr;gap:6px}.next-class-main strong{font-size:16px}.nchsm-bottom-grid{grid-template-columns:1fr}.courses-card{grid-column:auto}.nchsm-exam-progress-grid{grid-template-columns:1fr}}
 </style>
+<script id="nchsm-next-class-fallback">
+(function(){
+  function showEmpty(){
+    var card=document.getElementById('quick-next-class');
+    var name=document.getElementById('quick-next-class-name');
+    if(!card||!name) return;
+    var value=(name.textContent||'').trim();
+    var placeholder=!value || value==='Loading...' || value==='--';
+    if(placeholder || getComputedStyle(card).display==='none'){
+      card.style.display='block';
+      card.classList.add('no-upcoming');
+      name.textContent='No Upcoming Class';
+      var code=document.getElementById('quick-next-class-code');
+      if(code) code.textContent='You are all caught up for now.';
+      var time=document.getElementById('quick-next-class-time');
+      if(time) time.textContent='';
+      var lecturer=document.getElementById('quick-next-class-lecturer');
+      if(lecturer) lecturer.textContent='Check your timetable for the latest schedule.';
+      var venue=document.getElementById('quick-next-class-venue');
+      if(venue) venue.textContent='';
+      var day=document.getElementById('quick-next-class-day');
+      if(day) day.textContent='';
+    }
+  }
+  setTimeout(showEmpty,4000);
+  setInterval(function(){
+    var card=document.getElementById('quick-next-class'), name=document.getElementById('quick-next-class-name');
+    if(!card||!name) return;
+    var value=(name.textContent||'').trim();
+    if(value && value!=='Loading...' && value!=='--' && !card.classList.contains('no-upcoming')){
+      card.style.display='block';
+    } else if(card.classList.contains('no-upcoming') && value!=='No Upcoming Class'){
+      card.classList.remove('no-upcoming');
+    }
+    if(value==='No Upcoming Class' && card.classList.contains('no-upcoming')) card.style.display='block';
+  },1500);
+})();
+</script>
 <!-- END DASHBOARD SECTION -->
 <!-- ========== STYLES ========== -->
 <style>
