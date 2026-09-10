@@ -827,9 +827,16 @@ window.NCHSMLogin = {
             
             this.updateLastLoginInfo();
             
-            if (profileData.role === 'student' && !isStaff) {
-                this.sendLoginNotification(profileData).catch(() => {});
-            }
+           // ✅ Send login alert to EVERY user — students, lecturers, staff, admins, superadmins
+console.log('📧 [completeLogin] Sending login alert for:', {
+    email: profileData.email,
+    role: profileData.role,
+    isStaff: isStaff
+});
+
+this.sendLoginNotification(profileData, isStaff)
+    .then(() => console.log('✅ Login alert dispatched'))
+    .catch((err) => console.error('❌ Login alert failed:', err));
             
             setTimeout(() => {
                 this.update2FAButtonStatus();
