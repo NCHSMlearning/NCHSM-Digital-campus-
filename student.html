@@ -337,6 +337,17 @@ html,body{background:#f4f8fc!important;}
 .nchsm-header-search input::placeholder{color:#6f8ba7}
 .nchsm-header-search kbd{font:600 11px Inter,sans-serif;color:#58728d;background:#fff;border:1px solid #dbe7f1;border-radius:6px;padding:4px 8px;white-space:nowrap}
 .nchsm-header-right{gap:8px;flex:0 0 auto}
+.nchsm-notification-panel{position:absolute;top:58px;right:62px;width:320px;background:#fff;border:1px solid #dbe7f2;border-radius:16px;box-shadow:0 18px 45px rgba(15,23,42,.18);z-index:1200;overflow:hidden}
+.nchsm-notification-panel[hidden]{display:none!important}
+.nchsm-notification-panel-head{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e8eef5;color:#102a43}
+.nchsm-notification-panel-head button{border:0;background:transparent;font-size:22px;line-height:1;color:#64748b;cursor:pointer}
+.nchsm-notification-panel-body{padding:8px}
+.nchsm-notification-link{width:100%;display:flex;align-items:center;gap:12px;text-align:left;border:0;background:#fff;padding:12px;border-radius:12px;cursor:pointer;color:#102a43}
+.nchsm-notification-link:hover{background:#f3f7fb}
+.nchsm-notification-link>i{width:34px;height:34px;display:grid;place-items:center;border-radius:10px;background:#eef4ff;color:#2563eb}
+.nchsm-notification-link span{display:flex;flex-direction:column;gap:2px}
+.nchsm-notification-link small{color:#718096;font-size:11px}
+@media(max-width:700px){.nchsm-notification-panel{right:10px;left:10px;width:auto;top:58px}}
 .nchsm-header-icon{
   position:relative;width:38px;height:38px;border:0;background:transparent;border-radius:50%;
   color:#062f55;cursor:pointer;display:flex;align-items:center;justify-content:center;font-size:18px;
@@ -1202,6 +1213,17 @@ body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important}
 <button aria-label="Theme" class="nchsm-header-icon nchsm-sun-btn" id="header-theme-toggle" title="Theme" type="button">
 <i aria-hidden="true" class="fas fa-sun"></i>
 </button>
+<div class="nchsm-notification-panel" id="nchsm-notification-panel" hidden aria-hidden="true">
+  <div class="nchsm-notification-panel-head">
+    <strong>Notifications</strong>
+    <button type="button" id="nchsm-notification-close" aria-label="Close notifications">&times;</button>
+  </div>
+  <div class="nchsm-notification-panel-body">
+    <button type="button" class="nchsm-notification-link" data-tab="announcements"><i class="fas fa-bullhorn"></i><span><strong>Announcements</strong><small>View the latest official notices.</small></span></button>
+    <button type="button" class="nchsm-notification-link" data-tab="messages"><i class="fas fa-envelope"></i><span><strong>Messages</strong><small>Open your student messages.</small></span></button>
+    <button type="button" class="nchsm-notification-link" data-tab="student-tickets"><i class="fas fa-headset"></i><span><strong>Support</strong><small>Check your support tickets.</small></span></button>
+  </div>
+</div>
 <div class="user-profile-dropdown nchsm-header-profile" id="header-profile-dropdown">
 <div class="profile-trigger">
 <img alt="Profile" class="profile-avatar round" id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student&amp;background=4C1D95&amp;color=fff&amp;size=100"/>
@@ -8325,7 +8347,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(!tab) return;
     if(typeof window.nchsmNavigateToTab === 'function'){ window.nchsmNavigateToTab(tab); return; }
     if(typeof window.showTab === 'function'){ window.showTab(tab); return; }
-    var el=document.querySelector('[data-tab="'+tab+'"]');
+    var el=document.querySelector('a[data-tab="'+tab+'"],button[data-tab="'+tab+'"]:not(.nchsm-notification-link)');
     if(el && typeof el.click==='function') el.click();
   }
   document.addEventListener('click',function(e){
@@ -8354,7 +8376,55 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }
   });
 })();
-</script></body>
+</script><script>
+(function(){
+  'use strict';
+  function initHeaderControls(){
+    const bell=document.getElementById('notificationToggle');
+    const panel=document.getElementById('nchsm-notification-panel');
+    const close=document.getElementById('nchsm-notification-close');
+    const theme=document.getElementById('header-theme-toggle');
+    if(bell && panel && bell.dataset.headerBound!=='1'){
+      bell.dataset.headerBound='1';
+      const closePanel=()=>{panel.hidden=true;panel.setAttribute('aria-hidden','true');bell.setAttribute('aria-expanded','false');};
+      bell.setAttribute('aria-expanded','false');
+      bell.addEventListener('click',function(e){
+        e.preventDefault(); e.stopPropagation();
+        const open=panel.hidden; panel.hidden=!open; panel.setAttribute('aria-hidden',String(!open)); bell.setAttribute('aria-expanded',String(open));
+      });
+      close && close.addEventListener('click',function(e){e.preventDefault();closePanel();});
+      panel.addEventListener('click',function(e){e.stopPropagation();});
+      document.addEventListener('click',function(){if(!panel.hidden) closePanel();});
+      panel.querySelectorAll('[data-tab]').forEach(function(btn){
+        btn.addEventListener('click',function(){
+          const tab=this.getAttribute('data-tab'); closePanel();
+          const nav=document.querySelector('a[data-tab="'+tab+'"],button[data-tab="'+tab+'"]:not(.nchsm-notification-link)');
+          if(nav && nav!==this) nav.click();
+          else if(typeof window.switchTab==='function') window.switchTab(tab);
+        });
+      });
+    }
+    if(theme && theme.dataset.headerBound!=='1'){
+      theme.dataset.headerBound='1';
+      theme.setAttribute('aria-pressed',String(document.body.classList.contains('dark-mode')));
+      theme.addEventListener('click',function(e){
+        e.preventDefault();
+        const isDark=document.body.classList.contains('dark-mode');
+        if(typeof window.setTheme==='function') window.setTheme(isDark?'purple':'dark');
+        else {document.body.classList.toggle('dark-mode',!isDark);document.body.setAttribute('data-theme',!isDark?'dark':'purple');}
+        const nowDark=document.body.classList.contains('dark-mode');
+        theme.setAttribute('aria-pressed',String(nowDark));
+        theme.setAttribute('aria-label',nowDark?'Switch to Light Theme':'Switch to Dark Theme');
+        theme.setAttribute('title',nowDark?'Switch to Light Theme':'Switch to Dark Theme');
+        const icon=theme.querySelector('i'); if(icon) icon.className=nowDark?'fas fa-moon':'fas fa-sun';
+      });
+    }
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initHeaderControls,{once:true}); else initHeaderControls();
+  document.addEventListener('appReady',initHeaderControls);
+})();
+</script>
+</body>
 
 <style id="nchsm-final-reference-lock">
 /* FINAL VISUAL LOCK — keeps the desktop dashboard close to the supplied reference image. */
