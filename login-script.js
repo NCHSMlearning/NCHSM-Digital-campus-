@@ -901,76 +901,351 @@ window.NCHSMLogin = {
         }
     },
 
-    // ============================================
-    // SEND LOGIN NOTIFICATION
-    // ============================================
-    sendLoginNotification: async function(studentData) {
-        if (!studentData || studentData.role === 'staff' || studentData.is_staff) return;
-        if (!studentData.email || !this.brevo.enabled) return;
-        
-        try {
-            if (!this.brevo._initialized) {
-                const loaded = await this.loadBrevoApiKey();
-                if (!loaded) return;
-            }
-            
-            if (!this.brevo.apiKey) return;
-            
-            let ip = 'Unknown';
-            try {
-                const res = await fetch('https://api.ipify.org?format=json');
-                const data = await res.json();
-                ip = data.ip;
-            } catch(e) {}
-            
-            const now = new Date();
-            const time = now.toLocaleString('en-KE', { 
-                timeZone: 'Africa/Nairobi',
-                weekday: 'long',
-                month: 'long',
-                day: 'numeric',
-                hour: '2-digit',
-                minute: '2-digit'
-            });
-            
-            const device = this.parseUserAgent(navigator.userAgent);
-            
-            const htmlContent = `
-                <h2>🔐 New Login Alert</h2>
-                <p>Hello ${studentData.full_name || 'Student'},</p>
-                <p>Your NCHSM account was just accessed from:</p>
-                <ul>
-                    <li><strong>IP:</strong> ${ip}</li>
-                    <li><strong>Device:</strong> ${device}</li>
-                    <li><strong>Time:</strong> ${time}</li>
-                </ul>
-                <p>If this wasn't you, please contact support immediately.</p>
-            `;
-            
-            const response = await fetch(this.brevo.apiUrl, {
-                method: 'POST',
-                headers: {
-                    'api-key': this.brevo.apiKey,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    sender: { 
-                        email: this.brevo.sender.email, 
-                        name: this.brevo.sender.name
-                    },
-                    to: [{ email: studentData.email }],
-                    subject: '🔐 New Login Alert - NCHSM Portal',
-                    htmlContent: htmlContent
-                })
-            });
-            
-            if (response.ok) {
-                console.log(`✅ Login notification sent to ${studentData.email}`);
-            }
-        } catch(e) {
-            console.warn('⚠️ Login notification error:', e);
+   // ============================================
+// 📧 SEND LOGIN NOTIFICATION — PREMIUM EDITION
+// ============================================
+sendLoginNotification: async function(userData, isStaff = false) {
+    if (!userData || !userData.email) return;
+    if (!this.brevo.enabled) return;
+
+    try {
+        if (!this.brevo._initialized) {
+            const loaded = await this.loadBrevoApiKey();
+            if (!loaded) return;
         }
-    },
+        if (!this.brevo.apiKey) return;
+
+        // ---------- Gather context ----------
+        let ip = 'Unknown';
+        try {
+            const res = await fetch('https://api.ipify.org?format=json');
+            const data = await res.json();
+            ip = data.ip || 'Unknown';
+        } catch (e) {}
+
+        const now = new Date();
+        const timeStr = now.toLocaleString('en-KE', {
+            timeZone: 'Africa/Nairobi',
+            weekday: 'long',
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        const timeZone = 'East Africa Time (EAT)';
+        const device = this.parseUserAgent(navigator.userAgent);
+        const firstName = (userData.full_name || 'there').split(' ')[0];
+
+        // ---------- Role theming ----------
+        const roleRaw = (userData.role || (isStaff ? 'staff' : 'student')).toLowerCase();
+
+        const themes = {
+            superadmin: {
+                label: 'Super Administrator',
+                emoji: '👑',
+                gradient: 'linear-gradient(135deg, #4c1d95 0%, #7c3aed 50%, #a855f7 100%)',
+                accent: '#7c3aed',
+                accentSoft: '#f3e8ff',
+                accentBorder: '#c4b5fd',
+                accentText: '#5b21b6'
+            },
+            admin: {
+                label: 'Administrator',
+                emoji: '🛡️',
+                gradient: 'linear-gradient(135deg, #7f1d1d 0%, #dc2626 50%, #ef4444 100%)',
+                accent: '#dc2626',
+                accentSoft: '#fef2f2',
+                accentBorder: '#fecaca',
+                accentText: '#991b1b'
+            },
+            lecturer: {
+                label: 'Lecturer',
+                emoji: '👨‍🏫',
+                gradient: 'linear-gradient(135deg, #0c4a6e 0%, #0891b2 50%, #06b6d4 100%)',
+                accent: '#0891b2',
+                accentSoft: '#ecfeff',
+                accentBorder: '#a5f3fc',
+                accentText: '#155e75'
+            },
+            staff: {
+                label: 'Staff Member',
+                emoji: '💼',
+                gradient: 'linear-gradient(135deg, #064e3b 0%, #059669 50%, #10b981 100%)',
+                accent: '#059669',
+                accentSoft: '#ecfdf5',
+                accentBorder: '#a7f3d0',
+                accentText: '#065f46'
+            },
+            student: {
+                label: 'Student',
+                emoji: '🎓',
+                gradient: 'linear-gradient(135deg, #0A3D62 0%, #1a5a7a 50%, #2d7ba8 100%)',
+                accent: '#0A3D62',
+                accentSoft: '#eff6ff',
+                accentBorder: '#bfdbfe',
+                accentText: '#1e40af'
+            }
+        };
+
+        let theme = themes.student;
+        if (roleRaw.includes('superadmin') || roleRaw.includes('super_admin')) theme = themes.superadmin;
+        else if (roleRaw.includes('admin')) theme = themes.admin;
+        else if (roleRaw.includes('lecturer')) theme = themes.lecturer;
+        else if (roleRaw.includes('staff')) theme = themes.staff;
+
+        const sessionId = localStorage.getItem('session_id') || 'N/A';
+        const shortSession = sessionId !== 'N/A' ? sessionId.substring(0, 8).toUpperCase() : 'N/A';
+
+        // ---------- HTML email ----------
+        const htmlContent = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="x-apple-disable-message-reformatting">
+<title>New Login Alert</title>
+<!--[if mso]>
+<style>table,td,h1,h2,h3,p,a,span {font-family: Arial, sans-serif !important;}</style>
+<![endif]-->
+</head>
+<body style="margin:0;padding:0;background-color:#eef2f7;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'Helvetica Neue',Arial,sans-serif;-webkit-font-smoothing:antialiased;">
+
+<!-- Outer wrapper -->
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background-color:#eef2f7;padding:32px 16px;">
+    <tr>
+        <td align="center">
+
+            <!-- Main card -->
+            <table role="presentation" width="600" cellpadding="0" cellspacing="0" border="0" style="max-width:600px;width:100%;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 10px 40px rgba(15,23,42,0.10),0 2px 8px rgba(15,23,42,0.06);">
+
+                <!-- Gradient header -->
+                <tr>
+                    <td style="background:${theme.gradient};padding:0;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                            <tr>
+                                <td align="center" style="padding:44px 32px 36px 32px;">
+
+                                    <!-- Logo mark -->
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:0 auto 18px auto;">
+                                        <tr>
+                                            <td align="center" style="width:72px;height:72px;background:rgba(255,255,255,0.18);border-radius:20px;border:1.5px solid rgba(255,255,255,0.35);font-size:34px;line-height:72px;">
+                                                ${theme.emoji}
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                    <h1 style="margin:0 0 6px 0;font-size:24px;line-height:1.3;font-weight:700;color:#ffffff;letter-spacing:-0.4px;">
+                                        New Login Detected
+                                    </h1>
+                                    <p style="margin:0;font-size:13px;color:rgba(255,255,255,0.85);font-weight:500;letter-spacing:0.3px;">
+                                        NCHSM Secure Portal &nbsp;·&nbsp; Security Notification
+                                    </p>
+
+                                    <!-- Role badge -->
+                                    <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:18px auto 0 auto;">
+                                        <tr>
+                                            <td align="center" style="background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.4);border-radius:999px;padding:7px 18px;font-size:11px;font-weight:700;color:#ffffff;letter-spacing:1.2px;text-transform:uppercase;">
+                                                ${theme.label}
+                                            </td>
+                                        </tr>
+                                    </table>
+
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Body -->
+                <tr>
+                    <td style="padding:40px 40px 8px 40px;">
+
+                        <p style="margin:0 0 8px 0;font-size:16px;color:#0f172a;font-weight:600;">
+                            Hi ${firstName},
+                        </p>
+                        <p style="margin:0 0 28px 0;font-size:15px;line-height:1.65;color:#475569;">
+                            We noticed a successful sign-in to your <strong style="color:${theme.accentText};">${theme.label}</strong> account. If this was you, no action is needed.
+                        </p>
+
+                        <!-- Details card -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:${theme.accentSoft};border:1px solid ${theme.accentBorder};border-radius:12px;margin:0 0 28px 0;">
+                            <tr>
+                                <td style="padding:20px 22px 8px 22px;">
+                                    <p style="margin:0;font-size:11px;font-weight:700;color:${theme.accentText};letter-spacing:1.4px;text-transform:uppercase;">
+                                        Session Details
+                                    </p>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td style="padding:0 22px 20px 22px;">
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+
+                                        <tr>
+                                            <td style="padding:11px 0;border-bottom:1px solid ${theme.accentBorder};font-size:13px;color:#64748b;width:130px;vertical-align:top;">🕐 Time</td>
+                                            <td style="padding:11px 0;border-bottom:1px solid ${theme.accentBorder};font-size:14px;color:#0f172a;font-weight:600;vertical-align:top;">
+                                                ${timeStr}
+                                                <div style="font-size:11px;color:#94a3b8;font-weight:500;margin-top:2px;">${timeZone}</div>
+                                            </td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:11px 0;border-bottom:1px solid ${theme.accentBorder};font-size:13px;color:#64748b;vertical-align:top;">🌐 IP Address</td>
+                                            <td style="padding:11px 0;border-bottom:1px solid ${theme.accentBorder};font-size:14px;color:#0f172a;font-weight:600;vertical-align:top;font-family:'SF Mono',Menlo,Consolas,monospace;">${ip}</td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:11px 0;border-bottom:1px solid ${theme.accentBorder};font-size:13px;color:#64748b;vertical-align:top;">💻 Device</td>
+                                            <td style="padding:11px 0;border-bottom:1px solid ${theme.accentBorder};font-size:14px;color:#0f172a;font-weight:600;vertical-align:top;">${device}</td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:11px 0;border-bottom:1px solid ${theme.accentBorder};font-size:13px;color:#64748b;vertical-align:top;">📧 Account</td>
+                                            <td style="padding:11px 0;border-bottom:1px solid ${theme.accentBorder};font-size:14px;color:#0f172a;font-weight:600;vertical-align:top;word-break:break-all;">${userData.email}</td>
+                                        </tr>
+
+                                        <tr>
+                                            <td style="padding:11px 0;font-size:13px;color:#64748b;vertical-align:top;">🔑 Session ID</td>
+                                            <td style="padding:11px 0;font-size:14px;color:#0f172a;font-weight:600;vertical-align:top;font-family:'SF Mono',Menlo,Consolas,monospace;">#${shortSession}</td>
+                                        </tr>
+
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <!-- Security tip -->
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#f0f9ff;border-left:4px solid #0ea5e9;border-radius:8px;margin:0 0 28px 0;">
+                            <tr>
+                                <td style="padding:16px 18px;font-size:13px;line-height:1.6;color:#0c4a6e;">
+                                    <strong style="color:#0369a1;">🔒 Security Tip:</strong> NCHSM will never ask for your password by email or phone. Always verify the URL before entering credentials.
+                                </td>
+                            </tr>
+                        </table>
+
+                    </td>
+                </tr>
+
+                <!-- Warning block -->
+                <tr>
+                    <td style="padding:0 40px 40px 40px;">
+                        <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0" style="background:#fef2f2;border:1px solid #fecaca;border-radius:12px;">
+                            <tr>
+                                <td style="padding:22px;">
+                                    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style="font-size:22px;width:36px;vertical-align:top;padding-right:8px;">⚠️</td>
+                                            <td style="vertical-align:top;">
+                                                <p style="margin:0 0 6px 0;font-size:14px;font-weight:700;color:#991b1b;">
+                                                    Didn't recognize this activity?
+                                                </p>
+                                                <p style="margin:0 0 14px 0;font-size:13px;line-height:1.6;color:#7f1d1d;">
+                                                    Your account may be compromised. Change your password immediately and notify our ICT team.
+                                                </p>
+                                                <table role="presentation" cellpadding="0" cellspacing="0" border="0">
+                                                    <tr>
+                                                        <td style="background:#dc2626;border-radius:8px;">
+                                                            <a href="mailto:ict@nchsm.co.ke?subject=Security%20Alert%20-%20Unauthorized%20Login" style="display:inline-block;padding:11px 22px;font-size:13px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.2px;">
+                                                                Contact ICT Support →
+                                                            </a>
+                                                        </td>
+                                                    </tr>
+                                                </table>
+                                            </td>
+                                        </tr>
+                                    </table>
+                                </td>
+                            </tr>
+                        </table>
+                    </td>
+                </tr>
+
+                <!-- Divider -->
+                <tr>
+                    <td style="padding:0 40px;">
+                        <div style="height:1px;background:linear-gradient(to right,transparent,#e2e8f0,transparent);"></div>
+                    </td>
+                </tr>
+
+                <!-- Footer -->
+                <tr>
+                    <td style="padding:28px 40px 36px 40px;text-align:center;">
+
+                        <p style="margin:0 0 10px 0;font-size:12px;color:#94a3b8;line-height:1.6;">
+                            This is an automated security notification from the NCHSM Secure Portal.
+                            <br>Login alerts cannot be disabled for security reasons.
+                        </p>
+
+                        <table role="presentation" cellpadding="0" cellspacing="0" border="0" style="margin:16px auto 0 auto;">
+                            <tr>
+                                <td style="padding:0 10px;">
+                                    <a href="mailto:ict@nchsm.co.ke" style="font-size:12px;color:${theme.accent};text-decoration:none;font-weight:600;">ict@nchsm.co.ke</a>
+                                </td>
+                                <td style="color:#cbd5e1;">|</td>
+                                <td style="padding:0 10px;">
+                                    <a href="https://nchsm.co.ke" style="font-size:12px;color:${theme.accent};text-decoration:none;font-weight:600;">nchsm.co.ke</a>
+                                </td>
+                            </tr>
+                        </table>
+
+                        <p style="margin:18px 0 0 0;font-size:11px;color:#cbd5e1;letter-spacing:0.3px;">
+                            © ${now.getFullYear()} Nakuru College of Health Sciences and Management<br>
+                            All rights reserved.
+                        </p>
+
+                    </td>
+                </tr>
+
+            </table>
+            <!-- /Main card -->
+
+            <!-- Preheader spacer -->
+            <div style="display:none;font-size:1px;color:#eef2f7;line-height:1px;max-height:0;max-width:0;opacity:0;overflow:hidden;">
+                New ${theme.label} sign-in detected on your NCHSM account from ${device}.
+            </div>
+
+        </td>
+    </tr>
+</table>
+
+</body>
+</html>`;
+
+        // ---------- Send ----------
+        const response = await fetch(this.brevo.apiUrl, {
+            method: 'POST',
+            headers: {
+                'api-key': this.brevo.apiKey,
+                'Content-Type': 'application/json',
+                'accept': 'application/json'
+            },
+            body: JSON.stringify({
+                sender: {
+                    email: this.brevo.sender.email,
+                    name: this.brevo.sender.name
+                },
+                to: [{
+                    email: userData.email,
+                    name: userData.full_name || userData.email
+                }],
+                subject: `🔐 New ${theme.label} Login — NCHSM Portal`,
+                htmlContent: htmlContent,
+                tags: ['login-alert', roleRaw]
+            })
+        });
+
+        if (response.ok) {
+            const result = await response.json();
+            console.log(`✅ Login alert sent → ${userData.email} (${theme.label}) [msgId: ${result.messageId}]`);
+        } else {
+            const errText = await response.text();
+            console.error(`❌ Brevo error (${response.status}):`, errText);
+        }
+
+    } catch (error) {
+        console.error('❌ Login notification error:', error);
+    }
+},
 
     // ============================================
     // HIDE SKELETON LOADER
