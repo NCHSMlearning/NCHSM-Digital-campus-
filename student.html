@@ -698,6 +698,29 @@ html,body{min-height:100%;background:#f4f8fc!important}
  .dropdown-submenu.dropdown-submenu-premium{margin-left:28px;}
 }
 </style>
+
+<style id="nchsm-final-repair">
+/* FINAL STABLE LAYOUT REPAIR */
+html,body{max-width:100%;overflow-x:hidden!important}
+#app-content{width:100%!important;max-width:100%!important;overflow-x:hidden!important}
+#app-content>.container{width:100%!important;max-width:none!important;margin:0!important;padding:0!important;box-sizing:border-box!important}
+@media(min-width:1024px){
+  #main-header{width:100%!important;box-sizing:border-box!important}
+  #sidebar.sidebar-premium{left:0!important;top:60px!important;width:260px!important;height:calc(100vh - 60px)!important;max-height:calc(100vh - 60px)!important;position:fixed!important;transform:none!important;z-index:1001!important}
+  #main-content.main{margin-left:260px!important;width:calc(100% - 260px)!important;max-width:calc(100% - 260px)!important;box-sizing:border-box!important;min-width:0!important}
+  #main-content.main>*{min-width:0!important;max-width:100%!important}
+  .app-footer.nchsm-compact-global-footer{margin-left:260px!important;width:calc(100% - 260px)!important;box-sizing:border-box!important}
+}
+@media(max-width:1023px){
+  #main-content.main{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
+  .app-footer.nchsm-compact-global-footer{width:100%!important}
+}
+/* Keep the complete campus visible as far as the banner aspect ratio allows. */
+#dashboard .nchsm-hero-image{object-fit:cover!important;object-position:center 58%!important}
+/* Never leave fake loading placeholders on a completed dashboard. */
+.nchsm-courses,.nchsm-events{min-height:0!important}
+</style>
+
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -776,7 +799,7 @@ html,body{min-height:100%;background:#f4f8fc!important}
 <div class="profile-trigger">
 <img alt="Profile" class="profile-avatar round" id="header-profile-photo" src="https://ui-avatars.com/api/?name=Student&amp;background=4C1D95&amp;color=fff&amp;size=100"/>
 <div class="nchsm-header-user-copy">
-<span class="profile-name" id="header-user-name">Student</span>
+<span class="profile-name" id="header-user-name">Loading...</span>
 <span class="profile-role">Student</span>
 </div>
 <i aria-hidden="true" class="fas fa-chevron-down dropdown-icon"></i>
@@ -808,7 +831,7 @@ html,body{min-height:100%;background:#f4f8fc!important}
 <span class="online-status-dot"></span>
 </div>
 <div class="user-info-mini">
-<span class="user-name" id="sidebarUserName">Student</span>
+<span class="user-name" id="sidebarUserName">Loading...</span>
 <span class="user-program" id="sidebarUserProgram">KRCHN</span>
 </div>
 </div>
@@ -1194,22 +1217,7 @@ html,body{min-height:100%;background:#f4f8fc!important}
 </div>
 <button class="nchsm-view-btn" data-tab="calendar" type="button">View All <span>→</span></button>
 </div>
-<div class="nchsm-events">
-<div class="nchsm-event">
-<div class="event-date"><b>DATE</b><strong>--</strong></div>
-<div class="event-info">
-<strong>Loading event...</strong>
-<span><i class="fas fa-clock"></i> --:-- <i class="fas fa-location-dot"></i> --</span>
-</div>
-</div>
-<div class="nchsm-event">
-<div class="event-date"><b>NEXT</b><strong>--</strong></div>
-<div class="event-info">
-<strong>Loading event...</strong>
-<span><i class="fas fa-clock"></i> --:-- <i class="fas fa-location-dot"></i> --</span>
-</div>
-</div>
-</div>
+<div class="nchsm-events"></div>
 <div hidden="" id="quick-next-class">
 <span id="quick-next-class-time">--:--</span><span id="quick-next-class-name">--</span>
 <span id="quick-next-class-code">--</span><span id="quick-next-class-lecturer">--</span>
@@ -1226,12 +1234,7 @@ html,body{min-height:100%;background:#f4f8fc!important}
 </div>
 <button class="nchsm-view-btn" data-tab="hub-courses" type="button">View All <span>→</span></button>
 </div>
-<div class="nchsm-courses">
-<div class="course-row"><span class="course-code code-blue">UNITS</span><strong>Loading course</strong><i class="fas fa-chevron-right"></i></div>
-<div class="course-row"><span class="course-code code-green">UNITS</span><strong>Loading course</strong><i class="fas fa-chevron-right"></i></div>
-<div class="course-row"><span class="course-code code-purple">UNITS</span><strong>Loading course</strong><i class="fas fa-chevron-right"></i></div>
-<div class="course-row"><span class="course-code code-orange">UNITS</span><strong>Loading course</strong><i class="fas fa-chevron-right"></i></div>
-</div>
+<div class="nchsm-courses"></div>
 <div class="nchsm-course-hooks" hidden="">
 <span id="dashboard-active-courses">--</span>
 <span id="dashboard-approved-units">--</span>
