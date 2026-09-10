@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -36,7 +37,6 @@
           href="images/campus-header.jpg">
     
     <!-- External CSS -->
-    <link rel="stylesheet" href="login-styles.css">
     
     <!-- TOTP Library for 2FA -->
     <script src="https://cdn.jsdelivr.net/npm/otplib@12.0.1/otplib-browser.min.js"></script>
@@ -53,95 +53,7 @@
     <!-- ============================================ -->
     <!-- ===== INLINE STYLES FOR TOP CONTROLS ===== -->
     <!-- ============================================ -->
-    <style>
-        /* ===== TOP CONTROLS - PROPER SPACING ===== */
-        .top-controls {
-            display: flex !important;
-            justify-content: space-between !important;
-            align-items: center !important;
-            width: 100% !important;
-            max-width: 420px !important;
-            margin: 0 auto 30px auto !important;
-            padding: 0 !important;
-            gap: 10px !important;
-            flex-wrap: wrap !important;
-        }
-        
-        .top-controls .left-group,
-        .top-controls .right-group {
-            display: flex !important;
-            gap: 8px !important;
-            align-items: center !important;
-        }
-        
-        /* Button base style */
-        .top-controls a,
-        .top-controls button {
-            display: inline-flex !important;
-            align-items: center !important;
-            gap: 6px !important;
-            padding: 8px 16px !important;
-            border-radius: 8px !important;
-            font-size: 13px !important;
-            font-weight: 600 !important;
-            text-decoration: none !important;
-            transition: all 0.3s ease !important;
-            cursor: pointer !important;
-            border: none !important;
-            font-family: inherit !important;
-            background: #f1f5f9 !important;
-            color: #475569 !important;
-            border: 1px solid #e2e8f0 !important;
-        }
-        
-        .top-controls a:hover,
-        .top-controls button:hover {
-            transform: translateY(-1px) !important;
-            box-shadow: 0 4px 8px rgba(0,0,0,0.08) !important;
-        }
-        
-        /* Main Site button */
-        .top-controls .main-site-btn {
-            background: #f1f5f9 !important;
-            color: #475569 !important;
-            border: 1px solid #e2e8f0 !important;
-        }
-        
-        .top-controls .main-site-btn:hover {
-            background: #e2e8f0 !important;
-        }
-        
-        /* Blog button - Yellow theme */
-        .top-controls .blog-btn {
-            background: #FDB913 !important;
-            color: #0A3D62 !important;
-            border: none !important;
-        }
-        
-        .top-controls .blog-btn:hover {
-            background: #e8a80e !important;
-        }
-        
-        /* Theme toggle button */
-        .top-controls .theme-toggle-btn {
-            background: #f1f5f9 !important;
-            color: #475569 !important;
-            border: 1px solid #e2e8f0 !important;
-            padding: 8px 14px !important;
-        }
-        
-        .top-controls .theme-toggle-btn:hover {
-            background: #e2e8f0 !important;
-        }
-        
-        /* Feather icons inside top controls */
-        .top-controls i {
-            width: 16px !important;
-            height: 16px !important;
-        }
-    </style>
-    
-    <script>
+<script>
     // ============================================
     // GOOGLE REDIRECT HANDLER
     // ============================================
@@ -193,271 +105,921 @@
     })();
     </script>
 
-<style id="nchsm-modern-login">
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+
+
+
+
+
+
+<style id="nchsm-inline-styles">
+/* ============================================================
+   NCHSM DIGITAL PORTAL — EXACT GENERATED CONCEPT IMPLEMENTATION
+   All page CSS is intentionally contained in this login.html.
+   Existing authentication/JS hooks are preserved.
+   ============================================================ */
+
+/* ==========================================================
+   NCHSM DIGITAL PORTAL — PREMIUM RESPONSIVE LOGIN
+   Visual system is intentionally inline so the login page
+   renders consistently without depending on login-styles.css.
+   ========================================================== */
 
 :root{
-  --navy:#073b5c;
-  --blue:#0b6596;
-  --blue2:#1686c1;
-  --gold:#f7b718;
+  --nchsm-navy:#073b5c;
+  --nchsm-blue:#0b6596;
+  --nchsm-blue2:#1686c1;
+  --nchsm-gold:#f7b718;
+  --nchsm-green:#087653;
   --ink:#102a43;
   --muted:#64748b;
-  --line:#dbe5ee;
-  --surface:#ffffff;
+  --line:#d9e4ec;
   --soft:#f4f8fb;
+  --white:#fff;
 }
 
 *{box-sizing:border-box}
-html,body{min-height:100%;margin:0}
+html{scroll-behavior:smooth}
 body{
-  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
-  background:#eef4f7!important;
+  margin:0!important;
+  min-height:100vh!important;
+  font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif!important;
   color:var(--ink)!important;
+  background:#eaf2f7!important;
 }
 body:before{
-  content:"";position:fixed;inset:0;z-index:-2;
+  content:"";
+  position:fixed;
+  inset:0;
+  z-index:-3;
   background:
-    radial-gradient(circle at 15% 10%,rgba(22,134,193,.10),transparent 30%),
-    radial-gradient(circle at 90% 85%,rgba(247,183,24,.08),transparent 28%);
+    radial-gradient(circle at 10% 0%,rgba(22,134,193,.13),transparent 30%),
+    radial-gradient(circle at 95% 100%,rgba(247,183,24,.08),transparent 28%);
 }
-.particles{display:none!important}
+.particles,.skeleton-loader{display:none!important}
+.skip-to-content{
+  position:absolute;left:-9999px;top:10px;
+}
+
+/* ---------- Main split ---------- */
 .container{
-  width:min(1440px,100%);
+  width:min(1500px,100%);
   min-height:100vh;
   margin:0 auto;
   display:grid!important;
-  grid-template-columns:minmax(0,1.08fr) minmax(480px,.92fr)!important;
+  grid-template-columns:minmax(0,56%) minmax(460px,44%)!important;
   background:#fff;
-  box-shadow:0 0 60px rgba(7,59,92,.10);
-}
-.left-panel{
-  min-height:100vh!important;
-  position:relative;
+  box-shadow:0 25px 80px rgba(7,59,92,.14);
   overflow:hidden;
+}
+
+/* ---------- Brand / campus side ---------- */
+.left-panel{
+  position:relative;
+  min-height:100vh!important;
+  overflow:hidden;
+  isolation:isolate;
   background:
-    linear-gradient(180deg,rgba(4,49,76,.78),rgba(4,62,91,.90)),
-    url("images/campus-header.jpg") center/cover no-repeat!important;
+    linear-gradient(180deg,rgba(3,43,69,.48) 0%,rgba(3,54,83,.67) 46%,rgba(3,52,79,.95) 100%),
+    url("images/campus-header.jpg") center center/cover no-repeat!important;
+}
+.left-panel:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:-1;
+  background:
+    radial-gradient(circle at 80% 15%,rgba(45,174,228,.18),transparent 30%),
+    linear-gradient(135deg,rgba(0,31,51,.15),transparent 55%);
 }
 .left-panel:after{
-  content:"";position:absolute;inset:0;pointer-events:none;
-  background:linear-gradient(135deg,rgba(3,35,55,.15),rgba(7,104,151,.20) 55%,rgba(247,183,24,.05));
+  content:"";
+  position:absolute;
+  inset:0;
+  z-index:0;
+  pointer-events:none;
+  background:linear-gradient(180deg,rgba(0,24,40,.05),rgba(0,31,51,.24));
 }
 .panel-content{
-  position:relative;z-index:2;
+  position:relative;
+  z-index:2;
   min-height:100vh;
-  padding:54px clamp(36px,5vw,82px) 38px;
-  display:flex;flex-direction:column;
-  justify-content:center;
+  padding:38px clamp(30px,5vw,76px) 28px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
 }
-.logo-wrapper{text-align:left!important;margin:0 0 34px!important}
+.logo-wrapper{
+  display:block!important;
+  margin:0!important;
+  text-align:left!important;
+}
 .logo-wrapper .logo{
-  width:74px!important;height:74px!important;
-  margin:0 0 18px!important;
+  width:72px!important;
+  height:72px!important;
+  margin:0 0 14px!important;
+  padding:6px!important;
   border-radius:50%!important;
   background:rgba(255,255,255,.96)!important;
-  padding:7px!important;
-  box-shadow:0 10px 30px rgba(0,0,0,.18);
+  border:2px solid rgba(247,183,24,.9)!important;
+  box-shadow:0 12px 30px rgba(0,0,0,.20)!important;
 }
 .logo-wrapper .logo img{
-  width:100%!important;height:100%!important;object-fit:contain!important;
+  width:100%!important;
+  height:100%!important;
+  object-fit:contain!important;
 }
 .college-name{
-  color:#fff!important;
-  font-size:clamp(20px,2.1vw,30px)!important;
-  line-height:1.12!important;
-  letter-spacing:.02em!important;
   margin:0!important;
+  color:#fff!important;
+  font-size:clamp(20px,2.15vw,31px)!important;
+  line-height:1.08!important;
   font-weight:800!important;
+  letter-spacing:.01em!important;
 }
-.college-name .gold,.gold{color:var(--gold)!important}
+.college-name .gold,.gold{color:var(--nchsm-gold)!important}
 .motto{
-  color:rgba(255,255,255,.78)!important;
-  margin:12px 0 0!important;
-  font-size:13px!important;
-  letter-spacing:.02em;
+  margin:10px 0 0!important;
+  color:rgba(255,255,255,.82)!important;
+  font-size:11px!important;
+  font-style:italic!important;
+  letter-spacing:.02em!important;
 }
-.welcome-section{margin-top:20px!important}
+
+.left-panel .welcome-section{
+  margin:0!important;
+  max-width:720px!important;
+}
 .left-panel .welcome-section h2{
-  color:#fff!important;font-size:clamp(31px,4vw,52px)!important;
-  line-height:1.02!important;margin:0 0 13px!important;font-weight:800!important;
-  max-width:700px;
+  margin:0 0 10px!important;
+  color:#fff!important;
+  font-size:clamp(31px,4.2vw,57px)!important;
+  line-height:.99!important;
+  font-weight:800!important;
+  letter-spacing:-.035em!important;
+}
+.left-panel .welcome-section h2:after{
+  content:"";
+  display:block;
+  width:46px;
+  height:4px;
+  margin-top:20px;
+  border-radius:99px;
+  background:var(--nchsm-gold);
 }
 .left-panel .tagline{
-  color:rgba(255,255,255,.86)!important;
-  font-size:16px!important;line-height:1.65!important;
-  max-width:590px!important;margin:0 0 27px!important;
+  margin:0!important;
+  max-width:570px!important;
+  color:rgba(255,255,255,.90)!important;
+  font-size:15px!important;
+  line-height:1.55!important;
 }
+
 .features-list{
   display:grid!important;
   grid-template-columns:repeat(2,minmax(0,1fr))!important;
-  gap:12px!important;max-width:700px!important;
+  gap:10px!important;
+  margin-top:24px!important;
+  max-width:710px!important;
 }
 .feature{
-  display:flex!important;align-items:flex-start!important;gap:13px!important;
-  padding:17px!important;border-radius:15px!important;
-  border:1px solid rgba(255,255,255,.18)!important;
-  background:rgba(255,255,255,.10)!important;
+  min-height:84px!important;
+  display:flex!important;
+  gap:12px!important;
+  align-items:flex-start!important;
+  padding:15px!important;
+  border:1px solid rgba(255,255,255,.19)!important;
+  border-radius:14px!important;
+  background:rgba(3,50,78,.43)!important;
   backdrop-filter:blur(10px)!important;
-  min-height:92px!important;
+  box-shadow:inset 0 1px rgba(255,255,255,.08)!important;
 }
-.feature:hover{transform:translateY(-2px);background:rgba(255,255,255,.14)!important}
-.feature>svg{flex:0 0 auto;color:#fff!important;width:22px!important;height:22px!important}
-.feature h3{color:#fff!important;margin:0 0 5px!important;font-size:14px!important}
-.feature p{color:rgba(255,255,255,.68)!important;margin:0!important;font-size:11px!important;line-height:1.5!important}
-.accreditation-scroll{margin-top:24px!important;overflow:hidden!important;max-width:700px}
-.badge-track{display:flex!important;gap:8px!important;flex-wrap:wrap!important}
+.feature>svg{
+  flex:0 0 auto;
+  width:21px!important;
+  height:21px!important;
+  color:#fff!important;
+}
+.feature h3{
+  margin:0 0 4px!important;
+  color:#fff!important;
+  font-size:12px!important;
+}
+.feature p{
+  margin:0!important;
+  color:rgba(255,255,255,.67)!important;
+  font-size:9px!important;
+  line-height:1.45!important;
+}
+.accreditation-scroll{
+  max-width:710px!important;
+  margin:18px 0 0!important;
+  overflow:hidden!important;
+}
+.badge-track{
+  display:flex!important;
+  flex-wrap:wrap!important;
+  gap:7px!important;
+}
 .badge{
-  border:1px solid rgba(255,255,255,.20)!important;
-  background:rgba(255,255,255,.08)!important;
-  color:rgba(255,255,255,.86)!important;
-  border-radius:999px!important;padding:7px 11px!important;
-  font-size:10px!important;
+  padding:6px 9px!important;
+  border-radius:999px!important;
+  color:rgba(255,255,255,.84)!important;
+  background:rgba(255,255,255,.09)!important;
+  border:1px solid rgba(255,255,255,.16)!important;
+  font-size:8px!important;
 }
-.badge.gold{color:#132f42!important;background:var(--gold)!important;border-color:var(--gold)!important}
-.stats{
-  margin-top:30px!important;padding-top:20px!important;
-  border-top:1px solid rgba(255,255,255,.18)!important;
-  display:grid!important;grid-template-columns:repeat(3,1fr)!important;
-  max-width:700px!important;gap:20px!important;
+.badge.gold{
+  color:#153247!important;
+  background:var(--nchsm-gold)!important;
+  border-color:var(--nchsm-gold)!important;
 }
-.stat{text-align:left!important}
-.stat .number{display:block;color:var(--gold)!important;font-size:25px!important;font-weight:800!important}
-.stat .label{display:block;color:rgba(255,255,255,.66)!important;font-size:10px!important;margin-top:3px!important}
 
+.stats{
+  max-width:720px!important;
+  display:grid!important;
+  grid-template-columns:repeat(3,1fr)!important;
+  gap:0!important;
+  margin:22px 0 0!important;
+  padding-top:17px!important;
+  border-top:1px solid rgba(255,255,255,.20)!important;
+}
+.stat{
+  text-align:left!important;
+  padding-right:18px!important;
+}
+.stat+.stat{
+  padding-left:18px!important;
+  border-left:1px solid rgba(255,255,255,.16)!important;
+}
+.stat .number{
+  display:block!important;
+  color:var(--nchsm-gold)!important;
+  font-size:23px!important;
+  line-height:1!important;
+  font-weight:800!important;
+}
+.stat .label{
+  display:block!important;
+  margin-top:4px!important;
+  color:rgba(255,255,255,.68)!important;
+  font-size:9px!important;
+}
+.left-panel .welcome-section:before{
+  content:"Training Today for a Healthier Tomorrow";
+  display:block;
+  margin-bottom:20px;
+  color:rgba(255,255,255,.80);
+  font-size:11px;
+  font-style:italic;
+  letter-spacing:.01em;
+}
+
+/* ---------- Right side ---------- */
 .right-panel{
-  min-height:100vh!important;background:#fff!important;
-  display:flex!important;flex-direction:column!important;
+  min-height:100vh!important;
+  display:flex!important;
+  flex-direction:column!important;
+  background:
+    radial-gradient(circle at 100% 0%,rgba(11,101,150,.07),transparent 32%),
+    #fff!important;
 }
 .mobile-header{display:none!important}
 .main-content{
-  flex:1!important;display:flex!important;align-items:center!important;justify-content:center!important;
-  padding:38px clamp(24px,5vw,78px)!important;
+  flex:1!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  padding:38px clamp(26px,5vw,72px)!important;
 }
 .login-card{
   width:min(510px,100%)!important;
-  margin:0 auto!important;padding:0!important;
-  background:transparent!important;box-shadow:none!important;border:none!important;
+  margin:0 auto!important;
+  padding:0!important;
+  background:transparent!important;
+  border:0!important;
+  box-shadow:none!important;
 }
 .top-controls{
-  width:100%!important;max-width:none!important;margin:0 0 34px!important;
-  display:flex!important;justify-content:flex-end!important;gap:8px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-end!important;
+  width:100%!important;
+  max-width:none!important;
+  gap:7px!important;
+  margin:0 0 27px!important;
+  padding:0!important;
 }
-.top-controls .left-group{margin-right:auto}
+.top-controls .left-group{
+  display:flex!important;
+  gap:7px!important;
+  margin-right:auto!important;
+}
+.top-controls .right-group{
+  display:flex!important;
+  gap:7px!important;
+}
 .top-controls a,.top-controls button{
-  border-radius:10px!important;padding:9px 13px!important;
-  font-size:11px!important;background:#f7fafc!important;
+  display:inline-flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  min-height:36px!important;
+  padding:7px 11px!important;
+  border-radius:9px!important;
+  border:1px solid #dce6ed!important;
+  background:#fff!important;
+  color:#3f566b!important;
+  font:600 10px Inter,sans-serif!important;
+  text-decoration:none!important;
+  box-shadow:0 3px 10px rgba(7,59,92,.05)!important;
+  cursor:pointer!important;
+  transition:.2s ease!important;
 }
-.top-controls .blog-btn{background:var(--gold)!important;color:#17324a!important}
-.login-card>.welcome-section{text-align:center!important;margin:0 0 24px!important}
+.top-controls a:hover,.top-controls button:hover{
+  transform:translateY(-1px)!important;
+  border-color:#bdd4e2!important;
+}
+.top-controls .blog-btn{
+  color:#153247!important;
+  background:var(--nchsm-gold)!important;
+  border-color:var(--nchsm-gold)!important;
+}
+.top-controls i{width:14px!important;height:14px!important}
+
+.login-card>.welcome-section{
+  text-align:center!important;
+  margin:0 0 20px!important;
+}
 .welcome-icon{
-  width:58px!important;height:58px!important;margin:0 auto 15px!important;
-  display:grid!important;place-items:center!important;border-radius:50%!important;
-  background:linear-gradient(135deg,#e4f3fb,#f7fbfd)!important;
-  border:1px solid #d6eaf4!important;
+  width:58px!important;
+  height:58px!important;
+  margin:0 auto 13px!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:50%!important;
+  color:var(--nchsm-green)!important;
+  background:#e9f7f2!important;
+  border:1px solid #ccebe0!important;
+  box-shadow:0 8px 24px rgba(8,118,83,.10)!important;
 }
-.welcome-icon svg{color:var(--blue)!important;width:25px!important;height:25px!important}
+.welcome-icon svg{width:25px!important;height:25px!important}
 .welcome-title{
-  font-size:31px!important;color:var(--navy)!important;
-  font-weight:800!important;margin:0 0 7px!important;
+  margin:0 0 6px!important;
+  color:var(--nchsm-navy)!important;
+  font-size:31px!important;
+  line-height:1.05!important;
+  font-weight:800!important;
+  letter-spacing:-.025em!important;
 }
-.welcome-subtitle{font-size:13px!important;color:var(--muted)!important;margin:0!important}
+.welcome-subtitle{
+  margin:0!important;
+  color:#71859a!important;
+  font-size:12px!important;
+  line-height:1.5!important;
+}
+
 .last-login-info{
-  border:1px solid #e4edf3!important;background:#f8fbfd!important;
-  color:#789!important;border-radius:10px!important;padding:9px 12px!important;
-  font-size:10px!important;margin-bottom:18px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:8px!important;
+  margin:0 0 15px!important;
+  padding:10px 12px!important;
+  border:1px solid #dceaf2!important;
+  border-radius:10px!important;
+  background:#f3f9fc!important;
+  color:#6d8294!important;
+  font-size:9px!important;
 }
-.form-group{margin-bottom:17px!important}
+.last-login-info svg{width:14px!important;height:14px!important;color:var(--nchsm-blue)!important}
+
+.error-message,.success-message,.attempts-info{
+  border-radius:10px!important;
+  font-size:10px!important;
+}
+
+.form-group{margin-bottom:15px!important}
 .form-label{
-  display:flex!important;gap:7px!important;align-items:center!important;
-  color:#29445b!important;font-size:12px!important;font-weight:700!important;margin-bottom:8px!important;
+  display:flex!important;
+  align-items:center!important;
+  gap:6px!important;
+  margin:0 0 7px!important;
+  color:#29445b!important;
+  font-size:10px!important;
+  font-weight:700!important;
 }
-.form-label svg{width:14px!important;height:14px!important;color:var(--blue)!important}
+.form-label svg{
+  width:13px!important;
+  height:13px!important;
+  color:var(--nchsm-blue)!important;
+}
 .input-wrapper{position:relative!important}
 .input-icon{
-  position:absolute!important;left:15px!important;top:50%!important;transform:translateY(-50%)!important;
-  color:#8ba0b1!important;width:18px!important;height:18px!important;z-index:2;
+  position:absolute!important;
+  left:14px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  z-index:2!important;
+  width:17px!important;
+  height:17px!important;
+  color:#91a3b2!important;
 }
 .form-input{
-  width:100%!important;height:51px!important;
-  border:1px solid #d5e1e9!important;border-radius:12px!important;
-  background:#fff!important;color:#17324a!important;
-  padding:0 45px!important;font-size:13px!important;
-  outline:none!important;transition:.2s ease!important;
+  width:100%!important;
+  height:50px!important;
+  padding:0 43px!important;
+  border:1px solid #d5e1e9!important;
+  border-radius:11px!important;
+  outline:none!important;
+  background:#fff!important;
+  color:#17324a!important;
+  font:500 12px Inter,sans-serif!important;
+  transition:.2s ease!important;
 }
+.form-input::placeholder{color:#9aa9b5!important}
+.form-input:hover{border-color:#c2d3de!important}
 .form-input:focus{
-  border-color:#1691cc!important;box-shadow:0 0 0 4px rgba(22,145,204,.10)!important;
+  border-color:#1590c9!important;
+  box-shadow:0 0 0 4px rgba(21,144,201,.10)!important;
 }
-.password-strength{margin-top:6px!important}
+.password-toggle{
+  position:absolute!important;
+  right:10px!important;
+  top:50%!important;
+  transform:translateY(-50%)!important;
+  width:32px!important;
+  height:32px!important;
+  display:grid!important;
+  place-items:center!important;
+  border:0!important;
+  border-radius:8px!important;
+  background:transparent!important;
+  color:#8094a5!important;
+  cursor:pointer!important;
+}
+.password-toggle svg{width:16px!important;height:16px!important}
+.password-strength{margin-top:5px!important}
 .strength-bar{height:3px!important;border-radius:99px!important;background:#edf2f5!important}
 .strength-progress{height:100%!important;border-radius:99px!important}
-.strength-text{font-size:9px!important;color:#8a9aaa!important}
+.strength-text{font-size:8px!important;color:#8b9aa8!important}
+
 .form-options{
-  display:flex!important;justify-content:space-between!important;align-items:center!important;
-  margin:3px 0 20px!important;font-size:11px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  margin:2px 0 18px!important;
+  color:#536b7e!important;
+  font-size:10px!important;
 }
-.stay-signed-in{display:flex!important;align-items:center!important;gap:6px!important}
-.forgot-link{color:#0877b8!important;font-weight:700!important;text-decoration:none!important}
+.stay-signed-in{display:flex!important;align-items:center!important;gap:5px!important}
+.stay-signed-in label{cursor:pointer}
+.forgot-link{
+  color:#087bc0!important;
+  font-weight:700!important;
+  text-decoration:none!important;
+}
 .login-button{
-  width:100%!important;height:52px!important;border:0!important;border-radius:12px!important;
-  background:linear-gradient(135deg,#0876aa,#07547e)!important;
-  color:#fff!important;font-weight:800!important;font-size:14px!important;
-  box-shadow:0 10px 24px rgba(7,84,126,.20)!important;
+  width:100%!important;
+  height:51px!important;
+  border:0!important;
+  border-radius:11px!important;
+  color:#fff!important;
+  background:linear-gradient(135deg,#0879ad,#07557f)!important;
+  box-shadow:0 11px 25px rgba(7,85,127,.19)!important;
+  font:800 13px Inter,sans-serif!important;
+  cursor:pointer!important;
+  transition:.2s ease!important;
 }
-.login-button:hover{transform:translateY(-1px)!important;box-shadow:0 14px 28px rgba(7,84,126,.24)!important}
-.divider{margin:22px 0 15px!important;color:#9aa9b5!important;font-size:10px!important}
-.sso-options{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:9px!important}
+.login-button:hover{
+  transform:translateY(-1px)!important;
+  box-shadow:0 14px 30px rgba(7,85,127,.25)!important;
+}
+.button-content{display:flex!important;align-items:center!important;justify-content:center!important;gap:9px!important}
+
+.divider{
+  display:flex!important;
+  align-items:center!important;
+  gap:10px!important;
+  color:#91a1ae!important;
+  font-size:9px!important;
+  margin:19px 0 13px!important;
+}
+.divider:before,.divider:after{
+  content:"";height:1px;flex:1;background:#e6edf2;
+}
+.divider span{white-space:nowrap}
+
+.sso-options{
+  display:grid!important;
+  grid-template-columns:repeat(3,1fr)!important;
+  gap:8px!important;
+}
 .sso-btn{
-  height:44px!important;border:1px solid #dce6ed!important;border-radius:10px!important;
-  background:#fff!important;color:#334e68!important;display:flex!important;align-items:center!important;
-  justify-content:center!important;gap:7px!important;font-weight:600!important;font-size:11px!important;
+  height:43px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:6px!important;
+  padding:0 8px!important;
+  border:1px solid #dbe5eb!important;
+  border-radius:10px!important;
+  background:#fff!important;
+  color:#334e68!important;
+  font:600 10px Inter,sans-serif!important;
+  cursor:pointer!important;
+  transition:.2s ease!important;
 }
-.sso-btn:hover{background:#f8fbfd!important;border-color:#c7d9e4!important}
+.sso-btn:hover{background:#f7fafc!important;transform:translateY(-1px)!important}
 .sso-btn img{width:17px!important;height:17px!important}
-.signup-section{display:flex!important;justify-content:center!important}
+.sso-btn svg{width:17px!important;height:17px!important}
+
+.signup-section{width:100%!important}
 .signup-link{
-  width:100%!important;display:flex!important;align-items:center!important;justify-content:center!important;
-  gap:8px!important;border:1px solid #cde1ed!important;border-radius:11px!important;
-  background:#f4fafc!important;color:#0871a7!important;padding:12px!important;
-  text-decoration:none!important;font-size:12px!important;font-weight:700!important;
+  width:100%!important;
+  min-height:47px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:7px!important;
+  padding:10px!important;
+  border:1px solid #cde2ed!important;
+  border-radius:10px!important;
+  background:#f1f9fc!important;
+  color:#0875ad!important;
+  text-decoration:none!important;
+  font:700 11px Inter,sans-serif!important;
 }
-#enable2FABtn{margin-top:16px!important;background:linear-gradient(135deg,#0a3d62,#116d9b)!important;border-radius:11px!important}
-.keyboard-hints{opacity:.5!important;font-size:9px!important;margin-top:12px!important}
+.signup-link svg{width:15px!important;height:15px!important}
+
+#enable2FABtn{
+  width:100%!important;
+  min-height:43px!important;
+  margin-top:14px!important;
+  padding:10px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:center!important;
+  gap:8px!important;
+  border:0!important;
+  border-radius:10px!important;
+  color:#fff!important;
+  background:linear-gradient(135deg,#0a3d62,#126e9d)!important;
+  font:700 10px Inter,sans-serif!important;
+}
+#enable2FABtn i{width:15px!important;height:15px!important}
+
+.keyboard-hints{
+  display:flex!important;
+  justify-content:center!important;
+  gap:8px!important;
+  margin-top:10px!important;
+  color:#a4b1bb!important;
+  font-size:8px!important;
+}
+.keyboard-hints kbd{
+  padding:3px 6px!important;
+  border:1px solid #e5ebef!important;
+  border-radius:4px!important;
+  background:#fafcfd!important;
+}
+
 .footer{
-  background:#fff!important;border-top:1px solid #edf2f5!important;
-  padding:16px 28px!important;
+  padding:15px 28px!important;
+  border-top:1px solid #edf2f5!important;
+  background:#fff!important;
 }
-.footer-content{max-width:510px;margin:auto;display:flex;justify-content:space-between;align-items:center;gap:12px}
-.copyright{margin:0!important;color:#9aa9b5!important;font-size:9px!important}
-.footer-links{display:flex;gap:14px}
-.footer-link{color:#789!important;font-size:9px!important;text-decoration:none!important}
-.footer-link:hover{color:var(--blue)!important}
-
-.modal-overlay{backdrop-filter:blur(8px)!important;background:rgba(5,29,44,.55)!important}
-.modal-content{border-radius:20px!important;box-shadow:0 30px 80px rgba(0,0,0,.25)!important}
-
-@media(max-width:900px){
-  .container{grid-template-columns:1fr!important}
-  .left-panel{min-height:auto!important}
-  .panel-content{min-height:auto!important;padding:38px 26px!important}
-  .features-list{grid-template-columns:1fr 1fr!important}
-  .right-panel{min-height:auto!important}
-  .main-content{padding:34px 22px 26px!important}
-  .footer-content{flex-direction:column!important;text-align:center!important}
+.footer-content{
+  width:100%!important;
+  max-width:510px!important;
+  margin:auto!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:space-between!important;
+  gap:12px!important;
 }
-@media(max-width:620px){
-  .left-panel{display:none!important}
-  .main-content{padding:25px 18px!important}
-  .top-controls{justify-content:space-between!important;margin-bottom:25px!important}
-  .top-controls .left-group{margin-right:0}
+.copyright{margin:0!important;color:#a0adb7!important;font-size:8px!important}
+.footer-links{display:flex!important;gap:13px!important}
+.footer-link{
+  color:#7b8d9c!important;
+  font-size:8px!important;
+  text-decoration:none!important;
+}
+.footer-link:hover{color:var(--nchsm-blue)!important}
+
+/* ---------- Modals ---------- */
+.modal-overlay{
+  position:fixed!important;
+  inset:0!important;
+  z-index:9999!important;
+  background:rgba(3,28,44,.58)!important;
+  backdrop-filter:blur(8px)!important;
+}
+.modal-content{
+  border-radius:20px!important;
+  box-shadow:0 30px 80px rgba(0,0,0,.28)!important;
+}
+
+/* ---------- Tablet ---------- */
+@media(max-width:1050px){
+  .container{grid-template-columns:minmax(0,52%) minmax(410px,48%)!important}
+  .panel-content{padding:32px 38px 25px!important}
+  .features-list{gap:8px!important}
+  .feature{padding:12px!important}
+  .feature p{font-size:8px!important}
+}
+
+/* ==========================================================
+   MOBILE — THE CAMPUS PHOTO + BRANDING STAYS AT THE TOP
+   ========================================================== */
+@media(max-width:720px){
+  body{background:#f4f8fb!important}
+  .container{
+    display:flex!important;
+    flex-direction:column!important;
+    min-height:100vh!important;
+    background:#f4f8fb!important;
+    box-shadow:none!important;
+  }
+
+  .left-panel{
+    display:block!important;
+    min-height:405px!important;
+    height:405px!important;
+    background:
+      linear-gradient(180deg,rgba(2,39,63,.20) 0%,rgba(3,55,84,.48) 42%,rgba(3,48,74,.95) 100%),
+      url("images/campus-header.jpg") center center/cover no-repeat!important;
+  }
+
+  .panel-content{
+    min-height:405px!important;
+    padding:18px 18px 17px!important;
+    display:block!important;
+  }
+
+  /* Logo and college identity at the top-left */
+  .logo-wrapper{
+    display:flex!important;
+    align-items:center!important;
+    gap:10px!important;
+    margin:0!important;
+  }
+  .logo-wrapper .logo{
+    flex:0 0 auto!important;
+    width:49px!important;
+    height:49px!important;
+    margin:0!important;
+    padding:4px!important;
+    border-width:1px!important;
+    box-shadow:0 7px 18px rgba(0,0,0,.20)!important;
+  }
+  .logo-wrapper .college-name{
+    font-size:13px!important;
+    line-height:1.08!important;
+    max-width:230px!important;
+  }
+  .motto{
+    display:none!important;
+  }
+
+  .left-panel .welcome-section{
+    position:absolute!important;
+    left:18px!important;
+    right:18px!important;
+    bottom:83px!important;
+    max-width:none!important;
+  }
+  .left-panel .welcome-section:before{
+    display:block!important;
+    margin-bottom:9px!important;
+    font-size:9px!important;
+  }
+  .left-panel .welcome-section h2{
+    font-size:30px!important;
+    line-height:1.01!important;
+    letter-spacing:-.025em!important;
+    margin:0 0 9px!important;
+  }
+  .left-panel .welcome-section h2:after{
+    width:34px!important;
+    height:3px!important;
+    margin-top:10px!important;
+  }
+  .left-panel .tagline{
+    max-width:330px!important;
+    font-size:11px!important;
+    line-height:1.42!important;
+  }
+
+  /* The image mockup is intentionally clean on mobile. */
+  .features-list,
+  .accreditation-scroll{
+    display:none!important;
+  }
+
+  .stats{
+    position:absolute!important;
+    left:18px!important;
+    right:18px!important;
+    bottom:15px!important;
+    max-width:none!important;
+    margin:0!important;
+    padding-top:10px!important;
+    grid-template-columns:repeat(3,1fr)!important;
+    border-top:1px solid rgba(255,255,255,.25)!important;
+  }
+  .stat{padding-right:8px!important}
+  .stat+.stat{padding-left:8px!important}
+  .stat .number{font-size:17px!important}
+  .stat .label{font-size:7px!important;margin-top:3px!important}
+
+  .right-panel{
+    min-height:auto!important;
+    background:#f7fafc!important;
+  }
+  .mobile-header{display:none!important}
+
+  .main-content{
+    min-height:auto!important;
+    padding:0 16px 22px!important;
+    align-items:flex-start!important;
+  }
+  .login-card{
+    width:100%!important;
+    max-width:480px!important;
+    margin:-30px auto 0!important;
+    padding:19px 16px 18px!important;
+    position:relative!important;
+    z-index:5!important;
+    border:1px solid rgba(214,228,237,.9)!important;
+    border-radius:20px!important;
+    background:rgba(255,255,255,.98)!important;
+    box-shadow:0 18px 45px rgba(7,59,92,.13)!important;
+  }
+
+  .top-controls{
+    margin:0 0 20px!important;
+    justify-content:space-between!important;
+  }
+  .top-controls .left-group{
+    margin-right:0!important;
+  }
+  .top-controls a,.top-controls button{
+    min-height:34px!important;
+    padding:7px 9px!important;
+    font-size:9px!important;
+  }
+  .top-controls .main-site-btn{display:inline-flex!important}
+  .top-controls i{width:13px!important;height:13px!important}
+
+  .login-card>.welcome-section{
+    margin-bottom:18px!important;
+  }
+  .welcome-icon{
+    width:49px!important;
+    height:49px!important;
+    margin-bottom:11px!important;
+  }
+  .welcome-icon svg{width:21px!important;height:21px!important}
+  .welcome-title{
+    font-size:25px!important;
+  }
+  .welcome-subtitle{
+    font-size:10px!important;
+    padding:0 5px!important;
+  }
+  .last-login-info{
+    font-size:8px!important;
+    padding:9px!important;
+  }
+  .form-label{font-size:9px!important}
+  .form-input{
+    height:49px!important;
+    font-size:12px!important;
+  }
+  .form-options{font-size:9px!important}
+  .login-button{height:49px!important;font-size:12px!important}
+  .divider{margin:17px 0 12px!important}
+  .sso-options{grid-template-columns:repeat(3,1fr)!important}
+  .sso-btn{height:42px!important;font-size:9px!important}
+  .signup-link{min-height:45px!important;font-size:10px!important}
+  #enable2FABtn{min-height:42px!important;font-size:9px!important}
+  .keyboard-hints{display:none!important}
+
+  .footer{
+    padding:13px 16px!important;
+    background:#f7fafc!important;
+  }
+  .footer-content{
+    flex-direction:column!important;
+    text-align:center!important;
+    gap:7px!important;
+  }
+  .copyright{font-size:7px!important}
+  .footer-links{gap:12px!important}
+  .footer-link{font-size:7px!important}
+}
+
+/* ---------- Small phones ---------- */
+@media(max-width:390px){
+  .left-panel,.panel-content{height:375px!important;min-height:375px!important}
+  .logo-wrapper .college-name{font-size:11px!important;max-width:200px!important}
+  .logo-wrapper .logo{width:44px!important;height:44px!important}
+  .left-panel .welcome-section{bottom:73px!important}
+  .left-panel .welcome-section h2{font-size:27px!important}
+  .left-panel .tagline{font-size:10px!important}
+  .stats{bottom:12px!important}
+  .stat .number{font-size:15px!important}
+  .login-card{
+    margin:-25px auto 0!important;
+    padding:16px 13px!important;
+    border-radius:18px!important;
+  }
   .top-controls .main-site-btn{display:none!important}
-  .welcome-title{font-size:28px!important}
-  .sso-options{grid-template-columns:1fr!important}
-  .sso-btn{height:46px!important}
-  .footer-links{flex-wrap:wrap;justify-content:center}
+  .top-controls{margin-bottom:17px!important}
+  .welcome-title{font-size:23px!important}
+  .sso-btn span{font-size:8px!important}
+}
+
+/* ---------- Reduced motion ---------- */
+@media(prefers-reduced-motion:reduce){
+  *,*:before,*:after{scroll-behavior:auto!important;transition:none!important;animation:none!important}
+}
+
+:root{--navy:#063b5b;--blue:#0878ad;--gold:#f7b718;--green:#087653;--ink:#102a43;--muted:#71859a}
+*{box-sizing:border-box}
+body{margin:0!important;background:#edf4f8!important;font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important;color:var(--ink)!important}
+.particles,.skeleton-loader{display:none!important}
+.container{width:min(1500px,100%);min-height:100vh;margin:auto;display:grid!important;grid-template-columns:56% 44%!important;background:#fff;overflow:hidden;box-shadow:0 20px 70px rgba(3,44,69,.13)}
+.left-panel{position:relative!important;min-height:100vh!important;overflow:hidden!important;background:linear-gradient(180deg,rgba(2,39,63,.24),rgba(3,53,81,.55) 50%,rgba(2,39,61,.97)),url("images/campus-header.jpg") center/cover no-repeat!important}
+.panel-content{position:relative;z-index:2;min-height:100vh;padding:38px clamp(30px,5vw,76px) 28px;display:flex!important;flex-direction:column!important;justify-content:space-between!important}
+.logo-wrapper{margin:0!important;text-align:left!important}
+.logo-wrapper .logo{width:72px!important;height:72px!important;padding:6px!important;margin:0 0 14px!important;border-radius:50%!important;background:#fff!important;border:2px solid var(--gold)!important;box-shadow:0 12px 30px rgba(0,0,0,.22)!important}
+.logo-wrapper .logo img{width:100%!important;height:100%!important;object-fit:contain!important}
+.logo-wrapper .college-name{margin:0!important;color:#fff!important;font-size:clamp(21px,2.2vw,31px)!important;line-height:1.08!important;font-weight:800!important}
+.gold{color:var(--gold)!important}
+.motto{margin:9px 0 0!important;color:rgba(255,255,255,.82)!important;font-size:11px!important;font-style:italic!important}
+.left-panel .welcome-section{margin:0!important;max-width:700px!important}
+.left-panel .welcome-section:before{content:"Training Today for a Healthier Tomorrow";display:block;color:rgba(255,255,255,.8);font-size:11px;font-style:italic;margin-bottom:13px}
+.left-panel .welcome-section h2{margin:0 0 12px!important;color:#fff!important;font-size:clamp(34px,4.2vw,58px)!important;line-height:.98!important;letter-spacing:-.04em!important;font-weight:800!important}
+.left-panel .welcome-section h2:after{content:"";display:block;width:45px;height:4px;margin-top:19px;border-radius:99px;background:var(--gold)}
+.left-panel .tagline{margin:0!important;color:rgba(255,255,255,.9)!important;font-size:15px!important;line-height:1.55!important;max-width:560px!important}
+.features-list{display:grid!important;grid-template-columns:repeat(4,1fr)!important;gap:9px!important;max-width:720px!important;margin-top:23px!important}
+.feature{min-height:92px!important;padding:13px 11px!important;display:flex!important;flex-direction:column!important;gap:9px!important;border:1px solid rgba(255,255,255,.18)!important;border-radius:13px!important;background:rgba(4,56,85,.48)!important;backdrop-filter:blur(9px)!important}
+.feature>svg{width:20px!important;height:20px!important;color:#fff!important}.feature h3{color:#fff!important;font-size:10px!important;margin:0 0 3px!important}.feature p{color:rgba(255,255,255,.62)!important;font-size:7.5px!important;line-height:1.4!important;margin:0!important}
+.accreditation-scroll{max-width:720px!important;margin:13px 0 0!important;overflow:hidden!important}.badge-track{display:flex!important;flex-wrap:wrap!important;gap:6px!important}.badge{padding:5px 8px!important;border-radius:99px!important;background:rgba(255,255,255,.08)!important;border:1px solid rgba(255,255,255,.14)!important;color:rgba(255,255,255,.78)!important;font-size:7px!important}.badge.gold{color:#153247!important;background:var(--gold)!important;border-color:var(--gold)!important}
+.stats{max-width:720px!important;margin:19px 0 0!important;padding-top:16px!important;display:grid!important;grid-template-columns:repeat(3,1fr)!important;border-top:1px solid rgba(255,255,255,.18)!important}.stat{text-align:left!important;padding-right:15px!important}.stat+.stat{padding-left:15px!important;border-left:1px solid rgba(255,255,255,.16)!important}.stat .number{display:block!important;color:var(--gold)!important;font-size:22px!important;font-weight:800!important;line-height:1!important}.stat .label{display:block!important;color:rgba(255,255,255,.64)!important;font-size:8px!important;margin-top:4px!important}
+.right-panel{min-height:100vh!important;display:flex!important;flex-direction:column!important;background:radial-gradient(circle at 100% 0%,rgba(8,120,173,.07),transparent 31%),#fff!important}
+.mobile-header{display:none!important}.main-content{flex:1!important;display:flex!important;align-items:center!important;justify-content:center!important;padding:34px clamp(25px,5vw,70px)!important}
+.login-card{width:min(500px,100%)!important;padding:0!important;margin:auto!important;background:transparent!important;border:0!important;box-shadow:none!important}
+.top-controls{width:100%!important;max-width:none!important;margin:0 0 28px!important;padding:0!important;display:flex!important;align-items:center!important;gap:7px!important}.top-controls .left-group{margin-right:auto!important}.top-controls a,.top-controls button{min-height:35px!important;padding:7px 11px!important;border-radius:9px!important;border:1px solid #dce7ee!important;background:#fff!important;color:#425b70!important;font:600 10px Inter,sans-serif!important;box-shadow:0 3px 10px rgba(7,59,92,.04)!important}.top-controls .blog-btn{background:var(--gold)!important;color:#173247!important;border-color:var(--gold)!important}
+.login-card>.welcome-section{text-align:center!important;margin:0 0 21px!important}.welcome-icon{width:58px!important;height:58px!important;margin:0 auto 13px!important;display:grid!important;place-items:center!important;border-radius:50%!important;background:#e9f7f2!important;border:1px solid #cdebe0!important;color:var(--green)!important}.welcome-icon svg{width:24px!important;height:24px!important}.welcome-title{color:var(--navy)!important;font-size:30px!important;font-weight:800!important;line-height:1.05!important;margin:0 0 6px!important}.welcome-subtitle{color:var(--muted)!important;font-size:12px!important;margin:0!important}
+.last-login-info{display:flex!important;align-items:center!important;gap:8px!important;padding:9px 11px!important;margin:0 0 16px!important;border-radius:10px!important;border:1px solid #dceaf2!important;background:#f3f9fc!important;color:#728697!important;font-size:9px!important}
+.form-group{margin-bottom:15px!important}.form-label{display:flex!important;align-items:center!important;gap:6px!important;color:#29445b!important;font-size:10px!important;font-weight:700!important;margin:0 0 7px!important}.input-wrapper{position:relative!important}.input-icon{position:absolute!important;left:14px!important;top:50%!important;transform:translateY(-50%)!important;width:17px!important;height:17px!important;color:#91a4b3!important}.form-input{width:100%!important;height:50px!important;padding:0 43px!important;border:1px solid #d5e1e9!important;border-radius:11px!important;outline:none!important;background:#fff!important;color:#17324a!important;font:500 12px Inter,sans-serif!important}.form-input:focus{border-color:#1590c9!important;box-shadow:0 0 0 4px rgba(21,144,201,.1)!important}
+.form-options{display:flex!important;align-items:center!important;justify-content:space-between!important;margin:2px 0 18px!important;font-size:10px!important}.forgot-link{color:#087bc0!important;font-weight:700!important;text-decoration:none!important}
+.login-button{width:100%!important;height:51px!important;border:0!important;border-radius:11px!important;color:#fff!important;background:linear-gradient(135deg,#0879ad,#07557f)!important;box-shadow:0 11px 25px rgba(7,85,127,.19)!important;font:800 13px Inter,sans-serif!important}
+.divider{display:flex!important;align-items:center!important;gap:10px!important;color:#91a1ae!important;font-size:9px!important;margin:19px 0 13px!important}.divider:before,.divider:after{content:"";height:1px;flex:1;background:#e6edf2}
+.sso-options{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}.sso-btn{height:43px!important;border:1px solid #dbe5eb!important;border-radius:10px!important;background:#fff!important;color:#334e68!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;font:600 10px Inter,sans-serif!important}.sso-btn img{width:17px!important;height:17px!important}.sso-btn svg{width:17px!important;height:17px!important}
+.signup-link{width:100%!important;min-height:46px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;border:1px solid #cde2ed!important;border-radius:10px!important;background:#f1f9fc!important;color:#0875ad!important;text-decoration:none!important;font:700 11px Inter,sans-serif!important}
+#enable2FABtn{min-height:40px!important;margin-top:12px!important;border-radius:10px!important;font-size:9px!important}.keyboard-hints{display:none!important}
+.footer{padding:14px 26px!important;border-top:1px solid #edf2f5!important;background:#fff!important}.footer-content{width:100%!important;max-width:500px!important;margin:auto!important;display:flex!important;align-items:center!important;justify-content:space-between!important;gap:10px!important}.copyright,.footer-link{font-size:8px!important}.copyright{color:#a0adb7!important;margin:0!important}.footer-links{display:flex!important;gap:13px!important}.footer-link{color:#7b8d9c!important;text-decoration:none!important}
+
+/* ---------- Mobile: real campus hero + floating login ---------- */
+@media(max-width:720px){
+ body{background:#f4f8fb!important}.container{display:flex!important;flex-direction:column!important;min-height:100vh!important;background:#f4f8fb!important;box-shadow:none!important}
+ .left-panel{display:block!important;height:395px!important;min-height:395px!important;background:linear-gradient(180deg,rgba(2,39,63,.12),rgba(3,53,81,.45) 45%,rgba(2,39,61,.97)),url("images/campus-header.jpg") center/cover no-repeat!important}
+ .panel-content{min-height:395px!important;height:395px!important;padding:17px!important;display:block!important}
+ .logo-wrapper{display:flex!important;align-items:center!important;gap:10px!important}.logo-wrapper .logo{width:48px!important;height:48px!important;min-width:48px!important;padding:4px!important;margin:0!important;border-width:1px!important}.logo-wrapper .college-name{font-size:12px!important;line-height:1.08!important;max-width:225px!important}.motto{display:none!important}
+ .left-panel .welcome-section{position:absolute!important;left:17px!important;right:17px!important;bottom:82px!important;max-width:none!important}.left-panel .welcome-section:before{font-size:8px!important;margin-bottom:8px!important}.left-panel .welcome-section h2{font-size:29px!important;line-height:1!important;margin:0!important}.left-panel .welcome-section h2:after{width:35px!important;height:3px!important;margin-top:11px!important}.left-panel .tagline{max-width:330px!important;font-size:10px!important;line-height:1.45!important;margin-top:9px!important}
+ .features-list,.accreditation-scroll{display:none!important}.stats{position:absolute!important;left:17px!important;right:17px!important;bottom:13px!important;max-width:none!important;margin:0!important;padding-top:10px!important;grid-template-columns:repeat(3,1fr)!important}.stat{padding-right:7px!important}.stat+.stat{padding-left:7px!important}.stat .number{font-size:16px!important}.stat .label{font-size:7px!important}
+ .right-panel{min-height:auto!important;background:#f4f8fb!important}.main-content{min-height:auto!important;padding:0 15px 22px!important;align-items:flex-start!important}.login-card{width:100%!important;max-width:480px!important;margin:-27px auto 0!important;padding:17px 15px!important;position:relative!important;z-index:5!important;border:1px solid #dce8ef!important;border-radius:19px!important;background:#fff!important;box-shadow:0 17px 42px rgba(7,59,92,.14)!important}
+ .top-controls{margin:0 0 18px!important}.top-controls a,.top-controls button{min-height:33px!important;padding:6px 8px!important;font-size:8px!important}.login-card>.welcome-section{margin-bottom:17px!important}.welcome-icon{width:48px!important;height:48px!important;margin-bottom:10px!important}.welcome-title{font-size:24px!important}.welcome-subtitle{font-size:9px!important}.last-login-info{font-size:8px!important;padding:8px 9px!important}.form-label{font-size:9px!important}.form-input{height:48px!important;font-size:11px!important}.form-options{font-size:9px!important}.login-button{height:48px!important;font-size:12px!important}.divider{margin:17px 0 12px!important}.sso-btn{height:41px!important;font-size:9px!important}.signup-link{min-height:44px!important;font-size:10px!important}
+ .footer{padding:12px 15px!important;background:#f4f8fb!important}.footer-content{flex-direction:column!important;text-align:center!important;gap:6px!important}.copyright{font-size:7px!important}.footer-links{gap:11px!important}.footer-link{font-size:7px!important}
+}
+@media(max-width:390px){
+ .left-panel,.panel-content{height:365px!important;min-height:365px!important}.logo-wrapper .logo{width:43px!important;height:43px!important;min-width:43px!important}.logo-wrapper .college-name{font-size:10px!important;max-width:195px!important}.left-panel .welcome-section{bottom:74px!important}.left-panel .welcome-section h2{font-size:26px!important}.stats{bottom:10px!important}.stat .number{font-size:14px!important}.login-card{margin:-23px auto 0!important;padding:15px 12px!important}.top-controls .main-site-btn{display:none!important}.welcome-title{font-size:22px!important}
+}
+
+/* ============================================================
+   NCHSM DIGITAL PORTAL — GENERATED CONCEPT MATCH
+   Keeps existing authentication/JS hooks intact.
+   ============================================================ */
+.left-panel .features-list{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:10px!important}
+.left-panel .feature{padding:12px 13px!important;min-height:66px!important;border-radius:13px!important;background:rgba(255,255,255,.075)!important;border:1px solid rgba(255,255,255,.13)!important;backdrop-filter:blur(8px)!important}
+.left-panel .feature h3{font-size:11px!important;margin:0 0 3px!important;font-weight:750!important}
+.left-panel .feature p{font-size:8px!important;line-height:1.35!important;color:rgba(255,255,255,.65)!important;margin:0!important}
+.stats{grid-template-columns:repeat(4,1fr)!important}
+.stat+.stat{border-left:1px solid rgba(255,255,255,.16)!important}
+.logo-welcome{background:transparent!important;border:0!important;width:72px!important;height:72px!important;border-radius:0!important;overflow:visible!important;margin:0 auto 10px!important}
+.logo-welcome img{width:72px!important;height:72px!important;object-fit:contain!important;display:block!important;filter:drop-shadow(0 5px 12px rgba(0,0,0,.12))!important}
+.login-card>.welcome-section{margin-bottom:18px!important}
+@media(max-width:720px){
+  .left-panel .features-list,.left-panel .accreditation-scroll{display:none!important}
+  .stats{grid-template-columns:repeat(4,1fr)!important}
+  .stat .number{font-size:14px!important}
+  .stat .label{font-size:6.5px!important}
+  .logo-welcome{width:58px!important;height:58px!important}
+  .logo-welcome img{width:58px!important;height:58px!important}
 }
 </style>
-
 </head>
 <body>
     <!-- Skip to content -->
@@ -502,29 +1064,29 @@ body:before{
                         <div class="feature">
                             <i data-feather="book-open"></i>
                             <div>
-                                <h3>Digital Learning</h3>
-                                <p>Access course materials, lectures, and resources</p>
+                                <h3>Quality Education</h3>
+                                <p>Excellence in healthcare education and training</p>
                             </div>
                         </div>
                         <div class="feature">
                             <i data-feather="clipboard"></i>
                             <div>
-                                <h3>Progress Tracking</h3>
-                                <p>Monitor your academic progress and achievements</p>
+                                <h3>Supportive Community</h3>
+                                <p>Connect, collaborate, and grow with your peers</p>
                             </div>
                         </div>
                         <div class="feature">
                             <i data-feather="users"></i>
                             <div>
-                                <h3>Collaboration</h3>
-                                <p>Connect with peers and instructors</p>
+                                <h3>Digital Learning</h3>
+                                <p>Access learning resources anytime, anywhere</p>
                             </div>
                         </div>
                         <div class="feature">
                             <i data-feather="shield"></i>
                             <div>
-                                <h3>Secure Access</h3>
-                                <p>Enterprise-grade security for your data</p>
+                                <h3>A Healthier Tomorrow</h3>
+                                <p>Preparing skilled professionals for better health</p>
                             </div>
                         </div>
                     </div>
@@ -549,12 +1111,16 @@ body:before{
                         <span class="label">Students</span>
                     </div>
                     <div class="stat">
-                        <span class="number" data-target="2">2+</span>
-                        <span class="label">Faculty</span>
+                        <span class="number" data-target="120">120+</span>
+                        <span class="label">Lecturers</span>
+                    </div>
+                    <div class="stat">
+                        <span class="number" data-target="20">20+</span>
+                        <span class="label">Programs</span>
                     </div>
                     <div class="stat">
                         <span class="number" data-target="98">98%</span>
-                        <span class="label">Satisfaction</span>
+                        <span class="label">Success Rate</span>
                     </div>
                 </div>
             </div>
@@ -603,8 +1169,8 @@ body:before{
                     
                     <!-- Welcome -->
                     <div class="welcome-section">
-                        <div class="welcome-icon">
-                            <i data-feather="lock"></i>
+                        <div class="welcome-icon logo-welcome">
+                            <img src="images/Logo_NCHSM.png" alt="NCHSM Logo">
                         </div>
                         <h2 class="welcome-title">Welcome <span class="gold">Back</span></h2>
                         <p class="welcome-subtitle">Sign in to access your digital learning portal</p>
