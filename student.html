@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 
 <html lang="en">
@@ -770,11 +771,6 @@ html,body{max-width:100%;overflow-x:hidden!important}
   }
 }
 </style>
-<style id="nchsm-finance-metric-css">
-.metric-finance{border-color:#f2bd39;cursor:pointer;transition:transform .2s ease,box-shadow .2s ease}.metric-finance .nchsm-metric-icon{background:#fff1c7;color:#f59e0b}.metric-finance:hover{transform:translateY(-1px);box-shadow:0 6px 18px rgba(15,61,98,.10)}.metric-finance:focus-visible{outline:2px solid #0d6efd;outline-offset:2px}
-@media (min-width:1100px){.nchsm-metrics{grid-template-columns:repeat(6,minmax(0,1fr)) !important}}
-@media (min-width:769px) and (max-width:1099px){.nchsm-metrics{grid-template-columns:repeat(3,minmax(0,1fr)) !important}}
-</style>
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -1135,13 +1131,6 @@ html,body{max-width:100%;overflow-x:hidden!important}
 <div class="nchsm-metric-body">
 <div class="nchsm-metric-label">Total: <strong id="total-points-display">--</strong> pts</div>
 <div class="nchsm-metric-sub">All activities</div>
-</div>
-</div>
-<div class="nchsm-metric metric-finance" id="dashboard-finance-metric" data-tab="finance" role="button" tabindex="0" title="Open My Finance">
-<div class="nchsm-metric-icon"><i aria-hidden="true" class="fas fa-wallet"></i></div>
-<div class="nchsm-metric-body">
-<div class="nchsm-metric-label">Finance: <strong id="dashboard-finance-metric-value">--</strong></div>
-<div class="nchsm-metric-sub" id="dashboard-finance-metric-status">Checking balance...</div>
 </div>
 </div>
 </section>
@@ -5723,7 +5712,7 @@ html,body{max-width:100%;overflow-x:hidden!important}
 <i class="fas fa-user-plus" style="color: #FDB913;"></i> Enrollment
             </h2>
 <p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-<i class="fas fa-exchange-alt"></i> Change of Program  |  <i class="fas fa-undo-alt"></i> Readmission  |  <i class="fas fa-calendar-check"></i> Session Reporting
+<i class="fas fa-exchange-alt"></i> Change of Program  |  <i class="fas fa-undo-alt"></i> Readmission  |  <i class="fas fa-calendar-check"></i> Session Reporting
             </p>
 <div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px;">
 <span style="background: rgba(255,255,255,0.12); padding: 2px 12px; border-radius: 12px; font-size: 10px; color: rgba(255,255,255,0.7);">
@@ -7963,18 +7952,5 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }
   });
 })();
-</script><script id="nchsm-finance-metric-bind">
-(function(){
-'use strict';
-function sync(){
- const value=document.getElementById('dashboard-finance-metric-value'); const status=document.getElementById('dashboard-finance-metric-status'); if(!value||!status)return;
- const balance=document.getElementById('finance-studentOutstanding'); const fs=document.getElementById('finance-statusText');
- if(balance && balance.textContent.trim()) value.textContent=balance.textContent.trim(); else { const due=document.getElementById('finance-totalDueAmount'); value.textContent=due&&due.textContent.trim()?due.textContent.trim():'--'; }
- if(fs&&fs.textContent.trim()&&fs.textContent.trim()!=='Loading...') status.textContent=fs.textContent.trim(); else if(value.textContent==='KES 0') status.textContent='No outstanding balance';
-}
-function bind(){const card=document.getElementById('dashboard-finance-metric'); if(!card||card.dataset.bound==='1')return; card.dataset.bound='1'; const go=e=>{e.preventDefault();e.stopPropagation(); if(typeof window.nchsmNavigateToTab==='function')window.nchsmNavigateToTab('finance'); else if(typeof window.showTab==='function')window.showTab('finance'); else document.querySelector('.nav a[data-tab="finance"]')?.click();}; card.addEventListener('click',go); card.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' ')go(e);});}
-bind();sync(); document.addEventListener('appReady',()=>{bind();sync();}); new MutationObserver(sync).observe(document.body,{subtree:true,childList:true,characterData:true});
-})();
-</script>
-</body>
+</script></body>
 </html>
