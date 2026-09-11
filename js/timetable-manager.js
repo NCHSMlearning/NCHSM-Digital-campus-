@@ -132,10 +132,7 @@ async function initStudentTimetable() {
         const { data: timetable, error } = await supabaseClient
             .from('timetables')
             .select('*')
-            .eq('block', studentBlock)
-            .order('week_number', { ascending: true })
-            .order('day_of_week', { ascending: true })
-            .order('start_time', { ascending: true });
+            .eq('block', studentBlock);
         
         if (error) {
             console.error('❌ Timetable fetch error:', error);
@@ -317,12 +314,25 @@ function renderTimetable(weekFilter) {
     const container = document.getElementById('timetable-container');
     if (!container) return;
     
-    let filteredData = studentTimetableData;
+    let filteredData = [...studentTimetableData];
     if (weekFilter !== 'all') {
-        filteredData = studentTimetableData.filter(item => item.week_number == weekFilter);
+        filteredData = filteredData.filter(item => String(item.week_number) === String(weekFilter));
     }
-    
-    if (filteredData.length === 0) {
+
+    // Newest added/updated event first within each teaching day.
+    // If timestamps are unavailable, fall back to the scheduled start time.
+    const dayRank = { monday: 1, tuesday: 2, wednesday: 3, thursday: 4, friday: 5 };
+    filteredData.sort((a, b) => {
+        const da = dayRank[String(a.day_of_week || '').toLowerCase()] || 99;
+        const db = dayRank[String(b.day_of_week || '').toLowerCase()] || 99;
+        if (da !== db) return da - db;
+        const ta = new Date(a.created_at || a.updated_at || 0).getTime();
+        const tb = new Date(b.created_at || b.updated_at || 0).getTime();
+        if ((a.created_at || a.updated_at || b.created_at || b.updated_at) && tb !== ta) return tb - ta;
+        return String(a.start_time || '').localeCompare(String(b.start_time || ''));
+    });
+
+if (filteredData.length === 0) {
         container.innerHTML = `
             <div style="text-align: center; padding: 30px; color: #9ca3af;">
                 <i class="fas fa-calendar-week" style="font-size: 28px;"></i>
@@ -345,9 +355,16 @@ function renderTimetable(weekFilter) {
         }
     });
     
-    // Sort by time within each day
+    // Newest added event first within each day; fall back to start time.
     Object.keys(grouped).forEach(day => {
-        grouped[day].sort((a, b) => a.start_time.localeCompare(b.start_time));
+        grouped[day].sort((a, b) => {
+            const ta = new Date(a.created_at || a.updated_at || 0).getTime();
+            const tb = new Date(b.created_at || b.updated_at || 0).getTime();
+            if ((a.created_at || a.updated_at || b.created_at || b.updated_at) && tb !== ta) {
+                return tb - ta;
+            }
+            return String(a.start_time || '').localeCompare(String(b.start_time || ''));
+        });
     });
     
     // Build HTML
@@ -519,10 +536,7 @@ window.forceRefreshTimetable = async function(blockName = null) {
         const { data: timetable, error } = await supabaseClient
             .from('timetables')
             .select('*')
-            .eq('block', block)
-            .order('week_number', { ascending: true })
-            .order('day_of_week', { ascending: true })
-            .order('start_time', { ascending: true });
+            .eq('block', block);
         
         if (error) {
             console.error('❌ Fetch error:', error);
