@@ -1,6 +1,6 @@
 // ============================================
 // NCHSM SECURE LOGIN SYSTEM - ULTIMATE
-// Version: 5.1 - SESSION PRESERVATION FIX
+// Version: 5.2 - FAST LOGIN / NON-BLOCKING SESSION
 // Copyright © 2026 Nakuru College of Health Sciences and Management
 // ============================================
 
@@ -25,7 +25,7 @@ function trackGALogin(eventName, eventData) {
 // ✅ VERSION CHECK - WITHOUT CLEARING SESSION
 // ============================================
 (function() {
-    const VERSION = '5.1';
+    const VERSION = '5.2';
     const storedVersion = localStorage.getItem('nchsm_js_version');
     
     if (storedVersion !== VERSION) {
@@ -211,7 +211,7 @@ window.NCHSMLogin = {
             return;
         }
         
-        console.log('🚀 Initializing NCHSMLogin v5.1...');
+        console.log('🚀 Initializing NCHSMLogin v5.2...');
         console.log('🛡️ Ultimate Security Edition + 2FA');
         console.log('🔐 Authenticator App Support Enabled');
         console.log('📊 Google Analytics Tracking Enabled');
@@ -226,15 +226,6 @@ window.NCHSMLogin = {
         // FIXED: Initialize Supabase FIRST
         // ============================================
         this.initSupabase();
-        
-        // ============================================
-        // THEN load staff records (depends on Supabase)
-        // ============================================
-        this.loadStaffRecords().then(() => {
-            console.log('✅ Staff records loaded');
-        }).catch(err => {
-            console.warn('⚠️ Could not load staff records:', err);
-        });
         
         // ============================================
         // THEN generate CSRF token (depends on DOM)
@@ -282,7 +273,7 @@ window.NCHSMLogin = {
         
         this.state.isInitialized = true;
         
-        console.log('✅ NCHSMLogin v5.1 initialized');
+        console.log('✅ NCHSMLogin v5.2 initialized');
         console.log('🔐 2FA enforcement: ENABLED');
         console.log(`🕐 ${new Date().toLocaleString()}`);
     },
@@ -736,113 +727,67 @@ window.NCHSMLogin = {
             return null;
         }
     },
-
     // ============================================
-    // COMPLETE LOGIN - FIXED WITH GA TRACKING
+    // COMPLETE LOGIN - OPTIMIZED / NON-BLOCKING TELEMETRY
     // ============================================
     completeLogin: async function(profileData, sessionToken, isStaff = false) {
         console.log('🎉 Completing login for:', profileData.email);
-        
-        // ✅ Track login attempt with Google Analytics
+
         trackGALogin('login_attempt', {
             'event_category': 'Authentication',
             'event_label': profileData.email,
             'user_id': profileData.user_id,
             'is_staff': isStaff
         });
-        
+
         try {
-            let userIdForSession = profileData.user_id;
-            
-            if (isStaff && typeof profileData.user_id === 'string' && profileData.user_id.startsWith('STAFF')) {
-                try {
-                    if (!this.supabase) return;
-                    
-                    const { data: profile, error } = await this.supabase
-                        .from('consolidated_user_profiles_table')
-                        .select('user_id')
-                        .eq('email', profileData.email)
-                        .single();
-                    
-                    if (!error && profile?.user_id) {
-                        userIdForSession = profile.user_id;
-                    }
-                } catch (e) {}
-            }
-            
-            if (!isStaff) {
-                await this.updateLastLogin(profileData.user_id, profileData.email);
-            }
-            
-            await this.trackUserSession(
-                userIdForSession,
-                profileData.email,
-                sessionToken,
-                navigator.userAgent,
-                isStaff
-            );
-            
+            const userIdForSession = profileData.user_id;
+
             const safeProfile = {
-                user_id: userIdForSession || profileData.user_id || null,
+                user_id: userIdForSession || null,
                 staff_id: profileData.staff_id || profileData.id || null,
                 email: profileData.email || '',
                 full_name: profileData.full_name || 'User',
                 role: profileData.role || 'student',
                 program: profileData.program || profileData.department || '',
-                is_staff: isStaff || false,
-                two_factor_enabled: profileData.two_factor_enabled || false,
-                two_factor_verified: profileData.two_factor_verified || false
+                is_staff: !!isStaff,
+                two_factor_enabled: !!profileData.two_factor_enabled,
+                two_factor_verified: !!profileData.two_factor_verified
             };
-            
-            Object.keys(safeProfile).forEach(key => {
-                if (safeProfile[key] === undefined) {
-                    safeProfile[key] = null;
-                }
-            });
-            
-            // ✅ SAVE userProfile
-            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
-            console.log('✅ userProfile saved');
-            
-            // ✅ FIX: SAVE currentUserId - THIS WAS MISSING!
-            if (safeProfile.user_id) {
-                localStorage.setItem('currentUserId', safeProfile.user_id);
-                console.log('✅ currentUserId saved:', safeProfile.user_id);
-            } else {
-                console.warn('⚠️ No user_id to save!');
-            }
-            
-            // ✅ Also save to sessionStorage (backup)
-            sessionStorage.setItem('currentUserId', safeProfile.user_id);
-            sessionStorage.setItem('userProfile', JSON.stringify(safeProfile));
-            
-            if (!isStaff && this.supabase) {
-                try {
-                    const { data: { session } } = await this.supabase.auth.getSession();
-                    if (session) {
-                        localStorage.setItem('session_expires', session.expires_at);
-                    }
-                } catch (err) {}
-            }
-            
-            this.updateLastLoginInfo();
-            
-           // ✅ Send login alert to EVERY user — students, lecturers, staff, admins, superadmins
-console.log('📧 [completeLogin] Sending login alert for:', {
-    email: profileData.email,
-    role: profileData.role,
-    isStaff: isStaff
-});
 
-this.sendLoginNotification(profileData, isStaff)
-    .then(() => console.log('✅ Login alert dispatched'))
-    .catch((err) => console.error('❌ Login alert failed:', err));
-            
-            setTimeout(() => {
-                this.update2FAButtonStatus();
-            }, 500);
-            
-            // ✅ Track successful login with Google Analytics
+            // Save the local session FIRST so dashboard access is not held up by telemetry.
+            localStorage.setItem('userProfile', JSON.stringify(safeProfile));
+            if (safeProfile.user_id) localStorage.setItem('currentUserId', safeProfile.user_id);
+            sessionStorage.setItem('currentUserId', safeProfile.user_id || '');
+            sessionStorage.setItem('userProfile', JSON.stringify(safeProfile));
+
+            // Supabase has already established the auth session. Get expiry in background.
+            if (!isStaff && this.supabase) {
+                this.supabase.auth.getSession().then(({ data }) => {
+                    if (data?.session?.expires_at) {
+                        localStorage.setItem('session_expires', data.session.expires_at);
+                    }
+                }).catch(() => {});
+            }
+
+            this.updateLastLoginInfo();
+
+            // Non-critical analytics/security/audit work must NEVER block dashboard navigation.
+            if (!isStaff) {
+                this.updateLastLogin(profileData.user_id, profileData.email).catch(() => {});
+            }
+            this.trackUserSession(
+                userIdForSession,
+                profileData.email,
+                sessionToken,
+                navigator.userAgent,
+                isStaff
+            ).catch(() => {});
+
+            this.sendLoginNotification(profileData, isStaff)
+                .then(() => console.log('✅ Login alert dispatched'))
+                .catch(() => {});
+
             trackGALogin('login_success', {
                 'event_category': 'Authentication',
                 'event_label': profileData.email,
@@ -850,25 +795,22 @@ this.sendLoginNotification(profileData, isStaff)
                 'role': profileData.role || 'student',
                 'is_staff': isStaff
             });
-            
-            this.redirectToDashboard(profileData);
-            
+
+            // Immediate role-based navigation — no artificial delay.
+            this.redirectToDashboard(safeProfile);
         } catch (error) {
             console.error('❌ Complete login error:', error);
-            
-            // ✅ Track failed login with Google Analytics
             trackGALogin('login_failed', {
                 'event_category': 'Authentication',
                 'event_label': profileData.email,
                 'error': error.message
             });
-            
             this.showError('Error completing login: ' + error.message);
         }
     },
-
     // ============================================
     // FORCE UPDATE LOGIN COUNT
+    // ============================================
     // ============================================
     forceUpdateLoginCount: async function(userId) {
         try {
@@ -2007,88 +1949,82 @@ loadStaffRecords: async function() {
         }
         return Math.abs(hash).toString(16);
     },
-    
    // ============================================
-// STAFF LOGIN - FIXED WITH login_enabled CHECK
+// STAFF LOGIN - OPTIMIZED: QUERY ONLY THE ENTERED ACCOUNT
 // ============================================
 verifyStaffLogin: async function(identifier, password) {
     try {
-        // ✅ RELOAD staff records to get latest login_enabled status
-        await this.loadStaffRecords();
-        
-        const staff = this.staffRecords.find(s => 
-            s.email === identifier || s.id === identifier
-        );
-        
-        if (!staff) {
-            console.log('❌ Staff not found:', identifier);
+        const cleanIdentifier = String(identifier || '').trim();
+        if (!cleanIdentifier || !this.supabase) return null;
+
+        // Do NOT download the entire staff table. Query only the account being used.
+        let query = this.supabase
+            .from('staff_records')
+            .select('id, email, first_name, other_names, department, designation, login_enabled, status, password_hash')
+            .limit(1);
+
+        if (cleanIdentifier.includes('@')) {
+            query = query.eq('email', cleanIdentifier);
+        } else {
+            query = query.eq('id', cleanIdentifier);
+        }
+
+        const { data, error } = await query.maybeSingle();
+        if (error) {
+            console.warn('⚠️ Staff lookup error:', error.message);
             return null;
         }
-        
-        // ============================================
-        // ✅ CRITICAL FIX: Check login_enabled FIRST
-        // ============================================
+
+        const staff = data;
+        if (!staff) return null;
+
         if (!staff.login_enabled) {
-            console.log('🚫 Login blocked: Account disabled for', staff.email);
             this.showError('❌ Your account has been disabled. Please contact administration.');
-            
-            // ✅ Track disabled login attempt
             trackGALogin('login_blocked_disabled', {
                 'event_category': 'Authentication',
                 'event_label': staff.email,
                 'reason': 'account_disabled'
             });
-            
             return null;
         }
-        
-        // ✅ Check if status is active
-        if (staff.status !== 'active') {
-            console.log('🚫 Login blocked: Account inactive for', staff.email);
+
+        if (String(staff.status || '').toLowerCase() !== 'active') {
             this.showError(`❌ Your account is not active. Status: ${staff.status}`);
             return null;
         }
-        
-        // ✅ Check password
+
         let storedPassword = staff.password_hash;
-        try {
-            const decoded = atob(storedPassword);
-            storedPassword = decoded;
-        } catch (e) {
-            console.log('📝 Password not base64 encoded, using raw');
-        }
-        
-        if (storedPassword !== password) {
-            console.log('❌ Password mismatch for:', identifier);
-            return null;
-        }
-        
-        // ✅ Get UUID
+        try { storedPassword = atob(storedPassword); } catch (e) {}
+
+        if (storedPassword !== password) return null;
+
+        // Fetch the linked UUID and 2FA state in the same profile lookup.
         let uuid = staff.id;
+        let twoFactorEnabled = false;
+        let twoFactorSecret = null;
+        let twoFactorVerified = false;
+
         try {
-            if (this.supabase) {
-                const { data: profile } = await this.supabase
-                    .from('consolidated_user_profiles_table')
-                    .select('user_id')
-                    .eq('email', staff.email)
-                    .single();
-                
-                if (profile?.user_id) {
-                    uuid = profile.user_id;
-                    console.log('✅ Found UUID for staff:', uuid);
-                }
-            }
+            const { data: profile } = await this.supabase
+                .from('consolidated_user_profiles_table')
+                .select('user_id, two_factor_enabled, two_factor_secret, two_factor_verified')
+                .eq('email', staff.email)
+                .maybeSingle();
+
+            if (profile?.user_id) uuid = profile.user_id;
+            twoFactorEnabled = !!profile?.two_factor_enabled;
+            twoFactorSecret = profile?.two_factor_secret || null;
+            twoFactorVerified = !!profile?.two_factor_verified;
         } catch (e) {
-            console.log('⚠️ Could not get UUID, using staff ID:', staff.id);
+            console.warn('⚠️ Could not load staff profile/2FA state');
         }
-        
-        // ✅ Track successful staff login
+
         trackGALogin('staff_login_success', {
             'event_category': 'Authentication',
             'event_label': staff.email,
             'staff_id': staff.id
         });
-        
+
         return {
             user_id: uuid,
             staff_id: staff.id,
@@ -2100,6 +2036,9 @@ verifyStaffLogin: async function(identifier, password) {
             is_staff: true,
             login_enabled: staff.login_enabled,
             status: staff.status,
+            two_factor_enabled: twoFactorEnabled,
+            two_factor_secret: twoFactorSecret,
+            two_factor_verified: twoFactorVerified,
             staff_record: staff
         };
     } catch (error) {
@@ -2108,66 +2047,40 @@ verifyStaffLogin: async function(identifier, password) {
     }
 },
   // ============================================
-// EXECUTE LOGIN - FIXED (WITH STAFF REFRESH)
+// EXECUTE LOGIN - OPTIMIZED
 // ============================================
 executeLogin: async function(identifier, password) {
-    if (!this.supabase) {
-        throw new Error('Authentication service not available');
-    }
-    
-    await new Promise(resolve => setTimeout(resolve, 300 + Math.random() * 200));
-    
+    if (!this.supabase) throw new Error('Authentication service not available');
+
     let profileData = null;
     let isStaff = false;
-    
-    // ============================================
-    // ✅ CRITICAL FIX: Reload staff records FIRST
-    // ============================================
-    await this.loadStaffRecords();
-    console.log('🔄 Staff records reloaded before login check');
-    
+
+    // One targeted staff lookup instead of loading every staff record twice.
     const staffProfile = await this.verifyStaffLogin(identifier, password);
     if (staffProfile) {
-        console.log('✅ Staff login successful:', staffProfile.email);
         profileData = staffProfile;
         isStaff = true;
-        
-        // ✅ Track staff login
         trackGALogin('staff_login', {
             'event_category': 'Authentication',
             'event_label': identifier,
             'role': staffProfile.role
         });
-        
         return { profileData, isStaff };
     }
-    
-    console.log('🔐 Checking student login for:', identifier);
-    
-    // ✅ Track student login attempt
-    trackGALogin('student_login_attempt', {
-        'event_category': 'Authentication',
-        'event_label': identifier
-    });
-    
+
     try {
         const { data: authData, error: authError } = await this.supabase.auth
-            .signInWithPassword({ 
-                email: identifier, 
-                password 
-            });
-        
+            .signInWithPassword({ email: identifier, password });
+
         if (authError) {
             this.recordFailedAttempt();
-            
-            // ✅ Track failed login
             trackGALogin('login_failed', {
                 'event_category': 'Authentication',
                 'event_label': identifier,
                 'error': authError.message,
                 'reason': 'invalid_credentials'
             });
-            
+
             if (authError.message.includes('Invalid login credentials')) {
                 throw new Error('Invalid email or password');
             } else if (authError.message.includes('Email not confirmed')) {
@@ -2176,67 +2089,59 @@ executeLogin: async function(identifier, password) {
                 throw new Error('Login failed. Please try again.');
             }
         }
-        
-        if (!authData.user) {
-            throw new Error('No user found');
-        }
-        
-        console.log('✅ Supabase Auth successful for:', identifier);
-        
+
+        if (!authData.user) throw new Error('No user found');
+
         const { data: profile, error: profileError } = await this.supabase
             .from('consolidated_user_profiles_table')
             .select('user_id, email, full_name, role, program, department, staff_id, status, two_factor_enabled, two_factor_secret, two_factor_verified')
-            .eq('email', identifier)
+            .eq('user_id', authData.user.id)
             .maybeSingle();
-        
+
         if (profileError) {
-            console.error('❌ Profile error:', profileError);
             await this.supabase.auth.signOut();
             throw new Error('Error loading profile: ' + profileError.message);
         }
-        
         if (!profile) {
-            console.error('❌ No profile found for:', identifier);
             await this.supabase.auth.signOut();
             throw new Error('Account not found. Please contact support or register first.');
         }
-        
+
         const validStatuses = ['approved', 'active'];
-        if (!validStatuses.includes(profile.status?.toLowerCase())) {
+        if (!validStatuses.includes(String(profile.status || '').toLowerCase())) {
             await this.supabase.auth.signOut();
             throw new Error('Account pending approval. Please wait.');
         }
-        
-        return { 
+
+        return {
             profileData: {
                 user_id: profile.user_id,
-                email: profile.email,
+                email: profile.email || identifier,
                 full_name: profile.full_name || 'Student',
                 role: profile.role || 'student',
                 program: profile.program || profile.department,
                 staff_id: profile.staff_id || null,
                 is_staff: false,
-                two_factor_enabled: profile.two_factor_enabled || false,
-                two_factor_verified: profile.two_factor_verified || false
-            }, 
-            isStaff: false 
+                two_factor_enabled: !!profile.two_factor_enabled,
+                two_factor_secret: profile.two_factor_secret || null,
+                two_factor_verified: !!profile.two_factor_verified
+            },
+            isStaff: false
         };
     } catch (error) {
         console.error('❌ Student login error:', error);
-        
-        // ✅ Track login failure with error message
         trackGALogin('login_failed', {
             'event_category': 'Authentication',
             'event_label': identifier,
             'error': error.message,
             'reason': 'exception'
         });
-        
         throw error;
     }
 },
     // ============================================
     // LOGIN HANDLER - WITH 2FA SUPPORT
+    // ============================================
     // ============================================
     handleLogin: async function(e) {
         e.preventDefault();
@@ -2315,7 +2220,7 @@ executeLogin: async function(identifier, password) {
             
             this.resetFailedAttempts();
             
-            const has2FA = await this.check2FARequirement(result.profileData.user_id);
+            const has2FA = !!(result.profileData.two_factor_enabled && result.profileData.two_factor_secret);
             
             if (has2FA) {
                 sessionStorage.setItem('pending_login_data', JSON.stringify({
@@ -2486,53 +2391,28 @@ executeLogin: async function(identifier, password) {
         
         return `${browser} on ${os} (${device})`;
     },
-
     // ============================================
-    // UPDATE LAST LOGIN
+    // UPDATE LAST LOGIN - NON-BLOCKING FRIENDLY
     // ============================================
     updateLastLogin: async function(userId, email) {
         try {
-            console.log('📝 updateLastLogin called for:', userId);
-            
+            if (!this.supabase || !userId) return false;
             const now = new Date().toISOString();
-            
-            const { data: profile, error: fetchError } = await this.supabase
-                .from('consolidated_user_profiles_table')
-                .select('login_count')
-                .eq('user_id', userId)
-                .maybeSingle();
-            
-            if (fetchError) {
-                console.error('❌ Error fetching login count:', fetchError);
-                return false;
-            }
-            
-            const currentCount = profile?.login_count || 0;
-            const newCount = currentCount + 1;
-            
-            const { error: updateError } = await this.supabase
+            const { error } = await this.supabase
                 .from('consolidated_user_profiles_table')
                 .update({
                     last_login: now,
-                    login_count: newCount,
                     last_activity: now,
                     updated_at: now
                 })
                 .eq('user_id', userId);
-            
-            if (updateError) {
-                console.error('❌ Error updating login count:', updateError);
-                return false;
-            }
-            
-            console.log(`✅ Login count updated to ${newCount}`);
-            return true;
+            if (error) console.warn('⚠️ Could not update last login:', error.message);
+            return !error;
         } catch (error) {
-            console.error('❌ updateLastLogin exception:', error);
+            console.warn('⚠️ updateLastLogin failed:', error.message);
             return false;
         }
     },
-
     // ============================================
     // UPDATE LAST LOGIN INFO - FIXED
     // ============================================
