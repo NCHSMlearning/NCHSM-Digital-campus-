@@ -1139,6 +1139,91 @@ body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important}
 }
 </style>
 
+
+<style id="nchsm-final-reference-polish">
+/* ===== FINAL REFERENCE POLISH ===== */
+/* Footer: Privacy / Terms / Support with CampusNexus directly underneath */
+.nchsm-compact-global-footer .nchsm-footer-bottom{
+  min-height:48px!important;height:auto!important;padding:5px 18px!important;
+  display:grid!important;grid-template-columns:1fr auto auto!important;align-items:center!important;gap:18px!important;
+}
+.nchsm-footer-links{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;line-height:1.15!important}
+.nchsm-footer-primary-links{display:flex!important;align-items:center!important;gap:7px!important;white-space:nowrap!important}
+.nchsm-footer-primary-links a,.nchsm-powered-link{color:#66809e!important;text-decoration:none!important;font-size:10px!important}
+.nchsm-powered-link{font-size:9px!important}
+.nchsm-powered-link strong{color:#1267d6!important;font-weight:800!important}
+.nchsm-powered-link:hover{text-decoration:underline!important}
+
+/* Leaderboard: compact card presentation matching the reference screenshot. */
+#dashboard #leaderboard-card{padding-bottom:8px!important}
+#dashboard #leaderboard-card .nchsm-leaderboard{
+  display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;
+  gap:8px!important;padding:8px!important;
+}
+#dashboard #leaderboard-card .leader-head{display:none!important}
+#dashboard #leaderboard-card .leader-row:nth-child(n+7){display:none!important}
+#dashboard #leaderboard-card .leader-row{
+  min-height:58px!important;height:58px!important;margin:0!important;padding:7px 9px!important;
+  display:grid!important;grid-template-columns:27px minmax(0,1fr)!important;grid-template-rows:auto auto!important;
+  align-content:center!important;gap:2px 8px!important;
+  border:1px solid #dce7f2!important;border-radius:9px!important;background:#fff!important;
+  box-shadow:0 2px 8px rgba(20,55,90,.06)!important;font-size:10px!important;
+  box-sizing:border-box!important;
+}
+#dashboard #leaderboard-card .leader-row>strong{
+  grid-column:2!important;grid-row:1!important;font-size:10px!important;font-weight:800!important;
+  color:#173250!important;line-height:1.15!important;
+}
+#dashboard #leaderboard-card .leader-row>b:last-child{
+  grid-column:2!important;grid-row:2!important;text-align:left!important;color:#0d67d5!important;
+  font-size:10px!important;font-weight:800!important;
+}
+#dashboard #leaderboard-card .leader-row .rank{
+  grid-column:1!important;grid-row:1 / span 2!important;align-self:center!important;
+  width:25px!important;height:25px!important;border-radius:50%!important;font-size:10px!important;font-weight:800!important;
+}
+#dashboard #leaderboard-card .leader-row:nth-child(2){border-color:#f0c52b!important;background:linear-gradient(180deg,#fffdf4,#fff)!important}
+#dashboard #leaderboard-card .leader-row:nth-child(4){border-color:#f0b44b!important;background:linear-gradient(180deg,#fffaf1,#fff)!important}
+#dashboard #leaderboard-card .leader-row:nth-child(5){border-color:#dce7f2!important}
+#dashboard #leaderboard-card .leader-row:nth-child(6){border-color:#dce7f2!important}
+#dashboard #leaderboard-card .leader-row:nth-child(6){}
+
+@media(max-width:900px){
+  #dashboard #leaderboard-card .nchsm-leaderboard{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #dashboard #leaderboard-card .leader-row:nth-child(n+7){display:none!important}
+  .nchsm-compact-global-footer .nchsm-footer-bottom{grid-template-columns:1fr!important;gap:4px!important;text-align:center!important}
+  .nchsm-system-online{justify-self:center!important}
+}
+@media(max-width:520px){
+  #dashboard #leaderboard-card .nchsm-leaderboard{grid-template-columns:1fr!important}
+}
+</style>
+
+
+<style id="enrollment-modern-css">
+/* ==========================================================
+   NCHSM ENROLLMENT CENTRE — MODERN / MOBILE-FIRST UI
+   Markup IDs and existing enrollment.js functions are preserved.
+   ========================================================== */
+.enrollment-modern{padding:clamp(12px,2vw,24px)!important;max-width:1400px!important;margin:0 auto;overflow-x:hidden;color:#1e293b}
+.enrollment-modern *{box-sizing:border-box}
+.enr-hero{display:flex;justify-content:space-between;align-items:center;gap:22px;padding:25px 28px;margin-bottom:18px;border-radius:22px;background:linear-gradient(135deg,#0A3D62 0%,#155e86 58%,#256b91 100%);color:#fff;box-shadow:0 10px 30px rgba(10,61,98,.18);position:relative;overflow:hidden}
+.enr-hero:after{content:"";position:absolute;width:260px;height:260px;border-radius:50%;right:-100px;top:-150px;background:rgba(255,255,255,.07)}
+.enr-hero-main{display:flex;align-items:center;gap:17px;min-width:0;position:relative;z-index:1}.enr-hero-icon{width:62px;height:62px;border-radius:18px;display:grid;place-items:center;background:rgba(253,185,19,.16);border:1px solid rgba(253,185,19,.35);color:#FDB913;font-size:27px;flex:0 0 auto}.enr-eyebrow{font-size:10px;letter-spacing:1.5px;font-weight:800;color:#bfe2f5;margin-bottom:2px}.enr-hero h2{margin:0;font-size:clamp(1.3rem,2.5vw,1.85rem);line-height:1.2}.enr-hero p{margin:5px 0 9px;color:rgba(255,255,255,.78);font-size:13px}.enr-student-meta{display:flex;flex-wrap:wrap;gap:7px}.enr-student-meta span{display:inline-flex;align-items:center;gap:6px;padding:5px 9px;border-radius:9px;background:rgba(255,255,255,.09);font-size:10px;color:rgba(255,255,255,.75)}.enr-student-meta i{color:#FDB913}.enr-student-meta b{font-weight:600;color:#fff}.enr-hero-actions{display:flex;gap:8px;position:relative;z-index:1;flex:0 0 auto}
+.enr-btn{border:0;border-radius:11px;padding:11px 16px;font-weight:700;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.2s ease}.enr-btn:hover{transform:translateY(-1px)}.enr-btn-light{background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.25);color:#fff}.enr-btn-gold{background:#FDB913;color:#0A3D62}.enr-btn-primary{background:linear-gradient(135deg,#4C1D95,#6d28d9);color:#fff;box-shadow:0 5px 14px rgba(76,29,149,.18)}.enr-btn-green{background:linear-gradient(135deg,#059669,#10b981);color:#fff;box-shadow:0 5px 14px rgba(5,150,105,.18)}.enr-btn-muted{background:#f1f5f9;color:#475569}.enr-submit{min-width:180px}
+.enr-stat-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:11px;margin-bottom:18px}.enr-stat-card{background:#fff;border:1px solid #e5e7eb;border-radius:15px;padding:13px;display:flex;align-items:center;gap:11px;min-width:0;box-shadow:0 2px 8px rgba(15,23,42,.035)}.enr-stat-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;flex:0 0 auto;font-size:16px}.enr-stat-card>div:last-child{min-width:0}.enr-stat-card span{display:block;font-size:9px;text-transform:uppercase;letter-spacing:.5px;font-weight:800;color:#94a3b8;white-space:nowrap}.enr-stat-card strong{display:block;font-size:23px;line-height:1.05;margin:3px 0;color:#0f172a}.enr-stat-card small{display:block;font-size:9px;color:#94a3b8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.enr-stat-card.purple{border-top:3px solid #6d28d9}.purple .enr-stat-icon{background:#f3e8ff;color:#6d28d9}.purple strong{color:#5b21b6}.enr-stat-card.amber{border-top:3px solid #f59e0b}.amber .enr-stat-icon{background:#fef3c7;color:#d97706}.amber strong{color:#d97706}.enr-stat-card.green{border-top:3px solid #10b981}.green .enr-stat-icon{background:#d1fae5;color:#059669}.green strong{color:#059669}.enr-stat-card.red{border-top:3px solid #ef4444}.red .enr-stat-icon{background:#fee2e2;color:#dc2626}.red strong{color:#dc2626}.enr-stat-card.blue{border-top:3px solid #3b82f6}.blue .enr-stat-icon{background:#dbeafe;color:#2563eb}.blue strong{color:#2563eb}
+.enr-nav-wrap{background:#fff;border:1px solid #e5e7eb;border-radius:16px;padding:9px;margin-bottom:18px;display:flex;align-items:center;gap:12px;box-shadow:0 2px 8px rgba(15,23,42,.03)}.enr-nav-title{display:flex;align-items:center;gap:8px;padding:0 10px;color:#0A3D62;font-size:12px;font-weight:800;white-space:nowrap}.enr-nav-title i{color:#6d28d9}.enr-tabs{display:flex;gap:5px;flex:1;overflow-x:auto;scrollbar-width:none}.enr-tabs::-webkit-scrollbar{display:none}.enr-tab-btn{border:0;background:transparent;color:#64748b;border-radius:10px;padding:10px 13px;font-size:11px;font-weight:700;cursor:pointer;display:flex;align-items:center;gap:7px;white-space:nowrap;transition:.2s}.enr-tab-btn i{font-size:12px}.enr-tab-btn b{font-size:9px;min-width:18px;height:18px;padding:0 5px;display:inline-grid;place-items:center;border-radius:20px;background:#f1f5f9;color:#64748b}.enr-tab-btn.active{background:#4C1D95;color:#fff;box-shadow:0 4px 10px rgba(76,29,149,.18)}.enr-tab-btn.active b{background:rgba(255,255,255,.18);color:#fff}
+.enr-section-head{display:flex;justify-content:space-between;align-items:center;gap:15px;margin:4px 2px 14px}.enr-section-kicker{font-size:9px;font-weight:900;letter-spacing:1.2px;color:#6d28d9}.enr-section-head h3{margin:2px 0 3px;color:#0f2740;font-size:20px}.enr-section-head p{margin:0;color:#7b8794;font-size:12px}.enr-secure{display:flex;align-items:center;gap:7px;font-size:10px;color:#059669;background:#ecfdf5;border:1px solid #bbf7d0;padding:8px 11px;border-radius:10px;white-space:nowrap}.enr-secure i{font-size:12px}
+.enr-filter-card{display:flex;align-items:center;gap:9px;flex-wrap:wrap;background:#fff;border:1px solid #e5e7eb;border-radius:14px;padding:10px;margin-bottom:13px}.enr-search{position:relative;flex:1;min-width:200px}.enr-search i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:11px}.enr-search input,.enr-filter-card select,.enr-field select,.enr-field textarea,.enr-field input{width:100%;border:1px solid #dbe3eb;border-radius:10px;background:#f8fafc;color:#334155;outline:none;font:inherit;font-size:12px;transition:.2s}.enr-search input{padding:10px 11px 10px 31px}.enr-filter-card select{width:auto;min-width:140px;padding:9px 11px}.enr-filter-card input:focus,.enr-filter-card select:focus,.enr-field select:focus,.enr-field textarea:focus{border-color:#8b5cf6;box-shadow:0 0 0 3px rgba(139,92,246,.08);background:#fff}.enr-icon-btn{border:0;border-radius:10px;background:#f3e8ff;color:#5b21b6;padding:10px 13px;font-size:11px;font-weight:800;cursor:pointer;display:inline-flex;gap:7px;align-items:center}
+.enr-table-card{background:#fff;border:1px solid #e5e7eb;border-radius:15px;overflow:hidden;box-shadow:0 2px 9px rgba(15,23,42,.035)}.enr-table-title{padding:13px 16px;border-bottom:1px solid #eef2f6;display:flex;align-items:center;justify-content:space-between;gap:10px}.enr-table-title>div{display:flex;align-items:center;gap:9px;color:#0A3D62;font-size:12px}.enr-table-title i{color:#6d28d9}.enr-table-title>span{font-size:10px;color:#94a3b8}.enr-table-scroll{overflow-x:auto}.enr-table{width:100%;border-collapse:collapse;min-width:680px;font-size:11px}.enr-table th{padding:11px 14px;text-align:left;background:#f8fafc;color:#64748b;font-size:9px;text-transform:uppercase;letter-spacing:.45px}.enr-table td{padding:13px 14px;border-top:1px solid #eef2f6;color:#475569}.enr-table tbody tr:hover{background:#faf7ff}.enr-empty{text-align:center!important;padding:40px!important;color:#94a3b8!important}.enr-empty .loading-spinner{margin:0 auto 9px}
+.enr-form-layout,.enr-report-layout{display:grid;grid-template-columns:minmax(0,1fr) 280px;gap:16px;align-items:start}.enr-form-card{background:#fff;border:1px solid #e5e7eb;border-radius:17px;padding:21px;box-shadow:0 2px 9px rgba(15,23,42,.035)}.enr-form-step{display:flex;align-items:center;gap:11px;margin:0 0 13px}.enr-form-step>span{width:29px;height:29px;border-radius:9px;background:#f3e8ff;color:#6d28d9;display:grid;place-items:center;font-size:10px;font-weight:900}.enr-form-step h4{margin:0;color:#0f2740;font-size:14px}.enr-form-step p{margin:2px 0 0;color:#94a3b8;font-size:10px}.enr-type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:6px}.enr-type-choice{position:relative;display:flex;align-items:center;gap:11px;text-align:left;border:1.5px solid #e2e8f0;background:#fff;border-radius:13px;padding:13px;cursor:pointer;color:#64748b;transition:.2s}.enr-type-choice>i{width:39px;height:39px;border-radius:11px;display:grid;place-items:center;background:#f5f3ff;color:#6d28d9;font-size:16px;flex:0 0 auto}.enr-type-choice:nth-child(2)>i{background:#ecfdf5;color:#059669}.enr-type-choice div{min-width:0}.enr-type-choice strong{display:block;color:#1e293b;font-size:12px}.enr-type-choice small{display:block;color:#94a3b8;font-size:10px;margin-top:3px;line-height:1.35}.enr-type-choice em{margin-left:auto;width:20px;height:20px;border-radius:50%;border:1px solid #dbe3eb;display:grid;place-items:center;color:#fff;font-style:normal;font-size:8px}.enr-type-choice.selected,.enr-type-choice.active{border-color:#7c3aed;background:#faf7ff;box-shadow:0 0 0 3px rgba(124,58,237,.07)}.enr-type-choice.selected em,.enr-type-choice.active em{background:#6d28d9;border-color:#6d28d9}.enr-error{font-size:10px;color:#dc2626;margin:6px 0 13px}.enr-field-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:15px}.enr-field{margin-bottom:13px}.enr-field-full{grid-column:1/-1}.enr-field label,.enr-upload label{display:flex;align-items:center;gap:6px;font-size:11px;font-weight:800;color:#475569;margin-bottom:6px}.enr-field label i{color:#6d28d9}.enr-field label span,.enr-upload label span{font-weight:500;color:#94a3b8}.enr-field select{padding:11px 12px;background:#fff}.enr-field textarea{padding:11px 12px;resize:vertical;min-height:105px;background:#fff}.enr-field small{display:block;color:#94a3b8;font-size:9px;margin-top:5px;line-height:1.4}.enr-readonly{display:flex;justify-content:space-between;align-items:center;padding:11px 12px;border-radius:10px;border:1px dashed #cbd5e1;background:#f8fafc;color:#334155;font-size:12px;min-height:40px}.enr-readonly i{color:#94a3b8;font-size:10px}.enr-upload{display:flex;align-items:center;gap:12px;border:1px dashed #cbd5e1;background:#f8fafc;border-radius:13px;padding:13px;margin:4px 0 16px;position:relative}.enr-upload-icon{width:39px;height:39px;border-radius:11px;background:#e0f2fe;color:#0284c7;display:grid;place-items:center;flex:0 0 auto}.enr-upload label{margin:0;cursor:pointer}.enr-upload p{margin:3px 0 0;font-size:9px;color:#94a3b8}.enr-upload input{margin-left:auto;max-width:210px;font-size:10px}.enr-form-actions{display:flex;gap:9px}.enr-feedback{font-size:11px;padding:10px 12px;border-radius:10px;margin-top:10px}.enr-help-card{background:linear-gradient(180deg,#fff,#faf7ff);border:1px solid #e9d5ff;border-radius:17px;padding:19px;position:sticky;top:15px}.enr-help-card.green-help{background:linear-gradient(180deg,#fff,#f0fdf4);border-color:#bbf7d0}.enr-help-icon{width:42px;height:42px;border-radius:13px;background:#f3e8ff;color:#6d28d9;display:grid;place-items:center;font-size:17px;margin-bottom:11px}.green-help .enr-help-icon{background:#d1fae5;color:#059669}.enr-help-card h4{margin:0 0 8px;color:#0f2740;font-size:14px}.enr-help-card p{font-size:11px;color:#64748b;line-height:1.55;margin:0 0 12px}.enr-help-card ul{padding:0 0 0 17px;margin:0;color:#64748b;font-size:10px;line-height:1.8}.enr-help-note{display:flex;gap:8px;margin-top:15px;padding:10px;border-radius:10px;background:rgba(255,255,255,.8);font-size:9px;color:#64748b;line-height:1.45}.enr-help-note i{color:#6d28d9;margin-top:2px}.green-help .enr-help-note i{color:#059669}
+.enr-program-banner{display:flex;align-items:center;gap:12px;padding:13px 15px;border:1px solid #bfdbfe;background:linear-gradient(90deg,#eff6ff,#f8fbff);border-radius:14px;margin-bottom:14px}.enr-program-icon{width:40px;height:40px;border-radius:11px;background:#dbeafe;color:#2563eb;display:grid;place-items:center}.enr-program-banner>div:nth-child(2){display:flex;align-items:center;gap:8px;flex-wrap:wrap}.enr-program-banner>div:nth-child(2)>span{font-size:9px;color:#64748b;text-transform:uppercase;font-weight:800;width:100%}.enr-program-banner strong{font-size:12px;color:#0A3D62}.enr-program-banner em{font-style:normal;background:#dbeafe;color:#1d4ed8;border-radius:20px;padding:4px 8px;font-size:9px;font-weight:700}.enr-auto{margin-left:auto;display:flex;align-items:center;gap:7px;color:#64748b;font-size:10px}.enr-auto i{color:#3b82f6}.enr-report-title{display:flex;gap:11px;align-items:center;border-bottom:1px solid #eef2f6;padding-bottom:14px;margin-bottom:16px}.enr-report-title>div:first-child{width:40px;height:40px;border-radius:12px;background:#d1fae5;color:#059669;display:grid;place-items:center}.enr-report-title h4{margin:0;font-size:14px;color:#0f2740}.enr-report-title p{margin:3px 0 0;font-size:10px;color:#94a3b8}.enr-report-table{margin-top:16px}
+/* Mobile */
+@media(max-width:900px){.enr-stat-grid{grid-template-columns:repeat(3,1fr)}.enr-form-layout,.enr-report-layout{grid-template-columns:1fr}.enr-help-card{position:static}.enr-nav-title{display:none}}
+@media(max-width:650px){.enrollment-modern{padding:9px!important}.enr-hero{padding:17px;border-radius:17px;align-items:flex-start;flex-direction:column;gap:14px}.enr-hero-main{align-items:flex-start}.enr-hero-icon{width:48px;height:48px;border-radius:14px;font-size:20px}.enr-hero p{font-size:11px}.enr-student-meta{gap:5px}.enr-student-meta span{font-size:9px;padding:4px 7px}.enr-hero-actions{width:100%}.enr-hero-actions .enr-btn{flex:1}.enr-stat-grid{grid-template-columns:repeat(2,1fr);gap:8px}.enr-stat-card{padding:10px;border-radius:12px;gap:8px}.enr-stat-icon{width:34px;height:34px;border-radius:10px;font-size:13px}.enr-stat-card strong{font-size:20px}.enr-stat-card span{font-size:8px}.enr-stat-card small{font-size:8px}.enr-stat-card.blue{grid-column:1/-1}.enr-nav-wrap{padding:6px;border-radius:13px}.enr-tabs{gap:3px}.enr-tab-btn{padding:9px 10px;font-size:10px}.enr-tab-btn span{display:none}.enr-tab-btn.active span{display:inline}.enr-section-head{align-items:flex-start;flex-direction:column}.enr-section-head h3{font-size:17px}.enr-section-head p{font-size:10px}.enr-section-head .enr-btn{width:100%}.enr-secure{align-self:stretch;justify-content:center}.enr-filter-card{padding:8px;gap:7px}.enr-search{min-width:100%;order:0}.enr-filter-card select{flex:1;min-width:0;width:calc(50% - 4px);font-size:10px}.enr-icon-btn{flex:1;justify-content:center}.enr-table-title{padding:11px}.enr-table-title>span{display:none}.enr-form-card{padding:14px;border-radius:14px}.enr-type-grid{grid-template-columns:1fr}.enr-field-grid{grid-template-columns:1fr}.enr-field-full{grid-column:auto}.enr-upload{align-items:flex-start;flex-wrap:wrap}.enr-upload input{width:100%;max-width:none;margin-left:51px}.enr-form-actions{flex-direction:column}.enr-form-actions .enr-btn{width:100%}.enr-program-banner{align-items:flex-start;flex-wrap:wrap}.enr-auto{width:100%;margin-left:52px}.enr-report-title{align-items:flex-start}.enr-help-card{padding:15px}.enr-table{min-width:620px}}
+@media(max-width:380px){.enr-hero h2{font-size:20px}.enr-student-meta span:nth-child(2),.enr-student-meta span:nth-child(3){width:100%}.enr-tab-btn{padding:8px 8px}.enr-tab-btn i{font-size:11px}.enr-stat-card small{display:none}}
+</style>
+
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -1562,8 +1647,10 @@ body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important}
 </div>
 <button class="nchsm-view-btn" data-tab="cats" type="button">View Exams <span>→</span></button>
 </div>
-<div class="next-exam-body" id="next-exam-details">Loading...</div>
-<div class="next-exam-status" id="dashboard-exam-status">Loading...</div>
+<div class="next-exam-body" id="next-exam-details">
+  <div class="nchsm-no-exam-state"><strong>No upcoming exam</strong><span>Check back later for new assessments.</span></div>
+</div>
+<div class="next-exam-status" id="dashboard-exam-status">No Exams</div>
 <div class="next-exam-illustration" aria-hidden="true"><img src="data:image/png;base64,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" alt="" /></div>
 </article>
 </section>
@@ -1590,35 +1677,38 @@ body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important}
 </div>
 </article>
 
-<!-- MY PROGRESS + DAILY STREAK + UPCOMING EVENTS -->
-<section class="nchsm-dashboard-bottom-grid">
-<article class="nchsm-card progress-card">
-<div class="nchsm-card-head">
-<div class="nchsm-card-title">
-<i aria-hidden="true" class="fas fa-chart-bar"></i>
-<div><h2>My Progress</h2><small>Your academic journey at a glance</small></div>
-</div>
-<button class="nchsm-view-btn" data-tab="academic-reports" type="button">View Details <span>→</span></button>
-</div>
-<div class="nchsm-progress-grid">
-<div class="nchsm-progress-item">
-<div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-blue" cx="50" cy="50" id="nd-ring-attendance" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-attendance-rate">--%</div></div>
-<strong>Attendance</strong><span>--/100</span>
-</div>
-<div class="nchsm-progress-item">
-<div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-green" cx="50" cy="50" id="nd-ring-verified" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-verified-count">--</div></div>
-<strong>Assignments</strong><span>--/100</span>
-</div>
-<div class="nchsm-progress-item">
-<div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-purple" cx="50" cy="50" id="nd-ring-pending" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-pending-count">--</div></div>
-<strong>Exams</strong><span>--/100</span>
-</div>
-<div class="nchsm-progress-item">
-<div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-gold" cx="50" cy="50" id="nd-ring-exams" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-upcoming-exam">--</div></div>
-<strong>Overall</strong><span>--/100</span>
-</div>
-</div>
-</article>
+<!-- QUICK SNAPSHOT + MY PROGRESS -->
+<section class="nchsm-snapshot-progress-grid">
+  <article class="nchsm-card quick-snapshot-card">
+    <div class="nchsm-card-head">
+      <div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-bolt"></i><div><h2>Quick Snapshot</h2><small>Your portal activity at a glance</small></div></div>
+      <button class="nchsm-view-btn" data-tab="dashboard" type="button">Overview <span>→</span></button>
+    </div>
+    <div class="nchsm-snapshot-grid">
+      <div class="nchsm-snapshot-item snapshot-courses"><i class="fas fa-book-open"></i><span>Active Courses</span><strong id="snapshot-active-courses">--</strong></div>
+      <div class="nchsm-snapshot-item snapshot-units"><i class="fas fa-layer-group"></i><span>Approved Units</span><strong id="snapshot-approved-units">--</strong></div>
+      <div class="nchsm-snapshot-item snapshot-resources"><i class="fas fa-download"></i><span>New Resources</span><strong id="snapshot-new-resources">--</strong></div>
+      <div class="nchsm-snapshot-item snapshot-gpa"><i class="fas fa-graduation-cap"></i><span>Cumulative GPA</span><strong id="snapshot-cgpa">--</strong></div>
+    </div>
+  </article>
+
+  <article class="nchsm-card progress-card">
+    <div class="nchsm-card-head">
+      <div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-chart-bar"></i><div><h2>My Progress</h2><small>Your academic journey at a glance</small></div></div>
+      <button class="nchsm-view-btn" data-tab="academic-reports" type="button">View Details <span>→</span></button>
+    </div>
+    <div class="nchsm-progress-grid nchsm-progress-four">
+      <div class="nchsm-progress-item"><div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-blue" cx="50" cy="50" id="nd-ring-attendance" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-attendance-rate">--%</div></div><strong>Attendance</strong><span>--/100</span></div>
+      <div class="nchsm-progress-item"><div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-green" cx="50" cy="50" id="nd-ring-verified" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-verified-count">--</div></div><strong>Verified</strong><span>Attendance</span></div>
+      <div class="nchsm-progress-item"><div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-purple" cx="50" cy="50" id="nd-ring-pending" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-pending-count">--</div></div><strong>Pending</strong><span>Attendance</span></div>
+      <div class="nchsm-progress-item"><div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-gold" cx="50" cy="50" id="nd-ring-exams" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-upcoming-exam-short">--</div></div><strong>Next Exam</strong><span id="dashboard-upcoming-exam-label">No upcoming exam</span></div>
+      <span hidden id="dashboard-upcoming-exam">--</span>
+    </div>
+  </article>
+</section>
+
+<!-- DAILY STREAK + UPCOMING EVENTS -->
+<section class="nchsm-dashboard-bottom-grid nchsm-streak-events-grid">
 <article class="nchsm-card streak-card">
 <div class="nchsm-card-head">
 <div class="nchsm-card-title"><i aria-hidden="true" class="fas fa-fire"></i><div><h2>Daily Streak</h2><small>Keep logging in to build your streak!</small></div></div>
@@ -1629,8 +1719,8 @@ body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important}
 <div class="nchsm-streak-line"><span id="streak-progress-fill"></span></div>
 <button class="nchsm-start-streak" id="streak-restore-btn" type="button">🔄 Start Streak</button>
 <span class="nchsm-streak-status" id="streak-status-text">Keep logging in to build your streak!</span>
-<span hidden="" id="streak-emoji">🔥</span><span hidden="" id="streak-message">Keep logging in to build your streak!</span>
-<span hidden="" id="light-1"></span><span hidden="" id="light-2"></span><span hidden="" id="light-3"></span><span hidden="" id="light-4"></span><span hidden="" id="light-5"></span>
+<span hidden id="streak-emoji">🔥</span><span hidden id="streak-message">Keep logging in to build your streak!</span>
+<span hidden id="light-1"></span><span hidden id="light-2"></span><span hidden id="light-3"></span><span hidden id="light-4"></span><span hidden id="light-5"></span>
 </div>
 </article>
 <article class="nchsm-card events-card">
@@ -6127,387 +6217,125 @@ body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important}
 <!-- END REVIEWS -->
 <!-- ============================================================ -->
 <!-- ENROLLMENT MODULE - Change of Program & Readmission & Session Reporting -->
-<!-- ============================================================ -->
-<section class="tab-content" id="enrollment" style="padding: 20px; max-width: 100%; overflow-x: hidden; display: none;">
-<!-- HEADER -->
-<div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-<div>
-<h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px; font-size: clamp(1.2rem, 2.5vw, 1.8rem);">
-<i class="fas fa-user-plus" style="color: #FDB913;"></i> Enrollment
-            </h2>
-<p style="color: rgba(255,255,255,0.85); margin: 4px 0 0 0; font-size: 14px;">
-<i class="fas fa-exchange-alt"></i> Change of Program  |  <i class="fas fa-undo-alt"></i> Readmission  |  <i class="fas fa-calendar-check"></i> Session Reporting
-            </p>
-<div style="display: flex; gap: 12px; flex-wrap: wrap; margin-top: 6px;">
-<span style="background: rgba(255,255,255,0.12); padding: 2px 12px; border-radius: 12px; font-size: 10px; color: rgba(255,255,255,0.7);">
-<i class="fas fa-user-graduate"></i> <span id="enrollmentStudentName">Loading...</span>
-</span>
-<span style="background: rgba(255,255,255,0.12); padding: 2px 12px; border-radius: 12px; font-size: 10px; color: rgba(255,255,255,0.7);">
-<i class="fas fa-id-card"></i> <span id="enrollmentStudentId">Loading...</span>
-</span>
-<span style="background: rgba(255,255,255,0.12); padding: 2px 12px; border-radius: 12px; font-size: 10px; color: rgba(255,255,255,0.7);">
-<i class="fas fa-graduation-cap"></i> <span id="enrollmentProgram">Loading...</span>
-</span>
-</div>
-</div>
-<div style="display: flex; gap: 10px; flex-wrap: wrap;">
-<button onclick="refreshEnrollment()" style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600;">
-<i class="fas fa-sync-alt"></i> Refresh
-            </button>
-<button onclick="exportEnrollmentRequests()" style="background: #FDB913; color: #0A3D62; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; border: none;">
-<i class="fas fa-download"></i> Export CSV
-            </button>
-</div>
-</div>
-<!-- STATS CARDS - STUDENT VIEW -->
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 25px;">
-<div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; border-top: 3px solid #4C1D95;">
-<div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">My Requests</div>
-<div id="enrTotalRequests" style="font-size: 28px; font-weight: 700; color: #4C1D95; margin-top: 2px;">0</div>
-</div>
-<div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; border-top: 3px solid #f59e0b;">
-<div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Pending</div>
-<div id="enrPendingCount" style="font-size: 28px; font-weight: 700; color: #f59e0b; margin-top: 2px;">0</div>
-</div>
-<div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; border-top: 3px solid #10b981;">
-<div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Approved</div>
-<div id="enrApprovedCount" style="font-size: 28px; font-weight: 700; color: #10b981; margin-top: 2px;">0</div>
-</div>
-<div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; border-top: 3px solid #dc2626;">
-<div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Rejected</div>
-<div id="enrRejectedCount" style="font-size: 28px; font-weight: 700; color: #dc2626; margin-top: 2px;">0</div>
-</div>
-<div style="background: white; border-radius: 12px; padding: 16px 18px; border: 1px solid #e5e7eb; border-top: 3px solid #3b82f6;">
-<div style="font-size: 10px; color: #94a3b8; text-transform: uppercase; font-weight: 600;">Pending Reports</div>
-<div id="enrPendingReports" style="font-size: 28px; font-weight: 700; color: #3b82f6; margin-top: 2px;">0</div>
-</div>
-</div>
-<!-- TABS -->
-<div style="display: flex; gap: 6px; margin-bottom: 20px; background: white; padding: 6px 10px; border-radius: 60px; border: 1px solid #e5e7eb; flex-wrap: wrap;">
-<button class="enr-tab-btn active" id="enrTabMyRequests" onclick="showEnrSubTab('my-requests')" style="padding: 10px 24px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; border: none; border-radius: 40px; cursor: pointer; font-weight: 600; font-size: 13px; transition: all 0.3s; display: flex; align-items: center; gap: 6px;">
-<i class="fas fa-list"></i> My Requests
-            <span id="enrPendingBadge" style="background: rgba(255,255,255,0.2); padding: 0 10px; border-radius: 20px; font-size: 11px;">0</span>
-</button>
-<button class="enr-tab-btn" id="enrTabNewRequest" onclick="showEnrSubTab('new-request')" style="padding: 10px 24px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s; display: flex; align-items: center; gap: 6px;">
-<i class="fas fa-plus-circle"></i> New Request
-        </button>
-<button class="enr-tab-btn" id="enrTabSessionReporting" onclick="showEnrSubTab('session-reporting')" style="padding: 10px 24px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s; display: flex; align-items: center; gap: 6px;">
-<i class="fas fa-calendar-check"></i> Session Reporting
-            <span id="enrReportBadge" style="background: #f59e0b; color: white; padding: 0 10px; border-radius: 20px; font-size: 11px;">0</span>
-</button>
-<button class="enr-tab-btn" id="enrTabHistory" onclick="showEnrSubTab('history')" style="padding: 10px 24px; background: transparent; color: #334155; border: none; border-radius: 40px; cursor: pointer; font-weight: 500; font-size: 13px; transition: all 0.3s; display: flex; align-items: center; gap: 6px;">
-<i class="fas fa-history"></i> History
-        </button>
-</div>
-<!-- TAB 1: MY REQUESTS (unchanged) -->
-<div class="enr-tab-content" id="enrMyRequestsTab">
-<div style="background: white; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
-<div style="position: relative; flex: 1; min-width: 160px;">
-<i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94a3b8;"></i>
-<input id="enrSearch" onkeyup="filterEnrRequests()" placeholder="Search by program or ID..." style="width: 100%; padding: 8px 12px 8px 34px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;" type="text"/>
-</div>
-<select id="enrStatusFilter" onchange="filterEnrRequests()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
-<option value="all">All Status</option>
-<option value="pending">⏳ Pending</option>
-<option value="approved">✅ Approved</option>
-<option value="rejected">❌ Rejected</option>
-<option value="processing">🔄 Processing</option>
-</select>
-<select id="enrTypeFilter" onchange="filterEnrRequests()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
-<option value="all">All Types</option>
-<option value="change-program">Change of Program</option>
-<option value="readmission">Readmission</option>
-</select>
-<button onclick="loadEnrollmentRequests()" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-<i class="fas fa-filter"></i> Filter
-            </button>
-</div>
-<div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
-<div style="overflow-x: auto;">
-<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-<thead>
-<tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-<th style="padding: 10px 14px; text-align: left;">Type</th>
-<th style="padding: 10px 14px; text-align: left;">Current → Requested</th>
-<th style="padding: 10px 14px; text-align: center;">Date</th>
-<th style="padding: 10px 14px; text-align: center;">Status</th>
-<th style="padding: 10px 14px; text-align: center;">Actions</th>
-</tr>
-</thead>
-<tbody id="enrRequestsBody">
-<tr><td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">
-<div class="loading-spinner" style="margin: 0 auto 10px;"></div>
-                            Loading your requests...
-                        </td></tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-<!-- TAB 2: NEW REQUEST (unchanged) -->
-<div class="enr-tab-content" id="enrNewRequestTab" style="display: none;">
-<div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; max-width: 650px; margin: 0 auto;">
-<h3 style="margin: 0 0 16px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px; font-size: 17px;">
-<i class="fas fa-plus-circle" style="color: #4C1D95;"></i> Submit Enrollment Request
-            </h3>
-<p style="color: #94a3b8; font-size: 13px; margin: -8px 0 16px 0;">
-<i class="fas fa-info-circle"></i> Select the type of request and provide details. Admin will review your request.
-            </p>
-<form id="enrRequestForm" onsubmit="event.preventDefault(); submitEnrollmentRequest();">
-<!-- Request Type -->
-<div style="margin-bottom: 16px;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
-<i class="fas fa-tag"></i> Request Type *
-                    </label>
-<div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
-<button id="enrTypeChangeProgram" onclick="selectEnrType('change-program')" style="padding: 12px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; cursor: pointer; text-align: center; transition: all 0.3s;" type="button">
-<i class="fas fa-exchange-alt" style="color: #4C1D95; font-size: 20px; display: block; margin-bottom: 4px;"></i>
-<span style="font-weight: 600;">Change of Program</span>
-<span style="font-size: 11px; color: #94a3b8; display: block;">Switch to a different program</span>
-</button>
-<button id="enrTypeReadmission" onclick="selectEnrType('readmission')" style="padding: 12px; border-radius: 10px; border: 2px solid #e5e7eb; background: white; cursor: pointer; text-align: center; transition: all 0.3s;" type="button">
-<i class="fas fa-undo-alt" style="color: #059669; font-size: 20px; display: block; margin-bottom: 4px;"></i>
-<span style="font-weight: 600;">Readmission</span>
-<span style="font-size: 11px; color: #94a3b8; display: block;">Rejoin the program</span>
-</button>
-</div>
-<input id="enrRequestType" type="hidden" value=""/>
-<div id="enrTypeError" style="display: none; color: #dc2626; font-size: 12px; margin-top: 4px;">Please select a request type</div>
-</div>
-<!-- Current Program (Change of Program) -->
-<div id="enrCurrentProgramSection" style="margin-bottom: 14px; display: none;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-graduation-cap"></i> Current Program *
-                    </label>
-<input id="enrCurrentProgramDisplay" readonly="" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #f8fafc; color: #1e293b;" type="text"/>
-</div>
-<!-- Previous Program (Readmission) -->
-<div id="enrPreviousProgramSection" style="margin-bottom: 14px; display: none;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-history"></i> Previous Program *
-                    </label>
-<input id="enrPreviousProgramDisplay" readonly="" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: #f8fafc; color: #1e293b;" type="text"/>
-</div>
-<!-- Requested Program -->
-<div style="margin-bottom: 14px;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-graduation-cap"></i> Requested Program *
-                    </label>
-<select id="enrRequestedProgram" required="" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
-<option value="">-- Select Program --</option>
-<optgroup label="🎓 KRCHN Nursing">
-<option value="KRCHN">KRCHN - Kenya Registered Community Health Nursing</option>
-</optgroup>
-<optgroup label="🎯 TVET Diploma Programs (6-24 months)">
-<option value="DPOTT">DPOTT - Diploma in Perioperative Theatre Technology</option>
-<option value="DCH">DCH - Diploma in Community Health</option>
-<option value="DHRIT">DHRIT - Diploma in Health Records and IT</option>
-<option value="DSL">DSL - Diploma in Science Lab</option>
-<option value="DSW">DSW - Diploma in Social Work &amp; Community Development</option>
-<option value="DCJS">DCJS - Diploma in Criminal Justice</option>
-<option value="DHSS">DHSS - Diploma in Health Support Services</option>
-<option value="DICT">DICT - Diploma in ICT</option>
-<option value="DME">DME - Diploma in Medical Engineering</option>
-</optgroup>
-<optgroup label="📜 TVET Certificate Programs (3-12 months)">
-<option value="CPOTT">CPOTT - Certificate in Perioperative Theatre Technology</option>
-<option value="CCH">CCH - Certificate in Community Health</option>
-<option value="CHRIT">CHRIT - Certificate in Health Records and IT</option>
-<option value="CPC">CPC - Certificate in Patient Care</option>
-<option value="CSL">CSL - Certificate in Science Lab</option>
-<option value="CSW">CSW - Certificate in Social Work &amp; Community Development</option>
-<option value="CCJS">CCJS - Certificate in Criminal Justice</option>
-<option value="CAG">CAG - Certificate in Agriculture</option>
-<option value="CHSS">CHSS - Certificate in Health Support Services</option>
-<option value="CICT">CICT - Certificate in ICT</option>
-<option value="CCG">CCG - Certificate in Caregiver</option>
-<option value="COMT">COMT - Certificate in Orthopedic Trauma Medicine</option>
-</optgroup>
-<optgroup label="🔧 TVET Artisan Programs (2-12 months)">
-<option value="ACH">ACH - Artisan in Community Health</option>
-<option value="AAG">AAG - Artisan in Agriculture</option>
-<option value="ASW">ASW - Artisan in Social Work &amp; Community Development</option>
-</optgroup>
-<optgroup label="📊 Other TVET Programs">
-<option value="CCA">CCA - Certificate in Computer Applications</option>
-<option value="PTE">PTE - TVET/CDACC (PTE)</option>
-</optgroup>
-</select>
-</div>
-<!-- Reason -->
-<div style="margin-bottom: 14px;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-comment"></i> Reason / Justification *
-                    </label>
-<textarea id="enrReason" placeholder="Please explain why you want to change program or be readmitted..." required="" rows="4" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
-</div>
-<!-- Supporting Documents -->
-<div style="margin-bottom: 16px;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-paperclip"></i> Supporting Documents (Optional)
-                    </label>
-<input accept=".pdf,.jpg,.png,.jpeg" id="enrSupportingDocs" multiple="" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;" type="file"/>
-<small style="color: #94a3b8; font-size: 11px;">PDF, JPG, PNG (Max 5MB per file)</small>
-</div>
-<!-- Submit -->
-<div style="display: flex; gap: 12px;">
-<button style="flex: 1; padding: 12px; background: linear-gradient(135deg, #4C1D95, #6d28d9); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px;" type="submit">
-<i class="fas fa-paper-plane"></i> Submit Request
-                    </button>
-<button style="padding: 12px 24px; background: #e5e7eb; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;" type="reset">
-<i class="fas fa-times"></i> Clear
-                    </button>
-</div>
-<div id="enrFormFeedback" style="display: none; margin-top: 12px; padding: 12px 16px; border-radius: 8px;"></div>
-</form>
-</div>
-</div>
-<!-- ============================================================ -->
-<!-- TAB 3: SESSION REPORTING (UPDATED WITH AUTO-DETECTION)       -->
-<!-- ============================================================ -->
-<div class="enr-tab-content" id="enrSessionReportingTab" style="display: none;">
-<!-- Current Program Info Banner -->
-<div id="enrProgramInfoBanner" style="background: #eff6ff; border-left: 4px solid #3b82f6; border-radius: 8px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;">
-<i class="fas fa-info-circle" style="color: #3b82f6; font-size: 20px;"></i>
-<div>
-<strong style="color: #1e293b;">Current Program:</strong>
-<span id="enrReportCurrentProgram" style="color: #0A3D62; font-weight: 600;">Loading...</span>
-<span id="enrReportProgramType" style="background: #dbeafe; padding: 2px 10px; border-radius: 12px; font-size: 11px; margin-left: 8px; color: #1e40af;">Loading...</span>
-</div>
-<div style="margin-left: auto; font-size: 13px; color: #64748b;">
-<i class="fas fa-arrow-right"></i>
-<span id="enrReportAutoDetect">Auto-detecting reporting structure...</span>
-</div>
-</div>
-<div style="background: white; border-radius: 12px; padding: 24px; border: 1px solid #e5e7eb; max-width: 650px; margin: 0 auto;">
-<h3 style="margin: 0 0 8px 0; color: #0A3D62; display: flex; align-items: center; gap: 10px; font-size: 17px;">
-<i class="fas fa-calendar-check" style="color: #059669;"></i> Report Back to Semester
-            </h3>
-<p style="color: #94a3b8; font-size: 13px; margin: 0 0 16px 0;">
-<i class="fas fa-info-circle"></i>
-<span id="enrReportInstructions">Select your current academic session.</span>
-</p>
-<form id="enrReportForm" onsubmit="event.preventDefault(); submitSessionReport();">
-<!-- Academic Year (always visible) -->
-<div style="margin-bottom: 14px;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-calendar-alt"></i> Academic Year *
-                    </label>
-<select id="enrReportYear" required="" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
-<option value="">-- Select Year --</option>
-<option value="2024/2025">2024/2025</option>
-<option selected="" value="2025/2026">2025/2026</option>
-<option value="2026/2027">2026/2027</option>
-</select>
-</div>
-<!-- Session/Block/Term - DYNAMIC based on program type -->
-<div style="margin-bottom: 14px;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-layer-group"></i> <span id="enrReportSessionLabel">Session *</span>
-</label>
-<select id="enrReportSession" required="" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
-<option value="">-- Select --</option>
-</select>
-<div id="enrReportSessionHelp" style="font-size: 11px; color: #94a3b8; margin-top: 4px;">
-<i class="fas fa-info-circle"></i>
-<span id="enrReportSessionHelpText">Select your current session</span>
-</div>
-</div>
-<!-- Current Status -->
-<div style="margin-bottom: 14px;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-user-graduate"></i> Current Status *
-                    </label>
-<select id="enrReportStatus" required="" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; background: white;">
-<option value="Continuing">Continuing</option>
-<option value="Repeating">Repeating</option>
-<option value="Probation">Probation</option>
-</select>
-</div>
-<!-- Remarks -->
-<div style="margin-bottom: 16px;">
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 4px;">
-<i class="fas fa-comment"></i> Remarks (Optional)
-                    </label>
-<textarea id="enrReportRemarks" placeholder="Any additional information..." rows="3" style="width: 100%; padding: 10px 14px; border-radius: 8px; border: 1px solid #e2e8f0; font-size: 14px; resize: vertical; font-family: inherit;"></textarea>
-</div>
-<!-- Submit -->
-<div style="display: flex; gap: 12px;">
-<button style="flex: 1; padding: 12px; background: linear-gradient(135deg, #059669, #10b981); color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 15px;" type="submit">
-<i class="fas fa-paper-plane"></i> Submit Report
-                    </button>
-<button style="padding: 12px 24px; background: #e5e7eb; color: #475569; border: none; border-radius: 8px; cursor: pointer; font-weight: 500;" type="reset">
-<i class="fas fa-times"></i> Clear
-                    </button>
-</div>
-<div id="enrReportFeedback" style="display: none; margin-top: 12px; padding: 12px 16px; border-radius: 8px;"></div>
-</form>
-</div>
-<!-- My Session Reports Table -->
-<div style="margin-top: 25px; background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
-<div style="padding: 12px 16px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; font-weight: 600; color: #0A3D62;">
-<i class="fas fa-list"></i> My Session Reports
-            </div>
-<div style="overflow-x: auto;">
-<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-<thead>
-<tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-<th style="padding: 10px 14px; text-align: left;">Year</th>
-<th style="padding: 10px 14px; text-align: left;">Session</th>
-<th style="padding: 10px 14px; text-align: left;">Status</th>
-<th style="padding: 10px 14px; text-align: center;">Date</th>
-<th style="padding: 10px 14px; text-align: center;">Approval</th>
-</tr>
-</thead>
-<tbody id="enrReportsBody">
-<tr><td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">
-<div class="loading-spinner" style="margin: 0 auto 10px;"></div>
-                            Loading reports...
-                        </td></tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
-<!-- TAB 4: HISTORY (unchanged) -->
-<div class="enr-tab-content" id="enrHistoryTab" style="display: none;">
-<div style="background: white; border-radius: 12px; padding: 12px 16px; margin-bottom: 16px; border: 1px solid #e5e7eb; display: flex; gap: 12px; flex-wrap: wrap; align-items: center;">
-<select id="enrHistoryType" onchange="loadEnrollmentHistory()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
-<option value="all">All Types</option>
-<option value="change-program">Change of Program</option>
-<option value="readmission">Readmission</option>
-</select>
-<select id="enrHistoryStatus" onchange="loadEnrollmentHistory()" style="padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px; background: #f8fafc;">
-<option value="all">All Status</option>
-<option value="approved">✅ Approved</option>
-<option value="rejected">❌ Rejected</option>
-</select>
-<button onclick="loadEnrollmentHistory()" style="background: #4C1D95; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
-<i class="fas fa-search"></i> Search
-            </button>
-</div>
-<div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden;">
-<div style="overflow-x: auto;">
-<table style="width: 100%; border-collapse: collapse; font-size: 13px;">
-<thead>
-<tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-<th style="padding: 10px 14px; text-align: left;">Type</th>
-<th style="padding: 10px 14px; text-align: left;">From → To</th>
-<th style="padding: 10px 14px; text-align: center;">Date</th>
-<th style="padding: 10px 14px; text-align: center;">Status</th>
-<th style="padding: 10px 14px; text-align: center;">Approved By</th>
-</tr>
-</thead>
-<tbody id="enrHistoryBody">
-<tr><td colspan="5" style="padding: 40px; text-align: center; color: #94a3b8;">
-<div class="loading-spinner" style="margin: 0 auto 10px;"></div>
-                            Loading history...
-                        </td></tr>
-</tbody>
-</table>
-</div>
-</div>
-</div>
+<section class="tab-content enrollment-modern" id="enrollment" style="display:none;">
+  <div class="enr-hero">
+    <div class="enr-hero-main">
+      <div class="enr-hero-icon"><i class="fas fa-user-graduate"></i></div>
+      <div>
+        <div class="enr-eyebrow">STUDENT SERVICES</div>
+        <h2>Enrollment &amp; Student Status</h2>
+        <p>Manage program changes, readmission and session reporting from one place.</p>
+        <div class="enr-student-meta">
+          <span><i class="fas fa-user"></i><b id="enrollmentStudentName">Loading...</b></span>
+          <span><i class="fas fa-id-card"></i><b id="enrollmentStudentId">Loading...</b></span>
+          <span><i class="fas fa-graduation-cap"></i><b id="enrollmentProgram">Loading...</b></span>
+        </div>
+      </div>
+    </div>
+    <div class="enr-hero-actions">
+      <button onclick="refreshEnrollment()" class="enr-btn enr-btn-light"><i class="fas fa-sync-alt"></i><span>Refresh</span></button>
+      <button onclick="exportEnrollmentRequests()" class="enr-btn enr-btn-gold"><i class="fas fa-file-export"></i><span>Export</span></button>
+    </div>
+  </div>
+
+  <div class="enr-stat-grid">
+    <div class="enr-stat-card purple"><div class="enr-stat-icon"><i class="fas fa-layer-group"></i></div><div><span>My Requests</span><strong id="enrTotalRequests">0</strong><small>Total submitted</small></div></div>
+    <div class="enr-stat-card amber"><div class="enr-stat-icon"><i class="fas fa-hourglass-half"></i></div><div><span>Pending</span><strong id="enrPendingCount">0</strong><small>Awaiting review</small></div></div>
+    <div class="enr-stat-card green"><div class="enr-stat-icon"><i class="fas fa-circle-check"></i></div><div><span>Approved</span><strong id="enrApprovedCount">0</strong><small>Successful requests</small></div></div>
+    <div class="enr-stat-card red"><div class="enr-stat-icon"><i class="fas fa-circle-xmark"></i></div><div><span>Rejected</span><strong id="enrRejectedCount">0</strong><small>Needs attention</small></div></div>
+    <div class="enr-stat-card blue"><div class="enr-stat-icon"><i class="fas fa-calendar-check"></i></div><div><span>Pending Reports</span><strong id="enrPendingReports">0</strong><small>Session reports</small></div></div>
+  </div>
+
+  <div class="enr-nav-wrap">
+    <div class="enr-nav-title"><i class="fas fa-compass"></i><span>Enrollment Centre</span></div>
+    <div class="enr-tabs" role="tablist">
+      <button class="enr-tab-btn active" id="enrTabMyRequests" onclick="showEnrSubTab('my-requests')" role="tab"><i class="fas fa-inbox"></i><span>My Requests</span><b id="enrPendingBadge">0</b></button>
+      <button class="enr-tab-btn" id="enrTabNewRequest" onclick="showEnrSubTab('new-request')" role="tab"><i class="fas fa-plus-circle"></i><span>New Request</span></button>
+      <button class="enr-tab-btn" id="enrTabSessionReporting" onclick="showEnrSubTab('session-reporting')" role="tab"><i class="fas fa-calendar-check"></i><span>Session Reporting</span><b id="enrReportBadge">0</b></button>
+      <button class="enr-tab-btn" id="enrTabHistory" onclick="showEnrSubTab('history')" role="tab"><i class="fas fa-clock-rotate-left"></i><span>History</span></button>
+    </div>
+  </div>
+
+  <!-- MY REQUESTS -->
+  <div class="enr-tab-content" id="enrMyRequestsTab">
+    <div class="enr-section-head">
+      <div><span class="enr-section-kicker">OVERVIEW</span><h3>My Enrollment Requests</h3><p>Track every change-of-program or readmission request you have submitted.</p></div>
+      <button class="enr-btn enr-btn-primary" onclick="showEnrSubTab('new-request')"><i class="fas fa-plus"></i> New Request</button>
+    </div>
+    <div class="enr-filter-card">
+      <div class="enr-search"><i class="fas fa-search"></i><input id="enrSearch" onkeyup="filterEnrRequests()" placeholder="Search program, ID or request..." type="text"/></div>
+      <select id="enrStatusFilter" onchange="filterEnrRequests()"><option value="all">All Status</option><option value="pending">⏳ Pending</option><option value="approved">✅ Approved</option><option value="rejected">❌ Rejected</option><option value="processing">🔄 Processing</option></select>
+      <select id="enrTypeFilter" onchange="filterEnrRequests()"><option value="all">All Types</option><option value="change-program">Change of Program</option><option value="readmission">Readmission</option></select>
+      <button class="enr-icon-btn" onclick="loadEnrollmentRequests()" title="Apply filters"><i class="fas fa-sliders"></i><span>Apply</span></button>
+    </div>
+    <div class="enr-table-card">
+      <div class="enr-table-title"><div><i class="fas fa-list-check"></i><strong>Request Activity</strong></div><span>Live status from your account</span></div>
+      <div class="enr-table-scroll"><table class="enr-table"><thead><tr><th>Request</th><th>Program / Details</th><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody id="enrRequestsBody"><tr><td colspan="5" class="enr-empty"><div class="loading-spinner"></div><span>Loading your requests...</span></td></tr></tbody></table></div>
+    </div>
+  </div>
+
+  <!-- NEW REQUEST -->
+  <div class="enr-tab-content" id="enrNewRequestTab" style="display:none;">
+    <div class="enr-section-head">
+      <div><span class="enr-section-kicker">START A REQUEST</span><h3>Submit Enrollment Request</h3><p>Choose what you need and provide the information required for review.</p></div>
+      <div class="enr-secure"><i class="fas fa-shield-halved"></i> Secure student submission</div>
+    </div>
+    <div class="enr-form-layout">
+      <div class="enr-form-card">
+        <form id="enrRequestForm" onsubmit="event.preventDefault(); submitEnrollmentRequest();">
+          <div class="enr-form-step"><span>01</span><div><h4>What would you like to do?</h4><p>Select one request type.</p></div></div>
+          <div class="enr-type-grid">
+            <button id="enrTypeChangeProgram" onclick="selectEnrType('change-program')" class="enr-type-choice" type="button"><i class="fas fa-right-left"></i><div><strong>Change of Program</strong><small>Request transfer to another programme.</small></div><em><i class="fas fa-check"></i></em></button>
+            <button id="enrTypeReadmission" onclick="selectEnrType('readmission')" class="enr-type-choice" type="button"><i class="fas fa-arrow-rotate-left"></i><div><strong>Readmission</strong><small>Request to rejoin your programme.</small></div><em><i class="fas fa-check"></i></em></button>
+          </div>
+          <input id="enrRequestType" type="hidden" value=""/>
+          <div id="enrTypeError" class="enr-error" style="display:none;">Please select a request type.</div>
+
+          <div class="enr-form-step"><span>02</span><div><h4>Programme details</h4><p>Your current details are used to process the request.</p></div></div>
+          <div class="enr-field-grid">
+            <div id="enrCurrentProgramSection" class="enr-field" style="display:none;"><label><i class="fas fa-graduation-cap"></i> Current Program *</label><div class="enr-readonly"><span id="enrCurrentProgramDisplay"></span><i class="fas fa-lock"></i></div></div>
+            <div id="enrPreviousProgramSection" class="enr-field" style="display:none;"><label><i class="fas fa-clock-rotate-left"></i> Previous Program *</label><div class="enr-readonly"><span id="enrPreviousProgramDisplay"></span><i class="fas fa-lock"></i></div></div>
+            <div class="enr-field enr-field-full"><label for="enrRequestedProgram"><i class="fas fa-graduation-cap"></i> Requested Program *</label><select id="enrRequestedProgram" required><option value="">-- Select Program --</option><optgroup label="🎓 KRCHN Nursing"><option value="KRCHN">KRCHN - Kenya Registered Community Health Nursing</option></optgroup><optgroup label="🎯 TVET Diploma Programs (6-24 months)"><option value="DPOTT">DPOTT - Diploma in Perioperative Theatre Technology</option><option value="DCH">DCH - Diploma in Community Health</option><option value="DHRIT">DHRIT - Diploma in Health Records and IT</option><option value="DSL">DSL - Diploma in Science Lab</option><option value="DSW">DSW - Diploma in Social Work &amp; Community Development</option><option value="DCJS">DCJS - Diploma in Criminal Justice</option><option value="DHSS">DHSS - Diploma in Health Support Services</option><option value="DICT">DICT - Diploma in ICT</option><option value="DME">DME - Diploma in Medical Engineering</option></optgroup><optgroup label="📜 TVET Certificate Programs (3-12 months)"><option value="CPOTT">CPOTT - Certificate in Perioperative Theatre Technology</option><option value="CCH">CCH - Certificate in Community Health</option><option value="CHRIT">CHRIT - Certificate in Health Records and IT</option><option value="CPC">CPC - Certificate in Patient Care</option><option value="CSL">CSL - Certificate in Science Lab</option><option value="CSW">CSW - Certificate in Social Work &amp; Community Development</option><option value="CCJS">CCJS - Certificate in Criminal Justice</option><option value="CAG">CAG - Certificate in Agriculture</option><option value="CHSS">CHSS - Certificate in Health Support Services</option><option value="CICT">CICT - Certificate in ICT</option><option value="CCG">CCG - Certificate in Caregiver</option><option value="COMT">COMT - Certificate in Orthopedic Trauma Medicine</option></optgroup><optgroup label="🔧 TVET Artisan Programs (2-12 months)"><option value="ACH">ACH - Artisan in Community Health</option><option value="AAG">AAG - Artisan in Agriculture</option><option value="ASW">ASW - Artisan in Social Work &amp; Community Development</option></optgroup><optgroup label="📊 Other TVET Programs"><option value="CCA">CCA - Certificate in Computer Applications</option><option value="PTE">PTE - TVET/CDACC (PTE)</option></optgroup></select></div>
+          </div>
+
+          <div class="enr-form-step"><span>03</span><div><h4>Supporting information</h4><p>Give the academic office enough information to review your request.</p></div></div>
+          <div class="enr-field"><label for="enrReason"><i class="fas fa-message"></i> Reason / Justification *</label><textarea id="enrReason" placeholder="Explain why you are requesting this change or readmission..." required rows="5"></textarea><small>Be clear and concise. Your explanation will be reviewed by the relevant office.</small></div>
+          <div class="enr-upload"><div class="enr-upload-icon"><i class="fas fa-cloud-arrow-up"></i></div><div><label for="enrSupportingDocs">Supporting documents <span>Optional</span></label><p>Upload PDF, JPG or PNG files. Maximum 5MB per file.</p></div><input accept=".pdf,.jpg,.png,.jpeg" id="enrSupportingDocs" multiple type="file"/></div>
+          <div class="enr-form-actions"><button class="enr-btn enr-btn-primary enr-submit" type="submit"><i class="fas fa-paper-plane"></i> Submit Request</button><button class="enr-btn enr-btn-muted" type="reset"><i class="fas fa-rotate-left"></i> Clear</button></div>
+          <div id="enrFormFeedback" class="enr-feedback" style="display:none;"></div>
+        </form>
+      </div>
+      <aside class="enr-help-card"><div class="enr-help-icon"><i class="fas fa-circle-info"></i></div><h4>Before you submit</h4><ul><li>Select the correct request type.</li><li>Check the requested programme carefully.</li><li>Provide a genuine justification.</li><li>Attach supporting documents where necessary.</li></ul><div class="enr-help-note"><i class="fas fa-clock"></i><span>Your request will remain visible under <b>My Requests</b> while it is being reviewed.</span></div></aside>
+    </div>
+  </div>
+
+  <!-- SESSION REPORTING -->
+  <div class="enr-tab-content" id="enrSessionReportingTab" style="display:none;">
+    <div class="enr-section-head"><div><span class="enr-section-kicker">ACADEMIC SESSION</span><h3>Session Reporting</h3><p>Report back to your current academic session and keep your student status up to date.</p></div></div>
+    <div id="enrProgramInfoBanner" class="enr-program-banner"><div class="enr-program-icon"><i class="fas fa-graduation-cap"></i></div><div><span>Current Program</span><strong id="enrReportCurrentProgram">Loading...</strong><em id="enrReportProgramType">Loading...</em></div><div class="enr-auto"><i class="fas fa-wand-magic-sparkles"></i><span id="enrReportAutoDetect">Auto-detecting reporting structure...</span></div></div>
+    <div class="enr-report-layout">
+      <div class="enr-form-card">
+        <form id="enrReportForm" onsubmit="event.preventDefault(); submitSessionReport();">
+          <div class="enr-report-title"><div><i class="fas fa-calendar-check"></i></div><div><h4>Report Back to Semester</h4><p id="enrReportInstructions">Select your current academic session.</p></div></div>
+          <div class="enr-field"><label for="enrReportYear"><i class="fas fa-calendar"></i> Academic Year *</label><select id="enrReportYear" required><option value="">-- Select Year --</option><option value="2024/2025">2024/2025</option><option selected value="2025/2026">2025/2026</option><option value="2026/2027">2026/2027</option></select></div>
+          <div class="enr-field"><label for="enrReportSession"><i class="fas fa-layer-group"></i> <span id="enrReportSessionLabel">Session *</span></label><select id="enrReportSession" required><option value="">-- Select --</option></select><small id="enrReportSessionHelp"><i class="fas fa-info-circle"></i> <span id="enrReportSessionHelpText">Select your current session</span></small></div>
+          <div class="enr-field"><label for="enrReportStatus"><i class="fas fa-user-check"></i> Current Status *</label><select id="enrReportStatus" required><option value="Continuing">Continuing</option><option value="Repeating">Repeating</option><option value="Probation">Probation</option></select></div>
+          <div class="enr-field"><label for="enrReportRemarks"><i class="fas fa-comment-dots"></i> Remarks <span>Optional</span></label><textarea id="enrReportRemarks" placeholder="Any additional information..." rows="4"></textarea></div>
+          <div class="enr-form-actions"><button class="enr-btn enr-btn-green enr-submit" type="submit"><i class="fas fa-paper-plane"></i> Submit Report</button><button class="enr-btn enr-btn-muted" type="reset"><i class="fas fa-rotate-left"></i> Clear</button></div>
+          <div id="enrReportFeedback" class="enr-feedback" style="display:none;"></div>
+        </form>
+      </div>
+      <aside class="enr-help-card green-help"><div class="enr-help-icon"><i class="fas fa-calendar-days"></i></div><h4>Why report?</h4><p>Session reporting helps the college keep your academic status and current session information up to date.</p><div class="enr-help-note"><i class="fas fa-shield-halved"></i><span>Use your current academic session when submitting.</span></div></aside>
+    </div>
+    <div class="enr-table-card enr-report-table"><div class="enr-table-title"><div><i class="fas fa-list"></i><strong>My Session Reports</strong></div><span>Your submitted reports</span></div><div class="enr-table-scroll"><table class="enr-table"><thead><tr><th>Academic Year</th><th>Session</th><th>Status</th><th>Date</th><th>Approval</th></tr></thead><tbody id="enrReportsBody"><tr><td colspan="5" class="enr-empty"><div class="loading-spinner"></div><span>Loading reports...</span></td></tr></tbody></table></div></div>
+  </div>
+
+  <!-- HISTORY -->
+  <div class="enr-tab-content" id="enrHistoryTab" style="display:none;">
+    <div class="enr-section-head"><div><span class="enr-section-kicker">RECORDS</span><h3>Enrollment History</h3><p>Review completed change-of-program and readmission decisions.</p></div></div>
+    <div class="enr-filter-card"><select id="enrHistoryType" onchange="loadEnrollmentHistory()"><option value="all">All Types</option><option value="change-program">Change of Program</option><option value="readmission">Readmission</option></select><select id="enrHistoryStatus" onchange="loadEnrollmentHistory()"><option value="all">All Status</option><option value="approved">✅ Approved</option><option value="rejected">❌ Rejected</option></select><button class="enr-icon-btn" onclick="loadEnrollmentHistory()"><i class="fas fa-search"></i><span>Search</span></button></div>
+    <div class="enr-table-card"><div class="enr-table-title"><div><i class="fas fa-clock-rotate-left"></i><strong>Previous Requests</strong></div><span>Completed enrollment records</span></div><div class="enr-table-scroll"><table class="enr-table"><thead><tr><th>Type</th><th>From → To</th><th>Date</th><th>Status</th><th>Approved By</th></tr></thead><tbody id="enrHistoryBody"><tr><td colspan="5" class="enr-empty"><div class="loading-spinner"></div><span>Loading history...</span></td></tr></tbody></table></div></div>
+  </div>
 </section>
 <!-- END ENROLLMENT -->
 <!-- ============================================================ -->
@@ -7456,12 +7284,95 @@ body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important}
 <footer class="app-footer nchsm-reference-footer nchsm-compact-global-footer">
   <div class="nchsm-footer-bottom">
     <span>© 2026 Nakuru College of Health Sciences &amp; Management. All rights reserved.</span>
-    <nav aria-label="Footer links">
-      <a href="#">Privacy</a><span>|</span><a href="#">Terms</a><span>|</span><a href="#">Support</a>
+    <nav aria-label="Footer links" class="nchsm-footer-links">
+      <div class="nchsm-footer-primary-links">
+        <a href="#privacy" data-footer-action="privacy">Privacy</a><span aria-hidden="true">|</span>
+        <a href="#terms" data-footer-action="terms">Terms</a><span aria-hidden="true">|</span>
+        <a href="#support" data-footer-action="support">Support</a>
+      </div>
+      <a class="nchsm-powered-link" href="https://campusnexus.co.ke/" target="_blank" rel="noopener noreferrer" aria-label="Powered by CampusNexus">Powered by <strong>CampusNexus</strong></a>
     </nav>
     <span class="nchsm-system-online"><i aria-hidden="true" class="fas fa-circle"></i> System Online</span>
   </div>
 </footer>
+
+<style id="nchsm-footer-links-working">
+/* Keep all three footer links visible, distinct and interactive. */
+.nchsm-footer-primary-links a{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  padding:3px 5px!important;border-radius:5px!important;cursor:pointer!important;
+  transition:background .18s ease,color .18s ease!important;
+}
+.nchsm-footer-primary-links a:hover,.nchsm-footer-primary-links a:focus-visible{
+  background:rgba(18,103,214,.10)!important;color:#1267d6!important;text-decoration:none!important;
+  outline:none!important;
+}
+.nchsm-footer-primary-links span{opacity:.7!important}
+.nchsm-footer-policy-modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;
+  padding:20px;background:rgba(2,18,39,.58);backdrop-filter:blur(3px);z-index:10050}
+.nchsm-footer-policy-modal.is-open{display:flex}
+.nchsm-footer-policy-dialog{width:min(560px,94vw);max-height:min(620px,88vh);overflow:auto;background:#fff;
+  border:1px solid #dbe7f5;border-radius:18px;box-shadow:0 24px 70px rgba(0,20,55,.25);
+  padding:22px;color:#102a43}
+.nchsm-footer-policy-dialog h3{margin:0 0 8px;font-size:20px;color:#0b3d70}
+.nchsm-footer-policy-dialog p{margin:8px 0;line-height:1.55;font-size:13px;color:#49647d}
+.nchsm-footer-policy-close{float:right;border:0;background:#edf5ff;color:#1267d6;border-radius:9px;
+  width:34px;height:34px;font-size:20px;cursor:pointer}
+@media(max-width:640px){
+ .nchsm-footer-primary-links{gap:3px!important}
+ .nchsm-footer-primary-links a{padding:4px 3px!important;font-size:10px!important}
+}
+</style>
+
+<div class="nchsm-footer-policy-modal" id="nchsm-footer-policy-modal" aria-hidden="true" role="dialog" aria-modal="true">
+  <div class="nchsm-footer-policy-dialog" role="document">
+    <button type="button" class="nchsm-footer-policy-close" id="nchsm-footer-policy-close" aria-label="Close">&times;</button>
+    <h3 id="nchsm-footer-policy-title">Privacy</h3>
+    <div id="nchsm-footer-policy-content"></div>
+  </div>
+</div>
+
+<script>
+(function(){
+  function initFooterLinks(){
+    const modal=document.getElementById('nchsm-footer-policy-modal');
+    const title=document.getElementById('nchsm-footer-policy-title');
+    const content=document.getElementById('nchsm-footer-policy-content');
+    const closeBtn=document.getElementById('nchsm-footer-policy-close');
+    if(!modal||!title||!content||!closeBtn) return;
+    const copy={
+      privacy:{title:'Privacy',html:'<p>Your portal account information is used to provide academic, communication, attendance, examination and student-service features. Access is limited according to your account permissions and institutional systems.</p><p>For questions about personal information or account access, please contact NCHSM administration or Student Services.</p>'},
+      terms:{title:'Terms',html:'<p>Use of the NCHSM Digital Student Portal is subject to institutional rules, academic policies and responsible use of your student account.</p><p>Do not share your login credentials or misuse information, services or access provided through the portal.</p>'}
+    };
+    function openPolicy(type){
+      const item=copy[type]; if(!item) return;
+      title.textContent=item.title; content.innerHTML=item.html;
+      modal.classList.add('is-open'); modal.setAttribute('aria-hidden','false');
+      document.body.classList.add('nchsm-footer-modal-open'); closeBtn.focus();
+    }
+    function closePolicy(){
+      modal.classList.remove('is-open'); modal.setAttribute('aria-hidden','true');
+      document.body.classList.remove('nchsm-footer-modal-open');
+    }
+    document.querySelectorAll('[data-footer-action]').forEach(function(link){
+      if(link.dataset.footerBound==='1') return; link.dataset.footerBound='1';
+      link.addEventListener('click',function(e){
+        e.preventDefault(); const action=this.getAttribute('data-footer-action');
+        if(action==='support'){
+          if(typeof window.showTab==='function') window.showTab('student-tickets');
+          else { const target=document.getElementById('student-tickets'); if(target){document.querySelectorAll('.tab-content').forEach(x=>x.style.display='none');target.style.display='block';target.classList.add('active');} }
+          return;
+        }
+        openPolicy(action);
+      });
+    });
+    closeBtn.addEventListener('click',closePolicy);
+    modal.addEventListener('click',function(e){if(e.target===modal) closePolicy();});
+    document.addEventListener('keydown',function(e){if(e.key==='Escape' && modal.classList.contains('is-open')) closePolicy();});
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initFooterLinks); else initFooterLinks();
+})();
+</script>
 <!-- TRANSCRIPT MODAL -->
 <div id="transcript-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.4); justify-content:center; align-items:center; z-index:1000;"><div style="background:white; padding:16px; border-radius:8px; max-width:350px; width:90%; position:relative; box-shadow:0 4px 20px rgba(0,0,0,0.15);"><button id="closeTranscriptBtn" style="position:absolute; top:8px; right:8px; background:none; border:none; font-size:1.2em; cursor:pointer; color:#6B7280; padding:4px; width:28px; height:28px; display:flex; align-items:center; justify-content:center; border-radius:50%;">×</button><div style="text-align:center; margin-bottom:15px; padding-bottom:8px; border-bottom:1px solid var(--color-primary, #4F46E5);"><h4 style="margin:0; color: var(--color-primary, #4F46E5); font-size:1.1em; font-weight:600;"><i class="fas fa-file-alt" style="margin-right:6px;"></i> Exam Transcript</h4><p id="transcript-exam-name" style="margin:5px 0 0; font-size:0.85em; color:#6B7280;"></p></div><table style="width:100%; border-collapse:collapse; font-size:0.9em; margin-bottom:10px;"><tr><td style="font-weight:600; padding:6px 0; width:50%;">CAT 1 (30):</td><td id="transcript-cat1" style="padding:6px 0; text-align:right;">-</td></tr>
 <tr><td style="font-weight:600; padding:6px 0;">CAT 2 (30):</td><td id="transcript-cat2" style="padding:6px 0; text-align:right;">-</td></tr>
@@ -7866,7 +7777,6 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('dashboard-nurseiq-progress').innerText = m.nurseiq.progress + '%';
                 document.getElementById('dashboard-nurseiq-accuracy').innerText = m.nurseiq.accuracy + '%';
                 document.getElementById('dashboard-nurseiq-questions').innerText = m.nurseiq.questions;
-                document.getElementById('dashboard-upcoming-exam').innerText = m.exams || 'No upcoming exams';
                 
                 if (window.currentUserProfile) {
                     document.getElementById('dashboard-current-block-value').innerText = window.currentUserProfile.block || '--';
@@ -8424,6 +8334,40 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   document.addEventListener('appReady',initHeaderControls);
 })();
 </script>
+<script id="nchsm-safe-dashboard-fixes">
+(function(){
+  'use strict';
+  function updateThemeButton(){
+    var btn=document.getElementById('header-theme-toggle');
+    if(!btn) return;
+    var dark=document.body.classList.contains('dark-mode');
+    btn.setAttribute('aria-pressed',String(dark));
+    btn.setAttribute('aria-label',dark?'Switch to Light Theme':'Switch to Dark Theme');
+    btn.title=dark?'Switch to Light Theme':'Switch to Dark Theme';
+    var icon=btn.querySelector('i');
+    if(icon) icon.className=dark?'fas fa-moon':'fas fa-sun';
+  }
+  function showNoExamIfStillLoading(){
+    var box=document.getElementById('next-exam-details');
+    var status=document.getElementById('dashboard-exam-status');
+    if(!box) return;
+    var text=(box.textContent||'').trim();
+    if(!text || /^loading(?:\.\.\.)?$/i.test(text)){
+      box.innerHTML='<div class="nchsm-no-exam-state"><strong>No upcoming exam</strong><span>Check back later for new assessments.</span></div>';
+      if(status && (!status.textContent.trim() || /loading/i.test(status.textContent))) status.textContent='No Exams';
+    }
+  }
+  function init(){
+    updateThemeButton();
+    setTimeout(showNoExamIfStillLoading,3000);
+    setTimeout(updateThemeButton,100);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',init,{once:true});
+  else init();
+  document.addEventListener('appReady',function(){updateThemeButton();}, {once:true});
+  window.addEventListener('storage',function(e){if(e.key==='nchsm_theme') updateThemeButton();});
+})();
+</script>
 </body>
 
 <style id="nchsm-final-reference-lock">
@@ -8474,5 +8418,316 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   #dashboard .nchsm-courses-full-grid .nchsm-courses,#dashboard .nchsm-leaderboard{grid-template-columns:1fr!important}
 }
 </style>
+
+
+<style id="nchsm-reference-final-polish">
+/* Final polish based on the supplied dashboard reference screenshot. */
+@media (min-width:901px){
+  #dashboard .nchsm-dashboard-bottom-grid{
+    grid-template-columns:minmax(0,1fr) minmax(0,1fr) minmax(0,1fr)!important;
+    gap:10px!important;
+  }
+  #dashboard .nchsm-courses-full-grid .nchsm-courses{
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+  #dashboard .nchsm-leaderboard{
+    grid-template-columns:repeat(5,minmax(0,1fr))!important;
+    gap:8px!important;
+  }
+  /* Reference shows the five leading students in one compact row. */
+  #dashboard .nchsm-leaderboard .leader-row:nth-child(n+7){display:none!important;}
+}
+
+/* Quick Actions: compact horizontal reference treatment. */
+#dashboard .quick-actions-card{overflow:hidden!important;}
+#dashboard .quick-actions-card .nchsm-card-body{padding:8px 10px 10px!important;}
+#dashboard .nchsm-action-grid{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important;}
+#dashboard .nchsm-action{
+  min-width:0!important;height:70px!important;min-height:70px!important;
+  border-radius:8px!important;padding:8px 5px!important;
+  display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;
+}
+#dashboard .nchsm-action i{font-size:18px!important;margin:0 0 5px!important;}
+#dashboard .nchsm-action span{font-size:9px!important;line-height:1.1!important;white-space:nowrap!important;}
+
+/* Compact lower cards, matching the supplied screenshot. */
+#dashboard .nchsm-dashboard-bottom-grid>.nchsm-card{height:170px!important;min-height:170px!important;overflow:hidden!important;}
+#dashboard .nchsm-dashboard-bottom-grid .nchsm-card-head{height:45px!important;min-height:45px!important;}
+#dashboard .nchsm-progress-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:2px!important;padding:7px 6px 8px!important;}
+#dashboard .nchsm-progress-item{min-width:0!important;overflow:hidden!important;}
+#dashboard .nchsm-ring{width:70px!important;height:70px!important;margin:0 auto 3px!important;}
+#dashboard .nchsm-ring-value{font-size:14px!important;max-width:64px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important;}
+#dashboard .nchsm-progress-label{font-size:9px!important;line-height:1.1!important;white-space:nowrap!important;}
+
+/* Courses: compact four-card row, never leave a huge blank panel. */
+#dashboard .nchsm-courses-full-grid>.courses-card{height:142px!important;min-height:142px!important;}
+#dashboard .nchsm-courses-full-grid .nchsm-courses{min-height:82px!important;padding:4px 9px 8px!important;}
+#dashboard .nchsm-courses-full-grid .course-row{height:78px!important;min-height:78px!important;box-sizing:border-box!important;}
+#dashboard .nchsm-courses-full-grid .nchsm-courses:empty:after{
+  content:'No enrolled units available';display:flex;align-items:center;justify-content:center;
+  height:78px;color:#7a90a7;font-size:11px;font-weight:600;
+}
+
+/* Events: preserve the compact reference height and give empty data a clean state. */
+#dashboard .events-card .nchsm-events{min-height:112px!important;padding:4px 8px!important;}
+#dashboard .events-card .nchsm-event{min-height:48px!important;height:48px!important;}
+
+/* Leaderboard: compact five-card presentation. */
+#dashboard .leaderboard-card{margin-top:10px!important;overflow:hidden!important;}
+#dashboard .leaderboard-card .nchsm-card-head{height:48px!important;min-height:48px!important;}
+#dashboard .nchsm-leaderboard{padding:7px 9px 10px!important;}
+#dashboard .nchsm-leaderboard .leader-row:not(.leader-head){min-height:58px!important;height:58px!important;}
+
+/* Keep the purple Next Class and blue Next Exam as equal half-width feature cards. */
+#dashboard .nchsm-class-exam-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:12px!important;}
+#dashboard .nchsm-class-exam-grid>.next-class-card,
+#dashboard .nchsm-class-exam-grid>.next-exam-card{height:178px!important;min-height:178px!important;border-radius:12px!important;}
+#dashboard .next-class-illustration{right:4px!important;bottom:0!important;width:128px!important;height:104px!important;}
+#dashboard .next-exam-illustration{right:5px!important;bottom:0!important;width:122px!important;height:106px!important;}
+
+@media(max-width:900px) and (min-width:641px){
+  #dashboard .nchsm-action-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;}
+  #dashboard .nchsm-courses-full-grid .nchsm-courses{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  #dashboard .nchsm-leaderboard{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  #dashboard .nchsm-leaderboard .leader-row:nth-child(n+9){display:none!important;}
+}
+@media(max-width:640px){
+  #dashboard .nchsm-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;}
+  #dashboard .nchsm-class-exam-grid,#dashboard .nchsm-dashboard-bottom-grid{grid-template-columns:1fr!important;}
+  #dashboard .nchsm-courses-full-grid .nchsm-courses,#dashboard .nchsm-leaderboard{grid-template-columns:1fr!important;}
+  #dashboard .nchsm-leaderboard .leader-row:nth-child(n+7){display:none!important;}
+}
+</style>
+
+
+<style id="nchsm-final-functional-polish">
+/* ===== QUICK SNAPSHOT + PROGRESS ===== */
+#dashboard .nchsm-snapshot-progress-grid{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important;margin-top:12px!important;align-items:stretch!important}
+#dashboard .quick-snapshot-card,#dashboard .nchsm-snapshot-progress-grid>.progress-card{height:178px!important;min-height:178px!important;overflow:hidden!important}
+#dashboard .nchsm-snapshot-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:8px!important;padding:9px!important;height:125px!important;box-sizing:border-box!important}
+#dashboard .nchsm-snapshot-item{min-width:0;min-height:0;border:1px solid #e1eaf3;border-radius:10px;background:#f8fbff;display:grid;grid-template-columns:30px 1fr;grid-template-rows:auto 1fr;column-gap:8px;align-items:center;padding:8px 10px;box-sizing:border-box;box-shadow:0 2px 8px rgba(20,55,90,.04)}
+#dashboard .nchsm-snapshot-item i{grid-row:1/3;width:30px;height:30px;border-radius:9px;display:grid;place-items:center;color:#fff;font-size:13px;background:#0b83ee}
+#dashboard .nchsm-snapshot-item span{font-size:9px;font-weight:700;color:#6b8198;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dashboard .nchsm-snapshot-item strong{font-size:17px;line-height:1.05;color:#102a43;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dashboard .snapshot-units i{background:#16a579}.snapshot-resources i{background:#8b3de8}.snapshot-exams i{background:#f59e0b}
+#dashboard .nchsm-progress-grid{display:grid!important;grid-template-columns:100px 1fr!important;gap:13px!important;align-items:center!important;padding:9px 12px!important;height:125px!important;box-sizing:border-box!important}
+#dashboard .nchsm-progress-item{min-width:0;text-align:center!important}
+#dashboard .nchsm-ring{width:82px!important;height:82px!important;margin:0 auto 3px!important}
+#dashboard .nchsm-progress-item>strong{display:block;font-size:9px!important;white-space:nowrap}
+#dashboard .nchsm-progress-item>span{font-size:8px!important;color:#6b8198}
+#dashboard .nchsm-progress-bars{display:flex;flex-direction:column;gap:9px;min-width:0}
+#dashboard .snapshot-progress-line>div:first-child{display:flex;justify-content:space-between;gap:8px;align-items:center;font-size:9px;color:#6b8198}
+#dashboard .snapshot-progress-line strong{font-size:9px;color:#193452}.snapshot-progress-line span{font-weight:800;color:#173a64}
+#dashboard .snapshot-progress-line .bar{height:7px;background:#e8eff7;border-radius:999px;overflow:hidden;margin-top:4px}
+#dashboard .snapshot-progress-line .bar i{display:block;height:100%;width:0;border-radius:999px;transition:width .5s ease}
+#dashboard .bar-green{background:#16b878}.bar-blue{background:#1683ed}.bar-purple{background:#7b3fe4}.bar-gold{background:#f5b41b}
+/* ===== NEXT EXAM EMPTY STATE ===== */
+#dashboard .nchsm-no-exam-state{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:95px;text-align:center;color:#fff!important}
+#dashboard .nchsm-no-exam-state strong{font-size:16px!important;color:#fff!important}
+#dashboard .nchsm-no-exam-state span{font-size:10px!important;color:rgba(255,255,255,.78)!important;margin-top:4px}
+/* ===== LEADERBOARD RESPONSIVE HORIZONTAL CARDS ===== */
+#dashboard .nchsm-leaderboard{display:flex!important;flex-wrap:nowrap!important;gap:8px!important;overflow-x:auto!important;overflow-y:hidden!important;padding:8px 9px 11px!important;scrollbar-width:thin;scroll-snap-type:x proximity}
+#dashboard .nchsm-leaderboard .leader-head{display:none!important}
+#dashboard .nchsm-leaderboard .leader-row:not(.leader-head){flex:0 0 calc((100% - 32px)/5)!important;min-width:150px!important;height:66px!important;min-height:66px!important;scroll-snap-align:start;display:grid!important;grid-template-columns:28px minmax(0,1fr)!important;grid-template-rows:auto auto!important;column-gap:7px!important;align-items:center!important;border:1px solid #e1eaf3!important;border-radius:10px!important;background:#fff!important;padding:7px 8px!important;box-sizing:border-box!important;box-shadow:0 2px 8px rgba(20,55,90,.05)!important}
+#dashboard .nchsm-leaderboard .leader-row> .rank{grid-row:1/3!important;width:26px!important;height:26px!important}
+#dashboard .nchsm-leaderboard .leader-row>strong{font-size:10px!important;line-height:1.15!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important}
+#dashboard .nchsm-leaderboard .leader-row>b:last-child{grid-column:2!important;text-align:left!important;font-size:10px!important;color:#0875dc!important}
+#dashboard .nchsm-leaderboard .leader-row:nth-child(n+7){display:none!important}
+@media(max-width:700px){#dashboard .nchsm-leaderboard .leader-row:not(.leader-head){flex-basis:180px!important;min-width:180px!important}}
+/* ===== DARK MODE — real color change ===== */
+body.dark-mode{background:#07111f!important;color:#e8eef7!important}
+body.dark-mode .main-header.nchsm-reference-header{background:#0b1728!important;border-bottom-color:#20344d!important;color:#e8eef7!important}
+body.dark-mode .nchsm-header-brand,.dark-mode .nchsm-header-title,.dark-mode .nchsm-header-subtitle,.dark-mode .nchsm-header-user-copy,.dark-mode .nchsm-header-user-copy *{color:#e8eef7!important}
+body.dark-mode .nchsm-header-search{background:#13253b!important;border-color:#29415c!important;color:#dbe8f5!important}
+body.dark-mode .nchsm-header-search input{background:transparent!important;color:#fff!important}
+body.dark-mode .nchsm-header-search input::placeholder{color:#8da5bf!important}
+body.dark-mode .nchsm-header-icon{background:#13253b!important;color:#ffd34d!important;border-color:#29415c!important}
+body.dark-mode #dashboard{background:#07111f!important;color:#e8eef7!important}
+body.dark-mode #dashboard .nchsm-card:not(.next-class-card):not(.next-exam-card),body.dark-mode #dashboard .nchsm-announcement{background:#0d1b2d!important;border-color:#243c56!important;color:#e8eef7!important}
+body.dark-mode #dashboard .nchsm-card-head{border-bottom-color:#243c56!important}
+body.dark-mode #dashboard .nchsm-card-title h2,body.dark-mode #dashboard .nchsm-card-title small{color:#e8eef7!important}
+body.dark-mode #dashboard .nchsm-view-btn{background:#172b43!important;color:#dbeafe!important;border-color:#34516f!important}
+body.dark-mode #dashboard .nchsm-snapshot-item{background:#12243a!important;border-color:#2a4562!important}
+body.dark-mode #dashboard .nchsm-snapshot-item span,body.dark-mode #dashboard .nchsm-progress-item>span{color:#91a8c0!important}
+body.dark-mode #dashboard .nchsm-snapshot-item strong,body.dark-mode #dashboard .snapshot-progress-line strong{color:#edf5ff!important}
+body.dark-mode #dashboard .snapshot-progress-line span{color:#b9d5f2!important}
+body.dark-mode #dashboard .snapshot-progress-line .bar{background:#203750!important}
+body.dark-mode #dashboard .nchsm-metric{border-color:#2a4562!important}
+body.dark-mode #dashboard .nchsm-courses-full-grid .course-row{background:#12243a!important;border-color:#2a4562!important}
+body.dark-mode #dashboard .nchsm-courses-full-grid .course-row *{color:#e8eef7!important}
+body.dark-mode #dashboard .nchsm-leaderboard .leader-row:not(.leader-head){background:#12243a!important;border-color:#2a4562!important}
+body.dark-mode #dashboard .nchsm-leaderboard .leader-row>strong{color:#edf5ff!important}
+body.dark-mode #dashboard .nchsm-leaderboard .leader-row>b:last-child{color:#6db5ff!important}
+body.dark-mode #dashboard .nchsm-brand-strip{filter:brightness(.9)!important}
+body.dark-mode .nchsm-footer-bottom,body.dark-mode .app-footer .nchsm-footer-bottom{background:#0a1727!important;color:#8ea7c0!important;border-top-color:#223b56!important}
+body.dark-mode .nchsm-footer-bottom a{color:#a9c2db!important}
+body.dark-mode .nchsm-notification-panel{background:#0d1b2d!important;border-color:#29415c!important;color:#e8eef7!important}
+body.dark-mode .nchsm-notification-panel-head{color:#e8eef7!important;border-bottom-color:#29415c!important}
+body.dark-mode .nchsm-notification-link{background:#0d1b2d!important;color:#e8eef7!important}
+body.dark-mode .nchsm-notification-link:hover{background:#162b43!important}
+body.dark-mode .nchsm-notification-link small{color:#9bb0c5!important}
+body.dark-mode .nchsm-footer-policy-dialog{background:#0d1b2d!important;color:#e8eef7!important}
+body.dark-mode .nchsm-footer-policy-dialog h3{color:#fff!important}
+body.dark-mode .nchsm-footer-policy-dialog p{color:#b5c6d8!important}
+/* Theme button state */
+#header-theme-toggle{cursor:pointer!important}
+@media(max-width:900px){#dashboard .nchsm-snapshot-progress-grid{grid-template-columns:1fr!important}#dashboard .quick-snapshot-card,#dashboard .nchsm-snapshot-progress-grid>.progress-card{height:178px!important}}
+@media(max-width:640px){#dashboard .nchsm-snapshot-grid{gap:6px;padding:7px}.nchsm-snapshot-item{padding:7px!important}.nchsm-snapshot-item strong{font-size:15px!important}.nchsm-snapshot-item span{font-size:8px!important}.nchsm-progress-grid{grid-template-columns:90px 1fr!important;gap:8px!important}}
+</style>
+<style id="nchsm-final-user-request-fixes">
+/* FINAL REQUEST: compact 2x2 Quick Snapshot beside My Progress */
+#dashboard .nchsm-snapshot-progress-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:12px!important;margin-top:12px!important}
+#dashboard .quick-snapshot-card,#dashboard .nchsm-snapshot-progress-grid>.progress-card{height:178px!important;min-height:178px!important}
+#dashboard .nchsm-snapshot-grid{height:125px!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:repeat(2,minmax(0,1fr))!important}
+#dashboard .nchsm-snapshot-item{min-height:0!important}
+#dashboard .nchsm-progress-four{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:3px!important;height:125px!important;padding:8px 7px!important}
+#dashboard .nchsm-progress-four .nchsm-ring{width:70px!important;height:70px!important}
+#dashboard .nchsm-progress-four .nchsm-progress-item>strong{font-size:8px!important;white-space:nowrap!important}
+#dashboard .nchsm-progress-four .nchsm-progress-item>span{font-size:7px!important;white-space:nowrap!important}
+#dashboard #dashboard-upcoming-exam-short{font-size:9px!important;max-width:54px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+/* LEADERBOARD: all ranked students remain available horizontally; mobile scrolls instead of stacking. */
+#dashboard .nchsm-leaderboard{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;gap:8px!important;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+#dashboard .nchsm-leaderboard .leader-row:not(.leader-head){display:grid!important;flex:0 0 calc((100% - 32px)/5)!important;min-width:150px!important;height:66px!important;min-height:66px!important}
+#dashboard .nchsm-leaderboard .leader-row:nth-child(n){display:grid!important}
+@media(max-width:700px){#dashboard .nchsm-leaderboard .leader-row:not(.leader-head){flex:0 0 180px!important;min-width:180px!important}}
+/* DARK MODE: make the actual dashboard surfaces change, not just the navigation icon. */
+body.dark-mode #dashboard .nchsm-snapshot-item{background:#12243a!important;border-color:#2d4a68!important}
+body.dark-mode #dashboard .nchsm-ring .ring-track{stroke:#29425c!important}
+body.dark-mode #dashboard .nchsm-progress-four .nchsm-progress-item>strong{color:#eef6ff!important}
+body.dark-mode #dashboard .nchsm-progress-four .nchsm-progress-item>span{color:#9eb4ca!important}
+body.dark-mode #dashboard .nchsm-events .nchsm-event{background:#12243a!important;border-color:#2d4a68!important;color:#eef6ff!important}
+body.dark-mode #dashboard .nchsm-events .nchsm-event *{color:#dce9f6!important}
+body.dark-mode #dashboard .nchsm-courses .course-row{background:#12243a!important;border-color:#2d4a68!important}
+body.dark-mode #dashboard .nchsm-courses .course-row *{color:#eaf3fb!important}
+</style>
+
+<style id="nchsm-gpa-mobile-final">
+/* ============================================================
+   FINAL MOBILE + GPA POLISH
+   ============================================================ */
+#dashboard .nchsm-snapshot-progress-grid{
+  display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+  gap:12px!important;
+  align-items:stretch!important;
+}
+#dashboard .quick-snapshot-card,
+#dashboard .nchsm-snapshot-progress-grid>.progress-card{
+  min-width:0!important;
+  height:178px!important;
+  min-height:178px!important;
+}
+#dashboard .nchsm-snapshot-grid{
+  display:grid!important;
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-template-rows:repeat(2,minmax(0,1fr))!important;
+  gap:8px!important;
+  height:125px!important;
+  padding:9px!important;
+}
+#dashboard .snapshot-gpa i{background:#f59e0b!important}
+#dashboard .snapshot-gpa strong{letter-spacing:.2px}
+
+/* Phones/tablets: stack these two cards instead of squeezing them into half-widths. */
+@media(max-width:900px){
+  #dashboard .nchsm-snapshot-progress-grid{
+    grid-template-columns:1fr!important;
+    gap:10px!important;
+  }
+  #dashboard .quick-snapshot-card{height:auto!important;min-height:0!important}
+  #dashboard .nchsm-snapshot-grid{
+    height:auto!important;
+    min-height:190px!important;
+    grid-template-columns:repeat(2,minmax(0,1fr))!important;
+    grid-template-rows:repeat(2,minmax(88px,1fr))!important;
+    padding:10px!important;
+  }
+  #dashboard .nchsm-snapshot-item{
+    min-height:88px!important;
+    padding:10px!important;
+    grid-template-columns:34px minmax(0,1fr)!important;
+  }
+  #dashboard .nchsm-snapshot-item i{width:34px!important;height:34px!important}
+  #dashboard .nchsm-snapshot-item span{font-size:10px!important}
+  #dashboard .nchsm-snapshot-item strong{font-size:18px!important}
+  #dashboard .nchsm-snapshot-progress-grid>.progress-card{height:auto!important;min-height:190px!important}
+  #dashboard .nchsm-progress-four{
+    height:auto!important;
+    min-height:145px!important;
+    padding:12px 8px!important;
+    grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  }
+  #dashboard .nchsm-progress-four .nchsm-ring{width:64px!important;height:64px!important}
+}
+@media(max-width:480px){
+  #dashboard .nchsm-snapshot-grid{min-height:184px!important;grid-template-rows:repeat(2,88px)!important}
+  #dashboard .nchsm-snapshot-item{min-height:88px!important;padding:8px!important}
+  #dashboard .nchsm-snapshot-item i{width:31px!important;height:31px!important;font-size:13px!important}
+  #dashboard .nchsm-snapshot-item span{font-size:9px!important}
+  #dashboard .nchsm-snapshot-item strong{font-size:17px!important}
+  #dashboard .nchsm-progress-four{gap:2px!important;padding:10px 3px!important}
+  #dashboard .nchsm-progress-four .nchsm-ring{width:58px!important;height:58px!important}
+  #dashboard .nchsm-progress-four .nchsm-progress-item>strong{font-size:8px!important}
+  #dashboard .nchsm-progress-four .nchsm-progress-item>span{font-size:7px!important}
+}
+
+/* Theme: force all dashboard surfaces to follow the body theme. */
+body.dark-mode #dashboard,
+body.dark-mode #dashboard .dashboard-main,
+body.dark-mode #dashboard .nchsm-dashboard-content{
+  background:#07111f!important;color:#e8eef7!important;
+}
+body.dark-mode #dashboard .nchsm-card:not(.next-class-card):not(.next-exam-card),
+body.dark-mode #dashboard .nchsm-announcement,
+body.dark-mode #dashboard .nchsm-card-body{
+  background:#0d1b2d!important;color:#e8eef7!important;border-color:#243c56!important;
+}
+body.dark-mode #dashboard .nchsm-card-title h2,
+body.dark-mode #dashboard .nchsm-card-title small,
+body.dark-mode #dashboard .nchsm-card-body,
+body.dark-mode #dashboard .nchsm-events{color:#e8eef7!important}
+</style>
+<script id="nchsm-gpa-dashboard-sync">
+(function(){
+  'use strict';
+  function setText(id,value){
+    var el=document.getElementById(id);
+    if(el && value!==undefined && value!==null && String(value).trim()!=='') el.textContent=String(value);
+  }
+  function syncGpa(){
+    var source=document.getElementById('transcript-cgpa');
+    if(!source) return false;
+    var raw=(source.textContent||source.innerText||'').trim();
+    if(!raw || raw==='0.00' || raw==='0') {
+      /* 0.00 is still a legitimate value; don't invent a value. */
+      if(raw) setText('snapshot-cgpa',raw);
+      return !!raw;
+    }
+    setText('snapshot-cgpa',raw);
+    return true;
+  }
+  function requestAcademicReports(){
+    try{
+      if(window.academicReportsModule && typeof window.academicReportsModule.loadReports==='function'){
+        window.academicReportsModule.loadReports();
+      }
+    }catch(e){ console.warn('Academic Reports dashboard snapshot load:',e); }
+  }
+  function start(){
+    syncGpa();
+    requestAcademicReports();
+    var tries=0;
+    var timer=setInterval(function(){
+      tries++;
+      if(syncGpa() || tries>=30) clearInterval(timer);
+    },500);
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+  document.addEventListener('appReady',function(){ requestAcademicReports(); syncGpa(); },{once:true});
+  window.addEventListener('focus',syncGpa);
+})();
+</script>
 
 </html>
