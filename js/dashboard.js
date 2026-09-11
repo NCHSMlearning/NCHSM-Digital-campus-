@@ -239,6 +239,10 @@ class DashboardModule {
             dashboardEvents: document.querySelector('.nchsm-events'),
             dashboardCourses: document.querySelector('.nchsm-courses'),
             dashboardLeaderboard: document.querySelector('.nchsm-leaderboard'),
+            snapshotActiveCourses: document.getElementById('snapshot-active-courses'),
+            snapshotApprovedUnits: document.getElementById('snapshot-approved-units'),
+            snapshotResources: document.getElementById('snapshot-new-resources'),
+            snapshotCGPA: document.getElementById('snapshot-cgpa'),
             dashboardHeroGreeting: document.getElementById('greeting-text'),
             dashboardHeroName: document.getElementById('welcome-student-name'),
             dashboardHeroEmoji: document.getElementById('greeting-emoji'),
@@ -1497,10 +1501,13 @@ class DashboardModule {
             
             console.log('✅ Dashboard loaded from DATABASE');
             
-            // Load leaderboard and next class
+            // Load dashboard cards that are independent of the RPC payload.
             await Promise.all([
                 this.loadLeaderboardData('all'),
-                this.loadQuickNextClass()
+                this.loadQuickNextClass(),
+                this.loadDashboardCourses(),
+                this.loadDashboardEvents(),
+                this.syncAcademicReportsSnapshot()
             ]);
             
         } catch (error) {
@@ -1557,7 +1564,8 @@ class DashboardModule {
             this.loadReviewsSnapshot(),
             this.loadNewsletterSnapshot(),
             this.loadDashboardCourses(),
-            this.loadDashboardEvents()
+            this.loadDashboardEvents(),
+            this.syncAcademicReportsSnapshot()
         ]);
         this.updateUIFromMetrics();
         this.updateStreakUI();
@@ -1856,7 +1864,19 @@ class DashboardModule {
     
     async updateExamsMetric() {
         let upcomingText = 'No upcoming exams';
-        
+
+        // Always show a valid empty state while the exam query is running.
+        if (this.elements?.upcomingExam) this.elements.upcomingExam.innerText = 'No upcoming exam';
+        if (this.elements?.nextExamDetails) {
+            this.elements.nextExamDetails.innerHTML = `
+                <div class="next-exam-empty">
+                    <strong>No upcoming exam</strong>
+                    <span>Check back later for new assessments.</span>
+                </div>
+            `;
+        }
+        if (this.elements?.examStatus) this.elements.examStatus.innerText = 'No upcoming exam';
+
         try {
             if (!this.userProfile) return;
             
@@ -1875,7 +1895,7 @@ class DashboardModule {
             if (error) {
                 console.error('Exams query error:', error);
                 if (this.elements.upcomingExam) {
-                    this.elements.upcomingExam.innerText = 'Error loading exams';
+                    this.elements.upcomingExam.innerText = 'No upcoming exam';
                 }
                 this.updateNextExamWidget(null);
                 return;
@@ -1963,7 +1983,7 @@ class DashboardModule {
         } catch (error) {
             console.error('Exams error:', error);
             if (this.elements.upcomingExam) {
-                this.elements.upcomingExam.innerText = 'Error loading exams';
+                this.elements.upcomingExam.innerText = 'No upcoming exam';
             }
             this.updateNextExamWidget(null);
         }
@@ -2604,6 +2624,13 @@ class DashboardModule {
         setText(this.elements.resources, m.resources ?? 0);
         setText(this.elements.upcomingExam, m.exams || 'No upcoming exams');
 
+        setText(this.elements.snapshotActiveCourses, m.courses ?? 0);
+        setText(this.elements.snapshotApprovedUnits, m.examCard?.approved ?? 0);
+        setText(this.elements.snapshotResources, m.resources ?? 0);
+        if (this.elements.snapshotCGPA && !this.elements.snapshotCGPA.textContent.trim()) {
+            this.elements.snapshotCGPA.textContent = '--';
+        }
+
         const warningText = document.getElementById('warning-text');
         if (warningText) {
             warningText.textContent =
@@ -2630,6 +2657,42 @@ class DashboardModule {
     // 💾 SAVE TO CACHE
     // ============================================================
     
+    // ============================================================
+    // 🎓 ACADEMIC REPORTS SNAPSHOT / CUMULATIVE GPA
+    // ============================================================
+
+    async syncAcademicReportsSnapshot() {
+        try {
+            const target = this.elements?.snapshotCGPA || document.getElementById('snapshot-cgpa');
+            if (!target) return;
+
+            const readGpa = () => {
+                const source = document.getElementById('transcript-cgpa');
+                if (!source) return false;
+                const raw = (source.textContent || source.innerText || '').trim();
+                if (!raw) return false;
+                target.textContent = raw;
+                return true;
+            };
+
+            if (readGpa()) return;
+
+            try {
+                if (window.academicReportsModule &&
+                    typeof window.academicReportsModule.loadReports === 'function') {
+                    await window.academicReportsModule.loadReports();
+                }
+            } catch (reportError) {
+                console.warn('Academic Reports snapshot load:', reportError);
+            }
+
+            if (readGpa()) return;
+            target.textContent = '--';
+        } catch (error) {
+            console.warn('Cumulative GPA snapshot unavailable:', error);
+        }
+    }
+
     saveToCache() {
         if (!this.cacheKey) return;
         try {
