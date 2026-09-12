@@ -743,10 +743,17 @@ button{cursor:pointer}
   .exam-navigation{
     position:relative;z-index:10;min-height:58px;
     padding:7px 4px max(7px,env(safe-area-inset-bottom));
-    gap:6px;box-shadow:0 -6px 18px rgba(6,43,72,.08)
+    gap:5px;box-shadow:0 -6px 18px rgba(6,43,72,.08)
   }
-  .nav-btn{min-width:0;flex:1;height:43px;padding:9px 7px;font-size:10px}
-  .nav-progress{min-width:50px;font-size:8px}
+  .nav-btn{min-width:0;flex:1;height:43px;padding:9px 6px;font-size:10px}
+  .nav-progress{min-width:42px;font-size:8px}
+  .mobile-submit-btn{
+    display:flex!important;
+    background:#16835a!important;
+    border-color:#16835a!important;
+    min-width:72px!important;
+  }
+  .mobile-submit-btn:disabled{opacity:.45;cursor:not-allowed}
 }
 @media(max-width:380px){
   .brand-copy small{display:none}.secure-badge{max-width:95px}
@@ -757,6 +764,7 @@ button{cursor:pointer}
   .question-actions .icon-btn{font-size:0;width:37px;justify-content:center}
   .question-actions .icon-btn i{font-size:13px}
 }
+.mobile-submit-btn{display:none}
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{
   outline:3px solid rgba(8,121,209,.22);outline-offset:2px
 }
@@ -1041,6 +1049,10 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
           </div>
 
           <div class="exam-navigation">
+            <button id="mobile-submit-exam-btn" class="btn btn-success nav-btn mobile-submit-btn" type="button" onclick="document.getElementById('submit-exam-btn').click()" disabled aria-label="Submit Examination">
+              <i class="fa-solid fa-paper-plane"></i>
+              <span>Submit</span>
+            </button>
             <button id="prev-btn" class="btn btn-secondary nav-btn" type="button" onclick="prevQuestion()">
               <i class="fa-solid fa-arrow-left"></i> Previous
             </button>
@@ -1179,165 +1191,241 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <div id="countdown-number" style="display:none"></div>
 <div id="submitSummary" style="display:none"></div>
 
+
+<script>
+/* Mobile submit control: mirrors the real submit button controlled by exam.js. */
+(function(){
+  function syncMobileSubmit(){
+    const desktop = document.getElementById('submit-exam-btn');
+    const mobile = document.getElementById('mobile-submit-exam-btn');
+    if (!desktop || !mobile) return;
+
+    mobile.disabled = desktop.disabled;
+    mobile.setAttribute('aria-disabled', desktop.disabled ? 'true' : 'false');
+
+    const desktopText = document.getElementById('submit-text');
+    const mobileText = mobile.querySelector('span');
+    if (desktopText && mobileText) {
+      mobileText.textContent = desktopText.textContent.toLowerCase().includes('submitting')
+        ? 'Submitting…'
+        : 'Submit';
+    }
+
+    const spinner = document.getElementById('submit-spinner');
+    const icon = mobile.querySelector('i');
+    if (spinner && icon) {
+      const busy = !spinner.classList.contains('hidden');
+      icon.className = busy
+        ? 'fa-solid fa-spinner fa-spin'
+        : 'fa-solid fa-paper-plane';
+    }
+  }
+
+  function initMobileSubmitSync(){
+    syncMobileSubmit();
+
+    const desktop = document.getElementById('submit-exam-btn');
+    if (desktop && window.MutationObserver) {
+      const observer = new MutationObserver(syncMobileSubmit);
+      observer.observe(desktop, {
+        attributes:true,
+        attributeFilter:['disabled','class','aria-disabled']
+      });
+
+      const text = document.getElementById('submit-text');
+      const spinner = document.getElementById('submit-spinner');
+      if (text) observer.observe(text, {childList:true,characterData:true,subtree:true});
+      if (spinner) observer.observe(spinner, {attributes:true,attributeFilter:['class']});
+    }
+
+    [250,750,1500,3000].forEach(ms => setTimeout(syncMobileSubmit, ms));
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initMobileSubmitSync);
+  } else {
+    initMobileSubmitSync();
+  }
+})();
+</script>
+
 <script src="exam.js"></script>
 
 <script>
 /* ============================================================
    STUDENT PROFILE PHOTO SYNC
-   Uses the same profile record/photo storage used by the
-   student profile page. Does not alter exam.js functionality.
+   MATCHES THE STUDENT PROFILE MODULE PHOTO LOGIC EXACTLY
    ============================================================ */
 (function () {
   'use strict';
 
-  function getProfileObject() {
-    try {
-      if (typeof AppState !== 'undefined' && AppState.studentProfile) {
-        return AppState.studentProfile;
-      }
-    } catch (_) {}
-
-    try {
-      if (window.db?.currentUserProfile) return window.db.currentUserProfile;
-    } catch (_) {}
-
-    try {
-      if (window.currentUserProfile) return window.currentUserProfile;
-    } catch (_) {}
-
-    try {
-      const stored = localStorage.getItem('userProfile');
-      if (stored) return JSON.parse(stored);
-    } catch (_) {}
-
-    return null;
-  }
+  const SUPABASE_URL =
+    window.SUPABASE_URL ||
+    window.APP_CONFIG?.SUPABASE_URL ||
+    (typeof CONFIG !== 'undefined' && CONFIG.SUPABASE_URL) ||
+    'https://lwhtjozfsmbyihenfunw.supabase.co';
 
   function getStudentId() {
     try {
-      if (typeof AppState !== 'undefined' && AppState.studentId) return AppState.studentId;
+      if (typeof AppState !== 'undefined' && AppState.studentId) {
+        return AppState.studentId;
+      }
     } catch (_) {}
+
     return new URLSearchParams(window.location.search).get('user_id')
       || localStorage.getItem('currentUserId');
   }
 
-  function getSupabaseUrl() {
-    try {
-      if (window.APP_CONFIG?.SUPABASE_URL) return window.APP_CONFIG.SUPABASE_URL;
-    } catch (_) {}
-
-    try {
-      if (typeof CONFIG !== 'undefined' && CONFIG.SUPABASE_URL) return CONFIG.SUPABASE_URL;
-    } catch (_) {}
-
-    return 'https://lwhtjozfsmbyihenfunw.supabase.co';
-  }
-
-  function resolvePhotoUrl(profile) {
+  function buildProfilePhotoUrl(profile, userId) {
     if (!profile) return null;
 
-    // Prefer the exact fields used by the Student Profile module.
-    let value =
+    // EXACT SAME PRIORITY AS PROFILE MODULE
+    const photoPath =
       profile.profile_photo_url ||
       profile.passport_url ||
-      profile.avatar_url ||
-      profile.photo_url ||
-      profile.profile_picture ||
-      profile.profile_image ||
-      profile.image_url ||
-      profile.avatar ||
-      profile.picture ||
-      profile.photo;
+      null;
 
-    if (!value || typeof value !== 'string') return null;
+    if (!photoPath) return null;
 
-    value = value.trim();
-    if (!value) return null;
-
-    // The profile module can already store a public URL.
-    if (/^https?:\/\//i.test(value)) return value;
-
-    // Same storage convention as the profile page:
-    // bucket = user-documents, path = profiles/{userId}/photo.ext
-    const base = getSupabaseUrl().replace(/\/+$/, '');
-    if (value.startsWith('profiles/')) {
-      return base + '/storage/v1/object/public/user-documents/' + value;
+    // Profile module returns an existing absolute URL unchanged.
+    if (photoPath.startsWith('http')) {
+      return photoPath;
     }
 
-    // If only a storage path was saved, treat it as user-documents.
-    if (!value.startsWith('/')) {
-      return base + '/storage/v1/object/public/user-documents/' + value;
+    // Profile module stores relative photo paths under:
+    // user-documents/profiles/{userId}/photo.ext
+    let fullPath = photoPath;
+
+    if (!photoPath.startsWith('profiles/')) {
+      fullPath = `profiles/${userId}/${photoPath}`;
     }
 
-    return window.location.origin + value;
+    // EXACT SAME PUBLIC STORAGE URL PATTERN + CACHE BUSTER
+    return `${SUPABASE_URL}/storage/v1/object/public/user-documents/${fullPath}?t=${new Date().getTime()}`;
   }
 
-  function setAvatar(imgId, iconId, url) {
-    const img = document.getElementById(imgId);
-    const icon = document.getElementById(iconId);
-    if (!img || !icon || !url) return false;
-
-    img.onload = function () {
-      img.style.display = 'block';
-      icon.style.display = 'none';
-    };
-
-    img.onerror = function () {
-      img.removeAttribute('src');
-      img.style.display = 'none';
-      icon.style.display = 'block';
-    };
-
-    img.src = url;
-    return true;
+  function fallbackPhoto(name) {
+    return 'https://ui-avatars.com/api/?name=' +
+      encodeURIComponent(name || 'Student') +
+      '&background=4C1D95&color=fff&size=120';
   }
 
-  function applyProfilePhoto() {
-    const profile = getProfileObject();
+  function applyPhoto(url, name) {
+    const targets = [
+      ['studentProfilePhoto', 'studentProfileIcon'],
+      ['examStudentProfilePhoto', 'examStudentProfileIcon']
+    ];
 
-    // If the profile page helper is available, use its exact resolver first.
-    let url = null;
+    targets.forEach(([imgId, iconId]) => {
+      const img = document.getElementById(imgId);
+      const icon = document.getElementById(iconId);
+      if (!img || !icon) return;
+
+      img.onload = function () {
+        img.style.display = 'block';
+        icon.style.display = 'none';
+      };
+
+      img.onerror = function () {
+        img.onerror = null;
+        img.src = fallbackPhoto(name);
+        img.style.display = 'block';
+        icon.style.display = 'none';
+      };
+
+      img.src = url || fallbackPhoto(name);
+    });
+  }
+
+  async function loadProfilePhotoFromSameRecord() {
+    const userId = getStudentId();
+    if (!userId) return;
+
     try {
-      if (window.db && typeof window.db.getPhotoUrl === 'function') {
-        url = window.db.getPhotoUrl(getStudentId());
+      // Prefer the profile object already loaded by exam.js.
+      let profile = null;
+
+      try {
+        if (typeof AppState !== 'undefined' && AppState.studentProfile) {
+          profile = AppState.studentProfile;
+        }
+      } catch (_) {}
+
+      // If exam.js has not loaded it yet, read the SAME table as the
+      // Student Profile module.
+      if (!profile && typeof sb !== 'undefined') {
+        const { data, error } = await sb
+          .from('consolidated_user_profiles_table')
+          .select('full_name, profile_photo_url, passport_url')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (error) {
+          console.warn('Could not load student profile photo record:', error);
+        } else {
+          profile = data;
+        }
       }
-    } catch (_) {}
 
-    if (!url) url = resolvePhotoUrl(profile);
-    if (!url) return false;
+      if (!profile) return;
 
-    const a = setAvatar('studentProfilePhoto', 'studentProfileIcon', url);
-    const b = setAvatar('examStudentProfilePhoto', 'examStudentProfileIcon', url);
+      const photoUrl = buildProfilePhotoUrl(profile, userId);
+      const name = profile.full_name || 'Student';
 
-    if (a || b) {
-      console.log('📸 Student profile photo synced from profile:', url);
-      return true;
+      applyPhoto(photoUrl, name);
+
+      console.log('📸 Profile photo loaded using Student Profile logic:', {
+        profile_photo_url: profile.profile_photo_url || null,
+        passport_url: profile.passport_url || null,
+        resolved: photoUrl
+      });
+    } catch (error) {
+      console.warn('Student profile photo loading error:', error);
     }
-    return false;
   }
 
-  function startPhotoSync() {
-    // Profile data is loaded asynchronously by exam.js.
+  function startProfilePhotoSync() {
+    // exam.js loads the profile asynchronously, so wait for it and retry.
     let attempts = 0;
-    const maxAttempts = 30;
-
-    const timer = setInterval(function () {
+    const timer = setInterval(async function () {
       attempts++;
-      if (applyProfilePhoto() || attempts >= maxAttempts) {
+
+      try {
+        if (
+          typeof AppState !== 'undefined' &&
+          AppState.studentProfile
+        ) {
+          await loadProfilePhotoFromSameRecord();
+          clearInterval(timer);
+          return;
+        }
+      } catch (_) {}
+
+      if (attempts >= 30) {
         clearInterval(timer);
+        await loadProfilePhotoFromSameRecord();
       }
     }, 300);
 
-    // Also retry after the profile has had more time to load.
-    setTimeout(applyProfilePhoto, 1500);
-    setTimeout(applyProfilePhoto, 3000);
+    // Additional refreshes handle slow Supabase/profile loading.
+    setTimeout(loadProfilePhotoFromSameRecord, 1500);
+    setTimeout(loadProfilePhotoFromSameRecord, 3000);
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', startPhotoSync);
+    document.addEventListener('DOMContentLoaded', startProfilePhotoSync);
   } else {
-    startPhotoSync();
+    startProfilePhotoSync();
   }
+
+  // If the profile page/module broadcasts a photo update, refresh here too.
+  document.addEventListener('photoUpdated', function () {
+    setTimeout(loadProfilePhotoFromSameRecord, 300);
+  });
+
+  document.addEventListener('profileUpdated', function () {
+    setTimeout(loadProfilePhotoFromSameRecord, 300);
+  });
 })();
 </script>
 
