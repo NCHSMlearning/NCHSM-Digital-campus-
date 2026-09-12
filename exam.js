@@ -397,98 +397,47 @@ async function getOrCreateCurrentAttempt() {
     if (AppState.attemptId) return true;
 
     const examId = parseInt(AppState.examId);
+    if (!AppState.studentId || !examId) {
+        throw new Error('Missing student or exam information.');
+    }
 
-    // Fresh approved retake: create a completely new attempt.
-    if (AppState.isRetake) {
-        const { data: existing } = await sb
-            .from('exam_attempts')
-            .select('id, attempt_number, status, is_retake')
-            .eq('student_id', AppState.studentId)
-            .eq('exam_id', examId)
-            .order('attempt_number', { ascending: false })
-            .limit(1);
+    // Attempt creation is performed by a protected Supabase RPC.
+    // This is required because the exam page is not relying on auth.uid()
+    // and therefore should not insert directly into exam_attempts under RLS.
+    const { data: attemptData, error: attemptError } = await sb.rpc(
+        'prepare_exam_attempt',
+        {
+            p_student_id: AppState.studentId,
+            p_exam_id: examId,
+            p_is_retake: !!AppState.isRetake
+        }
+    );
 
-        const latest = existing && existing.length ? existing[0] : null;
-        const nextNumber = (latest ? latest.attempt_number : 0) + 1;
+    if (attemptError) {
+        throw new Error(attemptError.message || 'Could not prepare exam attempt.');
+    }
 
-        const { data: created, error } = await sb
-            .from('exam_attempts')
-            .insert({
-                student_id: AppState.studentId,
-                exam_id: examId,
-                attempt_number: nextNumber,
-                status: 'IN_PROGRESS',
-                is_retake: true,
-                started_at: new Date().toISOString()
-            })
-            .select('id, attempt_number')
-            .single();
+    const created = Array.isArray(attemptData) ? attemptData[0] : attemptData;
+    if (!created?.id) {
+        throw new Error('The exam server did not return a valid attempt.');
+    }
 
-        if (error) throw error;
+    AppState.attemptId = created.id;
+    AppState.attemptNumber = Number(created.attempt_number || 1);
 
-        AppState.attemptId = created.id;
-        AppState.attemptNumber = created.attempt_number;
+    // The RPC is authoritative about whether this is a retake.
+    AppState.isRetake = !!created.is_retake;
+
+    if (AppState.isRetake && Number(AppState.attemptNumber) > 1) {
         AppState.answers = {};
         AppState.flaggedQuestions = {};
         AppState.currentIndex = 0;
         AppState.hasAnsweredAtLeastOne = false;
-
-        // Consume the authorization immediately so refreshing cannot create another retake.
-        const authorized = await getAuthorizedRetake();
-        if (authorized) {
-            await sb.from('exam_grades')
-                .update({
-                    retake_unlocked: false,
-                    reset_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', authorized.id);
-        }
-
         console.log(`🔄 New retake attempt created: #${AppState.attemptNumber}`);
-        return true;
+    } else {
+        console.log(`✅ Exam attempt ready: #${AppState.attemptNumber}`);
     }
 
-    // Normal exam: resume an existing in-progress attempt, otherwise use Attempt 1.
-    const { data: attempts, error } = await sb
-        .from('exam_attempts')
-        .select('id, attempt_number, status, is_retake')
-        .eq('student_id', AppState.studentId)
-        .eq('exam_id', examId)
-        .order('attempt_number', { ascending: false });
-
-    if (error) throw error;
-
-    const active = (attempts || []).find(a => a.status === 'IN_PROGRESS');
-    const latest = (attempts || [])[0];
-
-    if (active) {
-        AppState.attemptId = active.id;
-        AppState.attemptNumber = active.attempt_number;
-        AppState.isRetake = !!active.is_retake;
-        return true;
-    }
-
-    if (latest && latest.status !== 'IN_PROGRESS') {
-        throw new Error('This examination attempt has already been submitted. A retake must be authorized by the administrator.');
-    }
-
-    const { data: created, error: createError } = await sb
-        .from('exam_attempts')
-        .insert({
-            student_id: AppState.studentId,
-            exam_id: examId,
-            attempt_number: 1,
-            status: 'IN_PROGRESS',
-            is_retake: false,
-            started_at: new Date().toISOString()
-        })
-        .select('id, attempt_number')
-        .single();
-
-    if (createError) throw createError;
-    AppState.attemptId = created.id;
-    AppState.attemptNumber = created.attempt_number;
     return true;
 }
 
