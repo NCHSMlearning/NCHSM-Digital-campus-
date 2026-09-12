@@ -92,13 +92,6 @@ const AppState = {
 // ============================================================
 const DOM = {};
 
-function forceSubmitButtonEnabled() {
-    if (!DOM.submitBtn) return;
-    DOM.submitBtn.disabled = false;
-    DOM.submitBtn.removeAttribute('disabled');
-    DOM.submitBtn.setAttribute('aria-disabled', 'false');
-}
-
 function initDomRefs() {
     // Lobby
     DOM.lobbyContainer = document.getElementById('lobbyContainer');
@@ -197,9 +190,6 @@ function initDomRefs() {
     DOM.attendanceModal = document.getElementById('attendance-required-modal');
     DOM.timerProgressBar = document.getElementById('timerProgressBar');
 }
-
-// Submit button must never be disabled by JS.
-forceSubmitButtonEnabled();
 
 // ============================================================
 // UTILITY FUNCTIONS
@@ -1878,10 +1868,7 @@ function startTimer(seconds) {
             }
             if (DOM.prevBtn) DOM.prevBtn.disabled = true;
             if (DOM.nextBtn) DOM.nextBtn.disabled = true;
-            if (DOM.submitBtn) {
-                DOM.submitBtn.disabled = false;
-                DOM.submitBtn.removeAttribute('disabled');
-            }
+            if (DOM.submitBtn) DOM.submitBtn.disabled = true;
             
             captureSnapshot();
             setTimeout(() => executeSubmissionWithLoading(), 2000);
@@ -1972,61 +1959,167 @@ function submitExam() {
 }
 
 function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
+    console.log('🟣 [CONFIRM] Opening submission confirmation modal');
+
     const existingModal = document.getElementById('custom-confirm-modal');
     if (existingModal) existingModal.remove();
 
+    // Store callbacks globally so inline/capture handlers cannot be lost
+    // because of event-listener/stacking-context issues.
+    window.__nchsmSubmitConfirm = {
+        onConfirm: typeof onConfirm === 'function' ? onConfirm : null,
+        onCancel: typeof onCancel === 'function' ? onCancel : null
+    };
+
     const modal = document.createElement('div');
     modal.id = 'custom-confirm-modal';
+    modal.setAttribute('role', 'dialog');
+    modal.setAttribute('aria-modal', 'true');
     modal.style.cssText = `
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.6);
+        position: fixed !important;
+        inset: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        background: rgba(0,0,0,0.6) !important;
         backdrop-filter: blur(8px);
-        z-index: 999999;
-        display: flex;
-        align-items: center;
-        justify-content: center;
+        -webkit-backdrop-filter: blur(8px);
+        z-index: 2147483647 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        pointer-events: auto !important;
         font-family: 'Inter', sans-serif;
     `;
+
     modal.innerHTML = `
-        <div style="background: white; border-radius: 20px; padding: 32px; max-width: 480px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: fadeSlideUp 0.3s ease;">
-            <div style="font-size: ${isWarning ? '2.5rem' : '2.5rem'}; text-align: center; margin-bottom: 12px;">${isWarning ? '⚠️' : '📋'}</div>
-            <h3 style="text-align: center; color: ${isWarning ? '#dc2626' : '#0A3D62'}; font-weight: 700; font-size: 1.2rem; margin-bottom: 12px;">${title}</h3>
-            <p style="text-align: center; color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 24px;">${message}</p>
-            <div style="display: flex; gap: 12px;">
-                <button id="confirm-cancel-btn" style="flex: 1; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; background: white; color: #64748b; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
+        <div id="nchsm-confirm-card" style="
+            position:relative;
+            z-index:2147483647;
+            background:white;
+            border-radius:20px;
+            padding:32px;
+            max-width:480px;
+            width:90%;
+            box-shadow:0 20px 60px rgba(0,0,0,0.35);
+            pointer-events:auto !important;
+        ">
+            <div style="font-size:2.5rem; text-align:center; margin-bottom:12px;">
+                ${isWarning ? '⚠️' : '📋'}
+            </div>
+            <h3 style="text-align:center; color:${isWarning ? '#dc2626' : '#0A3D62'}; font-weight:700; font-size:1.2rem; margin-bottom:12px;">
+                ${title}
+            </h3>
+            <p style="text-align:center; color:#475569; font-size:0.95rem; line-height:1.6; margin-bottom:24px;">
+                ${message}
+            </p>
+            <div style="display:flex; gap:12px;">
+                <button
+                    type="button"
+                    id="confirm-cancel-btn"
+                    aria-label="Cancel submission"
+                    style="flex:1; padding:12px; border:2px solid #e2e8f0; border-radius:12px; background:white; color:#64748b; font-weight:600; font-size:0.9rem; cursor:pointer; pointer-events:auto !important; position:relative; z-index:2147483647;"
+                >
                     Cancel
                 </button>
-                <button id="confirm-submit-btn" style="flex: 1; padding: 12px; border: none; border-radius: 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 16px rgba(5,150,105,0.3);">
+                <button
+                    type="button"
+                    id="confirm-submit-btn"
+                    aria-label="Confirm submission"
+                    style="flex:1; padding:12px; border:none; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); color:white; font-weight:700; font-size:0.9rem; cursor:pointer; pointer-events:auto !important; position:relative; z-index:2147483647; box-shadow:0 4px 16px rgba(5,150,105,0.3);"
+                >
                     ✅ Submit
                 </button>
             </div>
         </div>
     `;
+
     document.body.appendChild(modal);
 
-    const confirmBtn = document.getElementById('confirm-submit-btn');
-    const cancelBtn = document.getElementById('confirm-cancel-btn');
+    const confirmBtn = modal.querySelector('#confirm-submit-btn');
+    const cancelBtn = modal.querySelector('#confirm-cancel-btn');
 
-    confirmBtn.addEventListener('click', function() {
-        modal.remove();
-        if (typeof onConfirm === 'function') onConfirm();
+    console.log('🟣 [CONFIRM] Buttons created:', {
+        confirm: !!confirmBtn,
+        cancel: !!cancelBtn,
+        confirmDisabled: confirmBtn ? confirmBtn.disabled : 'missing',
+        cancelDisabled: cancelBtn ? cancelBtn.disabled : 'missing'
     });
 
-    cancelBtn.addEventListener('click', function() {
+    const finish = (confirmed) => {
+        console.log(`🟣 [CONFIRM] ${confirmed ? 'SUBMIT' : 'CANCEL'} BUTTON ACTIVATED`);
+        const callbacks = window.__nchsmSubmitConfirm || {};
         modal.remove();
-        if (typeof onCancel === 'function') onCancel();
-    });
-
-    modal.addEventListener('click', function(e) {
-        if (e.target === modal) {
-            modal.remove();
-            if (typeof onCancel === 'function') onCancel();
+        window.__nchsmSubmitConfirm = null;
+        if (confirmed) {
+            if (typeof callbacks.onConfirm === 'function') callbacks.onConfirm();
+        } else {
+            if (typeof callbacks.onCancel === 'function') callbacks.onCancel();
         }
-    });
+    };
+
+    if (confirmBtn) {
+        confirmBtn.addEventListener('pointerdown', (e) => {
+            console.log('🟢 [CONFIRM] Submit pointerdown');
+            e.stopPropagation();
+        }, true);
+        confirmBtn.addEventListener('click', (e) => {
+            console.log('🟢 [CONFIRM] Submit click');
+            e.preventDefault();
+            e.stopPropagation();
+            finish(true);
+        }, true);
+    }
+
+    if (cancelBtn) {
+        cancelBtn.addEventListener('pointerdown', (e) => {
+            console.log('🟠 [CONFIRM] Cancel pointerdown');
+            e.stopPropagation();
+        }, true);
+        cancelBtn.addEventListener('click', (e) => {
+            console.log('🟠 [CONFIRM] Cancel click');
+            e.preventDefault();
+            e.stopPropagation();
+            finish(false);
+        }, true);
+    }
+
+    // Capture phase fallback. This makes the modal resilient if another
+    // listener on the page tries to intercept the normal bubble phase.
+    const delegatedConfirmHandler = (e) => {
+        const target = e.target && e.target.closest ? e.target.closest('#confirm-submit-btn, #confirm-cancel-btn') : null;
+        if (!target || !document.getElementById('custom-confirm-modal')) return;
+        console.log('🟡 [CONFIRM] Delegated capture handler:', target.id);
+        e.preventDefault();
+        e.stopPropagation();
+        finish(target.id === 'confirm-submit-btn');
+    };
+    modal.__nchsmDelegatedConfirmHandler = delegatedConfirmHandler;
+    document.addEventListener('click', delegatedConfirmHandler, true);
+
+    const cleanupDelegated = () => {
+        document.removeEventListener('click', delegatedConfirmHandler, true);
+    };
+    modal.__nchsmCleanupConfirmHandler = cleanupDelegated;
+
+    // Escape = cancel
+    const keyHandler = (e) => {
+        if (e.key === 'Escape' && document.getElementById('custom-confirm-modal')) {
+            e.preventDefault();
+            e.stopPropagation();
+            finish(false);
+        }
+    };
+    modal.__nchsmKeyHandler = keyHandler;
+    document.addEventListener('keydown', keyHandler, true);
+
+    const originalRemove = modal.remove.bind(modal);
+    modal.remove = function() {
+        cleanupDelegated();
+        document.removeEventListener('keydown', keyHandler, true);
+        originalRemove();
+    };
+
+    if (confirmBtn) confirmBtn.focus();
 }
 
 function proceedWithSubmission() {
@@ -2086,8 +2179,7 @@ async function executeSubmissionWithLoading() {
     AppState.isSubmitting = true;
 
     if (DOM.submitBtn) {
-        DOM.submitBtn.disabled = false;
-        DOM.submitBtn.removeAttribute('disabled');
+        DOM.submitBtn.disabled = true;
         DOM.submitBtn.classList.add('submitting');
     }
     if (DOM.submitText) DOM.submitText.textContent = 'Submitting...';
@@ -3744,7 +3836,6 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
 // EXAM EVENT LISTENERS
 // ============================================================
 function setupExamEventListeners() {
-    forceSubmitButtonEnabled();
     if (DOM.prevBtn) {
         DOM.prevBtn.addEventListener('click', prevQuestion);
     }
@@ -3774,7 +3865,7 @@ function setupExamEventListeners() {
                 showToast('⛔ Exam is paused. Face not detected.', 'warning');
             }
         }
-        if (e.key === 'Enter' && DOM.submitBtn && !AppState.isSubmitting && AppState.isExamActive) {
+        if (e.key === 'Enter' && DOM.submitBtn && !DOM.submitBtn.disabled) {
             submitExam();
             e.preventDefault();
         }
