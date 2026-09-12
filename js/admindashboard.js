@@ -387,8 +387,8 @@ function checkAdminAuth() {
     }
     
     if (!session) { 
-        console.log('❌ No session found, redirecting to adminlogin...');
-        window.location.href = 'adminadminlogin.html'; 
+        console.log('❌ No session found, redirecting to login...');
+        window.location.href = 'login.html'; 
         return false; 
     }
     
@@ -403,7 +403,7 @@ function checkAdminAuth() {
             console.log('❌ Unauthorized role:', role);
             localStorage.removeItem('adminSession');
             localStorage.removeItem('userProfile');
-            window.location.href = 'adminlogin.html';
+            window.location.href = 'login.html';
             return false;
         }
         
@@ -441,7 +441,7 @@ function checkAdminAuth() {
         console.error('❌ Session parse error:', e);
         localStorage.removeItem('adminSession');
         localStorage.removeItem('userProfile');
-        window.location.href = 'adminlogin.html'; 
+        window.location.href = 'login.html'; 
         return false; 
     }
 }
@@ -1798,9 +1798,82 @@ async function authorizeRetakeForStudent(studentId, examId, studentName = 'Stude
     const parsedExamId = parseInt(examId);
     if (!studentId || !parsedExamId) throw new Error('Student and exam are required.');
 
-    const attempt = await getLatestAttempt(studentId, parsedExamId);
+    let attempt = await getLatestAttempt(studentId, parsedExamId);
+
+    // Legacy bridge: older completed exams may exist only in exam_grades and
+    // have not yet been backfilled into exam_attempts. Create Attempt 1 from
+    // the existing completed/sentinel grade instead of blocking retake.
     if (!attempt) {
-        throw new Error('No exam attempt was found for this student. The student must have an existing attempt before a retake can be authorized.');
+        const { data: legacyGradeRows, error: legacyGradeError } = await sb
+            .from('exam_grades')
+            .select('id, student_id, exam_id, question_id, result_status, completed, total_score, percentage, total_marks, graded_at, updated_at, created_at, allow_retake, retake_unlocked')
+            .eq('student_id', studentId)
+            .eq('exam_id', parsedExamId)
+            .order('updated_at', { ascending: false })
+            .limit(200);
+
+        if (legacyGradeError) throw legacyGradeError;
+
+        const sentinel = (legacyGradeRows || []).find(r => r.question_id === ZERO_QUESTION_ID);
+        const anyLegacyGrade = sentinel || (legacyGradeRows || [])[0];
+
+        if (!anyLegacyGrade) {
+            throw new Error('No completed exam record was found for this student and exam. The student must complete the exam before a retake can be authorized.');
+        }
+
+        const legacyCompleted =
+            anyLegacyGrade.completed === true ||
+            ['PASS', 'FAIL', 'RELEASED', 'PENDING_REVIEW', 'PENDING', 'RESET_FOR_RETAKE'].includes(String(anyLegacyGrade.result_status || '').toUpperCase()) ||
+            anyLegacyGrade.total_score !== null && anyLegacyGrade.total_score !== undefined;
+
+        if (!legacyCompleted) {
+            throw new Error('The student has an exam record, but it is not marked as completed. Finish or submit the current attempt before authorizing a retake.');
+        }
+
+        const startedAt = anyLegacyGrade.created_at || anyLegacyGrade.graded_at || new Date().toISOString();
+        const submittedAt = anyLegacyGrade.graded_at || anyLegacyGrade.updated_at || anyLegacyGrade.created_at || null;
+
+        const { data: createdAttempt, error: createAttemptError } = await sb
+            .from('exam_attempts')
+            .insert({
+                student_id: studentId,
+                exam_id: parsedExamId,
+                attempt_number: 1,
+                status: 'COMPLETED',
+                is_retake: false,
+                started_at: startedAt,
+                submitted_at: submittedAt,
+                score: anyLegacyGrade.total_score ?? null,
+                percentage: anyLegacyGrade.percentage ?? null,
+                total_marks: anyLegacyGrade.total_marks ?? null
+            })
+            .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks')
+            .single();
+
+        if (createAttemptError) {
+            // Another admin/session may have created the bridge row concurrently.
+            attempt = await getLatestAttempt(studentId, parsedExamId);
+            if (!attempt) {
+                throw new Error(`Legacy exam result found, but the initial exam attempt could not be created: ${createAttemptError.message}`);
+            }
+        } else {
+            attempt = createdAttempt;
+        }
+
+        // Attach the legacy grade rows to the new Attempt 1 so subsequent
+        // attempt-aware queries can distinguish the historical attempt.
+        if (attempt?.id) {
+            const { error: attachError } = await sb
+                .from('exam_grades')
+                .update({ attempt_id: attempt.id })
+                .eq('student_id', studentId)
+                .eq('exam_id', parsedExamId)
+                .is('attempt_id', null);
+
+            if (attachError) {
+                console.warn('⚠️ Attempt created but legacy grades could not be fully attached:', attachError);
+            }
+        }
     }
 
     if (attempt.status === 'IN_PROGRESS') {
@@ -5403,17 +5476,6 @@ window.displayLiveFeed = function() {
         document.getElementById('liveFeedGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
-   // Prevent the browser/password manager from injecting a saved email into the student-results search box.
-   function clearAutofilledFilterSearch() {
-        const searchInput = document.getElementById('searchInput');
-        if (!searchInput) return;
-
-        const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((searchInput.value || '').trim());
-        if (looksLikeEmail) {
-            searchInput.value = '';
-        }
-   }
-
    function renderFilters() {
     const container = document.getElementById('filtersContainer');
     if (!container) return;
@@ -5439,7 +5501,7 @@ window.displayLiveFeed = function() {
                 <div style="flex: 1; min-width: 200px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
                     <div style="flex: 1; min-width: 140px; position: relative;">
                         <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
-                        <input type="text" id="searchInput" name="student-results-search" autocomplete="new-password" autocapitalize="off" autocorrect="off" spellcheck="false" data-lpignore="true" data-1p-ignore="true" placeholder="🔍 Search by name, ID or exam..." 
+                        <input type="text" id="searchInput" placeholder="🔍 Search by name, ID or exam..." 
                                style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
                                onkeydown="if(event.key==='Enter') loadStudentsWithResults()">
                     </div>
@@ -5452,10 +5514,6 @@ window.displayLiveFeed = function() {
                 </div>
             </div>
         `;
-        // Some browsers/password managers may restore an account email into generic text fields.
-        clearAutofilledFilterSearch();
-        requestAnimationFrame(clearAutofilledFilterSearch);
-        setTimeout(clearAutofilledFilterSearch, 150);
         loadExamDropdown();
     } else if (currentTab === 'allStudents') {
         container.innerHTML = `
