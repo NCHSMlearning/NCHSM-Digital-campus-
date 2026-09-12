@@ -462,18 +462,66 @@ window.logout = function() {
 };
 
     // ============================================
-    // 📋 LOAD EXAM DROPDOWN
+    // 📋 LOAD EXAM DROPDOWN - ALL EXAMS, LATEST FIRST
     // ============================================
     async function loadExamDropdown() {
-        const { data } = await sb.from('exams').select('id,exam_name');
         const select = document.getElementById('examFilter');
-        if (select && data) {
-            data.forEach(e => { 
-                const opt = document.createElement('option');
-                opt.value = e.id;
-                opt.textContent = e.exam_name;
-                select.appendChild(opt); 
+        if (!select) return;
+
+        try {
+            const { data: exams, error } = await sb
+                .from('exams')
+                .select('*');
+
+            if (error) throw error;
+
+            const rows = Array.isArray(exams) ? exams.slice() : [];
+
+            // Always show every exam. Sort newest/current exam first.
+            rows.sort((a, b) => {
+                const getExamSortTime = (exam) => {
+                    const date = String(exam?.exam_date || '').trim();
+                    const time = String(exam?.exam_start_time || '').trim();
+                    if (date) {
+                        const iso = time
+                            ? `${date}T${time.length === 5 ? time + ':00' : time}`
+                            : `${date}T00:00:00`;
+                        const parsed = new Date(iso).getTime();
+                        if (!Number.isNaN(parsed)) return parsed;
+                    }
+
+                    const fallback =
+                        new Date(exam?.updated_at || exam?.created_at || 0).getTime();
+                    if (!Number.isNaN(fallback) && fallback > 0) return fallback;
+
+                    return Number(exam?.id || 0);
+                };
+
+                return getExamSortTime(b) - getExamSortTime(a);
             });
+
+            // Rebuild cleanly so switching tabs / refreshing cannot duplicate options.
+            select.innerHTML = '<option value="">All Exams</option>';
+
+            rows.forEach(exam => {
+                if (exam?.id == null) return;
+
+                const opt = document.createElement('option');
+                opt.value = String(exam.id);
+
+                const type = exam.exam_type ? ` • ${exam.exam_type}` : '';
+                const dateLabel = exam.exam_date
+                    ? ` • ${exam.exam_date}`
+                    : '';
+
+                opt.textContent = `${exam.exam_name || 'Unnamed Exam'}${type}${dateLabel}`;
+                select.appendChild(opt);
+            });
+
+            console.log(`✅ Student Results exam filter loaded: ${rows.length} exams`);
+        } catch (error) {
+            console.error('❌ Failed to load all exams into Student Results filter:', error);
+            select.innerHTML = '<option value="">All Exams</option>';
         }
     }
 
@@ -735,6 +783,50 @@ window.loadStudentsWithResults = async function(options = {}) {
 
         studentsResults = rows;
 
+        // ============================================================
+        // CURRENT EXAM FIRST
+        // Always sort results from the newest/current exam to older
+        // exams. This applies after searching/filtering as well.
+        // ============================================================
+        const getExamDateSortValue = (row) => {
+            const exam = row?.exam_info || examsMap[row?.exam_id] || {};
+            const date = String(exam?.exam_date || '').trim();
+            const time = String(exam?.exam_start_time || '').trim();
+
+            if (date) {
+                const iso = time
+                    ? `${date}T${time.length === 5 ? time + ':00' : time}`
+                    : `${date}T00:00:00`;
+                const parsed = new Date(iso).getTime();
+                if (!Number.isNaN(parsed)) return parsed;
+            }
+
+            const fallback = new Date(
+                exam?.updated_at ||
+                exam?.created_at ||
+                row?.attempt_info?.updated_at ||
+                row?.attempt_info?.started_at ||
+                0
+            ).getTime();
+
+            if (!Number.isNaN(fallback) && fallback > 0) return fallback;
+
+            return Number(row?.exam_id || 0);
+        };
+
+        const sortCurrentExamFirst = (a, b) => {
+            const examTimeDiff = getExamDateSortValue(b) - getExamDateSortValue(a);
+            if (examTimeDiff !== 0) return examTimeDiff;
+
+            // Same exam: keep student/name ordering stable.
+            const nameA = String(a?.student_profile?.full_name || '').toLowerCase();
+            const nameB = String(b?.student_profile?.full_name || '').toLowerCase();
+            return nameA.localeCompare(nameB);
+        };
+
+        rows.sort(sortCurrentExamFirst);
+        studentsResults = rows;
+
         // Filters
         const examFilter = document.getElementById('examFilter')?.value || '';
         const statusFilter = document.getElementById('statusFilter')?.value || '';
@@ -785,6 +877,10 @@ window.loadStudentsWithResults = async function(options = {}) {
                 return [name, sid, examName, email, program].some(v => v.includes(search));
             });
         }
+
+        // Search/filter results must still run from the CURRENT/LATEST exam
+        // down to the OLDEST exam.
+        filtered.sort(sortCurrentExamFirst);
 
         studentsResults = filtered;
         currentPage.students = 1;
@@ -5967,177 +6063,274 @@ window.displayLiveFeed = function() {
     };
 
   window.loadReleasePreview = async function() {
-    const examId = document.getElementById('releaseExamFilter').value;
-    if (!examId) { 
-        document.getElementById('releasePreview').style.display = 'none'; 
-        return; 
-    }
-    
-    document.getElementById('releasePreview').style.display = 'block';
-    selectedStudentIds.clear();
-    
-    const { data: results, error } = await sb
-        .from('exam_grades')
-        .select('id, student_id, marks, total_score, result_status')
-        .eq('exam_id', parseInt(examId))
-        .eq('question_id', '00000000-0000-0000-0000-000000000000');
-    
-    if (error) { 
-        document.getElementById('releasePreviewBody').innerHTML = `<tr><td colspan="8">Error: ${error.message}</td></tr>`; 
-        return; 
-    }
-    
-    if (!results || results.length === 0) { 
-        document.getElementById('releasePreviewBody').innerHTML = '<tr><td colspan="8">No students have taken this exam yet</td></tr>';
-        document.getElementById('releaseSummary').innerHTML = '<strong>No results available</strong>';
-        return; 
-    }
-    
-    const { data: exam } = await sb
-        .from('exams')
-        .select('pass_mark, total_marks, exam_name, exam_type')
-        .eq('id', parseInt(examId))
-        .single();
-    
-    const passMark = exam?.pass_mark || 18;
-    const examName = exam?.exam_name || 'Exam';
-    const examType = exam?.exam_type || 'EXAM';
-    const totalMarks = exam?.total_marks || 30;
-    const isCatExam = examType.toUpperCase().includes('CAT');
-    
-    const { data: released } = await sb
-        .from('released_exam_results')
-        .select('result_id, released_at');
-    
-    const releasedMap = {};
-    released?.forEach(r => {
-        releasedMap[String(r.result_id)] = r.released_at;
-    });
-    
-    const studentIds = results.map(r => r.student_id).filter(id => id);
-    const { data: profiles } = await sb
-        .from('consolidated_user_profiles_table')
-        .select('user_id, full_name, student_id, email')
-        .in('user_id', studentIds);
-    const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-    
-    let html = '';
-    let pendingCount = 0;
-    let releasedCount = 0;
-    
-    results.forEach(r => {
-        const student = profileMap[r.student_id];
-        const isReleased = releasedMap.hasOwnProperty(String(r.id));
-        const releasedAt = isReleased ? releasedMap[String(r.id)] : null;
-        
-        const studentName = (student?.full_name || 'Unknown').replace(/'/g, "\\'");
-        const studentId = r.student_id || '';
-        const studentIdDisplay = student?.student_id || 'N/A';
-        const studentEmail = student?.email || '';
-        
-        const score = parseFloat(r.total_score) || r.marks || 0;
-        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-        const isPassed = score >= passMark;
-        const statusClass = isPassed ? 'status-pass' : 'status-fail';
-        const statusText = isPassed ? 'PASS' : 'FAIL';
-        
-        const safeName = studentName.replace(/'/g, "\\'");
-        const safeExam = examName.replace(/'/g, "\\'");
-        
-        let releasedDisplay = '';
-        let actionButtons = '';
-        let checkboxHtml = '';
-        
-        if (isReleased) {
-            releasedCount++;
-            const releasedTime = releasedAt ? formatKenyaTime(releasedAt) : '';
-            releasedDisplay = `<span class="status-pass">✅ Released<br><small style="font-size:0.6rem;">${releasedTime}</small></span>`;
-            actionButtons = `
-                <button class="action-btn btn-success" onclick="resendReleaseEmail('${studentId}', ${parseInt(examId)}, '${safeName}', '${safeExam}')" 
-                        style="background:#10B981; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
-                        title="Resend email notification">
-                    <i class="fas fa-envelope"></i> Resend
-                </button>
-                <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${safeName}', ${parseInt(examId)})" 
-                        style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
-                        title="View Live Progress">
-                    <i class="fas fa-chart-line"></i>
-                </button>
-            `;
-            checkboxHtml = `<input type="checkbox" disabled style="opacity:0.3;">`;
-        } else {
-            pendingCount++;
-            releasedDisplay = `<span class="status-pending">🔒 Not Released</span>`;
-            checkboxHtml = `<input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${r.student_id}" onchange="updateSelectedCount()" style="margin-right:8px;">`;
-            actionButtons = `
-                <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${safeName}', ${parseInt(examId)})" 
-                        style="background:#8B5CF6; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
-                        title="View Live Progress">
-                    <i class="fas fa-chart-line"></i>
-                </button>
-                <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${safeName}', ${parseInt(examId)}, '${safeExam}')" 
-                        style="background:#F59E0B; color:white; border:none; padding:4px 10px; border-radius:4px; cursor:pointer; font-size:0.65rem;" 
-                        title="Manage Timer">
-                    <i class="fas fa-clock"></i>
-                </button>
-            `;
-        }
-        
-        html += `<tr>
-            <td style="padding:8px;">${checkboxHtml}</td>
-            <td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
-            <td style="padding:8px;"><strong>${studentName}</strong><br><small style="color:#6b7280;">${studentEmail}</small></td>
-            <td style="padding:8px;color:#0A3D62;font-weight:600;cursor:pointer;" onclick="openEditMarksModal('${studentId}', ${parseInt(examId)}, '${safeName}', '${safeExam}')">
-                ${score} ✏️
-            </td>
-            <td style="padding:8px;color:#0A3D62;font-weight:600;cursor:pointer;" onclick="openEditMarksModal('${studentId}', ${parseInt(examId)}, '${safeName}', '${safeExam}')">
-                ${percentage}% ✏️
-            </td>
-            <td style="padding:8px;"><span class="${statusClass}">${statusText}</span></td>
-            <td style="padding:8px;">${releasedDisplay}</td>
-            <td style="padding:8px;">
-                <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
-                    ${actionButtons}
-                </div>
-            </td>
-        </tr>`;
-    });
-    
-    document.getElementById('releasePreviewBody').innerHTML = html;
-    
-    // Update summary
-    let summaryHTML = '';
-    if (pendingCount > 0) {
-        summaryHTML += `<strong>📋 Pending Results: ${pendingCount} student(s) ready for release</strong>`;
-    }
-    if (releasedCount > 0) {
-        if (summaryHTML) summaryHTML += ' | ';
-        summaryHTML += `<strong>✅ Already Released: ${releasedCount} student(s)</strong>`;
-        summaryHTML += ` <span style="font-size:0.7rem; color:#64748B;">(click <strong>Resend</strong> to send email again)</span>`;
-        
-        if (releasedCount > 0) {
-            summaryHTML += ` <button class="btn btn-success" onclick="batchResendReleaseEmails(${parseInt(examId)})" 
-                    style="background:#10B981; color:white; border:none; padding:4px 12px; border-radius:4px; cursor:pointer; font-size:0.7rem; margin-left:8px;">
-                    <i class="fas fa-envelope"></i> Resend All (${releasedCount})
-                </button>`;
-        }
-    }
-    if (!summaryHTML) {
-        summaryHTML = '<strong>No results found</strong>';
-    }
-    document.getElementById('releaseSummary').innerHTML = summaryHTML;
-    
-    // Update the release button
+    const examIdRaw = document.getElementById('releaseExamFilter')?.value;
+    const examId = parseInt(examIdRaw, 10);
+    const preview = document.getElementById('releasePreview');
+    const body = document.getElementById('releasePreviewBody');
+    const summary = document.getElementById('releaseSummary');
     const releaseBtn = document.getElementById('confirmReleaseBtn');
-    if (pendingCount === 0) {
+
+    selectedStudentIds.clear();
+    if (releaseBtn) {
         releaseBtn.disabled = true;
-        releaseBtn.innerHTML = '✅ All Released';
-    } else {
-        releaseBtn.disabled = false;
-        releaseBtn.innerHTML = `<i class="fas fa-share-alt"></i> Release Selected (${pendingCount} pending)`;
+        releaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading current results...';
     }
-    
-    updateSelectedCount();
+
+    if (!examId) {
+        if (preview) preview.style.display = 'none';
+        if (body) body.innerHTML = '';
+        if (summary) summary.innerHTML = '';
+        return;
+    }
+
+    if (preview) preview.style.display = 'block';
+    if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">⏳ Loading current final results...</td></tr>';
+
+    try {
+        // ------------------------------------------------------------
+        // CANONICAL RESULT RULE:
+        // One student + one exam = ONE current result in this modal.
+        // The latest attempt is the canonical attempt. Older sentinel
+        // grade rows are ignored for release purposes.
+        // ------------------------------------------------------------
+        const { data: attempts, error: attemptsError } = await sb
+            .from('exam_attempts')
+            .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+            .eq('exam_id', examId)
+            .order('attempt_number', { ascending: false });
+
+        if (attemptsError) throw attemptsError;
+
+        const latestAttemptMap = new Map();
+        (attempts || []).forEach(a => {
+            const key = String(a.student_id);
+            const existing = latestAttemptMap.get(key);
+            if (!existing ||
+                Number(a.attempt_number || 0) > Number(existing.attempt_number || 0) ||
+                (Number(a.attempt_number || 0) === Number(existing.attempt_number || 0) &&
+                 new Date(a.updated_at || a.submitted_at || a.started_at || 0) > new Date(existing.updated_at || existing.submitted_at || existing.started_at || 0))) {
+                latestAttemptMap.set(key, a);
+            }
+        });
+
+        const { data: grades, error: gradesError } = await sb
+            .from('exam_grades')
+            .select('id, student_id, exam_id, attempt_id, marks, total_score, percentage, result_status, released, released_at, total_marks, updated_at, graded_at')
+            .eq('exam_id', examId)
+            .eq('question_id', ZERO_QUESTION_ID);
+
+        if (gradesError) throw gradesError;
+
+        // Prefer the sentinel grade belonging to the canonical attempt.
+        // For legacy records with no attempt_id, only use them when the
+        // student has no attempt row at all.
+        const gradeByAttempt = new Map();
+        const legacyGradesByStudent = new Map();
+        (grades || []).forEach(g => {
+            if (g.attempt_id) {
+                gradeByAttempt.set(String(g.attempt_id), g);
+            } else {
+                const key = String(g.student_id);
+                const existing = legacyGradesByStudent.get(key);
+                if (!existing || new Date(g.updated_at || g.graded_at || 0) > new Date(existing.updated_at || existing.graded_at || 0)) {
+                    legacyGradesByStudent.set(key, g);
+                }
+            }
+        });
+
+        const currentGrades = [];
+        const seenStudents = new Set();
+
+        // Current attempt first.
+        latestAttemptMap.forEach((attempt, studentId) => {
+            const grade = gradeByAttempt.get(String(attempt.id)) || null;
+            if (grade) {
+                currentGrades.push({ ...grade, attempt_info: attempt });
+            } else if (String(attempt.status || '').toUpperCase() === 'IN_PROGRESS') {
+                // Show in-progress attempts in preview, but do not mark them releasable.
+                currentGrades.push({
+                    id: null,
+                    student_id: attempt.student_id,
+                    exam_id: attempt.exam_id,
+                    attempt_id: attempt.id,
+                    marks: attempt.score ?? null,
+                    total_score: attempt.score ?? null,
+                    percentage: attempt.percentage ?? null,
+                    result_status: 'IN_PROGRESS',
+                    released: false,
+                    released_at: null,
+                    total_marks: attempt.total_marks ?? null,
+                    attempt_info: attempt,
+                    is_attempt_only: true
+                });
+            }
+            seenStudents.add(studentId);
+        });
+
+        // Legacy-only students: no exam_attempts row exists, so preserve the
+        // newest legacy sentinel as the current result instead of duplicating it.
+        legacyGradesByStudent.forEach((grade, studentId) => {
+            if (!seenStudents.has(String(studentId))) {
+                currentGrades.push({ ...grade, attempt_info: null, is_legacy: true });
+            }
+        });
+
+        if (!currentGrades.length) {
+            if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">No current results found for this exam.</td></tr>';
+            if (summary) summary.innerHTML = '<strong>No current results available</strong>';
+            if (releaseBtn) {
+                releaseBtn.disabled = true;
+                releaseBtn.innerHTML = '✅ No Results to Release';
+            }
+            return;
+        }
+
+        const { data: exam, error: examError } = await sb
+            .from('exams')
+            .select('pass_mark, total_marks, exam_name, exam_type')
+            .eq('id', examId)
+            .single();
+        if (examError) throw examError;
+
+        const passMark = Number(exam?.pass_mark ?? Math.round((exam?.total_marks || 100) * 0.6));
+        const examName = exam?.exam_name || 'Exam';
+        const examType = exam?.exam_type || 'EXAM';
+        const totalMarks = Number(exam?.total_marks || 30);
+
+        // Check both the canonical grade flag and release-table record.
+        const currentGradeIds = currentGrades.map(r => r.id).filter(Boolean);
+        let released = [];
+        if (currentGradeIds.length) {
+            const { data, error } = await sb
+                .from('released_exam_results')
+                .select('result_id, released_at')
+                .in('result_id', currentGradeIds);
+            if (error) throw error;
+            released = data || [];
+        }
+        const releasedMap = new Map((released || []).map(r => [String(r.result_id), r.released_at]));
+
+        const studentIds = [...new Set(currentGrades.map(r => r.student_id).filter(Boolean))];
+        let profiles = [];
+        if (studentIds.length) {
+            const { data } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name, student_id, email')
+                .in('user_id', studentIds);
+            profiles = data || [];
+        }
+        const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
+
+        // Deterministic ordering: student name, then student ID.
+        currentGrades.sort((a, b) => {
+            const pa = profileMap[a.student_id] || {};
+            const pb = profileMap[b.student_id] || {};
+            return String(pa.full_name || '').localeCompare(String(pb.full_name || '')) ||
+                   String(pa.student_id || '').localeCompare(String(pb.student_id || ''));
+        });
+
+        let html = '';
+        let pendingCount = 0;
+        let releasedCount = 0;
+        let inProgressCount = 0;
+
+        currentGrades.forEach(r => {
+            const student = profileMap[r.student_id] || {};
+            const attempt = r.attempt_info || null;
+            const status = String(attempt?.status || r.result_status || '').toUpperCase();
+            const isInProgress = status === 'IN_PROGRESS';
+            const releasedAt = r.id ? (r.released_at || releasedMap.get(String(r.id)) || null) : null;
+            const isReleased = !!r.released || !!releasedAt || releasedMap.has(String(r.id));
+
+            const scoreRaw = r.total_score ?? r.marks ?? attempt?.score ?? 0;
+            const score = Number(scoreRaw) || 0;
+            const percentage = Number.isFinite(Number(r.percentage))
+                ? Number(r.percentage).toFixed(1)
+                : (totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0');
+            const isPassed = score >= passMark;
+            const statusText = isInProgress ? 'IN PROGRESS' : (isPassed ? 'PASS' : 'FAIL');
+            const statusClass = isInProgress ? 'status-pending' : (isPassed ? 'status-pass' : 'status-fail');
+
+            const studentNameRaw = student.full_name || 'Unknown';
+            const studentName = studentNameRaw.replace(/'/g, "\\'");
+            const studentId = r.student_id || '';
+            const studentIdDisplay = student.student_id || 'N/A';
+            const studentEmail = student.email || '';
+            const safeExam = examName.replace(/'/g, "\\'");
+
+            let releasedDisplay = '';
+            let actionButtons = '';
+            let checkboxHtml = '';
+
+            if (isInProgress) {
+                inProgressCount++;
+                releasedDisplay = '<span class="status-pending">⏳ Exam In Progress</span>';
+                checkboxHtml = '<input type="checkbox" disabled style="opacity:0.3;">';
+                actionButtons = `
+                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})"
+                        title="View Progress"><i class="fas fa-chart-line"></i></button>
+                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${safeExam}')"
+                        title="Manage Timer"><i class="fas fa-clock"></i></button>`;
+            } else if (isReleased) {
+                releasedCount++;
+                const releasedTime = releasedAt ? formatKenyaTime(releasedAt) : '';
+                releasedDisplay = `<span class="status-pass">✅ Released<br><small style="font-size:0.6rem;">${releasedTime}</small></span>`;
+                checkboxHtml = '<input type="checkbox" disabled style="opacity:0.3;">';
+                actionButtons = `
+                    <button class="action-btn btn-success" onclick="resendReleaseEmail('${studentId}', ${examId}, '${studentName}', '${safeExam}')"
+                        title="Resend email notification"><i class="fas fa-envelope"></i></button>
+                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})"
+                        title="View Progress"><i class="fas fa-chart-line"></i></button>`;
+            } else if (r.id) {
+                pendingCount++;
+                releasedDisplay = '<span class="status-pending">🔒 Not Released</span>';
+                checkboxHtml = `<input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${studentId}" onchange="updateSelectedCount()" style="margin-right:8px;">`;
+                actionButtons = `
+                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})"
+                        title="View Progress"><i class="fas fa-chart-line"></i></button>
+                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${safeExam}')"
+                        title="Manage Timer"><i class="fas fa-clock"></i></button>`;
+            }
+
+            html += `<tr>
+                <td style="padding:8px;">${checkboxHtml}</td>
+                <td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
+                <td style="padding:8px;"><strong>${studentNameRaw}</strong><br><small style="color:#6b7280;">${studentEmail}</small></td>
+                <td style="padding:8px;color:#0A3D62;font-weight:600;">${score} ✏️</td>
+                <td style="padding:8px;color:#0A3D62;font-weight:600;">${percentage}%</td>
+                <td style="padding:8px;"><span class="${statusClass}">${statusText}</span></td>
+                <td style="padding:8px;">${releasedDisplay}</td>
+                <td style="padding:8px;"><div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">${actionButtons}</div></td>
+            </tr>`;
+        });
+
+        if (body) body.innerHTML = html;
+
+        let summaryHTML = '';
+        if (pendingCount > 0) summaryHTML += `<strong>📋 Pending Results: ${pendingCount} student(s) ready for release</strong>`;
+        if (releasedCount > 0) summaryHTML += `${summaryHTML ? ' | ' : ''}<strong>✅ Already Released: ${releasedCount} student(s)</strong>`;
+        if (inProgressCount > 0) summaryHTML += `${summaryHTML ? ' | ' : ''}<strong>⏳ In Progress: ${inProgressCount} student(s)</strong>`;
+        if (!summaryHTML) summaryHTML = '<strong>No current results found</strong>';
+        if (summary) summary.innerHTML = summaryHTML;
+
+        if (releaseBtn) {
+            releaseBtn.disabled = pendingCount === 0;
+            releaseBtn.innerHTML = pendingCount > 0
+                ? `<i class="fas fa-share-alt"></i> Release Selected (${pendingCount} pending)`
+                : '✅ All Current Results Released';
+        }
+
+        // Refresh top counters.
+        updateSelectedCount();
+    } catch (error) {
+        console.error('❌ Release preview error:', error);
+        if (body) body.innerHTML = `<tr><td colspan="8" style="color:#DC2626;text-align:center;padding:30px;">❌ Error: ${error.message}</td></tr>`;
+        if (summary) summary.innerHTML = '<strong>Unable to load current results</strong>';
+        if (releaseBtn) {
+            releaseBtn.disabled = true;
+            releaseBtn.innerHTML = '❌ Unable to Load Results';
+        }
+    }
 };
     window.selectAllStudents = function(select) {
         const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox');
