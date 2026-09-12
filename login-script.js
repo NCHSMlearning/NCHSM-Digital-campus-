@@ -2513,7 +2513,6 @@ executeLogin: async function(identifier, password) {
         }
         
         const roleRedirects = {
-            'superadmin': 'superadmin.html',
             'admin': 'admin.html',
             'student': 'student.html',
             'lecturer': 'lecturer.html'
