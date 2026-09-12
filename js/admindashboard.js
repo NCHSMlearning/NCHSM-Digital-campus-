@@ -388,7 +388,7 @@ function checkAdminAuth() {
     
     if (!session) { 
         console.log('❌ No session found, redirecting to login...');
-        window.location.href = 'adminlogin.html'; 
+        window.location.href = 'login.html'; 
         return false; 
     }
     
@@ -403,7 +403,7 @@ function checkAdminAuth() {
             console.log('❌ Unauthorized role:', role);
             localStorage.removeItem('adminSession');
             localStorage.removeItem('userProfile');
-            window.location.href = 'adminlogin.html';
+            window.location.href = 'login.html';
             return false;
         }
         
@@ -441,7 +441,7 @@ function checkAdminAuth() {
         console.error('❌ Session parse error:', e);
         localStorage.removeItem('adminSession');
         localStorage.removeItem('userProfile');
-        window.location.href = 'adminlogin.html'; 
+        window.location.href = 'login.html'; 
         return false; 
     }
 }
@@ -572,51 +572,105 @@ window.loadStudentsWithResults = async function(options = {}) {
     const silent = options?.silent === true;
     const loadingDiv = document.getElementById('studentsLoading');
     const table = document.getElementById('studentsTable');
+
     if (!silent) {
         if (loadingDiv) {
             loadingDiv.style.display = 'block';
-            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading student results...';
+            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading current student results...';
         }
         if (table) table.style.display = 'none';
     }
 
     try {
         await loadExamsMap();
-        const { data: grades, error: gradesError } = await sb
-            .from('exam_grades')
-            .select('*')
-            .eq('question_id', ZERO_QUESTION_ID);
+
+        // ============================================================
+        // CANONICAL RESULT MODEL
+        // One student + one exam = ONE current row in the Admin table.
+        // The newest/current exam_attempt is the canonical attempt.
+        // Its sentinel exam_grade is the canonical final result.
+        // Older attempts/results are NOT displayed in the main table.
+        // ============================================================
+        const [{ data: attempts, error: attemptsError }, { data: grades, error: gradesError }] = await Promise.all([
+            sb.from('exam_attempts')
+                .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+                .order('updated_at', { ascending: false }),
+            sb.from('exam_grades')
+                .select('*')
+                .eq('question_id', ZERO_QUESTION_ID)
+                .order('updated_at', { ascending: false })
+        ]);
+
+        if (attemptsError) throw attemptsError;
         if (gradesError) throw gradesError;
 
-        const { data: releases } = await sb.from('released_exam_results').select('result_id');
-        const releasedSet = new Set(releases?.map(r => r.result_id) || []);
+        const allAttempts = attempts || [];
+        const allGrades = grades || [];
 
-        // Load attempt history in one query. We keep the latest attempt per student/exam
-        // for the main table, while preserving the attempt id for history/details.
-        let attempts = [];
-        try {
-            const { data, error } = await sb
-                .from('exam_attempts')
-                .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
-                .order('exam_id', { ascending: true })
-                .order('attempt_number', { ascending: false });
-            if (error) throw error;
-            attempts = data || [];
-        } catch (attemptErr) {
-            console.warn('⚠️ exam_attempts unavailable:', attemptErr.message);
-        }
+        // Pick exactly one current attempt for every student/exam pair.
+        // Prefer the newest updated_at/submitted_at, with attempt_number as a
+        // compatibility fallback for older records.
+        const currentAttemptMap = new Map();
+        const isNewerAttempt = (candidate, current) => {
+            if (!current) return true;
+            const cTime = new Date(candidate.updated_at || candidate.submitted_at || candidate.started_at || 0).getTime();
+            const pTime = new Date(current.updated_at || current.submitted_at || current.started_at || 0).getTime();
+            if (cTime !== pTime) return cTime > pTime;
+            return Number(candidate.attempt_number || 1) > Number(current.attempt_number || 1);
+        };
 
-        const latestAttemptMap = new Map();
-        attempts.forEach(a => {
+        allAttempts.forEach(a => {
+            if (!a?.student_id || a?.exam_id == null) return;
             const key = `${a.student_id}__${a.exam_id}`;
-            if (!latestAttemptMap.has(key)) latestAttemptMap.set(key, a);
+            const current = currentAttemptMap.get(key);
+            if (isNewerAttempt(a, current)) currentAttemptMap.set(key, a);
         });
 
-        // Bring in profiles for both legacy grade rows and attempt-only rows (e.g. IN_PROGRESS).
+        // Pick exactly one sentinel grade for every student/exam pair.
+        // Prefer the grade tied to the canonical attempt. If legacy rows have
+        // no attempt_id, select the newest one only when no canonical grade exists.
+        const currentGradeMap = new Map();
+        const attemptGradeMap = new Map();
+        allGrades.forEach(g => {
+            if (g?.attempt_id) {
+                const k = String(g.attempt_id);
+                const existing = attemptGradeMap.get(k);
+                if (!existing || new Date(g.updated_at || g.graded_at || g.created_at || 0) > new Date(existing.updated_at || existing.graded_at || existing.created_at || 0)) {
+                    attemptGradeMap.set(k, g);
+                }
+            }
+        });
+
+        const isNewerGrade = (candidate, current) => {
+            if (!current) return true;
+            return new Date(candidate.updated_at || candidate.graded_at || candidate.created_at || 0) >
+                   new Date(current.updated_at || current.graded_at || current.created_at || 0);
+        };
+
+        allGrades.forEach(g => {
+            if (!g?.student_id || g?.exam_id == null) return;
+            const key = `${g.student_id}__${g.exam_id}`;
+            const canonicalAttempt = currentAttemptMap.get(key);
+
+            // A grade belonging to a known non-current attempt is historical.
+            if (canonicalAttempt?.id && g.attempt_id && String(g.attempt_id) !== String(canonicalAttempt.id)) return;
+
+            const current = currentGradeMap.get(key);
+            if (isNewerGrade(g, current)) currentGradeMap.set(key, g);
+        });
+
+        // Ensure a canonical attempt-linked grade always wins over a legacy row.
+        currentAttemptMap.forEach((attempt, key) => {
+            const attemptGrade = attemptGradeMap.get(String(attempt.id));
+            if (attemptGrade) currentGradeMap.set(key, attemptGrade);
+        });
+
+        // Load profiles for the unique current student/exam rows only.
         const studentIds = [...new Set([
-            ...(grades || []).map(g => g.student_id),
-            ...attempts.map(a => a.student_id)
+            ...[...currentAttemptMap.values()].map(a => a.student_id),
+            ...[...currentGradeMap.values()].map(g => g.student_id)
         ].filter(Boolean))];
+
         let profiles = [];
         if (studentIds.length) {
             const { data, error } = await sb
@@ -628,54 +682,56 @@ window.loadStudentsWithResults = async function(options = {}) {
         }
         const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
 
-        const gradeMap = new Map((grades || []).map(g => [`${g.student_id}__${g.exam_id}`, g]));
-        const rows = [];
+        const releaseIds = [...currentGradeMap.values()].map(g => g?.id).filter(Boolean);
+        let releasedSet = new Set();
+        if (releaseIds.length) {
+            const { data: releases, error: releaseError } = await sb
+                .from('released_exam_results')
+                .select('result_id')
+                .in('result_id', releaseIds);
+            if (!releaseError) releasedSet = new Set((releases || []).map(r => String(r.result_id)));
+        }
 
-        // Latest completed/reviewable grade rows.
-        for (const g of (grades || [])) {
-            const key = `${g.student_id}__${g.exam_id}`;
-            const latest = latestAttemptMap.get(key) || null;
-            // If a newer attempt exists and this legacy grade has no attempt_id, it is the old record.
-            if (latest && !g.attempt_id && latest.attempt_number > 1) continue;
-            if (latest?.id && g.attempt_id && String(g.attempt_id) !== String(latest.id)) continue;
-            const exam = examsMap[g.exam_id] || null;
+        // Build ONLY one row per student/exam.
+        const pairKeys = new Set([
+            ...currentAttemptMap.keys(),
+            ...currentGradeMap.keys()
+        ]);
+
+        const rows = [];
+        for (const key of pairKeys) {
+            const attempt = currentAttemptMap.get(key) || null;
+            const grade = currentGradeMap.get(key) || null;
+            const studentId = attempt?.student_id || grade?.student_id;
+            const examId = attempt?.exam_id ?? grade?.exam_id;
+            if (!studentId || examId == null) continue;
+
+            const exam = examsMap[examId] || null;
+            const score = attempt?.score ?? grade?.marks ?? grade?.total_score ?? null;
+            const totalMarks = attempt?.total_marks ?? grade?.total_marks ?? exam?.total_marks ?? getExamTotalMarks(exam?.exam_type);
+            const percentage = attempt?.percentage ?? grade?.percentage ?? (score != null && totalMarks ? (Number(score) / Number(totalMarks)) * 100 : null);
+            const status = String(attempt?.status || grade?.result_status || '').toUpperCase() || 'PENDING';
+
             rows.push({
-                ...g,
-                attempt_info: latest,
-                attempt_number: latest?.attempt_number || 1,
-                student_profile: profileMap[g.student_id] || null,
-                isReleased: releasedSet.has(g.id),
+                ...(grade || {}),
+                id: grade?.id || `attempt-${attempt?.id}`,
+                student_id: studentId,
+                exam_id: Number(examId),
+                question_id: ZERO_QUESTION_ID,
+                marks: score,
+                total_score: score,
+                total_marks: totalMarks,
+                percentage,
+                result_status: grade?.result_status || (status === 'IN_PROGRESS' ? 'IN_PROGRESS' : null),
+                completed: grade?.completed ?? ['SUBMITTED','PENDING_REVIEW','PASSED','FAILED'].includes(status),
+                attempt_id: attempt?.id || grade?.attempt_id || null,
+                attempt_info: attempt,
+                attempt_number: attempt?.attempt_number || 1,
+                student_profile: profileMap[studentId] || null,
+                isReleased: !!grade?.released || releasedSet.has(String(grade?.id)),
                 exam_info: exam ? { ...exam, status: exam.status || 'published' } : null
             });
         }
-
-        // Add attempt-only rows so IN_PROGRESS attempts are visible to administrators.
-        attempts.forEach(a => {
-            const key = `${a.student_id}__${a.exam_id}`;
-            const latest = latestAttemptMap.get(key);
-            if (!latest || latest.id !== a.id) return;
-            const hasGradeRow = gradeMap.has(key);
-            if (hasGradeRow) return;
-            const exam = examsMap[a.exam_id] || null;
-            rows.push({
-                id: `attempt-${a.id}`,
-                student_id: a.student_id,
-                exam_id: a.exam_id,
-                question_id: ZERO_QUESTION_ID,
-                marks: a.score ?? null,
-                total_score: a.score ?? null,
-                percentage: a.percentage ?? null,
-                total_marks: a.total_marks ?? exam?.total_marks ?? 100,
-                result_status: a.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : null,
-                completed: a.status === 'COMPLETED',
-                attempt_id: a.id,
-                attempt_info: a,
-                attempt_number: a.attempt_number || 1,
-                student_profile: profileMap[a.student_id] || null,
-                isReleased: false,
-                exam_info: exam ? { ...exam, status: exam.status || 'published' } : null
-            });
-        });
 
         studentsResults = rows;
 
@@ -692,16 +748,18 @@ window.loadStudentsWithResults = async function(options = {}) {
 
         if (statusFilter) {
             filtered = filtered.filter(r => {
-                if (statusFilter === 'IN_PROGRESS') return String(r.attempt_info?.status || r.result_status || '').toUpperCase() === 'IN_PROGRESS';
-                if (statusFilter === 'RESET_FOR_RETAKE') return r.result_status === 'RESET_FOR_RETAKE' && r.allow_retake === true && r.retake_unlocked === true;
-                if (statusFilter === 'PENDING') return ['PENDING','PENDING_REVIEW'].includes(String(r.result_status || '').toUpperCase()) || !r.isReleased;
+                const attemptStatus = String(r.attempt_info?.status || '').toUpperCase();
+                const resultStatus = String(r.result_status || '').toUpperCase();
+                if (statusFilter === 'IN_PROGRESS') return attemptStatus === 'IN_PROGRESS' || resultStatus === 'IN_PROGRESS';
+                if (statusFilter === 'RESET_FOR_RETAKE') return resultStatus === 'RESET_FOR_RETAKE' && r.allow_retake === true && r.retake_unlocked === true;
+                if (statusFilter === 'PENDING') return ['PENDING','PENDING_REVIEW'].includes(resultStatus) || !r.isReleased;
                 if (r.isReleased) {
-                    const totalMarks = r.exam_info?.total_marks || 100;
-                    const score = parseFloat(r.marks ?? r.total_score ?? 0) || 0;
-                    const passMark = r.exam_info?.pass_mark || Math.round(totalMarks * 0.6);
-                    return (score >= passMark ? 'PASS' : 'FAIL') === statusFilter;
+                    const total = Number(r.total_marks || r.exam_info?.total_marks || 100);
+                    const score = Number(r.marks ?? r.total_score ?? 0);
+                    const pass = Number(r.exam_info?.pass_mark || Math.round(total * 0.6));
+                    return (score >= pass ? 'PASS' : 'FAIL') === statusFilter;
                 }
-                return String(r.result_status || '').toUpperCase() === statusFilter;
+                return resultStatus === statusFilter;
             });
         }
 
@@ -732,13 +790,12 @@ window.loadStudentsWithResults = async function(options = {}) {
         currentPage.students = 1;
 
         const countEl = document.getElementById('filteredCount');
-        if (countEl) countEl.textContent = `${filtered.length} result${filtered.length === 1 ? '' : 's'}`;
+        if (countEl) countEl.textContent = `${filtered.length} current result${filtered.length === 1 ? '' : 's'}`;
         const updatedEl = document.getElementById('studentsLastUpdated');
-        if (updatedEl) updatedEl.innerHTML = `<i class="fas fa-clock"></i> Last synced: ${formatKenyaTime(new Date())} <span style="color:#94A3B8;">• auto refresh 30s</span>`;
+        if (updatedEl) updatedEl.innerHTML = `<i class="fas fa-clock"></i> Last synced: ${formatKenyaTime(new Date())} <span style="color:#94A3B8;">• current result per student/exam</span>`;
 
         displayStudentsResults();
         if (!silent && loadingDiv) loadingDiv.style.display = 'none';
-        if (!silent && table) table.style.display = 'table';
         if (table) table.style.display = 'table';
         updateStats();
     } catch (err) {
@@ -775,11 +832,13 @@ window.loadStudentsWithResults = async function(options = {}) {
         const typeLabel = exam.exam_type?.includes('CAT') ? 'CAT' : 'Exam';
         const typeBadgeClass = exam.exam_type?.includes('CAT') ? 'badge-cat' : 'badge-exam';
         
-        const totalMarks = exam.total_marks || 100;
-        const passMark = exam.pass_mark || Math.round(totalMarks * 0.6);
-        const score = parseFloat(r.marks) || 0;
-        const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
-        const percentNum = parseFloat(percentage);
+        const totalMarks = Number(r.total_marks ?? exam.total_marks ?? 100);
+        const passMark = Number(exam.pass_mark ?? Math.round(totalMarks * 0.6));
+        const score = r.marks == null ? null : Number(r.marks);
+        const percentage = r.percentage == null
+            ? (score != null && totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '--')
+            : Number(r.percentage).toFixed(1);
+        const percentNum = percentage === '--' ? null : Number(percentage);
         
         const examStatus = exam.status || 'published';
         const isPendingReview = examStatus === 'pending_review';
@@ -798,7 +857,7 @@ window.loadStudentsWithResults = async function(options = {}) {
             displayStatus = 'PENDING';
             statusClass = 'status-pending';
         } else if (isReleased) {
-            if (percentNum >= passMark) {
+            if (percentNum != null && score != null && score >= passMark) {
                 displayStatus = 'PASS';
                 statusClass = 'status-pass';
             } else {
@@ -876,10 +935,10 @@ window.loadStudentsWithResults = async function(options = {}) {
                     <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${safeName}', ${examId}, '${safeExam}')" title="Manage Timer">
                         <i class="fas fa-clock"></i> Timer
                     </button>
-                    <button class="action-btn btn-info exam-attempt-history-btn" onclick="viewAttemptHistory('${studentUserId}', ${examId})" title="View all attempts">
-                        <i class="fas fa-history"></i> History
+                    <button class="action-btn btn-info exam-attempt-history-btn" onclick="viewAttemptHistory('${studentUserId}', ${examId})" title="View current final result">
+                        <i class="fas fa-history"></i> Current
                     </button>
-                    <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')" title="Authorize a fresh retake">
+                    <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')" title="Reset exam and continue from saved progress">
                         <i class="fas fa-redo"></i> Retake
                     </button>
                 </div>
@@ -1812,7 +1871,7 @@ async function authorizeRetakeForStudent(studentId, examId, studentName = 'Stude
 
     // IMPORTANT: The browser must NOT insert into exam_attempts directly.
     // exam_attempts is RLS-protected. The SECURITY DEFINER RPC performs the
-    // legacy Attempt #1 bridge (when needed) and authorizes the retake atomically.
+    // The SECURITY DEFINER RPC authorizes continuation on the existing attempt atomically.
     const { data, error } = await sb.rpc('admin_authorize_exam_retake', {
         p_student_id: studentId,
         p_exam_id: parsedExamId
@@ -1836,7 +1895,7 @@ async function authorizeRetakeForStudent(studentId, examId, studentName = 'Stude
     }
 
     console.log(
-        `✅ Retake authorized for ${studentName}. Previous attempt #${attempt.attempt_number} preserved.`
+        `✅ Continuation reset authorized for ${studentName}. Same attempt #${attempt.attempt_number} will resume.`
     );
 
     return attempt;
@@ -1844,19 +1903,19 @@ async function authorizeRetakeForStudent(studentId, examId, studentName = 'Stude
 
 window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
     const confirmMsg =
-        `AUTHORIZE RETAKE\n\n` +
+        `RESET / CONTINUE EXAM\n\n` +
         `Student: ${studentName}\n` +
         `Exam: ${examName}\n\n` +
-        `The previous attempt will NOT be overwritten or deleted.\n` +
-        `A new attempt will be created when the student starts the retake.\n\n` +
-        `Authorize one fresh retake?`;
+        `The SAME current attempt will be reopened.\n` +
+        `Saved answers, attempt ID and progress are retained. No new student result is created.\n\n` +
+        `Allow the student to continue from where they stopped?`;
 
     if (!confirm(confirmMsg)) return;
 
     const buttons = document.querySelectorAll(`button[onclick*="resetSingleStudent('${studentId}'"]`);
     let targetBtn = null;
     buttons.forEach(btn => {
-        if (btn.textContent.includes('Retake') || btn.textContent.includes('Reset')) targetBtn = btn;
+        if (btn.textContent.includes('Retake') || btn.textContent.includes('Reset') || btn.textContent.includes('Continue')) targetBtn = btn;
     });
 
     if (targetBtn) {
@@ -1866,7 +1925,7 @@ window.resetSingleStudent = async function(studentId, examId, studentName, examN
 
     try {
         const attempt = await authorizeRetakeForStudent(studentId, examId, studentName, 'Student Results');
-        showToast(`✅ ${studentName} is authorized for Retake #${(attempt.attempt_number || 0) + 1}.`, 'success');
+        showToast(`✅ ${studentName} can continue the same exam attempt from the saved progress.`, 'success');
         await loadStudentsWithResults();
         await loadAllExams();
         await loadAllStudents();
@@ -1876,7 +1935,7 @@ window.resetSingleStudent = async function(studentId, examId, studentName, examN
         showToast('❌ ' + err.message, 'error');
     } finally {
         if (targetBtn) {
-            targetBtn.innerHTML = '<i class="fas fa-redo"></i> Retake';
+            targetBtn.innerHTML = '<i class="fas fa-rotate-right"></i> Continue Reset';
             targetBtn.disabled = false;
         }
     }
@@ -2101,52 +2160,62 @@ window.viewExamResult = async function(sid, eid) {
     document.getElementById('studentModal').style.display = 'flex';
     
     try {
-        // Fetch all data in parallel
-        const [gradeResult, examResult, profileResult] = await Promise.all([
-            sb
-                .from('exam_grades')
-                .select('*')
+        // Resolve the single current/canonical attempt first. Never use a
+        // student+exam maybeSingle() across historical sentinel rows because
+        // continuation resets keep the same attempt_id/result record current.
+        const [attemptResult, examResult, profileResult] = await Promise.all([
+            sb.from('exam_attempts')
+                .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
                 .eq('student_id', sid)
-                .eq('exam_id', eid)
-                .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                .eq('exam_id', parseInt(eid))
+                .order('updated_at', { ascending: false })
+                .limit(1)
                 .maybeSingle(),
             sb.from('exams').select('*').eq('id', eid).single(),
-            sb
-                .from('consolidated_user_profiles_table')
+            sb.from('consolidated_user_profiles_table')
                 .select('*')
                 .eq('user_id', sid)
                 .maybeSingle()
         ]);
-        
-        let grade = gradeResult.data;
+
+        if (attemptResult.error) throw attemptResult.error;
+
+        const latestAttempt = attemptResult.data || null;
         const exam = examResult.data;
         const profile = profileResult.data;
+        let grade = null;
 
-        // Prefer the latest completed/in-progress attempt and its attempt-specific grade.
-        try {
-            const { data: latestAttempt } = await sb
-                .from('exam_attempts')
-                .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks')
+        if (latestAttempt?.id) {
+            const { data: attemptGrade, error: attemptGradeError } = await sb
+                .from('exam_grades')
+                .select('*')
                 .eq('student_id', sid)
                 .eq('exam_id', parseInt(eid))
-                .order('attempt_number', { ascending: false })
+                .eq('question_id', ZERO_QUESTION_ID)
+                .eq('attempt_id', latestAttempt.id)
+                .order('updated_at', { ascending: false })
                 .limit(1)
                 .maybeSingle();
-            if (latestAttempt?.id) {
-                const { data: attemptGrade } = await sb
-                    .from('exam_grades')
-                    .select('*')
-                    .eq('student_id', sid)
-                    .eq('exam_id', parseInt(eid))
-                    .eq('question_id', ZERO_QUESTION_ID)
-                    .eq('attempt_id', latestAttempt.id)
-                    .maybeSingle();
-                if (attemptGrade) grade = attemptGrade;
-                grade = { ...(grade || {}), ...(latestAttempt || {}), ...(attemptGrade || {}), attempt_info: latestAttempt, attempt_number: latestAttempt.attempt_number };
-            }
-        } catch (attemptViewError) {
-            console.warn('⚠️ Could not resolve attempt-specific result:', attemptViewError.message);
+            if (attemptGradeError) throw attemptGradeError;
+            grade = attemptGrade || null;
         }
+
+        // Legacy fallback only when no attempt exists at all.
+        if (!latestAttempt) {
+            const { data: legacyGrade, error: legacyGradeError } = await sb
+                .from('exam_grades')
+                .select('*')
+                .eq('student_id', sid)
+                .eq('exam_id', parseInt(eid))
+                .eq('question_id', ZERO_QUESTION_ID)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (legacyGradeError) throw legacyGradeError;
+            grade = legacyGrade || null;
+        }
+
+        grade = { ...(grade || {}), ...(latestAttempt || {}), attempt_info: latestAttempt, attempt_number: latestAttempt?.attempt_number || grade?.attempt_number || 1 };
         
         // Calculate values with fallbacks
         const totalMarks = exam?.total_marks || getExamTotalMarks(exam?.exam_type) || 100;
@@ -2316,87 +2385,118 @@ window.viewExamResult = async function(sid, eid) {
 // 📤 RELEASE SINGLE RESULT - UPDATED
 // ============================================
 async function releaseSingleResult(studentId, examId) {
-    if (!confirm('📤 Release this result for the student?\n\nThis will:\n✅ Release the result to the student\n✅ Send an email notification\n✅ Update the status to released')) return;
-    
+    if (!confirm('📤 Release this current final result for the student?\n\nOnly the current canonical result for this student/exam will be released.')) return;
+
     const confirmBtn = document.querySelector(`button[onclick*="releaseSingleResult('${studentId}', ${examId})"]`);
     if (confirmBtn) {
         confirmBtn.disabled = true;
         confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Releasing...';
     }
-    
+
     try {
-        // Get the grade record
-        const { data: grade, error: gradeError } = await sb
-            .from('exam_grades')
-            .select('id, student_id, exam_id, marks, total_score, result_status')
+        // Resolve the current attempt first, then its ONE sentinel result.
+        const { data: attempt, error: attemptError } = await sb
+            .from('exam_attempts')
+            .select('id, score, percentage, total_marks, status')
             .eq('student_id', studentId)
             .eq('exam_id', parseInt(examId))
-            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .order('updated_at', { ascending: false })
+            .limit(1)
             .maybeSingle();
-        
-        if (gradeError) throw gradeError;
-        
+        if (attemptError) throw attemptError;
+
+        let grade = null;
+        if (attempt?.id) {
+            const { data, error } = await sb
+                .from('exam_grades')
+                .select('id, student_id, exam_id, attempt_id, marks, total_score, percentage, result_status, released, released_at, total_marks')
+                .eq('student_id', studentId)
+                .eq('exam_id', parseInt(examId))
+                .eq('question_id', ZERO_QUESTION_ID)
+                .eq('attempt_id', attempt.id)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (error) throw error;
+            grade = data;
+        }
+
+        if (!grade && !attempt) {
+            const { data, error } = await sb
+                .from('exam_grades')
+                .select('id, student_id, exam_id, attempt_id, marks, total_score, percentage, result_status, released, released_at, total_marks')
+                .eq('student_id', studentId)
+                .eq('exam_id', parseInt(examId))
+                .eq('question_id', ZERO_QUESTION_ID)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (error) throw error;
+            grade = data;
+        }
+
         if (!grade) {
-            showToast('❌ Grade record not found for this student', 'error');
+            showToast('❌ Current result record not found.', 'error');
             return;
         }
-        
-        // Check if already released
-        const { data: existingRelease } = await sb
+
+        const releasedAt = new Date().toISOString();
+        const currentScore = Number(attempt?.score ?? grade.marks ?? grade.total_score ?? 0);
+        const currentTotal = Number(attempt?.total_marks ?? grade.total_marks ?? 100);
+        const currentPct = Number(attempt?.percentage ?? grade.percentage ?? (currentTotal ? (currentScore / currentTotal) * 100 : 0));
+        const resultStatus = String(grade.result_status || (currentPct >= 60 ? 'PASS' : 'FAIL')).toUpperCase();
+
+        // Keep the canonical result row updated with the current final score.
+        const { error: updateError } = await sb
+            .from('exam_grades')
+            .update({
+                marks: currentScore,
+                total_score: currentScore,
+                total_marks: currentTotal,
+                percentage: currentPct,
+                released: true,
+                released_at: releasedAt,
+                result_status: resultStatus,
+                published: true
+            })
+            .eq('id', grade.id);
+        if (updateError) throw updateError;
+
+        // Reuse the same release record when it already exists; otherwise create it.
+        const { data: existingRelease, error: releaseLookupError } = await sb
             .from('released_exam_results')
             .select('result_id')
             .eq('result_id', grade.id)
+            .limit(1)
             .maybeSingle();
-        
-        if (existingRelease) {
-            showToast('⚠️ This result has already been released', 'warning');
-            return;
+        if (releaseLookupError) throw releaseLookupError;
+
+        if (!existingRelease) {
+            const { error: releaseInsertError } = await sb
+                .from('released_exam_results')
+                .insert({
+                    result_id: grade.id,
+                    student_id: studentId,
+                    exam_id: parseInt(examId),
+                    released_at: releasedAt
+                });
+            if (releaseInsertError) throw releaseInsertError;
         }
-        
-        // Insert into released_exam_results
-        const { error: releaseError } = await sb
-            .from('released_exam_results')
-            .insert({
-                result_id: grade.id,
-                student_id: studentId,
-                exam_id: parseInt(examId),
-                released_at: new Date().toISOString()
-            });
-        
-        if (releaseError) throw releaseError;
-        
-        // Update the grade record
-        const { error: updateError } = await sb
-            .from('exam_grades')
-            .update({ 
-                released: true, 
-                released_at: new Date().toISOString(),
-                result_status: grade.result_status || (grade.marks >= 60 ? 'PASS' : 'FAIL')
-            })
-            .eq('id', grade.id);
-        
-        if (updateError) throw updateError;
-        
-        // Log the release
-        await sb
-            .from('exam_proctoring_logs')
-            .insert({
-                student_id: studentId,
-                exam_id: parseInt(examId),
-                event_type: 'result_released_single',
-                details: `Admin released result for student`,
-                severity: 'info',
-                timestamp: new Date().toISOString()
-            });
-        
-        showToast('✅ Result released successfully!', 'success');
-        
-        // Refresh data
+
+        await sb.from('exam_proctoring_logs').insert({
+            student_id: studentId,
+            exam_id: parseInt(examId),
+            event_type: 'result_released_single',
+            details: `Current final result released: ${currentScore}/${currentTotal} (${currentPct.toFixed(1)}%)`,
+            severity: 'info',
+            timestamp: releasedAt
+        });
+
+        showToast(`✅ Current final result released: ${currentScore}/${currentTotal} (${currentPct.toFixed(1)}%)`, 'success');
+        await loadStudentsWithResults();
         await viewExamResult(studentId, examId);
-        loadStudentsWithResults();
-        loadAllExams();
+        if (typeof loadAllExams === 'function') await loadAllExams();
         updateStats();
-        
     } catch (error) {
         console.error('Release error:', error);
         showToast('❌ Error: ' + error.message, 'error');
@@ -2774,80 +2874,83 @@ window.viewStudentProfile = async function(pid) {
     // 🕘 VIEW ATTEMPT HISTORY
     // ============================================
     window.viewAttemptHistory = async function(studentId, examId) {
-        try {
-            const modalTitle = document.getElementById('modalTitle');
-            const modalContent = document.getElementById('modalContent');
-            modalTitle.innerHTML = '<i class="fas fa-history"></i> Attempt History';
-            modalContent.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading attempt history...</div>';
-            document.getElementById('studentModal').style.display = 'flex';
+    try {
+        const modalTitle = document.getElementById('modalTitle');
+        const modalContent = document.getElementById('modalContent');
+        modalTitle.innerHTML = '<i class="fas fa-history"></i> Current Exam Result';
+        modalContent.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading current result...</div>';
+        document.getElementById('studentModal').style.display = 'flex';
 
-            const [{ data: attempts, error: attemptError }, { data: profile }] = await Promise.all([
-                sb.from('exam_attempts')
-                    .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
-                    .eq('student_id', studentId)
-                    .eq('exam_id', parseInt(examId))
-                    .order('attempt_number', { ascending: false }),
-                sb.from('consolidated_user_profiles_table')
-                    .select('full_name, student_id, email, program')
-                    .eq('user_id', studentId)
-                    .maybeSingle()
-            ]);
-            if (attemptError) throw attemptError;
+        const [{ data: attempt, error: attemptError }, { data: profile }, { data: exam }] = await Promise.all([
+            sb.from('exam_attempts')
+                .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+                .eq('student_id', studentId)
+                .eq('exam_id', parseInt(examId))
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle(),
+            sb.from('consolidated_user_profiles_table')
+                .select('full_name, student_id, email, program')
+                .eq('user_id', studentId)
+                .maybeSingle(),
+            sb.from('exams').select('exam_name, total_marks, pass_mark').eq('id', parseInt(examId)).maybeSingle()
+        ]);
+        if (attemptError) throw attemptError;
 
-            const { data: grades } = await sb
-                .from('exam_grades')
+        let grade = null;
+        if (attempt?.id) {
+            const { data, error } = await sb.from('exam_grades')
                 .select('attempt_id, result_status, released, released_at, marks, total_score, percentage, updated_at, graded_at')
                 .eq('student_id', studentId)
                 .eq('exam_id', parseInt(examId))
-                .eq('question_id', ZERO_QUESTION_ID);
-            const gradeMap = new Map((grades || []).filter(g => g.attempt_id).map(g => [String(g.attempt_id), g]));
-
-            const { data: exam } = await sb.from('exams').select('exam_name, total_marks').eq('id', parseInt(examId)).maybeSingle();
-
-            if (!attempts || attempts.length === 0) {
-                modalContent.innerHTML = `<div style="padding:30px;text-align:center;color:#64748B;">No attempt history found for this student.</div>`;
-                return;
-            }
-
-            const latest = attempts[0];
-            const studentLabel = profile?.full_name || 'Student';
-            const html = `
-                <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);color:white;padding:18px;border-radius:14px;margin-bottom:16px;">
-                    <div style="font-size:18px;font-weight:800;">${studentLabel}</div>
-                    <div style="font-size:12px;opacity:.85;margin-top:3px;">${exam?.exam_name || 'Exam ' + examId} · ${attempts.length} attempt${attempts.length === 1 ? '' : 's'}</div>
-                </div>
-                <div style="display:flex;flex-direction:column;gap:10px;">
-                    ${attempts.map(a => {
-                        const g = gradeMap.get(String(a.id));
-                        const score = a.score ?? g?.total_score ?? g?.marks ?? null;
-                        const pct = a.percentage ?? g?.percentage ?? null;
-                        const status = String(a.status || g?.result_status || 'UNKNOWN').toUpperCase();
-                        const isCurrent = a.id === latest.id;
-                        const retake = !!a.is_retake || Number(a.attempt_number) > 1;
-                        const statusColor = status === 'IN_PROGRESS' ? '#059669' : status === 'COMPLETED' ? '#2563EB' : status === 'RESET_FOR_RETAKE' ? '#7C3AED' : '#64748B';
-                        return `
-                            <div style="border:1px solid #E2E8F0;border-radius:12px;padding:14px;background:${isCurrent ? '#F8FBFF' : '#FFFFFF'};box-shadow:0 1px 4px rgba(0,0,0,.03);">
-                                <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
-                                    <div>
-                                        <div style="font-weight:800;color:#0F172A;">Attempt #${a.attempt_number || 1} ${retake ? '<span style="background:#EDE9FE;color:#6D28D9;padding:3px 8px;border-radius:999px;font-size:10px;">RETAKE</span>' : '<span style="background:#F1F5F9;color:#475569;padding:3px 8px;border-radius:999px;font-size:10px;">ORIGINAL</span>'}</div>
-                                        <div style="font-size:11px;color:#64748B;margin-top:4px;">Started: ${formatKenyaDateTime(a.started_at)} · Submitted: ${formatKenyaDateTime(a.submitted_at)}</div>
-                                    </div>
-                                    <span style="background:${statusColor}1A;color:${statusColor};padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800;">${status.replaceAll('_',' ')}</span>
-                                </div>
-                                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;">
-                                    <div style="background:#F8FAFC;padding:9px;border-radius:8px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#0A3D62;">${score ?? '--'}</div><div style="font-size:9px;color:#94A3B8;">SCORE</div></div>
-                                    <div style="background:#F8FAFC;padding:9px;border-radius:8px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#2563EB;">${pct != null ? Number(pct).toFixed(1) + '%' : '--'}</div><div style="font-size:9px;color:#94A3B8;">PERCENT</div></div>
-                                    <div style="background:#F8FAFC;padding:9px;border-radius:8px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#059669;">${g?.released || g?.released_at ? 'Released' : 'Not Released'}</div><div style="font-size:9px;color:#94A3B8;">RESULT</div></div>
-                                </div>
-                            </div>`;
-                    }).join('')}
-                </div>
-            `;
-            modalContent.innerHTML = html;
-        } catch (error) {
-            showToast('Error loading attempt history: ' + error.message, 'error');
+                .eq('question_id', ZERO_QUESTION_ID)
+                .eq('attempt_id', attempt.id)
+                .order('updated_at', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (error) throw error;
+            grade = data;
         }
-    };
+
+        if (!attempt && !grade) {
+            modalContent.innerHTML = `<div style="padding:30px;text-align:center;color:#64748B;">No current result found for this student.</div>`;
+            return;
+        }
+
+        const score = Number(attempt?.score ?? grade?.marks ?? grade?.total_score ?? 0);
+        const total = Number(attempt?.total_marks ?? grade?.total_marks ?? exam?.total_marks ?? 100);
+        const pct = Number(attempt?.percentage ?? grade?.percentage ?? (total ? (score / total) * 100 : 0));
+        const status = String(attempt?.status || grade?.result_status || 'PENDING').toUpperCase();
+        const released = !!grade?.released || !!grade?.released_at;
+        const passMark = Number(exam?.pass_mark || Math.round(total * 0.6));
+        const passFail = score >= passMark ? 'PASS' : 'FAIL';
+
+        modalContent.innerHTML = `
+            <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);color:white;padding:18px;border-radius:14px;margin-bottom:16px;">
+                <div style="font-size:18px;font-weight:800;">${profile?.full_name || 'Student'}</div>
+                <div style="font-size:12px;opacity:.85;margin-top:3px;">${exam?.exam_name || 'Exam ' + examId} · Current final record only</div>
+            </div>
+            <div style="border:1px solid #E2E8F0;border-radius:14px;padding:18px;background:#fff;">
+                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;">
+                    <div style="background:#F8FAFC;padding:12px;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#0A3D62;">${score}</div><div style="font-size:10px;color:#94A3B8;">CURRENT SCORE / ${total}</div></div>
+                    <div style="background:#F8FAFC;padding:12px;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:#2563EB;">${pct.toFixed(1)}%</div><div style="font-size:10px;color:#94A3B8;">CURRENT PERCENTAGE</div></div>
+                    <div style="background:#F8FAFC;padding:12px;border-radius:10px;text-align:center;"><div style="font-size:20px;font-weight:800;color:${released ? '#059669' : '#D97706'};">${released ? passFail : 'NOT RELEASED'}</div><div style="font-size:10px;color:#94A3B8;">FINAL STATUS</div></div>
+                </div>
+                <div style="margin-top:14px;font-size:12px;color:#64748B;">
+                    <strong>Current attempt:</strong> #${attempt?.attempt_number || grade?.attempt_number || 1}
+                    ${attempt?.is_retake ? ' · continuation/reset' : ''}
+                    · <strong>Submission:</strong> ${formatKenyaDateTime(attempt?.submitted_at)}
+                    · <strong>Result:</strong> ${status.replaceAll('_',' ')}
+                    · <strong>Release:</strong> ${released ? 'Released' : 'Not released'}
+                </div>
+                <div style="margin-top:14px;padding:10px 12px;background:#EFF6FF;border-left:4px solid #2563EB;border-radius:8px;color:#1E3A8A;font-size:12px;">
+                    Only this current final score is shown here. Earlier continuation attempts are not displayed as separate student results.
+                </div>
+            </div>`;
+    } catch (error) {
+        showToast('Error loading current result: ' + error.message, 'error');
+    }
+};;
 
     // ============================================
     // 📝 VIEW VIOLATIONS
@@ -7005,7 +7108,7 @@ window.batchResendReleaseEmails = async function(examId) {
     if (!confirm(
         `AUTHORIZE RETAKES FOR THIS EXAM\n\n` +
         `Exam: "${examName}"\n\n` +
-        `This will authorize a fresh retake for students who already have a completed attempt.\n` +
+        `This will reopen the SAME current attempt so students can continue from saved progress. No new final result row will be created.\n` +
         `• Previous attempts remain preserved\n` +
         `• Previous answers/results are not deleted\n` +
         `• Each student gets a new attempt number\n` +
@@ -7061,7 +7164,7 @@ window.batchResendReleaseEmails = async function(examId) {
             });
         } catch (e) { console.warn('Bulk log failed:', e); }
 
-        alert(`Retake authorization complete.\n\nAuthorized: ${authorized}\nIn progress (skipped): ${skippedInProgress}\nUnavailable/skipped: ${skippedNoResult}\n\nPrevious attempts were preserved.`);
+        alert(`Retake authorization complete.\n\nAuthorized: ${authorized}\nIn progress (skipped): ${skippedInProgress}\nUnavailable/skipped: ${skippedNoResult}\n\nThe current attempt and existing saved answers are retained.`);
         closeResetModal();
         await loadAllExams();
         await loadStudentsWithResults();
