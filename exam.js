@@ -1959,167 +1959,61 @@ function submitExam() {
 }
 
 function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
-    console.log('🟣 [CONFIRM] Opening submission confirmation modal');
-
     const existingModal = document.getElementById('custom-confirm-modal');
     if (existingModal) existingModal.remove();
 
-    // Store callbacks globally so inline/capture handlers cannot be lost
-    // because of event-listener/stacking-context issues.
-    window.__nchsmSubmitConfirm = {
-        onConfirm: typeof onConfirm === 'function' ? onConfirm : null,
-        onCancel: typeof onCancel === 'function' ? onCancel : null
-    };
-
     const modal = document.createElement('div');
     modal.id = 'custom-confirm-modal';
-    modal.setAttribute('role', 'dialog');
-    modal.setAttribute('aria-modal', 'true');
     modal.style.cssText = `
-        position: fixed !important;
-        inset: 0 !important;
-        width: 100vw !important;
-        height: 100vh !important;
-        background: rgba(0,0,0,0.6) !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.6);
         backdrop-filter: blur(8px);
-        -webkit-backdrop-filter: blur(8px);
-        z-index: 2147483647 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        pointer-events: auto !important;
+        z-index: 999999;
+        display: flex;
+        align-items: center;
+        justify-content: center;
         font-family: 'Inter', sans-serif;
     `;
-
     modal.innerHTML = `
-        <div id="nchsm-confirm-card" style="
-            position:relative;
-            z-index:2147483647;
-            background:white;
-            border-radius:20px;
-            padding:32px;
-            max-width:480px;
-            width:90%;
-            box-shadow:0 20px 60px rgba(0,0,0,0.35);
-            pointer-events:auto !important;
-        ">
-            <div style="font-size:2.5rem; text-align:center; margin-bottom:12px;">
-                ${isWarning ? '⚠️' : '📋'}
-            </div>
-            <h3 style="text-align:center; color:${isWarning ? '#dc2626' : '#0A3D62'}; font-weight:700; font-size:1.2rem; margin-bottom:12px;">
-                ${title}
-            </h3>
-            <p style="text-align:center; color:#475569; font-size:0.95rem; line-height:1.6; margin-bottom:24px;">
-                ${message}
-            </p>
-            <div style="display:flex; gap:12px;">
-                <button
-                    type="button"
-                    id="confirm-cancel-btn"
-                    aria-label="Cancel submission"
-                    style="flex:1; padding:12px; border:2px solid #e2e8f0; border-radius:12px; background:white; color:#64748b; font-weight:600; font-size:0.9rem; cursor:pointer; pointer-events:auto !important; position:relative; z-index:2147483647;"
-                >
+        <div style="background: white; border-radius: 20px; padding: 32px; max-width: 480px; width: 90%; box-shadow: 0 20px 60px rgba(0,0,0,0.2); animation: fadeSlideUp 0.3s ease;">
+            <div style="font-size: ${isWarning ? '2.5rem' : '2.5rem'}; text-align: center; margin-bottom: 12px;">${isWarning ? '⚠️' : '📋'}</div>
+            <h3 style="text-align: center; color: ${isWarning ? '#dc2626' : '#0A3D62'}; font-weight: 700; font-size: 1.2rem; margin-bottom: 12px;">${title}</h3>
+            <p style="text-align: center; color: #475569; font-size: 0.95rem; line-height: 1.6; margin-bottom: 24px;">${message}</p>
+            <div style="display: flex; gap: 12px;">
+                <button id="confirm-cancel-btn" style="flex: 1; padding: 12px; border: 2px solid #e2e8f0; border-radius: 12px; background: white; color: #64748b; font-weight: 600; font-size: 0.9rem; cursor: pointer; transition: all 0.2s;">
                     Cancel
                 </button>
-                <button
-                    type="button"
-                    id="confirm-submit-btn"
-                    aria-label="Confirm submission"
-                    style="flex:1; padding:12px; border:none; border-radius:12px; background:linear-gradient(135deg,#10b981,#059669); color:white; font-weight:700; font-size:0.9rem; cursor:pointer; pointer-events:auto !important; position:relative; z-index:2147483647; box-shadow:0 4px 16px rgba(5,150,105,0.3);"
-                >
+                <button id="confirm-submit-btn" style="flex: 1; padding: 12px; border: none; border-radius: 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; font-weight: 700; font-size: 0.9rem; cursor: pointer; transition: all 0.2s; box-shadow: 0 4px 16px rgba(5,150,105,0.3);">
                     ✅ Submit
                 </button>
             </div>
         </div>
     `;
-
     document.body.appendChild(modal);
 
-    const confirmBtn = modal.querySelector('#confirm-submit-btn');
-    const cancelBtn = modal.querySelector('#confirm-cancel-btn');
+    const confirmBtn = document.getElementById('confirm-submit-btn');
+    const cancelBtn = document.getElementById('confirm-cancel-btn');
 
-    console.log('🟣 [CONFIRM] Buttons created:', {
-        confirm: !!confirmBtn,
-        cancel: !!cancelBtn,
-        confirmDisabled: confirmBtn ? confirmBtn.disabled : 'missing',
-        cancelDisabled: cancelBtn ? cancelBtn.disabled : 'missing'
+    confirmBtn.addEventListener('click', function() {
+        modal.remove();
+        if (typeof onConfirm === 'function') onConfirm();
     });
 
-    const finish = (confirmed) => {
-        console.log(`🟣 [CONFIRM] ${confirmed ? 'SUBMIT' : 'CANCEL'} BUTTON ACTIVATED`);
-        const callbacks = window.__nchsmSubmitConfirm || {};
+    cancelBtn.addEventListener('click', function() {
         modal.remove();
-        window.__nchsmSubmitConfirm = null;
-        if (confirmed) {
-            if (typeof callbacks.onConfirm === 'function') callbacks.onConfirm();
-        } else {
-            if (typeof callbacks.onCancel === 'function') callbacks.onCancel();
+        if (typeof onCancel === 'function') onCancel();
+    });
+
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            modal.remove();
+            if (typeof onCancel === 'function') onCancel();
         }
-    };
-
-    if (confirmBtn) {
-        confirmBtn.addEventListener('pointerdown', (e) => {
-            console.log('🟢 [CONFIRM] Submit pointerdown');
-            e.stopPropagation();
-        }, true);
-        confirmBtn.addEventListener('click', (e) => {
-            console.log('🟢 [CONFIRM] Submit click');
-            e.preventDefault();
-            e.stopPropagation();
-            finish(true);
-        }, true);
-    }
-
-    if (cancelBtn) {
-        cancelBtn.addEventListener('pointerdown', (e) => {
-            console.log('🟠 [CONFIRM] Cancel pointerdown');
-            e.stopPropagation();
-        }, true);
-        cancelBtn.addEventListener('click', (e) => {
-            console.log('🟠 [CONFIRM] Cancel click');
-            e.preventDefault();
-            e.stopPropagation();
-            finish(false);
-        }, true);
-    }
-
-    // Capture phase fallback. This makes the modal resilient if another
-    // listener on the page tries to intercept the normal bubble phase.
-    const delegatedConfirmHandler = (e) => {
-        const target = e.target && e.target.closest ? e.target.closest('#confirm-submit-btn, #confirm-cancel-btn') : null;
-        if (!target || !document.getElementById('custom-confirm-modal')) return;
-        console.log('🟡 [CONFIRM] Delegated capture handler:', target.id);
-        e.preventDefault();
-        e.stopPropagation();
-        finish(target.id === 'confirm-submit-btn');
-    };
-    modal.__nchsmDelegatedConfirmHandler = delegatedConfirmHandler;
-    document.addEventListener('click', delegatedConfirmHandler, true);
-
-    const cleanupDelegated = () => {
-        document.removeEventListener('click', delegatedConfirmHandler, true);
-    };
-    modal.__nchsmCleanupConfirmHandler = cleanupDelegated;
-
-    // Escape = cancel
-    const keyHandler = (e) => {
-        if (e.key === 'Escape' && document.getElementById('custom-confirm-modal')) {
-            e.preventDefault();
-            e.stopPropagation();
-            finish(false);
-        }
-    };
-    modal.__nchsmKeyHandler = keyHandler;
-    document.addEventListener('keydown', keyHandler, true);
-
-    const originalRemove = modal.remove.bind(modal);
-    modal.remove = function() {
-        cleanupDelegated();
-        document.removeEventListener('keydown', keyHandler, true);
-        originalRemove();
-    };
-
-    if (confirmBtn) confirmBtn.focus();
+    });
 }
 
 function proceedWithSubmission() {
@@ -2273,27 +2167,14 @@ async function executeSubmissionWithLoading() {
 
 function showSubmissionProgress(title, message) {
     const overlay = DOM.submissionProgress;
-    if (!overlay) {
-        console.error('❌ [SUBMIT PROGRESS] #submission-progress-overlay not found.');
-        return;
-    }
-
-    console.log('🟦 [SUBMIT PROGRESS] Showing submission progress overlay.');
-
+    if (!overlay) return;
+    
     const titleEl = overlay.querySelector('.progress-title');
     const msgEl = DOM.submissionMessage;
     const fillEl = DOM.submissionProgressFill;
     const percentEl = DOM.submissionPercentage;
 
-    // The HTML uses .hidden { display:none !important; }, so simply changing
-    // overlay.style.display is not enough. Remove the hidden class first.
-    overlay.classList.remove('hidden');
-    overlay.style.display = 'grid';
-    overlay.style.visibility = 'visible';
-    overlay.style.opacity = '1';
-    overlay.style.zIndex = '9999999';
-    overlay.setAttribute('aria-hidden', 'false');
-
+    overlay.style.display = 'flex';
     if (titleEl) titleEl.textContent = title;
     if (msgEl) msgEl.textContent = message;
     if (fillEl) fillEl.style.width = '0%';
@@ -2301,51 +2182,30 @@ function showSubmissionProgress(title, message) {
 }
 
 function updateSubmissionProgress(message) {
-    const overlay = DOM.submissionProgress;
     const msgEl = DOM.submissionMessage;
+    if (msgEl) msgEl.textContent = message;
+
     const fillEl = DOM.submissionProgressFill;
     const percentEl = DOM.submissionPercentage;
 
-    // Keep the progress overlay visible even if another routine previously
-    // added .hidden to the modal.
-    if (overlay) {
-        overlay.classList.remove('hidden');
-        overlay.style.display = 'grid';
-        overlay.style.visibility = 'visible';
-        overlay.style.opacity = '1';
-        overlay.style.zIndex = '9999999';
-        overlay.setAttribute('aria-hidden', 'false');
-    }
-
-    if (msgEl) msgEl.textContent = message;
-
     if (fillEl && percentEl) {
         const steps = [
-            'Capturing final snapshot',
-            'Saving your answers',
-            'Calculating your results',
-            'Cleaning up',
-            'Exam submitted successfully'
+            '📸 Capturing final snapshot',
+            '💾 Saving your answers',
+            '📊 Calculating your results',
+            '🧹 Cleaning up',
+            '✅ Exam submitted successfully'
         ];
-
-        const normalized = String(message || '').replace(/^[^A-Za-z0-9]+/, '').trim();
         let currentStep = 0;
         for (let i = 0; i < steps.length; i++) {
-            if (normalized.toLowerCase().includes(steps[i].toLowerCase())) {
+            if (message.indexOf(steps[i].substring(2)) !== -1) {
                 currentStep = i + 1;
                 break;
             }
         }
-
         const percentage = Math.min(Math.round((currentStep / steps.length) * 100), 100);
         fillEl.style.width = percentage + '%';
         percentEl.textContent = percentage + '%';
-        console.log(`📊 [SUBMIT PROGRESS] ${percentage}% — ${message}`);
-    } else {
-        console.warn('⚠️ [SUBMIT PROGRESS] Progress elements missing.', {
-            fillEl: !!fillEl,
-            percentEl: !!percentEl
-        });
     }
 }
 
@@ -2404,6 +2264,30 @@ async function calculateAndSaveGrade() {
     try {
         if (!AppState.attemptId) throw new Error('No active exam attempt');
 
+        // ========================================================
+        // IMPORTANT: ALWAYS RECALCULATE THE ENTIRE ACTIVE ATTEMPT
+        // ========================================================
+        // After an Admin continuation/reset, the student keeps the
+        // SAME attempt_id and resumes from the saved answers. Never
+        // carry the old final score forward. Refresh all persisted
+        // answers first, then calculate every question from scratch.
+        const savedResult = await sb.from('exam_grades')
+            .select('question_id, selected_answer')
+            .eq('attempt_id', AppState.attemptId)
+            .neq('question_id', '00000000-0000-0000-0000-000000000000');
+
+        if (savedResult.error) throw savedResult.error;
+
+        // Database answers are authoritative on final submission.
+        // Merge them into the current state so resumed attempts are
+        // calculated with ALL answers, including answers from before
+        // the Admin reset.
+        (savedResult.data || []).forEach(row => {
+            if (row && row.question_id) {
+                AppState.answers[row.question_id] = row.selected_answer ?? null;
+            }
+        });
+
         const qResult = await sb.from('exam_questions')
             .select('id, correct_answer, marks')
             .eq('exam_id', parseInt(AppState.examId));
@@ -2440,6 +2324,8 @@ async function calculateAndSaveGrade() {
         const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
         const resultStatus = 'PENDING_REVIEW';
 
+        // Replace the previous final/sentinel result for this SAME
+        // attempt. This is the new final calculation after continuation.
         await upsertAttemptGrade({
             question_id: '00000000-0000-0000-0000-000000000000',
             marks: totalEarned,
@@ -2468,7 +2354,11 @@ async function calculateAndSaveGrade() {
 
         if (attemptError) throw attemptError;
 
-        console.log(`✅ Attempt ${AppState.attemptNumber} graded: ${totalEarned}/${totalPossible} (${percentage.toFixed(2)}%)`);
+        console.log(
+            `✅ FINAL RECALCULATION COMPLETE — Attempt ${AppState.attemptNumber}: ` +
+            `${totalEarned}/${totalPossible} (${percentage.toFixed(2)}%). ` +
+            `Previous score is replaced by this calculation.`
+        );
         return { totalEarned, totalPossible, percentage, correctCount, wrongCount, resultStatus };
 
     } catch (error) {
