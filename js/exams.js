@@ -384,7 +384,7 @@ applyDataFilter() {
             exam.isCompleted = false;
             exam.actionState = 'available';
             exam.canTakeExam = true;
-            exam.buttonText = '🔄 Retake Exam';
+            exam.buttonText = '▶ Continue Exam';
             exam.gradeText = 'Retake Available';
             exam.gradeClass = 'retake';
             return exam;
@@ -651,24 +651,13 @@ applyDataFilter() {
             ];
             
             // ============================================================
-            // 🔄 RETAKE-AWARE GRADE SELECTION
+            // 🔄 RESET/CONTINUATION-AWARE GRADE SELECTION
             // ============================================================
-            // Multiple sentinel grade rows can exist for the same exam when
-            // an attempt is reset/retaken. The old code simply overwrote the
-            // Map entry in the order returned by Supabase, which could leave
-            // the portal displaying the older PENDING_REVIEW row even after
-            // Admin had authorized a retake.
-            //
-            // Priority:
-            //   1) Active RESET_FOR_RETAKE + retake_unlocked
-            //   2) Newest updated_at
-            //   3) Newest created_at
-            //
-            // This keeps scores hidden until release while still surfacing
-            // the Retake action immediately after Admin authorization.
+            // Multiple sentinel grade rows can exist for one exam. Prefer an
+            // active Admin reset authorization, then the newest record.
             const gradeMap = new Map();
 
-            const isActiveRetakeGrade = (grade) =>
+            const isActiveContinuation = (grade) =>
                 String(grade?.result_status || '').toUpperCase() === 'RESET_FOR_RETAKE' &&
                 grade?.retake_unlocked === true &&
                 grade?.allow_retake === true;
@@ -696,28 +685,17 @@ applyDataFilter() {
                     return;
                 }
 
-                const newIsRetake = isActiveRetakeGrade(gradeWithId);
-                const oldIsRetake = isActiveRetakeGrade(existing);
+                const newContinuation = isActiveContinuation(gradeWithId);
+                const oldContinuation = isActiveContinuation(existing);
 
                 if (
-                    (newIsRetake && !oldIsRetake) ||
-                    (newIsRetake === oldIsRetake && gradeTime(gradeWithId) >= gradeTime(existing))
+                    (newContinuation && !oldContinuation) ||
+                    (newContinuation === oldContinuation &&
+                     gradeTime(gradeWithId) >= gradeTime(existing))
                 ) {
                     gradeMap.set(key, gradeWithId);
                 }
             });
-
-            console.log(
-                '🔄 Retake-aware grade map:',
-                Array.from(gradeMap.values())
-                    .filter(g => isActiveRetakeGrade(g))
-                    .map(g => ({
-                        examId: g.exam_id,
-                        resultStatus: g.result_status,
-                        retakeUnlocked: g.retake_unlocked,
-                        updatedAt: g.updated_at
-                    }))
-            );
             
             const filteredExams = exams.filter(exam => {
                 const rawExamBlock = exam.block || exam.block_term || exam.term || 'General';
@@ -1069,7 +1047,7 @@ applyDataFilter() {
                 const isExpired = examStatus === 'expired' || isClosed;
                 
                 // ============================================
-                // ✅ RETAKE CHECK - ABSOLUTE FIRST PRIORITY
+                // ✅ RETAKE CHECK - FIRST PRIORITY
                 // ============================================
                 if (isResetForRetake && retakeUnlocked) {
                     // Exam is available for retake
@@ -1077,7 +1055,7 @@ applyDataFilter() {
                         finalStatus = 'available';
                         finalCanStart = true;
                         buttonText = '🔄 Retake Exam';
-                        finalMessage = '🔄 Retake Available';
+                        finalMessage = '▶ Continue where you left off';
                         isCompleted = false;
                         gradeText = 'Retake Available';
                         gradeClass = 'retake';
@@ -1165,9 +1143,8 @@ applyDataFilter() {
                 // ============================================
                 // Display scores
                 // ============================================
-                // While a retake is authorized, do not display any score
-                // from the previous attempt. Scores remain hidden until
-                // the new attempt is completed and officially released.
+                // Never show the previous attempt's score while an Admin
+                // continuation/reset is active.
                 if (isResetForRetake && retakeUnlocked) {
                     displayScore = 0;
                     displayPercentage = null;
@@ -1367,7 +1344,7 @@ applyDataFilter() {
                            class="exam-action-btn btn-retake" 
                            style="background: linear-gradient(135deg, #8B5CF6, #6D28D9); color: white; padding: 8px 20px; border-radius: 25px; text-decoration: none; font-weight: 600; display: inline-block;"
                            onclick="sessionStorage.setItem('returningFromExam', 'true'); sessionStorage.setItem('examUserId', '${userId}');">
-                            <i class="fas fa-redo"></i> Retake Exam
+                            <i class="fas fa-play"></i> Continue Exam
                         </a>
                     `;
                     
@@ -1472,7 +1449,7 @@ applyDataFilter() {
                         </div>` : ''}
                         ${isRetake ? `
                         <div class="exam-retake-info" style="color: #5B21B6; font-size: 0.75rem;">
-                            <i class="fas fa-redo"></i> You have been reset for retake
+                            <i class="fas fa-redo"></i> Your exam has been reset for continuation
                         </div>` : ''}
                     </div>
                 `;
