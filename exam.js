@@ -45,6 +45,9 @@ const AppState = {
     questions: [],
     currentIndex: 0,
     duration: 0,
+    attemptStartedAt: null,
+    sessionRecovered: false,
+    remainingSeconds: 0,
     answers: {},
     flaggedQuestions: {},
     hasAnsweredAtLeastOne: false,
@@ -331,8 +334,10 @@ function saveExamSession() {
             studentId: AppState.studentId,
             attemptId: AppState.attemptId,
             attemptNumber: AppState.attemptNumber,
+            attemptStartedAt: AppState.attemptStartedAt,
             examActive: AppState.isExamActive,
             currentIndex: AppState.currentIndex,
+            remainingSeconds: AppState.remainingSeconds,
             answers: AppState.answers,
             flaggedQuestions: AppState.flaggedQuestions,
             timestamp: Date.now(),
@@ -342,9 +347,8 @@ function saveExamSession() {
 }
 
 function recoverExamSession() {
-    // A fresh retake must NEVER inherit the previous attempt's answers.
-    if (retakeRequestedByUrl || AppState.isRetake) return false;
-
+    // Admin-authorized reset is a continuation of the same attempt.
+    // Allow the saved session to restore answers, flags and position.
     try {
         const data = sessionStorage.getItem(CONFIG.EXAM_SESSION_KEY);
         if (data) {
@@ -358,6 +362,10 @@ function recoverExamSession() {
                         AppState.hasAnsweredAtLeastOne = Object.keys(AppState.answers).length > 0;
                         if (session.attemptId) AppState.attemptId = session.attemptId;
                         if (session.attemptNumber) AppState.attemptNumber = session.attemptNumber;
+                        if (session.attemptStartedAt) AppState.attemptStartedAt = session.attemptStartedAt;
+                        if (Number.isFinite(Number(session.remainingSeconds))) {
+                            AppState.remainingSeconds = Number(session.remainingSeconds);
+                        }
                         return true;
                     }
                 }
@@ -424,16 +432,17 @@ async function getOrCreateCurrentAttempt() {
 
     AppState.attemptId = created.id;
     AppState.attemptNumber = Number(created.attempt_number || 1);
+    AppState.attemptStartedAt = created.started_at || AppState.attemptStartedAt || null;
 
-    // The RPC is authoritative about whether this is a retake.
+    // Admin reset is a continuation of the same attempt.
+    // Never wipe existing answers, flags or question position.
     AppState.isRetake = !!created.is_retake;
 
-    if (AppState.isRetake && Number(AppState.attemptNumber) > 1) {
-        AppState.answers = {};
-        AppState.flaggedQuestions = {};
-        AppState.currentIndex = 0;
-        AppState.hasAnsweredAtLeastOne = false;
-        console.log(`🔄 New retake attempt created: #${AppState.attemptNumber}`);
+    if (retakeRequestedByUrl) {
+        console.log(
+            `🔄 Admin reset continuation: Attempt #${AppState.attemptNumber}. ` +
+            `Existing answers/progress will be restored.`
+        );
     } else {
         console.log(`✅ Exam attempt ready: #${AppState.attemptNumber}`);
     }
@@ -493,8 +502,8 @@ async function checkRetakeStatus() {
                 DOM.startExamText.textContent = '🔄 Start Retake';
             }
 
-            console.log('🔄 Authorized fresh retake detected. Retake count:', AppState.retakeCount);
-            showToast('🔄 Retake authorized. A fresh attempt will be started.', 'info', 4000);
+            console.log('🔄 Admin reset continuation detected. Retake count:', AppState.retakeCount);
+            showToast('🔄 Exam reset authorized. You will continue from where you left off.', 'info', 4000);
         }
     } catch (e) {
         console.warn('No retake authorization found:', e);
@@ -968,6 +977,65 @@ window.startExam = async function() {
 };
 
 // ============================================================
+// 🔄 RESUME POSITION FROM SERVER HEARTBEAT
+// ============================================================
+async function loadResumePositionFromHeartbeat() {
+    try {
+        if (!AppState.studentId || !AppState.examId || AppState.sessionRecovered) return false;
+
+        const { data, error } = await sb
+            .from('exam_heartbeats')
+            .select('current_question, timestamp')
+            .eq('student_id', AppState.studentId)
+            .eq('exam_id', parseInt(AppState.examId))
+            .order('timestamp', { ascending: false })
+            .limit(1);
+
+        if (error || !data || data.length === 0) return false;
+
+        const currentQuestion = Number(data[0].current_question || 0);
+        if (currentQuestion < 1) return false;
+
+        AppState.currentIndex = Math.min(
+            Math.max(currentQuestion - 1, 0),
+            Math.max(AppState.questions.length - 1, 0)
+        );
+
+        console.log(`🔄 Server resume position: question ${AppState.currentIndex + 1}`);
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
+
+// ============================================================
+// ⏱️ RESUME-AWARE EXAM TIMER
+// ============================================================
+function getRemainingExamSeconds() {
+    const totalSeconds = Math.max(1, Number(AppState.duration || 0) * 60);
+
+    if (!AppState.attemptStartedAt) return totalSeconds;
+
+    const started = new Date(AppState.attemptStartedAt).getTime();
+    if (!Number.isFinite(started)) return totalSeconds;
+
+    const elapsedSeconds = Math.max(0, Math.floor((Date.now() - started) / 1000));
+    return Math.max(0, totalSeconds - elapsedSeconds);
+}
+
+function startResumeAwareTimer() {
+    const remaining = getRemainingExamSeconds();
+    AppState.remainingSeconds = remaining;
+
+    console.log(
+        `⏱️ Resume-aware timer: ${formatTime(remaining)} remaining ` +
+        `(Attempt #${AppState.attemptNumber || 1})`
+    );
+
+    startTimer(remaining);
+}
+
+// ============================================================
 // EXAM INITIALIZATION
 // ============================================================
 async function initExam() {
@@ -975,6 +1043,7 @@ async function initExam() {
 
     try {
         const recovered = recoverExamSession();
+        AppState.sessionRecovered = recovered === true;
         if (recovered) {
             showToast(`📂 Session restored for Attempt ${AppState.attemptNumber || 1}. Continuing where you left off.`, 'success');
         }
@@ -1011,21 +1080,30 @@ async function initExam() {
             await loadSavedAnswers();
             checkSavedProgress();
             loadFlaggedQuestions();
-            
-            const answeredKeys = Object.keys(AppState.answers);
-            if (answeredKeys.length > 0) {
-                let lastAnsweredIndex = 0;
-                AppState.questions.forEach((q, index) => {
-                    if (AppState.answers[q.id]) lastAnsweredIndex = index;
-                });
-                AppState.currentIndex = lastAnsweredIndex;
-                if (!AppState.isRetake) {
-                    showToast(`📚 Resuming from question ${lastAnsweredIndex + 1}`, 'info');
+
+            // Prefer exact browser session position. If unavailable, use the
+            // latest server heartbeat, then fall back to the last answered question.
+            if (!AppState.sessionRecovered) {
+                const positionedByHeartbeat = await loadResumePositionFromHeartbeat();
+
+                if (!positionedByHeartbeat) {
+                    const answeredKeys = Object.keys(AppState.answers);
+                    if (answeredKeys.length > 0) {
+                        let lastAnsweredIndex = 0;
+                        AppState.questions.forEach((q, index) => {
+                            if (AppState.answers[q.id]) lastAnsweredIndex = index;
+                        });
+                        AppState.currentIndex = lastAnsweredIndex;
+                    }
+                }
+
+                if (Object.keys(AppState.answers).length > 0) {
+                    showToast(`📚 Continuing from question ${AppState.currentIndex + 1}`, 'info');
                 }
             }
-            
+
             renderQuestion(AppState.currentIndex);
-            startTimer(AppState.duration * 60);
+            startResumeAwareTimer();
             startExamFaceDetection();
             setupFullscreenMonitoring();
             setupNetworkMonitoring();
@@ -1735,18 +1813,22 @@ function startTimer(seconds) {
     
     if (!timerEl) return;
 
-    const totalSeconds = seconds;
+    const totalSeconds = Math.max(1, Number(seconds || 0));
+    let remaining = Math.max(0, Number(seconds || 0));
+    AppState.remainingSeconds = remaining;
 
     AppState.timerInterval = setInterval(() => {
-        const timeString = formatTime(seconds);
+        seconds = remaining;
+        AppState.remainingSeconds = remaining;
+        const timeString = formatTime(remaining);
         if (timerEl) timerEl.textContent = timeString;
         if (timerDisplayHeader) timerDisplayHeader.textContent = timeString;
         
         if (timerProgressBar) {
-            const progress = (seconds / totalSeconds) * 100;
+            const progress = (remaining / totalSeconds) * 100;
             timerProgressBar.style.width = progress + '%';
             
-            if (seconds <= 60) {
+            if (remaining <= 60) {
                 timerProgressBar.style.background = 'linear-gradient(90deg, #ef4444, #dc2626)';
                 if (timerEl) timerEl.style.color = '#ef4444';
                 if (timerDisplayHeader) timerDisplayHeader.style.color = '#ef4444';
@@ -1761,12 +1843,12 @@ function startTimer(seconds) {
             }
         }
 
-        if (seconds <= 60 && seconds > 0 && !AppState.timerWarningShown) {
+        if (remaining <= 60 && seconds > 0 && !AppState.timerWarningShown) {
             AppState.timerWarningShown = true;
             showToast('⚠️ 1 minute remaining! Your exam will auto-submit.', 'warning');
         }
 
-        if (seconds <= 0) {
+        if (remaining <= 0) {
             clearInterval(AppState.timerInterval);
             if (timerEl) timerEl.textContent = '00:00';
             if (timerDisplayHeader) timerDisplayHeader.textContent = '00:00';
@@ -1792,7 +1874,7 @@ function startTimer(seconds) {
             setTimeout(() => executeSubmissionWithLoading(), 2000);
         }
 
-        seconds--;
+        remaining--;
     }, 1000);
 }
 
@@ -2246,7 +2328,7 @@ async function calculateAndSaveGrade() {
 
         if (attemptError) throw attemptError;
 
-        console.log(`✅ Attempt ${AppState.attemptNumber} graded and stored. Student result remains hidden until admin release.`);
+        console.log(`✅ Attempt ${AppState.attemptNumber} graded: ${totalEarned}/${totalPossible} (${percentage.toFixed(2)}%)`);
         return { totalEarned, totalPossible, percentage, correctCount, wrongCount, resultStatus };
 
     } catch (error) {
@@ -2262,38 +2344,38 @@ function showCompletionCertificate() {
     const totalQuestions = AppState.questions.length;
     const answered = Object.keys(AppState.answers).length;
     const skipped = totalQuestions - answered;
+    const percentAnswered = totalQuestions > 0 ? Math.round((answered / totalQuestions) * 100) : 0;
 
-    // IMPORTANT: Never display the calculated score or percentage here.
-    // Scores remain stored for administrative processing, but students can
-    // only see the result after the admin releases/publishes it.
     if (DOM.examContainer) {
         DOM.examContainer.innerHTML = `
             <div style="text-align:center; padding:30px 20px;">
-                <div style="font-size:4rem; margin-bottom:12px;">✅</div>
-                <h2 style="color:#0A3D62; margin-bottom:8px;">Exam Submitted Successfully</h2>
-                <div style="background:linear-gradient(135deg, #f8fafc, #eff6ff); border-radius:14px; padding:20px; max-width:520px; margin:12px auto; border:1px solid #bfdbfe;">
-                    <div style="display:inline-block; background:#0A3D62; color:white; padding:4px 16px; border-radius:20px; font-size:0.8rem; font-weight:600; margin-bottom:12px;">✅ SUBMITTED</div>
-                    <h3 style="color:#0A3D62; margin-bottom:10px;">📋 Submission Confirmed</h3>
+                <div style="font-size:4rem; margin-bottom:12px;">🏆</div>
+                <h2 style="color:#0A3D62; margin-bottom:8px;">Exam Complete!</h2>
+                <div style="background:linear-gradient(135deg, #f0fdf4, #ecfdf5); border-radius:14px; padding:20px; max-width:500px; margin:12px auto; border:1px solid #86efac;">
+                    <div style="display:inline-block; background:#10b981; color:white; padding:4px 16px; border-radius:20px; font-size:0.8rem; font-weight:600; margin-bottom:12px;">✅ COMPLETED</div>
+                    <h3 style="color:#065f46; margin-bottom:10px;">📊 Exam Summary</h3>
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
                         <div style="background:white; padding:10px; border-radius:8px;">
                             <div style="font-size:0.7rem; color:#94a3b8;">Questions Answered</div>
                             <div style="font-size:1.2rem; font-weight:700; color:#0A3D62;">${answered}/${totalQuestions}</div>
                         </div>
                         <div style="background:white; padding:10px; border-radius:8px;">
-                            <div style="font-size:0.7rem; color:#94a3b8;">Questions Skipped</div>
-                            <div style="font-size:1.2rem; font-weight:700; color:#64748b;">${skipped}</div>
+                            <div style="font-size:0.7rem; color:#94a3b8;">Skipped</div>
+                            <div style="font-size:1.2rem; font-weight:700; color:#dc2626;">${skipped}</div>
                         </div>
-                        <div style="background:white; padding:10px; border-radius:8px; grid-column:1 / -1;">
-                            <div style="font-size:0.7rem; color:#94a3b8;">Result Status</div>
-                            <div style="font-size:1.05rem; font-weight:700; color:#f59e0b; margin-top:3px;">⏳ Pending Admin Release</div>
+                        <div style="background:white; padding:10px; border-radius:8px;">
+                            <div style="font-size:0.7rem; color:#94a3b8;">Completion Rate</div>
+                            <div style="font-size:1.2rem; font-weight:700; color:#10b981;">${percentAnswered}%</div>
+                        </div>
+                        <div style="background:white; padding:10px; border-radius:8px;">
+                            <div style="font-size:0.7rem; color:#94a3b8;">Status</div>
+                            <div style="font-size:1.2rem; font-weight:700; color:#f59e0b;">⏳ Pending Review</div>
                         </div>
                     </div>
-                    <p style="color:#64748b; font-size:0.85rem; line-height:1.6; margin-top:12px;">
-                        Your examination has been submitted successfully. Your score and percentage are not displayed yet. They will become available only after the examination is reviewed and officially released by the administrator.
-                    </p>
+                    <p style="color:#64748b; font-size:0.85rem; margin-top:12px;">Your results will be available after the exam is reviewed by the admin.</p>
                 </div>
-                <div style="margin:12px 0; font-size:0.9rem; color:#94a3b8;">Returning to dashboard in <span id="countdown-number" style="font-weight:700; color:#0A3D62;">5</span> seconds...</div>
-                <a href="https://nakurucollegeofhealthelearning.site/student/cats" style="display:inline-block; background:#0A3D62; color:white; padding:12px 28px; border-radius:30px; text-decoration:none; font-weight:600;">📊 Go to Dashboard</a>
+                <div style="margin:12px 0; font-size:0.9rem; color:#94a3b8;">Redirecting in <span id="countdown-number" style="font-weight:700; color:#0A3D62;">5</span> seconds...</div>
+                <a href="https://nakurucollegeofhealthelearning.site/student/cats" style="display:inline-block; background:#0A3D62; color:white; padding:12px 28px; border-radius:30px; text-decoration:none; font-weight:600;">📊 Go to Dashboard Now</a>
             </div>
         `;
     }
