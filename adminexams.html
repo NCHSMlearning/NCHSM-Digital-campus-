@@ -23,6 +23,53 @@
 .attempt-retake-label,.attempt-original-label{display:block;margin-top:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
 .attempt-retake-label{color:#7c3aed}.attempt-original-label{color:#64748b}
 </style>
+<style>
+/* Student Results filters: keep password/email managers from treating search controls as credential fields. */
+#studentResultsFilterForm input[type="text"],
+#studentResultsFilterForm input[type="search"] {
+    -webkit-text-size-adjust: 100%;
+}
+#studentResultsFilterForm input:-webkit-autofill,
+#studentResultsFilterForm input:-webkit-autofill:hover,
+#studentResultsFilterForm input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #0f172a !important;
+    transition: background-color 9999s ease-out 0s;
+}
+</style>
+
+<style>
+/* ============================================================
+   STUDENTS RESULTS / EXAM MANAGEMENT POLISH
+   ============================================================ */
+#studentsResultsMeta { position: relative; }
+#filtersContainer select, #filtersContainer input {
+    min-height: 36px;
+    transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+#filtersContainer select:focus, #filtersContainer input:focus {
+    border-color: #3B82F6 !important;
+    box-shadow: 0 0 0 3px rgba(59,130,246,.12) !important;
+    outline: none;
+}
+#studentsTable { min-width: 1180px; }
+#studentsTable thead th { position: sticky; top: 0; z-index: 5; background: #f8fafc; }
+#studentsTable th:nth-child(1), #studentsTable td:nth-child(1) {
+    position: sticky; left: 0; z-index: 6; background: #fff; min-width: 118px;
+}
+#studentsTable th:nth-child(2), #studentsTable td:nth-child(2) {
+    position: sticky; left: 118px; z-index: 6; background: #fff; min-width: 165px;
+    box-shadow: 4px 0 8px rgba(15,23,42,.06);
+}
+#studentsTable thead th:nth-child(1), #studentsTable thead th:nth-child(2) { z-index: 8; background:#f8fafc; }
+#studentsTable tbody tr:hover td { background:#f8fbff; }
+#studentsTable tbody tr:hover td:nth-child(1), #studentsTable tbody tr:hover td:nth-child(2) { background:#f8fbff; }
+.exam-attempt-history-btn { white-space:nowrap; }
+.result-actions { display:flex; gap:4px; flex-wrap:wrap; justify-content:center; }
+@media (max-width: 900px) {
+    #studentsResultsMeta { font-size:11px; }
+}
+</style>
+
 </head>
 <body>
 
@@ -194,11 +241,16 @@
                 </div>
             </div>
 
-            <div id="statsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 20px;"></div>
+            <div id="statsContainer" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 12px; margin-bottom: 14px;"></div>
 
-            <div style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
-                <div id="filtersContainer" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;"></div>
+            <div id="studentsResultsMeta" style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap; margin:0 0 12px 0; padding:9px 14px; background:linear-gradient(135deg,#f8fafc,#ffffff); border:1px solid #e2e8f0; border-radius:10px; color:#64748b; font-size:12px;">
+                <span><i class="fas fa-database" style="color:#0A3D62;"></i> Showing latest attempt per student/exam</span>
+                <span id="studentsLastUpdated"><i class="fas fa-clock"></i> Last synced: --</span>
             </div>
+
+            <form id="studentResultsFilterForm" autocomplete="off" onsubmit="return false;" spellcheck="false" data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" style="background: white; border-radius: 12px; padding: 14px 18px; margin-bottom: 16px; border: 1px solid #e5e7eb; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
+                <div id="filtersContainer" autocomplete="off" data-form-type="other" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;"></div>
+            </form>
 
             <div style="background: white; border-radius: 12px; border: 1px solid #e5e7eb; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.04);">
                 <div style="overflow-x: auto;">
