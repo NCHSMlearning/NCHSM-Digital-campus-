@@ -798,9 +798,15 @@
         }
 
         function logout() {
-            localStorage.removeItem('adminSession');
-            localStorage.removeItem('userProfile');
-            window.location.href = 'login.html';
+            try {
+                localStorage.removeItem('adminSession');
+                localStorage.removeItem('userProfile');
+                localStorage.removeItem('lecturerSession');
+                sessionStorage.clear();
+            } catch (e) {
+                console.warn('Session cleanup warning:', e);
+            }
+            window.location.replace('https://nchsm.co.ke/adminlogin');
         }
 
         // ============================================================
@@ -943,172 +949,272 @@
         async function loadResults() {
             const loading = document.getElementById('resultsLoading');
             const tbody = document.getElementById('resultsBody');
-            if (loading) loading.style.display = 'block';
+            if (loading) {
+                loading.style.display = 'block';
+                loading.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading current student results...';
+            }
 
             try {
+                // ============================================================
+                // 1. LOAD ONLY EXAMS OWNED BY THIS LECTURER
+                //    Same exam source/filtering model as the Admin Results table.
+                // ============================================================
                 const { data: exams, error: examError } = await sb
                     .from('exams')
-                    .select('id, exam_name, exam_type, total_marks, pass_mark, created_at')
+                    .select('id, exam_name, exam_type, total_marks, pass_mark, created_at, updated_at, exam_date, exam_start_time, status')
                     .eq('created_by', lecturerId || '')
                     .order('id', { ascending: false });
 
                 if (examError) throw examError;
 
                 const examRows = exams || [];
-                const examIds = examRows.map(e => e.id);
+                const examIds = examRows.map(e => Number(e.id)).filter(Number.isFinite);
+                const examMap = Object.fromEntries(examRows.map(e => [e.id, e]));
 
                 if (!examIds.length) {
                     lecturerResults = [];
-                    populateLecturerExamFilter(examRows);
+                    populateLecturerExamFilter([]);
                     displayResults();
                     if (loading) loading.style.display = 'none';
                     return;
                 }
 
-                const examMap = Object.fromEntries(examRows.map(e => [e.id, e]));
-
-                // Get current attempt per student + exam.
-                let attempts = [];
-                {
-                    const { data, error } = await sb
-                        .from('exam_attempts')
+                // ============================================================
+                // 2. LOAD ATTEMPTS + CURRENT SENTINEL GRADES
+                //    One current row per Student + Exam.
+                // ============================================================
+                const [{ data: attempts, error: attemptsError }, { data: grades, error: gradesError }] = await Promise.all([
+                    sb.from('exam_attempts')
                         .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
                         .in('exam_id', examIds)
-                        .order('attempt_number', { ascending: false })
-                        .order('updated_at', { ascending: false });
+                        .order('updated_at', { ascending: false })
+                        .order('attempt_number', { ascending: false }),
+                    sb.from('exam_grades')
+                        .select('*')
+                        .in('exam_id', examIds)
+                        .eq('question_id', ZERO_QUESTION_ID)
+                        .order('updated_at', { ascending: false })
+                ]);
 
-                    if (!error) attempts = data || [];
-                }
+                if (attemptsError) console.warn('⚠️ Lecturer attempt lookup warning:', attemptsError.message);
+                if (gradesError) throw gradesError;
 
-                const latestAttemptMap = new Map();
-                for (const a of attempts) {
+                const allAttempts = attempts || [];
+                const allGrades = grades || [];
+
+                const currentAttemptMap = new Map();
+                const newerAttempt = (candidate, current) => {
+                    if (!current) return true;
+                    const ct = new Date(candidate.updated_at || candidate.submitted_at || candidate.started_at || 0).getTime();
+                    const pt = new Date(current.updated_at || current.submitted_at || current.started_at || 0).getTime();
+                    if (ct !== pt) return ct > pt;
+                    return Number(candidate.attempt_number || 1) > Number(current.attempt_number || 1);
+                };
+
+                for (const a of allAttempts) {
+                    if (!a?.student_id || a?.exam_id == null) continue;
                     const key = `${a.student_id}__${a.exam_id}`;
-                    if (!latestAttemptMap.has(key)) latestAttemptMap.set(key, a);
+                    if (newerAttempt(a, currentAttemptMap.get(key))) currentAttemptMap.set(key, a);
                 }
 
-                // Get all sentinel/current-grade rows.
-                const { data: grades, error: gradeError } = await sb
-                    .from('exam_grades')
-                    .select('*')
-                    .in('exam_id', examIds)
-                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
-                    .order('updated_at', { ascending: false });
+                const attemptGradeMap = new Map();
+                for (const g of allGrades) {
+                    if (!g?.attempt_id) continue;
+                    const key = String(g.attempt_id);
+                    const existing = attemptGradeMap.get(key);
+                    if (!existing || new Date(g.updated_at || g.graded_at || g.created_at || 0) > new Date(existing.updated_at || existing.graded_at || existing.created_at || 0)) {
+                        attemptGradeMap.set(key, g);
+                    }
+                }
 
-                if (gradeError) throw gradeError;
-
-                // Canonical grade per student + exam:
-                // prefer the grade attached to the latest attempt, otherwise newest sentinel.
-                const gradeMap = new Map();
-                for (const g of (grades || [])) {
+                const currentGradeMap = new Map();
+                for (const g of allGrades) {
+                    if (!g?.student_id || g?.exam_id == null) continue;
                     const key = `${g.student_id}__${g.exam_id}`;
-                    if (!gradeMap.has(key)) gradeMap.set(key, g);
+                    const canonicalAttempt = currentAttemptMap.get(key);
+
+                    // Historical attempt-linked grades are never shown in the current table.
+                    if (canonicalAttempt?.id && g.attempt_id && String(g.attempt_id) !== String(canonicalAttempt.id)) continue;
+
+                    const existing = currentGradeMap.get(key);
+                    if (!existing || new Date(g.updated_at || g.graded_at || g.created_at || 0) > new Date(existing.updated_at || existing.graded_at || existing.created_at || 0)) {
+                        currentGradeMap.set(key, g);
+                    }
                 }
 
-                // Profiles
+                // Attempt-linked current grade always wins over a legacy sentinel.
+                currentAttemptMap.forEach((attempt, key) => {
+                    const linked = attemptGradeMap.get(String(attempt.id));
+                    if (linked) currentGradeMap.set(key, linked);
+                });
+
+                // ============================================================
+                // 3. PARTICIPANTS: include attendance records too.
+                //    This is the important Admin-table parity fix. A student
+                //    who attended/started an exam remains visible even when
+                //    the sentinel grade is missing/incomplete.
+                // ============================================================
+                const pairKeys = new Set([
+                    ...currentAttemptMap.keys(),
+                    ...currentGradeMap.keys()
+                ]);
+
+                try {
+                    const { data: attendanceParticipants, error: attendanceError } = await sb
+                        .from('exam_attendance')
+                        .select('student_id, exam_id')
+                        .in('exam_id', examIds);
+
+                    if (attendanceError) {
+                        console.warn('⚠️ Attendance participant lookup skipped:', attendanceError.message);
+                    } else {
+                        (attendanceParticipants || []).forEach(record => {
+                            if (record?.student_id && record?.exam_id != null) {
+                                pairKeys.add(`${record.student_id}__${record.exam_id}`);
+                            }
+                        });
+                    }
+                } catch (attendanceErr) {
+                    console.warn('⚠️ Attendance participant lookup failed:', attendanceErr);
+                }
+
                 const studentIds = [...new Set(
-                    [...gradeMap.values()].map(g => g.student_id).filter(Boolean)
+                    [...pairKeys].map(key => String(key).split('__')[0]).filter(Boolean)
                 )];
 
                 let profiles = [];
                 if (studentIds.length) {
                     const { data: p, error: profileError } = await sb
                         .from('consolidated_user_profiles_table')
-                        .select('user_id, full_name, student_id, email, program')
+                        .select('user_id, full_name, student_id, email, program, block, intake_year')
                         .in('user_id', studentIds);
-
-                    if (!profileError) profiles = p || [];
+                    if (profileError) {
+                        console.warn('⚠️ Profile lookup warning:', profileError.message);
+                    } else {
+                        profiles = p || [];
+                    }
                 }
-
                 const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
 
-                lecturerResults = [...gradeMap.values()]
-                    .map(g => {
-                        const key = `${g.student_id}__${g.exam_id}`;
-                        const attempt = latestAttemptMap.get(key) || null;
-                        const exam = examMap[g.exam_id] || {};
+                // ============================================================
+                // 4. BUILD ONE CURRENT ROW PER STUDENT + EXAM
+                // ============================================================
+                const rows = [];
+                for (const key of pairKeys) {
+                    const attempt = currentAttemptMap.get(key) || null;
+                    const grade = currentGradeMap.get(key) || null;
+                    const parts = String(key).split('__');
+                    const studentId = attempt?.student_id || grade?.student_id || parts[0];
+                    const examId = attempt?.exam_id ?? grade?.exam_id ?? (parts[1] != null ? Number(parts[1]) : null);
+                    if (!studentId || examId == null || Number.isNaN(Number(examId))) continue;
 
-                        // When an attempt exists and this grade belongs to another attempt,
-                        // discard it from the lecturer's current-result table.
-                        if (attempt?.id && g.attempt_id && String(g.attempt_id) !== String(attempt.id)) {
-                            return null;
-                        }
-
-                        return {
-                            ...g,
-                            student: profileMap[g.student_id] || {},
-                            exam_name: exam.exam_name || 'Exam',
-                            exam_info: exam,
-                            attempt_info: attempt,
-                            attempt_id: attempt?.id || g.attempt_id || null,
-                            attempt_number: attempt?.attempt_number || 1
-                        };
-                    })
-                    .filter(Boolean);
-
-                // Newest exam first, then newest attempt update.
-                lecturerResults.sort((a, b) => {
-                    const examA = Number(a.exam_id) || 0;
-                    const examB = Number(b.exam_id) || 0;
-                    if (examA !== examB) return examB - examA;
-
-                    const ta = new Date(a.attempt_info?.updated_at || a.updated_at || 0).getTime();
-                    const tb = new Date(b.attempt_info?.updated_at || b.updated_at || 0).getTime();
-                    return tb - ta;
-                });
-
-                populateLecturerExamFilter(examRows);
-
-                const search = (document.getElementById('resultSearch')?.value || '').trim().toLowerCase();
-                const examFilter = document.getElementById('resultExamFilter')?.value || '';
-                const statusFilter = document.getElementById('resultStatusFilter')?.value || '';
-
-                let filtered = [...lecturerResults];
-
-                if (search) {
-                    filtered = filtered.filter(r =>
-                        String(r.student?.full_name || '').toLowerCase().includes(search) ||
-                        String(r.student?.student_id || '').toLowerCase().includes(search) ||
-                        String(r.student?.email || '').toLowerCase().includes(search) ||
-                        String(r.exam_name || '').toLowerCase().includes(search)
+                    const exam = examMap[examId] || {};
+                    const student = profileMap[studentId] || {};
+                    const score = attempt?.score ?? grade?.marks ?? grade?.total_score ?? null;
+                    const totalMarks = attempt?.total_marks ?? grade?.total_marks ?? exam.total_marks ?? 100;
+                    const percentage = attempt?.percentage ?? grade?.percentage ?? (
+                        score != null && Number(totalMarks) > 0 ? (Number(score) / Number(totalMarks)) * 100 : null
                     );
-                }
+                    const attemptStatus = String(attempt?.status || '').toUpperCase();
+                    const gradeStatus = String(grade?.result_status || '').toUpperCase();
+                    const status = gradeStatus || (attemptStatus === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'PENDING');
 
-                if (examFilter) {
-                    filtered = filtered.filter(r => String(r.exam_id) === String(examFilter));
-                }
-
-                if (statusFilter) {
-                    filtered = filtered.filter(r => {
-                        const status = String(r.result_status || 'PENDING_REVIEW').toUpperCase();
-                        if (statusFilter === 'PASS') return status === 'PASS';
-                        if (statusFilter === 'FAIL') return status === 'FAIL';
-                        if (statusFilter === 'PENDING') return ['PENDING', 'PENDING_REVIEW', 'RESET_FOR_RETAKE', 'IN_PROGRESS'].includes(status);
-                        return status === statusFilter;
+                    rows.push({
+                        ...(grade || {}),
+                        id: grade?.id || `attempt-${attempt?.id || key}`,
+                        student_id: studentId,
+                        exam_id: Number(examId),
+                        question_id: ZERO_QUESTION_ID,
+                        marks: score,
+                        total_score: score,
+                        total_marks: totalMarks,
+                        percentage,
+                        result_status: gradeStatus || (attemptStatus === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'PENDING'),
+                        attempt_id: attempt?.id || grade?.attempt_id || null,
+                        attempt_number: attempt?.attempt_number || 1,
+                        attempt_info: attempt,
+                        student: student,
+                        exam_name: exam.exam_name || `Exam ${examId}`,
+                        exam_info: exam,
+                        _status: status
                     });
                 }
 
-                // Current → oldest after filtering.
-                filtered.sort((a, b) => {
-                    const examA = Number(a.exam_id) || 0;
-                    const examB = Number(b.exam_id) || 0;
-                    if (examA !== examB) return examB - examA;
-                    const ta = new Date(a.attempt_info?.updated_at || a.updated_at || 0).getTime();
-                    const tb = new Date(b.attempt_info?.updated_at || b.updated_at || 0).getTime();
-                    return tb - ta;
+                // ============================================================
+                // 5. SORT EXAMS CURRENT → OLDEST, then student name.
+                // ============================================================
+                const examSortValue = row => {
+                    const exam = row?.exam_info || {};
+                    if (exam.exam_date) {
+                        const t = exam.exam_start_time || '00:00:00';
+                        const parsed = new Date(`${exam.exam_date}T${t.length === 5 ? t + ':00' : t}`).getTime();
+                        if (!Number.isNaN(parsed)) return parsed;
+                    }
+                    const fallback = new Date(exam.updated_at || exam.created_at || row?.attempt_info?.updated_at || 0).getTime();
+                    return !Number.isNaN(fallback) && fallback > 0 ? fallback : Number(row.exam_id || 0);
+                };
+                rows.sort((a, b) => {
+                    const diff = examSortValue(b) - examSortValue(a);
+                    if (diff !== 0) return diff;
+                    return String(a.student?.full_name || '').localeCompare(String(b.student?.full_name || ''));
                 });
 
-                lecturerResults = filtered;
-                currentPage.results = 1;
-                displayResults();
+                // Store the complete current dataset before applying UI filters.
+                lecturerResults = rows;
+                populateLecturerExamFilter(examRows);
+                applyLecturerResultFilters();
 
                 if (loading) loading.style.display = 'none';
             } catch (e) {
                 console.error('Lecturer loadResults error:', e);
-                if (loading) {
-                    loading.style.display = 'block';
-                    loading.innerHTML = '❌ Error loading results: ' + (e?.message || e);
-                }
+                lecturerResults = [];
+                if (tbody) tbody.innerHTML = `<tr><td colspan="7" style="text-align:center; padding:30px; color:#DC2626;">❌ Error loading results: ${String(e?.message || e).replace(/</g, '&lt;')}</td></tr>`;
+                if (loading) loading.style.display = 'none';
             }
+        }
+
+        function applyLecturerResultFilters() {
+            const search = (document.getElementById('resultSearch')?.value || '').trim().toLowerCase();
+            const examFilter = document.getElementById('resultExamFilter')?.value || '';
+            const statusFilter = document.getElementById('resultStatusFilter')?.value || '';
+
+            let filtered = [...lecturerResults];
+
+            if (search) {
+                filtered = filtered.filter(r => {
+                    const values = [
+                        r.student?.full_name,
+                        r.student?.student_id,
+                        r.student?.email,
+                        r.student?.program,
+                        r.exam_name
+                    ].map(v => String(v || '').toLowerCase());
+                    return values.some(v => v.includes(search));
+                });
+            }
+
+            if (examFilter) {
+                filtered = filtered.filter(r => String(r.exam_id) === String(examFilter));
+            }
+
+            if (statusFilter) {
+                filtered = filtered.filter(r => {
+                    const status = String(r.result_status || r._status || 'PENDING').toUpperCase();
+                    if (statusFilter === 'PENDING') return ['PENDING', 'PENDING_REVIEW', 'RESET_FOR_RETAKE', 'IN_PROGRESS'].includes(status);
+                    return status === statusFilter;
+                });
+            }
+
+            filtered.sort((a, b) => {
+                const ea = new Date(a.exam_info?.exam_date || a.exam_info?.updated_at || a.exam_info?.created_at || 0).getTime();
+                const eb = new Date(b.exam_info?.exam_date || b.exam_info?.updated_at || b.exam_info?.created_at || 0).getTime();
+                if (eb !== ea && !Number.isNaN(eb) && !Number.isNaN(ea)) return eb - ea;
+                return Number(b.exam_id || 0) - Number(a.exam_id || 0);
+            });
+
+            window.lecturerFilteredResults = filtered;
+            currentPage.results = 1;
+            displayResults(filtered);
         }
 
         function populateLecturerExamFilter(exams) {
@@ -1126,9 +1232,9 @@
             }
         }
 
-        function displayResults() {
+        function displayResults(data = window.lecturerFilteredResults || lecturerResults) {
             const start = (currentPage.results - 1) * itemsPerPage;
-            const page = lecturerResults.slice(start, start + itemsPerPage);
+            const page = data.slice(start, start + itemsPerPage);
             const tbody = document.getElementById('resultsBody');
 
             if (!page.length) {
@@ -1197,7 +1303,7 @@
                 `;
             }).join('');
 
-            renderPagination('results', lecturerResults.length);
+            renderPagination('results', data.length);
         }
 
         function renderPagination(type, total) {
@@ -1216,7 +1322,7 @@
 
         function changePage(type, page) {
             if (page < 1) return;
-            const total = type === 'results' ? lecturerResults.length : 0;
+            const total = type === 'results' ? (window.lecturerFilteredResults || lecturerResults).length : 0;
             const totalPages = Math.ceil(total / itemsPerPage);
             if (page > totalPages) return;
             currentPage[type] = page;
@@ -1227,7 +1333,7 @@
             document.getElementById('resultSearch').value = '';
             document.getElementById('resultExamFilter').value = '';
             document.getElementById('resultStatusFilter').value = '';
-            loadResults();
+            applyLecturerResultFilters();
         }
 
         // ============================================================
@@ -1701,11 +1807,7 @@
                     .select('id, exam_name')
                     .eq('created_by', lecturerId || '')
                     .order('id', { ascending: false });
-                const select = document.getElementById('resultExamFilter');
-                if (select && exams) {
-                    select.innerHTML = '<option value="">All Exams</option>' +
-                        exams.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('');
-                }
+                if (exams) populateLecturerExamFilter(exams);
                 const attSelect = document.getElementById('attendanceExamFilter');
                 if (attSelect && exams) {
                     attSelect.innerHTML = '<option value="">All Exams</option>' +
