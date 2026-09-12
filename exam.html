@@ -1,2958 +1,500 @@
-<!DOCTYPE html><html lang="en">
+<!DOCTYPE html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#071d33">
-<title>NCHSM | Secure Examination System</title><link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="images/Logo_NCHSM.png" rel="icon" sizes="192x192" type="image/png"/>
+<link href="images/Logo_NCHSM.png" rel="icon" sizes="512x512" type="image/png"/>
+<link href="images/Logo_NCHSM.png" rel="apple-touch-icon"/>
+<title>NCHSM | Secure Online Examination</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"><link rel="stylesheet"
- href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css"><script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script><script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script><style>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css">
+<style>
 :root{
-    --navy:#071d33;
-    --navy-2:#0b2944;
-    --blue:#0879d1;
-    --blue-2:#0ea5e9;
-    --cyan:#22c7e8;
-    --gold:#f5b51b;
-    --green:#16a66a;
-    --red:#e5484d;
-    --orange:#f59e0b;
-    --bg:#f3f7fb;
-    --card:#ffffff;
-    --text:#12263a;
-    --muted:#6d8092;
-    --border:#e1e9f0;
-    --shadow:0 14px 40px rgba(7,29,51,.08);
-    --shadow-lg:0 25px 70px rgba(7,29,51,.14);
-    --radius:20px;
+  --navy:#071d33;--navy2:#0b2944;--blue:#0879d1;--cyan:#16b9dc;
+  --green:#16a66a;--gold:#f5b51b;--red:#e5484d;--orange:#f59e0b;
+  --bg:#f3f7fb;--card:#fff;--text:#12263a;--muted:#718398;--line:#e2eaf1;
+  --shadow:0 18px 55px rgba(7,29,51,.10);--radius:20px;
 }
-
 *{box-sizing:border-box}
-
-html,body{
-    margin:0;
-    min-height:100%;
-    font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
-    background:var(--bg);
-    color:var(--text);
-}
-
-button,input{
-    font:inherit;
-}
-
-button{
-    cursor:pointer;
-}
-
-.hidden{
-    display:none!important;
-}
-
-/* =========================================================
-   ENTRY / LOBBY
-========================================================= */
-
-.exam-lobby{
-    min-height:100vh;
-    background:
-      radial-gradient(circle at 85% 8%,rgba(14,165,233,.16),transparent 28%),
-      radial-gradient(circle at 8% 88%,rgba(245,181,27,.10),transparent 24%),
-      linear-gradient(135deg,#f7fbff 0%,#edf5fb 100%);
-    padding:20px;
-}
-
-.lobby-shell{
-    width:min(1220px,100%);
-    margin:auto;
-}
-
-.brand-bar{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:20px;
-    padding:15px 20px;
-    background:rgba(255,255,255,.88);
-    border:1px solid rgba(255,255,255,.8);
-    border-radius:18px;
-    box-shadow:0 8px 30px rgba(7,29,51,.06);
-    backdrop-filter:blur(14px);
-}
-
-.brand{
-    display:flex;
-    align-items:center;
-    gap:12px;
-}
-
-.brand-mark{
-    width:46px;
-    height:46px;
-    border-radius:14px;
-    display:grid;
-    place-items:center;
-    color:white;
-    background:linear-gradient(145deg,var(--navy),#0c4b78);
-    box-shadow:0 8px 20px rgba(7,29,51,.18);
-}
-
-.brand-mark i{
-    font-size:20px;
-}
-
-.brand strong{
-    display:block;
-    font-size:17px;
-    letter-spacing:-.4px;
-}
-
-.brand small{
-    color:var(--muted);
-    font-size:10px;
-    font-weight:600;
-}
-
-.secure-badge{
-    display:flex;
-    align-items:center;
-    gap:9px;
-    padding:9px 13px;
-    border-radius:999px;
-    background:#effaf5;
-    color:#08794e;
-    font-size:11px;
-    font-weight:800;
-}
-
-.secure-dot{
-    width:8px;
-    height:8px;
-    border-radius:50%;
-    background:var(--green);
-    box-shadow:0 0 0 5px rgba(22,166,106,.12);
-}
-
-.lobby-main{
-    margin-top:20px;
-    display:grid;
-    grid-template-columns:1.35fr .65fr;
-    gap:20px;
-}
-
-.hero-card{
-    position:relative;
-    overflow:hidden;
-    background:linear-gradient(145deg,var(--navy),#0a3556 65%,#0a4a70);
-    color:white;
-    border-radius:28px;
-    padding:38px;
-    min-height:290px;
-    box-shadow:var(--shadow-lg);
-}
-
-.hero-card:before{
-    content:"";
-    position:absolute;
-    width:300px;
-    height:300px;
-    border:1px solid rgba(255,255,255,.08);
-    border-radius:50%;
-    right:-100px;
-    top:-110px;
-}
-
-.hero-card:after{
-    content:"";
-    position:absolute;
-    width:180px;
-    height:180px;
-    border:1px solid rgba(245,181,27,.15);
-    border-radius:50%;
-    right:40px;
-    bottom:-100px;
-}
-
-.eyebrow{
-    display:inline-flex;
-    align-items:center;
-    gap:7px;
-    color:#8edcff;
-    font-size:10px;
-    text-transform:uppercase;
-    letter-spacing:1.5px;
-    font-weight:800;
-}
-
-.hero-card h1{
-    position:relative;
-    z-index:2;
-    margin:14px 0 8px;
-    font-size:clamp(31px,4vw,52px);
-    line-height:1.04;
-    letter-spacing:-2px;
-    max-width:650px;
-}
-
-.hero-card h1 span{
-    color:var(--gold);
-}
-
-.hero-card p{
-    position:relative;
-    z-index:2;
-    max-width:590px;
-    color:#c7d9e7;
-    line-height:1.7;
-    font-size:13px;
-    margin:0;
-}
-
-.hero-mini{
-    position:absolute;
-    right:34px;
-    bottom:30px;
-    z-index:2;
-    display:flex;
-    align-items:center;
-    gap:9px;
-    padding:10px 13px;
-    background:rgba(255,255,255,.09);
-    border:1px solid rgba(255,255,255,.13);
-    border-radius:13px;
-    font-size:10px;
-}
-
-.hero-mini i{
-    color:#7ee3ba;
-}
-
-.exam-card{
-    background:white;
-    border:1px solid var(--border);
-    border-radius:24px;
-    padding:25px;
-    box-shadow:var(--shadow);
-}
-
-.section-label{
-    display:flex;
-    align-items:center;
-    gap:9px;
-    color:var(--muted);
-    text-transform:uppercase;
-    letter-spacing:1.1px;
-    font-size:9px;
-    font-weight:900;
-}
-
-.section-label i{
-    color:var(--blue);
-}
-
-.exam-title{
-    margin:9px 0 18px;
-    font-size:22px;
-    line-height:1.2;
-}
-
-.exam-stats{
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    border:1px solid var(--border);
-    border-radius:16px;
-    overflow:hidden;
-}
-
-.exam-stat{
-    padding:14px 10px;
-    text-align:center;
-    border-right:1px solid var(--border);
-}
-
-.exam-stat:last-child{
-    border-right:0;
-}
-
-.exam-stat i{
-    color:var(--blue);
-    margin-bottom:6px;
-}
-
-.exam-stat strong{
-    display:block;
-    font-size:17px;
-}
-
-.exam-stat span{
-    color:var(--muted);
-    font-size:9px;
-    font-weight:700;
-}
-
-.student-card{
-    margin-top:20px;
-    display:grid;
-    grid-template-columns:auto 1fr;
-    gap:14px;
-    align-items:center;
-    background:#f7fafc;
-    border:1px solid var(--border);
-    padding:15px;
-    border-radius:17px;
-}
-
-.student-avatar{
-    width:50px;
-    height:50px;
-    border-radius:15px;
-    display:grid;
-    place-items:center;
-    color:white;
-    background:linear-gradient(145deg,#0b3c62,var(--blue));
-    font-size:18px;
-}
-
-.student-card strong{
-    display:block;
-    font-size:13px;
-}
-
-.student-card span{
-    display:block;
-    margin-top:4px;
-    color:var(--muted);
-    font-size:9px;
-}
-
-.steps{
-    grid-column:1/-1;
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:10px;
-    margin-top:20px;
-}
-
-.step{
-    position:relative;
-    padding:14px;
-    border:1px solid var(--border);
-    border-radius:16px;
-    background:white;
-}
-
-.step.active{
-    background:#eef8ff;
-    border-color:#9ed9fb;
-}
-
-.step-number{
-    width:28px;
-    height:28px;
-    display:grid;
-    place-items:center;
-    border-radius:50%;
-    background:#edf2f6;
-    color:#687b8d;
-    font-size:11px;
-    font-weight:900;
-    margin-bottom:9px;
-}
-
-.step.active .step-number{
-    background:var(--blue);
-    color:white;
-}
-
-.step strong{
-    display:block;
-    font-size:10px;
-}
-
-.step span{
-    color:var(--muted);
-    font-size:8px;
-    line-height:1.5;
-}
-
-.lobby-bottom{
-    margin-top:20px;
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
-}
-
-.instructions{
-    background:white;
-    border:1px solid var(--border);
-    border-radius:22px;
-    padding:24px;
-    box-shadow:var(--shadow);
-}
-
-.instructions h3{
-    margin:0 0 15px;
-    font-size:15px;
-}
-
-.instruction{
-    display:flex;
-    gap:11px;
-    margin:11px 0;
-    font-size:10px;
-    line-height:1.5;
-}
-
-.instruction i{
-    flex:0 0 auto;
-    width:21px;
-    height:21px;
-    border-radius:7px;
-    display:grid;
-    place-items:center;
-    background:#eaf8f2;
-    color:var(--green);
-    font-size:9px;
-}
-
-.agreement{
-    margin-top:18px;
-    padding-top:16px;
-    border-top:1px solid var(--border);
-    display:flex;
-    gap:10px;
-    align-items:flex-start;
-}
-
-.agreement input{
-    accent-color:var(--blue);
-    width:16px;
-    height:16px;
-    margin-top:1px;
-}
-
-.agreement label{
-    font-size:9px;
-    color:var(--muted);
-    line-height:1.5;
-}
-
-.primary-btn{
-    width:100%;
-    border:0;
-    margin-top:17px;
-    padding:14px 18px;
-    border-radius:13px;
-    background:linear-gradient(135deg,var(--blue),#075eaa);
-    color:white;
-    font-size:11px;
-    font-weight:900;
-    box-shadow:0 10px 25px rgba(8,121,209,.23);
-    transition:.2s ease;
-}
-
-.primary-btn:hover{
-    transform:translateY(-1px);
-    box-shadow:0 14px 30px rgba(8,121,209,.3);
-}
-
-.primary-btn:disabled{
-    opacity:.45;
-    cursor:not-allowed;
-    transform:none;
-}
-
-.motivation{
-    position:relative;
-    overflow:hidden;
-    border-radius:22px;
-    background:linear-gradient(145deg,#eaf7ff,#ffffff);
-    border:1px solid #d8ebf7;
-    padding:30px;
-    display:flex;
-    flex-direction:column;
-    justify-content:center;
-}
-
-.motivation i{
-    color:var(--gold);
-    font-size:25px;
-}
-
-.motivation h2{
-    font-size:27px;
-    line-height:1.12;
-    margin:13px 0 8px;
-    letter-spacing:-1px;
-}
-
-.motivation p{
-    color:var(--muted);
-    font-size:10px;
-    line-height:1.6;
-    max-width:350px;
-}
-
-.motivation .quote{
-    color:#4c7b9a;
-    font-size:11px;
-    font-weight:800;
-    margin-top:15px;
-}
-
-/* =========================================================
-   PRE-EXAM STEPS
-========================================================= */
-
-.preexam{
-    min-height:100vh;
-    padding:20px;
-    background:
-      radial-gradient(circle at 90% 0,#dff5ff,transparent 28%),
-      #f3f7fb;
-}
-
-.pre-shell{
-    width:min(1080px,100%);
-    margin:auto;
-}
-
-.pre-header{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:14px 0 20px;
-}
-
-.back-btn{
-    border:0;
-    background:white;
-    border:1px solid var(--border);
-    padding:9px 13px;
-    border-radius:10px;
-    color:var(--muted);
-    font-size:10px;
-}
-
-.pre-card{
-    background:white;
-    border:1px solid var(--border);
-    border-radius:25px;
-    box-shadow:var(--shadow-lg);
-    padding:28px;
-}
-
-.progress-track{
-    display:flex;
-    align-items:center;
-    margin-bottom:30px;
-}
-
-.progress-step{
-    display:flex;
-    align-items:center;
-    gap:8px;
-    min-width:0;
-}
-
-.progress-circle{
-    width:30px;
-    height:30px;
-    border-radius:50%;
-    display:grid;
-    place-items:center;
-    background:#edf2f6;
-    color:#718294;
-    font-size:10px;
-    font-weight:900;
-    flex:0 0 auto;
-}
-
-.progress-step.active .progress-circle{
-    background:var(--blue);
-    color:white;
-}
-
-.progress-step.done .progress-circle{
-    background:var(--green);
-    color:white;
-}
-
-.progress-step strong{
-    font-size:9px;
-    white-space:nowrap;
-}
-
-.progress-step span{
-    display:block;
-    color:var(--muted);
-    font-size:7px;
-    margin-top:2px;
-}
-
-.progress-line{
-    height:2px;
-    flex:1;
-    margin:0 13px;
-    background:#e5ebf0;
-}
-
-.pre-title{
-    text-align:center;
-    margin-bottom:24px;
-}
-
-.pre-title h2{
-    font-size:28px;
-    margin:0 0 7px;
-    letter-spacing:-1px;
-}
-
-.pre-title p{
-    color:var(--muted);
-    font-size:11px;
-    margin:0;
-}
-
-.camera-layout{
-    display:grid;
-    grid-template-columns:1.15fr .85fr;
-    gap:20px;
-}
-
-.camera-panel{
-    border:1px solid var(--border);
-    border-radius:19px;
-    overflow:hidden;
-    background:#071d33;
-}
-
-.camera-preview{
-    position:relative;
-    min-height:350px;
-    display:grid;
-    place-items:center;
-    background:#071d33;
-}
-
-#face-video{
-    width:100%;
-    height:100%;
-    min-height:350px;
-    object-fit:cover;
-    display:block;
-}
-
-.camera-overlay{
-    position:absolute;
-    inset:18px;
-    border:2px solid rgba(55,221,159,.75);
-    border-radius:18px;
-    pointer-events:none;
-}
-
-.camera-status{
-    position:absolute;
-    top:15px;
-    left:15px;
-    padding:8px 11px;
-    border-radius:9px;
-    background:rgba(0,0,0,.55);
-    color:white;
-    font-size:9px;
-    font-weight:800;
-}
-
-.camera-status i{
-    color:#48df9e;
-    margin-right:5px;
-}
-
-.camera-caption{
-    padding:13px 15px;
-    background:#0b2944;
-    color:#bdd0df;
-    font-size:9px;
-}
-
-.check-list{
-    display:grid;
-    gap:10px;
-}
-
-.check-item{
-    display:flex;
-    align-items:center;
-    gap:11px;
-    padding:13px;
-    border:1px solid var(--border);
-    border-radius:14px;
-}
-
-.check-icon{
-    width:34px;
-    height:34px;
-    display:grid;
-    place-items:center;
-    border-radius:10px;
-    background:#eaf8f2;
-    color:var(--green);
-}
-
-.check-item strong{
-    display:block;
-    font-size:10px;
-}
-
-.check-item span{
-    display:block;
-    color:var(--muted);
-    font-size:8px;
-    margin-top:3px;
-}
-
-.ready-message{
-    margin-top:12px;
-    padding:14px;
-    border-radius:14px;
-    background:#effaf5;
-    border:1px solid #cdeedf;
-    color:#08794e;
-    font-size:9px;
-    font-weight:700;
-}
-
-.ready-message i{
-    margin-right:6px;
-}
-
-.pre-actions{
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    margin-top:22px;
-}
-
-.secondary-btn{
-    border:1px solid var(--border);
-    background:white;
-    color:#607486;
-    border-radius:12px;
-    padding:12px 17px;
-    font-size:10px;
-    font-weight:800;
-}
-
-.pre-actions .primary-btn{
-    width:auto;
-    margin:0;
-}
-
-/* =========================================================
-   EXAM INTERFACE
-========================================================= */
-
-.exam-interface{
-    height:100vh;
-    overflow:hidden;
-    background:#eef3f7;
-}
-
-.exam-topbar{
-    height:64px;
-    background:#071d33;
-    color:white;
-    display:flex;
-    align-items:center;
-    justify-content:space-between;
-    padding:0 18px;
-    position:relative;
-    z-index:20;
-}
-
-.exam-brand{
-    display:flex;
-    align-items:center;
-    gap:10px;
-}
-
-.exam-brand .brand-mark{
-    width:37px;
-    height:37px;
-    border-radius:10px;
-}
-
-.exam-brand strong{
-    display:block;
-    font-size:13px;
-}
-
-.exam-brand span{
-    display:block;
-    color:#91aec2;
-    font-size:8px;
-    margin-top:2px;
-}
-
-.exam-title-top{
-    text-align:center;
-}
-
-.exam-title-top strong{
-    display:block;
-    font-size:12px;
-}
-
-.exam-title-top span{
-    color:#9eb5c6;
-    font-size:8px;
-}
-
-.top-actions{
-    display:flex;
-    align-items:center;
-    gap:9px;
-}
-
-.timer-pill{
-    display:flex;
-    align-items:center;
-    gap:7px;
-    padding:9px 13px;
-    background:#102f4b;
-    border:1px solid rgba(255,255,255,.1);
-    border-radius:11px;
-    font-size:12px;
-    font-weight:900;
-}
-
-.timer-pill i{
-    color:var(--gold);
-}
-
-.proctor-pill{
-    display:flex;
-    align-items:center;
-    gap:6px;
-    padding:7px 10px;
-    border-radius:999px;
-    background:rgba(22,166,106,.12);
-    border:1px solid rgba(22,166,106,.25);
-    color:#70e4b1;
-    font-size:8px;
-    font-weight:800;
-}
-
-.proctor-dot{
-    width:6px;
-    height:6px;
-    background:#48df9e;
-    border-radius:50%;
-}
-
-.exam-grid{
-    height:calc(100vh - 64px);
-    display:grid;
-    grid-template-columns:245px minmax(0,1fr) 245px;
-    gap:12px;
-    padding:12px;
-}
-
-.exam-left,
-.exam-right{
-    min-height:0;
-    overflow:auto;
-    scrollbar-width:thin;
-}
-
-.sidebar-card{
-    background:white;
-    border:1px solid var(--border);
-    border-radius:16px;
-    padding:15px;
-    margin-bottom:12px;
-    box-shadow:0 3px 12px rgba(7,29,51,.035);
-}
-
-.student-mini{
-    display:flex;
-    align-items:center;
-    gap:10px;
-}
-
-.student-mini .student-avatar{
-    width:42px;
-    height:42px;
-    border-radius:12px;
-    font-size:15px;
-}
-
-.student-mini strong{
-    display:block;
-    font-size:10px;
-}
-
-.student-mini span{
-    display:block;
-    color:var(--muted);
-    font-size:7px;
-    margin-top:3px;
-}
-
-.time-card{
-    background:linear-gradient(145deg,#092b47,#0b3c60);
-    color:white;
-    border-radius:16px;
-    padding:17px;
-    margin-bottom:12px;
-}
-
-.time-card small{
-    color:#a9c1d1;
-    font-size:8px;
-}
-
-.big-time{
-    font-size:25px;
-    font-weight:900;
-    letter-spacing:-1px;
-    margin:4px 0 9px;
-}
-
-.time-progress{
-    height:5px;
-    background:rgba(255,255,255,.13);
-    border-radius:99px;
-    overflow:hidden;
-}
-
-.time-progress span{
-    display:block;
-    height:100%;
-    width:74%;
-    background:linear-gradient(90deg,var(--cyan),var(--gold));
-    border-radius:inherit;
-}
-
-.camera-mini{
-    background:#071d33;
-    border-radius:13px;
-    overflow:hidden;
-}
-
-.camera-mini video,
-.camera-mini #face-video{
-    min-height:135px;
-    height:135px;
-}
-
-.camera-mini-label{
-    padding:8px 10px;
-    color:#b9d1df;
-    font-size:8px;
-}
-
-.status-list{
-    display:grid;
-    gap:7px;
-    margin-top:12px;
-}
-
-.status-row{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    padding:9px;
-    background:#f7fafc;
-    border-radius:9px;
-    font-size:8px;
-}
-
-.status-row span:last-child{
-    color:var(--green);
-    font-weight:800;
-}
-
-.exam-middle{
-    min-width:0;
-    min-height:0;
-    display:flex;
-    flex-direction:column;
-    gap:10px;
-}
-
-.question-head{
-    background:white;
-    border:1px solid var(--border);
-    border-radius:16px;
-    padding:14px 17px;
-}
-
-.question-head-top{
-    display:flex;
-    justify-content:space-between;
-    gap:15px;
-    align-items:center;
-}
-
-.question-number{
-    font-size:11px;
-    font-weight:900;
-}
-
-.question-percent{
-    color:var(--muted);
-    font-size:9px;
-}
-
-.question-progress{
-    height:5px;
-    margin-top:9px;
-    border-radius:99px;
-    background:#e8eef3;
-    overflow:hidden;
-}
-
-.question-progress span{
-    display:block;
-    width:24%;
-    height:100%;
-    background:linear-gradient(90deg,var(--blue),var(--cyan));
-    border-radius:inherit;
-}
-
-.question-card{
-    flex:1;
-    min-height:0;
-    display:flex;
-    flex-direction:column;
-    background:white;
-    border:1px solid var(--border);
-    border-radius:18px;
-    padding:20px;
-    overflow:hidden;
-}
-
-.question-toolbar{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-    gap:10px;
-    padding-bottom:13px;
-    border-bottom:1px solid var(--border);
-}
-
-.question-toolbar span{
-    font-size:9px;
-    color:var(--muted);
-    font-weight:700;
-}
-
-.flag-btn{
-    border:1px solid #f1d4d5;
-    background:#fff8f8;
-    color:#c54449;
-    padding:8px 10px;
-    border-radius:9px;
-    font-size:8px;
-    font-weight:800;
-}
-
-#exam-container{
-    flex:1;
-    min-height:0;
-    overflow-y:auto;
-    overflow-x:hidden;
-    padding:18px 6px 28px 2px;
-    -webkit-overflow-scrolling:touch;
-    scrollbar-width:thin;
-}
-
-#exam-container::-webkit-scrollbar,
-.exam-left::-webkit-scrollbar,
-.exam-right::-webkit-scrollbar{
-    width:5px;
-}
-
-#exam-container::-webkit-scrollbar-thumb,
-.exam-left::-webkit-scrollbar-thumb,
-.exam-right::-webkit-scrollbar-thumb{
-    background:#ccd8e2;
-    border-radius:99px;
-}
-
-/* dynamic question content */
-#exam-container label,
-#exam-container .option,
-#exam-container .answer-option{
-    display:block;
-    width:100%;
-    max-width:100%;
-    min-width:0;
-    white-space:normal;
-    overflow-wrap:anywhere;
-    word-break:normal;
-}
-
-#exam-container input[type="radio"],
-#exam-container input[type="checkbox"]{
-    accent-color:var(--blue);
-}
-
-#exam-container .option,
-#exam-container .answer-option{
-    padding:13px 14px;
-    margin:9px 0;
-    border:1px solid var(--border);
-    border-radius:13px;
-    background:#fbfdff;
-    transition:.18s ease;
-}
-
-#exam-container .option:hover,
-#exam-container .answer-option:hover{
-    border-color:#9fd5f4;
-    background:#f3faff;
-}
-
-.exam-navigation{
-    flex-shrink:0;
-    display:flex;
-    justify-content:space-between;
-    gap:10px;
-    padding-top:11px;
-    border-top:1px solid var(--border);
-}
-
-.nav-btn{
-    border:1px solid var(--border);
-    background:white;
-    color:#52697b;
-    padding:11px 16px;
-    border-radius:11px;
-    font-size:9px;
-    font-weight:900;
-}
-
-.nav-btn.next{
-    background:var(--blue);
-    border-color:var(--blue);
-    color:white;
-    box-shadow:0 8px 20px rgba(8,121,209,.2);
-}
-
-.save-state{
-    align-self:center;
-    color:var(--green);
-    font-size:8px;
-    font-weight:800;
-}
-
-.status-title{
-    display:flex;
-    justify-content:space-between;
-    align-items:center;
-}
-
-.status-title strong{
-    font-size:10px;
-}
-
-.status-title span{
-    font-size:8px;
-    color:var(--muted);
-}
-
-.legend{
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:6px;
-    margin:12px 0;
-}
-
-.legend-item{
-    display:flex;
-    align-items:center;
-    gap:5px;
-    color:var(--muted);
-    font-size:7px;
-}
-
-.legend-dot{
-    width:7px;
-    height:7px;
-    border-radius:50%;
-}
-
-.dot-green{background:#42c88f}
-.dot-grey{background:#ccd5dd}
-.dot-orange{background:#f3a934}
-.dot-blue{background:#198be0}
-
-.question-status-grid{
-    display:grid;
-    grid-template-columns:repeat(5,1fr);
-    gap:6px;
-}
-
-.q-number{
-    aspect-ratio:1;
-    display:grid;
-    place-items:center;
-    border-radius:8px;
-    background:#f3f6f8;
-    color:#708293;
-    font-size:8px;
-    font-weight:800;
-    border:1px solid #e5ebef;
-}
-
-.q-number.answered{
-    background:#eaf8f2;
-    color:#16865b;
-    border-color:#ccecdf;
-}
-
-.q-number.flagged{
-    background:#fff6e8;
-    color:#c47a09;
-    border-color:#f5dfb6;
-}
-
-.q-number.current{
-    background:var(--blue);
-    color:white;
-    border-color:var(--blue);
-    box-shadow:0 5px 13px rgba(8,121,209,.22);
-}
-
-.proctor-card{
-    background:#071d33;
-    color:white;
-}
-
-.proctor-card h4{
-    margin:0 0 10px;
-    font-size:10px;
-}
-
-.live-camera{
-    height:125px;
-    border-radius:12px;
-    background:#0b304d;
-    display:grid;
-    place-items:center;
-    overflow:hidden;
-}
-
-.live-camera video{
-    width:100%;
-    height:100%;
-    object-fit:cover;
-}
-
-.proctor-status{
-    display:grid;
-    gap:7px;
-    margin-top:11px;
-}
-
-.proctor-status div{
-    display:flex;
-    justify-content:space-between;
-    color:#adc4d4;
-    font-size:7px;
-}
-
-.proctor-status span{
-    color:#55dda0;
-    font-weight:800;
-}
-
-.submit-btn{
-    width:100%;
-    border:0;
-    padding:12px;
-    border-radius:11px;
-    background:linear-gradient(135deg,#08794e,#0eaa70);
-    color:white;
-    font-size:9px;
-    font-weight:900;
-}
-
-/* =========================================================
-   MODALS
-========================================================= */
-
-.modal-overlay{
-    position:fixed;
-    inset:0;
-    z-index:9999;
-    display:none;
-    place-items:center;
-    padding:20px;
-    background:rgba(3,19,33,.72);
-    backdrop-filter:blur(8px);
-}
-
-.modal-overlay.active{
-    display:grid;
-}
-
-.modal-card{
-    width:min(500px,100%);
-    background:white;
-    border-radius:23px;
-    padding:25px;
-    box-shadow:0 30px 90px rgba(0,0,0,.3);
-}
-
-.modal-icon{
-    width:48px;
-    height:48px;
-    border-radius:15px;
-    display:grid;
-    place-items:center;
-    background:#eaf5ff;
-    color:var(--blue);
-    margin-bottom:13px;
-}
-
-.modal-card h3{
-    margin:0 0 7px;
-    font-size:19px;
-}
-
-.modal-card p{
-    color:var(--muted);
-    font-size:10px;
-    line-height:1.6;
-}
-
-.modal-actions{
-    display:flex;
-    gap:9px;
-    justify-content:flex-end;
-    margin-top:18px;
-}
-
-.modal-actions button{
-    width:auto;
-    margin:0;
-}
-
-/* =========================================================
-   MOBILE
-========================================================= */
-
-@media(max-width:900px){
-    .lobby-main,
-    .lobby-bottom{
-        grid-template-columns:1fr;
-    }
-
-    .hero-mini{
-        position:static;
-        width:max-content;
-        margin-top:22px;
-    }
-
-    .camera-layout{
-        grid-template-columns:1fr;
-    }
-
-    .exam-grid{
-        grid-template-columns:1fr;
-    }
-
-    .exam-left,
-    .exam-right{
-        display:none;
-    }
-}
-
+html,body{margin:0;min-height:100%;font-family:Inter,system-ui,sans-serif;background:var(--bg);color:var(--text)}
+button,input{font:inherit}
+button{cursor:pointer}
+.hidden{display:none!important}
+.app{min-height:100vh;background:
+ radial-gradient(circle at 90% 0%,rgba(22,185,220,.10),transparent 30%),
+ linear-gradient(180deg,#f7fafc 0%,#eef4f8 100%)}
+.topbar{height:72px;background:rgba(7,29,51,.98);color:#fff;display:flex;align-items:center;justify-content:space-between;padding:0 5vw;position:sticky;top:0;z-index:50;box-shadow:0 8px 25px rgba(0,0,0,.12)}
+.brand{display:flex;align-items:center;gap:12px}.brand-mark{width:42px;height:42px;border-radius:13px;background:#fff;display:grid;place-items:center;overflow:hidden;box-shadow:inset 0 1px rgba(255,255,255,.3)}.brand-mark img{width:100%;height:100%;object-fit:contain;padding:3px}
+.brand strong{display:block;font-size:18px;letter-spacing:.2px}.brand small{color:#b9ccdc;font-size:10px}
+.secure{display:flex;align-items:center;gap:9px;color:#d7e8f5;font-size:12px}.secure i{color:#5ee0a6}
+.page{width:min(1180px,92vw);margin:0 auto;padding:42px 0 35px}
+.hero{display:grid;grid-template-columns:1.25fr .75fr;gap:24px;align-items:stretch}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow)}
+.hero-main{padding:34px}.eyebrow{display:inline-flex;gap:8px;align-items:center;color:var(--blue);font-size:12px;font-weight:800;text-transform:uppercase;letter-spacing:1px}
+h1{font-size:clamp(30px,4vw,48px);line-height:1.04;margin:14px 0 12px;letter-spacing:-1.7px}
+.lead{color:var(--muted);line-height:1.7;max-width:680px}
+.exam-card{margin-top:25px;padding:22px;border:1px solid #dfeaf2;border-radius:17px;background:linear-gradient(135deg,#f9fcff,#eef7fc)}
+.exam-title{display:flex;justify-content:space-between;gap:15px;align-items:flex-start}.exam-title h2{margin:0 0 5px;font-size:20px}.exam-title p{margin:0;color:var(--muted);font-size:13px}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:8px 11px;font-size:11px;font-weight:800;white-space:nowrap}
+.badge.green{background:#e7f8f0;color:#08794d}.badge.blue{background:#e8f4ff;color:#0764a9}.badge.orange{background:#fff4dd;color:#9a6100}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:18px}.stat{background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px}.stat span{display:block;color:var(--muted);font-size:10px;text-transform:uppercase;letter-spacing:.6px}.stat strong{font-size:16px;margin-top:3px;display:block}
+.resume{margin-top:16px;padding:16px;border-radius:15px;background:linear-gradient(135deg,#eefaf5,#f8fffc);border:1px solid #cdebdc;display:none}.resume.show{display:flex;justify-content:space-between;align-items:center;gap:15px}.resume strong{display:block}.resume p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.side-card{padding:28px;background:linear-gradient(150deg,#071d33,#0b3657);color:#fff;position:relative;overflow:hidden}.side-card:after{content:"";position:absolute;width:210px;height:210px;border-radius:50%;right:-100px;top:-80px;background:rgba(22,185,220,.14)}
+.side-card h3{font-size:21px;margin:5px 0 8px;position:relative;z-index:1}.side-card p{color:#bcd0df;line-height:1.7;font-size:13px;position:relative;z-index:1}
+.checks{margin:22px 0 0;display:grid;gap:12px;position:relative;z-index:1}.check{display:flex;gap:11px;align-items:flex-start}.check i{color:#5ee0a6;margin-top:3px}.check span{font-size:12px;color:#e5eff6;line-height:1.45}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}.step{padding:14px;border:1px solid var(--line);background:#fff;border-radius:14px;display:flex;gap:11px;align-items:center}.step-num{width:32px;height:32px;border-radius:50%;background:#eaf4fb;color:#58728a;display:grid;place-items:center;font-weight:800;font-size:12px;flex:none}.step.active .step-num,.step.done .step-num{background:var(--blue);color:#fff}.step.done .step-num{background:var(--green)}.step strong{font-size:12px;display:block}.step small{color:var(--muted);font-size:10px}
+.actions{display:flex;justify-content:flex-end;gap:10px;margin-top:22px}.btn{border:0;border-radius:13px;padding:13px 18px;font-weight:800;font-size:13px;display:inline-flex;align-items:center;justify-content:center;gap:8px;transition:.2s}.btn:hover{transform:translateY(-1px)}.btn-primary{background:linear-gradient(135deg,#0879d1,#075ca5);color:#fff;box-shadow:0 10px 24px rgba(8,121,209,.24)}.btn-green{background:linear-gradient(135deg,#16a66a,#08794d);color:#fff;box-shadow:0 10px 24px rgba(22,166,106,.2)}.btn-light{background:#fff;border:1px solid var(--line);color:var(--text)}
+.pre{width:min(1000px,92vw);margin:0 auto;padding:35px 0}.pre-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}.pre-head h2{margin:0;font-size:27px}.pre-head p{margin:5px 0;color:var(--muted);font-size:13px}
+.progress{height:7px;background:#e6edf3;border-radius:99px;overflow:hidden}.progress span{display:block;height:100%;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:99px}
+.check-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px;margin-top:20px}.camera-card{padding:18px}.video-wrap{height:360px;background:#071d33;border-radius:16px;overflow:hidden;position:relative;display:grid;place-items:center}.video-wrap video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}.camera-overlay{position:absolute;inset:14px;border:2px solid #4ee39c;border-radius:15px;pointer-events:none}.camera-status{position:absolute;left:15px;bottom:15px;background:rgba(7,29,51,.86);color:#fff;padding:9px 12px;border-radius:10px;font-size:11px}.camera-status i{color:#5ee0a6}
+.systems{display:grid;gap:10px}.system{display:flex;align-items:center;justify-content:space-between;padding:15px;border:1px solid var(--line);border-radius:14px;background:#fff}.system-left{display:flex;gap:11px;align-items:center}.system-icon{width:37px;height:37px;border-radius:11px;background:#edf6fb;display:grid;place-items:center;color:var(--blue)}.system strong{display:block;font-size:12px}.system small{color:var(--muted);font-size:10px}.ok{color:var(--green);font-size:12px;font-weight:800}
+.ready{max-width:720px;margin:45px auto;text-align:center;padding:35px}.success-icon{width:80px;height:80px;border-radius:50%;background:#e8f8f0;color:var(--green);display:grid;place-items:center;font-size:35px;margin:0 auto 18px}.ready h2{font-size:35px;margin:0 0 9px}.ready p{color:var(--muted);line-height:1.7}.ready-list{text-align:left;display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:24px 0}.ready-list div{padding:13px;border:1px solid var(--line);border-radius:12px;font-size:12px}.ready-list i{color:var(--green);margin-right:7px}
+.exam-interface{height:calc(100vh - 72px);padding:12px;background:#eaf0f5}.exam-grid{height:100%;display:grid;grid-template-columns:245px minmax(0,1fr) 255px;gap:12px}.exam-left,.exam-right,.question-card{background:#fff;border:1px solid #dfe7ee;border-radius:16px;box-shadow:0 10px 30px rgba(7,29,51,.07)}.exam-left,.exam-right{padding:14px;overflow:auto}.exam-middle{min-width:0;display:flex;flex-direction:column;gap:10px;min-height:0}.exam-header{background:#fff;border:1px solid #dfe7ee;border-radius:16px;padding:13px 16px;display:flex;align-items:center;justify-content:space-between;gap:15px}.exam-header h3{margin:0;font-size:15px}.exam-header small{color:var(--muted)}.timer{font-variant-numeric:tabular-nums;font-weight:900;font-size:18px;color:var(--red)}.timer-box{background:#fff4f4;border:1px solid #ffd7d7;border-radius:12px;padding:12px;text-align:center;margin:12px 0}.timer-box small{display:block;color:var(--muted);font-size:9px;text-transform:uppercase}.exam-left .student{padding:12px;border-radius:12px;background:#f5f9fc}.avatar{width:42px;height:42px;border-radius:12px;background:#dcecf7;display:grid;place-items:center;color:var(--blue);font-weight:900}.student-row{display:flex;gap:10px;align-items:center}.student strong{font-size:12px}.student small{display:block;color:var(--muted);font-size:9px;margin-top:2px}.camera-mini{height:130px;border-radius:12px;background:#071d33;margin-top:12px;overflow:hidden;display:grid;place-items:center;color:#fff;font-size:11px}.live{color:#5ee0a6;font-size:10px;margin-top:7px}.question-card{flex:1;min-height:0;padding:22px;display:flex;flex-direction:column;overflow:hidden}.q-top{display:flex;justify-content:space-between;gap:10px;align-items:center}.q-meta{color:var(--muted);font-size:11px}.q-progress{margin:8px 0 18px}.question-scroll{overflow-y:auto;min-height:0;flex:1;padding-right:5px}.question-number{font-size:12px;font-weight:800;color:var(--blue);text-transform:uppercase;letter-spacing:.7px}.question-text{font-size:19px;line-height:1.55;margin:10px 0 18px;font-weight:700}.options{display:grid;gap:10px}.option{display:flex;gap:12px;align-items:flex-start;width:100%;padding:14px;border:1px solid #dce5ec;border-radius:13px;background:#fff;text-align:left;transition:.18s}.option:hover{border-color:#8ec9ed;background:#f8fcff}.option.selected{border-color:var(--blue);background:#eef7fe;box-shadow:0 0 0 2px rgba(8,121,209,.08)}.option-key{width:27px;height:27px;border-radius:8px;background:#edf3f7;display:grid;place-items:center;font-weight:800;font-size:11px;flex:none}.option.selected .option-key{background:var(--blue);color:#fff}.option span:last-child{font-size:13px;line-height:1.5;overflow-wrap:anywhere}.exam-nav{display:flex;justify-content:space-between;gap:10px;padding-top:12px;border-top:1px solid var(--line);margin-top:12px}.side-title{font-size:11px;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);font-weight:800;margin:3px 0 12px}.status-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}.qnum{height:30px;border:1px solid var(--line);border-radius:7px;background:#fff;font-size:9px;font-weight:800}.qnum.answered{background:#e8f8f0;border-color:#bce6d0;color:#08794d}.qnum.current{background:var(--blue);border-color:var(--blue);color:#fff}.qnum.flagged{box-shadow:inset 0 0 0 2px var(--orange)}.status-list{display:grid;gap:7px;margin-bottom:18px}.status-line{display:flex;justify-content:space-between;font-size:10px}.status-line span:first-child{color:var(--muted)}.notice{padding:13px;border-radius:12px;background:#f5f9fc;border:1px solid var(--line);font-size:10px;line-height:1.55;color:#536b7e}.modal{position:fixed;inset:0;background:rgba(4,17,29,.62);backdrop-filter:blur(7px);display:grid;place-items:center;padding:20px;z-index:100}.modal-card{width:min(450px,100%);background:#fff;border-radius:20px;padding:26px;box-shadow:0 30px 80px rgba(0,0,0,.25)}
+.fullscreen-warning{position:fixed;inset:0;background:rgba(4,17,29,.92);backdrop-filter:blur(10px);display:grid;place-items:center;padding:20px;z-index:1000}
+.fullscreen-warning.hidden{display:none}
+.fullscreen-card{width:min(430px,100%);background:#fff;border-radius:22px;padding:30px 24px;text-align:center;box-shadow:0 30px 90px rgba(0,0,0,.35)}
+.fullscreen-icon{width:64px;height:64px;border-radius:18px;background:#eaf6fd;color:var(--blue);display:grid;place-items:center;font-size:25px;margin:0 auto 15px}
+.fullscreen-card h3{margin:0 0 8px;font-size:21px;color:var(--text)}
+.fullscreen-card p{margin:0;color:var(--muted);font-size:13px;line-height:1.65}
+.fullscreen-card .btn{margin-top:20px;width:100%}
+.modal-card h3{margin:0 0 7px}.modal-card p{color:var(--muted);font-size:13px;line-height:1.6}.modal-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:20px}
+@media(max-width:900px){.hero{grid-template-columns:1fr}.side-card{display:none}.exam-grid{grid-template-columns:1fr}.exam-left,.exam-right{display:none}.exam-interface{padding:7px}.exam-header{padding:10px 12px}.question-card{padding:11px}.question-text{font-size:17px}}
 @media(max-width:768px){
-
-    body{
-        background:#f2f6f9;
-    }
-
-    .exam-lobby,
-    .preexam{
-        padding:10px;
-    }
-
-    .brand-bar{
-        padding:11px 13px;
-        border-radius:14px;
-    }
-
-    .brand-mark{
-        width:38px;
-        height:38px;
-        border-radius:11px;
-    }
-
-    .brand strong{
-        font-size:13px;
-    }
-
-    .brand small{
-        font-size:8px;
-    }
-
-    .secure-badge{
-        font-size:8px;
-        padding:7px 9px;
-    }
-
-    .hero-card{
-        border-radius:20px;
-        padding:25px 20px;
-    }
-
-    .hero-card h1{
-        font-size:33px;
-        letter-spacing:-1.5px;
-    }
-
-    .exam-card{
-        padding:18px;
-        border-radius:18px;
-    }
-
-    .exam-title{
-        font-size:19px;
-    }
-
-    .exam-stats{
-        grid-template-columns:repeat(3,1fr);
-    }
-
-    .exam-stat{
-        padding:11px 5px;
-    }
-
-    .exam-stat strong{
-        font-size:14px;
-    }
-
-    .exam-stat span{
-        font-size:7px;
-    }
-
-    .student-card{
-        margin-top:13px;
-    }
-
-    .steps{
-        grid-template-columns:1fr;
-        gap:7px;
-    }
-
-    .step{
-        display:grid;
-        grid-template-columns:auto 1fr;
-        column-gap:10px;
-        align-items:center;
-        padding:10px;
-    }
-
-    .step-number{
-        grid-row:span 2;
-        margin:0;
-    }
-
-    .lobby-bottom{
-        gap:10px;
-    }
-
-    .instructions,
-    .motivation{
-        border-radius:18px;
-        padding:18px;
-    }
-
-    /* pre exam */
-    .pre-card{
-        padding:17px;
-        border-radius:18px;
-    }
-
-    .pre-header{
-        padding:4px 0 13px;
-    }
-
-    .progress-track{
-        align-items:flex-start;
-    }
-
-    .progress-step{
-        flex-direction:column;
-        text-align:center;
-        gap:5px;
-    }
-
-    .progress-step strong{
-        font-size:7px;
-        white-space:normal;
-    }
-
-    .progress-step span{
-        display:none;
-    }
-
-    .progress-line{
-        margin:14px 5px 0;
-    }
-
-    .pre-title h2{
-        font-size:23px;
-    }
-
-    .pre-title p{
-        font-size:9px;
-    }
-
-    .camera-preview,
-    #face-video{
-        min-height:250px;
-    }
-
-    .pre-actions{
-        flex-direction:column-reverse;
-    }
-
-    .pre-actions .primary-btn,
-    .pre-actions .secondary-btn{
-        width:100%;
-    }
-
-    /* exam */
-    .exam-interface{
-        height:100dvh;
-    }
-
-    .exam-topbar{
-        height:58px;
-        padding:0 9px;
-    }
-
-    .exam-brand .brand-mark{
-        width:32px;
-        height:32px;
-    }
-
-    .exam-brand strong{
-        font-size:10px;
-    }
-
-    .exam-brand span{
-        display:none;
-    }
-
-    .exam-title-top{
-        display:none;
-    }
-
-    .top-actions{
-        gap:5px;
-    }
-
-    .timer-pill{
-        padding:8px 9px;
-        font-size:10px;
-    }
-
-    .proctor-pill{
-        padding:7px;
-    }
-
-    .proctor-pill span{
-        display:none;
-    }
-
-    .exam-grid{
-        display:block!important;
-        width:100%;
-        height:calc(100dvh - 58px);
-        padding:6px;
-        overflow:hidden!important;
-    }
-
-    .exam-middle{
-        width:100%;
-        height:calc(100dvh - 70px);
-        min-height:0;
-        display:flex!important;
-        flex-direction:column!important;
-        gap:6px!important;
-        overflow:hidden!important;
-        padding:0;
-    }
-
-    .question-head{
-        flex-shrink:0;
-        padding:10px 12px;
-        border-radius:12px;
-    }
-
-    .question-card{
-        flex:1 1 auto!important;
-        min-height:0!important;
-        height:auto!important;
-        max-height:none!important;
-        padding:10px!important;
-        border-radius:13px;
-        display:flex!important;
-        flex-direction:column!important;
-        overflow:hidden!important;
-    }
-
-    .question-toolbar{
-        padding-bottom:9px;
-    }
-
-    #exam-container{
-        flex:1 1 auto!important;
-        height:100%!important;
-        min-height:0!important;
-        max-height:none!important;
-        overflow-y:scroll!important;
-        overflow-x:hidden!important;
-        -webkit-overflow-scrolling:touch;
-        overscroll-behavior:contain;
-        touch-action:pan-y;
-        padding:5px 5px 40px 3px!important;
-        font-size:.88rem!important;
-        line-height:1.65!important;
-    }
-
-    #exam-container label,
-    #exam-container .option,
-    #exam-container .answer-option{
-        width:100%!important;
-        max-width:100%!important;
-        min-width:0!important;
-        white-space:normal!important;
-        overflow:visible!important;
-        text-overflow:clip!important;
-        overflow-wrap:anywhere!important;
-        word-break:normal!important;
-    }
-
-    #exam-container .option,
-    #exam-container .answer-option{
-        padding:12px 10px;
-        margin:8px 0;
-        border-radius:11px;
-    }
-
-    .exam-navigation{
-        flex-shrink:0!important;
-        padding:7px 0 0!important;
-    }
-
-    .nav-btn{
-        padding:10px 13px;
-        font-size:8px;
-    }
-
-    .save-state{
-        font-size:7px;
-    }
-
-    /* bottom safe area */
-    .exam-navigation{
-        padding-bottom:max(7px,env(safe-area-inset-bottom))!important;
-    }
+ html,body{min-height:100%;height:auto;overflow-x:hidden;overflow-y:auto;-webkit-overflow-scrolling:touch}
+ body{overflow-y:auto}.topbar{height:60px;padding:0 14px;position:relative}.brand-mark{width:36px;height:36px}.brand strong{font-size:15px}.brand small{font-size:8px}.secure{font-size:10px}
+ .page{width:94vw;padding:25px 0}.hero-main{padding:23px}h1{font-size:32px}.stats{grid-template-columns:repeat(3,1fr)}.stat{padding:9px}.stat strong{font-size:13px}.steps{grid-template-columns:1fr}.step{padding:11px}.actions{flex-direction:column}.actions .btn{width:100%}
+ .check-grid{grid-template-columns:1fr}.video-wrap{height:260px}.pre{width:94vw;padding:22px 0}.pre-head{align-items:flex-start;gap:10px}.pre-head h2{font-size:22px}.ready{margin:25px auto;padding:25px 18px}.ready-list{grid-template-columns:1fr}
+ .page,.pre{min-height:calc(100dvh - 60px);height:auto;overflow:visible}.hero{height:auto}.hero-main{height:auto;overflow:visible}
+ .exam-interface{height:100dvh;min-height:100dvh;padding:6px 6px calc(6px + env(safe-area-inset-bottom));overflow:hidden}
+ .exam-grid{height:100%;display:block!important;overflow:hidden}.exam-middle{width:100%;height:100%;min-height:0;display:grid!important;grid-template-rows:auto minmax(0,1fr)!important;gap:6px!important;overflow:hidden!important;padding:0}
+ .question-card{min-height:0!important;height:100%!important;max-height:none!important;border-radius:12px;padding:10px!important;display:grid!important;grid-template-rows:auto auto minmax(0,1fr) auto!important;overflow:hidden!important}
+ .question-scroll{min-height:0!important;height:auto!important;overflow-y:scroll!important;overflow-x:hidden;-webkit-overflow-scrolling:touch;overscroll-behavior:contain;touch-action:pan-y;padding:3px 4px 28px 2px}
+ .options{gap:8px}.option{padding:12px 10px;min-width:0}.option span:last-child{font-size:13px;white-space:normal;overflow:visible;text-overflow:clip;overflow-wrap:anywhere;word-break:normal}
+ .exam-nav{position:relative;z-index:5;display:flex!important;flex-shrink:0!important;min-height:58px;align-items:center;padding:7px 0 max(7px,env(safe-area-inset-bottom));margin:7px 0 0;background:rgba(255,255,255,.98);border-top:1px solid var(--line);box-shadow:0 -6px 16px rgba(7,29,51,.06)}
+ .exam-nav .btn{padding:11px 13px;min-height:44px;flex:1;max-width:48%}.exam-header{flex-shrink:0;border-radius:11px}.exam-header h3{font-size:12px}.timer{font-size:14px}.q-progress{margin:6px 0 12px}
 }
-
-@media(max-width:390px){
-    .brand small{
-        display:none;
-    }
-
-    .secure-badge{
-        max-width:105px;
-        text-align:center;
-    }
-
-    .hero-card h1{
-        font-size:29px;
-    }
-
-    .exam-title{
-        font-size:17px;
-    }
-
-    .timer-pill{
-        font-size:9px;
-    }
-
-    .question-head-top{
-        gap:7px;
-    }
-
-    .question-number{
-        font-size:10px;
-    }
-}
-
-/* =========================================================
-   ACCESSIBILITY / REDUCED MOTION
-========================================================= */
-
-@media(prefers-reduced-motion:reduce){
-    *,
-    *:before,
-    *:after{
-        animation:none!important;
-        transition:none!important;
-    }
-}
-</style></head><body><!-- =========================================================
-     DIRECT EXAM ENTRY / LOBBY
-========================================================= --><section class="exam-lobby" id="examLobby"><div class="lobby-shell">
-
-    <header class="brand-bar">
-        <div class="brand">
-            <div class="brand-mark">
-                <i class="fas fa-graduation-cap"></i>
-            </div>
-            <div>
-                <strong>NCHSM</strong>
-                <small>Knowledge • Discipline • A Better Tomorrow</small>
-            </div>
-        </div>
-
-        <div class="secure-badge">
-            <span class="secure-dot"></span>
-            Secure • Proctored • Trusted
-        </div>
-    </header>
-
-    <main class="lobby-main">
-
-        <section class="hero-card">
-            <div class="eyebrow">
-                <i class="fas fa-shield-halved"></i>
-                Secure Examination Portal
-            </div>
-
-            <h1>
-                Welcome to Your
-                <span>Examination</span>
-            </h1>
-
-            <p>
-                You are almost ready. Review your examination details,
-                complete the required device checks and begin when you are
-                fully prepared.
-            </p>
-
-            <div class="hero-mini">
-                <i class="fas fa-circle-check"></i>
-                Your examination environment is protected
-            </div>
-        </section>
-
-        <section class="exam-card">
-
-            <div class="section-label">
-                <i class="fas fa-file-lines"></i>
-                Examination Details
-            </div>
-
-            <h2 class="exam-title" id="exam-name-display">
-                Examination
-            </h2>
-
-            <div class="exam-stats">
-                <div class="exam-stat">
-                    <i class="fas fa-clock"></i>
-                    <strong id="exam-duration">--</strong>
-                    <span>Minutes</span>
-                </div>
-
-                <div class="exam-stat">
-                    <i class="fas fa-list-check"></i>
-                    <strong id="exam-question-count">--</strong>
-                    <span>Questions</span>
-                </div>
-
-                <div class="exam-stat">
-                    <i class="fas fa-award"></i>
-                    <strong id="exam-pass-mark">--</strong>
-                    <span>Pass Mark</span>
-                </div>
-            </div>
-
-            <div class="student-card">
-                <div class="student-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-
-                <div>
-                    <strong id="student-name">Student</strong>
-                    <span id="student-id">Registration No. —</span>
-                    <span id="student-program">Programme —</span>
-                </div>
-            </div>
-
-            <div class="steps">
-
-                <div class="step active">
-                    <div class="step-number">1</div>
-                    <div>
-                        <strong>Terms & Instructions</strong>
-                        <span>Read and accept</span>
-                    </div>
-                </div>
-
-                <div class="step">
-                    <div class="step-number">2</div>
-                    <div>
-                        <strong>Camera & Device Check</strong>
-                        <span>Test your system</span>
-                    </div>
-                </div>
-
-                <div class="step">
-                    <div class="step-number">3</div>
-                    <div>
-                        <strong>Ready to Start</strong>
-                        <span>Begin your examination</span>
-                    </div>
-                </div>
-
-            </div>
-        </section>
-
-    </main>
-
-    <section class="lobby-bottom">
-
-        <div class="instructions">
-
-            <div class="section-label">
-                <i class="fas fa-clipboard-check"></i>
-                Before You Begin
-            </div>
-
-            <h3>Important Examination Instructions</h3>
-
-            <div class="instruction">
-                <i class="fas fa-camera"></i>
-                <span>Your camera may remain active throughout the examination for proctoring.</span>
-            </div>
-
-            <div class="instruction">
-                <i class="fas fa-window-maximize"></i>
-                <span>Remain in the examination window and avoid switching tabs or applications.</span>
-            </div>
-
-            <div class="instruction">
-                <i class="fas fa-user-group"></i>
-                <span>You should be the only person visible in the examination environment.</span>
-            </div>
-
-            <div class="instruction">
-                <i class="fas fa-wifi"></i>
-                <span>Ensure you have a stable internet connection before starting.</span>
-            </div>
-
-            <div class="instruction">
-                <i class="fas fa-floppy-disk"></i>
-                <span>Your progress can be saved while you work.</span>
-            </div>
-
-            <div class="instruction">
-                <i class="fas fa-stopwatch"></i>
-                <span>The examination timer begins when the examination is officially started.</span>
-            </div>
-
-            <div class="agreement">
-                <input type="checkbox" id="termsCheckbox">
-                <label for="termsCheckbox">
-                    I have read and agree to the terms and conditions of this examination.
-                </label>
-            </div>
-
-            <button
-                class="primary-btn"
-                id="continueTermsBtn"
-                disabled
-                onclick="goToStep(2)">
-                Continue to Camera Check
-                <i class="fas fa-arrow-right"></i>
-            </button>
-
-        </div>
-
-        <div class="motivation">
-            <i class="fas fa-quote-left"></i>
-
-            <h2>
-                Stay Focused.<br>
-                Do Your Best.
-            </h2>
-
-            <p>
-                Every honest effort contributes to your professional
-                growth and the future of healthcare.
-            </p>
-
-            <div class="quote">
-                Excellence Through Integrity — NCHSM
-            </div>
-        </div>
-
-    </section>
-
-</div>
-
-</section><!-- =========================================================
-     CAMERA CHECK / PRE-EXAM
-========================================================= --><section class="preexam hidden" id="cameraStep"><div class="pre-shell">
-
-    <header class="pre-header">
-
-        <div class="brand">
-            <div class="brand-mark">
-                <i class="fas fa-graduation-cap"></i>
-            </div>
-
-            <div>
-                <strong>NCHSM</strong>
-                <small>Secure Examination System</small>
-            </div>
-        </div>
-
-        <button class="back-btn" onclick="goToStep(1)">
-            <i class="fas fa-arrow-left"></i>
-            Back
-        </button>
-
-    </header>
-
-    <div class="pre-card">
-
-        <div class="progress-track">
-
-            <div class="progress-step done">
-                <div class="progress-circle">
-                    <i class="fas fa-check"></i>
-                </div>
-                <div>
-                    <strong>Terms & Instructions</strong>
-                    <span>Completed</span>
-                </div>
-            </div>
-
-            <div class="progress-line"></div>
-
-            <div class="progress-step active">
-                <div class="progress-circle">2</div>
-                <div>
-                    <strong>Camera & Device Check</strong>
-                    <span>In progress</span>
-                </div>
-            </div>
-
-            <div class="progress-line"></div>
-
-            <div class="progress-step">
-                <div class="progress-circle">3</div>
-                <div>
-                    <strong>Ready to Start</strong>
-                    <span>Not started</span>
-                </div>
-            </div>
-
-        </div>
-
-        <div class="pre-title">
-            <h2>Camera & Device Check</h2>
-            <p>Let's make sure everything is working properly before your examination begins.</p>
-        </div>
-
-        <div class="camera-layout">
-
-            <div class="camera-panel">
-
-                <div class="camera-preview">
-
-                    <video
-                        id="face-video"
-                        autoplay
-                        muted
-                        playsinline>
-                    </video>
-
-                    <canvas id="face-canvas" style="display:none"></canvas>
-
-                    <div class="camera-overlay"></div>
-
-                    <div class="camera-status" id="cameraStatus">
-                        <i class="fas fa-circle"></i>
-                        Camera ready
-                    </div>
-
-                </div>
-
-                <div class="camera-caption">
-                    <i class="fas fa-user-check"></i>
-                    Position your face clearly inside the camera frame.
-                </div>
-
-            </div>
-
-            <div>
-
-                <div class="check-list">
-
-                    <div class="check-item" id="cameraCheck">
-                        <div class="check-icon">
-                            <i class="fas fa-camera"></i>
-                        </div>
-                        <div>
-                            <strong>Camera</strong>
-                            <span>Waiting for camera test</span>
-                        </div>
-                    </div>
-
-                    <div class="check-item" id="microphoneCheck">
-                        <div class="check-icon">
-                            <i class="fas fa-microphone"></i>
-                        </div>
-                        <div>
-                            <strong>Microphone</strong>
-                            <span>Ready to test</span>
-                        </div>
-                    </div>
-
-                    <div class="check-item">
-                        <div class="check-icon">
-                            <i class="fas fa-wifi"></i>
-                        </div>
-                        <div>
-                            <strong>Internet Connection</strong>
-                            <span id="networkStatus">Checking connection</span>
-                        </div>
-                    </div>
-
-                    <div class="check-item">
-                        <div class="check-icon">
-                            <i class="fas fa-laptop"></i>
-                        </div>
-                        <div>
-                            <strong>Device</strong>
-                            <span>This device is being checked</span>
-                        </div>
-                    </div>
-
-                </div>
-
-                <div class="ready-message" id="cameraReadyMessage">
-                    <i class="fas fa-circle-info"></i>
-                    Complete the camera check before continuing.
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="pre-actions">
-
-            <button class="secondary-btn" onclick="goToStep(1)">
-                <i class="fas fa-arrow-left"></i>
-                Back
-            </button>
-
-            <button
-                class="primary-btn"
-                id="cameraContinueBtn"
-                onclick="goToStep(3)">
-                Continue to Ready Screen
-                <i class="fas fa-arrow-right"></i>
-            </button>
-
-        </div>
-
-    </div>
-</div>
-
-</section><!-- =========================================================
-     READY SCREEN
-========================================================= --><section class="preexam hidden" id="readyStep"><div class="pre-shell">
-
-    <header class="pre-header">
-
-        <div class="brand">
-            <div class="brand-mark">
-                <i class="fas fa-graduation-cap"></i>
-            </div>
-
-            <div>
-                <strong>NCHSM</strong>
-                <small>Secure Examination System</small>
-            </div>
-        </div>
-
-        <div class="secure-badge">
-            <span class="secure-dot"></span>
-            All checks passed
-        </div>
-
-    </header>
-
-    <div class="pre-card">
-
-        <div class="progress-track">
-
-            <div class="progress-step done">
-                <div class="progress-circle">
-                    <i class="fas fa-check"></i>
-                </div>
-                <div>
-                    <strong>Terms & Instructions</strong>
-                    <span>Completed</span>
-                </div>
-            </div>
-
-            <div class="progress-line"></div>
-
-            <div class="progress-step done">
-                <div class="progress-circle">
-                    <i class="fas fa-check"></i>
-                </div>
-                <div>
-                    <strong>Camera & Device Check</strong>
-                    <span>Passed</span>
-                </div>
-            </div>
-
-            <div class="progress-line"></div>
-
-            <div class="progress-step active">
-                <div class="progress-circle">3</div>
-                <div>
-                    <strong>Ready to Start</strong>
-                    <span>Begin examination</span>
-                </div>
-            </div>
-
-        </div>
-
-        <div style="text-align:center;padding:30px 10px">
-
-            <div style="
-                width:76px;
-                height:76px;
-                margin:auto;
-                border-radius:50%;
-                display:grid;
-                place-items:center;
-                background:#eaf8f2;
-                color:#16a66a;
-                font-size:30px;
-                box-shadow:0 0 0 12px #f3fbf7;">
-                <i class="fas fa-check"></i>
-            </div>
-
-            <h2 style="
-                margin:25px 0 8px;
-                font-size:32px;
-                letter-spacing:-1.5px;">
-                You're All Set!
-            </h2>
-
-            <p style="
-                color:#6d8092;
-                font-size:11px;
-                margin:0;">
-                Your examination environment is ready.
-            </p>
-
-            <div style="
-                max-width:560px;
-                margin:25px auto 0;
-                display:grid;
-                grid-template-columns:repeat(3,1fr);
-                gap:10px;">
-
-                <div class="check-item">
-                    <div class="check-icon">
-                        <i class="fas fa-check"></i>
-                    </div>
-                    <div style="text-align:left">
-                        <strong>Terms</strong>
-                        <span>Completed</span>
-                    </div>
-                </div>
-
-                <div class="check-item">
-                    <div class="check-icon">
-                        <i class="fas fa-camera"></i>
-                    </div>
-                    <div style="text-align:left">
-                        <strong>Camera</strong>
-                        <span>Passed</span>
-                    </div>
-                </div>
-
-                <div class="check-item">
-                    <div class="check-icon">
-                        <i class="fas fa-wifi"></i>
-                    </div>
-                    <div style="text-align:left">
-                        <strong>Connection</strong>
-                        <span>Ready</span>
-                    </div>
-                </div>
-
-            </div>
-
-            <div style="
-                max-width:480px;
-                margin:25px auto;
-                padding:16px;
-                border-radius:15px;
-                background:#f5faff;
-                border:1px solid #dceef9;
-                color:#52728a;
-                font-size:10px;
-                line-height:1.6;">
-                <i class="fas fa-quote-left" style="color:#f5b51b"></i>
-                Believe in yourself. You are ready for this.
-                <strong>— NCHSM</strong>
-            </div>
-
-            <button
-                class="primary-btn"
-                style="max-width:320px"
-                onclick="startExam()">
-                <i class="fas fa-play"></i>
-                Start My Examination
-            </button>
-
-            <div style="
-                margin-top:10px;
-                color:#8b9baa;
-                font-size:8px;">
-                Your timer begins when the examination starts.
-            </div>
-
-        </div>
-
-    </div>
-
-</div>
-
-</section><!-- =========================================================
-     MAIN EXAM
-========================================================= --><section class="exam-interface hidden" id="exam-interface"><header class="exam-topbar">
-
-    <div class="exam-brand">
-        <div class="brand-mark">
-            <i class="fas fa-graduation-cap"></i>
-        </div>
-
-        <div>
-            <strong>NCHSM</strong>
-            <span>Secure Examination</span>
-        </div>
-    </div>
-
-    <div class="exam-title-top">
-        <strong id="active-exam-title">Examination</strong>
-        <span>Online Assessment</span>
-    </div>
-
-    <div class="top-actions">
-
-        <div class="proctor-pill">
-            <span class="proctor-dot"></span>
-            <span>Proctoring Active</span>
-        </div>
-
-        <div class="timer-pill">
-            <i class="fas fa-clock"></i>
-            <span id="timer">00:00:00</span>
-        </div>
-
-    </div>
-
+</style>
+</head>
+<body>
+<div class="app">
+<header class="topbar">
+  <div class="brand">
+    <div class="brand-mark"><img src="images/Logo_NCHSM.png" alt="NCHSM Logo"></div>
+    <div><strong>NCHSM</strong><small>Knowledge • Discipline • A Better Tomorrow</small></div>
+  </div>
+  <div class="secure"><i class="fa-solid fa-shield-halved"></i><span>Secure • Proctored • Trusted</span></div>
 </header>
 
+<main id="examLobby" class="page">
+  <div class="hero">
+    <section class="card hero-main">
+      <div class="eyebrow"><i class="fa-solid fa-lock"></i> Secure Online Examination</div>
+      <h1 id="welcomeTitle">Welcome to Your Examination</h1>
+      <p class="lead">Please review the examination details and complete the short readiness checks before you begin.</p>
 
-<div class="exam-grid">
+      <div class="exam-card">
+        <div class="exam-title">
+          <div><h2 id="examName">Examination</h2><p id="examSubtitle">Online assessment</p></div>
+          <span class="badge green"><i class="fa-solid fa-shield"></i> Proctored</span>
+        </div>
+        <div class="stats">
+          <div class="stat"><span>Duration</span><strong id="examDuration">90 min</strong></div>
+          <div class="stat"><span>Questions</span><strong id="examQuestions">50</strong></div>
+          <div class="stat"><span>Pass mark</span><strong id="examPass">60%</strong></div>
+        </div>
+      </div>
 
-    <!-- ================= LEFT ================= -->
+      <div id="resumeNotice" class="resume">
+        <div>
+          <strong><i class="fa-solid fa-rotate-right"></i> Examination Reset — You Can Resume</strong>
+          <p id="resumeText">Your saved progress is available. You will return to your last saved question.</p>
+        </div>
+        <span class="badge green" id="resumeProgress">0%</span>
+      </div>
 
+      <div class="steps">
+        <div class="step active" id="step1"><div class="step-num">1</div><div><strong>Terms & Instructions</strong><small>Read and accept</small></div></div>
+        <div class="step" id="step2"><div class="step-num">2</div><div><strong>Camera & Device Check</strong><small>Test your system</small></div></div>
+        <div class="step" id="step3"><div class="step-num">3</div><div><strong>Ready to Start</strong><small>Begin examination</small></div></div>
+      </div>
+
+      <div style="margin-top:20px;padding:18px;border:1px solid var(--line);border-radius:15px">
+        <strong style="font-size:13px"><i class="fa-regular fa-clipboard"></i> Before You Begin</strong>
+        <div class="checks" style="margin-top:13px;color:var(--text)">
+          <div class="check"><i class="fa-solid fa-circle-check"></i><span style="color:var(--muted)">Your camera may remain active during the examination.</span></div>
+          <div class="check"><i class="fa-solid fa-circle-check"></i><span style="color:var(--muted)">Stay in the examination window and avoid unauthorized applications.</span></div>
+          <div class="check"><i class="fa-solid fa-circle-check"></i><span style="color:var(--muted)">Ensure a stable internet connection before starting.</span></div>
+          <div class="check"><i class="fa-solid fa-circle-check"></i><span style="color:var(--muted)">Your progress and answers are designed to be saved as you work.</span></div>
+        </div>
+      </div>
+
+      <label style="display:flex;gap:9px;align-items:flex-start;margin-top:18px;font-size:12px;color:var(--muted)">
+        <input id="termsCheck" type="checkbox" style="margin-top:2px">
+        <span>I have read and agree to the terms and conditions of this examination.</span>
+      </label>
+
+      <div class="actions">
+        <button class="btn btn-primary" id="continueBtn" onclick="NCHSMExamUI.continueFromLobby()">
+          Continue to Camera Check <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </div>
+    </section>
+
+    <aside class="card side-card">
+      <div class="eyebrow" style="color:#6ee7ff"><i class="fa-solid fa-circle-info"></i> Examination Standards</div>
+      <h3>Focus. Integrity. Excellence.</h3>
+      <p>NCHSM examinations are designed to provide a fair, secure and focused assessment experience.</p>
+      <div class="checks">
+        <div class="check"><i class="fa-solid fa-circle-check"></i><span>One student, one examination session.</span></div>
+        <div class="check"><i class="fa-solid fa-circle-check"></i><span>Questions and answers remain synchronized with saved progress.</span></div>
+        <div class="check"><i class="fa-solid fa-circle-check"></i><span>Flag questions you want to review before submission.</span></div>
+        <div class="check"><i class="fa-solid fa-circle-check"></i><span>Resume support prevents an authorized reset from unnecessarily losing progress.</span></div>
+      </div>
+    </aside>
+  </div>
+</main>
+
+<section id="cameraStep" class="pre hidden">
+  <div class="pre-head"><div><h2>Camera & Device Check</h2><p>Let's make sure everything is working properly before the timer starts.</p></div><span class="badge blue">Step 2 of 3</span></div>
+  <div class="progress"><span style="width:66%"></span></div>
+  <div class="check-grid">
+    <div class="card camera-card">
+      <div class="video-wrap">
+        <video id="face-video" autoplay muted playsinline></video>
+        <canvas id="face-canvas" class="hidden"></canvas>
+        <div class="camera-overlay"></div>
+        <div class="camera-status" id="cameraStatus"><i class="fa-solid fa-circle"></i> Camera ready</div>
+      </div>
+      <div style="margin-top:10px;color:var(--muted);font-size:11px"><i class="fa-solid fa-lightbulb"></i> Sit facing the camera in a well-lit environment. Only you should be visible.</div>
+    </div>
+    <div class="card" style="padding:18px">
+      <div class="systems">
+        <div class="system"><div class="system-left"><div class="system-icon"><i class="fa-solid fa-camera"></i></div><div><strong>Camera</strong><small>Permission and feed</small></div></div><span class="ok" id="cameraCheck">Checking</span></div>
+        <div class="system"><div class="system-left"><div class="system-icon"><i class="fa-solid fa-microphone"></i></div><div><strong>Microphone</strong><small>Audio device</small></div></div><span class="ok" id="micCheck">Checking</span></div>
+        <div class="system"><div class="system-left"><div class="system-icon"><i class="fa-solid fa-wifi"></i></div><div><strong>Internet</strong><small>Connection status</small></div></div><span class="ok" id="netCheck">Checking</span></div>
+        <div class="system"><div class="system-left"><div class="system-icon"><i class="fa-solid fa-laptop"></i></div><div><strong>Device</strong><small>Browser compatibility</small></div></div><span class="ok" id="deviceCheck">Checking</span></div>
+      </div>
+      <div class="notice" style="margin-top:14px"><strong id="faceResult">Face detection will be checked when available.</strong><br>Do not cover your face or leave the camera view during the examination.</div>
+      <div class="actions"><button class="btn btn-light" onclick="NCHSMExamUI.backToLobby()">Back</button><button class="btn btn-primary" onclick="NCHSMExamUI.continueToReady()">Continue to Ready Screen <i class="fa-solid fa-arrow-right"></i></button></div>
+    </div>
+  </div>
+</section>
+
+<section id="readyStep" class="pre hidden">
+  <div class="card ready">
+    <div class="success-icon"><i class="fa-solid fa-check"></i></div>
+    <span class="badge green">All systems ready</span>
+    <h2 id="readyTitle">You're All Set!</h2>
+    <p id="readyText">Your examination environment is ready. Review the checklist below, then start your examination.</p>
+    <div class="ready-list">
+      <div><i class="fa-solid fa-check"></i> Terms & instructions completed</div>
+      <div><i class="fa-solid fa-check"></i> Camera & device checked</div>
+      <div><i class="fa-solid fa-check"></i> Saved progress preserved</div>
+      <div><i class="fa-solid fa-check"></i> Examination timer starts on entry</div>
+    </div>
+    <div class="notice" id="resumeReadyNotice" style="display:none;text-align:left;margin-bottom:18px"><strong><i class="fa-solid fa-rotate-right"></i> Resume mode</strong><br>Your previous saved answers, flags and question position will be restored.</div>
+    <button class="btn btn-green" onclick="NCHSMExamUI.startOrResume()"><i class="fa-solid fa-play"></i> <span id="startResumeLabel">Start My Examination</span></button>
+  </div>
+</section>
+
+<section id="exam-interface" class="exam-interface hidden">
+  <div class="exam-grid">
     <aside class="exam-left">
-
-        <div class="sidebar-card">
-
-            <div class="student-mini">
-
-                <div class="student-avatar">
-                    <i class="fas fa-user"></i>
-                </div>
-
-                <div>
-                    <strong id="exam-student-name">Student</strong>
-                    <span id="exam-student-id">Registration No.</span>
-                    <span id="exam-student-program">Programme</span>
-                </div>
-
-            </div>
-
-        </div>
-
-        <div class="time-card">
-
-            <small>TIME REMAINING</small>
-
-            <div class="big-time" id="sidebarTimer">
-                00:00:00
-            </div>
-
-            <div class="time-progress">
-                <span id="timeProgress"></span>
-            </div>
-
-        </div>
-
-        <div class="sidebar-card camera-mini">
-
-            <video
-                id="exam-camera"
-                autoplay
-                muted
-                playsinline>
-            </video>
-
-            <div class="camera-mini-label">
-                <i class="fas fa-circle" style="color:#48df9e"></i>
-                Camera Active
-            </div>
-
-        </div>
-
-        <div class="sidebar-card">
-
-            <div class="section-label">
-                <i class="fas fa-shield-halved"></i>
-                System Status
-            </div>
-
-            <div class="status-list">
-
-                <div class="status-row">
-                    <span>Proctoring</span>
-                    <span>Active</span>
-                </div>
-
-                <div class="status-row">
-                    <span>Network</span>
-                    <span>Online</span>
-                </div>
-
-                <div class="status-row">
-                    <span>Camera</span>
-                    <span>On</span>
-                </div>
-
-                <div class="status-row">
-                    <span>Face Detection</span>
-                    <span>Active</span>
-                </div>
-
-            </div>
-
-        </div>
-
+      <div class="brand" style="color:var(--text);gap:8px"><div class="brand-mark" style="width:34px;height:34px"><img src="images/Logo_NCHSM.png" alt="NCHSM Logo"></div><div><strong style="font-size:14px">NCHSM</strong><small style="color:var(--muted)">Secure Exam</small></div></div>
+      <div class="student" style="margin-top:14px"><div class="student-row"><div class="avatar" id="studentAvatar">ST</div><div><strong id="studentName">Student</strong><small id="studentReg">Registration</small></div></div><small id="studentProgram" style="display:block;margin-top:8px">Programme</small></div>
+      <div class="timer-box"><small>Time Remaining</small><div class="timer" id="timer">--:--:--</div></div>
+      <div class="camera-mini" id="cameraMini">Camera Active</div>
+      <div class="live"><i class="fa-solid fa-circle"></i> Proctoring active</div>
+      <div class="status-list" style="margin-top:15px"><div class="status-line"><span>Network</span><strong id="networkState">Online</strong></div><div class="status-line"><span>Face detection</span><strong id="faceState">Ready</strong></div><div class="status-line"><span>Auto-save</span><strong style="color:var(--green)">Enabled</strong></div></div>
     </aside>
 
-
-    <!-- ================= MIDDLE ================= -->
-
-    <main class="exam-middle">
-
-        <div class="question-head">
-
-            <div class="question-head-top">
-
-                <div>
-                    <div class="question-number">
-                        Question <span id="current-question-number">1</span>
-                        of <span id="total-question-number">--</span>
-                    </div>
-                </div>
-
-                <div class="question-percent">
-                    <span id="question-percent">0%</span>
-                </div>
-
-            </div>
-
-            <div class="question-progress">
-                <span id="question-progress-fill"></span>
-            </div>
-
+    <section class="exam-middle">
+      <div class="exam-header"><div><h3 id="inExamTitle">Examination</h3><small id="inExamSub">Online Assessment</small></div><div style="text-align:right"><div class="timer" id="mobileTimer">--:--:--</div><small id="questionProgressText">Question 1 of 50</small></div></div>
+      <div class="question-card">
+        <div class="q-top"><div class="question-number" id="questionNumber">Question 1</div><button class="btn btn-light" style="padding:8px 11px;font-size:11px" onclick="NCHSMExamUI.flagCurrent()"><i class="fa-regular fa-bookmark"></i> <span id="flagLabel">Flag</span></button></div>
+        <div class="q-progress"><div class="progress"><span id="questionProgressBar" style="width:0%"></span></div></div>
+        <div id="exam-container" class="question-scroll">
+          <div class="question-text" id="questionText">Question content will appear here.</div>
+          <div class="options" id="optionsContainer"></div>
         </div>
-
-
-        <div class="question-card">
-
-            <div class="question-toolbar">
-
-                <span>
-                    <i class="fas fa-circle-info"></i>
-                    Select the best answer
-                </span>
-
-                <button
-                    class="flag-btn"
-                    onclick="toggleFlagQuestion()">
-                    <i class="far fa-flag"></i>
-                    Flag Question
-                </button>
-
-            </div>
-
-
-            <div id="exam-container">
-                <!-- exam.js dynamically renders questions here -->
-            </div>
-
-
-            <div class="exam-navigation">
-
-                <button
-                    class="nav-btn"
-                    onclick="previousQuestion()">
-                    <i class="fas fa-arrow-left"></i>
-                    Previous
-                </button>
-
-                <div class="save-state">
-                    <i class="fas fa-circle-check"></i>
-                    Auto-saved
-                </div>
-
-                <button
-                    class="nav-btn next"
-                    onclick="nextQuestion()">
-                    Next
-                    <i class="fas fa-arrow-right"></i>
-                </button>
-
-            </div>
-
-        </div>
-
-    </main>
-
-
-    <!-- ================= RIGHT ================= -->
+        <div class="exam-nav"><button class="btn btn-light" onclick="NCHSMExamUI.previous()"><i class="fa-solid fa-arrow-left"></i> Previous</button><button class="btn btn-primary" onclick="NCHSMExamUI.next()">Next <i class="fa-solid fa-arrow-right"></i></button></div>
+      </div>
+    </section>
 
     <aside class="exam-right">
-
-        <div class="sidebar-card">
-
-            <div class="status-title">
-                <strong>Question Status</strong>
-                <span id="answered-count">0 answered</span>
-            </div>
-
-            <div class="legend">
-
-                <div class="legend-item">
-                    <span class="legend-dot dot-green"></span>
-                    Answered
-                </div>
-
-                <div class="legend-item">
-                    <span class="legend-dot dot-grey"></span>
-                    Not Answered
-                </div>
-
-                <div class="legend-item">
-                    <span class="legend-dot dot-orange"></span>
-                    Flagged
-                </div>
-
-                <div class="legend-item">
-                    <span class="legend-dot dot-blue"></span>
-                    Current
-                </div>
-
-            </div>
-
-            <div
-                class="question-status-grid"
-                id="question-status-table">
-                <!-- exam.js populates -->
-            </div>
-
-        </div>
-
-
-        <div class="sidebar-card proctor-card">
-
-            <h4>
-                <i class="fas fa-video"></i>
-                Live Proctoring
-            </h4>
-
-            <div class="live-camera">
-                <video
-                    id="proctor-video"
-                    autoplay
-                    muted
-                    playsinline>
-                </video>
-            </div>
-
-            <div class="proctor-status">
-
-                <div>
-                    Camera
-                    <span>ON</span>
-                </div>
-
-                <div>
-                    Microphone
-                    <span>ON</span>
-                </div>
-
-                <div>
-                    Screen Monitoring
-                    <span>ACTIVE</span>
-                </div>
-
-                <div>
-                    Exam Session
-                    <span>SECURE</span>
-                </div>
-
-            </div>
-
-        </div>
-
-
-        <div class="sidebar-card">
-
-            <div class="section-label">
-                <i class="fas fa-circle-info"></i>
-                Quick Instructions
-            </div>
-
-            <div style="
-                margin-top:11px;
-                color:#6d8092;
-                font-size:8px;
-                line-height:1.7;">
-                <div>• Answer all questions.</div>
-                <div>• You may flag questions for review.</div>
-                <div>• Do not refresh the page.</div>
-                <div>• Your progress is automatically saved.</div>
-            </div>
-
-        </div>
-
-
-        <button
-            class="submit-btn"
-            onclick="showSubmitConfirmation()">
-            <i class="fas fa-paper-plane"></i>
-            Submit Examination
-        </button>
-
+      <div class="side-title">Question Status</div>
+      <div class="status-list"><div class="status-line"><span>Answered</span><strong id="answeredCount">0</strong></div><div class="status-line"><span>Not answered</span><strong id="unansweredCount">0</strong></div><div class="status-line"><span>Flagged</span><strong id="flaggedCount">0</strong></div></div>
+      <div class="status-grid" id="question-status-table"></div>
+      <div class="side-title" style="margin-top:20px">Instructions</div>
+      <div class="notice">Answer each question carefully. You may flag questions for review. Your progress should be saved continuously. Do not refresh or close the examination window unnecessarily.</div>
+      <button class="btn btn-primary" style="width:100%;margin-top:14px" onclick="NCHSMExamUI.confirmSubmit()">Submit Examination</button>
     </aside>
+  </div>
+</section>
 
+<div id="fullscreen-warning" class="fullscreen-warning hidden" role="dialog" aria-modal="true">
+  <div class="fullscreen-card">
+    <div class="fullscreen-icon"><i class="fa-solid fa-expand"></i></div>
+    <h3>Secure Examination Mode</h3>
+    <p>Please return to full-screen mode to continue your examination. Leaving full-screen may be recorded as an examination integrity event.</p>
+    <button class="btn btn-primary" onclick="NCHSMExamUI.reenterFullscreen()"><i class="fa-solid fa-expand"></i> Return to Full Screen</button>
+  </div>
 </div>
 
-</section><!-- =========================================================
-     SUBMISSION MODAL
-========================================================= --><div class="modal-overlay" id="submission-modal"><div class="modal-card">
-
-    <div class="modal-icon">
-        <i class="fas fa-paper-plane"></i>
-    </div>
-
-    <h3>Submit Your Examination?</h3>
-
-    <p>
-        Please review your answers before submitting. Once the examination
-        is submitted, you may not be able to make further changes.
-    </p>
-
-    <div style="
-        display:grid;
-        grid-template-columns:repeat(3,1fr);
-        gap:8px;
-        margin-top:15px;">
-
-        <div style="
-            padding:11px;
-            background:#f7fafc;
-            border-radius:10px;
-            text-align:center;">
-            <strong id="modal-answered" style="display:block;font-size:15px">0</strong>
-            <span style="font-size:7px;color:#7b8d9c">Answered</span>
-        </div>
-
-        <div style="
-            padding:11px;
-            background:#f7fafc;
-            border-radius:10px;
-            text-align:center;">
-            <strong id="modal-unanswered" style="display:block;font-size:15px">0</strong>
-            <span style="font-size:7px;color:#7b8d9c">Unanswered</span>
-        </div>
-
-        <div style="
-            padding:11px;
-            background:#fff7e8;
-            border-radius:10px;
-            text-align:center;">
-            <strong id="modal-flagged" style="display:block;font-size:15px">0</strong>
-            <span style="font-size:7px;color:#7b8d9c">Flagged</span>
-        </div>
-
-    </div>
-
-    <div class="modal-actions">
-
-        <button
-            class="secondary-btn"
-            onclick="closeSubmissionModal()">
-            Continue Exam
-        </button>
-
-        <button
-            class="primary-btn"
-            style="width:auto;margin:0;background:linear-gradient(135deg,#08794e,#0eaa70)"
-            onclick="submitExam()">
-            Submit Now
-        </button>
-
-    </div>
-
+<div id="submission-modal" class="modal hidden">
+  <div class="modal-card">
+    <span class="badge orange"><i class="fa-solid fa-triangle-exclamation"></i> Final submission</span>
+    <h3>Submit your examination?</h3>
+    <p id="submitSummary">Please review your unanswered questions before submitting. Once submitted, the attempt should be treated as final.</p>
+    <div class="modal-actions"><button class="btn btn-light" onclick="NCHSMExamUI.closeSubmit()">Continue Exam</button><button class="btn btn-green" onclick="NCHSMExamUI.submit()">Submit Examination</button></div>
+  </div>
 </div>
 
-</div><!-- =========================================================
-     LOADING OVERLAY
-========================================================= --><div
-    class="modal-overlay"
-    id="exam-loading"
-    style="z-index:10000"><div class="modal-card" style="text-align:center">
+<script>
+/*
+ NCHSM EXAM UI COMPATIBILITY LAYER
+ ----------------------------------------------------------
+ This layer intentionally uses unique NCHSMExamUI names so it
+ does not overwrite existing exam.js globals.
 
-    <div
-        class="modal-icon"
-        style="margin:0 auto 14px">
-        <i class="fas fa-shield-halved"></i>
-    </div>
+ IMPORTANT:
+ - The real exam.js/Supabase attempt system remains the source
+   of truth for cross-device admin reset/resume.
+ - If your existing exam.js already provides these functions,
+   this UI delegates to them where possible.
+ - The local resume record is a safety fallback only; it is NOT
+   a replacement for the server-side attempt record.
+*/
 
-    <h3>Preparing Your Examination</h3>
+window.NCHSMExamUI = (() => {
+  const ui = {};
+  const state = {
+    current: 0,
+    questions: [],
+    answers: {},
+    flags: {},
+    resumed: false,
+    started: false
+  };
 
-    <p id="loading-message">
-        Please wait while your secure examination environment is prepared.
-    </p>
+  const qs = id => document.getElementById(id);
+  const safeCall = (name, ...args) => {
+    try { if (typeof window[name] === "function") return window[name](...args); } catch(e){ console.warn("NCHSM bridge:", name, e); }
+    return undefined;
+  };
 
-    <div style="
-        width:100%;
-        height:6px;
-        background:#e8eef3;
-        border-radius:99px;
-        overflow:hidden;
-        margin-top:18px;">
-        <div
-            id="loading-progress"
-            style="
-                width:30%;
-                height:100%;
-                background:linear-gradient(90deg,#0879d1,#22c7e8);
-                border-radius:99px;
-                transition:width .4s ease;">
-        </div>
-    </div>
+  function getResumeCandidate(){
+    // Prefer an existing application/attempt object exposed by exam.js.
+    const candidates = [
+      window.examAttempt, window.currentAttempt, window.currentExamAttempt,
+      window.examState, window.savedExamState
+    ];
+    for(const c of candidates){
+      if(c && (c.currentQuestion != null || c.current_question != null || c.progress != null || c.answers)) return c;
+    }
+    // Local fallback is only useful on the same browser/device.
+    try{
+      const raw = localStorage.getItem("nchsm_exam_resume_state");
+      return raw ? JSON.parse(raw) : null;
+    }catch(e){ return null; }
+  }
 
-</div>
+  function saveLocalFallback(){
+    try{
+      localStorage.setItem("nchsm_exam_resume_state", JSON.stringify({
+        currentQuestion: state.current,
+        answers: state.answers,
+        flags: state.flags,
+        updatedAt: new Date().toISOString()
+      }));
+    }catch(e){}
+  }
 
-</div><script>
+  function show(id){ qs(id)?.classList.remove("hidden"); }
+  function hide(id){ qs(id)?.classList.add("hidden"); }
 
-/* =========================================================
-   VISUAL / FLOW BRIDGE
-   Keeps the existing exam.js integration intact.
-========================================================= */
-
-(function(){
-
-    const lobby = document.getElementById('examLobby');
-    const cameraStep = document.getElementById('cameraStep');
-    const readyStep = document.getElementById('readyStep');
-    const examInterface = document.getElementById('exam-interface');
-
-    window.goToStep = function(step){
-
-        if(step === 1){
-            lobby?.classList.remove('hidden');
-            cameraStep?.classList.add('hidden');
-            readyStep?.classList.add('hidden');
-            examInterface?.classList.add('hidden');
-            window.scrollTo(0,0);
-            return;
-        }
-
-        if(step === 2){
-
-            if(!document.getElementById('termsCheckbox')?.checked){
-                return;
-            }
-
-            lobby?.classList.add('hidden');
-            cameraStep?.classList.remove('hidden');
-            readyStep?.classList.add('hidden');
-            examInterface?.classList.add('hidden');
-
-            setTimeout(()=>{
-                if(typeof testCamera === 'function'){
-                    try{ testCamera(); }catch(e){}
-                }
-            },100);
-
-            return;
-        }
-
-        if(step === 3){
-
-            lobby?.classList.add('hidden');
-            cameraStep?.classList.add('hidden');
-            readyStep?.classList.remove('hidden');
-            examInterface?.classList.add('hidden');
-
-            return;
-        }
-
-    };
-
-
-    const terms = document.getElementById('termsCheckbox');
-    const continueBtn = document.getElementById('continueTermsBtn');
-
-    terms?.addEventListener('change',function(){
-        if(continueBtn){
-            continueBtn.disabled = !this.checked;
-        }
+  function step(n){
+    [1,2,3].forEach(i => {
+      qs("step"+i)?.classList.toggle("active",i===n);
+      qs("step"+i)?.classList.toggle("done",i<n);
     });
+  }
 
+  function populateFromExisting(){
+    const e = window.examData || window.currentExam || window.exam || {};
+    if(e.title || e.name){ qs("examName").textContent = e.title || e.name; qs("inExamTitle").textContent = e.title || e.name; }
+    if(e.description || e.subtitle) qs("examSubtitle").textContent = e.description || e.subtitle;
+    if(e.duration) qs("examDuration").textContent = `${e.duration} min`;
+    if(e.questions?.length) state.questions = e.questions;
+    if(e.totalQuestions) qs("examQuestions").textContent = e.totalQuestions;
+    if(e.passMark != null) qs("examPass").textContent = `${e.passMark}%`;
 
-    window.showSubmitConfirmation = function(){
+    const p = window.studentProfile || window.currentStudent || window.userProfile || {};
+    if(p.name || p.full_name){ qs("studentName").textContent = p.name || p.full_name; }
+    if(p.registration_no || p.admission_no || p.student_id) qs("studentReg").textContent = p.registration_no || p.admission_no || p.student_id;
+    if(p.program || p.course) qs("studentProgram").textContent = p.program || p.course;
+    const initials = (qs("studentName").textContent||"ST").split(/\s+/).slice(0,2).map(x=>x[0]).join("").toUpperCase();
+    qs("studentAvatar").textContent = initials || "ST";
+  }
 
-        const modal = document.getElementById('submission-modal');
-
-        if(modal){
-            modal.classList.add('active');
-        }
-
-        updateSubmissionStats();
-    };
-
-
-    window.closeSubmissionModal = function(){
-        document.getElementById('submission-modal')
-            ?.classList.remove('active');
-    };
-
-
-    function updateSubmissionStats(){
-
-        const status = document.getElementById('question-status-table');
-
-        if(!status) return;
-
-        const total = status.children.length;
-
-        let answered = 0;
-        let flagged = 0;
-
-        status.querySelectorAll('.answered').forEach(()=>answered++);
-        status.querySelectorAll('.flagged').forEach(()=>flagged++);
-
-        const unanswered = Math.max(total - answered,0);
-
-        const a = document.getElementById('modal-answered');
-        const u = document.getElementById('modal-unanswered');
-        const f = document.getElementById('modal-flagged');
-
-        if(a) a.textContent = answered;
-        if(u) u.textContent = unanswered;
-        if(f) f.textContent = flagged;
+  function detectResume(){
+    const r = getResumeCandidate();
+    if(!r) return;
+    const idx = Number(r.currentQuestion ?? r.current_question ?? r.current ?? r.questionIndex);
+    const answers = r.answers || r.selectedAnswers || r.responses;
+    const flags = r.flags || r.flagged || r.reviewed;
+    if(Number.isFinite(idx) && idx >= 0) state.current = idx;
+    if(answers && typeof answers === "object") state.answers = {...answers};
+    if(flags && typeof flags === "object") state.flags = {...flags};
+    state.resumed = Number.isFinite(idx) || Object.keys(state.answers).length>0;
+    if(state.resumed){
+      qs("resumeNotice")?.classList.add("show");
+      const total = Math.max(state.questions.length, Number(qs("examQuestions").textContent)||50);
+      const pct = Math.min(100, Math.round(((state.current+1)/total)*100));
+      qs("resumeProgress").textContent = `${pct}%`;
+      qs("resumeText").textContent = `Saved progress detected. You will return to Question ${state.current+1} with previously saved answers and flags restored.`;
+      qs("resumeReadyNotice").style.display = "block";
+      qs("startResumeLabel").textContent = "Resume My Examination";
     }
+  }
 
-
-    /* ---------------------------------------------------------
-       Question navigation bridge.
-       Existing exam.js functions remain preferred.
-    --------------------------------------------------------- */
-
-    window.nextQuestion = function(){
-
-        if(typeof window.goToNextQuestion === 'function'){
-            return window.goToNextQuestion();
-        }
-
-        if(typeof window.nextQuestionInternal === 'function'){
-            return window.nextQuestionInternal();
-        }
-
-        console.warn('Connect nextQuestion() to your existing exam.js navigation.');
-    };
-
-
-    window.previousQuestion = function(){
-
-        if(typeof window.goToPreviousQuestion === 'function'){
-            return window.goToPreviousQuestion();
-        }
-
-        if(typeof window.previousQuestionInternal === 'function'){
-            return window.previousQuestionInternal();
-        }
-
-        console.warn('Connect previousQuestion() to your existing exam.js navigation.');
-    };
-
-
-    /* ---------------------------------------------------------
-       Mobile camera mirroring
-    --------------------------------------------------------- */
-
-    function mirrorExamCamera(){
-
-        const source = document.getElementById('face-video');
-
-        if(!source) return;
-
-        ['exam-camera','proctor-video'].forEach(id=>{
-
-            const target = document.getElementById(id);
-
-            if(!target) return;
-
-            try{
-                if(source.srcObject && target.srcObject !== source.srcObject){
-                    target.srcObject = source.srcObject;
-                    target.play().catch(()=>{});
-                }
-            }catch(e){}
-
-        });
-
+  ui.continueFromLobby = function(){
+    if(!qs("termsCheck").checked){
+      alert("Please confirm that you have read and agreed to the examination terms.");
+      return;
     }
-
-    setInterval(mirrorExamCamera,1200);
-
-
-    /* ---------------------------------------------------------
-       Network status
-    --------------------------------------------------------- */
-
-    function updateNetwork(){
-
-        const el = document.getElementById('networkStatus');
-
-        if(!el) return;
-
-        if(navigator.onLine){
-            el.textContent = 'Stable connection';
-            el.style.color = '#16865b';
-        }else{
-            el.textContent = 'Connection unavailable';
-            el.style.color = '#d33f45';
-        }
+    step(2); hide("examLobby"); show("cameraStep");
+    safeCall("testCamera");
+    if(navigator.mediaDevices?.getUserMedia){
+      navigator.mediaDevices.getUserMedia({video:true,audio:true}).then(stream=>{
+        const v=qs("face-video"); if(v){v.srcObject=stream;v.play().catch(()=>{});}
+        qs("cameraCheck").textContent="Ready"; qs("micCheck").textContent="Ready"; qs("cameraStatus").innerHTML='<i class="fa-solid fa-circle"></i> Camera is working';
+      }).catch(()=>{qs("cameraCheck").textContent="Permission needed";qs("micCheck").textContent="Permission needed";});
     }
+    qs("netCheck").textContent = navigator.onLine ? "Online" : "Offline";
+    qs("deviceCheck").textContent = "Supported";
+  };
 
-    window.addEventListener('online',updateNetwork);
-    window.addEventListener('offline',updateNetwork);
-    updateNetwork();
+  ui.backToLobby = function(){ hide("cameraStep");show("examLobby");step(1); };
+  ui.continueToReady = function(){ step(3);hide("cameraStep");show("readyStep");safeCall("goToStep",3); };
+  ui.fullscreenRequested=false;
+  ui.reenterFullscreen=async function(){
+    try{
+      if(document.fullscreenElement || document.webkitFullscreenElement) return true;
+      const el=document.documentElement;
+      if(el.requestFullscreen){await el.requestFullscreen({navigationUI:"hide"});return true;}
+      const req=el.webkitRequestFullscreen||el.webkitRequestFullScreen;
+      if(req){req.call(el);return true;}
+    }catch(e){}
+    return false;
+  };
+  ui.handleFullscreenChange=function(){
+    const active=qs("exam-interface")&&!qs("exam-interface").classList.contains("hidden");
+    if(!active||!ui.fullscreenRequested)return;
+    const inFs=!!(document.fullscreenElement||document.webkitFullscreenElement);
+    qs("fullscreen-warning")?.classList.toggle("hidden",inFs);
+  };
+  ui.startSecureMode=function(){
+    ui.fullscreenRequested=true;
+    ui.reenterFullscreen().then(ok=>qs("fullscreen-warning")?.classList.toggle("hidden",ok));
+  };
 
+  ui.startOrResume = function(){
+    state.started=true;
+    /*
+      Existing exam.js should restore the server-side attempt here.
+      We try common entry points without replacing them.
+    */
+    const result = safeCall(state.resumed ? "resumeExam" : "startExam");
+    hide("readyStep");show("exam-interface");
+    if(result === undefined) renderFallbackQuestion();
+    ui.startSecureMode();
+  };
 
-    /* ---------------------------------------------------------
-       Loading helper
-    --------------------------------------------------------- */
-
-    window.showExamLoading = function(message='Preparing your examination...',progress=50){
-
-        const overlay = document.getElementById('exam-loading');
-        const text = document.getElementById('loading-message');
-        const bar = document.getElementById('loading-progress');
-
-        if(text) text.textContent = message;
-        if(bar) bar.style.width = progress + '%';
-
-        overlay?.classList.add('active');
-    };
-
-
-    window.hideExamLoading = function(){
-        document.getElementById('exam-loading')
-            ?.classList.remove('active');
-    };
-
-
-    /* ---------------------------------------------------------
-       Keyboard protection
-    --------------------------------------------------------- */
-
-    document.addEventListener('keydown',function(e){
-
-        if(!examInterface || examInterface.classList.contains('hidden')){
-            return;
-        }
-
-        if((e.ctrlKey || e.metaKey) && ['r','u','s'].includes(e.key.toLowerCase())){
-            e.preventDefault();
-        }
-
+  function renderFallbackQuestion(){
+    // Visual/demo fallback only. Existing exam.js should normally render real questions.
+    const total = Math.max(state.questions.length, Number(qs("examQuestions").textContent)||50);
+    const q = state.questions[state.current];
+    const text = q?.question || q?.text || q?.question_text || `Question ${state.current+1}. Your examination question will be loaded by exam.js.`;
+    qs("questionNumber").textContent = `Question ${state.current+1}`;
+    qs("questionProgressText").textContent = `Question ${state.current+1} of ${total}`;
+    qs("questionProgressBar").style.width = `${Math.round(((state.current+1)/total)*100)}%`;
+    qs("questionText").textContent = text;
+    const opts = q?.options || q?.answers || [];
+    const box=qs("optionsContainer"); box.innerHTML="";
+    opts.forEach((o,i)=>{
+      const b=document.createElement("button"); b.className="option";
+      const key=String.fromCharCode(65+i);
+      b.innerHTML=`<span class="option-key">${key}</span><span>${typeof o==="string"?o:(o.text||o.label||"")}</span>`;
+      b.onclick=()=>{state.answers[state.current]=i;saveLocalFallback();renderFallbackQuestion();};
+      if(Number(state.answers[state.current])===i)b.classList.add("selected");
+      box.appendChild(b);
     });
+    updateCounts(total);
+  }
 
-
-    /* ---------------------------------------------------------
-       Keep mobile question position stable after dynamic updates
-    --------------------------------------------------------- */
-
-    const observerTarget = document.getElementById('exam-container');
-
-    if(observerTarget){
-
-        const observer = new MutationObserver(()=>{
-
-            const options = observerTarget.querySelectorAll(
-                'label,.option,.answer-option'
-            );
-
-            options.forEach(el=>{
-                el.style.maxWidth='100%';
-                el.style.whiteSpace='normal';
-                el.style.overflowWrap='anywhere';
-            });
-
-        });
-
-        observer.observe(observerTarget,{
-            childList:true,
-            subtree:true
-        });
-
+  function updateCounts(total){
+    const answered=Object.keys(state.answers).length;
+    const flagged=Object.values(state.flags).filter(Boolean).length;
+    qs("answeredCount").textContent=answered;
+    qs("unansweredCount").textContent=Math.max(0,total-answered);
+    qs("flaggedCount").textContent=flagged;
+    const grid=qs("question-status-table"); if(!grid)return;
+    grid.innerHTML="";
+    for(let i=0;i<total;i++){
+      const b=document.createElement("button");b.className="qnum";
+      if(state.answers[i]!=null)b.classList.add("answered");
+      if(i===state.current)b.classList.add("current");
+      if(state.flags[i])b.classList.add("flagged");
+      b.textContent=i+1;b.onclick=()=>{state.current=i;safeCall("loadQuestion",i);renderFallbackQuestion();};
+      grid.appendChild(b);
     }
+  }
 
+  ui.previous=function(){
+    const result=safeCall("previousQuestion");
+    if(result!==undefined)return;
+    if(state.current>0){state.current--;saveLocalFallback();renderFallbackQuestion();}
+  };
+  ui.next=function(){
+    const result=safeCall("nextQuestion");
+    if(result!==undefined)return;
+    const total=Math.max(state.questions.length,Number(qs("examQuestions").textContent)||50);
+    if(state.current<total-1){state.current++;saveLocalFallback();renderFallbackQuestion();}
+  };
+  ui.flagCurrent=function(){
+    const result=safeCall("toggleFlagQuestion");
+    if(result!==undefined)return;
+    state.flags[state.current]=!state.flags[state.current];saveLocalFallback();renderFallbackQuestion();
+  };
+  document.addEventListener("fullscreenchange",ui.handleFullscreenChange);
+  document.addEventListener("webkitfullscreenchange",ui.handleFullscreenChange);
+  document.addEventListener("visibilitychange",()=>{
+    const active=qs("exam-interface")&&!qs("exam-interface").classList.contains("hidden");
+    if(active&&document.visibilityState==="visible"&&ui.fullscreenRequested) ui.handleFullscreenChange();
+  });
+
+  ui.confirmSubmit=function(){show("submission-modal");};
+  ui.closeSubmit=function(){hide("submission-modal");};
+  ui.submit=function(){hide("submission-modal");const r=safeCall("submitExam");if(r===undefined)alert("Connect this button to your existing exam.js submission handler.");};
+
+  document.addEventListener("DOMContentLoaded",()=>{
+    populateFromExisting();
+    detectResume();
+    qs("netCheck").textContent=navigator.onLine?"Online":"Offline";
+    window.addEventListener("online",()=>{qs("netCheck").textContent="Online";qs("networkState").textContent="Online"});
+    window.addEventListener("offline",()=>{qs("netCheck").textContent="Offline";qs("networkState").textContent="Offline"});
+  });
+
+  return ui;
 })();
+</script>
 
-</script><!-- EXISTING EXAM LOGIC — DO NOT REMOVE --><script src="exam.js"></script></body>
+<!-- Keep your existing exam.js BELOW this compatibility layer. -->
+<script src="exam.js"></script>
+</body>
 </html>
