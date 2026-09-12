@@ -734,7 +734,1001 @@
     <!-- ============================================================ -->
     <!-- JAVASCRIPT                                                    -->
     <!-- ============================================================ -->
-    <script src="js/lecturer_dashboard.js"></script>
+    <script>
+// ============================================================
+        // 📦 CONFIGURATION
+        // ============================================================
+        const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+        const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+
+        const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+        window.sb = sb;
+
+        // ============================================================
+        // 📦 STATE
+        // ============================================================
+        let lecturerExams = [];
+        let lecturerResults = [];
+        let lecturerAttendance = [];
+        let liveStudentsData = [];
+        let currentTab = 'dashboard';
+        let currentPage = { results: 1 };
+        const itemsPerPage = 10;
+        let lecturerId = null;
+
+        // ============================================================
+        // 🔐 AUTH
+        // ============================================================
+        function checkAuth() {
+            const session = localStorage.getItem('adminSession') || localStorage.getItem('userProfile');
+            if (!session) {
+                window.location.href = 'login.html';
+                return false;
+            }
+            try {
+                const data = JSON.parse(session);
+                const role = (data.role || data.user_role || '').toLowerCase();
+
+                if (!['lecturer', 'instructor', 'teacher', 'admin', 'superadmin', 'administrator'].includes(role)) {
+                    window.location.href = 'login.html';
+                    return false;
+                }
+
+                const name = data.name || data.full_name || 'Lecturer';
+                const email = data.email || 'lecturer@nchsm.ac.ke';
+                const initial = name.charAt(0).toUpperCase();
+
+                lecturerId = data.user_id || data.staff_id || data.id;
+
+                document.querySelectorAll('#adminName, #lecturerName, #profileName').forEach(el => {
+                    if (el) el.textContent = name;
+                });
+                document.querySelectorAll('#adminEmail, #profileEmail').forEach(el => {
+                    if (el) el.textContent = email;
+                });
+                document.querySelectorAll('#adminInitial, #lecturerAvatar, #profileAvatar').forEach(el => {
+                    if (el) el.textContent = initial;
+                });
+
+                return true;
+            } catch (e) {
+                window.location.href = 'login.html';
+                return false;
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('adminSession');
+            localStorage.removeItem('userProfile');
+            window.location.href = 'login.html';
+        }
+
+        // ============================================================
+        // 🖱️ SIDEBAR & TAB
+        // ============================================================
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+            document.getElementById('sidebarOverlay').classList.toggle('active');
+        }
+
+        function switchTab(tab) {
+            currentTab = tab;
+            document.querySelectorAll('.sidebar-menu a').forEach(a => a.classList.remove('active'));
+            document.querySelector(`.sidebar-menu a[data-tab="${tab}"]`)?.classList.add('active');
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.getElementById(tab).classList.add('active');
+
+            const titles = {
+                dashboard: ['Overview', 'Welcome to your lecturer dashboard', 'fa-th-large'],
+                myExams: ['My Exams', 'View all your exams', 'fa-file-alt'],
+                results: ['Results', 'View student results', 'fa-graduation-cap'],
+                attendance: ['Attendance', 'Track student attendance', 'fa-clipboard-check'],
+                liveStudents: ['Live Students', 'Students currently taking exams', 'fa-eye'],
+                profile: ['Profile', 'Your profile information', 'fa-user-circle'],
+                security: ['Security', 'Security settings', 'fa-shield-alt']
+            };
+            const [title, subtitle, icon] = titles[tab] || ['Dashboard', 'Overview', 'fa-home'];
+            document.getElementById('pageTitle').innerHTML = `<i class="fas ${icon}"></i> ${title}`;
+            document.getElementById('pageSubtitle').textContent = subtitle;
+
+            if (tab === 'dashboard') loadDashboard();
+            if (tab === 'myExams') loadExams();
+            if (tab === 'results') loadResults();
+            if (tab === 'attendance') loadAttendance();
+            if (tab === 'liveStudents') loadLiveStudents();
+
+            if (window.innerWidth <= 768) {
+                document.getElementById('sidebar').classList.remove('open');
+                document.getElementById('sidebarOverlay').classList.remove('active');
+            }
+        }
+
+        // ============================================================
+        // 📊 DASHBOARD
+        // ============================================================
+        async function loadDashboard() {
+            try {
+                const { data: exams } = await sb
+                    .from('exams')
+                    .select('id, exam_name, status')
+                    .eq('created_by', lecturerId || '')
+                    .order('id', { ascending: false });
+
+                const examIds = exams?.map(e => e.id) || [];
+
+                let totalStudents = 0;
+                let passed = 0;
+
+                if (examIds.length > 0) {
+                    const { data: grades } = await sb
+                        .from('exam_grades')
+                        .select('student_id, result_status, marks')
+                        .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                        .in('exam_id', examIds);
+
+                    const uniqueStudents = new Set(grades?.map(g => g.student_id) || []);
+                    totalStudents = uniqueStudents.size;
+                    passed = grades?.filter(g => g.result_status === 'PASS').length || 0;
+                }
+
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+                const { data: liveLogs } = await sb
+                    .from('exam_proctoring_logs')
+                    .select('student_id')
+                    .eq('event_type', 'exam_started')
+                    .gte('timestamp', fiveMinutesAgo)
+                    .in('exam_id', examIds);
+
+                const liveCount = new Set(liveLogs?.map(l => l.student_id) || []).size;
+
+                document.getElementById('statTotalExams').textContent = exams?.length || 0;
+                document.getElementById('statTotalStudents').textContent = totalStudents;
+                document.getElementById('statPassed').textContent = passed;
+                document.getElementById('statLiveStudents').textContent = liveCount;
+
+                const recent = exams?.slice(0, 5) || [];
+                document.getElementById('recentExamsList').innerHTML = recent.length ?
+                    recent.map(e => `
+                        <div style="display:flex; justify-content:space-between; padding:10px 14px; background:#F8FAFC; border-radius:8px; border-left:3px solid #0A3D62; margin-bottom:6px;">
+                            <span style="font-weight:600; color:#0A3D62;">${e.exam_name}</span>
+                            <span class="status-badge ${e.status === 'published' ? 'active' : 'pending'}">${e.status || 'draft'}</span>
+                        </div>
+                    `).join('') :
+                    '<p style="color:#94A3B8; text-align:center; padding:20px; font-size:0.85rem;">No exams created yet</p>';
+
+            } catch (e) { console.error(e); }
+        }
+
+        // ============================================================
+        // 📝 EXAMS (VIEW ONLY)
+        // ============================================================
+        async function loadExams() {
+            const loading = document.getElementById('examsLoading');
+            const tbody = document.getElementById('examsBody');
+            loading.style.display = 'block';
+            try {
+                const { data } = await sb
+                    .from('exams')
+                    .select('*')
+                    .eq('created_by', lecturerId || '')
+                    .order('id', { ascending: false });
+                lecturerExams = data || [];
+                displayExams();
+                loading.style.display = 'none';
+            } catch (e) { console.error(e); loading.innerHTML = 'Error loading exams'; }
+        }
+
+        function displayExams() {
+            const tbody = document.getElementById('examsBody');
+            if (!lecturerExams.length) {
+                tbody.innerHTML = '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94A3B8;">No exams found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = lecturerExams.map(e => `
+                <tr>
+                    <td><strong>${e.exam_name || e.title}</strong></td>
+                    <td style="text-align:center;"><span class="status-badge ${e.exam_type?.includes('CAT') ? 'pending' : 'active'}">${e.exam_type || 'Exam'}</span></td>
+                    <td style="text-align:center;">${e.student_count || 0}</td>
+                    <td style="text-align:center;"><span class="status-badge ${e.status === 'published' ? 'active' : 'pending'}">${e.status || 'draft'}</span></td>
+                    <td style="text-align:center;">
+                        <span class="btn-view-only"><i class="fas fa-eye"></i> View Only</span>
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // ============================================================
+        // 📊 RESULTS (VIEW ONLY + RESET)
+        // ============================================================
+        async function loadResults() {
+            const loading = document.getElementById('resultsLoading');
+            const tbody = document.getElementById('resultsBody');
+            if (loading) loading.style.display = 'block';
+
+            try {
+                const { data: exams, error: examError } = await sb
+                    .from('exams')
+                    .select('id, exam_name, exam_type, total_marks, pass_mark, created_at')
+                    .eq('created_by', lecturerId || '')
+                    .order('id', { ascending: false });
+
+                if (examError) throw examError;
+
+                const examRows = exams || [];
+                const examIds = examRows.map(e => e.id);
+
+                if (!examIds.length) {
+                    lecturerResults = [];
+                    populateLecturerExamFilter(examRows);
+                    displayResults();
+                    if (loading) loading.style.display = 'none';
+                    return;
+                }
+
+                const examMap = Object.fromEntries(examRows.map(e => [e.id, e]));
+
+                // Get current attempt per student + exam.
+                let attempts = [];
+                {
+                    const { data, error } = await sb
+                        .from('exam_attempts')
+                        .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+                        .in('exam_id', examIds)
+                        .order('attempt_number', { ascending: false })
+                        .order('updated_at', { ascending: false });
+
+                    if (!error) attempts = data || [];
+                }
+
+                const latestAttemptMap = new Map();
+                for (const a of attempts) {
+                    const key = `${a.student_id}__${a.exam_id}`;
+                    if (!latestAttemptMap.has(key)) latestAttemptMap.set(key, a);
+                }
+
+                // Get all sentinel/current-grade rows.
+                const { data: grades, error: gradeError } = await sb
+                    .from('exam_grades')
+                    .select('*')
+                    .in('exam_id', examIds)
+                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                    .order('updated_at', { ascending: false });
+
+                if (gradeError) throw gradeError;
+
+                // Canonical grade per student + exam:
+                // prefer the grade attached to the latest attempt, otherwise newest sentinel.
+                const gradeMap = new Map();
+                for (const g of (grades || [])) {
+                    const key = `${g.student_id}__${g.exam_id}`;
+                    if (!gradeMap.has(key)) gradeMap.set(key, g);
+                }
+
+                // Profiles
+                const studentIds = [...new Set(
+                    [...gradeMap.values()].map(g => g.student_id).filter(Boolean)
+                )];
+
+                let profiles = [];
+                if (studentIds.length) {
+                    const { data: p, error: profileError } = await sb
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id, full_name, student_id, email, program')
+                        .in('user_id', studentIds);
+
+                    if (!profileError) profiles = p || [];
+                }
+
+                const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
+
+                lecturerResults = [...gradeMap.values()]
+                    .map(g => {
+                        const key = `${g.student_id}__${g.exam_id}`;
+                        const attempt = latestAttemptMap.get(key) || null;
+                        const exam = examMap[g.exam_id] || {};
+
+                        // When an attempt exists and this grade belongs to another attempt,
+                        // discard it from the lecturer's current-result table.
+                        if (attempt?.id && g.attempt_id && String(g.attempt_id) !== String(attempt.id)) {
+                            return null;
+                        }
+
+                        return {
+                            ...g,
+                            student: profileMap[g.student_id] || {},
+                            exam_name: exam.exam_name || 'Exam',
+                            exam_info: exam,
+                            attempt_info: attempt,
+                            attempt_id: attempt?.id || g.attempt_id || null,
+                            attempt_number: attempt?.attempt_number || 1
+                        };
+                    })
+                    .filter(Boolean);
+
+                // Newest exam first, then newest attempt update.
+                lecturerResults.sort((a, b) => {
+                    const examA = Number(a.exam_id) || 0;
+                    const examB = Number(b.exam_id) || 0;
+                    if (examA !== examB) return examB - examA;
+
+                    const ta = new Date(a.attempt_info?.updated_at || a.updated_at || 0).getTime();
+                    const tb = new Date(b.attempt_info?.updated_at || b.updated_at || 0).getTime();
+                    return tb - ta;
+                });
+
+                populateLecturerExamFilter(examRows);
+
+                const search = (document.getElementById('resultSearch')?.value || '').trim().toLowerCase();
+                const examFilter = document.getElementById('resultExamFilter')?.value || '';
+                const statusFilter = document.getElementById('resultStatusFilter')?.value || '';
+
+                let filtered = [...lecturerResults];
+
+                if (search) {
+                    filtered = filtered.filter(r =>
+                        String(r.student?.full_name || '').toLowerCase().includes(search) ||
+                        String(r.student?.student_id || '').toLowerCase().includes(search) ||
+                        String(r.student?.email || '').toLowerCase().includes(search) ||
+                        String(r.exam_name || '').toLowerCase().includes(search)
+                    );
+                }
+
+                if (examFilter) {
+                    filtered = filtered.filter(r => String(r.exam_id) === String(examFilter));
+                }
+
+                if (statusFilter) {
+                    filtered = filtered.filter(r => {
+                        const status = String(r.result_status || 'PENDING_REVIEW').toUpperCase();
+                        if (statusFilter === 'PASS') return status === 'PASS';
+                        if (statusFilter === 'FAIL') return status === 'FAIL';
+                        if (statusFilter === 'PENDING') return ['PENDING', 'PENDING_REVIEW', 'RESET_FOR_RETAKE', 'IN_PROGRESS'].includes(status);
+                        return status === statusFilter;
+                    });
+                }
+
+                // Current → oldest after filtering.
+                filtered.sort((a, b) => {
+                    const examA = Number(a.exam_id) || 0;
+                    const examB = Number(b.exam_id) || 0;
+                    if (examA !== examB) return examB - examA;
+                    const ta = new Date(a.attempt_info?.updated_at || a.updated_at || 0).getTime();
+                    const tb = new Date(b.attempt_info?.updated_at || b.updated_at || 0).getTime();
+                    return tb - ta;
+                });
+
+                lecturerResults = filtered;
+                currentPage.results = 1;
+                displayResults();
+
+                if (loading) loading.style.display = 'none';
+            } catch (e) {
+                console.error('Lecturer loadResults error:', e);
+                if (loading) {
+                    loading.style.display = 'block';
+                    loading.innerHTML = '❌ Error loading results: ' + (e?.message || e);
+                }
+            }
+        }
+
+        function populateLecturerExamFilter(exams) {
+            const select = document.getElementById('resultExamFilter');
+            if (!select) return;
+
+            const current = select.value;
+            select.innerHTML = '<option value="">All Exams</option>' +
+                (exams || []).map(e =>
+                    `<option value="${e.id}">${e.exam_name || `Exam ${e.id}`}</option>`
+                ).join('');
+
+            if ([...select.options].some(o => o.value === String(current))) {
+                select.value = current;
+            }
+        }
+
+        function displayResults() {
+            const start = (currentPage.results - 1) * itemsPerPage;
+            const page = lecturerResults.slice(start, start + itemsPerPage);
+            const tbody = document.getElementById('resultsBody');
+
+            if (!page.length) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center; padding:30px; color:#94A3B8;">No current results found</td></tr>';
+                renderPagination('results', 0);
+                return;
+            }
+
+            tbody.innerHTML = page.map(r => {
+                const totalMarks = Number(r.exam_info?.total_marks || r.total_marks || r.attempt_info?.total_marks || 100);
+                const score = Number(r.marks ?? r.score ?? r.attempt_info?.score ?? 0) || 0;
+                const pct = totalMarks > 0
+                    ? Number(r.percentage ?? r.attempt_info?.percentage ?? ((score / totalMarks) * 100)).toFixed(1)
+                    : '0.0';
+
+                const status = String(
+                    r.result_status ||
+                    r.attempt_info?.status ||
+                    'PENDING_REVIEW'
+                ).toUpperCase();
+
+                const isReset = status === 'RESET_FOR_RETAKE' && r.allow_retake === true && r.retake_unlocked === true;
+                const isInProgress = status === 'IN_PROGRESS';
+                const isPending = ['PENDING', 'PENDING_REVIEW'].includes(status);
+
+                let statusHtml = '';
+                if (isReset) {
+                    statusHtml = '<span class="status-badge pending">🔄 RETAKE AUTHORIZED</span>';
+                } else if (isInProgress) {
+                    statusHtml = '<span class="status-badge active">🟢 IN PROGRESS</span>';
+                } else if (status === 'PASS') {
+                    statusHtml = '<span class="status-badge pass">PASS</span>';
+                } else if (status === 'FAIL') {
+                    statusHtml = '<span class="status-badge fail">FAIL</span>';
+                } else {
+                    statusHtml = '<span class="status-badge pending">PENDING</span>';
+                }
+
+                return `
+                    <tr>
+                        <td><span class="student-id-badge">${r.student?.student_id || 'N/A'}</span></td>
+                        <td>
+                            <strong>${r.student?.full_name || 'Unknown'}</strong>
+                            ${r.student?.email ? `<br><small style="color:#64748B;">${r.student.email}</small>` : ''}
+                        </td>
+                        <td>${r.exam_name}</td>
+                        <td style="text-align:center; font-weight:600; color:#0A3D62;">
+                            ${score} / ${totalMarks}
+                        </td>
+                        <td style="text-align:center; font-weight:600; color:${parseFloat(pct) >= 60 ? '#059669' : '#DC2626'};">
+                            ${pct}%
+                        </td>
+                        <td style="text-align:center;">${statusHtml}</td>
+                        <td style="text-align:center;">
+                            ${isReset || isInProgress ? `
+                                <button class="btn-reset-exam" disabled title="Already authorized/in progress">
+                                    <i class="fas fa-clock"></i> ${isReset ? 'Continue Ready' : 'In Progress'}
+                                </button>
+                            ` : `
+                                <button class="btn-reset-exam" onclick="openResetModal('${String(r.student_id).replace(/'/g, "\\'")}', '${String(r.exam_id).replace(/'/g, "\\'")}', '${String(r.student?.full_name || 'Unknown').replace(/'/g, "\\'")}', '${String(r.exam_name || 'Exam').replace(/'/g, "\\'")}')" title="Authorize student to continue this exam">
+                                    <i class="fas fa-undo"></i> Reset / Continue
+                                </button>
+                            `}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            renderPagination('results', lecturerResults.length);
+        }
+
+        function renderPagination(type, total) {
+            const totalPages = Math.ceil(total / itemsPerPage);
+            const container = document.getElementById(type + 'Pagination');
+            if (!container || totalPages <= 1) { if (container) container.innerHTML = ''; return; }
+            let html = `<button class="page-btn" onclick="changePage('${type}',${currentPage[type]-1})" ${currentPage[type]===1?'disabled':''}>‹</button>`;
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage[type] - 2 && i <= currentPage[type] + 2)) {
+                    html += `<button class="page-btn ${i===currentPage[type]?'active':''}" onclick="changePage('${type}',${i})">${i}</button>`;
+                }
+            }
+            html += `<button class="page-btn" onclick="changePage('${type}',${currentPage[type]+1})" ${currentPage[type]===totalPages?'disabled':''}>›</button>`;
+            container.innerHTML = html;
+        }
+
+        function changePage(type, page) {
+            if (page < 1) return;
+            const total = type === 'results' ? lecturerResults.length : 0;
+            const totalPages = Math.ceil(total / itemsPerPage);
+            if (page > totalPages) return;
+            currentPage[type] = page;
+            if (type === 'results') displayResults();
+        }
+
+        function resetResultFilters() {
+            document.getElementById('resultSearch').value = '';
+            document.getElementById('resultExamFilter').value = '';
+            document.getElementById('resultStatusFilter').value = '';
+            loadResults();
+        }
+
+        // ============================================================
+        // 📋 ATTENDANCE
+        // ============================================================
+        async function loadAttendance() {
+            const loading = document.getElementById('attendanceLoading');
+            const tbody = document.getElementById('attendanceBody');
+            loading.style.display = 'block';
+            try {
+                const { data: exams } = await sb
+                    .from('exams')
+                    .select('id')
+                    .eq('created_by', lecturerId || '')
+                    .order('id', { ascending: false });
+                const examIds = exams?.map(e => e.id) || [];
+                if (!examIds.length) {
+                    loading.innerHTML = 'No exams found';
+                    return;
+                }
+
+                const { data: logs } = await sb
+                    .from('exam_proctoring_logs')
+                    .select('*')
+                    .in('exam_id', examIds)
+                    .in('event_type', ['exam_started', 'exam_submitted'])
+                    .order('timestamp', { ascending: false });
+
+                const studentIds = [...new Set(logs?.map(l => l.student_id).filter(Boolean))];
+                let profiles = [];
+                if (studentIds.length) {
+                    const { data: p } = await sb
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id, full_name, student_id')
+                        .in('user_id', studentIds);
+                    profiles = p || [];
+                }
+                const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
+                const examMap = Object.fromEntries((await sb.from('exams').select('id, exam_name').in('id', examIds))?.data?.map(e => [e.id, e]) || []);
+
+                lecturerAttendance = logs?.map(l => ({
+                    ...l,
+                    student: profileMap[l.student_id] || {},
+                    exam_name: examMap[l.exam_id]?.exam_name || 'Exam'
+                })) || [];
+
+                const examFilter = document.getElementById('attendanceExamFilter')?.value;
+                let filtered = lecturerAttendance;
+                if (examFilter) filtered = filtered.filter(a => a.exam_id == examFilter);
+
+                tbody.innerHTML = filtered.slice(0, 50).map((a, i) => `
+                    <tr>
+                        <td style="text-align:center;">${i + 1}</td>
+                        <td><strong>${a.student?.full_name || 'Unknown'}</strong></td>
+                        <td><span class="student-id-badge">${a.student?.student_id || 'N/A'}</span></td>
+                        <td>${a.exam_name}</td>
+                        <td style="text-align:center;"><span class="status-badge ${a.event_type === 'exam_started' ? 'active' : 'completed'}">${a.event_type === 'exam_started' ? '⏳ In Progress' : '✅ Completed'}</span></td>
+                    </tr>
+                `).join('') || '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94A3B8;">No attendance records</td></tr>';
+                loading.style.display = 'none';
+                document.getElementById('attendanceBadge').textContent = filtered.length;
+            } catch (e) { console.error(e); loading.innerHTML = 'Error loading attendance'; }
+        }
+
+        // ============================================================
+        // 🟢 LIVE STUDENTS
+        // ============================================================
+        async function loadLiveStudents() {
+            const loading = document.getElementById('liveStudentsLoading');
+            const tbody = document.getElementById('liveStudentsBody');
+            loading.style.display = 'block';
+            try {
+                const { data: exams } = await sb
+                    .from('exams')
+                    .select('id')
+                    .eq('created_by', lecturerId || '')
+                    .order('id', { ascending: false });
+                const examIds = exams?.map(e => e.id) || [];
+                if (!examIds.length) {
+                    loading.innerHTML = 'No active exams';
+                    return;
+                }
+
+                const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+                const { data: logs } = await sb
+                    .from('exam_proctoring_logs')
+                    .select('*')
+                    .in('exam_id', examIds)
+                    .eq('event_type', 'exam_started')
+                    .gte('timestamp', fiveMinutesAgo);
+
+                const studentIds = [...new Set(logs?.map(l => l.student_id).filter(Boolean))];
+                let profiles = [];
+                if (studentIds.length) {
+                    const { data: p } = await sb
+                        .from('consolidated_user_profiles_table')
+                        .select('user_id, full_name, student_id')
+                        .in('user_id', studentIds);
+                    profiles = p || [];
+                }
+                const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
+                const examMap = Object.fromEntries((await sb.from('exams').select('id, exam_name').in('id', examIds))?.data?.map(e => [e.id, e]) || []);
+
+                liveStudentsData = logs?.map(l => ({
+                    ...l,
+                    student: profileMap[l.student_id] || {},
+                    exam_name: examMap[l.exam_id]?.exam_name || 'Exam'
+                })) || [];
+
+                tbody.innerHTML = liveStudentsData.slice(0, 50).map(l => `
+                    <tr>
+                        <td style="text-align:center;"><span class="live-dot"></span></td>
+                        <td><span class="student-id-badge">${l.student?.student_id || 'N/A'}</span></td>
+                        <td><strong>${l.student?.full_name || 'Unknown'}</strong></td>
+                        <td>${l.exam_name}</td>
+                        <td style="text-align:center;"><span class="status-badge active">🟢 Active</span></td>
+                    </tr>
+                `).join('') || '<tr><td colspan="5" style="text-align:center; padding:30px; color:#94A3B8;">No students currently taking exams</td></tr>';
+                loading.style.display = 'none';
+                document.getElementById('liveBadge').textContent = liveStudentsData.length;
+            } catch (e) { console.error(e); loading.innerHTML = 'Error loading live students'; }
+        }
+
+        // ============================================================
+        // 🔄 RESET STUDENT EXAM
+        // ============================================================
+        function openResetModal(studentId, examId, studentName, examName) {
+            document.getElementById('resetStudentName').textContent = studentName || 'Unknown';
+            document.getElementById('resetStudentId').textContent = studentId || 'N/A';
+            document.getElementById('resetExamName').textContent = examName || 'Exam';
+            document.getElementById('resetStudentUserId').value = studentId;
+            document.getElementById('resetExamId').value = examId;
+            document.getElementById('resetModal').style.display = 'flex';
+        }
+
+        function closeResetModal() {
+            document.getElementById('resetModal').style.display = 'none';
+        }
+
+        async function confirmResetStudent() {
+            const studentId = document.getElementById('resetStudentUserId').value;
+            const examId = document.getElementById('resetExamId').value;
+            const studentName = document.getElementById('resetStudentName').textContent;
+            const examName = document.getElementById('resetExamName').textContent;
+
+            if (!studentId || !examId) {
+                showToast('❌ Missing student or exam information', 'error');
+                return;
+            }
+
+            if (!confirm(
+                    `🔄 RESET STUDENT FOR CONTINUATION\n\n` +
+                    `Student: ${studentName}\n` +
+                    `Exam: ${examName}\n\n` +
+                    `This will:\n` +
+                    `✅ PRESERVE all answered questions\n` +
+                    `✅ KEEP the SAME attempt ID\n` +
+                    `✅ ALLOW the student to continue from saved progress\n` +
+                    `✅ RECALCULATE the FULL final score after submission\n` +
+                    `✅ REMOVE the old released-result state\n\n` +
+                    `⚠️ No new Attempt #2 will be created.\n\n` +
+                    `Are you sure?`
+                )) return;
+
+            const btn = document.getElementById('confirmResetBtn');
+            if (btn) {
+                btn.disabled = true;
+                btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Processing...';
+            }
+
+            try {
+                // 1) Find the current/latest attempt for this student + exam.
+                const { data: attempts, error: attemptError } = await sb
+                    .from('exam_attempts')
+                    .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parseInt(examId, 10))
+                    .order('attempt_number', { ascending: false })
+                    .order('updated_at', { ascending: false })
+                    .limit(1);
+
+                if (attemptError) throw attemptError;
+
+                const currentAttempt = attempts?.[0] || null;
+                if (!currentAttempt) {
+                    throw new Error('No exam attempt exists for this student. The student must start the exam before it can be reset.');
+                }
+
+                // 2) Authorize continuation on the sentinel grade.
+                //    IMPORTANT: keep the same attempt_id and DO NOT create a new attempt.
+                const { data: sentinelRows, error: sentinelFetchError } = await sb
+                    .from('exam_grades')
+                    .select('id, attempt_id, marks, total_score, total_marks, result_status, completed, released, released_at, allow_retake, retake_unlocked')
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parseInt(examId, 10))
+                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                    .order('updated_at', { ascending: false })
+                    .limit(20);
+
+                if (sentinelFetchError) throw sentinelFetchError;
+
+                // Prefer the sentinel attached to the current attempt.
+                let sentinel = (sentinelRows || []).find(
+                    g => g.attempt_id && String(g.attempt_id) === String(currentAttempt.id)
+                );
+
+                // Legacy fallback: use the newest sentinel only when no attempt-linked sentinel exists.
+                if (!sentinel && sentinelRows?.length) {
+                    sentinel = sentinelRows[0];
+                }
+
+                if (!sentinel) {
+                    throw new Error('No current result record was found for this student and exam.');
+                }
+
+                const resetNow = new Date().toISOString();
+
+                const { error: gradeResetError } = await sb
+                    .from('exam_grades')
+                    .update({
+                        result_status: 'RESET_FOR_RETAKE',
+                        completed: false,
+                        graded_at: null,
+                        released: false,
+                        released_at: null,
+                        reset_at: resetNow,
+                        allow_retake: true,
+                        retake_unlocked: true,
+                        // Keep answers and marks in place for audit/continuation.
+                        // Do NOT overwrite the current score here; the final submission
+                        // recalculates the entire exam and replaces it.
+                        updated_at: resetNow
+                    })
+                    .eq('id', sentinel.id);
+
+                if (gradeResetError) throw gradeResetError;
+
+                // 3) Reopen the SAME attempt. Do not increment attempt_number and
+                // do not change its id. The secure student-side continuation RPC
+                // will validate the reset flag and restore IN_PROGRESS state.
+                try {
+                    const { data: rpcAttempt, error: rpcError } = await sb.rpc('prepare_exam_attempt', {
+                        p_student_id: studentId,
+                        p_exam_id: parseInt(examId, 10),
+                        p_is_retake: true
+                    });
+
+                    if (rpcError) {
+                        console.warn('prepare_exam_attempt warning:', rpcError.message);
+                    } else if (rpcAttempt?.id && String(rpcAttempt.id) !== String(currentAttempt.id)) {
+                        console.warn('Continuation RPC returned a different attempt id. Student side will validate the canonical attempt.');
+                    }
+                } catch (rpcErr) {
+                    console.warn('Continuation RPC unavailable to lecturer; sentinel reset remains authorized:', rpcErr);
+                }
+
+                // 4) Remove any prior release record for the reset/current result.
+                const { error: releaseDeleteError } = await sb
+                    .from('released_exam_results')
+                    .delete()
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parseInt(examId, 10))
+                    .eq('result_id', sentinel.id);
+
+                if (releaseDeleteError) {
+                    console.warn('Release cleanup warning:', releaseDeleteError.message);
+                }
+
+                // 5) Remove stale heartbeat; answers are intentionally preserved.
+                try {
+                    await sb
+                        .from('exam_heartbeats')
+                        .delete()
+                        .eq('student_id', studentId)
+                        .eq('exam_id', parseInt(examId, 10));
+                } catch (e) {
+                    console.warn('Heartbeat cleanup skipped:', e);
+                }
+
+                // 6) Log the lecturer reset.
+                try {
+                    await sb
+                        .from('exam_proctoring_logs')
+                        .insert({
+                            student_id: studentId,
+                            exam_id: parseInt(examId, 10),
+                            event_type: 'exam_retake_unlocked',
+                            details: `Lecturer unlocked ${studentName} for continuation using the same attempt; answers preserved and final result will be recalculated on submission.`,
+                            severity: 'info',
+                            timestamp: resetNow
+                        });
+                } catch (logErr) {
+                    console.warn('Reset log warning:', logErr);
+                }
+
+                showToast(`✅ ${studentName}'s exam "${examName}" is unlocked for continuation.`, 'success');
+
+                closeResetModal();
+
+                // Reload current-only results so the row immediately reflects reset state.
+                await loadResults();
+                await loadDashboard();
+
+            } catch (err) {
+                showToast('❌ Error: ' + (err?.message || err), 'error');
+                console.error('Lecturer reset error:', err);
+            } finally {
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fas fa-undo"></i> Reset Student';
+                }
+            }
+        }
+
+        // ============================================================
+        // 📤 EXPORT
+        // ============================================================
+        function exportMyData() {
+            if (!lecturerResults || lecturerResults.length === 0) {
+                showToast('⚠️ No data to export', 'warning');
+                return;
+            }
+            const data = lecturerResults.map(r => ({
+                'Student ID': r.student?.student_id || 'N/A',
+                'Student Name': r.student?.full_name || 'Unknown',
+                'Exam': r.exam_name,
+                'Score': r.marks || 0,
+                'Total': r.total_score || 100,
+                'Percentage': ((r.marks || 0) / (r.total_score || 100) * 100).toFixed(1) + '%',
+                'Status': r.result_status || 'PENDING'
+            }));
+            const ws = XLSX.utils.json_to_sheet(data);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, 'Results');
+            XLSX.writeFile(wb, `Results_${new Date().toISOString().split('T')[0]}.xlsx`);
+            showToast(`✅ Exported ${data.length} results`, 'success');
+        }
+
+        // ============================================================
+        // 🔔 TOAST
+        // ============================================================
+        function showToast(message, type = 'info') {
+            const colors = { success: '#10B981', error: '#EF4444', warning: '#F59E0B', info: '#3B82F6' };
+            const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle',
+                info: 'fa-info-circle' };
+            document.querySelectorAll('.custom-toast').forEach(t => t.remove());
+            const toast = document.createElement('div');
+            toast.className = 'custom-toast';
+            toast.style.cssText = `
+                position: fixed; top: 20px; right: 20px;
+                background: ${colors[type] || '#3B82F6'}; color: white;
+                padding: 14px 24px; border-radius: 12px;
+                box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+                z-index: 99999; display: flex; align-items: center; gap: 12px;
+                font-family: 'Inter', sans-serif; font-size: 0.85rem; font-weight: 500;
+                max-width: 400px;
+                transform: translateX(120%); opacity: 0;
+                transition: all 0.4s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+                cursor: pointer;
+            `;
+            toast.innerHTML =
+                `<i class="fas ${icons[type] || 'fa-info-circle'}" style="font-size:1.1rem;"></i><span>${message}</span><i class="fas fa-times" style="margin-left:auto; opacity:0.7; font-size:0.8rem; cursor:pointer;"></i>`;
+            document.body.appendChild(toast);
+            setTimeout(() => { toast.style.transform = 'translateX(0)';
+                toast.style.opacity = '1'; }, 10);
+            toast.addEventListener('click', () => { toast.style.transform = 'translateX(120%)';
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 400); });
+            setTimeout(() => { if (document.body.contains(toast)) { toast.style.transform = 'translateX(120%)';
+                    toast.style.opacity = '0';
+                    setTimeout(() => toast.remove(), 400); } }, 5000);
+        }
+
+        // ============================================================
+        // 🔔 NOTIFICATIONS
+        // ============================================================
+        async function setupNotifications() {
+            try {
+                const { data: logs } = await sb
+                    .from('exam_proctoring_logs')
+                    .select('id, is_read')
+                    .eq('is_read', false)
+                    .limit(10);
+
+                const unreadCount = logs?.length || 0;
+                document.getElementById('notificationCount').textContent = unreadCount;
+
+                // Subscribe to new alerts
+                sb.channel('lecturer-alerts')
+                    .on('postgres_changes', {
+                        event: 'INSERT',
+                        schema: 'public',
+                        table: 'exam_proctoring_logs'
+                    }, async (payload) => {
+                        const count = parseInt(document.getElementById('notificationCount').textContent) || 0;
+                        document.getElementById('notificationCount').textContent = count + 1;
+                        showToast('🔔 New proctoring alert!', 'warning');
+                        loadNotifications();
+                    })
+                    .subscribe();
+
+                await loadNotifications();
+
+            } catch (e) { console.error('Notification setup error:', e); }
+        }
+
+        async function loadNotifications() {
+            const container = document.getElementById('notificationList');
+            try {
+                const { data: logs } = await sb
+                    .from('exam_proctoring_logs')
+                    .select('*, consolidated_user_profiles_table(full_name, student_id)')
+                    .eq('is_read', false)
+                    .order('timestamp', { ascending: false })
+                    .limit(10);
+
+                if (!logs || logs.length === 0) {
+                    container.innerHTML =
+                        '<div style="padding:20px;text-align:center;color:#94A3B8;"><i class="fas fa-check-circle" style="display:block;font-size:2rem;margin-bottom:8px;"></i>All clear!</div>';
+                    return;
+                }
+
+                container.innerHTML = logs.map(log => `
+                    <div class="notification-item" style="padding:12px 16px;border-bottom:1px solid #E2E8F0;cursor:pointer;" onclick="markNotificationRead('${log.id}')">
+                        <div class="notification-title">${log.event_type?.replace(/_/g, ' ') || 'Alert'}</div>
+                        <div class="notification-detail">Student: ${log.consolidated_user_profiles_table?.full_name || log.student_id}</div>
+                        <div class="notification-time">${new Date(log.timestamp).toLocaleString()}</div>
+                    </div>
+                `).join('');
+
+            } catch (e) { console.error('Error loading notifications:', e); }
+        }
+
+        async function markNotificationRead(id) {
+            try {
+                await sb.from('exam_proctoring_logs').update({ is_read: true }).eq('id', id);
+                const count = parseInt(document.getElementById('notificationCount').textContent) || 0;
+                document.getElementById('notificationCount').textContent = Math.max(0, count - 1);
+                loadNotifications();
+            } catch (e) { console.error('Error marking notification read:', e); }
+        }
+
+        // Notification bell click
+        document.addEventListener('DOMContentLoaded', function() {
+            const bell = document.getElementById('notificationBell');
+            const panel = document.getElementById('notificationPanel');
+            if (bell && panel) {
+                bell.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    panel.classList.toggle('show');
+                    if (panel.classList.contains('show')) {
+                        loadNotifications();
+                    }
+                });
+                document.addEventListener('click', function() {
+                    panel.classList.remove('show');
+                });
+            }
+        });
+
+        // ============================================================
+        // 🚀 INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!checkAuth()) return;
+
+            // Load exam dropdowns
+            setTimeout(async () => {
+                const { data: exams } = await sb
+                    .from('exams')
+                    .select('id, exam_name')
+                    .eq('created_by', lecturerId || '')
+                    .order('id', { ascending: false });
+                const select = document.getElementById('resultExamFilter');
+                if (select && exams) {
+                    select.innerHTML = '<option value="">All Exams</option>' +
+                        exams.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('');
+                }
+                const attSelect = document.getElementById('attendanceExamFilter');
+                if (attSelect && exams) {
+                    attSelect.innerHTML = '<option value="">All Exams</option>' +
+                        exams.map(e => `<option value="${e.id}">${e.exam_name}</option>`).join('');
+                }
+            }, 500);
+
+            setupNotifications();
+            switchTab('dashboard');
+
+            // Close modals on overlay click
+            document.addEventListener('click', function(e) {
+                if (e.target.classList.contains('modal')) e.target.style.display = 'none';
+            });
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Escape') {
+                    document.querySelectorAll('.modal').forEach(m => m.style.display = 'none');
+                }
+            });
+
+            console.log('✅ Lecturer Dashboard loaded (View Only + Reset)');
+        });
+</script>
     </script>
 </body>
 </html>
