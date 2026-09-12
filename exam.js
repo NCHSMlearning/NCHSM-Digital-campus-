@@ -488,15 +488,41 @@ async function checkActiveSession() {
 // CHECK RETAKE STATUS
 // ============================================================
 async function checkRetakeStatus() {
-    AppState.isRetake = false;
     AppState.retakeCount = 0;
     if (DOM.continuationBadge) DOM.continuationBadge.style.display = 'none';
+
+    // IMPORTANT: When the Student Portal sends ?retake=true, the URL itself
+    // is the user's request to enter the continuation flow. Do not gate the
+    // lobby on a direct exam_grades SELECT because that SELECT may be blocked
+    // by RLS for the anonymous exam-link session. The protected
+    // prepare_exam_attempt RPC is the authoritative server-side check.
+    if (retakeRequestedByUrl) {
+        AppState.isRetake = true;
+        AppState.isContinuation = true;
+        AppState.retakeCount = 1;
+
+        if (DOM.continuationBadge) {
+            DOM.continuationBadge.style.display = 'block';
+        }
+        if (DOM.startExamText) {
+            DOM.startExamText.textContent = '🔄 Continue My Exam';
+        }
+
+        console.log('🔄 Retake URL detected. Authorization will be verified by prepare_exam_attempt RPC when the student starts.');
+        showToast('🔄 Retake selected. Complete the checks and continue your saved exam. Your full timer starts when you enter.', 'info', 5000);
+        return true;
+    }
+
+    // Normal lobby: a direct authorization lookup can improve the UI, but it
+    // must never be required for normal exam loading.
+    AppState.isRetake = false;
 
     try {
         const data = await getAuthorizedRetake();
 
         if (data) {
             AppState.isRetake = true;
+            AppState.isContinuation = true;
             AppState.retakeCount = data.reset_count || data.retake_count || 1;
 
             if (DOM.continuationBadge) {
@@ -504,15 +530,18 @@ async function checkRetakeStatus() {
             }
 
             if (DOM.startExamText) {
-                DOM.startExamText.textContent = '🔄 Start Retake';
+                DOM.startExamText.textContent = '🔄 Continue My Exam';
             }
 
             console.log('🔄 Admin reset continuation detected. Retake count:', AppState.retakeCount);
-            showToast('🔄 Exam reset authorized. You will continue from where you left off with a full fresh timer.', 'info', 5000);
+            showToast('🔄 Exam reset authorized. Continue from your saved progress with a full fresh timer.', 'info', 5000);
         }
     } catch (e) {
-        console.warn('No retake authorization found:', e);
+        // Do not turn a lobby-load RLS/read issue into a fake "no reset" state.
+        console.warn('Retake pre-check unavailable; server RPC remains authoritative:', e);
     }
+
+    return AppState.isRetake;
 }
 
 // ============================================================
@@ -945,7 +974,12 @@ window.startExam = async function() {
         await getOrCreateCurrentAttempt();
     } catch (attemptError) {
         console.error('❌ Could not prepare exam attempt:', attemptError);
-        showToast(attemptError.message || 'Could not start this exam attempt.', 'error', 6000);
+        const msg = attemptError.message || 'Could not start this exam attempt.';
+        if (AppState.isRetake && /No active Admin reset authorization/i.test(msg)) {
+            showToast('❌ This retake is not currently authorized on the server. Please return to the portal and have Admin/Lecturer reset the exam again, then open the Retake Exam link.', 'error', 9000);
+        } else {
+            showToast(msg, 'error', 6000);
+        }
         return;
     }
 
@@ -3812,6 +3846,8 @@ document.addEventListener('DOMContentLoaded', function() {
     AppState.studentId = studentId;
     AppState.examId = params.get('exam_id');
     retakeRequestedByUrl = params.get('retake') === 'true';
+    AppState.isRetake = retakeRequestedByUrl;
+    AppState.isContinuation = retakeRequestedByUrl;
     window.retakeRequestedByUrl = retakeRequestedByUrl;
 
     // ✅ FIX: Redirect to student dashboard instead of exam_login
