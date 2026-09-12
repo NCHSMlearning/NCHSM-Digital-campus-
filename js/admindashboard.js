@@ -746,13 +746,38 @@ window.loadStudentsWithResults = async function(options = {}) {
             ...currentGradeMap.keys()
         ]);
 
+        // When an exam is selected, also include students recorded in the
+        // attendance/participation table. This ensures a student who sat the
+        // exam but has an incomplete/missing sentinel result is still visible.
+        const selectedExamForParticipants = document.getElementById('examFilter')?.value || '';
+        if (selectedExamForParticipants) {
+            try {
+                const { data: attendanceParticipants, error: attendanceError } = await sb
+                    .from('exam_attendance')
+                    .select('student_id, exam_id')
+                    .eq('exam_id', parseInt(selectedExamForParticipants, 10));
+                if (attendanceError) {
+                    console.warn('⚠️ Attendance participant lookup skipped:', attendanceError.message);
+                } else {
+                    (attendanceParticipants || []).forEach(record => {
+                        if (record?.student_id && record?.exam_id != null) {
+                            pairKeys.add(`${record.student_id}__${record.exam_id}`);
+                        }
+                    });
+                }
+            } catch (attendanceErr) {
+                console.warn('⚠️ Attendance participant lookup failed:', attendanceErr.message);
+            }
+        }
+
         const rows = [];
         for (const key of pairKeys) {
             const attempt = currentAttemptMap.get(key) || null;
             const grade = currentGradeMap.get(key) || null;
-            const studentId = attempt?.student_id || grade?.student_id;
-            const examId = attempt?.exam_id ?? grade?.exam_id;
-            if (!studentId || examId == null) continue;
+            const keyParts = String(key).split('__');
+            const studentId = attempt?.student_id || grade?.student_id || keyParts[0];
+            const examId = attempt?.exam_id ?? grade?.exam_id ?? (keyParts[1] !== undefined ? Number(keyParts[1]) : null);
+            if (!studentId || examId == null || Number.isNaN(Number(examId))) continue;
 
             const exam = examsMap[examId] || null;
             const score = attempt?.score ?? grade?.marks ?? grade?.total_score ?? null;
