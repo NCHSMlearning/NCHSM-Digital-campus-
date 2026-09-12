@@ -2034,16 +2034,27 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
 }
 
 function proceedWithSubmission() {
-    verifySignInAttendance().then(canSubmit => {
-        if (!canSubmit) return;
+    // Submission must not depend on a second attendance query.
+    // The student has already entered an active exam session, so proceed directly.
+    try {
+        if (!AppState.examStarted) {
+            showToast('⚠️ The exam session is not active yet.', 'warning');
+            return;
+        }
+
+        if (!AppState.isExamActive) {
+            // Recover the active state for a valid in-session submission attempt.
+            AppState.isExamActive = true;
+        }
 
         saveCurrentAnswer();
         syncPendingAnswers();
         executeSubmissionWithLoading();
-    }).catch(err => {
-        console.error('Attendance check failed:', err);
-        showToast('Error checking attendance. Please try again.', 'error');
-    });
+    } catch (err) {
+        console.error('❌ Could not begin submission:', err);
+        AppState.isSubmitting = false;
+        showToast('❌ Could not start submission. Please try again.', 'error');
+    }
 }
 
 function syncPendingAnswers() {
@@ -2083,8 +2094,13 @@ async function executeSubmissionWithLoading() {
     }
     
     if (!AppState.isExamActive) {
-        console.log('⚠️ Exam not active, skipping submission...');
-        return;
+        if (AppState.examStarted) {
+            AppState.isExamActive = true;
+        } else {
+            console.log('⚠️ Exam not active, skipping submission...');
+            showToast('⚠️ Exam session is not active.', 'warning');
+            return;
+        }
     }
     
     AppState.isSubmitting = true;
@@ -3804,9 +3820,9 @@ function setupExamEventListeners() {
     wireButton(DOM.nextBtn, nextQuestion, 'Next');
     wireButton(DOM.submitBtn, submitExam, 'Submit');
 
-    // The submit control must always be clickable once the exam is active.
-    // Its final enabled/disabled state is controlled by updateProgress/saveAnswer.
-    if (DOM.submitBtn && AppState.isExamActive) {
+    // The submit control must always be clickable once the exam interface is initialized.
+    // Do not leave it disabled because the HTML template had a disabled attribute.
+    if (DOM.submitBtn) {
         DOM.submitBtn.disabled = false;
         DOM.submitBtn.removeAttribute('aria-disabled');
         DOM.submitBtn.style.pointerEvents = 'auto';
