@@ -1094,7 +1094,7 @@ sendLoginNotification: async function(userData, isStaff = false) {
                                                 <table role="presentation" cellpadding="0" cellspacing="0" border="0">
                                                     <tr>
                                                         <td style="background:#dc2626;border-radius:8px;">
-                                                            <a href="mailto:ict@nchsm.co.ke?subject=Security%20Alert%20-%20Unauthorized%20Login" style="display:inline-block;padding:11px 22px;font-size:13px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.2px;">
+                                                            <a href="mailto:portal.nchsm@gmail.com?subject=Security%20Alert%20-%20Unauthorized%20Login" style="display:inline-block;padding:11px 22px;font-size:13px;font-weight:700;color:#ffffff;text-decoration:none;letter-spacing:0.2px;">
                                                                 Contact ICT Support →
                                                             </a>
                                                         </td>
