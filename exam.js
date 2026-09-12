@@ -358,8 +358,16 @@ function recoverExamSession() {
                     if (session.answers) {
                         AppState.answers = session.answers;
                         AppState.flaggedQuestions = session.flaggedQuestions || {};
-                        AppState.currentIndex = session.currentIndex || 0;
+                        AppState.currentIndex = Number.isFinite(Number(session.currentIndex))
+                            ? Math.max(0, Number(session.currentIndex))
+                            : 0;
                         AppState.hasAnsweredAtLeastOne = Object.keys(AppState.answers).length > 0;
+
+                        // Admin reset = continuation of the same attempt.
+                        // Never carry over a temporary face-loss pause into the new session.
+                        if (retakeRequestedByUrl || AppState.isRetake) {
+                            AppState.isExamPaused = false;
+                        }
                         if (session.attemptId) AppState.attemptId = session.attemptId;
                         if (session.attemptNumber) AppState.attemptNumber = session.attemptNumber;
                         if (session.attemptStartedAt) AppState.attemptStartedAt = session.attemptStartedAt;
@@ -499,7 +507,7 @@ async function checkRetakeStatus() {
             }
 
             if (DOM.startExamText) {
-                DOM.startExamText.textContent = '🔄 Start Retake';
+                DOM.startExamText.textContent = '🔄 Continue My Exam';
             }
 
             console.log('🔄 Admin reset continuation detected. Retake count:', AppState.retakeCount);
@@ -945,9 +953,10 @@ window.startExam = async function() {
     }
 
     if (AppState.isRetake) {
-        console.log(`🔄 STARTING FRESH RETAKE ATTEMPT #${AppState.attemptNumber}`);
-        showToast(`🔄 Retake Attempt ${AppState.attemptNumber} started. This is a fresh attempt.`, 'info', 4000);
-        await logProctoringEvent('exam_retake_started', `Fresh retake attempt #${AppState.attemptNumber} started`, 'info');
+        console.log(`🔄 CONTINUING SAME EXAM ATTEMPT #${AppState.attemptNumber}`);
+        AppState.isExamPaused = false;
+        showToast(`🔄 Continuing Attempt ${AppState.attemptNumber} from your saved progress.`, 'info', 4000);
+        await logProctoringEvent('exam_retake_started', `Continuation of existing attempt #${AppState.attemptNumber}`, 'info');
     }
 
     // Show exam interface
@@ -1102,7 +1111,14 @@ async function initExam() {
                 }
             }
 
+            // Continuation must resume as an active exam, not inherit a stale
+            // face-loss pause from the previous browser session.
+            if (retakeRequestedByUrl || AppState.isRetake) {
+                AppState.isExamPaused = false;
+            }
+
             renderQuestion(AppState.currentIndex);
+            updateProgress();
             startResumeAwareTimer();
             startExamFaceDetection();
             setupFullscreenMonitoring();
@@ -1135,7 +1151,7 @@ async function initExam() {
             sessionStorage.setItem('studentId', AppState.studentId);
 
             if (AppState.isRetake) {
-                showToast(`🔄 Retake Attempt ${AppState.attemptNumber} started with a fresh answer sheet.`, 'success');
+                showToast(`🔄 Continuing Attempt ${AppState.attemptNumber} with your saved answers and position.`, 'success');
             } else {
                 showToast('📝 Exam started! Good luck!', 'success');
             }
@@ -1787,7 +1803,8 @@ function updateProgress() {
         DOM.prevBtn.style.cursor = DOM.prevBtn.disabled ? 'not-allowed' : 'pointer';
     }
     if (DOM.nextBtn) {
-        DOM.nextBtn.disabled = AppState.currentIndex === AppState.questions.length - 1 || AppState.isExamPaused;
+        const atLastQuestion = AppState.currentIndex >= AppState.questions.length - 1;
+        DOM.nextBtn.disabled = atLastQuestion || AppState.isExamPaused;
         DOM.nextBtn.style.opacity = DOM.nextBtn.disabled ? '0.4' : '1';
         DOM.nextBtn.style.cursor = DOM.nextBtn.disabled ? 'not-allowed' : 'pointer';
     }
@@ -2146,8 +2163,15 @@ async function executeSubmissionWithLoading() {
 
         if (DOM.submitBtn) {
             DOM.submitBtn.disabled = false;
+            DOM.submitBtn.removeAttribute('aria-disabled');
             DOM.submitBtn.classList.remove('submitting');
+            DOM.submitBtn.style.pointerEvents = 'auto';
+            DOM.submitBtn.style.cursor = 'pointer';
+            DOM.submitBtn.style.opacity = '1';
         }
+        // Restore navigation after a failed submission attempt.
+        AppState.isExamPaused = false;
+        updateProgress();
         if (DOM.submitText) DOM.submitText.textContent = 'Submit Exam';
         if (DOM.submitSpinner) DOM.submitSpinner.style.display = 'none';
         // Keep the current attempt available for a controlled retry.
@@ -2923,16 +2947,27 @@ async function markExamAttendance(status) {
 }
 
 async function verifySignInAttendance() {
+    // The exam start flow already records attendance. Do not block a valid
+    // submission because a second attendance read is affected by RLS/network.
+    if (AppState.attendanceRecorded === true) {
+        return true;
+    }
+
     try {
         const result = await checkAttendanceBeforeSubmit();
-        if (!result.signedIn) {
-            showAttendanceRequiredModal();
-            return false;
+        if (result && result.signedIn) {
+            AppState.attendanceRecorded = true;
+            return true;
         }
+
+        // The student is already inside an active exam. Give submission
+        // priority over a fragile duplicate attendance lookup.
+        console.warn('⚠️ Attendance record could not be re-verified; allowing submission because the exam session is active.');
+        showToast('ℹ️ Attendance could not be re-checked, but your active exam session is valid.', 'info', 3500);
         return true;
     } catch (e) {
-        console.error('Error verifying attendance:', e);
-        return false;
+        console.warn('⚠️ Attendance verification error; allowing active exam submission:', e);
+        return true;
     }
 }
 
@@ -3730,40 +3765,105 @@ async function logProctoringEvent(eventType, details, severity = 'info') {
 // EXAM EVENT LISTENERS
 // ============================================================
 function setupExamEventListeners() {
-    if (DOM.prevBtn) {
-        DOM.prevBtn.addEventListener('click', prevQuestion);
-    }
-    if (DOM.nextBtn) {
-        DOM.nextBtn.addEventListener('click', nextQuestion);
-    }
-    if (DOM.submitBtn) {
-        DOM.submitBtn.addEventListener('click', submitExam);
+    // Prevent these controls from acting as form-submit buttons.
+    // Reassigning onclick also prevents stale/duplicate listeners.
+    const wireButton = (button, handler, name) => {
+        if (!button) {
+            console.warn(`⚠️ ${name} button not found`);
+            return;
+        }
+
+        try {
+            button.type = 'button';
+            button.onclick = function (event) {
+                if (event) {
+                    event.preventDefault();
+                    event.stopPropagation();
+                }
+                try {
+                    const result = handler();
+                    if (result && typeof result.catch === 'function') {
+                        result.catch(err => {
+                            console.error(`❌ ${name} button error:`, err);
+                            showToast(`❌ ${name} action failed. Please try again.`, 'error');
+                        });
+                    }
+                } catch (err) {
+                    console.error(`❌ ${name} button error:`, err);
+                    showToast(`❌ ${name} action failed. Please try again.`, 'error');
+                }
+                return false;
+            };
+            console.log(`✅ ${name} button wired`);
+        } catch (err) {
+            console.error(`❌ Could not wire ${name} button:`, err);
+        }
+    };
+
+    wireButton(DOM.prevBtn, prevQuestion, 'Previous');
+    wireButton(DOM.nextBtn, nextQuestion, 'Next');
+    wireButton(DOM.submitBtn, submitExam, 'Submit');
+
+    // The submit control must always be clickable once the exam is active.
+    // Its final enabled/disabled state is controlled by updateProgress/saveAnswer.
+    if (DOM.submitBtn && AppState.isExamActive) {
+        DOM.submitBtn.disabled = false;
+        DOM.submitBtn.removeAttribute('aria-disabled');
+        DOM.submitBtn.style.pointerEvents = 'auto';
+        DOM.submitBtn.style.cursor = 'pointer';
+        DOM.submitBtn.style.opacity = '1';
     }
 
-    document.addEventListener('keydown', function(e) {
-        if (e.target.matches('input, textarea, select')) return;
+    // Avoid stacking multiple global keyboard listeners.
+    if (window.__nchsmExamKeyboardHandler) {
+        document.removeEventListener('keydown', window.__nchsmExamKeyboardHandler);
+    }
+
+    window.__nchsmExamKeyboardHandler = function (e) {
+        if (e.target && e.target.matches && e.target.matches('input, textarea, select, button')) {
+            // Still allow Escape/Enter only where explicitly handled by controls.
+            if (e.key !== 'Escape') return;
+        }
+
         if (e.key === 'ArrowLeft' && DOM.prevBtn && !DOM.prevBtn.disabled) {
             prevQuestion();
             e.preventDefault();
         }
+
         if (e.key === 'ArrowRight' && DOM.nextBtn && !DOM.nextBtn.disabled) {
             nextQuestion();
             e.preventDefault();
         }
-        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+
+        if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 's') {
             e.preventDefault();
             if (!AppState.isExamPaused) {
+                saveCurrentAnswer();
                 saveProgressLocally();
                 showToast('💾 Progress saved manually', 'success');
             } else {
                 showToast('⛔ Exam is paused. Face not detected.', 'warning');
             }
         }
-        if (e.key === 'Enter' && DOM.submitBtn && !DOM.submitBtn.disabled) {
-            submitExam();
+
+        // Enter submits only when focus is not inside an input/control.
+        if (
+            e.key === 'Enter' &&
+            !e.shiftKey &&
+            !e.ctrlKey &&
+            !e.altKey &&
+            !e.metaKey &&
+            document.activeElement &&
+            !['INPUT', 'TEXTAREA', 'SELECT', 'BUTTON'].includes(document.activeElement.tagName) &&
+            DOM.submitBtn &&
+            !DOM.submitBtn.disabled
+        ) {
             e.preventDefault();
+            submitExam();
         }
-    });
+    };
+
+    document.addEventListener('keydown', window.__nchsmExamKeyboardHandler);
 }
 
 // ============================================================
