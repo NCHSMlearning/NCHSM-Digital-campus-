@@ -1440,24 +1440,85 @@ function saveCurrentAnswer() {
     }
 }
 
+
+// ============================================================
+// ATTEMPT-AWARE GRADE WRITE HELPER
+// Handles the new (attempt_id, question_id) key and gives a
+// controlled fallback while the database unique constraint is
+// being migrated.
+// ============================================================
+async function upsertAttemptGrade(payload) {
+    if (!AppState.attemptId) throw new Error('No active exam attempt');
+
+    const row = {
+        ...payload,
+        student_id: AppState.studentId,
+        exam_id: parseInt(AppState.examId),
+        attempt_id: AppState.attemptId
+    };
+
+    let result = await sb
+        .from('exam_grades')
+        .upsert(row, { onConflict: 'attempt_id,question_id' })
+        .select('id')
+        .maybeSingle();
+
+    if (!result.error) return result.data || null;
+
+    // 42P10 means the database does not yet have the matching
+    // unique/exclusion constraint. Fall back to explicit update/insert
+    // so the submission can still complete after the schema transition.
+    if (result.error.code !== '42P10') throw result.error;
+
+    console.warn('⚠️ exam_grades unique constraint for (attempt_id, question_id) is missing; using safe update/insert fallback.');
+
+    const { data: existingRows, error: lookupError } = await sb
+        .from('exam_grades')
+        .select('id')
+        .eq('attempt_id', AppState.attemptId)
+        .eq('question_id', row.question_id)
+        .order('updated_at', { ascending: false })
+        .limit(1);
+
+    if (lookupError) throw lookupError;
+
+    const existing = existingRows?.[0] || null;
+
+    if (existing?.id) {
+        const { data: updated, error: updateError } = await sb
+            .from('exam_grades')
+            .update(row)
+            .eq('id', existing.id)
+            .select('id')
+            .maybeSingle();
+
+        if (updateError) throw updateError;
+        return updated || existing;
+    }
+
+    const { data: inserted, error: insertError } = await sb
+        .from('exam_grades')
+        .insert(row)
+        .select('id')
+        .maybeSingle();
+
+    if (insertError) throw insertError;
+    return inserted || null;
+}
+
 async function saveAnswerToDatabase(questionId, answer) {
     try {
         if (!AppState.attemptId) {
             throw new Error('No active exam attempt');
         }
 
-        const { error } = await sb.from('exam_grades').upsert({
-            id: crypto.randomUUID(),
-            student_id: AppState.studentId,
-            exam_id: parseInt(AppState.examId),
-            attempt_id: AppState.attemptId,
+        await upsertAttemptGrade({
             question_id: questionId,
             selected_answer: answer,
             marks: 0,
-            graded_at: new Date().toISOString()
-        }, { onConflict: 'attempt_id,question_id' });
-
-        if (error) throw error;
+            graded_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        });
     } catch (e) {
         console.warn('⚠️ Save failed, saving locally:', e);
         saveToLocalStorage(`draft_${questionId}`, { answer, timestamp: Date.now(), attemptId: AppState.attemptId });
@@ -2058,7 +2119,18 @@ async function executeSubmissionWithLoading() {
         }
         if (DOM.submitText) DOM.submitText.textContent = 'Submit Exam';
         if (DOM.submitSpinner) DOM.submitSpinner.style.display = 'none';
+        // Keep the current attempt available for a controlled retry.
+        AppState.isExamActive = true;
+        AppState.examStarted = true;
         AppState.isSubmitting = false;
+        if (DOM.submitBtn) DOM.submitBtn.style.display = '';
+        try {
+            if (!document.fullscreenElement) {
+                await enterSecureFullscreen();
+            }
+        } catch (retryFsError) {
+            console.warn('Could not restore fullscreen for retry:', retryFsError);
+        }
     }
 }
 
@@ -2128,30 +2200,32 @@ function cleanupExamData() {
 async function saveAllAnswersToDatabase() {
     let saved = 0;
     const total = Object.keys(AppState.answers).length;
+    const failures = [];
 
     if (!AppState.attemptId) throw new Error('No active exam attempt');
 
     for (const questionId in AppState.answers) {
         if (AppState.answers.hasOwnProperty(questionId)) {
             try {
-                const { error } = await sb.from('exam_grades').upsert({
-                        student_id: AppState.studentId,
-                    exam_id: parseInt(AppState.examId),
-                    attempt_id: AppState.attemptId,
+                await upsertAttemptGrade({
                     question_id: questionId,
                     selected_answer: AppState.answers[questionId],
                     marks: 0,
-                    graded_at: new Date().toISOString()
-                }, { onConflict: 'attempt_id,question_id' });
-                if (error) throw error;
+                    graded_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                });
                 saved++;
             } catch (e) {
+                failures.push(questionId);
                 console.warn('Failed to save answer for question ' + questionId + ':', e);
             }
         }
     }
 
     console.log('✅ Saved ' + saved + '/' + total + ` answers for Attempt ${AppState.attemptNumber}`);
+    if (failures.length > 0) {
+        throw new Error(`Could not save ${failures.length} answer(s) before submission.`);
+    }
     return saved;
 }
 
@@ -2183,43 +2257,31 @@ async function calculateAndSaveGrade() {
             totalEarned += earned;
             if (isCorrect) correctCount++; else wrongCount++;
 
-            const { error } = await sb.from('exam_grades').upsert({
-                student_id: AppState.studentId,
-                exam_id: parseInt(AppState.examId),
-                attempt_id: AppState.attemptId,
+            await upsertAttemptGrade({
                 question_id: q.id,
                 selected_answer: studentAnswer || null,
                 marks: earned,
                 graded_at: now,
                 updated_at: now
-            }, { onConflict: 'attempt_id,question_id' });
-
-            if (error) throw error;
+            });
         }
 
         const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
         const resultStatus = 'PENDING_REVIEW';
 
-        const { error: mainError } = await sb
-            .from('exam_grades')
-            .upsert({
-                student_id: AppState.studentId,
-                exam_id: parseInt(AppState.examId),
-                attempt_id: AppState.attemptId,
-                question_id: '00000000-0000-0000-0000-000000000000',
-                marks: totalEarned,
-                total_score: totalEarned,
-                percentage: percentage,
-                result_status: resultStatus,
-                completed: true,
-                graded_at: now,
-                updated_at: now,
-                retake_unlocked: false,
-                retake_count: AppState.attemptNumber,
-                reset_count: AppState.isRetake ? AppState.retakeCount : 0
-            }, { onConflict: 'attempt_id,question_id' });
-
-        if (mainError) throw mainError;
+        await upsertAttemptGrade({
+            question_id: '00000000-0000-0000-0000-000000000000',
+            marks: totalEarned,
+            total_score: totalEarned,
+            percentage: percentage,
+            result_status: resultStatus,
+            completed: true,
+            graded_at: now,
+            updated_at: now,
+            retake_unlocked: false,
+            retake_count: AppState.attemptNumber,
+            reset_count: AppState.isRetake ? AppState.retakeCount : 0
+        });
 
         const { error: attemptError } = await sb
             .from('exam_attempts')
@@ -2306,24 +2368,75 @@ function showCompletionCertificate() {
 }
 
 // ============================================================
-// ✅ RULE 1: AUTO-SUBMIT ON FULLSCREEN EXIT
+// ✅ FULLSCREEN EXIT PROTECTION
+// Do not auto-submit immediately. Give the student the configured
+// grace period to return to fullscreen, then submit if they do not.
 // ============================================================
+function startFullscreenExitWarning() {
+    if (AppState.fullscreenWarningActive || AppState.isSubmitting || !AppState.isExamActive) return;
+
+    AppState.fullscreenWarningActive = true;
+    let remaining = Number(CONFIG.FULLSCREEN_EXIT_TIMEOUT || 10);
+
+    if (DOM.fullscreenExitWarning) {
+        DOM.fullscreenExitWarning.style.display = 'flex';
+        DOM.fullscreenExitWarning.classList.add('active');
+    }
+    if (DOM.exitCountdown) DOM.exitCountdown.textContent = String(remaining);
+
+    if (AppState.countdownInterval) clearInterval(AppState.countdownInterval);
+
+    AppState.countdownInterval = setInterval(() => {
+        if (document.fullscreenElement) {
+            clearInterval(AppState.countdownInterval);
+            AppState.countdownInterval = null;
+            AppState.fullscreenWarningActive = false;
+            if (DOM.fullscreenExitWarning) {
+                DOM.fullscreenExitWarning.classList.remove('active');
+                DOM.fullscreenExitWarning.style.display = 'none';
+            }
+            return;
+        }
+
+        remaining -= 1;
+        if (DOM.exitCountdown) DOM.exitCountdown.textContent = String(Math.max(remaining, 0));
+
+        if (remaining <= 0) {
+            clearInterval(AppState.countdownInterval);
+            AppState.countdownInterval = null;
+            AppState.fullscreenWarningActive = false;
+
+            if (DOM.fullscreenExitWarning) {
+                DOM.fullscreenExitWarning.classList.remove('active');
+                DOM.fullscreenExitWarning.style.display = 'none';
+            }
+
+            console.log('🚨 Fullscreen grace period expired. Auto-submitting...');
+            showToast('Fullscreen was not restored. Your exam is being submitted.', 'error');
+            logProctoringEvent('fullscreen_exit_timeout', 'Student did not restore fullscreen within the grace period', 'critical');
+            executeSubmissionWithLoading();
+        }
+    }, 1000);
+}
+
 function setupFullscreenMonitoring() {
     document.addEventListener('fullscreenchange', () => {
         const isFullscreen = !!document.fullscreenElement;
-        if (!isFullscreen && AppState.examStarted && !AppState.isSubmitting) {
-            console.log('🚨 Fullscreen exited! Auto-submitting...');
-            showToast('🚨 Fullscreen exited! Auto-submitting...', 'error');
-            logProctoringEvent('fullscreen_exit', 'Student exited fullscreen during exam', 'critical');
-            
-            // Auto-submit immediately
-            if (!AppState.isSubmitting && AppState.isExamActive) {
-                executeSubmissionWithLoading();
-            }
+
+        if (!isFullscreen && AppState.examStarted && AppState.isExamActive && !AppState.isSubmitting) {
+            console.log('⚠️ Fullscreen exited — starting grace period.');
+            showToast(`⚠️ Please return to fullscreen within ${CONFIG.FULLSCREEN_EXIT_TIMEOUT || 10} seconds.`, 'warning');
+            logProctoringEvent('fullscreen_exit', 'Student exited fullscreen during exam', 'warning');
+            startFullscreenExitWarning();
         } else if (isFullscreen && AppState.fullscreenWarningActive) {
             if (AppState.countdownInterval) clearInterval(AppState.countdownInterval);
-            if (DOM.fullscreenExitWarning) DOM.fullscreenExitWarning.style.display = 'none';
+            AppState.countdownInterval = null;
             AppState.fullscreenWarningActive = false;
+            if (DOM.fullscreenExitWarning) {
+                DOM.fullscreenExitWarning.classList.remove('active');
+                DOM.fullscreenExitWarning.style.display = 'none';
+            }
+            showToast('✅ Fullscreen restored.', 'success');
         }
     });
 }
