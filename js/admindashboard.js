@@ -1787,253 +1787,49 @@ async function getLatestAttempt(studentId, examId) {
 
 async function authorizeRetakeForStudent(studentId, examId, studentName = 'Student', source = 'admin') {
     const parsedExamId = parseInt(examId);
-    if (!studentId || !parsedExamId) throw new Error('Student and exam are required.');
-
-    let attempt = await getLatestAttempt(studentId, parsedExamId);
-
-    // Legacy bridge: older completed exams may exist only in exam_grades and
-    // have not yet been backfilled into exam_attempts. Create Attempt 1 from
-    // the existing completed/sentinel grade instead of blocking retake.
-    if (!attempt) {
-        const { data: legacyGradeRows, error: legacyGradeError } = await sb
-            .from('exam_grades')
-            .select('id, student_id, exam_id, question_id, result_status, completed, total_score, percentage, total_marks, graded_at, updated_at, created_at, allow_retake, retake_unlocked')
-            .eq('student_id', studentId)
-            .eq('exam_id', parsedExamId)
-            .order('updated_at', { ascending: false })
-            .limit(200);
-
-        if (legacyGradeError) throw legacyGradeError;
-
-        const sentinel = (legacyGradeRows || []).find(r => r.question_id === ZERO_QUESTION_ID);
-        const anyLegacyGrade = sentinel || (legacyGradeRows || [])[0];
-
-        if (!anyLegacyGrade) {
-            throw new Error('No completed exam record was found for this student and exam. The student must complete the exam before a retake can be authorized.');
-        }
-
-        const legacyCompleted =
-            anyLegacyGrade.completed === true ||
-            ['PASS', 'FAIL', 'RELEASED', 'PENDING_REVIEW', 'PENDING', 'RESET_FOR_RETAKE'].includes(String(anyLegacyGrade.result_status || '').toUpperCase()) ||
-            anyLegacyGrade.total_score !== null && anyLegacyGrade.total_score !== undefined;
-
-        if (!legacyCompleted) {
-            throw new Error('The student has an exam record, but it is not marked as completed. Finish or submit the current attempt before authorizing a retake.');
-        }
-
-        const startedAt = anyLegacyGrade.created_at || anyLegacyGrade.graded_at || new Date().toISOString();
-        const submittedAt = anyLegacyGrade.graded_at || anyLegacyGrade.updated_at || anyLegacyGrade.created_at || null;
-
-        const { data: createdAttempt, error: createAttemptError } = await sb
-            .from('exam_attempts')
-            .insert({
-                student_id: studentId,
-                exam_id: parsedExamId,
-                attempt_number: 1,
-                status: 'COMPLETED',
-                is_retake: false,
-                started_at: startedAt,
-                submitted_at: submittedAt,
-                score: anyLegacyGrade.total_score ?? null,
-                percentage: anyLegacyGrade.percentage ?? null,
-                total_marks: anyLegacyGrade.total_marks ?? null
-            })
-            .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks')
-            .single();
-
-        if (createAttemptError) {
-            // Another admin/session may have created the bridge row concurrently.
-            attempt = await getLatestAttempt(studentId, parsedExamId);
-            if (!attempt) {
-                throw new Error(`Legacy exam result found, but the initial exam attempt could not be created: ${createAttemptError.message}`);
-            }
-        } else {
-            attempt = createdAttempt;
-        }
-
-        // Attach the legacy grade rows to the new Attempt 1 so subsequent
-        // attempt-aware queries can distinguish the historical attempt.
-        if (attempt?.id) {
-            const { error: attachError } = await sb
-                .from('exam_grades')
-                .update({ attempt_id: attempt.id })
-                .eq('student_id', studentId)
-                .eq('exam_id', parsedExamId)
-                .is('attempt_id', null);
-
-            if (attachError) {
-                console.warn('⚠️ Attempt created but legacy grades could not be fully attached:', attachError);
-            }
-        }
+    if (!studentId || !parsedExamId) {
+        throw new Error('Student and exam are required.');
     }
 
-    if (attempt.status === 'IN_PROGRESS') {
-        throw new Error('This student already has an examination attempt in progress. Use Resume/Timer management instead of Authorize Retake.');
+    console.log('🔐 Authorizing retake through secure server RPC...', {
+        studentId,
+        examId: parsedExamId,
+        studentName,
+        source
+    });
+
+    // IMPORTANT: The browser must NOT insert into exam_attempts directly.
+    // exam_attempts is RLS-protected. The SECURITY DEFINER RPC performs the
+    // legacy Attempt #1 bridge (when needed) and authorizes the retake atomically.
+    const { data, error } = await sb.rpc('admin_authorize_exam_retake', {
+        p_student_id: studentId,
+        p_exam_id: parsedExamId
+    });
+
+    if (error) {
+        console.error('❌ Retake authorization RPC failed:', error);
+        throw new Error(error.message || 'Unable to authorize retake.');
     }
 
-    const now = new Date().toISOString();
-    const payload = {
-        result_status: 'RESET_FOR_RETAKE',
-        allow_retake: true,
-        retake_unlocked: true,
-        reset_at: now,
-        timer_reset_at: now,
-        time_extension: 0,
-        completed: true
-    };
-
-    let updateQuery = sb
-        .from('exam_grades')
-        .update(payload)
-        .eq('student_id', studentId)
-        .eq('exam_id', parsedExamId)
-        .eq('question_id', ZERO_QUESTION_ID);
-
-    if (attempt.id) updateQuery = updateQuery.eq('attempt_id', attempt.id);
-
-    const { data: updatedRows, error: updateError } = await updateQuery.select('id, attempt_id, result_status, allow_retake, retake_unlocked');
-    if (updateError) throw updateError;
-    if (!updatedRows || updatedRows.length === 0) {
-        throw new Error('The completed attempt was found, but its exam result record could not be updated. Check that exam_grades.attempt_id is populated.');
+    if (!data) {
+        throw new Error('Retake authorization completed but the server returned no attempt information.');
     }
 
-    // Remove only the released result for the completed attempt; the new retake will receive a new result.
-    try {
-        const resultIds = updatedRows.map(r => r.id).filter(Boolean);
-        if (resultIds.length) {
-            await sb.from('released_exam_results').delete().in('result_id', resultIds);
-        }
-    } catch (e) {
-        console.warn('⚠️ Could not remove released result:', e);
+    // Support either a direct attempt JSON object or { attempt: {...} }.
+    const attempt = data.attempt || data;
+
+    if (!attempt.id || attempt.attempt_number === undefined || attempt.attempt_number === null) {
+        console.error('❌ Unexpected admin_authorize_exam_retake response:', data);
+        throw new Error('The server authorized the retake but returned an invalid attempt record.');
     }
 
-    // Clear legacy student/exam heartbeat so the new attempt starts with a fresh timer.
-    try {
-        await sb.from('exam_heartbeats').delete().eq('student_id', studentId).eq('exam_id', parsedExamId);
-    } catch (e) {
-        console.warn('Heartbeat table unavailable or could not be cleared:', e);
-    }
-
-    try {
-        await sb.from('exam_proctoring_logs').insert({
-            student_id: studentId,
-            exam_id: parsedExamId,
-            event_type: 'exam_retake_authorized',
-            details: `Retake authorized by ${source} for ${studentName}. Previous attempt ${attempt.attempt_number} preserved; a new attempt will be created when the student starts.`,
-            severity: 'info',
-            timestamp: now
-        });
-    } catch (e) {
-        console.warn('⚠️ Retake log could not be written:', e);
-    }
+    console.log(
+        `✅ Retake authorized for ${studentName}. Previous attempt #${attempt.attempt_number} preserved.`
+    );
 
     return attempt;
 }
 
-// ============================================
-// 🚀 RESET BY EMAIL - UPDATED (ONLY THIS)
-// ============================================
-window.openResetByEmailModal = function() {
-    const modal = document.getElementById('resetByEmailModal');
-    if (!modal) return;
-    
-    loadExamsForResetDropdown();
-    
-    const emailInput = document.getElementById('resetEmailInput');
-    const studentInfo = document.getElementById('resetStudentInfo');
-    const errorInfo = document.getElementById('resetErrorInfo');
-    const confirmBtn = document.getElementById('confirmResetByEmailBtn');
-    
-    if (emailInput) emailInput.value = '';
-    if (studentInfo) studentInfo.style.display = 'none';
-    if (errorInfo) errorInfo.style.display = 'none';
-    if (confirmBtn) confirmBtn.disabled = true;
-    
-    window.resetTargetStudent = null;
-    modal.style.display = 'flex';
-};
-
-// ============================================
-// 🚀 CONFIRM RESET BY EMAIL - UPDATED (ONLY THIS)
-// ============================================
-window.confirmResetByEmail = async function() {
-    if (!window.resetTargetStudent) {
-        showToast('❌ No student selected. Please enter a valid email.', 'error');
-        return;
-    }
-
-    const examId = document.getElementById('resetExamSelect')?.value;
-    const student = window.resetTargetStudent;
-    const confirmBtn = document.getElementById('confirmResetByEmailBtn');
-
-    if (!examId) {
-        showToast('⚠️ Select a specific exam. Retakes are authorized per exam so attempt history remains separate.', 'warning');
-        return;
-    }
-
-    const examName = examsMap[examId]?.exam_name || 'Selected Exam';
-    const confirmMsg =
-        `AUTHORIZE RETAKE\n\n` +
-        `Student: ${student.full_name}\n` +
-        `Email: ${student.email}\n` +
-        `Student ID: ${student.student_id || 'N/A'}\n` +
-        `Exam: ${examName}\n\n` +
-        `This will:\n` +
-        `• Preserve the previous attempt and its answers/results\n` +
-        `• Authorize ONE fresh retake attempt\n` +
-        `• Start the student on a new attempt number\n` +
-        `• Keep the previous attempt available in history\n\n` +
-        `Continue?`;
-
-    if (!confirm(confirmMsg)) return;
-
-    if (confirmBtn) {
-        confirmBtn.disabled = true;
-        confirmBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Authorizing...';
-    }
-
-    try {
-        const attempt = await authorizeRetakeForStudent(student.user_id, examId, student.full_name, 'Reset by Email');
-        showToast(`✅ Retake authorized for ${student.full_name}. Previous attempt #${attempt.attempt_number} is preserved.`, 'success');
-        closeResetByEmailModal();
-        await loadStudentsWithResults();
-        await loadAllExams();
-        await loadAllStudents();
-        updateStats();
-    } catch (err) {
-        console.error(err);
-        showToast('❌ ' + err.message, 'error');
-    } finally {
-        if (confirmBtn) {
-            confirmBtn.disabled = false;
-            confirmBtn.innerHTML = '<i class="fas fa-redo"></i> Authorize Retake';
-        }
-    }
-};
-
-// ============================================
-// 📋 CLOSE RESET BY EMAIL MODAL (ADDED)
-// ============================================
-window.closeResetByEmailModal = function() {
-    const modal = document.getElementById('resetByEmailModal');
-    if (modal) modal.style.display = 'none';
-    window.resetTargetStudent = null;
-    
-    const emailInput = document.getElementById('resetEmailInput');
-    if (emailInput) emailInput.value = '';
-    
-    const infoDiv = document.getElementById('resetStudentInfo');
-    if (infoDiv) infoDiv.style.display = 'none';
-    
-    const errorDiv = document.getElementById('resetErrorInfo');
-    if (errorDiv) errorDiv.style.display = 'none';
-    
-    const confirmBtn = document.getElementById('confirmResetByEmailBtn');
-    if (confirmBtn) confirmBtn.disabled = true;
-};
-    // ============================================
-// 🔄 RESET SINGLE STUDENT - MODERN
-// ============================================
 window.resetSingleStudent = async function(studentId, examId, studentName, examName) {
     const confirmMsg =
         `AUTHORIZE RETAKE\n\n` +
@@ -9200,7 +8996,7 @@ function startAttendanceAutoRefresh() {
     window.initAttendanceTab = initAttendanceTab;
     window.toggleAttendanceAutoRefresh = toggleAttendanceAutoRefresh;
     window.startAttendanceAutoRefresh = startAttendanceAutoRefresh;
- 
+
    // ============================================
 // 📹 VIDEO FUNCTIONS - GLOBAL EXPOSURE
 // ============================================
