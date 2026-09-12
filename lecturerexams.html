@@ -1575,16 +1575,15 @@
                 // do not change its id. The secure student-side continuation RPC
                 // will validate the reset flag and restore IN_PROGRESS state.
                 try {
-                    const { data: rpcAttempt, error: rpcError } = await sb.rpc('prepare_exam_attempt', {
+                    const { data: rpcAttempt, error: rpcError } = await sb.rpc('admin_authorize_exam_retake', {
                         p_student_id: studentId,
-                        p_exam_id: parseInt(examId, 10),
-                        p_is_retake: true
+                        p_exam_id: parseInt(examId, 10)
                     });
 
                     if (rpcError) {
-                        console.warn('prepare_exam_attempt warning:', rpcError.message);
+                        throw new Error(rpcError.message || 'Could not authorize continuation.');
                     } else if (rpcAttempt?.id && String(rpcAttempt.id) !== String(currentAttempt.id)) {
-                        console.warn('Continuation RPC returned a different attempt id. Student side will validate the canonical attempt.');
+                        throw new Error('Continuation authorization returned a different attempt. No reset was applied.');
                     }
                 } catch (rpcErr) {
                     console.warn('Continuation RPC unavailable to lecturer; sentinel reset remains authorized:', rpcErr);
