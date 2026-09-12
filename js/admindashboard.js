@@ -758,7 +758,7 @@ window.loadStudentsWithResults = async function(options = {}) {
     if (!tbody) return;
     
     if (page.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px; color:#94A3B8;"><i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i>No results found</td></tr>'; 
+        tbody.innerHTML = '<tr><td colspan="8" style="text-align:center; padding:40px; color:#94A3B8;"><i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i>No results found</td></tr>'; 
         return; 
     }
     
@@ -828,10 +828,22 @@ window.loadStudentsWithResults = async function(options = {}) {
         const safeExam = examName.replace(/'/g, "\\'");
         
         return `<tr>
-            <td><span class="student-id-badge">${studentId}</span></td>
-            <td><strong>${studentName}</strong></td>
-            <td>${studentEmail}</td>
-            <td>${studentProgram}</td>
+            <td style="padding:10px 14px; vertical-align:middle;">
+                <div style="display:flex; flex-direction:column; gap:4px; min-width:260px;">
+                    <div style="font-weight:800; color:#0f172a; line-height:1.2;">${studentName}</div>
+                    <div style="display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; font-size:11px;">
+                        <span style="font-weight:700; color:#0A3D62;">
+                            <i class="fas fa-id-card" style="width:13px;"></i> ${studentId}
+                        </span>
+                        <span style="color:#475569;">
+                            <i class="fas fa-graduation-cap" style="width:13px;"></i> ${studentProgram}
+                        </span>
+                    </div>
+                    <div style="font-size:11px; color:#64748b; max-width:290px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;" title="${studentEmail}">
+                        <i class="fas fa-envelope" style="width:13px;"></i> ${studentEmail}
+                    </div>
+                </div>
+            </td>
             <td>
                 ${examName}
                 <span class="exam-type-badge ${typeBadgeClass}">${typeLabel}</span>
