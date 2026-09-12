@@ -20960,11 +20960,11 @@ async function logout() {
         await sb.auth.signOut();
         localStorage.clear();
         sessionStorage.clear();
-        window.location.href = "login.html";
+        window.location.href = "superadminlogin.html";
         
     } catch (error) {
         console.error('Logout error:', error);
-        window.location.href = "login.html";
+        window.location.href = "superadminlogin.html";
     }
 }
 // ============================================
