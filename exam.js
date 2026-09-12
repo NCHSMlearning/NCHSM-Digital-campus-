@@ -1,22 +1,3 @@
-/*
- * NCHSM EXAM JS — RETAKE SAFETY PATCH
- * ===================================
- * This version keeps the existing exam/proctoring system and improves only
- * retake authorization and lifecycle handling.
- *
- * Authorization requires:
- *   result_status   = RESET_FOR_RETAKE
- *   allow_retake    = true
- *   retake_unlocked = true
- *
- * Browser URL/session values cannot authorize a retake by themselves.
- * Existing answers remain preserved and are loaded from exam_grades.
- * After a successful retake submission, retake_unlocked is set to false.
- *
- * NOTE: This does not create a separate attempt-history table. A complete
- * multi-attempt audit trail would require a dedicated attempts table/schema.
- */
-
 // ============================================================
 // CONFIGURATION
 // ============================================================
@@ -54,6 +35,8 @@ const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 // ============================================================
 // APPLICATION STATE
 // ============================================================
+let retakeRequestedByUrl = false;
+
 const AppState = {
     studentId: null,
     studentProfile: null,
@@ -96,6 +79,8 @@ const AppState = {
     networkQuality: 'unknown',
     isRetake: false,
     retakeCount: 0,
+    attemptId: null,
+    attemptNumber: 0,
     examAutoSubmitted: false,
 };
 
@@ -218,7 +203,7 @@ function shuffleArrayWithSeed(array, seed) {
 }
 
 function getStorageKey(key) {
-    return `${CONFIG.STORAGE_PREFIX}${AppState.examId}_${key}_${AppState.studentId}`;
+    return `${CONFIG.STORAGE_PREFIX}${AppState.examId}_${key}_${AppState.studentId}${AppState.attemptId ? `_attempt_${AppState.attemptId}` : ''}`;
 }
 
 function saveToLocalStorage(key, data) {
@@ -344,6 +329,8 @@ function saveExamSession() {
         sessionStorage.setItem(CONFIG.EXAM_SESSION_KEY, JSON.stringify({
             examId: AppState.examId,
             studentId: AppState.studentId,
+            attemptId: AppState.attemptId,
+            attemptNumber: AppState.attemptNumber,
             examActive: AppState.isExamActive,
             currentIndex: AppState.currentIndex,
             answers: AppState.answers,
@@ -355,6 +342,9 @@ function saveExamSession() {
 }
 
 function recoverExamSession() {
+    // A fresh retake must NEVER inherit the previous attempt's answers.
+    if (retakeRequestedByUrl || AppState.isRetake) return false;
+
     try {
         const data = sessionStorage.getItem(CONFIG.EXAM_SESSION_KEY);
         if (data) {
@@ -366,9 +356,8 @@ function recoverExamSession() {
                         AppState.flaggedQuestions = session.flaggedQuestions || {};
                         AppState.currentIndex = session.currentIndex || 0;
                         AppState.hasAnsweredAtLeastOne = Object.keys(AppState.answers).length > 0;
-
-                        // Retake authorization is controlled by the database.
-                        // Do NOT restore isRetake from stale sessionStorage.
+                        if (session.attemptId) AppState.attemptId = session.attemptId;
+                        if (session.attemptNumber) AppState.attemptNumber = session.attemptNumber;
                         return true;
                     }
                 }
@@ -376,6 +365,131 @@ function recoverExamSession() {
         }
     } catch (e) {}
     return false;
+}
+
+// ============================================================
+// ATTEMPT MANAGEMENT
+// ============================================================
+async function getAuthorizedRetake() {
+    try {
+        const { data, error } = await sb
+            .from('exam_grades')
+            .select('id, result_status, reset_count, retake_count, allow_retake, retake_unlocked, attempt_id')
+            .eq('student_id', AppState.studentId)
+            .eq('exam_id', parseInt(AppState.examId))
+            .eq('question_id', '00000000-0000-0000-0000-000000000000')
+            .order('updated_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
+        return (data || []).find(row =>
+            row.result_status === 'RESET_FOR_RETAKE' &&
+            row.allow_retake === true &&
+            row.retake_unlocked === true
+        ) || null;
+    } catch (e) {
+        console.warn('Could not check retake authorization:', e);
+        return null;
+    }
+}
+
+async function getOrCreateCurrentAttempt() {
+    if (AppState.attemptId) return true;
+
+    const examId = parseInt(AppState.examId);
+
+    // Fresh approved retake: create a completely new attempt.
+    if (AppState.isRetake) {
+        const { data: existing } = await sb
+            .from('exam_attempts')
+            .select('id, attempt_number, status, is_retake')
+            .eq('student_id', AppState.studentId)
+            .eq('exam_id', examId)
+            .order('attempt_number', { ascending: false })
+            .limit(1);
+
+        const latest = existing && existing.length ? existing[0] : null;
+        const nextNumber = (latest ? latest.attempt_number : 0) + 1;
+
+        const { data: created, error } = await sb
+            .from('exam_attempts')
+            .insert({
+                student_id: AppState.studentId,
+                exam_id: examId,
+                attempt_number: nextNumber,
+                status: 'IN_PROGRESS',
+                is_retake: true,
+                started_at: new Date().toISOString()
+            })
+            .select('id, attempt_number')
+            .single();
+
+        if (error) throw error;
+
+        AppState.attemptId = created.id;
+        AppState.attemptNumber = created.attempt_number;
+        AppState.answers = {};
+        AppState.flaggedQuestions = {};
+        AppState.currentIndex = 0;
+        AppState.hasAnsweredAtLeastOne = false;
+
+        // Consume the authorization immediately so refreshing cannot create another retake.
+        const authorized = await getAuthorizedRetake();
+        if (authorized) {
+            await sb.from('exam_grades')
+                .update({
+                    retake_unlocked: false,
+                    reset_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', authorized.id);
+        }
+
+        console.log(`🔄 New retake attempt created: #${AppState.attemptNumber}`);
+        return true;
+    }
+
+    // Normal exam: resume an existing in-progress attempt, otherwise use Attempt 1.
+    const { data: attempts, error } = await sb
+        .from('exam_attempts')
+        .select('id, attempt_number, status, is_retake')
+        .eq('student_id', AppState.studentId)
+        .eq('exam_id', examId)
+        .order('attempt_number', { ascending: false });
+
+    if (error) throw error;
+
+    const active = (attempts || []).find(a => a.status === 'IN_PROGRESS');
+    const latest = (attempts || [])[0];
+
+    if (active) {
+        AppState.attemptId = active.id;
+        AppState.attemptNumber = active.attempt_number;
+        AppState.isRetake = !!active.is_retake;
+        return true;
+    }
+
+    if (latest && latest.status !== 'IN_PROGRESS') {
+        throw new Error('This examination attempt has already been submitted. A retake must be authorized by the administrator.');
+    }
+
+    const { data: created, error: createError } = await sb
+        .from('exam_attempts')
+        .insert({
+            student_id: AppState.studentId,
+            exam_id: examId,
+            attempt_number: 1,
+            status: 'IN_PROGRESS',
+            is_retake: false,
+            started_at: new Date().toISOString()
+        })
+        .select('id, attempt_number')
+        .single();
+
+    if (createError) throw createError;
+    AppState.attemptId = created.id;
+    AppState.attemptNumber = created.attempt_number;
+    return true;
 }
 
 // ============================================================
@@ -411,73 +525,30 @@ async function checkActiveSession() {
 // CHECK RETAKE STATUS
 // ============================================================
 async function checkRetakeStatus() {
-    // RETAKE SECURITY:
-    // The database is the authority. ?retake=true is only a request.
-    // A retake is authorized only when all three conditions are true:
-    //   result_status = RESET_FOR_RETAKE
-    //   allow_retake = true
-    //   retake_unlocked = true
+    AppState.isRetake = false;
+    AppState.retakeCount = 0;
+    if (DOM.continuationBadge) DOM.continuationBadge.style.display = 'none';
+
     try {
-        // Clear any stale browser state before checking the server.
-        AppState.isRetake = false;
-        AppState.retakeCount = 0;
+        const data = await getAuthorizedRetake();
 
-        if (DOM.continuationBadge) {
-            DOM.continuationBadge.style.display = 'none';
-        }
-
-        const { data, error } = await sb
-            .from('exam_grades')
-            .select('result_status, reset_count, allow_retake, retake_unlocked')
-            .eq('student_id', AppState.studentId)
-            .eq('exam_id', parseInt(AppState.examId))
-            .eq('question_id', '00000000-0000-0000-0000-000000000000')
-            .maybeSingle();
-
-        if (error && error.code !== 'PGRST116') {
-            console.warn('Error checking retake status:', error);
-            return false;
-        }
-
-        const retakeAuthorized =
-            !!data &&
-            data.result_status === 'RESET_FOR_RETAKE' &&
-            data.allow_retake === true &&
-            data.retake_unlocked === true;
-
-        if (retakeAuthorized) {
+        if (data) {
             AppState.isRetake = true;
-            AppState.retakeCount = Number(data.reset_count) || 1;
+            AppState.retakeCount = data.reset_count || data.retake_count || 1;
 
             if (DOM.continuationBadge) {
                 DOM.continuationBadge.style.display = 'block';
             }
 
             if (DOM.startExamText) {
-                DOM.startExamText.textContent = '🔄 Continue My Exam';
+                DOM.startExamText.textContent = '🔄 Start Retake';
             }
 
-            console.log(
-                '🔄 Authorized continuation exam detected. Retake count:',
-                AppState.retakeCount
-            );
-
-            showToast(
-                `🔄 Retake ${AppState.retakeCount}: Your previous answers are preserved.`,
-                'info',
-                4000
-            );
-
-            return true;
+            console.log('🔄 Authorized fresh retake detected. Retake count:', AppState.retakeCount);
+            showToast('🔄 Retake authorized. A fresh attempt will be started.', 'info', 4000);
         }
-
-        console.log('ℹ️ No active authorized retake found.');
-        return false;
     } catch (e) {
-        AppState.isRetake = false;
-        AppState.retakeCount = 0;
-        console.warn('No retake status found:', e);
-        return false;
+        console.warn('No retake authorization found:', e);
     }
 }
 
@@ -885,9 +956,6 @@ window.startExam = async function() {
         return;
     }
 
-    // Authorized retakes intentionally bypass the normal active-session
-    // rejection because the previous attempt may have been reset.
-    // Unauthorized students still use the normal session protection.
     if (!AppState.isRetake) {
         const sessionOk = await checkActiveSession();
         if (!sessionOk) {
@@ -910,10 +978,18 @@ window.startExam = async function() {
         console.warn('Could not mark attendance:', e);
     }
 
+    try {
+        await getOrCreateCurrentAttempt();
+    } catch (attemptError) {
+        console.error('❌ Could not prepare exam attempt:', attemptError);
+        showToast(attemptError.message || 'Could not start this exam attempt.', 'error', 6000);
+        return;
+    }
+
     if (AppState.isRetake) {
-        console.log('🔄 CONTINUING EXAM - Preserving all previous answers');
-        showToast('🔄 Continuing from where you left off. Your answers are preserved.', 'info', 3000);
-        await logProctoringEvent('exam_retake_continued', 'Student continuing exam after reset (answers preserved)', 'info');
+        console.log(`🔄 STARTING FRESH RETAKE ATTEMPT #${AppState.attemptNumber}`);
+        showToast(`🔄 Retake Attempt ${AppState.attemptNumber} started. This is a fresh attempt.`, 'info', 4000);
+        await logProctoringEvent('exam_retake_started', `Fresh retake attempt #${AppState.attemptNumber} started`, 'info');
     }
 
     // Show exam interface
@@ -939,7 +1015,7 @@ window.startExam = async function() {
     await enterSecureFullscreen();
     checkNetworkQuality();
     setupNetworkQualityMonitoring();
-    initExam();
+    await initExam();
 };
 
 // ============================================================
@@ -951,8 +1027,10 @@ async function initExam() {
     try {
         const recovered = recoverExamSession();
         if (recovered) {
-            showToast('📂 Session restored! Continuing where you left off.', 'success');
+            showToast(`📂 Session restored for Attempt ${AppState.attemptNumber || 1}. Continuing where you left off.`, 'success');
         }
+
+        await getOrCreateCurrentAttempt();
 
         const examResult = await sb
             .from('exams')
@@ -989,12 +1067,10 @@ async function initExam() {
             if (answeredKeys.length > 0) {
                 let lastAnsweredIndex = 0;
                 AppState.questions.forEach((q, index) => {
-                    if (AppState.answers[q.id]) {
-                        lastAnsweredIndex = index;
-                    }
+                    if (AppState.answers[q.id]) lastAnsweredIndex = index;
                 });
                 AppState.currentIndex = lastAnsweredIndex;
-                if (AppState.isRetake) {
+                if (!AppState.isRetake) {
                     showToast(`📚 Resuming from question ${lastAnsweredIndex + 1}`, 'info');
                 }
             }
@@ -1017,6 +1093,8 @@ async function initExam() {
             AppState.isExamActive = true;
             AppState.examStarted = true;
 
+            console.log(`📝 Active Attempt: #${AppState.attemptNumber} (${AppState.attemptId})`);
+
             const answerCount = Object.keys(AppState.answers).length;
             if (DOM.submitBtn && (answerCount > 0 || AppState.hasAnsweredAtLeastOne)) {
                 DOM.submitBtn.disabled = false;
@@ -1030,7 +1108,7 @@ async function initExam() {
             sessionStorage.setItem('studentId', AppState.studentId);
 
             if (AppState.isRetake) {
-                showToast('🔄 Exam continuation started! Your answers are preserved.', 'success');
+                showToast(`🔄 Retake Attempt ${AppState.attemptNumber} started with a fresh answer sheet.`, 'success');
             } else {
                 showToast('📝 Exam started! Good luck!', 'success');
             }
@@ -1364,27 +1442,38 @@ function saveCurrentAnswer() {
 
 async function saveAnswerToDatabase(questionId, answer) {
     try {
-        await sb.from('exam_grades').upsert({
+        if (!AppState.attemptId) {
+            throw new Error('No active exam attempt');
+        }
+
+        const { error } = await sb.from('exam_grades').upsert({
+            id: crypto.randomUUID(),
             student_id: AppState.studentId,
             exam_id: parseInt(AppState.examId),
+            attempt_id: AppState.attemptId,
             question_id: questionId,
             selected_answer: answer,
             marks: 0,
             graded_at: new Date().toISOString()
-        }, { onConflict: 'student_id, exam_id, question_id' });
+        }, { onConflict: 'attempt_id,question_id' });
+
+        if (error) throw error;
     } catch (e) {
         console.warn('⚠️ Save failed, saving locally:', e);
-        saveToLocalStorage(`draft_${questionId}`, { answer, timestamp: Date.now() });
+        saveToLocalStorage(`draft_${questionId}`, { answer, timestamp: Date.now(), attemptId: AppState.attemptId });
     }
 }
 
 async function loadSavedAnswers() {
     try {
+        if (!AppState.attemptId) return;
+
         const result = await sb.from('exam_grades')
             .select('question_id, selected_answer')
-            .eq('student_id', AppState.studentId)
-            .eq('exam_id', parseInt(AppState.examId))
+            .eq('attempt_id', AppState.attemptId)
             .neq('question_id', '00000000-0000-0000-0000-000000000000');
+
+        if (result.error) throw result.error;
 
         if (result.data && result.data.length > 0) {
             let loaded = 0;
@@ -1402,7 +1491,7 @@ async function loadSavedAnswers() {
                     DOM.submitBtn.style.cursor = 'pointer';
                 }
             }
-            console.log('✅ Loaded ' + loaded + ' saved answers from database');
+            console.log(`✅ Loaded ${loaded} saved answers for Attempt ${AppState.attemptNumber}`);
         }
     } catch (e) {
         console.warn('Could not load saved answers:', e);
@@ -1859,8 +1948,8 @@ function syncPendingAnswers() {
             try {
                 const data = JSON.parse(localStorage.getItem(key));
                 if (data && data.answer) {
-                    const questionId = key.split('_').pop();
-                    if (!AppState.answers[questionId]) {
+                    const questionId = key.split('_draft_')[1]?.split('_')[0] || '';
+                    if (data.attemptId === AppState.attemptId && questionId && !AppState.answers[questionId]) {
                         AppState.answers[questionId] = data.answer;
                         saveAnswerToDatabase(questionId, data.answer);
                         synced++;
@@ -2040,17 +2129,21 @@ async function saveAllAnswersToDatabase() {
     let saved = 0;
     const total = Object.keys(AppState.answers).length;
 
+    if (!AppState.attemptId) throw new Error('No active exam attempt');
+
     for (const questionId in AppState.answers) {
         if (AppState.answers.hasOwnProperty(questionId)) {
             try {
-                await sb.from('exam_grades').upsert({
-                    student_id: AppState.studentId,
+                const { error } = await sb.from('exam_grades').upsert({
+                        student_id: AppState.studentId,
                     exam_id: parseInt(AppState.examId),
+                    attempt_id: AppState.attemptId,
                     question_id: questionId,
                     selected_answer: AppState.answers[questionId],
                     marks: 0,
                     graded_at: new Date().toISOString()
-                }, { onConflict: 'student_id, exam_id, question_id' });
+                }, { onConflict: 'attempt_id,question_id' });
+                if (error) throw error;
                 saved++;
             } catch (e) {
                 console.warn('Failed to save answer for question ' + questionId + ':', e);
@@ -2058,12 +2151,14 @@ async function saveAllAnswersToDatabase() {
         }
     }
 
-    console.log('✅ Saved ' + saved + '/' + total + ' answers to database');
+    console.log('✅ Saved ' + saved + '/' + total + ` answers for Attempt ${AppState.attemptNumber}`);
     return saved;
 }
 
 async function calculateAndSaveGrade() {
     try {
+        if (!AppState.attemptId) throw new Error('No active exam attempt');
+
         const qResult = await sb.from('exam_questions')
             .select('id, correct_answer, marks')
             .eq('exam_id', parseInt(AppState.examId));
@@ -2075,90 +2170,72 @@ async function calculateAndSaveGrade() {
 
         let totalEarned = 0;
         let totalPossible = 0;
-        const answerRecords = [];
         let correctCount = 0;
         let wrongCount = 0;
+        const now = new Date().toISOString();
 
-        // Calculate scores
-        for (let i = 0; i < questionsData.length; i++) {
-            const q = questionsData[i];
+        for (const q of questionsData) {
             const marks = q.marks || 1;
             totalPossible += marks;
             const studentAnswer = AppState.answers[q.id];
             const isCorrect = studentAnswer === q.correct_answer;
             const earned = isCorrect ? marks : 0;
             totalEarned += earned;
+            if (isCorrect) correctCount++; else wrongCount++;
 
-            if (isCorrect) correctCount++;
-            else wrongCount++;
-
-            answerRecords.push({
+            const { error } = await sb.from('exam_grades').upsert({
                 student_id: AppState.studentId,
                 exam_id: parseInt(AppState.examId),
+                attempt_id: AppState.attemptId,
                 question_id: q.id,
                 selected_answer: studentAnswer || null,
                 marks: earned,
-                graded_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            });
+                graded_at: now,
+                updated_at: now
+            }, { onConflict: 'attempt_id,question_id' });
+
+            if (error) throw error;
         }
 
         const percentage = totalPossible > 0 ? (totalEarned / totalPossible) * 100 : 0;
         const resultStatus = 'PENDING_REVIEW';
 
-        // ✅ FIXED: USE UPSERT - DO NOT DELETE!
-        
-        // 1. Save individual answers with UPSERT
-        for (const answer of answerRecords) {
-            const { error: upsertError } = await sb
-                .from('exam_grades')
-                .upsert({
-                    student_id: answer.student_id,
-                    exam_id: answer.exam_id,
-                    question_id: answer.question_id,
-                    selected_answer: answer.selected_answer,
-                    marks: answer.marks,
-                    graded_at: answer.graded_at,
-                    updated_at: answer.updated_at
-                }, { onConflict: 'student_id, exam_id, question_id' });
-            
-            if (upsertError) {
-                console.warn('⚠️ Error upserting answer:', upsertError);
-            }
-        }
-
-        // 2. Save main grade record with UPSERT
         const { error: mainError } = await sb
             .from('exam_grades')
             .upsert({
                 student_id: AppState.studentId,
                 exam_id: parseInt(AppState.examId),
+                attempt_id: AppState.attemptId,
                 question_id: '00000000-0000-0000-0000-000000000000',
                 marks: totalEarned,
                 total_score: totalEarned,
                 percentage: percentage,
                 result_status: resultStatus,
                 completed: true,
+                graded_at: now,
+                updated_at: now,
+                retake_unlocked: false,
+                retake_count: AppState.attemptNumber,
+                reset_count: AppState.isRetake ? AppState.retakeCount : 0
+            }, { onConflict: 'attempt_id,question_id' });
 
-                // A RESET_FOR_RETAKE authorization is one-use.
-                // The admin can unlock another retake later if required.
-                ...(AppState.isRetake ? {
-                    retake_unlocked: false
-                } : {}),
+        if (mainError) throw mainError;
 
-                graded_at: new Date().toISOString(),
-                updated_at: new Date().toISOString()
-            }, { onConflict: 'student_id, exam_id, question_id' });
+        const { error: attemptError } = await sb
+            .from('exam_attempts')
+            .update({
+                status: resultStatus,
+                submitted_at: now,
+                score: totalEarned,
+                percentage: percentage,
+                total_marks: totalPossible,
+                updated_at: now
+            })
+            .eq('id', AppState.attemptId);
 
-        if (mainError) {
-            console.error('❌ Error saving main grade:', mainError);
-            throw mainError;
-        }
+        if (attemptError) throw attemptError;
 
-        console.log('✅ Grade calculated: ' + totalEarned + '/' + totalPossible + ' marks (' + percentage.toFixed(2) + '%)');
-        console.log('✅ Correct: ' + correctCount + ', Wrong: ' + wrongCount);
-        console.log('✅ Status: ' + resultStatus + ' (Waiting for admin release)');
-        
+        console.log(`✅ Attempt ${AppState.attemptNumber} graded: ${totalEarned}/${totalPossible} (${percentage.toFixed(2)}%)`);
         return { totalEarned, totalPossible, percentage, correctCount, wrongCount, resultStatus };
 
     } catch (error) {
@@ -3573,7 +3650,8 @@ document.addEventListener('DOMContentLoaded', function() {
     
     AppState.studentId = studentId;
     AppState.examId = params.get('exam_id');
-    const retakeRequestedByUrl = params.get('retake') === 'true';
+    retakeRequestedByUrl = params.get('retake') === 'true';
+    window.retakeRequestedByUrl = retakeRequestedByUrl;
 
     // ✅ FIX: Redirect to student dashboard instead of exam_login
     if (!AppState.studentId) {
@@ -3601,12 +3679,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     if (retakeRequestedByUrl) {
-        console.log('🔄 Retake URL requested. Waiting for database authorization...');
+        console.log('🔄 RETAKE REQUEST DETECTED - authorization will be checked server-side');
     }
 
     initDomRefs();
     loadLobbyData();
     console.log('📝 Exam Lobby loaded. Exam ID:', AppState.examId, 'Student ID:', AppState.studentId);
+    if (retakeRequestedByUrl) {
+        console.log('🔄 RETAKE REQUEST ACTIVE - only DB authorization can create a new attempt');
+    }
 });
 
 // ============================================================
