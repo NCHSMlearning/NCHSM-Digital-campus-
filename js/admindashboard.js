@@ -568,196 +568,185 @@ window.logout = function() {
 // ============================================
 // 📊 LOAD STUDENTS WITH RESULTS - USING RELEASE MODAL LOGIC
 // ============================================
-window.loadStudentsWithResults = async function() {
+window.loadStudentsWithResults = async function(options = {}) {
+    const silent = options?.silent === true;
     const loadingDiv = document.getElementById('studentsLoading');
     const table = document.getElementById('studentsTable');
-    
-    if (loadingDiv) {
-        loadingDiv.style.display = 'block';
-        loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading student results...';
+    if (!silent) {
+        if (loadingDiv) {
+            loadingDiv.style.display = 'block';
+            loadingDiv.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading student results...';
+        }
+        if (table) table.style.display = 'none';
     }
-    if (table) table.style.display = 'none';
-    
+
     try {
-        // ✅ Load exams map
         await loadExamsMap();
-        console.log('📚 Exams map loaded:', Object.keys(examsMap).length);
-        
-        // ✅ USE SAME LOGIC AS RELEASE MODAL
-        const { data: grades, error } = await sb
+        const { data: grades, error: gradesError } = await sb
             .from('exam_grades')
             .select('*')
-            .eq('question_id', '00000000-0000-0000-0000-000000000000');
-        
-        if (error) { 
-            console.error('❌ Error fetching grades:', error);
-            if (loadingDiv) {
-                loadingDiv.innerHTML = '❌ Error loading grades: ' + error.message;
-                loadingDiv.style.color = '#DC2626';
-            }
-            return; 
-        }
-        
-        console.log('📊 Grades found:', grades?.length || 0);
-        
-        if (!grades || grades.length === 0) {
-            studentsResults = [];
-            displayStudentsResults();
-            if (loadingDiv) loadingDiv.style.display = 'none';
-            if (table) table.style.display = 'table';
-            updateStats();
-            return;
-        }
-        
-        // ✅ Get released results
+            .eq('question_id', ZERO_QUESTION_ID);
+        if (gradesError) throw gradesError;
+
         const { data: releases } = await sb.from('released_exam_results').select('result_id');
         const releasedSet = new Set(releases?.map(r => r.result_id) || []);
-        console.log('📤 Released results:', releasedSet.size);
 
-        // Attempt-aware view: always display the student's latest attempt only.
-        let latestAttemptMap = new Map();
+        // Load attempt history in one query. We keep the latest attempt per student/exam
+        // for the main table, while preserving the attempt id for history/details.
+        let attempts = [];
         try {
-            const { data: attempts, error: attemptsError } = await sb
+            const { data, error } = await sb
                 .from('exam_attempts')
-                .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks')
+                .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+                .order('exam_id', { ascending: true })
                 .order('attempt_number', { ascending: false });
-            if (attemptsError) throw attemptsError;
-            (attempts || []).forEach(a => {
-                const key = `${a.student_id}__${a.exam_id}`;
-                if (!latestAttemptMap.has(key)) latestAttemptMap.set(key, a);
-            });
+            if (error) throw error;
+            attempts = data || [];
         } catch (attemptErr) {
-            console.warn('⚠️ exam_attempts could not be loaded; using legacy result view:', attemptErr.message);
+            console.warn('⚠️ exam_attempts unavailable:', attemptErr.message);
         }
-        
-        // ✅ Get student IDs
-        const studentIds = [...new Set(grades.map(g => g.student_id).filter(id => id))];
-        console.log('👥 Student IDs found:', studentIds.length);
-        
-        if (studentIds.length === 0) {
-            studentsResults = [];
-            displayStudentsResults();
-            if (loadingDiv) loadingDiv.style.display = 'none';
-            if (table) table.style.display = 'table';
-            updateStats();
-            return;
+
+        const latestAttemptMap = new Map();
+        attempts.forEach(a => {
+            const key = `${a.student_id}__${a.exam_id}`;
+            if (!latestAttemptMap.has(key)) latestAttemptMap.set(key, a);
+        });
+
+        // Bring in profiles for both legacy grade rows and attempt-only rows (e.g. IN_PROGRESS).
+        const studentIds = [...new Set([
+            ...(grades || []).map(g => g.student_id),
+            ...attempts.map(a => a.student_id)
+        ].filter(Boolean))];
+        let profiles = [];
+        if (studentIds.length) {
+            const { data, error } = await sb
+                .from('consolidated_user_profiles_table')
+                .select('user_id, full_name, student_id, email, program, block, intake_year')
+                .in('user_id', studentIds);
+            if (error) console.warn('⚠️ Profile lookup warning:', error.message);
+            profiles = data || [];
         }
-        
-        // ✅ Fetch student profiles
-        const { data: profiles, error: profileError } = await sb
-            .from('consolidated_user_profiles_table')
-            .select('user_id, full_name, student_id, email, program, block, intake_year')
-            .in('user_id', studentIds);
-        
-        if (profileError) {
-            console.error('❌ Error fetching profiles:', profileError);
-        }
-        
-        const profileMap = Object.fromEntries((profiles || []).map(p => [p.user_id, p]));
-        console.log('👥 Profiles found:', Object.keys(profileMap).length);
-        
-        // ✅ Build results (SAME STRUCTURE as Release Modal)
-        studentsResults = grades.map(g => {
+        const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
+
+        const gradeMap = new Map((grades || []).map(g => [`${g.student_id}__${g.exam_id}`, g]));
+        const rows = [];
+
+        // Latest completed/reviewable grade rows.
+        for (const g of (grades || [])) {
+            const key = `${g.student_id}__${g.exam_id}`;
+            const latest = latestAttemptMap.get(key) || null;
+            // If a newer attempt exists and this legacy grade has no attempt_id, it is the old record.
+            if (latest && !g.attempt_id && latest.attempt_number > 1) continue;
+            if (latest?.id && g.attempt_id && String(g.attempt_id) !== String(latest.id)) continue;
             const exam = examsMap[g.exam_id] || null;
-            const profile = profileMap[g.student_id] || null;
-            const latestAttempt = latestAttemptMap.get(`${g.student_id}__${g.exam_id}`) || null;
-            
-            return {
+            rows.push({
                 ...g,
-                attempt_info: latestAttempt,
-                attempt_number: latestAttempt?.attempt_number || 1,
-                student_profile: profile,
+                attempt_info: latest,
+                attempt_number: latest?.attempt_number || 1,
+                student_profile: profileMap[g.student_id] || null,
                 isReleased: releasedSet.has(g.id),
-                exam_info: exam ? {
-                    ...exam,
-                    status: exam.status || 'published'
-                } : null
-            };
-        });
-        
-        studentsResults = studentsResults.filter(r => {
-            if (!r.attempt_info?.id || !r.attempt_id) return true;
-            return r.attempt_id === r.attempt_info.id;
-        });
-        console.log('📊 Final studentsResults count:', studentsResults.length);
-        
-        // ============================================================
-        // ✅ APPLY FILTERS - SIMPLE AND CLEAN
-        // ============================================================
-        
-        const examFilter = document.getElementById('examFilter')?.value;
-        const statusFilter = document.getElementById('statusFilter')?.value;
-        const search = document.getElementById('searchInput')?.value?.toLowerCase() || '';
-        
-        let filtered = studentsResults;
-        console.log('🔍 Starting filter with:', filtered.length, 'results');
-        
-        // ✅ FILTER 1: By Exam (SAME as Release Modal)
-        if (examFilter && examFilter !== '') {
-            filtered = filtered.filter(r => String(r.exam_id) === String(examFilter));
-            console.log('🔍 After exam filter:', filtered.length);
+                exam_info: exam ? { ...exam, status: exam.status || 'published' } : null
+            });
         }
-        
-        // ✅ FILTER 2: By Status
-        if (statusFilter && statusFilter !== '') {
+
+        // Add attempt-only rows so IN_PROGRESS attempts are visible to administrators.
+        attempts.forEach(a => {
+            const key = `${a.student_id}__${a.exam_id}`;
+            const latest = latestAttemptMap.get(key);
+            if (!latest || latest.id !== a.id) return;
+            const hasGradeRow = gradeMap.has(key);
+            if (hasGradeRow) return;
+            const exam = examsMap[a.exam_id] || null;
+            rows.push({
+                id: `attempt-${a.id}`,
+                student_id: a.student_id,
+                exam_id: a.exam_id,
+                question_id: ZERO_QUESTION_ID,
+                marks: a.score ?? null,
+                total_score: a.score ?? null,
+                percentage: a.percentage ?? null,
+                total_marks: a.total_marks ?? exam?.total_marks ?? 100,
+                result_status: a.status === 'IN_PROGRESS' ? 'IN_PROGRESS' : null,
+                completed: a.status === 'COMPLETED',
+                attempt_id: a.id,
+                attempt_info: a,
+                attempt_number: a.attempt_number || 1,
+                student_profile: profileMap[a.student_id] || null,
+                isReleased: false,
+                exam_info: exam ? { ...exam, status: exam.status || 'published' } : null
+            });
+        });
+
+        studentsResults = rows;
+
+        // Filters
+        const examFilter = document.getElementById('examFilter')?.value || '';
+        const statusFilter = document.getElementById('statusFilter')?.value || '';
+        const attemptFilter = document.getElementById('attemptFilter')?.value || '';
+        const searchRaw = document.getElementById('searchInput')?.value || '';
+        const search = searchRaw.trim().toLowerCase();
+
+        let filtered = [...studentsResults];
+
+        if (examFilter) filtered = filtered.filter(r => String(r.exam_id) === String(examFilter));
+
+        if (statusFilter) {
             filtered = filtered.filter(r => {
-                // Check if released first
+                if (statusFilter === 'IN_PROGRESS') return String(r.attempt_info?.status || r.result_status || '').toUpperCase() === 'IN_PROGRESS';
+                if (statusFilter === 'RESET_FOR_RETAKE') return r.result_status === 'RESET_FOR_RETAKE' && r.allow_retake === true && r.retake_unlocked === true;
+                if (statusFilter === 'PENDING') return ['PENDING','PENDING_REVIEW'].includes(String(r.result_status || '').toUpperCase()) || !r.isReleased;
                 if (r.isReleased) {
                     const totalMarks = r.exam_info?.total_marks || 100;
+                    const score = parseFloat(r.marks ?? r.total_score ?? 0) || 0;
                     const passMark = r.exam_info?.pass_mark || Math.round(totalMarks * 0.6);
-                    const score = parseFloat(r.marks) || parseFloat(r.total_score) || 0;
-                    const isPassed = score >= passMark;
-                    const effectiveStatus = isPassed ? 'PASS' : 'FAIL';
-                    return effectiveStatus === statusFilter;
+                    return (score >= passMark ? 'PASS' : 'FAIL') === statusFilter;
                 }
-                // For unreleased, use result_status
-                return (r.result_status || '') === statusFilter;
+                return String(r.result_status || '').toUpperCase() === statusFilter;
             });
-            console.log('🔍 After status filter:', filtered.length);
         }
-        
-        // ✅ FILTER 3: By Search
-        if (search && search !== '') {
+
+        if (attemptFilter) {
             filtered = filtered.filter(r => {
-                const name = (r.student_profile?.full_name || '').toLowerCase();
-                const studentId = (r.student_profile?.student_id || '').toLowerCase();
-                const examName = (r.exam_info?.exam_name || '').toLowerCase();
-                const email = (r.student_profile?.email || '').toLowerCase();
-                const program = (r.student_profile?.program || '').toLowerCase();
-                
-                return name.includes(search) || 
-                       studentId.includes(search) || 
-                       examName.includes(search) ||
-                       email.includes(search) ||
-                       program.includes(search);
+                const n = Number(r.attempt_number || 1);
+                const isRetake = !!r.attempt_info?.is_retake || n > 1;
+                const status = String(r.attempt_info?.status || r.result_status || '').toUpperCase();
+                if (attemptFilter === 'original') return n === 1 && !isRetake;
+                if (attemptFilter === 'retake') return isRetake;
+                if (attemptFilter === 'in_progress') return status === 'IN_PROGRESS';
+                return true;
             });
-            console.log('🔍 After search filter:', filtered.length);
         }
-        
-        // ✅ Store filtered results
+
+        if (search) {
+            filtered = filtered.filter(r => {
+                const name = String(r.student_profile?.full_name || '').toLowerCase();
+                const sid = String(r.student_profile?.student_id || '').toLowerCase();
+                const examName = String(r.exam_info?.exam_name || '').toLowerCase();
+                const email = String(r.student_profile?.email || '').toLowerCase();
+                const program = String(r.student_profile?.program || '').toLowerCase();
+                return [name, sid, examName, email, program].some(v => v.includes(search));
+            });
+        }
+
         studentsResults = filtered;
-        
-        // ✅ Update count display
+        currentPage.students = 1;
+
         const countEl = document.getElementById('filteredCount');
-        if (countEl) countEl.textContent = studentsResults.length;
-        
-        const totalEl = document.getElementById('totalCount');
-        if (totalEl) totalEl.textContent = filtered.length;
-        
-        console.log(`📊 FINAL: ${studentsResults.length} results`);
-        
-        // ✅ Display results
+        if (countEl) countEl.textContent = `${filtered.length} result${filtered.length === 1 ? '' : 's'}`;
+        const updatedEl = document.getElementById('studentsLastUpdated');
+        if (updatedEl) updatedEl.innerHTML = `<i class="fas fa-clock"></i> Last synced: ${formatKenyaTime(new Date())} <span style="color:#94A3B8;">• auto refresh 30s</span>`;
+
         displayStudentsResults();
-        
-        if (loadingDiv) loadingDiv.style.display = 'none';
+        if (!silent && loadingDiv) loadingDiv.style.display = 'none';
+        if (!silent && table) table.style.display = 'table';
         if (table) table.style.display = 'table';
         updateStats();
-        
-    } catch (err) { 
+    } catch (err) {
         console.error('❌ Error in loadStudentsWithResults:', err);
         if (loadingDiv) {
             loadingDiv.innerHTML = '❌ Error: ' + err.message;
             loadingDiv.style.color = '#DC2626';
+            loadingDiv.style.display = 'block';
         }
     }
 };
@@ -769,7 +758,7 @@ window.loadStudentsWithResults = async function() {
     if (!tbody) return;
     
     if (page.length === 0) { 
-        tbody.innerHTML = '<tr><td colspan="10" style="text-align:center; padding:40px; color:#94A3B8;"><i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i>No results found</td></tr>'; 
+        tbody.innerHTML = '<tr><td colspan="11" style="text-align:center; padding:40px; color:#94A3B8;"><i class="fas fa-inbox" style="font-size:2rem; display:block; margin-bottom:10px;"></i>No results found</td></tr>'; 
         return; 
     }
     
@@ -796,17 +785,16 @@ window.loadStudentsWithResults = async function() {
         const isPendingReview = examStatus === 'pending_review';
         const isReleased = r.isReleased || false;
         
-        // ✅ FIXED: Show RESET_FOR_RETAKE status properly
         let displayStatus = '';
         let statusClass = '';
-        let showRetakeBadge = false;
-        
-        // Check for RESET_FOR_RETAKE FIRST
-        if (r.result_status === 'RESET_FOR_RETAKE' && r.allow_retake === true && r.retake_unlocked === true) {
-            displayStatus = '🔄 Retake Available';
+        const attemptStatus = String(r.attempt_info?.status || '').toUpperCase();
+        if (attemptStatus === 'IN_PROGRESS') {
+            displayStatus = '🟢 In Progress';
+            statusClass = 'status-pass';
+        } else if (r.result_status === 'RESET_FOR_RETAKE' && r.allow_retake === true && r.retake_unlocked === true) {
+            displayStatus = '🔄 Retake Authorized';
             statusClass = 'status-reset';
-            showRetakeBadge = true;
-        } else if (isPendingReview) {
+        } else if (isPendingReview || ['PENDING','PENDING_REVIEW'].includes(String(r.result_status || '').toUpperCase())) {
             displayStatus = 'PENDING';
             statusClass = 'status-pending';
         } else if (isReleased) {
@@ -875,6 +863,9 @@ window.loadStudentsWithResults = async function() {
                     </button>
                     <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${safeName}', ${examId}, '${safeExam}')" title="Manage Timer">
                         <i class="fas fa-clock"></i> Timer
+                    </button>
+                    <button class="action-btn btn-info exam-attempt-history-btn" onclick="viewAttemptHistory('${studentUserId}', ${examId})" title="View all attempts">
+                        <i class="fas fa-history"></i> History
                     </button>
                     <button class="action-btn btn-reset-student" onclick="resetSingleStudent('${studentUserId}', ${examId}, '${safeName}', '${safeExam}')" title="Authorize a fresh retake">
                         <i class="fas fa-redo"></i> Retake
@@ -2103,6 +2094,8 @@ async function updateStats() {
 
     // ✅ Calculate stats from actual data
     const totalStudents = allStudents.length || 0;
+    const inProgress = studentsResults.filter(r => String(r.attempt_info?.status || r.result_status || '').toUpperCase() === 'IN_PROGRESS').length;
+    const retakeAuthorized = studentsResults.filter(r => r.result_status === 'RESET_FOR_RETAKE' && r.allow_retake === true && r.retake_unlocked === true).length;
     
     // Count passed/failed/pending from studentsResults
     const passed = studentsResults.filter(r => r.result_status === 'PASS').length || 0;
@@ -2218,6 +2211,26 @@ async function updateStats() {
             </div>
         </div>
 
+        <div style="background: linear-gradient(135deg, #ffffff, #ede9fe); border-left: 4px solid #8B5CF6; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #8B5CF6, #6D28D9); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
+                <i class="fas fa-redo"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #6D28D9; line-height: 1.2;">${retakeAuthorized}</div>
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">Retake Authorized</div>
+            </div>
+        </div>
+
+        <div style="background: linear-gradient(135deg, #ffffff, #ecfdf5); border-left: 4px solid #059669; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
+            <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #10B981, #047857); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
+                <i class="fas fa-play-circle"></i>
+            </div>
+            <div>
+                <div style="font-size: 1.5rem; font-weight: 700; color: #059669; line-height: 1.2;">${inProgress}</div>
+                <div style="font-size: 0.7rem; color: #94A3B8; font-weight: 500; text-transform: uppercase; letter-spacing: 0.3px;">In Progress</div>
+            </div>
+        </div>
+
         <div style="background: linear-gradient(135deg, #ffffff, #fce7f3); border-left: 4px solid #EC4899; padding: 18px 20px; border-radius: 14px; box-shadow: 0 2px 8px rgba(0,0,0,0.04); display: flex; align-items: center; gap: 14px;">
             <div style="width: 48px; height: 48px; border-radius: 12px; background: linear-gradient(135deg, #EC4899, #DB2777); display: flex; align-items: center; justify-content: center; font-size: 1.2rem; color: white; flex-shrink: 0;">
                 <i class="fas fa-exclamation-triangle"></i>
@@ -2297,9 +2310,35 @@ window.viewExamResult = async function(sid, eid) {
                 .maybeSingle()
         ]);
         
-        const grade = gradeResult.data;
+        let grade = gradeResult.data;
         const exam = examResult.data;
         const profile = profileResult.data;
+
+        // Prefer the latest completed/in-progress attempt and its attempt-specific grade.
+        try {
+            const { data: latestAttempt } = await sb
+                .from('exam_attempts')
+                .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks')
+                .eq('student_id', sid)
+                .eq('exam_id', parseInt(eid))
+                .order('attempt_number', { ascending: false })
+                .limit(1)
+                .maybeSingle();
+            if (latestAttempt?.id) {
+                const { data: attemptGrade } = await sb
+                    .from('exam_grades')
+                    .select('*')
+                    .eq('student_id', sid)
+                    .eq('exam_id', parseInt(eid))
+                    .eq('question_id', ZERO_QUESTION_ID)
+                    .eq('attempt_id', latestAttempt.id)
+                    .maybeSingle();
+                if (attemptGrade) grade = attemptGrade;
+                grade = { ...(grade || {}), ...(latestAttempt || {}), ...(attemptGrade || {}), attempt_info: latestAttempt, attempt_number: latestAttempt.attempt_number };
+            }
+        } catch (attemptViewError) {
+            console.warn('⚠️ Could not resolve attempt-specific result:', attemptViewError.message);
+        }
         
         // Calculate values with fallbacks
         const totalMarks = exam?.total_marks || getExamTotalMarks(exam?.exam_type) || 100;
@@ -2920,6 +2959,85 @@ window.viewStudentProfile = async function(pid) {
             
         } catch (error) {
             document.getElementById('modalContent').innerHTML = `<div style="color:#DC2626;padding:20px;">Error: ${error.message}</div>`;
+        }
+    };
+
+    // ============================================
+    // 🕘 VIEW ATTEMPT HISTORY
+    // ============================================
+    window.viewAttemptHistory = async function(studentId, examId) {
+        try {
+            const modalTitle = document.getElementById('modalTitle');
+            const modalContent = document.getElementById('modalContent');
+            modalTitle.innerHTML = '<i class="fas fa-history"></i> Attempt History';
+            modalContent.innerHTML = '<div style="text-align:center;padding:40px;"><i class="fas fa-spinner fa-spin fa-2x"></i><br>Loading attempt history...</div>';
+            document.getElementById('studentModal').style.display = 'flex';
+
+            const [{ data: attempts, error: attemptError }, { data: profile }] = await Promise.all([
+                sb.from('exam_attempts')
+                    .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+                    .eq('student_id', studentId)
+                    .eq('exam_id', parseInt(examId))
+                    .order('attempt_number', { ascending: false }),
+                sb.from('consolidated_user_profiles_table')
+                    .select('full_name, student_id, email, program')
+                    .eq('user_id', studentId)
+                    .maybeSingle()
+            ]);
+            if (attemptError) throw attemptError;
+
+            const { data: grades } = await sb
+                .from('exam_grades')
+                .select('attempt_id, result_status, released, released_at, marks, total_score, percentage, updated_at, graded_at')
+                .eq('student_id', studentId)
+                .eq('exam_id', parseInt(examId))
+                .eq('question_id', ZERO_QUESTION_ID);
+            const gradeMap = new Map((grades || []).filter(g => g.attempt_id).map(g => [String(g.attempt_id), g]));
+
+            const { data: exam } = await sb.from('exams').select('exam_name, total_marks').eq('id', parseInt(examId)).maybeSingle();
+
+            if (!attempts || attempts.length === 0) {
+                modalContent.innerHTML = `<div style="padding:30px;text-align:center;color:#64748B;">No attempt history found for this student.</div>`;
+                return;
+            }
+
+            const latest = attempts[0];
+            const studentLabel = profile?.full_name || 'Student';
+            const html = `
+                <div style="background:linear-gradient(135deg,#0A3D62,#1a5a7a);color:white;padding:18px;border-radius:14px;margin-bottom:16px;">
+                    <div style="font-size:18px;font-weight:800;">${studentLabel}</div>
+                    <div style="font-size:12px;opacity:.85;margin-top:3px;">${exam?.exam_name || 'Exam ' + examId} · ${attempts.length} attempt${attempts.length === 1 ? '' : 's'}</div>
+                </div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    ${attempts.map(a => {
+                        const g = gradeMap.get(String(a.id));
+                        const score = a.score ?? g?.total_score ?? g?.marks ?? null;
+                        const pct = a.percentage ?? g?.percentage ?? null;
+                        const status = String(a.status || g?.result_status || 'UNKNOWN').toUpperCase();
+                        const isCurrent = a.id === latest.id;
+                        const retake = !!a.is_retake || Number(a.attempt_number) > 1;
+                        const statusColor = status === 'IN_PROGRESS' ? '#059669' : status === 'COMPLETED' ? '#2563EB' : status === 'RESET_FOR_RETAKE' ? '#7C3AED' : '#64748B';
+                        return `
+                            <div style="border:1px solid #E2E8F0;border-radius:12px;padding:14px;background:${isCurrent ? '#F8FBFF' : '#FFFFFF'};box-shadow:0 1px 4px rgba(0,0,0,.03);">
+                                <div style="display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;">
+                                    <div>
+                                        <div style="font-weight:800;color:#0F172A;">Attempt #${a.attempt_number || 1} ${retake ? '<span style="background:#EDE9FE;color:#6D28D9;padding:3px 8px;border-radius:999px;font-size:10px;">RETAKE</span>' : '<span style="background:#F1F5F9;color:#475569;padding:3px 8px;border-radius:999px;font-size:10px;">ORIGINAL</span>'}</div>
+                                        <div style="font-size:11px;color:#64748B;margin-top:4px;">Started: ${formatKenyaDateTime(a.started_at)} · Submitted: ${formatKenyaDateTime(a.submitted_at)}</div>
+                                    </div>
+                                    <span style="background:${statusColor}1A;color:${statusColor};padding:5px 9px;border-radius:999px;font-size:10px;font-weight:800;">${status.replaceAll('_',' ')}</span>
+                                </div>
+                                <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px;">
+                                    <div style="background:#F8FAFC;padding:9px;border-radius:8px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#0A3D62;">${score ?? '--'}</div><div style="font-size:9px;color:#94A3B8;">SCORE</div></div>
+                                    <div style="background:#F8FAFC;padding:9px;border-radius:8px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#2563EB;">${pct != null ? Number(pct).toFixed(1) + '%' : '--'}</div><div style="font-size:9px;color:#94A3B8;">PERCENT</div></div>
+                                    <div style="background:#F8FAFC;padding:9px;border-radius:8px;text-align:center;"><div style="font-size:15px;font-weight:800;color:#059669;">${g?.released || g?.released_at ? 'Released' : 'Not Released'}</div><div style="font-size:9px;color:#94A3B8;">RESULT</div></div>
+                                </div>
+                            </div>`;
+                    }).join('')}
+                </div>
+            `;
+            modalContent.innerHTML = html;
+        } catch (error) {
+            showToast('Error loading attempt history: ' + error.message, 'error');
         }
     };
 
@@ -5476,45 +5594,113 @@ window.displayLiveFeed = function() {
         document.getElementById('liveFeedGrid').scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
 
+    // ============================================================
+    // 🔒 SEARCH INPUT AUTOFILL HARDENING
+    // Prevent browsers/password managers from injecting saved email
+    // addresses into administrative search controls.
+    // ============================================================
+    function hardenAdminSearchInputs() {
+        const ids = ['searchInput', 'studentSearch', 'examSearch', 'proctoringSearch'];
+        ids.forEach(id => {
+            const input = document.getElementById(id);
+            if (!input || input.dataset.autofillHardened === 'true') return;
+            input.dataset.autofillHardened = 'true';
+            input.dataset.userInteracted = 'false';
+            try { input.type = 'search'; } catch (_) {}
+            input.name = `nchsm_admin_${id}_query`;
+            input.autocomplete = 'new-password';
+            input.autocapitalize = 'none';
+            input.autocorrect = 'off';
+            input.spellcheck = false;
+            input.inputMode = 'search';
+            input.setAttribute('data-form-type', 'other');
+            input.setAttribute('data-lpignore', 'true');
+            input.setAttribute('data-1p-ignore', 'true');
+            input.setAttribute('data-bwignore', 'true');
+            input.setAttribute('data-protonpass-ignore', 'true');
+            input.setAttribute('aria-autocomplete', 'none');
+
+            const markUserInteraction = () => { input.dataset.userInteracted = 'true'; };
+            input.addEventListener('keydown', markUserInteraction, { passive: true });
+            input.addEventListener('paste', markUserInteraction, { passive: true });
+            input.addEventListener('beforeinput', event => {
+                if (event.inputType && event.inputType !== 'insertFromAutoFill') input.dataset.userInteracted = 'true';
+            }, { passive: true });
+            input.addEventListener('input', () => {
+                if (input.dataset.userInteracted !== 'true' && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(input.value || '').trim())) {
+                    input.dataset.userInteracted = 'true';
+                }
+            }, { passive: true });
+
+            const looksLikeEmail = value => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(String(value || '').trim());
+            const clearCredentialAutofill = () => {
+                if (input.dataset.userInteracted === 'true') return;
+                if (looksLikeEmail(input.value)) input.value = '';
+            };
+            [0, 100, 300, 700, 1200, 2000].forEach(delay => setTimeout(clearCredentialAutofill, delay));
+            input.addEventListener('focus', clearCredentialAutofill, { passive: true });
+        });
+    }
+
    function renderFilters() {
     const container = document.getElementById('filtersContainer');
     if (!container) return;
     
     if (currentTab === 'students') {
         container.innerHTML = `
-            <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Exam</label>
-                    <select id="examFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 140px;">
+            <div style="display:flex; gap:10px; flex-wrap:wrap; align-items:flex-end; width:100%;">
+                <div style="min-width:180px; flex:0 1 220px;">
+                    <label for="examFilter" style="font-weight:700; font-size:0.72rem; color:#475569; display:block; margin-bottom:4px;">Exam</label>
+                    <select id="examFilter" autocomplete="off" style="width:100%; padding:8px 12px; border:1px solid #CBD5E1; border-radius:9px; font-size:0.8rem; background:white; min-height:36px;">
                         <option value="">All Exams</option>
                     </select>
                 </div>
-                <div style="display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
-                    <label style="font-weight: 600; font-size: 0.75rem; color: #475569;">Status</label>
-                    <select id="statusFilter" style="padding: 6px 12px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white; min-width: 120px;">
-                        <option value="">All</option>
+                <div style="min-width:140px; flex:0 1 160px;">
+                    <label for="statusFilter" style="font-weight:700; font-size:0.72rem; color:#475569; display:block; margin-bottom:4px;">Status</label>
+                    <select id="statusFilter" autocomplete="off" style="width:100%; padding:8px 12px; border:1px solid #CBD5E1; border-radius:9px; font-size:0.8rem; background:white; min-height:36px;">
+                        <option value="">All Status</option>
                         <option value="PASS">Pass</option>
                         <option value="FAIL">Fail</option>
-                        <option value="PENDING">Pending</option>
+                        <option value="PENDING">Pending Release</option>
+                        <option value="IN_PROGRESS">In Progress</option>
+                        <option value="RESET_FOR_RETAKE">Retake Authorized</option>
                     </select>
                 </div>
-                <div style="flex: 1; min-width: 200px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap;">
-                    <div style="flex: 1; min-width: 140px; position: relative;">
-                        <i class="fas fa-search" style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: #94A3B8;"></i>
-                        <input type="text" id="searchInput" placeholder="🔍 Search by name, ID or exam..." 
-                               style="width: 100%; padding: 6px 12px 6px 34px; border: 2px solid #E2E8F0; border-radius: 8px; font-size: 0.8rem; background: white;"
-                               onkeydown="if(event.key==='Enter') loadStudentsWithResults()">
-                    </div>
-                    <button class="btn btn-primary" onclick="loadStudentsWithResults()" style="padding: 6px 14px; white-space: nowrap;">
+                <div style="min-width:150px; flex:0 1 175px;">
+                    <label for="attemptFilter" style="font-weight:700; font-size:0.72rem; color:#475569; display:block; margin-bottom:4px;">Attempt</label>
+                    <select id="attemptFilter" autocomplete="off" style="width:100%; padding:8px 12px; border:1px solid #CBD5E1; border-radius:9px; font-size:0.8rem; background:white; min-height:36px;">
+                        <option value="">All Attempts</option>
+                        <option value="original">Original Only</option>
+                        <option value="retake">Retakes Only</option>
+                        <option value="in_progress">In Progress</option>
+                    </select>
+                </div>
+                <div style="flex:1 1 280px; min-width:240px; position:relative;">
+                    <label for="searchInput" style="font-weight:700; font-size:0.72rem; color:#475569; display:block; margin-bottom:4px;">Search Student / ID / Exam</label>
+                    <i class="fas fa-search" style="position:absolute; left:11px; top:31px; transform:translateY(-50%); color:#94A3B8; pointer-events:none;"></i>
+                    <input type="search" id="searchInput" name="student_result_search_unique" placeholder="Search by name, student ID or exam..."
+                           autocomplete="new-password" autocapitalize="none" autocorrect="off" spellcheck="false" inputmode="search"
+                           data-form-type="search" data-lpignore="true" data-1p-ignore="true" data-bwignore="true" data-protonpass-ignore="true"
+                           aria-label="Search student results"
+                           style="width:100%; padding:8px 12px 8px 34px; border:1px solid #CBD5E1; border-radius:9px; font-size:0.8rem; background:white; min-height:36px;"
+                           onkeydown="if(event.key==='Enter'){event.preventDefault();loadStudentsWithResults();}">
+                </div>
+                <div style="display:flex; gap:7px; align-items:flex-end; flex-wrap:wrap;">
+                    <button type="button" class="btn btn-primary" onclick="loadStudentsWithResults()" style="padding:8px 14px; white-space:nowrap; border-radius:9px; min-height:36px;">
                         <i class="fas fa-search"></i> Search
                     </button>
-                    <button class="btn btn-danger" onclick="resetFilters()" style="padding: 6px 12px; white-space: nowrap;">
-                        <i class="fas fa-undo"></i> Reset
+                    <button type="button" class="btn btn-danger" onclick="resetFilters()" style="padding:8px 12px; white-space:nowrap; border-radius:9px; min-height:36px;">
+                        <i class="fas fa-undo"></i> Clear
                     </button>
                 </div>
             </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-top:10px; padding-top:10px; border-top:1px dashed #E2E8F0;">
+                <span style="font-size:11px; color:#64748B;"><i class="fas fa-info-circle"></i> Latest attempt per student/exam is shown. Use Attempt to inspect original vs retake records.</span>
+                <span id="filteredCount" style="margin-left:auto; background:#EFF6FF; color:#1D4ED8; padding:3px 9px; border-radius:999px; font-size:10px; font-weight:800;">0 results</span>
+            </div>
         `;
         loadExamDropdown();
+        hardenAdminSearchInputs();
     } else if (currentTab === 'allStudents') {
         container.innerHTML = `
             <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center; width: 100%;">
@@ -5609,12 +5795,14 @@ window.displayLiveFeed = function() {
             </div>
         `;
     }
+    // Harden any dynamically-created search fields after every tab render.
+    hardenAdminSearchInputs();
 }
     // ============================================
     // 🔄 RESET FILTERS
     // ============================================
     window.resetFilters = function() { 
-        ['examFilter', 'statusFilter', 'searchInput'].forEach(id => { 
+        ['examFilter', 'statusFilter', 'attemptFilter', 'searchInput'].forEach(id => { 
             const el = document.getElementById(id); 
             if (el) el.value = ''; 
         });
