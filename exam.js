@@ -82,6 +82,7 @@ const AppState = {
     networkQuality: 'unknown',
     isRetake: false,
     isContinuation: false,
+    attemptPrepared: false,
     retakeCount: 0,
     attemptId: null,
     attemptNumber: 0,
@@ -403,10 +404,13 @@ async function getAuthorizedRetake() {
 }
 
 async function getOrCreateCurrentAttempt() {
-    // A stale browser session may already contain the old attempt.
-    // When Admin has authorized a continuation, ALWAYS call the RPC so the
-    // server can reset started_at and grant a full fresh timer.
-    if (AppState.attemptId && !AppState.isRetake && !retakeRequestedByUrl) return true;
+    // IMPORTANT: startExam() prepares the attempt before calling initExam().
+    // initExam() also needs the attempt, but must NOT call the one-time retake
+    // RPC a second time after the authorization has already been consumed.
+    // Once this page has successfully prepared the attempt, reuse that same
+    // attempt for the remainder of the current exam session. A page refresh
+    // resets this flag, so the server RPC is still called again when needed.
+    if (AppState.attemptPrepared && AppState.attemptId) return true;
 
     const examId = parseInt(AppState.examId);
     if (!AppState.studentId || !examId) {
@@ -437,6 +441,7 @@ async function getOrCreateCurrentAttempt() {
     AppState.attemptId = created.id;
     AppState.attemptNumber = Number(created.attempt_number || 1);
     AppState.attemptStartedAt = created.started_at || AppState.attemptStartedAt || null;
+    AppState.attemptPrepared = true;
 
     // Admin reset is a continuation of the same attempt.
     // Never wipe existing answers, flags or question position.
