@@ -54,13 +54,10 @@
 #studentsTable { min-width: 1180px; }
 #studentsTable thead th { position: sticky; top: 0; z-index: 5; background: #f8fafc; }
 #studentsTable th:nth-child(1), #studentsTable td:nth-child(1) {
-    position: sticky; left: 0; z-index: 6; background: #fff; min-width: 118px;
-}
-#studentsTable th:nth-child(2), #studentsTable td:nth-child(2) {
-    position: sticky; left: 118px; z-index: 6; background: #fff; min-width: 165px;
+    position: sticky; left: 0; z-index: 6; background: #fff; min-width: 290px;
     box-shadow: 4px 0 8px rgba(15,23,42,.06);
 }
-#studentsTable thead th:nth-child(1), #studentsTable thead th:nth-child(2) { z-index: 8; background:#f8fafc; }
+#studentsTable thead th:nth-child(1) { z-index: 8; background:#f8fafc; }
 #studentsTable tbody tr:hover td { background:#f8fbff; }
 #studentsTable tbody tr:hover td:nth-child(1), #studentsTable tbody tr:hover td:nth-child(2) { background:#f8fbff; }
 .exam-attempt-history-btn { white-space:nowrap; }
@@ -257,10 +254,7 @@
                     <table id="studentsTable" style="width: 100%; border-collapse: collapse; font-size: 13px; display:none;">
                         <thead>
                             <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                                <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Student ID</th>
-                                <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Name</th>
-                                <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Email</th>
-                                <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Program</th>
+                                <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569; min-width: 290px;">Student</th>
                                 <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Exam</th>
                                 <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Attempt</th>
                                 <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Score</th>
