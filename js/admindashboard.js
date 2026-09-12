@@ -6098,7 +6098,7 @@ window.displayLiveFeed = function() {
     selectedStudentIds.clear();
     if (releaseBtn) {
         releaseBtn.disabled = true;
-        releaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading current results...';
+        releaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading results...';
     }
 
     if (!examId) {
@@ -6109,25 +6109,38 @@ window.displayLiveFeed = function() {
     }
 
     if (preview) preview.style.display = 'block';
-    if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">⏳ Loading current final results...</td></tr>';
+    if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">⏳ Loading current results...</td></tr>';
 
     try {
-        // ------------------------------------------------------------
-        // CANONICAL RESULT RULE:
-        // One student + one exam = ONE current result in this modal.
-        // The latest attempt is the canonical attempt. Older sentinel
-        // grade rows are ignored for release purposes.
-        // ------------------------------------------------------------
-        const { data: attempts, error: attemptsError } = await sb
-            .from('exam_attempts')
-            .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+        // IMPORTANT: Release is driven by the sentinel grade rows because
+        // these are the actual calculated results. Do not require an
+        // exam_attempts row to exist before a result can be released.
+        const { data: grades, error: gradesError } = await sb
+            .from('exam_grades')
+            .select('id, student_id, exam_id, attempt_id, marks, total_score, percentage, result_status, released, released_at, total_marks, updated_at, graded_at, created_at')
             .eq('exam_id', examId)
-            .order('attempt_number', { ascending: false });
+            .eq('question_id', ZERO_QUESTION_ID)
+            .order('updated_at', { ascending: false });
 
-        if (attemptsError) throw attemptsError;
+        if (gradesError) throw gradesError;
+
+        // Load attempts only to identify the canonical/latest attempt for
+        // each student. A missing attempt row must NOT hide a valid result.
+        let attempts = [];
+        try {
+            const { data, error } = await sb
+                .from('exam_attempts')
+                .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
+                .eq('exam_id', examId)
+                .order('attempt_number', { ascending: false })
+                .order('updated_at', { ascending: false });
+            if (!error) attempts = data || [];
+        } catch (e) {
+            console.warn('⚠️ Could not load exam_attempts for release preview; using current grade rows:', e.message);
+        }
 
         const latestAttemptMap = new Map();
-        (attempts || []).forEach(a => {
+        for (const a of attempts) {
             const key = String(a.student_id);
             const existing = latestAttemptMap.get(key);
             if (!existing ||
@@ -6136,73 +6149,46 @@ window.displayLiveFeed = function() {
                  new Date(a.updated_at || a.submitted_at || a.started_at || 0) > new Date(existing.updated_at || existing.submitted_at || existing.started_at || 0))) {
                 latestAttemptMap.set(key, a);
             }
-        });
+        }
 
-        const { data: grades, error: gradesError } = await sb
-            .from('exam_grades')
-            .select('id, student_id, exam_id, attempt_id, marks, total_score, percentage, result_status, released, released_at, total_marks, updated_at, graded_at')
-            .eq('exam_id', examId)
-            .eq('question_id', ZERO_QUESTION_ID);
-
-        if (gradesError) throw gradesError;
-
-        // Prefer the sentinel grade belonging to the canonical attempt.
-        // For legacy records with no attempt_id, only use them when the
-        // student has no attempt row at all.
-        const gradeByAttempt = new Map();
-        const legacyGradesByStudent = new Map();
-        (grades || []).forEach(g => {
-            if (g.attempt_id) {
-                gradeByAttempt.set(String(g.attempt_id), g);
-            } else {
-                const key = String(g.student_id);
-                const existing = legacyGradesByStudent.get(key);
-                if (!existing || new Date(g.updated_at || g.graded_at || 0) > new Date(existing.updated_at || existing.graded_at || 0)) {
-                    legacyGradesByStudent.set(key, g);
-                }
+        // Build ONE current grade per student.
+        // Priority:
+        // 1) Grade attached to the student's latest attempt.
+        // 2) Otherwise newest legacy/no-attempt sentinel grade.
+        const byStudent = new Map();
+        for (const g of (grades || [])) {
+            const key = String(g.student_id);
+            const latestAttempt = latestAttemptMap.get(key);
+            if (latestAttempt?.id && g.attempt_id && String(g.attempt_id) !== String(latestAttempt.id)) {
+                continue; // historical attempt result
             }
-        });
 
-        const currentGrades = [];
-        const seenStudents = new Set();
-
-        // Current attempt first.
-        latestAttemptMap.forEach((attempt, studentId) => {
-            const grade = gradeByAttempt.get(String(attempt.id)) || null;
-            if (grade) {
-                currentGrades.push({ ...grade, attempt_info: attempt });
-            } else if (String(attempt.status || '').toUpperCase() === 'IN_PROGRESS') {
-                // Show in-progress attempts in preview, but do not mark them releasable.
-                currentGrades.push({
-                    id: null,
-                    student_id: attempt.student_id,
-                    exam_id: attempt.exam_id,
-                    attempt_id: attempt.id,
-                    marks: attempt.score ?? null,
-                    total_score: attempt.score ?? null,
-                    percentage: attempt.percentage ?? null,
-                    result_status: 'IN_PROGRESS',
-                    released: false,
-                    released_at: null,
-                    total_marks: attempt.total_marks ?? null,
-                    attempt_info: attempt,
-                    is_attempt_only: true
-                });
+            const existing = byStudent.get(key);
+            if (!existing) {
+                byStudent.set(key, { ...g, attempt_info: latestAttempt || null });
+                continue;
             }
-            seenStudents.add(studentId);
-        });
 
-        // Legacy-only students: no exam_attempts row exists, so preserve the
-        // newest legacy sentinel as the current result instead of duplicating it.
-        legacyGradesByStudent.forEach((grade, studentId) => {
-            if (!seenStudents.has(String(studentId))) {
-                currentGrades.push({ ...grade, attempt_info: null, is_legacy: true });
+            const existingMatchesLatest = latestAttempt?.id && existing.attempt_id && String(existing.attempt_id) === String(latestAttempt.id);
+            const currentMatchesLatest = latestAttempt?.id && g.attempt_id && String(g.attempt_id) === String(latestAttempt.id);
+
+            if (currentMatchesLatest && !existingMatchesLatest) {
+                byStudent.set(key, { ...g, attempt_info: latestAttempt || null });
+                continue;
             }
-        });
+
+            const gTime = new Date(g.updated_at || g.graded_at || g.created_at || 0).getTime();
+            const eTime = new Date(existing.updated_at || existing.graded_at || existing.created_at || 0).getTime();
+            if (!existingMatchesLatest && gTime > eTime) {
+                byStudent.set(key, { ...g, attempt_info: latestAttempt || null });
+            }
+        }
+
+        const currentGrades = Array.from(byStudent.values());
 
         if (!currentGrades.length) {
             if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">No current results found for this exam.</td></tr>';
-            if (summary) summary.innerHTML = '<strong>No current results available</strong>';
+            if (summary) summary.innerHTML = '<strong>No results available for this exam</strong>';
             if (releaseBtn) {
                 releaseBtn.disabled = true;
                 releaseBtn.innerHTML = '✅ No Results to Release';
@@ -6219,10 +6205,8 @@ window.displayLiveFeed = function() {
 
         const passMark = Number(exam?.pass_mark ?? Math.round((exam?.total_marks || 100) * 0.6));
         const examName = exam?.exam_name || 'Exam';
-        const examType = exam?.exam_type || 'EXAM';
-        const totalMarks = Number(exam?.total_marks || 30);
+        const totalMarks = Number(exam?.total_marks || currentGrades[0]?.total_marks || 30);
 
-        // Check both the canonical grade flag and release-table record.
         const currentGradeIds = currentGrades.map(r => r.id).filter(Boolean);
         let released = [];
         if (currentGradeIds.length) {
@@ -6238,15 +6222,15 @@ window.displayLiveFeed = function() {
         const studentIds = [...new Set(currentGrades.map(r => r.student_id).filter(Boolean))];
         let profiles = [];
         if (studentIds.length) {
-            const { data } = await sb
+            const { data, error } = await sb
                 .from('consolidated_user_profiles_table')
                 .select('user_id, full_name, student_id, email')
                 .in('user_id', studentIds);
+            if (error) console.warn('⚠️ Release profile lookup warning:', error.message);
             profiles = data || [];
         }
         const profileMap = Object.fromEntries(profiles.map(p => [p.user_id, p]));
 
-        // Deterministic ordering: student name, then student ID.
         currentGrades.sort((a, b) => {
             const pa = profileMap[a.student_id] || {};
             const pb = profileMap[b.student_id] || {};
@@ -6257,76 +6241,65 @@ window.displayLiveFeed = function() {
         let html = '';
         let pendingCount = 0;
         let releasedCount = 0;
-        let inProgressCount = 0;
 
         currentGrades.forEach(r => {
             const student = profileMap[r.student_id] || {};
             const attempt = r.attempt_info || null;
-            const status = String(attempt?.status || r.result_status || '').toUpperCase();
-            const isInProgress = status === 'IN_PROGRESS';
-            const releasedAt = r.id ? (r.released_at || releasedMap.get(String(r.id)) || null) : null;
-            const isReleased = !!r.released || !!releasedAt || releasedMap.has(String(r.id));
+            const attemptStatus = String(attempt?.status || '').toUpperCase();
+            const isReleased = !!r.released || !!r.released_at || releasedMap.has(String(r.id));
+            const releasedAt = r.released_at || releasedMap.get(String(r.id)) || null;
+            const isInProgress = attemptStatus === 'IN_PROGRESS';
 
-            const scoreRaw = r.total_score ?? r.marks ?? attempt?.score ?? 0;
-            const score = Number(scoreRaw) || 0;
+            const score = Number(r.total_score ?? r.marks ?? attempt?.score ?? 0) || 0;
             const percentage = Number.isFinite(Number(r.percentage))
                 ? Number(r.percentage).toFixed(1)
                 : (totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0');
             const isPassed = score >= passMark;
-            const statusText = isInProgress ? 'IN PROGRESS' : (isPassed ? 'PASS' : 'FAIL');
             const statusClass = isInProgress ? 'status-pending' : (isPassed ? 'status-pass' : 'status-fail');
+            const statusText = isInProgress ? 'IN PROGRESS' : (isPassed ? 'PASS' : 'FAIL');
 
             const studentNameRaw = student.full_name || 'Unknown';
             const studentName = studentNameRaw.replace(/'/g, "\\'");
-            const studentId = r.student_id || '';
+            const studentUserId = r.student_id || '';
             const studentIdDisplay = student.student_id || 'N/A';
             const studentEmail = student.email || '';
             const safeExam = examName.replace(/'/g, "\\'");
 
+            let checkboxHtml = '';
             let releasedDisplay = '';
             let actionButtons = '';
-            let checkboxHtml = '';
 
             if (isInProgress) {
-                inProgressCount++;
                 releasedDisplay = '<span class="status-pending">⏳ Exam In Progress</span>';
                 checkboxHtml = '<input type="checkbox" disabled style="opacity:0.3;">';
                 actionButtons = `
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})"
-                        title="View Progress"><i class="fas fa-chart-line"></i></button>
-                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${safeExam}')"
-                        title="Manage Timer"><i class="fas fa-clock"></i></button>
-                    <button class="action-btn btn-danger" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${safeExam}')"
-                        title="Reset and allow student to continue same attempt"><i class="fas fa-rotate-right"></i></button>`;
+                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentUserId}', '${studentName}', ${examId})" title="View Progress"><i class="fas fa-chart-line"></i></button>
+                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${studentName}', ${examId}, '${safeExam}')" title="Manage Timer"><i class="fas fa-clock"></i></button>
+                    <button class="action-btn btn-danger" onclick="resetSingleStudent('${studentUserId}', ${examId}, '${studentName}', '${safeExam}')" title="Reset / Continue Same Attempt"><i class="fas fa-rotate-right"></i></button>`;
             } else if (isReleased) {
                 releasedCount++;
-                const releasedTime = releasedAt ? formatKenyaTime(releasedAt) : '';
-                releasedDisplay = `<span class="status-pass">✅ Released<br><small style="font-size:0.6rem;">${releasedTime}</small></span>`;
+                releasedDisplay = `<span class="status-pass">✅ Released${releasedAt ? `<br><small style="font-size:0.6rem;">${formatKenyaTime(releasedAt)}</small>` : ''}</span>`;
                 checkboxHtml = '<input type="checkbox" disabled style="opacity:0.3;">';
                 actionButtons = `
-                    <button class="action-btn btn-success" onclick="resendReleaseEmail('${studentId}', ${examId}, '${studentName}', '${safeExam}')"
-                        title="Resend email notification"><i class="fas fa-envelope"></i></button>
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})"
-                        title="View Progress"><i class="fas fa-chart-line"></i></button>
-                    <button class="action-btn btn-warning" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${safeExam}')"
-                        title="Reset and allow student to continue same attempt"><i class="fas fa-rotate-right"></i></button>`;
-            } else if (r.id) {
+                    <button class="action-btn btn-success" onclick="resendReleaseEmail('${studentUserId}', ${examId}, '${studentName}', '${safeExam}')" title="Resend notification"><i class="fas fa-envelope"></i></button>
+                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentUserId}', '${studentName}', ${examId})" title="View Progress"><i class="fas fa-chart-line"></i></button>
+                    <button class="action-btn btn-warning" onclick="resetSingleStudent('${studentUserId}', ${examId}, '${studentName}', '${safeExam}')" title="Reset / Continue Same Attempt"><i class="fas fa-rotate-right"></i></button>`;
+            } else {
                 pendingCount++;
                 releasedDisplay = '<span class="status-pending">🔒 Not Released</span>';
-                checkboxHtml = `<input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${studentId}" onchange="updateSelectedCount()" style="margin-right:8px;">`;
+                checkboxHtml = `<input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${studentUserId}" onchange="updateSelectedCount()" style="margin-right:8px;">`;
                 actionButtons = `
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})"
-                        title="View Progress"><i class="fas fa-chart-line"></i></button>
-                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${safeExam}')"
-                        title="Manage Timer"><i class="fas fa-clock"></i></button>`;
+                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentUserId}', '${studentName}', ${examId})" title="View Progress"><i class="fas fa-chart-line"></i></button>
+                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentUserId}', '${studentName}', ${examId}, '${safeExam}')" title="Manage Timer"><i class="fas fa-clock"></i></button>
+                    <button class="action-btn btn-danger" onclick="resetSingleStudent('${studentUserId}', ${examId}, '${studentName}', '${safeExam}')" title="Reset / Continue Same Attempt"><i class="fas fa-rotate-right"></i></button>`;
             }
 
             html += `<tr>
                 <td style="padding:8px;">${checkboxHtml}</td>
                 <td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
                 <td style="padding:8px;"><strong>${studentNameRaw}</strong><br><small style="color:#6b7280;">${studentEmail}</small></td>
-                <td style="padding:8px;color:#0A3D62;font-weight:600;">${score} ✏️</td>
-                <td style="padding:8px;color:#0A3D62;font-weight:600;">${percentage}%</td>
+                <td style="padding:8px;color:#0A3D62;font-weight:600;cursor:pointer;" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${studentName}', '${safeExam}')">${score} ✏️</td>
+                <td style="padding:8px;color:#0A3D62;font-weight:600;cursor:pointer;" onclick="openEditMarksModal('${studentUserId}', ${examId}, '${studentName}', '${safeExam}')">${percentage}% ✏️</td>
                 <td style="padding:8px;"><span class="${statusClass}">${statusText}</span></td>
                 <td style="padding:8px;">${releasedDisplay}</td>
                 <td style="padding:8px;"><div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">${actionButtons}</div></td>
@@ -6335,11 +6308,9 @@ window.displayLiveFeed = function() {
 
         if (body) body.innerHTML = html;
 
-        let summaryHTML = '';
-        if (pendingCount > 0) summaryHTML += `<strong>📋 Pending Results: ${pendingCount} student(s) ready for release</strong>`;
-        if (releasedCount > 0) summaryHTML += `${summaryHTML ? ' | ' : ''}<strong>✅ Already Released: ${releasedCount} student(s)</strong>`;
-        if (inProgressCount > 0) summaryHTML += `${summaryHTML ? ' | ' : ''}<strong>⏳ In Progress: ${inProgressCount} student(s)</strong>`;
-        if (!summaryHTML) summaryHTML = '<strong>No current results found</strong>';
+        let summaryHTML = `<strong>📋 Current Results: ${currentGrades.length} student(s)</strong>`;
+        if (pendingCount > 0) summaryHTML += ` | <strong>🔒 Pending: ${pendingCount}</strong>`;
+        if (releasedCount > 0) summaryHTML += ` | <strong>✅ Released: ${releasedCount}</strong>`;
         if (summary) summary.innerHTML = summaryHTML;
 
         if (releaseBtn) {
@@ -6349,7 +6320,6 @@ window.displayLiveFeed = function() {
                 : '✅ All Current Results Released';
         }
 
-        // Refresh top counters.
         updateSelectedCount();
     } catch (error) {
         console.error('❌ Release preview error:', error);
