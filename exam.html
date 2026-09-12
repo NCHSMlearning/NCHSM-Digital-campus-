@@ -1402,6 +1402,228 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
     white-space:normal;
   }
 }
+
+/* =========================================================
+   NCHSM COMPLETE PAGE POLISH
+   Refines the sections below the welcome hero without
+   changing existing functionality or IDs.
+   ========================================================= */
+
+/* Student information card */
+.student-card{
+  position:relative;
+  overflow:hidden;
+  border:1px solid #d5e7ef!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.94)!important;
+  box-shadow:0 10px 28px rgba(6,58,86,.07)!important;
+}
+.student-card:before{
+  content:"";
+  position:absolute;
+  left:0;top:0;bottom:0;
+  width:4px;
+  background:linear-gradient(180deg,#0879d1,#0ba18d);
+}
+.student-card .student-avatar{
+  border:2px solid #e5f2f7!important;
+  box-shadow:0 5px 15px rgba(7,72,103,.10);
+}
+.student-card .student-name{
+  color:#07385e!important;
+}
+.student-card .student-status{
+  color:#148553!important;
+}
+
+/* Readiness / progress steps */
+.steps{
+  position:relative;
+  border:1px solid #d5e7ef!important;
+  border-radius:16px!important;
+  background:rgba(255,255,255,.94)!important;
+  box-shadow:0 8px 22px rgba(6,58,86,.06)!important;
+}
+.step{
+  transition:background .2s ease,transform .2s ease;
+}
+.step.active{
+  background:linear-gradient(135deg,#f0f9fe,#e7f6fb)!important;
+  box-shadow:inset 0 -2px 0 #0879d1;
+}
+.step-number{
+  box-shadow:0 4px 12px rgba(8,121,209,.15);
+}
+.step.active .step-number{
+  background:#0879d1!important;
+  color:#fff!important;
+}
+
+/* Main lower content grid */
+.lobby-content-grid{
+  gap:14px!important;
+}
+.lobby-content-grid > section,
+.lobby-content-grid > div{
+  border:1px solid #d7e8ef!important;
+  border-radius:18px!important;
+  background:rgba(255,255,255,.96)!important;
+  box-shadow:0 9px 26px rgba(6,58,86,.055)!important;
+}
+
+/* Terms & Instructions */
+.instructions-card,
+.instructions,
+.terms-card{
+  border-radius:15px!important;
+}
+.instructions{
+  background:#f7fbfd!important;
+  border:1px solid #e0edf2!important;
+}
+.instructions li::marker{
+  color:#0879d1;
+}
+.instructions strong{
+  color:#123f60;
+}
+.terms-check{
+  border:1px solid #d7e8ef!important;
+  background:#f9fcfd!important;
+  border-radius:12px!important;
+  transition:border-color .2s ease,background .2s ease;
+}
+.terms-check:hover{
+  border-color:#9bcfe4!important;
+  background:#f3faff!important;
+}
+
+/* Action buttons */
+.action-row{
+  gap:9px!important;
+}
+.btn-primary,
+.start-exam-btn{
+  box-shadow:0 7px 16px rgba(8,121,209,.16)!important;
+}
+.btn-primary:hover,
+.start-exam-btn:hover{
+  transform:translateY(-1px);
+}
+
+/* Assurance / safety cards */
+.assurance-card,
+.connection-card{
+  border:1px solid #d7e8ef!important;
+  border-radius:16px!important;
+  background:linear-gradient(145deg,#ffffff,#f6fbfd)!important;
+  box-shadow:0 8px 22px rgba(6,58,86,.05)!important;
+}
+.assurance-card i,
+.connection-card i{
+  filter:drop-shadow(0 4px 7px rgba(8,121,209,.12));
+}
+.connection-card .connection-status{
+  border-radius:999px;
+}
+
+/* Values strip */
+.values-strip{
+  border:1px solid #d4e7ef!important;
+  border-radius:15px!important;
+  background:linear-gradient(90deg,#f9fcfe,#f2f9fc)!important;
+  box-shadow:0 7px 20px rgba(6,58,86,.045)!important;
+}
+.values-strip strong{
+  color:#07385e!important;
+}
+
+/* Footer */
+.lobby-footer{
+  border-top:1px solid #d8e8ef!important;
+  color:#6b8395!important;
+  padding-top:13px!important;
+}
+
+/* Camera/device check */
+#cameraCheckContainer,
+.camera-check-card,
+.device-check-card{
+  border-radius:20px!important;
+}
+.camera-check-card,
+.device-check-card{
+  border:1px solid #d4e7ef!important;
+  box-shadow:0 12px 30px rgba(6,58,86,.08)!important;
+}
+
+/* Ready screen */
+#readyContainer,
+.ready-card{
+  border-radius:20px!important;
+}
+.ready-card{
+  border:1px solid #d4e7ef!important;
+  box-shadow:0 12px 32px rgba(6,58,86,.08)!important;
+}
+
+/* Active exam: cleaner hierarchy */
+.exam-shell,
+.exam-container,
+.exam-layout{
+  background:#f3f8fa!important;
+}
+.question-panel,
+.question-card,
+.navigator-panel,
+.exam-sidebar,
+.exam-right-panel{
+  border-color:#d5e6ed!important;
+}
+.question-card{
+  box-shadow:0 10px 28px rgba(5,54,80,.07)!important;
+}
+.question-number,
+.question-index{
+  color:#0879d1!important;
+}
+
+/* Better form controls */
+input,select,textarea{
+  border-color:#d2e4ec!important;
+}
+input:focus,select:focus,textarea:focus{
+  border-color:#0879d1!important;
+  box-shadow:0 0 0 3px rgba(8,121,209,.09)!important;
+}
+
+/* Consistent small-screen spacing */
+@media(max-width:768px){
+  .student-card{
+    border-radius:15px!important;
+  }
+  .steps{
+    border-radius:14px!important;
+  }
+  .lobby-content-grid{
+    gap:10px!important;
+  }
+  .lobby-content-grid > section,
+  .lobby-content-grid > div{
+    border-radius:15px!important;
+  }
+  .assurance-card,
+  .connection-card{
+    border-radius:14px!important;
+  }
+}
+
+/* Respect reduced-motion preference */
+@media(prefers-reduced-motion:reduce){
+  .step,.btn-primary,.start-exam-btn{
+    transition:none!important;
+  }
+}
 </style>
 </head>
 
