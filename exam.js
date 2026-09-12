@@ -33,6 +33,104 @@ const CONFIG = {
 const sb = supabase.createClient(CONFIG.SUPABASE_URL, CONFIG.SUPABASE_ANON_KEY);
 
 // ============================================================
+// 🐞 NCHSM EXAM DEBUGGER
+// Enable with ?debug=1, #debug, or localStorage.setItem('nchsm_exam_debug','1')
+// Never logs Supabase keys, tokens, answers, or sensitive student data.
+// ============================================================
+const NCHSM_DEBUG = {
+    enabled: false,
+    panel: null,
+    logs: [],
+    maxLogs: 120,
+    init() {
+        try {
+            const params = new URLSearchParams(window.location.search);
+            this.enabled = params.get('debug') === '1' ||
+                window.location.hash === '#debug' ||
+                localStorage.getItem('nchsm_exam_debug') === '1';
+        } catch (_) {
+            this.enabled = false;
+        }
+        if (this.enabled) {
+            this.log('debugger_ready', this.getState());
+            this.createPanel();
+        }
+    },
+    safe(v) {
+        if (v instanceof Error) return { name: v.name, message: v.message, stack: v.stack };
+        if (typeof v === 'string' || typeof v === 'number' || typeof v === 'boolean' || v === null) return v;
+        try { return JSON.parse(JSON.stringify(v)); } catch (_) { return String(v); }
+    },
+    getState() {
+        return {
+            examId: AppState.examId,
+            attemptId: AppState.attemptId,
+            attemptNumber: AppState.attemptNumber,
+            currentIndex: AppState.currentIndex,
+            questionCount: AppState.questions?.length || 0,
+            answered: Object.keys(AppState.answers || {}).length,
+            isExamActive: AppState.isExamActive,
+            examStarted: AppState.examStarted,
+            isSubmitting: AppState.isSubmitting,
+            isExamPaused: AppState.isExamPaused,
+            isRetake: AppState.isRetake,
+            remainingSeconds: AppState.remainingSeconds,
+            submitDisabled: !!DOM.submitBtn?.disabled,
+            nextDisabled: !!DOM.nextBtn?.disabled,
+            prevDisabled: !!DOM.prevBtn?.disabled
+        };
+    },
+    log(event, data) {
+        if (!this.enabled) return;
+        const entry = { time: new Date().toISOString(), event, data: this.safe(data) };
+        this.logs.push(entry);
+        if (this.logs.length > this.maxLogs) this.logs.shift();
+        console.debug('[NCHSM DEBUG]', event, entry.data);
+        this.render();
+    },
+    error(event, error, extra) {
+        if (!this.enabled) return;
+        this.log(event, { error: this.safe(error), ...(extra || {}) });
+        console.error('[NCHSM DEBUG]', event, error, extra || '');
+    },
+    createPanel() {
+        if (this.panel || !document.body) return;
+        const panel = document.createElement('div');
+        panel.id = 'nchsm-debug-panel';
+        panel.style.cssText = [
+            'position:fixed','right:12px','bottom:12px','width:380px','max-width:calc(100vw - 24px)',
+            'max-height:45vh','overflow:auto','z-index:2147483647','background:#0f172a','color:#e2e8f0',
+            'border:1px solid #334155','border-radius:12px','box-shadow:0 12px 35px rgba(0,0,0,.35)',
+            'font:11px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace','padding:10px'
+        ].join(';');
+        document.body.appendChild(panel);
+        this.panel = panel;
+        this.render();
+    },
+    render() {
+        if (!this.panel) return;
+        const state = this.getState();
+        const rows = this.logs.slice(-25).map(x =>
+            `<div style="border-top:1px solid #1e293b;padding:5px 0"><b>${x.event}</b><br><span style="color:#94a3b8">${x.time}</span><br>${this.escape(JSON.stringify(x.data))}</div>`
+        ).join('');
+        this.panel.innerHTML = `
+            <div style="display:flex;justify-content:space-between;gap:8px;align-items:center;margin-bottom:6px">
+                <b>🐞 NCHSM Exam Debug</b>
+                <button id="nchsm-debug-close" type="button" style="background:#334155;color:#fff;border:0;border-radius:6px;padding:3px 7px;cursor:pointer">×</button>
+            </div>
+            <div style="background:#111827;padding:7px;border-radius:8px;margin-bottom:7px">${this.escape(JSON.stringify(state, null, 2))}</div>
+            ${rows || '<span style="color:#94a3b8">Waiting for events...</span>'}
+        `;
+        const close = document.getElementById('nchsm-debug-close');
+        if (close) close.onclick = () => { this.panel.style.display = 'none'; };
+    },
+    escape(text) {
+        return String(text).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+};
+
+
+// ============================================================
 // APPLICATION STATE
 // ============================================================
 let retakeRequestedByUrl = false;
@@ -1929,6 +2027,17 @@ window.toggleReviewMode = function() {
 // ✅ FIXED: submitExam - with confirmation and no auto-submit on minimize
 // ============================================================
 function submitExam() {
+    console.log('🟢 [SUBMIT DEBUG] submitExam() CALLED', {
+        time: new Date().toISOString(),
+        disabled: !!DOM.submitBtn?.disabled,
+        isExamActive: AppState.isExamActive,
+        examStarted: AppState.examStarted,
+        isSubmitting: AppState.isSubmitting,
+        attemptId: AppState.attemptId,
+        currentQuestion: AppState.currentIndex + 1,
+        answered: Object.keys(AppState.answers || {}).length
+    });
+    NCHSM_DEBUG.log('submit_button_clicked', NCHSM_DEBUG.getState());
     if (AppState.isSubmitting) {
         showToast('⏳ Submission already in progress...', 'warning');
         return;
@@ -1960,16 +2069,20 @@ function submitExam() {
     }
 
     // Show custom confirmation modal
+    NCHSM_DEBUG.log('submit_confirmation_opened', { total, answered, skipped, flagged });
+
     showCustomConfirm(
         message,
         title,
         isWarning,
         function() {
             console.log('✅ User confirmed submission');
+            NCHSM_DEBUG.log('submit_confirmation_confirmed', NCHSM_DEBUG.getState());
             proceedWithSubmission();
         },
         function() {
             console.log('❌ User cancelled submission');
+            NCHSM_DEBUG.log('submit_confirmation_cancelled', NCHSM_DEBUG.getState());
             showToast('📝 Submission cancelled', 'info');
         }
     );
@@ -2016,11 +2129,13 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
     const cancelBtn = document.getElementById('confirm-cancel-btn');
 
     confirmBtn.addEventListener('click', function() {
+        console.log('🟡 [SUBMIT DEBUG] CONFIRM SUBMIT button CLICKED');
         modal.remove();
         if (typeof onConfirm === 'function') onConfirm();
     });
 
     cancelBtn.addEventListener('click', function() {
+        console.log('⚪ [SUBMIT DEBUG] CANCEL button CLICKED');
         modal.remove();
         if (typeof onCancel === 'function') onCancel();
     });
@@ -2034,6 +2149,8 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
 }
 
 function proceedWithSubmission() {
+    console.log('🔵 [SUBMIT DEBUG] proceedWithSubmission() CALLED', { examStarted: AppState.examStarted, isExamActive: AppState.isExamActive, isSubmitting: AppState.isSubmitting, attemptId: AppState.attemptId });
+    NCHSM_DEBUG.log('submission_pipeline_started', NCHSM_DEBUG.getState());
     // Submission must not depend on a second attendance query.
     // The student has already entered an active exam session, so proceed directly.
     try {
@@ -2047,10 +2164,13 @@ function proceedWithSubmission() {
             AppState.isExamActive = true;
         }
 
+        NCHSM_DEBUG.log('pre_submission_state', NCHSM_DEBUG.getState());
         saveCurrentAnswer();
         syncPendingAnswers();
+        NCHSM_DEBUG.log('calling_execute_submission', NCHSM_DEBUG.getState());
         executeSubmissionWithLoading();
     } catch (err) {
+        NCHSM_DEBUG.error('submission_pipeline_error', err, NCHSM_DEBUG.getState());
         console.error('❌ Could not begin submission:', err);
         AppState.isSubmitting = false;
         showToast('❌ Could not start submission. Please try again.', 'error');
@@ -2088,6 +2208,8 @@ function syncPendingAnswers() {
 // EXECUTE SUBMISSION
 // ============================================================
 async function executeSubmissionWithLoading() {
+    console.log('🟣 [SUBMIT DEBUG] executeSubmissionWithLoading() CALLED', { examStarted: AppState.examStarted, isExamActive: AppState.isExamActive, isSubmitting: AppState.isSubmitting, attemptId: AppState.attemptId });
+    NCHSM_DEBUG.log('execute_submission_called', NCHSM_DEBUG.getState());
     if (AppState.isSubmitting) {
         console.log('⚠️ Submission already in progress, skipping...');
         return;
@@ -2104,6 +2226,7 @@ async function executeSubmissionWithLoading() {
     }
     
     AppState.isSubmitting = true;
+    NCHSM_DEBUG.log('submission_locked', NCHSM_DEBUG.getState());
 
     if (DOM.submitBtn) {
         DOM.submitBtn.disabled = true;
@@ -2131,6 +2254,7 @@ async function executeSubmissionWithLoading() {
         }
 
         updateSubmissionProgress('📸 Capturing final snapshot...');
+        NCHSM_DEBUG.log('submission_step_snapshot', NCHSM_DEBUG.getState());
         if (AppState.timerInterval) clearInterval(AppState.timerInterval);
         if (AppState.countdownInterval) clearInterval(AppState.countdownInterval);
         if (AppState.heartbeatInterval) clearInterval(AppState.heartbeatInterval);
@@ -2152,10 +2276,14 @@ async function executeSubmissionWithLoading() {
         await captureSnapshot();
 
         updateSubmissionProgress('💾 Saving your answers...');
+        NCHSM_DEBUG.log('submission_step_save_answers_start', { answered: Object.keys(AppState.answers || {}).length, attemptId: AppState.attemptId });
         await saveAllAnswersToDatabase();
+        NCHSM_DEBUG.log('submission_step_save_answers_complete', NCHSM_DEBUG.getState());
 
         updateSubmissionProgress('📊 Calculating your results...');
+        NCHSM_DEBUG.log('submission_step_grade_start', NCHSM_DEBUG.getState());
         await calculateAndSaveGrade();
+        NCHSM_DEBUG.log('submission_step_grade_complete', NCHSM_DEBUG.getState());
 
         updateSubmissionProgress('🧹 Cleaning up...');
         if (CONFIG.CLEANUP_ON_COMPLETE) {
@@ -2163,6 +2291,7 @@ async function executeSubmissionWithLoading() {
         }
 
         updateSubmissionProgress('✅ Exam submitted successfully!');
+        NCHSM_DEBUG.log('submission_success', NCHSM_DEBUG.getState());
         await new Promise(r => setTimeout(r, 1000));
 
         if (DOM.submissionProgress) DOM.submissionProgress.classList.remove('active');
@@ -2173,6 +2302,7 @@ async function executeSubmissionWithLoading() {
         }, 5000);
 
     } catch (error) {
+        NCHSM_DEBUG.error('submission_failed', error, NCHSM_DEBUG.getState());
         console.error('❌ Submission error:', error);
         if (DOM.submissionProgress) DOM.submissionProgress.classList.remove('active');
         showToast('❌ Error submitting exam. Please try again or contact support.', 'error');
@@ -3792,6 +3922,7 @@ function setupExamEventListeners() {
         try {
             button.type = 'button';
             button.onclick = function (event) {
+                NCHSM_DEBUG.log(`${name.toLowerCase()}_button_handler_entered`, { disabled: button.disabled, isExamActive: AppState.isExamActive, examStarted: AppState.examStarted });
                 if (event) {
                     event.preventDefault();
                     event.stopPropagation();
@@ -3811,6 +3942,8 @@ function setupExamEventListeners() {
                 return false;
             };
             console.log(`✅ ${name} button wired`);
+            if (name === 'Submit') console.log('🔧 [SUBMIT DEBUG] Submit button wiring completed', button);
+            NCHSM_DEBUG.log(`${name.toLowerCase()}_button_wired`, { disabled: button.disabled });
         } catch (err) {
             console.error(`❌ Could not wire ${name} button:`, err);
         }
@@ -3818,7 +3951,14 @@ function setupExamEventListeners() {
 
     wireButton(DOM.prevBtn, prevQuestion, 'Previous');
     wireButton(DOM.nextBtn, nextQuestion, 'Next');
-    wireButton(DOM.submitBtn, submitExam, 'Submit');
+    wireButton(DOM.submitBtn, function(event) {
+        console.log('🔴 [SUBMIT DEBUG] DOM Submit onclick HANDLER FIRED', {
+            disabled: !!DOM.submitBtn?.disabled,
+            isExamActive: AppState.isExamActive,
+            examStarted: AppState.examStarted
+        });
+        return submitExam(event);
+    }, 'Submit');
 
     // The submit control must always be clickable once the exam interface is initialized.
     // Do not leave it disabled because the HTML template had a disabled attribute.
@@ -3882,6 +4022,19 @@ function setupExamEventListeners() {
     document.addEventListener('keydown', window.__nchsmExamKeyboardHandler);
 }
 
+window.NCHSM_DEBUG = NCHSM_DEBUG;
+window.enableNCHSMExamDebug = function() {
+    localStorage.setItem('nchsm_exam_debug', '1');
+    NCHSM_DEBUG.enabled = true;
+    NCHSM_DEBUG.createPanel();
+    NCHSM_DEBUG.log('debug_enabled_manually', NCHSM_DEBUG.getState());
+};
+window.disableNCHSMExamDebug = function() {
+    localStorage.removeItem('nchsm_exam_debug');
+    NCHSM_DEBUG.enabled = false;
+    if (NCHSM_DEBUG.panel) NCHSM_DEBUG.panel.style.display = 'none';
+};
+
 // ============================================================
 // INITIALIZATION
 // ============================================================
@@ -3943,6 +4096,8 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     initDomRefs();
+    NCHSM_DEBUG.init();
+    NCHSM_DEBUG.log('dom_initialized', { submitFound: !!DOM.submitBtn, nextFound: !!DOM.nextBtn, prevFound: !!DOM.prevBtn });
     loadLobbyData();
     console.log('📝 Exam Lobby loaded. Exam ID:', AppState.examId, 'Student ID:', AppState.studentId);
     if (retakeRequestedByUrl) {
