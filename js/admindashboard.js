@@ -387,8 +387,8 @@ function checkAdminAuth() {
     }
     
     if (!session) { 
-        console.log('❌ No session found, redirecting to login...');
-        window.location.href = 'login.html'; 
+        console.log('❌ No session found, redirecting to adminlogin...');
+        window.location.href = 'adminadminlogin.html'; 
         return false; 
     }
     
@@ -403,7 +403,7 @@ function checkAdminAuth() {
             console.log('❌ Unauthorized role:', role);
             localStorage.removeItem('adminSession');
             localStorage.removeItem('userProfile');
-            window.location.href = 'login.html';
+            window.location.href = 'adminlogin.html';
             return false;
         }
         
@@ -441,7 +441,7 @@ function checkAdminAuth() {
         console.error('❌ Session parse error:', e);
         localStorage.removeItem('adminSession');
         localStorage.removeItem('userProfile');
-        window.location.href = 'login.html'; 
+        window.location.href = 'adminlogin.html'; 
         return false; 
     }
 }
