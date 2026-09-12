@@ -9200,7 +9200,7 @@ function startAttendanceAutoRefresh() {
     window.initAttendanceTab = initAttendanceTab;
     window.toggleAttendanceAutoRefresh = toggleAttendanceAutoRefresh;
     window.startAttendanceAutoRefresh = startAttendanceAutoRefresh;
-
+ 
    // ============================================
 // 📹 VIDEO FUNCTIONS - GLOBAL EXPOSURE
 // ============================================
