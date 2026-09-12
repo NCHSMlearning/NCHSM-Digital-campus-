@@ -68,8 +68,6 @@
             this.completedExams = [];
             this.currentFilter = 'all';
             this.releasedResults = new Set();
-            // Attempt-aware state: keeps the portal aligned with exam_attempts.
-            this.attemptsByExam = new Map();
             this.countdownInterval = null;
             
             // User profile
@@ -464,20 +462,20 @@ applyDataFilter() {
         async loadExams() {
             console.log('📥 Loading exams...');
             this.showLoading();
-
+            
             try {
                 if (!this.userId && !this.updateUserData()) {
                     setTimeout(() => this.loadExams(), 1000);
                     return;
                 }
-
+                
                 if (!window.db?.supabase) {
                     throw new Error('Database connection not available');
                 }
-
+                
                 const supabase = window.db.supabase;
-
-                console.log('🎯 Loading exams for:', {
+                
+                console.log('🎯 Loading exams for:', { 
                     programCode: this.programCode,
                     programType: this.programType,
                     intakeYear: this.intakeYear,
@@ -486,38 +484,37 @@ applyDataFilter() {
                     block: this.userBlock,
                     term: this.userTerm
                 });
-
+                
                 const { data, error } = await supabase.rpc('get_student_exams', {
                     p_user_id: this.userId
                 });
-
+                
                 if (error) {
                     console.warn('⚠️ RPC failed, falling back to individual calls...');
                     await this.loadExamsFallback();
                     return;
                 }
-
+                
                 console.log(`📊 Loaded ${data?.exams?.length || 0} exams from RPC`);
                 console.log(`📊 Loaded ${data?.grades?.length || 0} grades from RPC`);
-
-                const attempts = await this.loadStudentAttempts(supabase);
+                
                 const exams = data.exams || [];
                 const grades = data.grades || [];
-
+                
                 this.releasedResults.clear();
                 if (data.released && data.released.length > 0) {
                     this.releasedResults = new Set(data.released.map(r => String(r)));
                     console.log(`✅ Loaded ${this.releasedResults.size} released results`);
                 }
-
-                this.processExamsData(exams, grades, attempts);
+                
+                this.processExamsData(exams, grades);
                 this.applyDataFilter();
-
+                
                 console.log(`✅ Processed ${this.allExams.length} exams: ${this.currentExams.length} current, ${this.completedExams.length} completed`);
-
+                
                 this.dispatchDashboardEvent();
                 this.hideLoading();
-
+                
             } catch (error) {
                 console.error('❌ Error loading exams:', error);
                 try {
@@ -528,64 +525,14 @@ applyDataFilter() {
                 }
             }
         }
-
-        // ============================================
-        // 🧭 ATTEMPT-AWARE STUDENT EXAM STATE
-        // ============================================
-        async loadStudentAttempts(supabase) {
-            this.attemptsByExam = new Map();
-
-            try {
-                const { data, error } = await supabase
-                    .from('exam_attempts')
-                    .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
-                    .eq('student_id', this.userId)
-                    .order('attempt_number', { ascending: false });
-
-                if (error) {
-                    console.warn('⚠️ Could not load exam_attempts; continuing with grade data:', error.message);
-                    return [];
-                }
-
-                const latestByExam = new Map();
-                (data || []).forEach(attempt => {
-                    const key = String(attempt.exam_id);
-                    const current = latestByExam.get(key);
-                    if (!current) {
-                        latestByExam.set(key, attempt);
-                        return;
-                    }
-
-                    const currentNo = Number(current.attempt_number || 0);
-                    const nextNo = Number(attempt.attempt_number || 0);
-                    const currentTime = new Date(current.updated_at || current.started_at || 0).getTime();
-                    const nextTime = new Date(attempt.updated_at || attempt.started_at || 0).getTime();
-
-                    if (nextNo > currentNo || (nextNo === currentNo && nextTime > currentTime)) {
-                        latestByExam.set(key, attempt);
-                    }
-                });
-
-                this.attemptsByExam = latestByExam;
-                console.log(`✅ Loaded latest attempt state for ${latestByExam.size} exams`);
-                return data || [];
-            } catch (error) {
-                console.warn('⚠️ Attempt lookup failed:', error);
-                return [];
-            }
-        }
-
-        getLatestAttemptForExam(examId) {
-            return this.attemptsByExam.get(String(examId)) || null;
-        }
-
+        
         async loadExamsFallback() {
             console.log('📥 Loading exams using fallback...');
-
+            
             try {
                 if (!window.db?.supabase) throw new Error('Database connection not available');
                 const supabase = window.db.supabase;
-
+                
                 const [examsResult, gradesResult, releasedResult] = await Promise.all([
                     supabase
                         .from('exams')
@@ -593,51 +540,49 @@ applyDataFilter() {
                         .eq('intake_year', this.intakeYear)
                         .eq('program_type', this.programType)
                         .order('exam_date', { ascending: true }),
-
+                    
                     supabase
                         .from('exam_grades')
                         .select('*')
                         .eq('student_id', this.userId)
                         .eq('question_id', '00000000-0000-0000-0000-000000000000'),
-
+                    
                     supabase
                         .from('released_exam_results')
                         .select('result_id')
                 ]);
-
+                
                 const { data: exams, error: examsError } = examsResult;
                 if (examsError) throw examsError;
-
+                
                 console.log(`📊 Found ${exams?.length || 0} exams from fallback`);
-
+                
                 const grades = gradesResult.data || [];
                 console.log(`📊 Found ${grades.length} grade records`);
-
-                const attempts = await this.loadStudentAttempts(supabase);
-
+                
                 this.releasedResults.clear();
                 if (releasedResult.data && releasedResult.data.length > 0) {
                     this.releasedResults = new Set(releasedResult.data.map(r => String(r.result_id)));
                     console.log(`✅ Loaded ${this.releasedResults.size} released results`);
                 }
-
-                this.processExamsData(exams || [], grades, attempts);
+                
+                this.processExamsData(exams || [], grades);
                 this.applyDataFilter();
                 console.log('✅ Exams loaded via fallback');
                 this.dispatchDashboardEvent();
                 this.hideLoading();
-
+                
             } catch (error) {
                 console.error('❌ Fallback error:', error);
                 this.showError(error.message);
                 throw error;
             }
         }
-
+        
         // ============================================
         // 🔧 PROCESS EXAMS DATA - WITH RETAKE SUPPORT
         // ============================================
-        processExamsData(exams, grades, attempts = []) {
+        processExamsData(exams, grades) {
             const blockMap = {
                 'Introductory': 'Introductory Block',
                 'Introductory Block': 'Introductory Block',
@@ -705,32 +650,74 @@ applyDataFilter() {
                 'ACH', 'AAG', 'ASW', 'CCA', 'PTE', 'TVET'
             ];
             
-            const latestAttemptMap = new Map(this.attemptsByExam || []);
+            // ============================================================
+            // 🔄 RETAKE-AWARE GRADE SELECTION
+            // ============================================================
+            // Multiple sentinel grade rows can exist for the same exam when
+            // an attempt is reset/retaken. The old code simply overwrote the
+            // Map entry in the order returned by Supabase, which could leave
+            // the portal displaying the older PENDING_REVIEW row even after
+            // Admin had authorized a retake.
+            //
+            // Priority:
+            //   1) Active RESET_FOR_RETAKE + retake_unlocked
+            //   2) Newest updated_at
+            //   3) Newest created_at
+            //
+            // This keeps scores hidden until release while still surfacing
+            // the Retake action immediately after Admin authorization.
             const gradeMap = new Map();
+
+            const isActiveRetakeGrade = (grade) =>
+                String(grade?.result_status || '').toUpperCase() === 'RESET_FOR_RETAKE' &&
+                grade?.retake_unlocked === true &&
+                grade?.allow_retake === true;
+
+            const gradeTime = (grade) => {
+                const updated = grade?.updated_at ? new Date(grade.updated_at).getTime() : 0;
+                const created = grade?.created_at ? new Date(grade.created_at).getTime() : 0;
+                return Math.max(
+                    Number.isFinite(updated) ? updated : 0,
+                    Number.isFinite(created) ? created : 0
+                );
+            };
+
             grades.forEach(grade => {
                 const gradeWithId = {
                     ...grade,
                     id: grade.id || grade._id || grade.grade_id || null
                 };
 
-                const examKey = String(grade.exam_id);
-                const latestAttempt = latestAttemptMap.get(examKey);
+                const key = String(grade.exam_id);
+                const existing = gradeMap.get(key);
 
-                // New architecture: prefer the grade belonging to the student's
-                // latest attempt. Legacy rows without attempt_id remain supported.
-                if (latestAttempt) {
-                    if (grade.attempt_id && String(grade.attempt_id) === String(latestAttempt.id)) {
-                        gradeWithId._isLatestAttemptGrade = true;
-                        gradeMap.set(examKey, gradeWithId);
-                    } else if (!grade.attempt_id && !gradeMap.has(examKey)) {
-                        // Legacy fallback only when no attempt_id exists.
-                        gradeWithId._legacyGrade = true;
-                        gradeMap.set(examKey, gradeWithId);
-                    }
-                } else if (!gradeMap.has(examKey)) {
-                    gradeMap.set(examKey, gradeWithId);
+                if (!existing) {
+                    gradeMap.set(key, gradeWithId);
+                    return;
+                }
+
+                const newIsRetake = isActiveRetakeGrade(gradeWithId);
+                const oldIsRetake = isActiveRetakeGrade(existing);
+
+                if (
+                    (newIsRetake && !oldIsRetake) ||
+                    (newIsRetake === oldIsRetake && gradeTime(gradeWithId) >= gradeTime(existing))
+                ) {
+                    gradeMap.set(key, gradeWithId);
                 }
             });
+
+            console.log(
+                '🔄 Retake-aware grade map:',
+                Array.from(gradeMap.values())
+                    .filter(g => isActiveRetakeGrade(g))
+                    .map(g => ({
+                        examId: g.exam_id,
+                        resultStatus: g.result_status,
+                        retakeUnlocked: g.retake_unlocked,
+                        updatedAt: g.updated_at
+                    }))
+            );
             
             const filteredExams = exams.filter(exam => {
                 const rawExamBlock = exam.block || exam.block_term || exam.term || 'General';
@@ -856,12 +843,6 @@ applyDataFilter() {
             this.allExams = Array.from(examGroups.values()).map(group => {
                 const grade = group.grade;
                 const gradeId = grade?.id || grade?._id || grade?.grade_id || null;
-                const latestAttempt = latestAttemptMap.get(String(group.id)) || null;
-                const attemptNumber = latestAttempt?.attempt_number ? Number(latestAttempt.attempt_number) : (grade?.attempt_number ? Number(grade.attempt_number) : 1);
-                const attemptStatus = String(latestAttempt?.status || '').toUpperCase();
-                const isAttemptInProgress = attemptStatus === 'IN_PROGRESS';
-                const isAttemptCompleted = ['COMPLETED', 'SUBMITTED'].includes(attemptStatus);
-                const isRetakeAttempt = latestAttempt?.is_retake === true;
                 
                 // ============================================
                 // 🔧 FIXED: Release detection with RETAKE support
@@ -1088,22 +1069,9 @@ applyDataFilter() {
                 const isExpired = examStatus === 'expired' || isClosed;
                 
                 // ============================================
-                // ✅ ATTEMPT CHECK - FIRST PRIORITY
+                // ✅ RETAKE CHECK - ABSOLUTE FIRST PRIORITY
                 // ============================================
-                if (isAttemptInProgress && hasValidLink) {
-                    finalStatus = 'available';
-                    finalCanStart = true;
-                    buttonText = 'Continue Exam';
-                    finalMessage = isRetakeAttempt ? '🔄 Retake in progress' : '▶️ Exam in progress';
-                    isCompleted = false;
-                    gradeText = isRetakeAttempt ? `Retake #${attemptNumber} In Progress` : 'In Progress';
-                    gradeClass = 'retake';
-                    canStart = true;
-                }
-                // ============================================
-                // ✅ RETAKE CHECK
-                // ============================================
-                else if (isResetForRetake && retakeUnlocked) {
+                if (isResetForRetake && retakeUnlocked) {
                     // Exam is available for retake
                     if (examStatus === 'available' || (examEndDateTime && kenyaNow <= examEndDateTime)) {
                         finalStatus = 'available';
@@ -1197,6 +1165,14 @@ applyDataFilter() {
                 // ============================================
                 // Display scores
                 // ============================================
+                // While a retake is authorized, do not display any score
+                // from the previous attempt. Scores remain hidden until
+                // the new attempt is completed and officially released.
+                if (isResetForRetake && retakeUnlocked) {
+                    displayScore = 0;
+                    displayPercentage = null;
+                }
+
                 let cat1Display = '--';
                 let cat2Display = '--';
                 let finalDisplay = '--';
@@ -1291,11 +1267,6 @@ applyDataFilter() {
                     status: group.status,
                     result_status: grade?.result_status || null,
                     grade: grade,
-                    attemptId: latestAttempt?.id || grade?.attempt_id || null,
-                    attemptNumber: attemptNumber,
-                    attemptStatus: attemptStatus || (grade ? 'LEGACY' : null),
-                    isAttemptInProgress: isAttemptInProgress,
-                    isRetakeAttempt: isRetakeAttempt,
                     isTVET: this.isTVETStudent || isExamTVET,
                     term: this.userTerm || group.block_term || 'Year 1 Term 1'
                 };
@@ -1375,7 +1346,7 @@ applyDataFilter() {
                 }
                 
                 // ✅ Check if this is a retake exam
-                const isRetake = exam.isResetForRetake && exam.retakeUnlocked && !exam.isAttemptInProgress;
+                const isRetake = exam.isResetForRetake && exam.retakeUnlocked;
                 
                 let actionHtml = '';
                 let timerHtml = '';
@@ -1413,22 +1384,20 @@ applyDataFilter() {
                         timerClass = 'has-timer';
                     }
                 } 
-                // Normal available exam / resume current attempt
+                // Normal available exam
                 else if (exam.actionState === 'available' && exam.canTakeExam && exam.hasValidLink) {
                     let examLink = exam.examLink;
                     const baseUrl = examLink.split('?')[0];
                     const params = new URLSearchParams();
                     params.append('user_id', userId);
                     params.append('exam_id', exam.id);
-                    if (exam.isResetForRetake && exam.retakeUnlocked) params.append('retake', 'true');
                     const fullUrl = baseUrl + '?' + params.toString();
-                    const continueAttempt = exam.isAttemptInProgress;
                     
                     actionHtml = `
                         <a href="${fullUrl}" target="_blank" 
-                           class="exam-action-btn ${continueAttempt ? 'btn-retake' : 'btn-start'}" 
+                           class="exam-action-btn btn-start" 
                            onclick="sessionStorage.setItem('returningFromExam', 'true'); sessionStorage.setItem('examUserId', '${userId}');">
-                            <i class="fas ${continueAttempt ? 'fa-play-circle' : 'fa-play'}"></i> ${continueAttempt ? 'Continue Exam' : 'Start Exam'}
+                            <i class="fas fa-play"></i> Start Exam
                         </a>
                     `;
                     
@@ -1567,7 +1536,7 @@ applyDataFilter() {
             completedReleased.forEach(exam => {
                 const isCatExam = exam.isCatExam || false;
                 const isTVET = exam.isTVET || this.isTVETStudent;
-                const isRetake = exam.isResetForRetake && exam.retakeUnlocked && !exam.isAttemptInProgress;
+                const isRetake = exam.isResetForRetake && exam.retakeUnlocked;
                 
                 let examDisplayName = 'Assessment';
                 if (typeof exam.exam_name === 'string' && exam.exam_name !== '[object Object]' && exam.exam_name !== '') {
@@ -2030,46 +1999,24 @@ applyDataFilter() {
                 
                 if (questionsError) throw questionsError;
                 
-                const { data: attempts, error: attemptsError } = await supabase
-                    .from('exam_attempts')
-                    .select('id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
-                    .eq('student_id', userId)
-                    .eq('exam_id', parseInt(examId))
-                    .order('attempt_number', { ascending: false });
-
-                if (attemptsError && !String(attemptsError.message || '').toLowerCase().includes('relation')) {
-                    throw attemptsError;
-                }
-
-                const latestAttempt = (attempts || [])[0] || null;
-                let answersQuery = supabase
+                const { data: answers, error: answersError } = await supabase
                     .from('exam_grades')
                     .select('*')
                     .eq('student_id', userId)
                     .eq('exam_id', parseInt(examId))
                     .neq('question_id', '00000000-0000-0000-0000-000000000000');
-
-                let gradeQuery = supabase
+                
+                if (answersError) throw answersError;
+                
+                const { data: grade, error: gradeError } = await supabase
                     .from('exam_grades')
                     .select('*')
                     .eq('student_id', userId)
                     .eq('exam_id', parseInt(examId))
-                    .eq('question_id', '00000000-0000-0000-0000-000000000000');
-
-                if (latestAttempt?.id) {
-                    answersQuery = answersQuery.eq('attempt_id', latestAttempt.id);
-                    gradeQuery = gradeQuery.eq('attempt_id', latestAttempt.id);
-                }
-
-                const [{ data: answers, error: answersError }, { data: gradeRows, error: gradeError }] = await Promise.all([
-                    answersQuery,
-                    gradeQuery.order('updated_at', { ascending: false }).limit(1)
-                ]);
-
-                if (answersError) throw answersError;
-                if (gradeError) throw gradeError;
-
-                const grade = gradeRows?.[0] || null;
+                    .eq('question_id', '00000000-0000-0000-0000-000000000000')
+                    .single();
+                
+                if (gradeError && gradeError.code !== 'PGRST116') throw gradeError;
                 
                 const questionReview = (questions || []).map(q => {
                     const answer = answers?.find(a => a.question_id === q.id);
@@ -2097,9 +2044,6 @@ applyDataFilter() {
                 const totalMarks = exam?.total_marks || 100;
                 const percentage = totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0';
                 const passed = parseFloat(percentage) >= (exam?.pass_mark || 60);
-                const attemptLabel = latestAttempt
-                    ? `Attempt #${Number(latestAttempt.attempt_number || 1)}${latestAttempt.is_retake ? ' • Retake' : ''}`
-                    : 'Original Attempt';
                 
                 let questionsHtml = '';
                 if (questionReview.length === 0) {
