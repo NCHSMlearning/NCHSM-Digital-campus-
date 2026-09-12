@@ -24,400 +24,387 @@
 
 <style>
 :root{
-  --navy:#062844;
-  --navy2:#0b426a;
+  --navy:#062b48;
+  --navy2:#0a4169;
   --blue:#0879d1;
   --blue2:#0b8fe9;
   --cyan:#18b8d9;
-  --green:#13a568;
+  --green:#16a66a;
   --red:#e5484d;
   --orange:#f59e0b;
-  --gold:#f4b51b;
   --bg:#f4f8fb;
   --card:#fff;
   --text:#102b44;
-  --muted:#6e8296;
-  --line:#dce7ee;
+  --muted:#6d8195;
+  --line:#d9e6ee;
   --soft:#edf6fb;
-  --shadow:0 12px 35px rgba(6,40,68,.08);
-  --shadow-lg:0 18px 55px rgba(6,40,68,.11);
+  --shadow:0 10px 30px rgba(6,43,72,.07);
+  --shadow-lg:0 18px 48px rgba(6,43,72,.10);
 }
 *{box-sizing:border-box}
 html,body{
-  margin:0;
-  min-height:100%;
+  margin:0;min-height:100%;
   font-family:Inter,Arial,sans-serif;
-  color:var(--text);
-  background:var(--bg);
+  color:var(--text);background:var(--bg)
 }
 body{overflow-x:hidden}
 button,input,textarea,select{font:inherit}
 button{cursor:pointer}
 .hidden{display:none!important}
 
-/* =========================================================
-   HEADER
-   ========================================================= */
+/* ================= HEADER ================= */
 .site-header{
-  height:70px;
-  background:linear-gradient(110deg,#062844,#0a3c61);
+  height:72px;
+  padding:0 34px;
+  background:linear-gradient(110deg,var(--navy),var(--navy2));
   color:#fff;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  padding:0 42px;
-  position:sticky;
-  top:0;
-  z-index:100;
+  display:flex;align-items:center;justify-content:space-between;
+  position:sticky;top:0;z-index:100;
   border-bottom:1px solid rgba(255,255,255,.08);
-  box-shadow:0 4px 20px rgba(6,40,68,.12);
+  box-shadow:0 4px 20px rgba(6,43,72,.12)
 }
-.brand{display:flex;align-items:center;gap:12px;min-width:0}
+.brand{display:flex;align-items:center;gap:11px;min-width:0}
 .brand-mark{
-  width:44px;height:44px;border-radius:12px;background:#fff;
+  width:45px;height:45px;border-radius:12px;background:#fff;
   display:grid;place-items:center;overflow:hidden;flex:none;
-  box-shadow:0 5px 18px rgba(0,0,0,.14);
+  box-shadow:0 5px 18px rgba(0,0,0,.15)
 }
 .brand-mark img{width:100%;height:100%;object-fit:contain;padding:3px}
-.brand-copy{min-width:0}
-.brand-copy strong{display:block;font-size:17px;letter-spacing:.1px}
-.brand-copy small{display:block;color:#b9cada;font-size:9px;margin-top:3px}
+.brand-copy strong{display:block;font-size:17px}
+.brand-copy small{display:block;color:#bcd0df;font-size:9px;margin-top:3px}
 .secure-badge{
   display:flex;align-items:center;gap:8px;
-  font-size:11px;font-weight:800;color:#e7fff4;
+  font-size:11px;font-weight:800;color:#e9fff5;
   padding:9px 13px;border-radius:999px;
-  border:1px solid rgba(255,255,255,.13);
-  background:rgba(255,255,255,.055);
-  white-space:nowrap;
+  border:1px solid rgba(255,255,255,.14);
+  background:rgba(255,255,255,.055)
 }
-.secure-badge i{color:#54df9e}
+.secure-badge i{color:#55dfa0}
 
-/* =========================================================
-   LOBBY
-   ========================================================= */
+/* ================= LOBBY ================= */
 #lobbyContainer{
-  min-height:calc(100dvh - 70px);
+  min-height:calc(100dvh - 72px);
   background:
-    radial-gradient(circle at 90% 5%,rgba(24,184,217,.10),transparent 25%),
-    radial-gradient(circle at 4% 18%,rgba(8,121,209,.06),transparent 22%),
-    var(--bg);
+    radial-gradient(circle at 80% 0%,rgba(24,184,217,.10),transparent 24%),
+    radial-gradient(circle at 8% 18%,rgba(8,121,209,.055),transparent 24%),
+    var(--bg)
 }
 .lobby-wrap{
-  width:min(1120px,calc(100% - 56px));
+  width:min(1250px,calc(100% - 48px));
   margin:0 auto;
-  padding:34px 0 52px;
+  padding:30px 0 45px;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 300px;
+  gap:16px;
+  align-items:start
 }
-.lobby-intro{
-  max-width:850px;
-  margin:0 0 22px;
-}
+.lobby-main{min-width:0}
+.lobby-intro{margin:0 0 17px}
 .eyebrow{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  color:var(--blue);
-  background:#eaf5fc;
-  border:1px solid #d2e9f7;
-  padding:7px 11px;
-  border-radius:999px;
-  font-size:10px;
-  font-weight:800;
-  letter-spacing:1.2px;
-  text-transform:uppercase;
-  margin-bottom:12px;
+  display:inline-flex;align-items:center;gap:7px;
+  color:var(--blue);background:#eaf5fc;
+  border:1px solid #d0e9f7;
+  padding:7px 11px;border-radius:999px;
+  font-size:9px;font-weight:800;
+  letter-spacing:1.15px;text-transform:uppercase;
+  margin-bottom:10px
 }
 .lobby-intro h1{
-  font-size:clamp(32px,4.3vw,47px);
-  line-height:1.06;
-  margin:0 0 9px;
-  letter-spacing:-1.9px;
-  color:#082d4d;
+  font-size:clamp(31px,3.8vw,45px);
+  line-height:1.06;margin:0 0 7px;
+  letter-spacing:-1.8px;color:#082d4d
 }
 .lobby-intro p{
-  max-width:760px;
-  font-size:14px;
-  line-height:1.65;
-  color:var(--muted);
-  margin:0;
+  font-size:13px;line-height:1.6;
+  color:var(--muted);margin:0
 }
 
 /* Exam summary */
 .exam-hero-card{
-  position:relative;
-  overflow:hidden;
-  background:#fff;
-  border:1px solid #d7e5ed;
-  border-radius:21px;
-  padding:22px 24px;
+  position:relative;overflow:hidden;
+  background:rgba(255,255,255,.97);
+  border:1px solid var(--line);
+  border-radius:20px;
+  padding:21px 22px;
   box-shadow:var(--shadow-lg);
-  margin-bottom:13px;
+  margin-bottom:11px
 }
 .exam-hero-card:after{
-  content:"";
-  position:absolute;
-  width:190px;height:190px;
-  right:-82px;top:-110px;
-  border-radius:50%;
-  background:#eaf7fc;
-  opacity:.9;
-  pointer-events:none;
+  content:"";position:absolute;
+  width:170px;height:170px;
+  right:-70px;top:-100px;
+  border-radius:50%;background:#eaf7fc;
+  pointer-events:none
 }
 .exam-hero-top{
-  position:relative;
-  z-index:1;
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:15px;
+  position:relative;z-index:1;
+  display:flex;align-items:center;
+  justify-content:space-between;gap:15px
 }
 .exam-hero-top h2{
-  font-size:23px;
-  line-height:1.2;
-  margin:0 0 4px;
-  color:#092e4e;
-  letter-spacing:-.5px;
+  font-size:22px;margin:0 0 3px;
+  letter-spacing:-.45px;color:#092e4e
 }
-.exam-hero-top p{
-  margin:0;
-  color:var(--muted);
-  font-size:12px;
-}
+.exam-hero-top p{margin:0;color:var(--muted);font-size:11px}
 .proctored-pill{
-  background:#eafaf2;
-  color:#14764f;
+  background:#eafaf2;color:#14764f;
   border:1px solid #bdebd5;
-  padding:8px 12px;
-  border-radius:999px;
-  font-weight:800;
-  font-size:10px;
-  white-space:nowrap;
+  padding:8px 12px;border-radius:999px;
+  font-weight:800;font-size:9px;white-space:nowrap
 }
 .exam-metrics{
-  position:relative;
-  z-index:1;
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
-  margin-top:18px;
+  position:relative;z-index:1;
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:9px;margin-top:16px
 }
 .metric{
-  min-height:82px;
-  background:#fbfdff;
-  border:1px solid #d9e6ed;
-  border-radius:14px;
-  padding:13px 15px;
+  min-height:78px;
+  background:#fbfdff;border:1px solid var(--line);
+  border-radius:13px;padding:12px 14px
 }
-.metric span{
-  display:block;
-  color:#73879a;
-  font-size:9px;
-  text-transform:uppercase;
-  letter-spacing:1.15px;
-  font-weight:700;
+.metric>span{
+  display:block;color:#72879a;
+  font-size:8px;text-transform:uppercase;
+  letter-spacing:1.1px;font-weight:700
 }
 .metric strong{
-  display:block;
-  font-size:22px;
-  line-height:1.15;
-  margin-top:6px;
-  color:#082d4d;
+  display:block;font-size:21px;line-height:1.1;
+  margin-top:6px;color:#082d4d
 }
 .metric strong span{
-  display:inline;
-  font-size:inherit;
-  letter-spacing:0;
-  text-transform:none;
-  color:inherit;
-  font-weight:inherit;
+  display:inline!important;
+  font-size:inherit!important;
+  letter-spacing:0!important;
+  text-transform:none!important;
+  color:inherit!important;
+  font-weight:inherit!important
 }
-#continuationBadge{
-  position:relative;
-  z-index:1;
-}
+#continuationBadge{position:relative;z-index:1}
 
 /* Student */
 .student-card{
-  display:grid;
-  grid-template-columns:auto 1fr auto;
-  align-items:center;
-  gap:13px;
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:17px;
-  padding:13px 17px;
-  margin-bottom:13px;
-  box-shadow:0 7px 22px rgba(6,40,68,.045);
+  display:grid;grid-template-columns:auto 1fr auto;
+  align-items:center;gap:12px;
+  background:#fff;border:1px solid var(--line);
+  border-radius:16px;padding:12px 15px;
+  margin-bottom:11px;box-shadow:0 6px 20px rgba(6,43,72,.04)
 }
 .student-avatar{
-  width:43px;height:43px;
-  border-radius:13px;
-  background:#eaf5fc;
-  color:var(--blue);
-  display:grid;place-items:center;
-  font-size:17px;
+  width:48px;height:48px;border-radius:14px;
+  background:#eaf5fc;color:var(--blue);
+  display:grid;place-items:center;font-size:17px;
+  overflow:hidden;position:relative;flex:none;
+  border:1px solid #d7e9f4
 }
-.student-info strong{display:block;font-size:14px}
-.student-info span{display:block;color:var(--muted);font-size:10px;margin-top:3px}
+.student-avatar .profile-photo{
+  width:100%;height:100%;object-fit:cover;display:none
+}
+.student-avatar .fa-user{display:block}
+.student-info strong{display:block;font-size:13px}
+.student-info span{display:block;color:var(--muted);font-size:9px;margin-top:3px}
 .student-program{text-align:right}
 .student-program small{
-  color:var(--muted);display:block;font-size:8px;
-  text-transform:uppercase;letter-spacing:1px
+  color:var(--muted);display:block;
+  font-size:8px;text-transform:uppercase;letter-spacing:1px
 }
-.student-program strong{font-size:11px}
+.student-program strong{font-size:10px}
 
 /* Steps */
 .steps{
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:9px;
-  margin-bottom:13px;
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:8px;margin-bottom:11px
 }
 .step{
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:14px;
-  padding:11px 13px;
-  min-height:58px;
-  display:flex;
-  align-items:center;
-  gap:10px;
-  transition:.18s ease;
+  background:#fff;border:1px solid var(--line);
+  border-radius:13px;padding:10px 12px;
+  min-height:56px;display:flex;
+  align-items:center;gap:9px;transition:.18s ease
 }
 .step.active{
-  border-color:#8bc8e9;
-  background:#fbfeff;
-  box-shadow:0 7px 22px rgba(8,121,209,.08);
+  border-color:#7fc3e8;background:#fbfeff;
+  box-shadow:0 6px 20px rgba(8,121,209,.07)
 }
 .step-number{
-  width:32px;height:32px;
-  border-radius:50%;
-  background:#edf3f7;
-  color:#64798c;
+  width:31px;height:31px;border-radius:50%;
+  background:#edf3f7;color:#64798c;
   display:grid;place-items:center;
-  font-size:11px;font-weight:800;
-  flex:none;
+  font-size:10px;font-weight:800;flex:none
 }
 .step.active .step-number{
-  background:var(--blue);
-  color:#fff;
-  box-shadow:0 0 0 5px #e4f3fb;
+  background:var(--blue);color:#fff;
+  box-shadow:0 0 0 4px #e4f3fb
 }
 .step.completed .step-number{background:#dff7eb;color:#168154}
-.step-copy strong{display:block;font-size:11px}
-.step-copy span{display:block;color:var(--muted);font-size:9px;margin-top:2px}
+.step-copy strong{display:block;font-size:10px}
+.step-copy span{display:block;color:var(--muted);font-size:8px;margin-top:2px}
 
-/* Step content */
+/* Content */
 .step-content{
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:18px;
-  padding:21px;
-  box-shadow:var(--shadow);
+  background:#fff;border:1px solid var(--line);
+  border-radius:17px;padding:20px;
+  box-shadow:var(--shadow)
 }
 .step-content h3{
-  margin:0 0 5px;
-  font-size:18px;
-  color:#092e4e;
+  margin:0 0 4px;font-size:17px;
+  color:#092e4e;letter-spacing:-.25px
 }
 .step-content>p{
-  margin:0 0 15px;
-  color:var(--muted);
-  font-size:12px;
-  line-height:1.55;
+  margin:0 0 13px;color:var(--muted);
+  font-size:10px;line-height:1.55
 }
 .instructions{
-  display:grid;
-  grid-template-columns:repeat(2,1fr);
-  gap:8px;
-  margin-bottom:14px;
+  display:grid;grid-template-columns:repeat(2,1fr);
+  gap:7px;margin-bottom:12px
 }
 .instruction{
-  display:flex;
-  align-items:flex-start;
-  gap:9px;
-  min-height:59px;
-  padding:11px;
+  display:flex;gap:8px;align-items:flex-start;
+  min-height:55px;padding:10px;
   border:1px solid var(--line);
-  border-radius:12px;
-  background:#fbfdff;
+  border-radius:11px;background:#fbfdff
 }
 .instruction i{
-  width:26px;height:26px;
-  border-radius:8px;
-  background:#eaf5fc;
-  color:var(--blue);
-  display:grid;place-items:center;
-  flex:none;
-  font-size:11px;
+  width:25px;height:25px;border-radius:8px;
+  background:#eaf5fc;color:var(--blue);
+  display:grid;place-items:center;flex:none;font-size:10px
 }
-.instruction span{font-size:10px;line-height:1.5;color:#334e68}
+.instruction span{font-size:9px;line-height:1.5;color:#334e68}
 .terms-box{
-  background:#f7fafc;
-  border:1px solid var(--line);
-  border-radius:12px;
-  padding:12px;
-  margin:13px 0;
+  background:#f7fafc;border:1px solid var(--line);
+  border-radius:11px;padding:10px;margin:11px 0
 }
 .terms-label{
-  display:flex;gap:9px;align-items:flex-start;
-  font-size:10px;line-height:1.55;
+  display:flex;gap:8px;align-items:flex-start;
+  font-size:9px;line-height:1.5
 }
 .terms-label input{
-  width:17px;height:17px;
-  accent-color:var(--blue);
-  flex:none;margin-top:1px;
+  width:16px;height:16px;accent-color:var(--blue);
+  flex:none;margin-top:0
 }
-.action-row{
-  display:flex;
-  justify-content:flex-end;
-  align-items:center;
-  gap:8px;
-}
+.action-row{display:flex;justify-content:flex-end;gap:8px}
 .btn{
-  border:0;
-  border-radius:10px;
-  padding:10px 15px;
-  min-height:40px;
-  font-weight:800;
-  font-size:10px;
-  display:inline-flex;
-  align-items:center;
-  justify-content:center;
-  gap:7px;
-  transition:.18s ease;
+  border:0;border-radius:10px;padding:10px 14px;
+  min-height:39px;font-weight:800;font-size:9px;
+  display:inline-flex;align-items:center;
+  justify-content:center;gap:7px;transition:.18s ease
 }
 .btn:disabled{opacity:.48;cursor:not-allowed}
 .btn-primary{
   background:linear-gradient(135deg,#0879d1,#0b8fe9);
-  color:#fff;
-  box-shadow:0 7px 18px rgba(8,121,209,.18);
+  color:#fff;box-shadow:0 7px 18px rgba(8,121,209,.17)
 }
-.btn-primary:hover:not(:disabled),
-.btn-success:hover:not(:disabled){
-  transform:translateY(-1px);
-}
-.btn-secondary{background:#edf3f7;color:#18344d}
 .btn-success{
   background:linear-gradient(135deg,#119961,#18b775);
-  color:#fff;
-  box-shadow:0 7px 18px rgba(19,165,104,.16);
+  color:#fff;box-shadow:0 7px 18px rgba(19,165,104,.15)
+}
+.btn-secondary{background:#edf3f7;color:#18344d}
+.btn-primary:hover:not(:disabled),
+.btn-success:hover:not(:disabled){transform:translateY(-1px)}
+
+/* ================= RIGHT CAMPUS PANEL ================= */
+.lobby-aside{
+  position:sticky;top:88px;
+  display:flex;flex-direction:column;gap:11px
+}
+.campus-visual{
+  position:relative;overflow:hidden;
+  min-height:260px;border-radius:20px;
+  border:1px solid #d5e5ed;
+  box-shadow:var(--shadow-lg);
+  background:#dcebf2
+}
+.campus-visual img{
+  width:100%;height:100%;
+  min-height:260px;display:block;
+  object-fit:cover
+}
+.campus-visual:after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(6,43,72,.04) 30%,rgba(6,43,72,.58) 100%)
+}
+.campus-caption{
+  position:absolute;left:17px;right:17px;bottom:15px;
+  z-index:2;color:#fff
+}
+.campus-caption strong{
+  display:block;font-size:18px;
+  letter-spacing:-.3px
+}
+.campus-caption span{
+  display:block;font-size:9px;
+  margin-top:3px;color:#e4f3fb
+}
+.values-strip{
+  display:grid;grid-template-columns:repeat(3,1fr);
+  gap:6px;background:#0764a4;
+  padding:9px;border-radius:12px;
+  color:#fff;box-shadow:0 7px 20px rgba(8,121,209,.14)
+}
+.value-item{
+  text-align:center;font-size:8px;font-weight:700;
+  padding:4px 2px
+}
+.value-item i{
+  display:block;font-size:14px;
+  margin-bottom:4px;color:#dff5ff
+}
+.assurance-card,.connection-card{
+  background:rgba(255,255,255,.94);
+  border:1px solid var(--line);
+  border-radius:16px;padding:16px;
+  box-shadow:var(--shadow)
+}
+.assurance-head{
+  display:flex;align-items:center;gap:9px;
+  margin-bottom:8px
+}
+.assurance-icon{
+  width:34px;height:34px;border-radius:10px;
+  display:grid;place-items:center;
+  background:#eaf5fc;color:var(--blue);font-size:15px
+}
+.assurance-card h3{
+  margin:0;font-size:13px;color:#092e4e
+}
+.assurance-card p,.connection-card p{
+  margin:0;color:var(--muted);
+  font-size:9px;line-height:1.6
+}
+.assurance-quote{
+  border-top:1px solid var(--line);
+  margin-top:11px;padding-top:10px;
+  color:#1772ad!important;
+  font-style:italic
+}
+.connection-card{
+  background:#edf7fd;
+  border-color:#cce6f5;
+  display:flex;gap:9px
+}
+.connection-card .connection-icon{
+  width:31px;height:31px;flex:none;
+  border-radius:50%;background:#0879d1;color:#fff;
+  display:grid;place-items:center;font-size:12px
+}
+.connection-card strong{
+  display:block;font-size:10px;color:#0a4269;
+  margin-bottom:3px
+}
+.lobby-footer{
+  font-size:8px;color:#8092a2;
+  display:flex;justify-content:space-between;
+  gap:8px;padding:2px 3px
 }
 
-/* Camera */
+/* ================= CAMERA ================= */
 .camera-layout{
-  display:grid;
-  grid-template-columns:1.1fr .9fr;
-  gap:15px;
-  align-items:start;
+  display:grid;grid-template-columns:1.1fr .9fr;
+  gap:14px;align-items:start
 }
 .camera-preview{
-  background:#071d33;
-  border-radius:15px;
-  overflow:hidden;
-  position:relative;
-  aspect-ratio:16/9;
-  border:3px solid #dbe8ef;
-  box-shadow:0 10px 28px rgba(6,40,68,.10);
+  background:#071d33;border-radius:14px;
+  overflow:hidden;position:relative;
+  aspect-ratio:16/9;border:3px solid #dbe8ef;
+  box-shadow:0 10px 28px rgba(6,43,72,.10)
 }
 .camera-preview video{
   width:100%;height:100%;object-fit:cover;
@@ -428,149 +415,112 @@ button{cursor:pointer}
   display:flex;justify-content:space-between;gap:8px
 }
 .camera-chip{
-  background:rgba(7,29,51,.82);
-  color:#fff;border-radius:999px;
-  padding:6px 9px;font-size:8px;font-weight:700
+  background:rgba(7,29,51,.82);color:#fff;
+  border-radius:999px;padding:6px 9px;
+  font-size:8px;font-weight:700
 }
 .camera-chip i{color:#55e0a5}
 .camera-info{
-  border:1px solid var(--line);
-  border-radius:15px;
-  padding:14px;
-  background:#fbfdff;
+  border:1px solid var(--line);border-radius:14px;
+  padding:13px;background:#fbfdff
 }
 .status-line{
   display:flex;align-items:center;gap:8px;
-  padding:10px 0;
-  border-bottom:1px solid var(--line);
-  font-size:10px
+  padding:9px 0;border-bottom:1px solid var(--line);
+  font-size:9px
 }
 .status-line:last-child{border-bottom:0}
 .status-dot{
   width:8px;height:8px;border-radius:50%;
   background:#cbd5df;flex:none
 }
-.status-dot.good{
-  background:#16a66a;
-  box-shadow:0 0 0 3px #dff7eb
-}
+.status-dot.good{background:#16a66a;box-shadow:0 0 0 3px #dff7eb}
 .status-dot.warning{background:#f59e0b}
 .status-dot.danger{background:#e5484d}
 .camera-status-text{
-  margin-top:11px;
-  padding:10px;
-  border-radius:10px;
-  background:#f3f7fb;
-  color:var(--muted);
-  font-size:10px;
-  line-height:1.5
+  margin-top:10px;padding:9px;border-radius:9px;
+  background:#f3f7fb;color:var(--muted);
+  font-size:9px;line-height:1.5
 }
 .camera-status-text.success{background:#e9f8f0;color:#14754d}
 .camera-status-text.warning{background:#fff6df;color:#8a6100}
 .camera-status-text.error{background:#fff0f0;color:#a52d32}
-.camera-actions{display:flex;gap:7px;margin-top:11px}
+.camera-actions{display:flex;gap:7px;margin-top:10px}
 .camera-actions .btn{flex:1}
 
-/* Ready */
-.ready-card{text-align:center;max-width:680px;margin:auto;padding:10px}
+/* ================= READY ================= */
+.ready-card{text-align:center;max-width:680px;margin:auto;padding:9px}
 .ready-icon{
-  width:62px;height:62px;border-radius:18px;
+  width:61px;height:61px;border-radius:17px;
   background:#dff7eb;color:#16a66a;
-  display:grid;place-items:center;
-  font-size:25px;margin:0 auto 12px;
-  box-shadow:0 0 0 7px #effaf5
+  display:grid;place-items:center;font-size:25px;
+  margin:0 auto 11px;box-shadow:0 0 0 7px #effaf5
 }
-.ready-card h3{font-size:25px;margin:0 0 6px}
-.ready-card>p{color:var(--muted);font-size:12px;line-height:1.55}
+.ready-card h3{font-size:24px;margin:0 0 6px}
+.ready-card>p{color:var(--muted);font-size:10px;line-height:1.55}
 .ready-list{
   display:grid;grid-template-columns:repeat(2,1fr);
-  gap:8px;text-align:left;margin:17px 0
+  gap:7px;text-align:left;margin:15px 0
 }
 .ready-item{
-  padding:11px;border:1px solid var(--line);
-  border-radius:11px;display:flex;gap:8px;
-  font-size:10px;background:#fbfdff
+  padding:10px;border:1px solid var(--line);
+  border-radius:10px;display:flex;gap:7px;
+  font-size:9px;background:#fbfdff
 }
 .ready-item i{color:var(--green)}
 .quote{
-  padding:11px;border-radius:11px;
+  padding:10px;border-radius:10px;
   background:#f3f8fc;color:#486073;
-  font-size:10px;font-style:italic;margin-bottom:14px
+  font-size:9px;font-style:italic;margin-bottom:13px
 }
 
-/* =========================================================
-   ACTIVE EXAM
-   ========================================================= */
+/* ================= ACTIVE EXAM ================= */
 #examInterface{
-  display:none;
-  background:#edf4f8;
-  height:calc(100dvh - 70px);
-  min-height:0;
-  overflow:hidden;
+  display:none;background:#edf4f8;
+  height:calc(100dvh - 72px);
+  min-height:0;overflow:hidden
 }
 .exam-shell{height:100%;min-height:0;display:flex;flex-direction:column}
 .exam-topbar{
-  flex:none;
-  background:#fff;
-  border-bottom:1px solid var(--line);
-  height:62px;
-  display:flex;align-items:center;
-  justify-content:space-between;
-  padding:0 16px;
-  gap:12px;
-  box-shadow:0 3px 16px rgba(6,40,68,.06);
+  flex:none;background:#fff;border-bottom:1px solid var(--line);
+  height:62px;display:flex;align-items:center;
+  justify-content:space-between;padding:0 16px;gap:12px;
+  box-shadow:0 3px 16px rgba(6,43,72,.06)
 }
 .exam-brand{display:flex;align-items:center;gap:9px;min-width:0}
 .exam-brand .brand-mark{width:37px;height:37px;border-radius:10px}
-.exam-brand strong{
-  font-size:13px;display:block;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  color:#092e4e
-}
+.exam-brand strong{font-size:13px;display:block;color:#092e4e}
 .exam-brand small{display:block;color:var(--muted);font-size:9px;margin-top:2px}
 .exam-top-center{display:flex;align-items:center;gap:9px;min-width:0}
 .exam-title-wrap{min-width:0}
 .exam-title-wrap strong{
   display:block;max-width:300px;
-  overflow:hidden;text-overflow:ellipsis;white-space:nowrap;
-  font-size:12px;color:#092e4e
+  overflow:hidden;text-overflow:ellipsis;
+  white-space:nowrap;font-size:12px;color:#092e4e
 }
 .exam-title-wrap span{display:block;color:var(--muted);font-size:9px}
 .timer-box{
-  border:1px solid #ffd1d4;
-  background:#fff7f7;color:#c73d45;
-  border-radius:11px;padding:7px 10px;
-  text-align:center;min-width:96px;
-  box-shadow:0 4px 14px rgba(229,72,77,.06)
+  border:1px solid #ffd1d4;background:#fff7f7;
+  color:#c73d45;border-radius:11px;padding:7px 10px;
+  text-align:center;min-width:96px
 }
-.timer-box small{
-  display:block;font-size:7px;
-  text-transform:uppercase;letter-spacing:1px
-}
-.timer-box strong{font-size:15px;letter-spacing:.4px}
-.exam-body{
-  flex:1;min-height:0;
-  padding:10px;overflow:hidden
-}
+.timer-box small{display:block;font-size:7px;text-transform:uppercase;letter-spacing:1px}
+.timer-box strong{font-size:15px}
+.exam-body{flex:1;min-height:0;padding:10px;overflow:hidden}
 .exam-grid{
   height:100%;min-height:0;
-  display:grid;
-  grid-template-columns:220px minmax(0,1fr) 225px;
+  display:grid;grid-template-columns:220px minmax(0,1fr) 225px;
   gap:10px
 }
 .panel{
-  background:#fff;
-  border:1px solid var(--line);
-  border-radius:15px;
-  min-height:0;
-  overflow:hidden;
-  box-shadow:0 6px 22px rgba(6,40,68,.05)
+  background:#fff;border:1px solid var(--line);
+  border-radius:15px;min-height:0;overflow:hidden;
+  box-shadow:0 6px 22px rgba(6,43,72,.05)
 }
 .left-panel,.right-panel{padding:13px;overflow-y:auto}
 .panel-title{
-  font-size:9px;font-weight:800;
-  text-transform:uppercase;letter-spacing:1px;
-  color:#708599;margin:0 0 9px
+  font-size:9px;font-weight:800;text-transform:uppercase;
+  letter-spacing:1px;color:#708599;margin:0 0 9px
 }
 .profile-mini{
   display:flex;gap:8px;align-items:center;
@@ -578,407 +528,237 @@ button{cursor:pointer}
   margin-bottom:11px
 }
 .profile-mini .avatar{
-  width:36px;height:36px;border-radius:10px;
-  background:#e8f3fb;color:var(--blue);
-  display:grid;place-items:center
+  width:38px;height:38px;border-radius:11px;
+  background:#e8f3fb;color:var(--blue);display:grid;place-items:center;
+  overflow:hidden;position:relative;flex:none;border:1px solid #d7e9f4
 }
+.profile-mini .avatar .profile-photo{
+  width:100%;height:100%;object-fit:cover;display:none
+}
+.profile-mini .avatar .fa-user{display:block}
 .profile-mini strong{display:block;font-size:10px}
 .profile-mini span{display:block;font-size:8px;color:var(--muted);margin-top:2px}
 .camera-mini{
-  background:#071d33;border-radius:11px;
-  overflow:hidden;aspect-ratio:4/3;
-  margin-bottom:8px;position:relative;
+  background:#071d33;border-radius:11px;overflow:hidden;
+  aspect-ratio:4/3;margin-bottom:8px;position:relative;
   border:2px solid #dce7ed
 }
 .camera-mini video{width:100%;height:100%;object-fit:cover;transform:scaleX(-1)}
 .camera-mini canvas{position:absolute;inset:0;width:100%;height:100%}
 .live-pill{
-  position:absolute;left:6px;top:6px;
-  background:#e5484d;color:#fff;
-  border-radius:999px;padding:4px 6px;
-  font-size:7px;font-weight:800
+  position:absolute;left:6px;top:6px;background:#e5484d;color:#fff;
+  border-radius:999px;padding:4px 6px;font-size:7px;font-weight:800
 }
-.stats{
-  display:grid;grid-template-columns:1fr 1fr;
-  gap:6px;margin:9px 0
-}
-.stat{
-  background:#f7fafc;border:1px solid var(--line);
-  border-radius:9px;padding:8px
-}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:9px 0}
+.stat{background:#f7fafc;border:1px solid var(--line);border-radius:9px;padding:8px}
 .stat span{display:block;font-size:7px;color:var(--muted)}
 .stat strong{font-size:12px;display:block;margin-top:3px}
-.progress-track{
-  height:6px;background:#e6eef4;
-  border-radius:99px;overflow:hidden
-}
-.progress-fill{
-  height:100%;width:0;
-  background:linear-gradient(90deg,var(--blue),var(--cyan));
-  border-radius:99px
-}
+.progress-track{height:6px;background:#e6eef4;border-radius:99px;overflow:hidden}
+.progress-fill{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan));border-radius:99px}
 .status-good{color:#148053}.status-good i{font-size:7px}
-.question-panel{
-  display:flex;flex-direction:column;min-width:0
-}
+.question-panel{display:flex;flex-direction:column;min-width:0}
 .question-head{
-  flex:none;padding:11px 14px;
-  border-bottom:1px solid var(--line);
-  display:flex;align-items:center;
-  justify-content:space-between;gap:9px
+  flex:none;padding:11px 14px;border-bottom:1px solid var(--line);
+  display:flex;align-items:center;justify-content:space-between;gap:9px
 }
 .question-head-left{min-width:0}
 .question-head-left strong{display:block;font-size:13px;color:#092e4e}
-.question-head-left span{
-  display:block;font-size:9px;
-  color:var(--muted);margin-top:2px
-}
-.question-actions{
-  display:flex;align-items:center;gap:6px
-}
+.question-head-left span{display:block;font-size:9px;color:var(--muted);margin-top:2px}
+.question-actions{display:flex;align-items:center;gap:6px}
 .icon-btn{
-  height:35px;padding:0 10px;
-  border:1px solid var(--line);
-  background:#fff;border-radius:10px;
-  color:var(--text);font-weight:800;
-  font-size:9px;display:flex;
-  align-items:center;gap:6px;
-  transition:.15s ease
+  height:35px;padding:0 10px;border:1px solid var(--line);
+  background:#fff;border-radius:10px;color:var(--text);
+  font-weight:800;font-size:9px;display:flex;
+  align-items:center;gap:6px
 }
-.icon-btn:hover{
-  background:#f5f9fc;
-  border-color:#b8d7e8
-}
+.icon-btn:hover{background:#f5f9fc;border-color:#b8d7e8}
 #exam-container{
-  flex:1;min-height:0;
-  max-height:none!important;
-  overflow:hidden!important;
-  padding:0!important;
-  position:relative;
-  display:flex;flex-direction:column
+  flex:1;min-height:0;max-height:none!important;
+  overflow:hidden!important;padding:0!important;
+  position:relative;display:flex;flex-direction:column
 }
 #exam-container>div{
-  flex:1 1 auto!important;
-  min-height:0!important;
-  height:100%!important;
-  max-height:none!important;
-  overflow-y:auto!important;
-  overflow-x:hidden!important;
+  flex:1 1 auto!important;min-height:0!important;
+  height:100%!important;max-height:none!important;
+  overflow-y:auto!important;overflow-x:hidden!important;
   -webkit-overflow-scrolling:touch;
-  overscroll-behavior:contain;
-  touch-action:pan-y;
-  padding:18px 20px 26px!important;
-  scroll-behavior:smooth
+  overscroll-behavior:contain;touch-action:pan-y;
+  padding:18px 20px 26px!important;scroll-behavior:smooth
 }
-#exam-container li{
-  max-width:100%;overflow-wrap:anywhere
-}
-#exam-container label{
-  max-width:100%;overflow-wrap:anywhere;
-  white-space:normal
-}
-#exam-container label{
-  transition:.15s ease
-}
-#exam-container label:hover{
-  border-color:#a5d2eb!important
-}
+#exam-container li{max-width:100%;overflow-wrap:anywhere}
+#exam-container label{max-width:100%;overflow-wrap:anywhere;white-space:normal}
+#exam-container label{transition:.15s ease}
+#exam-container label:hover{border-color:#a5d2eb!important}
 #exam-container label:has(input:checked){
-  border-color:#0b82d9!important;
-  background:#f0f9ff!important;
+  border-color:#0b82d9!important;background:#f0f9ff!important;
   box-shadow:0 0 0 2px rgba(8,121,209,.09)!important
 }
-#exam-container textarea,
-#exam-container input[type="text"],
-#exam-container input[type="number"],
-#exam-container select{
-  max-width:100%;
-}
 .exam-navigation{
-  flex:none;display:flex;
-  justify-content:space-between;
-  align-items:center;gap:8px;
-  padding:9px 12px;
-  border-top:1px solid var(--line);
-  background:#fff
+  flex:none;display:flex;justify-content:space-between;
+  align-items:center;gap:8px;padding:9px 12px;
+  border-top:1px solid var(--line);background:#fff
 }
 .nav-btn{min-width:105px}
-.nav-progress{
-  font-size:9px;color:var(--muted);
-  font-weight:700;text-align:center
-}
-.right-section{
-  padding:11px 0;
-  border-bottom:1px solid var(--line)
-}
+.nav-progress{font-size:9px;color:var(--muted);font-weight:700;text-align:center}
+.right-section{padding:11px 0;border-bottom:1px solid var(--line)}
 .right-section:last-child{border-bottom:0}
 .right-section h4{
-  margin:0 0 8px;
-  font-size:9px;
-  text-transform:uppercase;
-  letter-spacing:1px;
-  color:#708599
+  margin:0 0 8px;font-size:9px;
+  text-transform:uppercase;letter-spacing:1px;color:#708599
 }
 #question-status-table{
-  display:grid;
-  grid-template-columns:repeat(5,1fr);
-  gap:5px;
-  max-height:185px;
-  overflow:auto;
-  padding-right:2px
+  display:grid;grid-template-columns:repeat(5,1fr);
+  gap:5px;max-height:185px;overflow:auto;padding-right:2px
 }
-.status-item{
-  padding:6px 2px!important;
-  font-size:8px!important;
-  border-radius:8px!important
-}
+.status-item{padding:6px 2px!important;font-size:8px!important;border-radius:8px!important}
 .proctor-status{
-  display:flex;align-items:center;gap:7px;
-  padding:8px;border-radius:9px;
-  background:#eaf8f1;color:#16764f;
+  display:flex;align-items:center;gap:7px;padding:8px;
+  border-radius:9px;background:#eaf8f1;color:#16764f;
   font-size:9px;font-weight:700
 }
 .save-status{font-size:9px;color:var(--green);margin-top:7px}
 .small-action{width:100%;margin-top:7px;min-height:41px}
 
-/* =========================================================
-   OVERLAYS / MODALS
-   ========================================================= */
+/* ================= MODALS ================= */
 .overlay{
-  position:fixed;inset:0;
-  background:rgba(4,17,29,.78);
-  backdrop-filter:blur(6px);
-  z-index:900;display:grid;
+  position:fixed;inset:0;background:rgba(4,17,29,.78);
+  backdrop-filter:blur(6px);z-index:900;display:grid;
   place-items:center;padding:18px
 }
 .overlay-card{
-  width:min(430px,100%);
-  background:#fff;border-radius:20px;
+  width:min(430px,100%);background:#fff;border-radius:20px;
   padding:24px;box-shadow:0 30px 90px rgba(0,0,0,.35);
   text-align:center;border:1px solid rgba(255,255,255,.8)
 }
 .overlay-card h3{margin:10px 0 7px;color:#092e4e}
-.overlay-card p{
-  color:var(--muted);font-size:11px;
-  line-height:1.6;margin:0
-}
+.overlay-card p{color:var(--muted);font-size:11px;line-height:1.6;margin:0}
 .overlay-icon{
   width:56px;height:56px;border-radius:16px;
   background:#edf6fc;color:var(--blue);
   display:grid;place-items:center;margin:auto;font-size:22px
 }
 .modal{
-  position:fixed;inset:0;
-  background:rgba(4,17,29,.72);
-  backdrop-filter:blur(6px);
-  z-index:950;display:grid;
+  position:fixed;inset:0;background:rgba(4,17,29,.72);
+  backdrop-filter:blur(6px);z-index:950;display:grid;
   place-items:center;padding:18px
 }
 .modal-card{
-  width:min(470px,100%);
-  background:#fff;border-radius:20px;
-  padding:24px;
-  box-shadow:0 30px 80px rgba(0,0,0,.3);
+  width:min(470px,100%);background:#fff;border-radius:20px;
+  padding:24px;box-shadow:0 30px 80px rgba(0,0,0,.3);
   border:1px solid rgba(255,255,255,.8)
 }
 .modal-card h3{margin:0 0 7px;color:#092e4e}
 .modal-card p{color:var(--muted);font-size:11px;line-height:1.6}
-.modal-actions{
-  display:flex;justify-content:flex-end;
-  gap:8px;margin-top:17px
-}
-.progress-large{
-  height:8px;background:#e7eef3;
-  border-radius:99px;overflow:hidden;margin:15px 0
-}
-.progress-large>div{
-  height:100%;width:0;
-  background:linear-gradient(90deg,var(--blue),var(--cyan))
-}
-#custom-confirm-modal .modal-card,
-#attendance-required-modal .modal-card{text-align:center}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:17px}
+.progress-large{height:8px;background:#e7eef3;border-radius:99px;overflow:hidden;margin:15px 0}
+.progress-large>div{height:100%;width:0;background:linear-gradient(90deg,var(--blue),var(--cyan))}
+#custom-confirm-modal .modal-card,#attendance-required-modal .modal-card{text-align:center}
 
-/* =========================================================
-   MOBILE
-   ========================================================= */
+/* ================= RESPONSIVE ================= */
+@media(max-width:1050px){
+  .lobby-wrap{grid-template-columns:minmax(0,1fr) 260px}
+}
 @media(max-width:900px){
+  .lobby-wrap{grid-template-columns:1fr}
+  .lobby-aside{
+    position:static;
+    display:grid;
+    grid-template-columns:1.2fr .8fr;
+    align-items:start
+  }
+  .campus-visual{grid-row:span 2}
   .exam-grid{grid-template-columns:minmax(0,1fr)}
   .left-panel,.right-panel{display:none}
   .exam-top-center{margin-left:auto}
 }
 @media(max-width:768px){
-  html,body{
-    height:100%;min-height:100%;overflow-x:hidden
-  }
-  body{overflow-y:auto;-webkit-overflow-scrolling:touch}
-  .site-header{
-    height:62px;padding:0 11px;
-    position:relative
-  }
+  .site-header{height:62px;padding:0 11px;position:relative}
   .brand-mark{width:39px;height:39px;border-radius:11px}
-  .brand-copy strong{font-size:14px}
-  .brand-copy small{font-size:8px}
-  .secure-badge{
-    font-size:8px;max-width:118px;
-    white-space:normal;text-align:right;
-    line-height:1.25;padding:6px 8px
-  }
+  .brand-copy strong{font-size:14px}.brand-copy small{font-size:8px}
+  .secure-badge{font-size:8px;max-width:118px;white-space:normal;text-align:right;line-height:1.25;padding:6px 8px}
   #lobbyContainer{min-height:calc(100dvh - 62px)}
-  .lobby-wrap{
-    width:calc(100% - 20px);
-    padding:23px 0 34px
-  }
-  .lobby-intro{margin-bottom:17px}
-  .eyebrow{font-size:9px;padding:6px 9px}
-  .lobby-intro h1{
-    font-size:31px;
-    letter-spacing:-1.45px;
-    line-height:1.06
-  }
-  .lobby-intro p{font-size:12px}
-  .exam-hero-card{
-    padding:17px;
-    border-radius:18px
-  }
-  .exam-hero-top h2{font-size:20px}
-  .proctored-pill{padding:7px 9px;font-size:9px}
-  .exam-metrics{
-    grid-template-columns:repeat(3,1fr);
-    gap:6px;margin-top:14px
-  }
-  .metric{min-height:72px;padding:10px;border-radius:11px}
-  .metric span{font-size:8px}
-  .metric strong{font-size:17px}
-  .student-card{
-    grid-template-columns:auto 1fr;
-    gap:10px;padding:12px
-  }
-  .student-program{
-    grid-column:2;text-align:left
-  }
-  .student-avatar{width:40px;height:40px}
-  .steps{
-    grid-template-columns:1fr;
-    gap:7px
-  }
-  .step{min-height:49px;padding:9px 11px}
+  .lobby-wrap{width:calc(100% - 20px);padding:22px 0 32px;display:block}
+  .lobby-intro{margin-bottom:15px}
+  .eyebrow{font-size:8px;padding:6px 9px}
+  .lobby-intro h1{font-size:31px;letter-spacing:-1.45px}
+  .lobby-intro p{font-size:11px}
+  .exam-hero-card{padding:16px;border-radius:17px}
+  .exam-hero-top h2{font-size:19px}
+  .proctored-pill{padding:7px 9px;font-size:8px}
+  .exam-metrics{gap:6px;margin-top:13px}
+  .metric{min-height:70px;padding:9px;border-radius:10px}
+  .metric>span{font-size:7px}.metric strong{font-size:17px}
+  .student-card{grid-template-columns:auto 1fr;gap:10px;padding:11px}
+  .student-program{grid-column:2;text-align:left}
+  .student-avatar{width:44px;height:44px}
+  .steps{grid-template-columns:1fr;gap:6px}
+  .step{min-height:48px;padding:9px}
   .step-number{width:29px;height:29px}
-  .step-content{
-    padding:15px;border-radius:16px
-  }
+  .step-content{padding:14px;border-radius:15px}
   .instructions{grid-template-columns:1fr}
-  .action-row{justify-content:stretch}
-  .action-row .btn{flex:1}
+  .action-row{justify-content:stretch}.action-row .btn{flex:1}
+  .lobby-aside{display:flex;flex-direction:column;margin-top:11px}
+  .campus-visual{min-height:200px}
+  .campus-visual img{min-height:200px}
+  .values-strip{order:2}
+  .assurance-card{order:3}
+  .connection-card{order:4}
+  .lobby-footer{order:5;flex-direction:column}
   .camera-layout{grid-template-columns:1fr}
   .camera-preview{aspect-ratio:4/3}
   .ready-list{grid-template-columns:1fr}
   .ready-card h3{font-size:23px}
 
-  #examInterface{
-    height:100dvh;min-height:100dvh;overflow:hidden
-  }
+  #examInterface{height:100dvh;min-height:100dvh;overflow:hidden}
   .exam-shell{height:100dvh;min-height:0}
-  .exam-topbar{
-    height:57px;padding:0 7px;gap:6px
-  }
+  .exam-topbar{height:57px;padding:0 7px;gap:6px}
   .exam-brand .brand-mark{width:32px;height:32px}
-  .exam-brand strong{font-size:10px}
-  .exam-brand small{display:none}
+  .exam-brand strong{font-size:10px}.exam-brand small{display:none}
   .exam-title-wrap{display:none}
-  .timer-box{
-    min-width:77px;padding:6px 8px
-  }
-  .timer-box small{font-size:7px}
-  .timer-box strong{font-size:13px}
-  .exam-body{
-    padding:4px;height:calc(100dvh - 57px);
-    min-height:0;overflow:hidden
-  }
-  .exam-grid{
-    height:100%;min-height:0;
-    display:block!important;overflow:hidden
-  }
+  .timer-box{min-width:77px;padding:6px 8px}
+  .timer-box small{font-size:7px}.timer-box strong{font-size:13px}
+  .exam-body{padding:4px;height:calc(100dvh - 57px);min-height:0;overflow:hidden}
+  .exam-grid{height:100%;min-height:0;display:block!important;overflow:hidden}
   .question-panel{
-    height:100%;min-height:0;
-    display:grid!important;
-    grid-template-rows:auto minmax(0,1fr) auto!important;
-    gap:0
+    height:100%;min-height:0;display:grid!important;
+    grid-template-rows:auto minmax(0,1fr) auto!important;gap:0
   }
-  .question-head{
-    padding:8px;
-    min-height:51px
-  }
-  .question-head-left strong{font-size:11px}
-  .question-head-left span{font-size:8px}
-  .question-actions{gap:4px}
-  .icon-btn{
-    height:35px;
-    padding:0 8px;
-    font-size:9px
-  }
-  #exam-container{
-    min-height:0;height:100%;
-    overflow:hidden!important
-  }
+  .question-head{padding:8px;min-height:51px}
+  .question-head-left strong{font-size:11px}.question-head-left span{font-size:8px}
+  .question-actions{gap:4px}.icon-btn{height:35px;padding:0 8px;font-size:9px}
+  #exam-container{min-height:0;height:100%;overflow:hidden!important}
   #exam-container>div{
-    height:100%!important;
-    min-height:0!important;
-    max-height:none!important;
-    overflow-y:scroll!important;
-    overflow-x:hidden!important;
-    -webkit-overflow-scrolling:touch;
-    touch-action:pan-y;
-    overscroll-behavior:contain;
-    padding:13px 8px 28px!important
+    height:100%!important;min-height:0!important;max-height:none!important;
+    overflow-y:scroll!important;overflow-x:hidden!important;
+    -webkit-overflow-scrolling:touch;touch-action:pan-y;
+    overscroll-behavior:contain;padding:13px 8px 28px!important
   }
-  #exam-container li{
-    width:100%!important;
-    max-width:100%!important
-  }
+  #exam-container li{width:100%!important;max-width:100%!important}
   #exam-container label{
-    width:100%!important;
-    max-width:100%!important;
-    white-space:normal!important;
-    overflow:visible!important;
-    text-overflow:clip!important;
-    overflow-wrap:anywhere!important
+    width:100%!important;max-width:100%!important;
+    white-space:normal!important;overflow:visible!important;
+    text-overflow:clip!important;overflow-wrap:anywhere!important
   }
   #exam-container textarea{max-width:100%!important}
   .exam-navigation{
-    position:relative;z-index:10;
-    min-height:58px;
+    position:relative;z-index:10;min-height:58px;
     padding:7px 4px max(7px,env(safe-area-inset-bottom));
-    gap:6px;
-    box-shadow:0 -6px 18px rgba(6,40,68,.08)
+    gap:6px;box-shadow:0 -6px 18px rgba(6,43,72,.08)
   }
-  .nav-btn{
-    min-width:0;flex:1;
-    height:43px;padding:9px 7px;
-    font-size:10px
-  }
+  .nav-btn{min-width:0;flex:1;height:43px;padding:9px 7px;font-size:10px}
   .nav-progress{min-width:50px;font-size:8px}
 }
 @media(max-width:380px){
-  .brand-copy small{display:none}
-  .secure-badge{max-width:95px}
+  .brand-copy small{display:none}.secure-badge{max-width:95px}
   .lobby-intro h1{font-size:28px}
   .exam-metrics{grid-template-columns:1fr 1fr}
   .exam-metrics .metric:last-child{grid-column:1/-1}
   .question-head{padding:7px}
-  .question-actions .icon-btn{
-    font-size:0;width:37px;
-    justify-content:center
-  }
+  .question-actions .icon-btn{font-size:0;width:37px;justify-content:center}
   .question-actions .icon-btn i{font-size:13px}
 }
-
-/* Accessibility */
-button:focus-visible,
-input:focus-visible,
-textarea:focus-visible,
-select:focus-visible{
-  outline:3px solid rgba(8,121,209,.22);
-  outline-offset:2px
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible{
+  outline:3px solid rgba(8,121,209,.22);outline-offset:2px
 }
 @media(prefers-reduced-motion:reduce){
   *{scroll-behavior:auto!important;transition:none!important}
@@ -1002,6 +782,7 @@ select:focus-visible{
 <!-- ===================== EXAM LOBBY ===================== -->
 <main id="lobbyContainer">
   <div class="lobby-wrap">
+    <div class="lobby-main">
     <section class="lobby-intro">
       <div class="eyebrow"><i class="fa-solid fa-lock"></i> Secure Online Examination</div>
       <h1>Welcome to Your Examination</h1>
@@ -1027,7 +808,10 @@ select:focus-visible{
     </section>
 
     <section class="student-card">
-      <div class="student-avatar"><i class="fa-solid fa-user"></i></div>
+      <div class="student-avatar" id="studentAvatar">
+        <img id="studentProfilePhoto" class="profile-photo" alt="Student profile photo">
+        <i id="studentProfileIcon" class="fa-solid fa-user"></i>
+      </div>
       <div class="student-info">
         <strong id="studentName">Loading student...</strong>
         <span id="studentReg">Student ID</span>
@@ -1134,6 +918,49 @@ select:focus-visible{
         </div>
       </div>
     </section>
+    </div>
+
+    <aside class="lobby-aside" aria-label="NCHSM campus and examination information">
+      <div class="campus-visual">
+        <img
+          src="https://raw.githubusercontent.com/NCHSMlearning/NCHSM-Digital-campus-/main/images/campus-header.jpg"
+          alt="Nakuru College of Health Science & Management campus"
+          loading="eager"
+          referrerpolicy="no-referrer">
+        <div class="campus-caption">
+          <strong>NCHSM Campus</strong>
+          <span>Nakuru College of Health Science & Management</span>
+        </div>
+      </div>
+
+      <div class="values-strip" aria-label="NCHSM values">
+        <div class="value-item"><i class="fa-solid fa-book-open"></i>Knowledge</div>
+        <div class="value-item"><i class="fa-solid fa-users"></i>Discipline</div>
+        <div class="value-item"><i class="fa-solid fa-heart-pulse"></i>A Better Tomorrow</div>
+      </div>
+
+      <div class="assurance-card">
+        <div class="assurance-head">
+          <div class="assurance-icon"><i class="fa-solid fa-shield-halved"></i></div>
+          <h3>A Safe &amp; Fair Assessment Environment</h3>
+        </div>
+        <p>This examination is monitored using secure proctoring checks to support integrity, fairness and a credible assessment process for all students.</p>
+        <p class="assurance-quote">“Integrity today, a better healthcare tomorrow.” — NCHSM</p>
+      </div>
+
+      <div class="connection-card">
+        <div class="connection-icon"><i class="fa-solid fa-circle-info"></i></div>
+        <div>
+          <strong>Ensure a Stable Connection</strong>
+          <p>Use a quiet environment with a stable internet connection before proceeding.</p>
+        </div>
+      </div>
+
+      <div class="lobby-footer">
+        <span>© 2026 Nakuru College of Health Science &amp; Management</span>
+        <span>Secure Examination Environment</span>
+      </div>
+    </aside>
   </div>
 </main>
 
@@ -1165,7 +992,10 @@ select:focus-visible{
         <!-- LEFT -->
         <aside class="panel left-panel">
           <div class="profile-mini">
-            <div class="avatar"><i class="fa-solid fa-user"></i></div>
+            <div class="avatar" id="examProfileAvatar">
+              <img id="examStudentProfilePhoto" class="profile-photo" alt="Student profile photo">
+              <i id="examStudentProfileIcon" class="fa-solid fa-user"></i>
+            </div>
             <div><strong id="examStudentName">Student</strong><span id="examStudentReg">Student ID</span></div>
           </div>
 
@@ -1350,5 +1180,166 @@ select:focus-visible{
 <div id="submitSummary" style="display:none"></div>
 
 <script src="exam.js"></script>
+
+<script>
+/* ============================================================
+   STUDENT PROFILE PHOTO SYNC
+   Uses the same profile record/photo storage used by the
+   student profile page. Does not alter exam.js functionality.
+   ============================================================ */
+(function () {
+  'use strict';
+
+  function getProfileObject() {
+    try {
+      if (typeof AppState !== 'undefined' && AppState.studentProfile) {
+        return AppState.studentProfile;
+      }
+    } catch (_) {}
+
+    try {
+      if (window.db?.currentUserProfile) return window.db.currentUserProfile;
+    } catch (_) {}
+
+    try {
+      if (window.currentUserProfile) return window.currentUserProfile;
+    } catch (_) {}
+
+    try {
+      const stored = localStorage.getItem('userProfile');
+      if (stored) return JSON.parse(stored);
+    } catch (_) {}
+
+    return null;
+  }
+
+  function getStudentId() {
+    try {
+      if (typeof AppState !== 'undefined' && AppState.studentId) return AppState.studentId;
+    } catch (_) {}
+    return new URLSearchParams(window.location.search).get('user_id')
+      || localStorage.getItem('currentUserId');
+  }
+
+  function getSupabaseUrl() {
+    try {
+      if (window.APP_CONFIG?.SUPABASE_URL) return window.APP_CONFIG.SUPABASE_URL;
+    } catch (_) {}
+
+    try {
+      if (typeof CONFIG !== 'undefined' && CONFIG.SUPABASE_URL) return CONFIG.SUPABASE_URL;
+    } catch (_) {}
+
+    return 'https://lwhtjozfsmbyihenfunw.supabase.co';
+  }
+
+  function resolvePhotoUrl(profile) {
+    if (!profile) return null;
+
+    // Prefer the exact fields used by the Student Profile module.
+    let value =
+      profile.profile_photo_url ||
+      profile.passport_url ||
+      profile.avatar_url ||
+      profile.photo_url ||
+      profile.profile_picture ||
+      profile.profile_image ||
+      profile.image_url ||
+      profile.avatar ||
+      profile.picture ||
+      profile.photo;
+
+    if (!value || typeof value !== 'string') return null;
+
+    value = value.trim();
+    if (!value) return null;
+
+    // The profile module can already store a public URL.
+    if (/^https?:\/\//i.test(value)) return value;
+
+    // Same storage convention as the profile page:
+    // bucket = user-documents, path = profiles/{userId}/photo.ext
+    const base = getSupabaseUrl().replace(/\/+$/, '');
+    if (value.startsWith('profiles/')) {
+      return base + '/storage/v1/object/public/user-documents/' + value;
+    }
+
+    // If only a storage path was saved, treat it as user-documents.
+    if (!value.startsWith('/')) {
+      return base + '/storage/v1/object/public/user-documents/' + value;
+    }
+
+    return window.location.origin + value;
+  }
+
+  function setAvatar(imgId, iconId, url) {
+    const img = document.getElementById(imgId);
+    const icon = document.getElementById(iconId);
+    if (!img || !icon || !url) return false;
+
+    img.onload = function () {
+      img.style.display = 'block';
+      icon.style.display = 'none';
+    };
+
+    img.onerror = function () {
+      img.removeAttribute('src');
+      img.style.display = 'none';
+      icon.style.display = 'block';
+    };
+
+    img.src = url;
+    return true;
+  }
+
+  function applyProfilePhoto() {
+    const profile = getProfileObject();
+
+    // If the profile page helper is available, use its exact resolver first.
+    let url = null;
+    try {
+      if (window.db && typeof window.db.getPhotoUrl === 'function') {
+        url = window.db.getPhotoUrl(getStudentId());
+      }
+    } catch (_) {}
+
+    if (!url) url = resolvePhotoUrl(profile);
+    if (!url) return false;
+
+    const a = setAvatar('studentProfilePhoto', 'studentProfileIcon', url);
+    const b = setAvatar('examStudentProfilePhoto', 'examStudentProfileIcon', url);
+
+    if (a || b) {
+      console.log('📸 Student profile photo synced from profile:', url);
+      return true;
+    }
+    return false;
+  }
+
+  function startPhotoSync() {
+    // Profile data is loaded asynchronously by exam.js.
+    let attempts = 0;
+    const maxAttempts = 30;
+
+    const timer = setInterval(function () {
+      attempts++;
+      if (applyProfilePhoto() || attempts >= maxAttempts) {
+        clearInterval(timer);
+      }
+    }, 300);
+
+    // Also retry after the profile has had more time to load.
+    setTimeout(applyProfilePhoto, 1500);
+    setTimeout(applyProfilePhoto, 3000);
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', startPhotoSync);
+  } else {
+    startPhotoSync();
+  }
+})();
+</script>
+
 </body>
 </html>
