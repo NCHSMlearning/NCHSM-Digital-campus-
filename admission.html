@@ -1450,6 +1450,15 @@ body{overflow-x:hidden!important;background:#f5f9fd!important}
 .top-content-page{max-width:1180px;margin:28px auto;overflow:hidden}.top-content-page .panel-body{padding:28px}.content-hero-card{display:flex;align-items:center;justify-content:space-between;gap:24px;padding:28px;border-radius:22px;background:linear-gradient(135deg,#073b5c,#0b6596);color:#fff;margin-bottom:26px}.content-hero-card h2{margin:7px 0 8px;font-size:clamp(1.5rem,3vw,2.2rem);color:#fff}.content-hero-card p{margin:0;max-width:680px;color:rgba(255,255,255,.84);line-height:1.65}.eyebrow{font-size:.72rem;font-weight:800;letter-spacing:.14em;text-transform:uppercase;opacity:.82}.info-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px}.info-card{padding:22px;border:1px solid #d9e4ec;border-radius:18px;background:#fff;box-shadow:0 8px 24px rgba(16,42,67,.06)}.info-card i{font-size:1.35rem;color:#0b6596;margin-bottom:12px}.info-card h3{margin:0 0 7px;color:#073b5c}.info-card p{margin:0;color:#64748b;line-height:1.6}.requirements-note{display:flex;gap:12px;align-items:flex-start;margin-top:18px;padding:16px 18px;border-radius:14px;background:#f4f8fb;color:#334e68}.requirements-note i{color:#0b6596;margin-top:3px}.inline-link{border:0;background:none;color:#0b6596;font-weight:800;cursor:pointer;padding:0;text-decoration:underline}.page-intro{color:#64748b;margin:0 0 18px}.faq-list{display:grid;gap:12px}.faq-list details{border:1px solid #d9e4ec;border-radius:15px;background:#fff;padding:0 18px;box-shadow:0 5px 18px rgba(16,42,67,.04)}.faq-list summary{cursor:pointer;list-style:none;font-weight:750;color:#073b5c;padding:18px 28px 18px 0;position:relative}.faq-list summary::-webkit-details-marker{display:none}.faq-list summary:after{content:'+';position:absolute;right:2px;font-size:1.25rem;color:#0b6596}.faq-list details[open] summary:after{content:'−'}.faq-list details p{color:#64748b;line-height:1.65;margin:0 0 18px}.faq-footer{display:flex;align-items:center;justify-content:space-between;gap:15px;margin-top:20px;padding-top:18px;border-top:1px solid #e7eef3;color:#334e68;font-weight:700}.contact-grid{display:grid;grid-template-columns:.8fr 1.2fr;gap:24px}.contact-info-card{padding:28px;border-radius:22px;background:linear-gradient(145deg,#073b5c,#0b6596);color:#fff}.contact-info-card h2{color:#fff;margin:8px 0 10px}.contact-info-card p{color:rgba(255,255,255,.84);line-height:1.65}.contact-detail{display:flex;gap:13px;align-items:center;margin-top:18px;padding-top:16px;border-top:1px solid rgba(255,255,255,.15)}.contact-detail i{font-size:1.1rem}.contact-detail small,.contact-detail strong{display:block}.contact-detail small{opacity:.7;margin-bottom:2px}.contact-form-wrap{padding:24px;border:1px solid #d9e4ec;border-radius:22px;background:#fff}.nav-search{cursor:pointer}.site-search-modal{position:fixed;inset:0;z-index:99999;background:rgba(7,59,92,.62);backdrop-filter:blur(8px);display:none;align-items:flex-start;justify-content:center;padding:9vh 18px}.site-search-modal.show{display:flex}.site-search-box{width:min(720px,100%);background:#fff;border-radius:22px;padding:22px;box-shadow:0 30px 80px rgba(0,0,0,.25)}.site-search-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.site-search-head h3{margin:0;color:#073b5c}.site-search-close{border:0;background:#f4f8fb;width:38px;height:38px;border-radius:50%;cursor:pointer}.site-search-input{width:100%;padding:15px 16px;border:1px solid #d9e4ec;border-radius:12px;font-size:1rem;outline:none}.site-search-results{margin-top:14px;display:grid;gap:8px;max-height:55vh;overflow:auto}.site-search-result{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border:1px solid #e7eef3;border-radius:12px;cursor:pointer}.site-search-result strong{color:#073b5c}.site-search-result span{font-size:.82rem;color:#64748b}.site-search-empty{padding:18px;text-align:center;color:#64748b}
 @media(max-width:800px){.content-hero-card,.faq-footer{flex-direction:column;align-items:flex-start}.info-grid,.contact-grid{grid-template-columns:1fr}.top-content-page{margin:14px 10px}.top-content-page .panel-body{padding:18px}.contact-form-wrap{padding:18px}}
 </style>
+<style id="nchsm-deterministic-page-visibility">
+/* Final safety layer: the public landing page must never become a blank white screen. */
+#app .page-content{display:none !important;}
+#app .page-content.active{display:block !important;}
+#page-home.active{display:block !important;visibility:visible !important;opacity:1 !important;}
+#page-register.active,#page-programs.active,#page-requirements.active,#page-student-life.active,#page-faqs.active,#page-contact.active,#page-login.active,#page-enquiry.active{display:block !important;}
+#admissionApp.nchsm-unlocked{display:block !important;visibility:visible !important;opacity:1 !important;}
+#admissionApp.nchsm-locked{display:none !important;}
+</style>
 </head>
 <body>
 
@@ -2755,17 +2764,21 @@ function navigateTo(page) {
         }, 300);
     }
     
-    // If going to login page, redirect to home with login tab active
+    // Login uses the dedicated authentication container inside page-register.
+    // IMPORTANT: do not call checkAuthForRegisterPage here because when there is
+    // no session it intentionally switches the auth form back to registration.
     if (page === 'login') {
-        document.getElementById('page-home').classList.add('active');
-        switchAuthTab('login');
-        document.querySelector('.auth-wrapper')?.scrollIntoView({ behavior: 'smooth' });
-        document.querySelectorAll('.nav-item').forEach(item => {
-            item.classList.remove('active');
-            if (item.dataset.page === 'home') {
-                item.classList.add('active');
-            }
-        });
+        document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+        const registerPage = document.getElementById('page-register');
+        if (registerPage) registerPage.classList.add('active');
+        if (typeof switchAuthTab2 === 'function') switchAuthTab2('login2');
+        const auth = document.getElementById('authContainer2');
+        if (auth) {
+            auth.style.display = 'block';
+            auth.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+        const dash = document.getElementById('admissionApp');
+        if (dash) dash.style.display = 'none';
     }
 }
 
@@ -3015,7 +3028,7 @@ async function checkAuthForRegisterPage() {
     console.log('📡 Supabase client:', supabaseClient ? '✅ Available' : '❌ NULL');
     
     const authContainer = document.getElementById('authContainer2');
-    const dashboardApp = document.getElementById('dashboardApp');
+    const dashboardApp = document.getElementById('admissionApp');
     
     console.log('📦 authContainer:', authContainer ? '✅ Found' : '❌ NOT FOUND');
     console.log('📦 dashboardApp:', dashboardApp ? '✅ Found' : '❌ NOT FOUND');
@@ -3024,7 +3037,7 @@ async function checkAuthForRegisterPage() {
         console.error('❌ DOM elements not found!');
         setTimeout(function() {
             const retryAuth = document.getElementById('authContainer2');
-            const retryDash = document.getElementById('dashboardApp');
+            const retryDash = document.getElementById('admissionApp');
             if (retryAuth && retryDash) {
                 console.log('✅ Retry found elements!');
                 checkAuthForRegisterPage();
@@ -3316,13 +3329,13 @@ async function registerUser() {
         if (appError) throw appError;
 
         msg.className = 'auth-message success';
-        msg.textContent = '✅ Account created! You are now logged in. Please complete your application.';
+        msg.textContent = '✅ Account created successfully! Please sign in to access your admissions dashboard.';
 
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-user-plus"></i> Create Account';
 
         setTimeout(() => {
-            navigateTo('register');
+            navigateTo('login');
         }, 1500);
 
     } catch (error) {
@@ -4610,13 +4623,52 @@ async function loginUser2() {
         if (error) throw error;
 
         msg.className = 'auth-message success';
-        msg.textContent = '✅ Signed in successfully!';
+        msg.textContent = '✅ Signed in successfully! Loading your admissions dashboard...';
         btn.disabled = false;
         btn.innerHTML = '<i class="fas fa-sign-in-alt"></i> Sign In';
 
-        setTimeout(() => {
-            window.location.reload();
-        }, 1000);
+        // AUTHENTICATED ROUTE: remain in this HTML document and open the
+        // application dashboard. Never reload index.html after a successful login.
+        currentUser = data.user;
+
+        const authContainer = document.getElementById('authContainer2');
+        const dashboardApp = document.getElementById('admissionApp');
+        const registerPage = document.getElementById('page-register');
+
+        document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+        if (registerPage) registerPage.classList.add('active');
+        if (authContainer) authContainer.style.display = 'none';
+        if (dashboardApp) {
+            dashboardApp.classList.remove('nchsm-locked');
+            dashboardApp.classList.add('nchsm-unlocked');
+            dashboardApp.style.display = 'block';
+        }
+
+        // Load the applicant's saved application/draft before finishing the route.
+        await loadUserApplication(currentUser.id);
+
+        const avatar = document.getElementById('dashAvatar');
+        const name = document.getElementById('dashName');
+        const emailEl = document.getElementById('dashEmail');
+        if (avatar) avatar.textContent = (currentUser.email || 'U').charAt(0).toUpperCase();
+        if (name) name.textContent = 'Welcome, ' + (currentUser.user_metadata?.full_name || 'Applicant') + '!';
+        if (emailEl) emailEl.textContent = currentUser.email || '';
+
+        try {
+            localStorage.setItem('nchsm_authenticated_user', JSON.stringify({
+                id: currentUser.id, email: currentUser.email || '',
+                full_name: currentUser.user_metadata?.full_name || ''
+            }));
+        } catch (e) {}
+        if (typeof unlockDashboard === 'function') unlockDashboard();
+        if (typeof addSaveBar === 'function') addSaveBar();
+        if (typeof restoreDraft === 'function') restoreDraft();
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+            if (item.dataset.page === 'register') item.classList.add('active');
+        });
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     } catch (error) {
         console.error('Login error:', error);
         msg.className = 'auth-message error';
@@ -5641,6 +5693,26 @@ body{font-family:Inter,system-ui,sans-serif!important;background:var(--n2-soft)!
    // Ensure all top navigation controls have a visible destination.
    document.querySelectorAll('.nav-item[data-page]').forEach(btn=>btn.setAttribute('aria-label',btn.textContent.trim()));
  });
+})();
+</script>
+<script id="nchsm-final-route-safety">
+(function(){
+  function ensureInitialRoute(){
+    const app=document.getElementById('app');
+    const home=document.getElementById('page-home');
+    if(!app || !home) return;
+    const dashboard=document.getElementById('admissionApp');
+    // Never leave the app with every page hidden. The explicit home page is the safe public state.
+    const active=document.querySelector('#app .page-content.active');
+    if(!active){
+      document.querySelectorAll('#app .page-content').forEach(p=>p.classList.remove('active'));
+      home.classList.add('active');
+    }
+    // Dashboard is hidden until a real Supabase login succeeds.
+    if(dashboard && !dashboard.classList.contains('nchsm-unlocked')) dashboard.style.display='none';
+  }
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',ensureInitialRoute);
+  else ensureInitialRoute();
 })();
 </script>
 </body>
