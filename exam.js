@@ -2273,14 +2273,27 @@ async function executeSubmissionWithLoading() {
 
 function showSubmissionProgress(title, message) {
     const overlay = DOM.submissionProgress;
-    if (!overlay) return;
-    
+    if (!overlay) {
+        console.error('❌ [SUBMIT PROGRESS] #submission-progress-overlay not found.');
+        return;
+    }
+
+    console.log('🟦 [SUBMIT PROGRESS] Showing submission progress overlay.');
+
     const titleEl = overlay.querySelector('.progress-title');
     const msgEl = DOM.submissionMessage;
     const fillEl = DOM.submissionProgressFill;
     const percentEl = DOM.submissionPercentage;
 
-    overlay.style.display = 'flex';
+    // The HTML uses .hidden { display:none !important; }, so simply changing
+    // overlay.style.display is not enough. Remove the hidden class first.
+    overlay.classList.remove('hidden');
+    overlay.style.display = 'grid';
+    overlay.style.visibility = 'visible';
+    overlay.style.opacity = '1';
+    overlay.style.zIndex = '9999999';
+    overlay.setAttribute('aria-hidden', 'false');
+
     if (titleEl) titleEl.textContent = title;
     if (msgEl) msgEl.textContent = message;
     if (fillEl) fillEl.style.width = '0%';
@@ -2288,30 +2301,51 @@ function showSubmissionProgress(title, message) {
 }
 
 function updateSubmissionProgress(message) {
+    const overlay = DOM.submissionProgress;
     const msgEl = DOM.submissionMessage;
-    if (msgEl) msgEl.textContent = message;
-
     const fillEl = DOM.submissionProgressFill;
     const percentEl = DOM.submissionPercentage;
 
+    // Keep the progress overlay visible even if another routine previously
+    // added .hidden to the modal.
+    if (overlay) {
+        overlay.classList.remove('hidden');
+        overlay.style.display = 'grid';
+        overlay.style.visibility = 'visible';
+        overlay.style.opacity = '1';
+        overlay.style.zIndex = '9999999';
+        overlay.setAttribute('aria-hidden', 'false');
+    }
+
+    if (msgEl) msgEl.textContent = message;
+
     if (fillEl && percentEl) {
         const steps = [
-            '📸 Capturing final snapshot',
-            '💾 Saving your answers',
-            '📊 Calculating your results',
-            '🧹 Cleaning up',
-            '✅ Exam submitted successfully'
+            'Capturing final snapshot',
+            'Saving your answers',
+            'Calculating your results',
+            'Cleaning up',
+            'Exam submitted successfully'
         ];
+
+        const normalized = String(message || '').replace(/^[^A-Za-z0-9]+/, '').trim();
         let currentStep = 0;
         for (let i = 0; i < steps.length; i++) {
-            if (message.indexOf(steps[i].substring(2)) !== -1) {
+            if (normalized.toLowerCase().includes(steps[i].toLowerCase())) {
                 currentStep = i + 1;
                 break;
             }
         }
+
         const percentage = Math.min(Math.round((currentStep / steps.length) * 100), 100);
         fillEl.style.width = percentage + '%';
         percentEl.textContent = percentage + '%';
+        console.log(`📊 [SUBMIT PROGRESS] ${percentage}% — ${message}`);
+    } else {
+        console.warn('⚠️ [SUBMIT PROGRESS] Progress elements missing.', {
+            fillEl: !!fillEl,
+            percentEl: !!percentEl
+        });
     }
 }
 
