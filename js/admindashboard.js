@@ -6270,7 +6270,9 @@ window.displayLiveFeed = function() {
                     <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})"
                         title="View Progress"><i class="fas fa-chart-line"></i></button>
                     <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${safeExam}')"
-                        title="Manage Timer"><i class="fas fa-clock"></i></button>`;
+                        title="Manage Timer"><i class="fas fa-clock"></i></button>
+                    <button class="action-btn btn-danger" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${safeExam}')"
+                        title="Reset and allow student to continue same attempt"><i class="fas fa-rotate-right"></i></button>`;
             } else if (isReleased) {
                 releasedCount++;
                 const releasedTime = releasedAt ? formatKenyaTime(releasedAt) : '';
@@ -6280,7 +6282,9 @@ window.displayLiveFeed = function() {
                     <button class="action-btn btn-success" onclick="resendReleaseEmail('${studentId}', ${examId}, '${studentName}', '${safeExam}')"
                         title="Resend email notification"><i class="fas fa-envelope"></i></button>
                     <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})"
-                        title="View Progress"><i class="fas fa-chart-line"></i></button>`;
+                        title="View Progress"><i class="fas fa-chart-line"></i></button>
+                    <button class="action-btn btn-warning" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${safeExam}')"
+                        title="Reset and allow student to continue same attempt"><i class="fas fa-rotate-right"></i></button>`;
             } else if (r.id) {
                 pendingCount++;
                 releasedDisplay = '<span class="status-pending">🔒 Not Released</span>';
