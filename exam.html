@@ -1624,6 +1624,184 @@ input:focus,select:focus,textarea:focus{
     transition:none!important;
   }
 }
+
+/* =========================================================
+   MOBILE EXAM LOBBY + EXAM CONTROLS — FINAL FIX
+   Ensures the complete lobby is scrollable and the exam
+   navigation is always visible on phones.
+   ========================================================= */
+
+html,body{
+  min-height:100%;
+}
+
+body{
+  overflow-x:hidden!important;
+}
+
+/* Lobby must be a normal scrolling document on phones. */
+@media(max-width:768px){
+  #lobbyContainer,
+  .lobby-container{
+    height:auto!important;
+    min-height:100dvh!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  .lobby-wrap{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+    padding-bottom:28px!important;
+  }
+
+  .lobby-main,
+  .lobby-content,
+  .lobby-content-grid{
+    height:auto!important;
+    min-height:0!important;
+    max-height:none!important;
+    overflow:visible!important;
+  }
+
+  /* Never clip the lower lobby sections. */
+  .welcome-hero,
+  .student-card,
+  .steps,
+  .instructions-card,
+  .instructions,
+  .terms-card,
+  .action-row,
+  .lobby-aside,
+  .assurance-card,
+  .connection-card{
+    overflow:visible;
+  }
+
+  /* Keep action buttons reachable after scrolling. */
+  .action-row{
+    position:relative!important;
+    z-index:20!important;
+    padding-bottom:8px!important;
+  }
+
+  /* Make the lobby start/continue button comfortably tappable. */
+  .action-row .btn,
+  .action-row button{
+    min-height:46px!important;
+    touch-action:manipulation;
+  }
+
+  /* ===== ACTIVE EXAM ON PHONES ===== */
+  #examContainer,
+  #examInterface,
+  .exam-container,
+  .exam-shell{
+    height:100dvh!important;
+    min-height:100dvh!important;
+    max-height:100dvh!important;
+    overflow:hidden!important;
+  }
+
+  .exam-layout,
+  .exam-content,
+  .exam-main,
+  .question-area{
+    min-height:0!important;
+  }
+
+  /* The question area scrolls independently, while controls stay fixed. */
+  .question-panel,
+  .question-card,
+  .questions-container,
+  .question-container{
+    min-height:0!important;
+  }
+
+  /* Ensure the bottom navigation is actually visible above the phone safe area. */
+  .exam-navigation{
+    position:fixed!important;
+    left:0!important;
+    right:0!important;
+    bottom:0!important;
+    z-index:9999!important;
+    display:flex!important;
+    align-items:center!important;
+    width:100%!important;
+    min-height:62px!important;
+    padding:7px 6px max(8px,env(safe-area-inset-bottom))!important;
+    background:rgba(255,255,255,.98)!important;
+    border-top:1px solid #d4e5ec!important;
+    box-shadow:0 -8px 25px rgba(4,49,75,.13)!important;
+  }
+
+  .exam-navigation .nav-btn{
+    display:flex!important;
+    visibility:visible!important;
+    opacity:1!important;
+    align-items:center!important;
+    justify-content:center!important;
+    min-width:0!important;
+    flex:1 1 0!important;
+    height:44px!important;
+    min-height:44px!important;
+    margin:0!important;
+    padding:7px 5px!important;
+    font-size:10px!important;
+    touch-action:manipulation;
+  }
+
+  .exam-navigation .mobile-submit-btn{
+    display:flex!important;
+    flex:1.15 1 0!important;
+    min-width:66px!important;
+    background:#16835a!important;
+    color:#fff!important;
+    border-color:#16835a!important;
+  }
+
+  .exam-navigation .mobile-submit-btn:disabled{
+    opacity:.48!important;
+  }
+
+  /* The question content gets bottom breathing room so the last answer
+     cannot disappear underneath the fixed navigation bar. */
+  .question-panel,
+  .question-card,
+  .questions-container,
+  .question-container{
+    padding-bottom:82px!important;
+  }
+
+  /* If the actual scroll wrapper exists, keep its content above the nav. */
+  .exam-main,
+  .question-area{
+    padding-bottom:72px!important;
+  }
+}
+
+/* Smaller phones: compact navigation but still fully usable. */
+@media(max-width:420px){
+  .exam-navigation{
+    gap:3px!important;
+    padding-left:4px!important;
+    padding-right:4px!important;
+  }
+
+  .exam-navigation .nav-btn{
+    height:42px!important;
+    min-height:42px!important;
+    font-size:9px!important;
+    padding-left:3px!important;
+    padding-right:3px!important;
+  }
+
+  .exam-navigation .mobile-submit-btn{
+    min-width:60px!important;
+  }
+}
 </style>
 </head>
 
