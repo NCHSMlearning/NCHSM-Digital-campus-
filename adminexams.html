@@ -17,6 +17,12 @@
     <!-- CSS -->
     <link rel="stylesheet" href="css/admindashboard.css" />
 
+
+<style>
+.attempt-number-badge{display:inline-flex;align-items:center;justify-content:center;min-width:34px;padding:4px 8px;border-radius:999px;background:#e0f2fe;color:#075985;font-weight:800;font-size:11px}
+.attempt-retake-label,.attempt-original-label{display:block;margin-top:3px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.04em}
+.attempt-retake-label{color:#7c3aed}.attempt-original-label{color:#64748b}
+</style>
 </head>
 <body>
 
@@ -204,6 +210,7 @@
                                 <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Email</th>
                                 <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Program</th>
                                 <th style="padding: 10px 14px; text-align: left; font-weight: 600; color: #475569;">Exam</th>
+                                <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Attempt</th>
                                 <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Score</th>
                                 <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">%</th>
                                 <th style="padding: 10px 14px; text-align: center; font-weight: 600; color: #475569;">Status</th>
@@ -1737,10 +1744,10 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #DC2626; padding-bottom: 15px; position: sticky; top: 0; background: white; z-index: 10;">
                 <div>
                     <h3 style="margin: 0; color: #DC2626;">
-                        <i class="fas fa-trash-alt"></i> Reset Exam
+                        <i class="fas fa-redo"></i> Authorize Retakes
                     </h3>
                     <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
-                        <i class="fas fa-exclamation-triangle"></i> This action cannot be undone
+                        <i class="fas fa-shield-alt"></i> Authorize fresh attempts without deleting history
                     </p>
                 </div>
                 <button onclick="closeResetModal()" 
@@ -1749,14 +1756,14 @@
             
             <div style="background: #FEF2F2; border-radius: 12px; padding: 16px; margin-bottom: 20px; border-left: 4px solid #DC2626;">
                 <p style="margin: 0; color: #991B1B; font-size: 14px;">
-                    <i class="fas fa-info-circle"></i> Are you sure you want to reset all student answers for this exam? This action cannot be undone.
+                    <i class="fas fa-info-circle"></i> This authorizes fresh retake attempts for students with completed attempts. Previous answers, scores and attempt history remain preserved.
                 </p>
             </div>
             
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
                 <button class="btn btn-danger" onclick="closeResetModal()" style="padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">Cancel</button>
                 <button class="btn btn-warning" id="confirmResetBtn" onclick="confirmResetExam()" style="background: #DC2626; color: white; padding: 8px 24px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-undo"></i> Reset Exam
+                    <i class="fas fa-redo"></i> Authorize Retakes
                 </button>
             </div>
         </div>
@@ -1770,10 +1777,10 @@
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 2px solid #4C1D95; padding-bottom: 15px; position: sticky; top: 0; background: white; z-index: 10;">
                 <div>
                     <h3 style="margin: 0; color: #4C1D95;">
-                        <i class="fas fa-envelope"></i> Reset Student by Email
+                        <i class="fas fa-user-check"></i> Authorize Student Retake
                     </h3>
                     <p style="margin: 2px 0 0 0; font-size: 12px; color: #94a3b8;">
-                        <i class="fas fa-user"></i> Reset student's exam data
+                        <i class="fas fa-shield-alt"></i> Create permission for one fresh exam attempt
                     </p>
                 </div>
                 <button onclick="closeResetByEmailModal()" 
@@ -1790,9 +1797,9 @@
                 <div>
                     <label style="font-weight: 600; font-size: 12px; color: #475569; display: block; margin-bottom: 4px;">Select Exam (Optional)</label>
                     <select id="resetExamSelect" style="width: 100%; padding: 8px 12px; border-radius: 6px; border: 1px solid #e2e8f0; font-size: 13px;">
-                        <option value="">-- ALL EXAMS (Reset everything) --</option>
+                        <option value="">-- SELECT AN EXAM --</option>
                     </select>
-                    <small style="color: #64748B; display: block; margin-top: 4px;">Select a specific exam or leave empty to reset all exams for this student</small>
+                    <small style="color: #64748B; display: block; margin-top: 4px;">Select the specific exam for which the student should receive one fresh retake attempt</small>
                 </div>
                 <div id="resetStudentInfo" style="display: none; background: #F0FDF4; padding: 12px; border-radius: 8px; border-left: 3px solid #10B981;"></div>
                 <div id="resetErrorInfo" style="display: none; background: #FEE2E2; padding: 12px; border-radius: 8px; border-left: 3px solid #DC2626; color: #B91C1C;"></div>
@@ -1801,7 +1808,7 @@
             <div style="display: flex; gap: 10px; justify-content: flex-end; margin-top: 20px; border-top: 1px solid #e5e7eb; padding-top: 20px;">
                 <button class="btn btn-danger" onclick="closeResetByEmailModal()" style="padding: 8px 20px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">Cancel</button>
                 <button class="btn btn-warning" id="confirmResetByEmailBtn" onclick="confirmResetByEmail()" disabled style="background: #DC2626; color: white; padding: 8px 24px; border-radius: 6px; border: none; cursor: pointer; font-weight: 600;">
-                    <i class="fas fa-undo"></i> Reset Student
+                    <i class="fas fa-redo"></i> Authorize Retake
                 </button>
             </div>
         </div>
