@@ -771,6 +771,637 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 @media(prefers-reduced-motion:reduce){
   *{scroll-behavior:auto!important;transition:none!important}
 }
+
+/* ================= PREMIUM WELCOME HERO ================= */
+.welcome-hero{
+  position:relative;
+  display:grid;
+  grid-template-columns:minmax(0,1fr) 285px;
+  grid-template-rows:auto auto;
+  gap:0 16px;
+  margin-bottom:12px;
+  padding:27px 27px 18px;
+  overflow:hidden;
+  border-radius:26px;
+  border:1px solid rgba(157,205,227,.55);
+  background:
+    radial-gradient(circle at 92% 5%,rgba(28,181,218,.18),transparent 27%),
+    radial-gradient(circle at 8% 80%,rgba(8,121,209,.08),transparent 30%),
+    linear-gradient(135deg,#f8fcff 0%,#edf8fc 58%,#e4f3f8 100%);
+  box-shadow:0 18px 45px rgba(8,57,87,.10);
+}
+.welcome-hero:before{
+  content:"";
+  position:absolute;
+  width:300px;height:300px;
+  right:-170px;top:-170px;
+  border-radius:50%;
+  border:1px solid rgba(8,121,209,.10);
+  box-shadow:0 0 0 35px rgba(8,121,209,.025),0 0 0 70px rgba(8,121,209,.018);
+  pointer-events:none;
+}
+.welcome-main{
+  position:relative;
+  z-index:2;
+  min-width:0;
+  padding:2px 0 17px;
+}
+.welcome-kicker{
+  display:flex;align-items:center;gap:7px;
+  color:#6b8396;
+  font-size:8px;font-weight:900;
+  letter-spacing:1.8px;
+  margin:0 0 8px;
+}
+.welcome-kicker span{
+  width:20px;height:2px;border-radius:2px;
+  background:linear-gradient(90deg,#0879d1,#19b7b8);
+}
+.welcome-main .eyebrow{
+  margin-bottom:11px;
+  box-shadow:0 4px 12px rgba(8,121,209,.06);
+}
+.welcome-main h1{
+  font-size:clamp(34px,4.1vw,50px);
+  line-height:.98;
+  margin:0 0 11px;
+  letter-spacing:-2.4px;
+  color:#062f52;
+}
+.welcome-main h1 em{
+  font-style:normal;
+  background:linear-gradient(100deg,#0879d1,#0c9dc2 65%,#078a7c);
+  -webkit-background-clip:text;
+  background-clip:text;
+  color:transparent;
+}
+.welcome-description{
+  max-width:600px;
+  margin:0;
+  color:#5f7890;
+  font-size:12px;
+  line-height:1.65;
+}
+.welcome-trust{
+  display:flex;flex-wrap:wrap;
+  gap:7px;
+  margin-top:16px;
+}
+.welcome-trust>div{
+  display:flex;align-items:center;gap:7px;
+  min-height:32px;
+  padding:6px 9px;
+  border:1px solid rgba(175,211,226,.72);
+  border-radius:10px;
+  background:rgba(255,255,255,.62);
+  color:#648097;
+  font-size:8px;
+}
+.welcome-trust i{
+  width:22px;height:22px;
+  display:grid;place-items:center;
+  border-radius:7px;
+  background:#e5f4fb;color:#0879d1;
+  font-size:10px;
+}
+.welcome-trust strong{
+  display:block;color:#173e5c;
+  font-size:8px;margin-bottom:1px;
+}
+.welcome-campus{
+  position:relative;
+  z-index:2;
+  min-height:205px;
+  overflow:hidden;
+  border-radius:19px;
+  border:1px solid rgba(255,255,255,.8);
+  box-shadow:0 12px 30px rgba(5,51,79,.18);
+  background:#cfe5ee;
+}
+.welcome-campus img{
+  width:100%;height:100%;
+  min-height:205px;
+  display:block;
+  object-fit:cover;
+}
+.welcome-campus-overlay{
+  position:absolute;inset:0;
+  background:linear-gradient(180deg,rgba(4,40,65,.03) 20%,rgba(3,35,59,.74) 100%);
+}
+.welcome-campus-content{
+  position:absolute;left:14px;right:14px;bottom:13px;
+  color:#fff;
+}
+.campus-chip{
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 8px;
+  border-radius:999px;
+  background:rgba(255,255,255,.14);
+  border:1px solid rgba(255,255,255,.23);
+  backdrop-filter:blur(7px);
+  font-size:7px;font-weight:900;
+  letter-spacing:.8px;
+  text-transform:uppercase;
+}
+.welcome-campus-content strong{
+  display:block;
+  margin-top:8px;
+  font-size:17px;
+  letter-spacing:-.4px;
+}
+.welcome-campus-content small{
+  display:block;
+  margin-top:2px;
+  color:#d8edf7;
+  font-size:8px;
+  line-height:1.4;
+}
+.welcome-hero .exam-hero-card{
+  grid-column:1 / -1;
+  margin:13px 0 0;
+  padding:15px 16px;
+  border-radius:17px;
+  border:1px solid rgba(176,211,225,.72);
+  background:rgba(255,255,255,.82);
+  box-shadow:0 8px 24px rgba(9,65,93,.07);
+  backdrop-filter:blur(8px);
+}
+.welcome-hero .exam-hero-card:after{
+  width:150px;height:150px;
+  right:-70px;top:-110px;
+  background:rgba(226,246,251,.8);
+}
+.welcome-hero .exam-hero-top{
+  align-items:flex-start;
+}
+.exam-label{
+  display:inline-flex;align-items:center;gap:5px;
+  color:#0879d1;
+  font-size:7px;font-weight:900;
+  letter-spacing:1.15px;
+}
+.welcome-hero .exam-hero-top h2{
+  font-size:18px;
+  margin:4px 0 2px;
+}
+.welcome-hero .exam-hero-top p{
+  font-size:9px;
+}
+.dot{
+  display:inline-block;
+  width:3px;height:3px;
+  margin:0 4px 2px;
+  border-radius:50%;
+  background:#9ab2c2;
+}
+.welcome-hero .proctored-pill{
+  padding:7px 10px;
+  font-size:8px;
+}
+.welcome-hero .exam-metrics{
+  gap:7px;
+  margin-top:11px;
+}
+.welcome-hero .metric{
+  min-height:58px;
+  position:relative;
+  padding:9px 10px 9px 38px;
+  border-radius:11px;
+  background:#fbfdff;
+}
+.welcome-hero .metric-icon{
+  position:absolute;
+  left:10px;top:10px;
+  width:21px;height:21px;
+  display:grid;place-items:center;
+  border-radius:7px;
+  background:#e9f5fb;
+  color:#0879d1;
+  font-size:9px;
+}
+.welcome-hero .metric>span{
+  font-size:7px;
+  letter-spacing:1px;
+}
+.welcome-hero .metric strong{
+  font-size:17px;
+  margin-top:4px;
+}
+.welcome-hero .metric strong small{
+  font-size:9px;
+  font-weight:800;
+  color:#5d7890;
+}
+@media (max-width:900px){
+  .welcome-hero{
+    grid-template-columns:minmax(0,1fr) 235px;
+    padding:23px 21px 16px;
+  }
+  .welcome-main h1{font-size:38px}
+  .welcome-campus,.welcome-campus img{min-height:185px}
+}
+@media (max-width:768px){
+  .welcome-hero{
+    display:block;
+    padding:21px 15px 14px;
+    border-radius:21px;
+    margin-bottom:11px;
+  }
+  .welcome-main{padding-bottom:14px}
+  .welcome-main .eyebrow{font-size:8px;padding:6px 9px}
+  .welcome-kicker{font-size:7px;letter-spacing:1.5px}
+  .welcome-main h1{
+    font-size:clamp(32px,9vw,39px);
+    letter-spacing:-1.8px;
+    line-height:1;
+    margin-bottom:9px;
+  }
+  .welcome-description{font-size:11px;line-height:1.55}
+  .welcome-trust{gap:5px;margin-top:12px}
+  .welcome-trust>div{
+    flex:1 1 calc(50% - 5px);
+    min-height:30px;
+    font-size:7px;
+    padding:5px 7px;
+  }
+  .welcome-trust>div:last-child{flex-basis:100%}
+  .welcome-campus{
+    min-height:145px;
+    border-radius:15px;
+    margin-top:1px;
+  }
+  .welcome-campus img{min-height:145px}
+  .welcome-campus-content{bottom:11px}
+  .welcome-campus-content strong{font-size:15px}
+  .welcome-campus-content small{font-size:7px}
+  .welcome-hero .exam-hero-card{
+    margin-top:10px;
+    padding:13px 11px;
+    border-radius:14px;
+  }
+  .welcome-hero .exam-hero-top h2{font-size:16px}
+  .welcome-hero .exam-hero-top p{font-size:8px}
+  .welcome-hero .proctored-pill{
+    padding:6px 8px;
+    font-size:7px;
+  }
+  .welcome-hero .exam-metrics{
+    gap:5px;
+    margin-top:9px;
+  }
+  .welcome-hero .metric{
+    min-height:55px;
+    padding:8px 7px 7px 31px;
+  }
+  .welcome-hero .metric-icon{
+    left:7px;top:9px;
+    width:19px;height:19px;
+    font-size:8px;
+  }
+  .welcome-hero .metric>span{font-size:6px}
+  .welcome-hero .metric strong{font-size:15px}
+  .welcome-hero .metric strong small{font-size:8px}
+}
+
+/* =========================================================
+   FINAL NCHSM WELCOME DESIGN — FADED CAMPUS HERO
+   Keeps all existing exam IDs/JavaScript intact.
+   ========================================================= */
+
+/* Use the full page width for the premium lobby composition. */
+@media (min-width:901px){
+  .lobby-wrap{
+    width:min(1430px,calc(100% - 64px));
+    grid-template-columns:1fr;
+    gap:14px;
+    padding-top:25px;
+  }
+  .lobby-aside{
+    position:static;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:11px;
+  }
+  .lobby-aside .campus-visual{display:none}
+  .lobby-aside .values-strip{grid-column:1 / -1}
+  .lobby-aside .lobby-footer{grid-column:1 / -1}
+}
+
+/* Main welcome section: campus photo becomes a soft background. */
+.welcome-hero{
+  isolation:isolate;
+  min-height:0;
+  display:block;
+  padding:31px 34px 19px;
+  border-radius:25px;
+  border:1px solid #cfe5ef;
+  background:
+    linear-gradient(90deg,
+      rgba(248,253,255,.985) 0%,
+      rgba(248,253,255,.965) 38%,
+      rgba(248,253,255,.78) 63%,
+      rgba(248,253,255,.38) 100%),
+    url("https://raw.githubusercontent.com/NCHSMlearning/NCHSM-Digital-campus-/main/images/campus-header.jpg") center right / cover no-repeat;
+  box-shadow:0 20px 50px rgba(5,58,88,.12);
+}
+
+.welcome-hero:after{
+  content:"";
+  position:absolute;
+  z-index:-1;
+  width:46%;
+  height:100%;
+  right:0;
+  top:0;
+  background:linear-gradient(90deg,rgba(237,249,253,0),rgba(221,243,250,.18));
+  pointer-events:none;
+}
+
+.welcome-main{
+  max-width:760px;
+  padding:0 0 16px;
+}
+
+.welcome-main .eyebrow{
+  background:rgba(239,249,254,.88);
+  backdrop-filter:blur(8px);
+}
+
+.welcome-kicker{
+  margin-top:1px;
+  color:#5d7990;
+}
+
+.welcome-main h1{
+  font-size:clamp(38px,4.5vw,61px);
+  line-height:.96;
+  letter-spacing:-3px;
+  margin-bottom:14px;
+  text-shadow:0 2px 1px rgba(255,255,255,.45);
+}
+
+.welcome-description{
+  max-width:690px;
+  font-size:13px;
+  color:#4f6d85;
+  line-height:1.65;
+}
+
+.welcome-trust{
+  gap:0;
+  margin-top:20px;
+  max-width:740px;
+}
+
+.welcome-trust>div{
+  flex:0 1 auto;
+  min-height:48px;
+  padding:6px 21px 6px 0;
+  margin-right:21px;
+  border:0;
+  border-right:1px solid rgba(111,154,178,.24);
+  border-radius:0;
+  background:transparent;
+}
+
+.welcome-trust>div:last-child{
+  border-right:0;
+  margin-right:0;
+}
+
+.welcome-trust i{
+  width:34px;height:34px;
+  border-radius:50%;
+  background:#0879d1;
+  color:#fff;
+  box-shadow:0 5px 13px rgba(8,121,209,.20);
+}
+
+.welcome-trust strong{font-size:10px}
+.welcome-trust span{font-size:8px}
+
+/* Hide the duplicate side campus image; the hero now owns the campus visual. */
+.welcome-campus{display:none!important}
+
+/* Make the exam summary feel integrated with the hero. */
+.welcome-hero .exam-hero-card{
+  position:relative;
+  margin:0;
+  padding:17px 19px 15px;
+  border-radius:17px;
+  background:rgba(255,255,255,.90);
+  border:1px solid rgba(191,222,235,.88);
+  box-shadow:0 10px 28px rgba(7,64,92,.09);
+  backdrop-filter:blur(10px);
+}
+
+.welcome-hero .exam-hero-card:before{
+  content:"";
+  position:absolute;
+  inset:0;
+  border-radius:inherit;
+  pointer-events:none;
+  background:linear-gradient(90deg,rgba(255,255,255,.48),rgba(255,255,255,.08));
+}
+
+.welcome-hero .exam-hero-top,
+.welcome-hero .exam-metrics,
+.welcome-hero #continuationBadge{
+  position:relative;
+  z-index:2;
+}
+
+.welcome-hero .exam-hero-top h2{
+  font-size:22px;
+}
+
+.welcome-hero .exam-metrics{
+  grid-template-columns:repeat(3,1fr);
+}
+
+.welcome-hero .metric{
+  min-height:66px;
+  padding:10px 12px 10px 47px;
+  border:1px solid rgba(197,224,235,.80);
+  background:rgba(246,251,253,.78);
+}
+
+.welcome-hero .metric-icon{
+  left:11px;top:12px;
+  width:29px;height:29px;
+  border-radius:50%;
+  background:#1688df;
+  color:#fff;
+  font-size:11px;
+}
+
+.welcome-hero .metric:nth-child(2) .metric-icon{
+  background:#079653;
+}
+
+.welcome-hero .metric:nth-child(3) .metric-icon{
+  background:#ed8a18;
+}
+
+.welcome-hero .metric strong{
+  font-size:21px;
+}
+
+/* Add a subtle campus caption over the faded image without changing HTML. */
+.welcome-hero:before{
+  content:"NCHSM  •  Nakuru College of Health Science & Management";
+  position:absolute;
+  z-index:1;
+  right:28px;
+  top:45%;
+  transform:translateY(-50%);
+  width:270px;
+  padding:8px 12px;
+  text-align:right;
+  color:rgba(7,61,93,.72);
+  font-size:8px;
+  font-weight:800;
+  letter-spacing:.45px;
+  line-height:1.45;
+  border-right:2px solid rgba(8,121,209,.45);
+  text-shadow:0 1px 10px rgba(255,255,255,.9);
+  pointer-events:none;
+}
+
+/* Desktop values/assurance cards now support the full-width layout. */
+@media (min-width:901px){
+  .lobby-aside .values-strip{
+    border-radius:14px;
+  }
+  .lobby-aside .assurance-card,
+  .lobby-aside .connection-card{
+    min-height:112px;
+  }
+}
+
+/* Tablet/mobile: keep the campus image faded behind the welcome content. */
+@media (max-width:900px){
+  .lobby-wrap{
+    width:calc(100% - 28px);
+    grid-template-columns:1fr;
+  }
+  .welcome-hero{
+    display:block;
+    padding:24px 20px 16px;
+    background:
+      linear-gradient(90deg,
+        rgba(248,253,255,.975) 0%,
+        rgba(248,253,255,.88) 55%,
+        rgba(248,253,255,.57) 100%),
+      url("https://raw.githubusercontent.com/NCHSMlearning/NCHSM-Digital-campus-/main/images/campus-header.jpg") center / cover no-repeat;
+  }
+  .welcome-campus{display:none!important}
+  .welcome-hero:before{
+    right:18px;
+    top:32%;
+    width:200px;
+    font-size:7px;
+  }
+}
+
+@media (max-width:768px){
+  .lobby-wrap{
+    width:calc(100% - 14px);
+    padding-top:12px;
+  }
+  .welcome-hero{
+    padding:19px 13px 13px;
+    border-radius:19px;
+    background:
+      linear-gradient(180deg,
+        rgba(248,253,255,.975) 0%,
+        rgba(248,253,255,.92) 55%,
+        rgba(248,253,255,.68) 100%),
+      url("https://raw.githubusercontent.com/NCHSMlearning/NCHSM-Digital-campus-/main/images/campus-header.jpg") center / cover no-repeat;
+  }
+  .welcome-hero:before{
+    top:38%;
+    right:10px;
+    width:155px;
+    font-size:6px;
+    opacity:.55;
+  }
+  .welcome-main{
+    padding-bottom:12px;
+  }
+  .welcome-main h1{
+    font-size:clamp(32px,10vw,42px);
+    line-height:.98;
+    letter-spacing:-2px;
+    margin-bottom:9px;
+  }
+  .welcome-description{
+    font-size:10px;
+    line-height:1.55;
+  }
+  .welcome-trust{
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:4px;
+    margin-top:13px;
+  }
+  .welcome-trust>div{
+    min-height:42px;
+    margin:0;
+    padding:4px 4px 4px 0;
+    border-right:1px solid rgba(111,154,178,.20);
+  }
+  .welcome-trust>div:last-child{
+    border-right:0;
+  }
+  .welcome-trust i{
+    width:27px;height:27px;
+    font-size:8px;
+  }
+  .welcome-trust strong{font-size:7px}
+  .welcome-trust span{font-size:6px}
+  .welcome-hero .exam-hero-card{
+    padding:12px 9px;
+    border-radius:13px;
+  }
+  .welcome-hero .exam-hero-top h2{font-size:16px}
+  .welcome-hero .exam-hero-top p{font-size:7px}
+  .welcome-hero .exam-metrics{
+    gap:4px;
+  }
+  .welcome-hero .metric{
+    min-height:53px;
+    padding:8px 4px 7px 29px;
+  }
+  .welcome-hero .metric-icon{
+    left:6px;top:10px;
+    width:19px;height:19px;
+    font-size:7px;
+  }
+  .welcome-hero .metric>span{
+    font-size:5.5px;
+    letter-spacing:.6px;
+  }
+  .welcome-hero .metric strong{
+    font-size:14px;
+    margin-top:3px;
+  }
+  .welcome-hero .metric strong small{font-size:7px}
+  .lobby-aside{
+    margin-top:10px;
+  }
+}
+
+/* Very small phones: prevent any horizontal overflow. */
+@media (max-width:420px){
+  .welcome-trust>div{
+    min-width:0;
+  }
+  .welcome-trust strong,
+  .welcome-trust span{
+    white-space:normal;
+  }
+}
 </style>
 </head>
 
@@ -791,28 +1422,48 @@ button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-vis
 <main id="lobbyContainer">
   <div class="lobby-wrap">
     <div class="lobby-main">
-    <section class="lobby-intro">
-      <div class="eyebrow"><i class="fa-solid fa-lock"></i> Secure Online Examination</div>
-      <h1>Welcome to Your Examination</h1>
-      <p>Please review the examination details and complete the short readiness checks before you begin.</p>
-    </section>
+    <section class="welcome-hero">
+      <div class="welcome-main">
+        <div class="eyebrow"><i class="fa-solid fa-lock"></i> Secure Online Examination</div>
+        <div class="welcome-kicker"><span></span> NCHSM DIGITAL ASSESSMENT</div>
+        <h1>Welcome to Your<br><em>Examination</em></h1>
+        <p class="welcome-description">Your examination is ready. Review the details below, complete the readiness checks, and begin when you are fully prepared.</p>
 
-    <section class="exam-hero-card">
-      <div class="exam-hero-top">
-        <div>
-          <h2 id="examTitle">Examination</h2>
-          <p>Online Assessment</p>
+        <div class="welcome-trust">
+          <div><i class="fa-solid fa-shield-halved"></i><span><strong>Proctored</strong> Secure monitoring</span></div>
+          <div><i class="fa-solid fa-wifi"></i><span><strong>Connected</strong> Stable session</span></div>
+          <div><i class="fa-solid fa-user-check"></i><span><strong>Verified</strong> Student access</span></div>
         </div>
-        <div class="proctored-pill"><i class="fa-solid fa-shield-halved"></i> Proctored</div>
       </div>
-      <div class="exam-metrics">
-        <div class="metric"><span>Duration</span><strong><span id="examDuration">--</span> min</strong></div>
-        <div class="metric"><span>Questions</span><strong id="examQuestions">--</strong></div>
-        <div class="metric"><span>Pass Mark</span><strong><span id="examPassMark">--</span>%</strong></div>
+
+      <div class="welcome-campus">
+        <img src="https://raw.githubusercontent.com/NCHSMlearning/NCHSM-Digital-campus-/main/images/campus-header.jpg" alt="NCHSM Campus">
+        <div class="welcome-campus-overlay"></div>
+        <div class="welcome-campus-content">
+          <span class="campus-chip"><i class="fa-solid fa-location-dot"></i> NCHSM</span>
+          <strong>Learn. Serve. Lead.</strong>
+          <small>Excellence in Health Sciences Education</small>
+        </div>
       </div>
-      <div id="continuationBadge" class="hidden" style="margin-top:14px;padding:11px 13px;border-radius:12px;background:#eaf7ef;color:#17774f;font-size:11px;font-weight:800">
-        <i class="fa-solid fa-rotate-right"></i> Your previous examination progress is available. You can continue from where you stopped.
-      </div>
+
+      <section class="exam-hero-card">
+        <div class="exam-hero-top">
+          <div class="exam-heading">
+            <span class="exam-label"><i class="fa-solid fa-file-circle-check"></i> CURRENT ASSESSMENT</span>
+            <h2 id="examTitle">Examination</h2>
+            <p>Online Assessment <span class="dot"></span> Ready for review</p>
+          </div>
+          <div class="proctored-pill"><i class="fa-solid fa-shield-halved"></i> Proctored</div>
+        </div>
+        <div class="exam-metrics">
+          <div class="metric"><div class="metric-icon"><i class="fa-regular fa-clock"></i></div><span>Duration</span><strong><span id="examDuration">--</span> <small>min</small></strong></div>
+          <div class="metric"><div class="metric-icon"><i class="fa-regular fa-circle-question"></i></div><span>Questions</span><strong id="examQuestions">--</strong></div>
+          <div class="metric"><div class="metric-icon"><i class="fa-solid fa-award"></i></div><span>Pass Mark</span><strong><span id="examPassMark">--</span><small>%</small></strong></div>
+        </div>
+        <div id="continuationBadge" class="hidden" style="margin-top:12px;padding:10px 12px;border-radius:11px;background:#eaf7ef;color:#17774f;font-size:10px;font-weight:800">
+          <i class="fa-solid fa-rotate-right"></i> Your previous examination progress is available. You can continue from where you stopped.
+        </div>
+      </section>
     </section>
 
     <section class="student-card">
