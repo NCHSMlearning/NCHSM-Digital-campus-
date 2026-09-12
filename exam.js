@@ -1,3 +1,22 @@
+/*
+ * NCHSM EXAM JS — RETAKE SAFETY PATCH
+ * ===================================
+ * This version keeps the existing exam/proctoring system and improves only
+ * retake authorization and lifecycle handling.
+ *
+ * Authorization requires:
+ *   result_status   = RESET_FOR_RETAKE
+ *   allow_retake    = true
+ *   retake_unlocked = true
+ *
+ * Browser URL/session values cannot authorize a retake by themselves.
+ * Existing answers remain preserved and are loaded from exam_grades.
+ * After a successful retake submission, retake_unlocked is set to false.
+ *
+ * NOTE: This does not create a separate attempt-history table. A complete
+ * multi-attempt audit trail would require a dedicated attempts table/schema.
+ */
+
 // ============================================================
 // CONFIGURATION
 // ============================================================
@@ -347,7 +366,9 @@ function recoverExamSession() {
                         AppState.flaggedQuestions = session.flaggedQuestions || {};
                         AppState.currentIndex = session.currentIndex || 0;
                         AppState.hasAnsweredAtLeastOne = Object.keys(AppState.answers).length > 0;
-                        AppState.isRetake = session.isRetake || false;
+
+                        // Retake authorization is controlled by the database.
+                        // Do NOT restore isRetake from stale sessionStorage.
                         return true;
                     }
                 }
@@ -390,7 +411,21 @@ async function checkActiveSession() {
 // CHECK RETAKE STATUS
 // ============================================================
 async function checkRetakeStatus() {
+    // RETAKE SECURITY:
+    // The database is the authority. ?retake=true is only a request.
+    // A retake is authorized only when all three conditions are true:
+    //   result_status = RESET_FOR_RETAKE
+    //   allow_retake = true
+    //   retake_unlocked = true
     try {
+        // Clear any stale browser state before checking the server.
+        AppState.isRetake = false;
+        AppState.retakeCount = 0;
+
+        if (DOM.continuationBadge) {
+            DOM.continuationBadge.style.display = 'none';
+        }
+
         const { data, error } = await sb
             .from('exam_grades')
             .select('result_status, reset_count, allow_retake, retake_unlocked')
@@ -401,26 +436,48 @@ async function checkRetakeStatus() {
 
         if (error && error.code !== 'PGRST116') {
             console.warn('Error checking retake status:', error);
-            return;
+            return false;
         }
 
-        if (data && data.result_status === 'RESET_FOR_RETAKE' && data.retake_unlocked === true) {
+        const retakeAuthorized =
+            !!data &&
+            data.result_status === 'RESET_FOR_RETAKE' &&
+            data.allow_retake === true &&
+            data.retake_unlocked === true;
+
+        if (retakeAuthorized) {
             AppState.isRetake = true;
-            AppState.retakeCount = data.reset_count || 1;
+            AppState.retakeCount = Number(data.reset_count) || 1;
 
             if (DOM.continuationBadge) {
                 DOM.continuationBadge.style.display = 'block';
             }
-            
+
             if (DOM.startExamText) {
                 DOM.startExamText.textContent = '🔄 Continue My Exam';
             }
 
-            console.log('🔄 Continuation exam detected. Reset count:', data.reset_count);
-            showToast('🔄 Continuing exam - Your answers are preserved', 'info', 4000);
+            console.log(
+                '🔄 Authorized continuation exam detected. Retake count:',
+                AppState.retakeCount
+            );
+
+            showToast(
+                `🔄 Retake ${AppState.retakeCount}: Your previous answers are preserved.`,
+                'info',
+                4000
+            );
+
+            return true;
         }
+
+        console.log('ℹ️ No active authorized retake found.');
+        return false;
     } catch (e) {
-        console.log('No retake status found');
+        AppState.isRetake = false;
+        AppState.retakeCount = 0;
+        console.warn('No retake status found:', e);
+        return false;
     }
 }
 
@@ -828,6 +885,9 @@ window.startExam = async function() {
         return;
     }
 
+    // Authorized retakes intentionally bypass the normal active-session
+    // rejection because the previous attempt may have been reset.
+    // Unauthorized students still use the normal session protection.
     if (!AppState.isRetake) {
         const sessionOk = await checkActiveSession();
         if (!sessionOk) {
@@ -2079,6 +2139,13 @@ async function calculateAndSaveGrade() {
                 percentage: percentage,
                 result_status: resultStatus,
                 completed: true,
+
+                // A RESET_FOR_RETAKE authorization is one-use.
+                // The admin can unlock another retake later if required.
+                ...(AppState.isRetake ? {
+                    retake_unlocked: false
+                } : {}),
+
                 graded_at: new Date().toISOString(),
                 updated_at: new Date().toISOString()
             }, { onConflict: 'student_id, exam_id, question_id' });
@@ -3506,7 +3573,7 @@ document.addEventListener('DOMContentLoaded', function() {
     
     AppState.studentId = studentId;
     AppState.examId = params.get('exam_id');
-    const isRetake = params.get('retake') === 'true';
+    const retakeRequestedByUrl = params.get('retake') === 'true';
 
     // ✅ FIX: Redirect to student dashboard instead of exam_login
     if (!AppState.studentId) {
@@ -3524,7 +3591,7 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
     }
 
-    if (!isRetake && sessionStorage.getItem('examInProgress') === 'true') {
+    if (!retakeRequestedByUrl && sessionStorage.getItem('examInProgress') === 'true') {
         const storedExamId = sessionStorage.getItem('examId');
         const storedStudentId = sessionStorage.getItem('studentId');
         if (storedExamId && storedStudentId) {
@@ -3533,17 +3600,13 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     }
 
-    if (isRetake) {
-        console.log('🔄 CONTINUATION EXAM MODE - Answers preserved');
-        showToast('🔄 Continuing exam - You can continue from where you left off', 'info', 4000);
+    if (retakeRequestedByUrl) {
+        console.log('🔄 Retake URL requested. Waiting for database authorization...');
     }
 
     initDomRefs();
     loadLobbyData();
     console.log('📝 Exam Lobby loaded. Exam ID:', AppState.examId, 'Student ID:', AppState.studentId);
-    if (isRetake) {
-        console.log('🔄 CONTINUATION MODE ACTIVE - Answers will be preserved');
-    }
 });
 
 // ============================================================
