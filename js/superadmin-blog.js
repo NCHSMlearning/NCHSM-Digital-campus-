@@ -13,8 +13,48 @@
 
   const $ = id => document.getElementById(id);
 
+  // ============================================================
+  // SUPABASE CLIENT
+  // Uses the same working NCHSM Supabase project as the portal.
+  // Never overwrite window.supabase: the CDN uses that object
+  // for createClient().
+  // ============================================================
   function getClient() {
-    return window.db && window.db.supabase ? window.db.supabase : null;
+    if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
+      return window.db.supabase;
+    }
+
+    if (window.nchsmSupabase && typeof window.nchsmSupabase.from === 'function') {
+      return window.nchsmSupabase;
+    }
+
+    if (window.sb && typeof window.sb.from === 'function') {
+      return window.sb;
+    }
+
+    if (window.supabaseClient && typeof window.supabaseClient.from === 'function') {
+      return window.supabaseClient;
+    }
+
+    const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+
+    if (window.supabase && typeof window.supabase.createClient === 'function') {
+      try {
+        const client = window.supabase.createClient(
+          SUPABASE_URL,
+          SUPABASE_ANON_KEY
+        );
+
+        window.sb = client;
+        window.nchsmSupabase = client;
+        return client;
+      } catch (error) {
+        console.error('❌ SuperAdmin Blog: Supabase initialization failed:', error);
+      }
+    }
+
+    return null;
   }
 
   function escapeHtml(value) {
@@ -105,6 +145,9 @@
   }
 
   async function load() {
+    if (load.inProgress) return;
+    load.inProgress = true;
+
     const supabase = getClient();
     if (!supabase) {
       notify('Database connection is not available yet. Please try again.', 'error');
@@ -122,6 +165,8 @@
       const body = $('superadminBlogTableBody');
       if (body) body.innerHTML = `<tr><td colspan="6" style="padding:35px;text-align:center;color:#b91c1c;">Unable to load blog posts.<br><small>${escapeHtml(err.message || 'Database error')}</small></td></tr>`;
       notify('Unable to load Student Blog posts. Check the student_blog_posts table and SuperAdmin RLS permissions.', 'error');
+    } finally {
+      load.inProgress = false;
     }
   }
 
@@ -192,6 +237,8 @@
   };
 
   window.loadSuperAdminBlog = load;
+  window.refreshSuperAdminBlog = load;
+
   window.initSuperAdminBlog = function () {
     if (initialized) { load(); return; }
     initialized = true;
@@ -204,11 +251,36 @@
 
   function boot() {
     const link = document.querySelector('#mainNav a[data-tab="student-blog-management"]');
-    if (link) link.addEventListener('click', () => setTimeout(window.initSuperAdminBlog, 250));
+
+    if (link) {
+      link.addEventListener('click', () => {
+        setTimeout(() => {
+          if (typeof window.initSuperAdminBlog === 'function') {
+            window.initSuperAdminBlog();
+          }
+        }, 250);
+      });
+    }
+
     const active = document.querySelector('.tab-content.active');
-    if (active && active.id === 'student-blog-management') setTimeout(window.initSuperAdminBlog, 400);
-    // Keep the sidebar badge current without requiring the page to be opened first.
-    setTimeout(() => { if (getClient()) load(); }, 1200);
+    if (active && active.id === 'student-blog-management') {
+      setTimeout(window.initSuperAdminBlog, 400);
+    }
+
+    // Retry briefly while the main SuperAdmin database client initializes.
+    let attempts = 0;
+    const timer = setInterval(() => {
+      attempts++;
+
+      if (getClient()) {
+        clearInterval(timer);
+        load();
+      }
+
+      if (attempts >= 15) {
+        clearInterval(timer);
+      }
+    }, 1000);
   }
 
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', boot);
