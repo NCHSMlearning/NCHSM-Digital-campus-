@@ -1256,6 +1256,130 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
   .nchsm-student-sidebar-header{padding-top:12px!important;}
 }
 </style>
+
+<style id="nchsm-dashboard-final-student-pass">
+/* ================================================================
+   NCHSM STUDENT DASHBOARD — FINAL STUDENT PASS
+   UI/layout only. Existing IDs and Supabase/data hooks are preserved.
+   ================================================================ */
+#dashboard{box-sizing:border-box!important;background:#f4f8fc!important}
+#dashboard .nchsm-dashboard{width:100%!important;max-width:1500px!important;margin:0 auto!important}
+
+/* Welcome hero */
+#dashboard .nchsm-hero{height:154px!important;min-height:154px!important;border-radius:16px!important;margin-bottom:12px!important;box-shadow:0 8px 24px rgba(15,48,78,.13)!important}
+#dashboard .nchsm-hero-content{height:154px!important;min-height:154px!important;padding:20px 24px!important}
+#dashboard .nchsm-hero-copy h1{font-size:29px!important;line-height:1.15!important}
+#dashboard .nchsm-hero-copy p{font-size:13px!important;margin-top:7px!important}
+#dashboard .nchsm-hero-tagline{font-size:12px!important;margin-top:9px!important}
+#dashboard .nchsm-hero-right{min-width:255px!important}
+#dashboard .nchsm-hero-nav{font-size:12px!important}
+#dashboard .nchsm-hero-message{font-size:11px!important;margin-top:7px!important}
+#dashboard .nchsm-hero-script{font-size:12px!important;margin-top:5px!important}
+
+/* Six real dashboard metrics: all remain visible on desktop */
+#dashboard .nchsm-metrics{display:grid!important;grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:9px!important;margin:10px 0!important}
+#dashboard .nchsm-metric{min-width:0!important;min-height:68px!important;height:68px!important;padding:8px 10px!important;border-radius:11px!important;gap:8px!important;box-shadow:0 2px 8px rgba(25,63,97,.045)!important}
+#dashboard .nchsm-metric-icon{width:36px!important;height:36px!important;flex:0 0 36px!important;font-size:16px!important}
+#dashboard .nchsm-metric-label{font-size:10px!important;overflow:hidden;text-overflow:ellipsis}
+#dashboard .nchsm-metric-value{font-size:13px!important}
+#dashboard .nchsm-metric-sub{font-size:9px!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#dashboard .nchsm-xpbar{height:5px!important;margin-top:3px!important;min-width:55px!important}
+#dashboard .metric-finance{border-color:#cfe0ef!important}
+
+/* Announcement */
+#dashboard .nchsm-announcement{min-height:52px!important;padding:8px 12px!important;border-radius:10px!important;margin-bottom:10px!important}
+#dashboard .nchsm-announcement>i{font-size:18px!important}
+#dashboard .nchsm-announcement strong{font-size:12px!important}
+#dashboard .nchsm-announcement p{font-size:10px!important}
+
+/* Main dashboard cards */
+#dashboard .nchsm-class-exam-grid,
+#dashboard .nchsm-exam-progress-grid,
+#dashboard .nchsm-snapshot-progress-grid{gap:10px!important;margin-top:10px!important}
+#dashboard .nchsm-card{border-radius:11px!important;box-shadow:0 3px 11px rgba(25,63,97,.055)!important}
+#dashboard .nchsm-card-head{height:48px!important;min-height:48px!important;padding:7px 11px!important}
+#dashboard .nchsm-card-title{gap:7px!important}
+#dashboard .nchsm-card-title>i{font-size:19px!important}
+#dashboard .nchsm-card-title h2{font-size:12px!important}
+#dashboard .nchsm-card-title small{font-size:9px!important;margin-top:2px!important}
+#dashboard .nchsm-view-btn{padding:5px 9px!important;font-size:9px!important}
+
+/* Next class / exam: compact but readable */
+#dashboard .next-class-card,#dashboard .next-exam-card{min-height:142px!important}
+#dashboard .nchsm-next-class-body{min-height:92px!important;padding:10px 12px!important}
+#dashboard .next-exam-body{min-height:82px!important}
+#dashboard .next-class-time{font-size:23px!important;font-weight:800!important}
+#dashboard .next-class-main strong{font-size:14px!important}
+#dashboard .next-class-main span{font-size:9px!important}
+#dashboard .next-class-details{font-size:9px!important}
+#dashboard .next-exam-status{font-size:9px!important}
+
+/* Quick actions */
+#dashboard .quick-actions-card{margin-top:10px!important}
+#dashboard .quick-actions-card .nchsm-card-body{padding:8px 10px 10px!important}
+#dashboard .quick-actions-card .nchsm-action-grid{grid-template-columns:repeat(6,minmax(0,1fr))!important;gap:8px!important}
+#dashboard .quick-actions-card .nchsm-action{height:66px!important;min-height:66px!important;border-radius:8px!important;font-size:9px!important}
+#dashboard .quick-actions-card .nchsm-action i{font-size:17px!important}
+
+/* Snapshot + progress */
+#dashboard .nchsm-snapshot-progress-grid{grid-template-columns:1fr 1fr!important}
+#dashboard .quick-snapshot-card,#dashboard .nchsm-snapshot-progress-grid>.progress-card{height:168px!important;min-height:168px!important}
+#dashboard .nchsm-snapshot-grid{height:112px!important;gap:7px!important}
+#dashboard .nchsm-snapshot-item{border-radius:9px!important}
+#dashboard .nchsm-progress-grid{height:112px!important;padding:7px 6px!important}
+#dashboard .nchsm-ring{width:68px!important;height:68px!important}
+#dashboard .nchsm-ring-value{font-size:12px!important}
+#dashboard .nchsm-progress-item>strong,#dashboard .nchsm-progress-item>span{font-size:9px!important}
+
+/* Lower cards */
+#dashboard .nchsm-bottom-grid{gap:10px!important;margin-top:10px!important}
+#dashboard .streak-card,#dashboard .events-card,#dashboard .courses-card{min-height:138px!important}
+#dashboard .leaderboard-card{margin-top:10px!important}
+#dashboard .nchsm-brand-strip{margin-top:10px!important;min-height:58px!important}
+
+/* Avoid horizontal overflow from long student names/data */
+#dashboard *{min-width:0}
+#dashboard .nchsm-card-body,#dashboard .nchsm-metric-body{min-width:0}
+
+/* Tablet */
+@media(max-width:1200px){
+  #dashboard .nchsm-metrics{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+  #dashboard .quick-actions-card .nchsm-action-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+
+/* Mobile/tablet */
+@media(max-width:900px){
+  #dashboard .nchsm-hero,#dashboard .nchsm-hero-content{height:165px!important;min-height:165px!important}
+  #dashboard .nchsm-hero-copy{max-width:100%!important}
+  #dashboard .nchsm-hero-right{display:none!important}
+  #dashboard .nchsm-metrics{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #dashboard .nchsm-snapshot-progress-grid{grid-template-columns:1fr!important}
+  #dashboard .quick-snapshot-card,#dashboard .nchsm-snapshot-progress-grid>.progress-card{height:auto!important;min-height:160px!important}
+  #dashboard .quick-actions-card .nchsm-action-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+}
+
+@media(max-width:560px){
+  #dashboard{padding:8px!important}
+  #dashboard .nchsm-hero,#dashboard .nchsm-hero-content{height:145px!important;min-height:145px!important}
+  #dashboard .nchsm-hero-content{padding:16px!important}
+  #dashboard .nchsm-hero-copy h1{font-size:22px!important}
+  #dashboard .nchsm-hero-copy p{font-size:11px!important}
+  #dashboard .nchsm-hero-tagline{font-size:10px!important}
+  #dashboard .nchsm-metrics{gap:7px!important;margin:8px 0!important}
+  #dashboard .nchsm-metric{height:64px!important;min-height:64px!important;padding:7px!important}
+  #dashboard .nchsm-metric-icon{width:32px!important;height:32px!important;flex-basis:32px!important;font-size:14px!important}
+  #dashboard .nchsm-metric-label{font-size:9px!important}
+  #dashboard .nchsm-metric-value{font-size:12px!important}
+  #dashboard .nchsm-action-grid,#dashboard .quick-actions-card .nchsm-action-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+  #dashboard .quick-actions-card .nchsm-action{height:62px!important;min-height:62px!important}
+  #dashboard .nchsm-progress-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;height:auto!important}
+  #dashboard .nchsm-ring{width:62px!important;height:62px!important}
+}
+</style>
+
+<style id="nchsm-student-blog-ui">
+.student-blog-page{max-width:1200px;margin:0 auto;padding:2px 0 28px;font-family:Inter,system-ui,sans-serif;color:#142746}.student-blog-hero{min-height:145px;padding:25px 28px;border-radius:15px;background:linear-gradient(120deg,#062f55,#087bf0);color:#fff;display:flex;align-items:center;justify-content:space-between;gap:20px;box-shadow:0 8px 25px rgba(6,47,85,.16)}.student-blog-kicker{font-size:10px;font-weight:900;letter-spacing:1.3px;opacity:.85}.student-blog-hero h1{margin:7px 0 5px;font-size:30px}.student-blog-hero p{margin:0;max-width:720px;font-size:13px;line-height:1.55;color:rgba(255,255,255,.9)}.student-blog-create-btn{border:0;border-radius:10px;background:#fdb913;color:#062f55;padding:12px 16px;font-weight:900;cursor:pointer;white-space:nowrap}.student-blog-create-btn:hover{filter:brightness(1.04);transform:translateY(-1px)}.student-blog-toolbar{display:flex;gap:10px;margin:13px 0}.student-blog-search{height:42px;flex:1;display:flex;align-items:center;gap:9px;background:#fff;border:1px solid #dbe7f1;border-radius:10px;padding:0 12px}.student-blog-search i{color:#66809e}.student-blog-search input,.student-blog-toolbar select{border:0;outline:0;background:transparent;font:500 12px Inter,sans-serif;color:#18304d}.student-blog-search input{width:100%}.student-blog-toolbar select{height:42px;min-width:180px;border:1px solid #dbe7f1;border-radius:10px;background:#fff;padding:0 12px}.student-blog-status{min-height:18px;margin:2px 0 7px;font-size:11px;color:#66809e}.student-blog-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:13px}.student-blog-card{background:#fff;border:1px solid #dbe7f1;border-radius:13px;overflow:hidden;box-shadow:0 3px 12px rgba(25,63,97,.05);transition:.18s}.student-blog-card:hover{transform:translateY(-2px);box-shadow:0 9px 22px rgba(25,63,97,.10)}.student-blog-card-image{height:135px;background:linear-gradient(135deg,#eaf3fb,#dbe9f6);display:flex;align-items:center;justify-content:center;overflow:hidden}.student-blog-card-image img{width:100%;height:100%;object-fit:cover}.student-blog-card-image i{font-size:34px;color:#7c9ab5}.student-blog-card-body{padding:14px}.student-blog-category{display:inline-flex;padding:4px 8px;border-radius:99px;background:#edf6ff;color:#0875dc;font-size:9px;font-weight:900}.student-blog-card h3{margin:9px 0 5px;font-size:15px;line-height:1.3;color:#132a48}.student-blog-card p{margin:0;color:#66809e;font-size:11px;line-height:1.55;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}.student-blog-meta{display:flex;justify-content:space-between;gap:8px;margin-top:12px;padding-top:9px;border-top:1px solid #edf2f7;font-size:9px;color:#7990a7}.student-blog-empty{grid-column:1/-1;text-align:center;padding:50px 20px;background:#fff;border:1px dashed #cdddea;border-radius:13px;color:#66809e}.student-blog-empty i{font-size:25px;color:#087bf0}.student-blog-empty h3{margin:10px 0 5px;color:#173250;font-size:15px}.student-blog-empty p{margin:0;font-size:11px}.student-blog-modal[hidden]{display:none!important}.student-blog-modal{position:fixed;inset:0;z-index:9000;display:flex;align-items:center;justify-content:center;padding:18px}.student-blog-modal-backdrop{position:absolute;inset:0;background:rgba(3,20,36,.62);backdrop-filter:blur(2px)}.student-blog-modal-card{position:relative;width:min(760px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 25px 70px rgba(0,0,0,.25);z-index:1}.student-blog-modal-head{display:flex;align-items:center;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #e6eef5}.student-blog-modal-head h2{margin:4px 0 0;font-size:19px;color:#142746}.student-blog-close{width:34px;height:34px;border:0;border-radius:9px;background:#f1f5f9;color:#536b83;cursor:pointer}.student-blog-modal-card form{padding:18px 20px}.student-blog-modal-card label{display:block;margin-bottom:13px;font-size:11px;font-weight:800;color:#29445f}.student-blog-modal-card label span{font-weight:500;color:#8aa0b5}.student-blog-modal-card input,.student-blog-modal-card select,.student-blog-modal-card textarea{display:block;width:100%;box-sizing:border-box;margin-top:6px;border:1px solid #d4e1ec;border-radius:9px;background:#fbfdff;padding:10px 11px;outline:0;font:500 12px Inter,sans-serif;color:#18304d}.student-blog-modal-card textarea{resize:vertical;min-height:180px;line-height:1.55}.student-blog-modal-card input:focus,.student-blog-modal-card select:focus,.student-blog-modal-card textarea:focus{border-color:#087bf0;box-shadow:0 0 0 3px rgba(8,123,240,.08)}.student-blog-form-row{display:grid;grid-template-columns:1fr 1.5fr;gap:12px}.student-blog-form-note{padding:10px 12px;border-radius:9px;background:#f0f8ff;color:#4e718e;font-size:10px;line-height:1.45}.student-blog-form-note i{color:#087bf0;margin-right:5px}.student-blog-form-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}.student-blog-secondary,.student-blog-primary{border:0;border-radius:9px;padding:10px 14px;font-size:11px;font-weight:800;cursor:pointer}.student-blog-secondary{background:#eef3f7;color:#4d6680}.student-blog-primary{background:#087bf0;color:#fff}.student-blog-primary:disabled{opacity:.6;cursor:not-allowed}@media(max-width:900px){.student-blog-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:640px){.student-blog-hero{padding:20px;display:block}.student-blog-hero h1{font-size:25px}.student-blog-create-btn{margin-top:15px}.student-blog-toolbar{display:block}.student-blog-toolbar select{width:100%;margin-top:8px}.student-blog-grid{grid-template-columns:1fr}.student-blog-form-row{grid-template-columns:1fr}.student-blog-modal{padding:8px}.student-blog-modal-card{max-height:96vh}}
+</style>
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -1509,6 +1633,13 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 </a>
 </li>
 <li role="none">
+<a data-tab="student-blog" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-pen-nib"></i><span class="nav-icon-bg"></span></span>
+<span class="nav-text">Student Blog</span>
+<span class="nav-badge-premium" style="background:#10b981;">BLOG</span>
+</a>
+</li>
+<li role="none">
 <a data-tab="newsletter" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-bullhorn"></i><span class="nav-icon-bg"></span></span>
 <span class="nav-text">Announcements</span>
@@ -1560,6 +1691,52 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 <main class="main" id="main-content">
 <!-- ==================== DASHBOARD SECTION - FULL DARK THEME ==================== -->
 
+<section aria-label="Student Blog" class="tab-content" id="student-blog" style="display:none;">
+  <div class="student-blog-page">
+    <div class="student-blog-hero">
+      <div>
+        <div class="student-blog-kicker"><i class="fas fa-pen-nib"></i> STUDENT VOICES</div>
+        <h1>Student Blog</h1>
+        <p>Share your nursing journey, ideas, experiences, achievements and useful knowledge with the NCHSM student community.</p>
+      </div>
+      <button type="button" class="student-blog-create-btn" id="studentBlogCreateBtn"><i class="fas fa-plus"></i> Write a Post</button>
+    </div>
+    <div class="student-blog-toolbar">
+      <div class="student-blog-search"><i class="fas fa-search"></i><input id="studentBlogSearch" type="search" placeholder="Search student posts..." autocomplete="off"></div>
+      <select id="studentBlogCategory" aria-label="Filter blog category">
+        <option value="">All categories</option>
+        <option value="Nursing Life">Nursing Life</option>
+        <option value="Clinical Experience">Clinical Experience</option>
+        <option value="Study Tips">Study Tips</option>
+        <option value="Student Experience">Student Experience</option>
+        <option value="Achievements">Achievements</option>
+        <option value="Community">Community</option>
+        <option value="Opinion">Opinion</option>
+        <option value="Other">Other</option>
+      </select>
+    </div>
+    <div id="studentBlogStatus" class="student-blog-status" role="status" aria-live="polite"></div>
+    <div id="studentBlogGrid" class="student-blog-grid">
+      <div class="student-blog-empty"><i class="fas fa-spinner fa-spin"></i><h3>Loading posts...</h3><p>Connecting to the NCHSM blog.</p></div>
+    </div>
+  </div>
+  <div class="student-blog-modal" id="studentBlogModal" hidden>
+    <div class="student-blog-modal-backdrop" data-blog-close></div>
+    <div class="student-blog-modal-card" role="dialog" aria-modal="true" aria-labelledby="studentBlogModalTitle">
+      <div class="student-blog-modal-head"><div><span class="student-blog-kicker">CREATE</span><h2 id="studentBlogModalTitle">Write a Student Blog Post</h2></div><button type="button" class="student-blog-close" data-blog-close aria-label="Close"><i class="fas fa-times"></i></button></div>
+      <form id="studentBlogForm">
+        <label>Title<input id="studentBlogTitle" name="title" maxlength="180" required placeholder="Give your post a clear title"></label>
+        <div class="student-blog-form-row">
+          <label>Category<select id="studentBlogPostCategory" name="category" required><option value="Nursing Life">Nursing Life</option><option value="Clinical Experience">Clinical Experience</option><option value="Study Tips">Study Tips</option><option value="Student Experience">Student Experience</option><option value="Achievements">Achievements</option><option value="Community">Community</option><option value="Opinion">Opinion</option><option value="Other">Other</option></select></label>
+          <label>Featured image URL <span>(optional)</span><input id="studentBlogImage" name="featured_image" type="url" placeholder="https://..."></label>
+        </div>
+        <label>Content<textarea id="studentBlogContent" name="content" rows="10" maxlength="12000" required placeholder="Write your story, experience, advice or article..."></textarea></label>
+        <div class="student-blog-form-note"><i class="fas fa-shield-alt"></i> Posts are submitted for review. Only approved posts are published publicly.</div>
+        <div class="student-blog-form-actions"><button type="button" class="student-blog-secondary" data-blog-close>Cancel</button><button type="submit" class="student-blog-primary" id="studentBlogSubmitBtn"><i class="fas fa-paper-plane"></i> Submit for Review</button></div>
+      </form>
+    </div>
+  </div>
+</section>
 <section aria-label="Student dashboard" class="tab-content active" id="dashboard">
 <div class="nchsm-dashboard">
 <!-- HERO -->
@@ -7581,6 +7758,7 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 <!-- ===== 6️⃣ SIXTH: Cleanup and Chatbot ===== -->
 <script src="js/cleanup.js"></script>
 <script src="./js/chatbot.js"></script>
+<script src="./js/student-blog.js"></script>
 <!-- ============================================================ -->
 <!-- MAIN NAVIGATION HANDLER                                      -->
 <!-- ============================================================ -->
@@ -7644,6 +7822,9 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
             // ===== NEW: ENROLLMENT TAB =====
             else if (tabId === 'enrollment' && typeof initEnrollment === 'function') {
                 setTimeout(initEnrollment, 300);
+            }
+            else if (tabId === 'student-blog' && window.studentBlogModule?.loadPosts) {
+                setTimeout(() => window.studentBlogModule.loadPosts(), 50);
             }
         }, 100);
     }
