@@ -629,7 +629,9 @@ async function loadPublishedRetakeData() {
         PUBLISHED_STATE.retakeMap = retakeMap;
         console.log(`📊 Loaded ${data?.length || 0} retake records for published marks`);
         
-        await checkAndUnpublishMarksWithRetakes(data || []);
+        // IMPORTANT: Retakes are read/display data only.
+        // Do NOT modify student_marks while loading this module.
+        // Publishing/unpublishing must happen only after explicit admin action.
         
         return retakeMap;
         
@@ -640,55 +642,18 @@ async function loadPublishedRetakeData() {
 }
 
 async function checkAndUnpublishMarksWithRetakes(retakes) {
-    if (!retakes || retakes.length === 0) return;
-    
-    let unpublishedCount = 0;
-    const retakeMap = {};
-    
-    retakes.forEach(retake => {
-        const key = `${retake.admission_number}_${retake.subject_name}`;
-        retakeMap[key] = true;
-    });
-    
-    const { data: publishedMarks, error } = await window.sb
-        .from('student_marks')
-        .select('id, admission_number, subject_name, published')
-        .eq('published', true);
-    
-    if (error) {
-        console.warn('Could not fetch published marks:', error);
-        return;
-    }
-    
-    if (!publishedMarks || publishedMarks.length === 0) return;
-    
-    for (const mark of publishedMarks) {
-        const key = `${mark.admission_number}_${mark.subject_name}`;
-        if (retakeMap[key]) {
-            const { error: updateError } = await window.sb
-                .from('student_marks')
-                .update({
-                    published: false,
-                    published_at: null,
-                    published_by: null,
-                    unpublished_at: new Date().toISOString(),
-                    unpublished_reason: 'Retake recorded - auto-unpublished'
-                })
-                .eq('id', mark.id);
-            
-            if (!updateError) {
-                unpublishedCount++;
-                console.log(`🔓 Auto-unpublished ${mark.admission_number} - ${mark.subject_name} (has retake)`);
-            }
-        }
-    }
-    
-    if (unpublishedCount > 0) {
-        console.log(`🔓 Auto-unpublished ${unpublishedCount} marks with retake records`);
-        if (typeof window.showNotification === 'function') {
-            window.showNotification(`🔓 ${unpublishedCount} marks auto-unpublished (retake recorded)`, 'warning');
-        }
-    }
+    // READ-ONLY by design.
+    // Retakes must not silently change publication state during page load.
+    // This function is retained for backward compatibility with older calls.
+    if (!Array.isArray(retakes) || retakes.length === 0) return 0;
+
+    console.log(
+        'ℹ️ Retake check completed in read-only mode (' +
+        retakes.length +
+        ' retake record(s)); no student_marks rows were modified.'
+    );
+
+    return 0;
 }
 
 // ============================================================
@@ -816,10 +781,11 @@ async function getCurrentUser() {
 // ============================================================
 
 async function loadPublishedMarks() {
-    // ✅ FIX: Force reset if stuck (safety mechanism)
+    // Prevent overlapping loads. A second caller simply waits for the
+    // existing request instead of resetting state and starting another fetch.
     if (PUBLISHED_STATE.isLoading) {
-        console.warn('⚠️ loadPublishedMarks was stuck - force resetting');
-        PUBLISHED_STATE.isLoading = false;
+        console.warn('⏳ Published Marks is already loading; ignoring duplicate request.');
+        return;
     }
     
     // ✅ OPTIMIZATION: If data already loaded, just filter and render
@@ -952,7 +918,8 @@ async function loadPublishedMarks() {
             });
         }
         
-        // ✅ Normalize block names (handle BLOCK_2 vs Block 2)
+        // ✅ Normalize block names for DISPLAY/FILTERING ONLY.
+        // Never write normalized values back to student_marks during loading.
         let normalizedCount = 0;
         processedMarks.forEach(m => {
             if (m.block === 'BLOCK_2') {
@@ -999,6 +966,7 @@ async function loadPublishedMarks() {
         updateBadge([]);
         updateProgramCounts([]);
         PUBLISHED_STATE.isLoading = false;
+        console.error('📌 Published Marks load failed. No automatic database updates were attempted.');
     }
 }
 // ============================================================
@@ -3245,16 +3213,13 @@ async function initPublishedMarks() {
         academicYearEl.value = '2025';
     }
     
-    // ✅ SAFETY TIMEOUT: Force reset loading state if stuck after 10 seconds
-    // This prevents the infinite spinner issue
+    // Safety watchdog: never start a second load from the timeout.
+    // A retry here can create duplicate Supabase requests and duplicate UI work.
     var safetyTimeout = setTimeout(function() {
         if (PUBLISHED_STATE.isLoading) {
-            console.warn('⚠️ Published Marks loading stuck - force resetting...');
-            PUBLISHED_STATE.isLoading = false;
-            // Retry loading
-            loadPublishedMarks();
+            console.warn('⚠️ Published Marks load is taking longer than expected.');
         }
-    }, 10000);
+    }, 15000);
     
     // Load saved filter state
     loadFilterState();
