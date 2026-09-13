@@ -1242,6 +1242,20 @@ body{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif!important}
 body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .calendar-panel,body.dark-mode .timetable-panel{--card-bg:#172236;background:#172236;border-color:#2b3a52;color:#e8eef7}body.dark-mode .calendar-stat strong,body.dark-mode .calendar-table-head>div,body.dark-mode .timetable-title h3{color:#f3f7fb}body.dark-mode .calendar-stat small,body.dark-mode .calendar-filter-wrap label,body.dark-mode .timetable-title p{color:#a9b8ca}body.dark-mode .calendar-select-wrap select,body.dark-mode .calendar-btn.secondary{background:#111a2a;color:#dbe5f0;border-color:#33445e}body.dark-mode .modern-calendar-table th{background:#111a2a;color:#a9b8ca;border-color:#2b3a52}body.dark-mode .modern-calendar-table td{color:#d3deeb;border-color:#26364d}body.dark-mode .modern-calendar-table tbody tr:hover{background:#1d2a40}body.dark-mode .week-strip{background:#111a2a;border-color:#2b3a52}
 </style>
 
+
+<style id="nchsm-sidebar-no-duplicate-branding">
+/* The top header is the single institutional branding area. */
+.nchsm-student-sidebar-header{
+  padding-top:14px!important;
+  padding-bottom:9px!important;
+}
+.nchsm-student-sidebar-header .user-profile-mini{
+  margin-top:0!important;
+}
+@media(max-width:1023px){
+  .nchsm-student-sidebar-header{padding-top:12px!important;}
+}
+</style>
 </head>
 <body>
 <!-- LOADING SCREEN -->
@@ -1345,17 +1359,9 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 <aside aria-hidden="false" aria-label="Main navigation" class="sidebar sidebar-premium" id="sidebar">
 <button aria-label="Close navigation" class="nchsm-mobile-close" id="nchsmMobileClose" type="button"><i aria-hidden="true" class="fas fa-times"></i></button>
 <!-- ===== SIDEBAR HEADER ===== -->
-<div class="sidebar-header-premium">
-<div class="logo-section">
-<div class="logo-wrapper">
-<img alt="NCHSM Logo" class="sidebar-logo" src="images/Logo_NCHSM.png"/>
-<div class="logo-glow"></div>
-</div>
-<div class="brand-text">
-<h1 class="brand-title">NCHSM</h1>
-<span class="brand-subtitle">Student Portal</span>
-</div>
-</div>
+<div class="sidebar-header-premium nchsm-student-sidebar-header">
+<!-- Institutional branding is intentionally kept in the top header only.
+     The sidebar begins with the student's account information to avoid duplicate branding. -->
 <!-- User Profile Mini -->
 <div class="user-profile-mini" id="sidebarUserProfile">
 <div class="user-avatar-wrapper">
