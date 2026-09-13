@@ -238,6 +238,63 @@
         .blog-card .body .read-more:hover {
             color: #FDB913;
         }
+
+        /* ===== LIVE STUDENT POSTS ===== */
+        .student-posts-section {
+            grid-column: 1 / -1;
+            margin-bottom: 8px;
+        }
+        .student-posts-heading {
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:12px;
+            margin-bottom:18px;
+        }
+        .student-posts-heading h2 {
+            color:#0A3D62;
+            font-size:1.35rem;
+            margin:0;
+        }
+        .student-posts-heading span {
+            font-size:.78rem;
+            color:#64748b;
+            background:#eef6fb;
+            padding:6px 10px;
+            border-radius:20px;
+        }
+        #studentBlogGrid {
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:25px;
+        }
+        .student-live-card {
+            position:relative;
+        }
+        .student-live-card .student-label {
+            position:absolute;
+            right:12px;
+            top:12px;
+            background:#0A3D62;
+            color:white;
+            padding:4px 9px;
+            border-radius:20px;
+            font-size:9px;
+            font-weight:700;
+            z-index:2;
+        }
+        .blog-loading {
+            grid-column:1 / -1;
+            background:white;
+            border:1px solid #e5e7eb;
+            border-radius:12px;
+            padding:28px;
+            text-align:center;
+            color:#94a3b8;
+        }
+        @media (max-width: 768px) {
+            #studentBlogGrid { grid-template-columns:1fr; }
+        }
         
         /* ===== AD PLACEMENTS ===== */
         .ad-inline {
@@ -452,6 +509,20 @@
 
     <!-- ===== MAIN CONTENT ===== -->
     <div class="blog-container">
+
+        <!-- ===== LIVE STUDENT POSTS ===== -->
+        <section class="student-posts-section" aria-label="Student Blog Posts">
+            <div class="student-posts-heading">
+                <h2><i class="fas fa-users"></i> Student Voices</h2>
+                <span>Published student posts</span>
+            </div>
+            <div id="studentBlogGrid">
+                <div class="blog-loading">
+                    <i class="fas fa-spinner fa-spin"></i>
+                    <div style="margin-top:8px;">Loading student posts...</div>
+                </div>
+            </div>
+        </section>
 
         <!-- ===== BLOG GRID ===== -->
         <div class="blog-grid">
@@ -747,5 +818,8 @@
         </div>
     </footer>
 
+    <!-- Live Student Blog integration. Safe fallback: existing editorial posts remain visible if Supabase is not configured. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/student-blog-public.js"></script>
 </body>
 </html>
