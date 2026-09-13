@@ -149,6 +149,27 @@
             margin: 15px 0 15px 20px;
         }
         .blog-post .content li { margin-bottom: 8px; }
+        .student-author-badge {
+            display:inline-flex;
+            align-items:center;
+            gap:6px;
+            margin-left:8px;
+            background:#eef6fb;
+            color:#0A3D62;
+            padding:4px 9px;
+            border-radius:20px;
+            font-size:.72rem;
+            font-weight:600;
+        }
+        .post-status-note {
+            background:#f8fafc;
+            border-left:4px solid #FDB913;
+            padding:12px 15px;
+            border-radius:6px;
+            color:#64748b;
+            font-size:.85rem;
+            margin-bottom:18px;
+        }
         .back-link {
             display: inline-flex;
             align-items: center;
@@ -584,9 +605,15 @@
         // ============================================
         // 🎯 GET POST FROM URL AND DISPLAY
         // ============================================
-        function loadPost() {
+        async function loadPost() {
             const urlParams = new URLSearchParams(window.location.search);
             const slug = urlParams.get('slug');
+
+            // First give the live Student Blog integration a chance to load an approved post.
+            if (slug && typeof window.loadLiveStudentPost === 'function') {
+                const handled = await window.loadLiveStudentPost(slug);
+                if (handled) return;
+            }
 
             if (!slug || !blogPosts[slug]) {
                 document.getElementById('blogPostContent').innerHTML = `
@@ -640,5 +667,8 @@
         document.addEventListener('DOMContentLoaded', loadPost);
     </script>
 
+    <!-- Live Student Blog integration. Static editorial posts remain the fallback. -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="./js/student-blog-public.js"></script>
 </body>
 </html>
