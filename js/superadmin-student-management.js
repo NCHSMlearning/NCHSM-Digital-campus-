@@ -118,17 +118,27 @@ async function getStudentProfile(studentId) {
 async function updateStudentProfile(studentId, updateData) {
     const sb = getSupabaseClient();
     if (!sb) return false;
-    
+
     try {
-        const { error } = await sb
+        // Verify that the UPDATE actually matched and changed a profile row.
+        const payload = {
+            ...updateData,
+            updated_at: new Date().toISOString()
+        };
+
+        const { data, error } = await sb
             .from('consolidated_user_profiles_table')
-            .update({
-                ...updateData,
-                updated_at: new Date().toISOString()
-            })
-            .eq('student_id', studentId);
-        
+            .update(payload)
+            .eq('student_id', studentId)
+            .select('*');
+
         if (error) throw error;
+
+        if (!data || data.length === 0) {
+            throw new Error(`No student profile row was updated for ID: ${studentId}`);
+        }
+
+        console.log('✅ Student profile update confirmed:', data[0]);
         return true;
     } catch (error) {
         console.error('Error updating student profile:', error);
@@ -1393,124 +1403,206 @@ function renderSessionReportsAdminTable() {
 // ============================================================
 // APPROVE SESSION REPORT - FIXED FOR YOUR ACTUAL DATA
 // ============================================================
-async function approveSessionReportAdmin(reportId) {
+async function approveSessionReportAdmin(reportId, options = {}) {
     const sb = getSupabaseClient();
     if (!sb) {
         if (typeof showNotification === 'function') {
             showNotification('Supabase client not available', 'error');
         }
-        return;
+        return false;
     }
 
-    if (!confirm('✅ Approve this session report?\n\nThis will update the student\'s profile.')) return;
+    const skipConfirm = options.skipConfirm === true;
+    if (!skipConfirm && !confirm('Approve this session report?\n\nThis will update the student\'s current academic session.')) {
+        return false;
+    }
 
-    if (typeof showLoading === 'function') showLoading('Approving session report...');
+    if (typeof showLoading === 'function' && !options.bulk) {
+        showLoading('Approving session report...');
+    }
+
+    let report = null;
+    let studentProfile = null;
+    let updateData = null;
+    let profileChanged = false;
+    let reportApproved = false;
 
     try {
-        // 1. Get the report
-        const { data: report, error: fetchError } = await sb
+        // Read the exact record created by the OLD Student Session Reporting module.
+        const { data: fetchedReport, error: fetchError } = await sb
             .from('session_reports')
             .select('*')
             .eq('id', reportId)
             .single();
 
         if (fetchError) throw fetchError;
-        if (!report) throw new Error('Report not found');
+        if (!fetchedReport) throw new Error('Session report not found');
 
-        // 2. Get the student's current profile
-        const studentProfile = await getStudentProfile(report.student_id);
+        report = fetchedReport;
+
+        if (!report.student_id) throw new Error('Session report has no student ID');
+        if (!report.session) throw new Error('Session report has no session/block value');
+
+        if (report.approval_status && report.approval_status !== 'pending') {
+            throw new Error(`This report is already ${report.approval_status}.`);
+        }
+
+        // Read the student's current consolidated profile.
+        studentProfile = await getStudentProfile(report.student_id);
         if (!studentProfile) {
             throw new Error(`Student profile not found for ID: ${report.student_id}`);
         }
 
         console.log('📋 Current Student Profile:', studentProfile);
+        console.log('📋 Session Report Being Approved:', report);
 
-        // 3. Determine what to update based on program type
-        const programType = report.program_type || detectProgramType(report.program);
-        const session = report.session;
+        // Use the session EXACTLY as stored by the old Student Session Reporting module.
+        const rawProgramType = String(report.program_type || '').trim();
+        const programType = rawProgramType.toLowerCase() === 'nursing'
+            ? 'Nursing'
+            : detectProgramType(report.program || studentProfile.program);
+
+        const session = String(report.session).trim();
         const academicYear = report.academic_year;
 
-        let updateData = {};
-
         if (programType === 'Nursing') {
-            // Update block for Nursing students
+            if (!BLOCK_OPTIONS.includes(session)) {
+                throw new Error(`Invalid Nursing session/block: ${session}`);
+            }
+
+            // Nursing reporting uses Block 1-8. Keep both profile fields synchronized.
             updateData = {
-                current_block: session,  // Update current_block to the new session
-                block: session           // Also update block field
+                current_block: session,
+                block: session
             };
-            console.log(`🔄 Updating Nursing student ${report.student_name}: current_block → ${session}`);
         } else {
-            // TVET - Store Year/Term in block and current_block
-            // Since there are no dedicated year/term columns, store in block
+            // Preserve the existing TVET convention used by this SuperAdmin module.
             updateData = {
-                current_block: session,  // Store in current_block
-                block: session           // Also store in block
+                current_block: session,
+                block: session
             };
-            console.log(`🔄 Updating TVET student ${report.student_name}: current_block → ${session}`);
         }
 
-        // If academic year is provided, update intake_year or admission_year
+        // Do not overwrite existing admission/intake data unnecessarily.
         if (academicYear) {
-            // Parse the academic year (e.g., "2025/2026" -> "2025")
-            const yearParts = academicYear.split('/');
-            if (yearParts.length > 0) {
-                const startYear = yearParts[0];
-                // Update intake_year if it's null or empty
-                if (!studentProfile.intake_year || studentProfile.intake_year === '') {
-                    updateData.intake_year = startYear;
-                }
-                // Update admission_year if it's null or empty
-                if (!studentProfile.admission_year || studentProfile.admission_year === '') {
-                    updateData.admission_year = startYear;
-                }
+            const startYear = String(academicYear).split('/')[0]?.trim();
+            if (startYear) {
+                if (!studentProfile.intake_year) updateData.intake_year = startYear;
+                if (!studentProfile.admission_year) updateData.admission_year = startYear;
             }
         }
 
-        console.log('📝 Final Update Data:', updateData);
+        console.log('📝 Session approval update payload:', updateData);
 
-        // 4. Update the report status first
-        const { error: updateReportError } = await sb
+        // IMPORTANT: update the profile FIRST.
+        const profileUpdated = await updateStudentProfile(report.student_id, updateData);
+        if (!profileUpdated) {
+            throw new Error('Student profile update failed. Session report remains pending.');
+        }
+        profileChanged = true;
+
+        // Re-read and verify the actual database value.
+        const verifiedProfile = await getStudentProfile(report.student_id);
+        if (!verifiedProfile) {
+            throw new Error('Profile was updated but could not be re-read for verification.');
+        }
+
+        const verifiedBlock = verifiedProfile.current_block || verifiedProfile.block || null;
+
+        if (verifiedBlock !== session) {
+            throw new Error(
+                `Profile verification failed. Expected ${session}, but database returned ${verifiedBlock || 'Not set'}.`
+            );
+        }
+
+        console.log('✅ Profile verification passed:', {
+            studentId: report.student_id,
+            expectedSession: session,
+            current_block: verifiedProfile.current_block,
+            block: verifiedProfile.block
+        });
+
+        // Only approve the report after the profile update has been verified.
+        const approvalTimestamp = new Date().toISOString();
+
+        const { data: approvedRows, error: updateReportError } = await sb
             .from('session_reports')
             .update({
                 approval_status: 'approved',
-                approved_at: new Date().toISOString(),
-                approved_by: 'Admin'
+                approved_at: approvalTimestamp,
+                approved_by: 'Admin',
+                updated_at: approvalTimestamp
             })
-            .eq('id', reportId);
+            .eq('id', reportId)
+            .eq('approval_status', 'pending')
+            .select('*');
 
         if (updateReportError) throw updateReportError;
 
-        // 5. Update the student's profile
-        const profileUpdated = await updateStudentProfile(report.student_id, updateData);
-
-        if (!profileUpdated) {
-            throw new Error('Failed to update student profile');
+        if (!approvedRows || approvedRows.length === 0) {
+            throw new Error('Student profile was updated, but the session report could not be marked approved.');
         }
 
-        // 6. Get updated profile to confirm
-        const updatedProfile = await getStudentProfile(report.student_id);
-        console.log('✅ Updated Student Profile:', updatedProfile);
+        reportApproved = true;
 
-        if (typeof hideLoading === 'function') hideLoading();
+        if (typeof hideLoading === 'function' && !options.bulk) hideLoading();
 
-        if (typeof showNotification === 'function') {
+        if (typeof showNotification === 'function' && !options.bulk) {
             const updateType = programType === 'Nursing' ? 'Block' : 'Year/Term';
-            showNotification(`✅ Session report approved! Student's ${updateType} updated to "${session}"`, 'success');
+            showNotification(
+                `Session report approved! Student's ${updateType} updated to "${session}"`,
+                'success'
+            );
         }
 
-        // Refresh data
+        // Refresh all SuperAdmin data.
         await loadSessionReportsAdmin();
         await loadStudentsForDropdown();
         updateSMStats();
         updateSMBadges();
         updateSessionReportStats();
 
+        return true;
+
     } catch (error) {
-        if (typeof hideLoading === 'function') hideLoading();
-        console.error('Error approving session report:', error);
-        if (typeof showNotification === 'function') {
-            showNotification('❌ Error approving report: ' + error.message, 'error');
+        // If profile changed but report approval failed, restore the old values.
+        if (profileChanged && !reportApproved && report && studentProfile && updateData) {
+            const rollbackData = {};
+
+            Object.keys(updateData).forEach(key => {
+                if (key === 'updated_at') return;
+                if (Object.prototype.hasOwnProperty.call(studentProfile, key)) {
+                    rollbackData[key] = studentProfile[key];
+                }
+            });
+
+            if (Object.keys(rollbackData).length > 0) {
+                try {
+                    await sb
+                        .from('consolidated_user_profiles_table')
+                        .update({
+                            ...rollbackData,
+                            updated_at: new Date().toISOString()
+                        })
+                        .eq('student_id', report.student_id);
+
+                    console.warn('↩️ Profile rollback attempted after approval failure.');
+                } catch (rollbackError) {
+                    console.error('❌ Profile rollback failed:', rollbackError);
+                }
+            }
         }
+
+        if (typeof hideLoading === 'function' && !options.bulk) hideLoading();
+
+        console.error('❌ Error approving session report:', error);
+
+        if (typeof showNotification === 'function' && !options.bulk) {
+            showNotification('Error approving report: ' + error.message, 'error');
+        }
+
+        // Re-throw so bulk approval counts this report as failed.
+        throw error;
     }
 }
 
@@ -1585,7 +1677,7 @@ async function bulkApproveSessionReports() {
 
     for (const id of ids) {
         try {
-            await approveSessionReportAdmin(id);
+            await approveSessionReportAdmin(id, { skipConfirm: true, bulk: true });
             successCount++;
         } catch (error) {
             console.error(`Error approving ${id}:`, error);
