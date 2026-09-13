@@ -907,4 +907,4 @@ window.loadAllData = loadAllData;
 
 console.log('🎓 Graduation & Certificate System Loaded Successfully!');
 console.log('📋 Using HTML IDs: gradStudentsList, gradTotalStudents, etc.');
-console.log('📋
+console.log('📋 Graduation module ready for initialization.');
