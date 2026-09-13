@@ -88,19 +88,21 @@ function initEnrollment() {
         return;
     }
     
-    loadStudentInfo();
-    loadEnrollmentRequests();
-    loadEnrollmentHistory();
-    setTimeout(() => {
-        loadSessionReports();
-    }, 500);
-    // Stats will be updated after both requests and reports load
-    // So call it after both are loaded
-    setTimeout(() => {
-        updateEnrollmentStats();
-        updateReportBadge();
-    }, 1000);
     setupEnrollmentEventListeners();
+
+    // Student-specific queries should run after the profile is available.
+    Promise.resolve(loadStudentInfo()).then(async () => {
+        await Promise.all([
+            loadEnrollmentRequests(),
+            loadEnrollmentHistory(),
+            loadSessionReports()
+        ]);
+        updateEnrollmentStats();
+        updateEnrollmentBadges();
+        updateReportBadge();
+    }).catch(error => {
+        console.error('Enrollment initialization error:', error);
+    });
 }
 // ============================================================
 // LOAD STUDENT INFO
@@ -130,10 +132,10 @@ async function loadStudentInfo() {
             safeSetText('enrollmentProgram', ENR_STATE.currentStudentProgram);
             
             const currentDisplay = safeGetElement('enrCurrentProgramDisplay');
-            if (currentDisplay) currentDisplay.value = ENR_STATE.currentStudentProgram;
+            if (currentDisplay) currentDisplay.textContent = ENR_STATE.currentStudentProgram || 'N/A';
             
             const previousDisplay = safeGetElement('enrPreviousProgramDisplay');
-            if (previousDisplay) previousDisplay.value = ENR_STATE.currentStudentProgram;
+            if (previousDisplay) previousDisplay.textContent = ENR_STATE.currentStudentProgram || 'N/A';
             
             if (safeGetElement('enrSessionReportingTab')) {
                 initializeSessionReporting();
@@ -893,9 +895,9 @@ function renderEnrollmentRequestsTable() {
 
     let html = '';
     requests.forEach((r, index) => {
-        const requestType = r.request_type === 'change_program' ? 'Change of Program' : 'Readmission';
-        const typeIcon = r.request_type === 'change_program' ? 'fa-exchange-alt' : 'fa-undo-alt';
-        const typeColor = r.request_type === 'change_program' ? '#4C1D95' : '#059669';
+        const requestType = (r.request_type === 'change_program' || r.request_type === 'change-program') ? 'Change of Program' : 'Readmission';
+        const typeIcon = (r.request_type === 'change_program' || r.request_type === 'change-program') ? 'fa-exchange-alt' : 'fa-undo-alt';
+        const typeColor = (r.request_type === 'change_program' || r.request_type === 'change-program') ? '#4C1D95' : '#059669';
 
         const statusClass = r.status || 'pending';
         const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
@@ -975,7 +977,7 @@ async function viewEnrollmentRequest(requestId) {
             return;
         }
 
-        const requestType = data.request_type === 'change_program' ? 'Change of Program' : 'Readmission';
+        const requestType = (data.request_type === 'change_program' || data.request_type === 'change-program') ? 'Change of Program' : 'Readmission';
         const fromProgram = data.current_program || data.previous_program || 'N/A';
         const toProgram = data.requested_program || 'N/A';
         const status = data.status || 'pending';
@@ -1147,9 +1149,9 @@ function renderEnrollmentHistoryTable() {
 
     let html = '';
     history.forEach((r, index) => {
-        const requestType = r.request_type === 'change_program' ? 'Change of Program' : 'Readmission';
-        const typeIcon = r.request_type === 'change_program' ? 'fa-exchange-alt' : 'fa-undo-alt';
-        const typeColor = r.request_type === 'change_program' ? '#4C1D95' : '#059669';
+        const requestType = (r.request_type === 'change_program' || r.request_type === 'change-program') ? 'Change of Program' : 'Readmission';
+        const typeIcon = (r.request_type === 'change_program' || r.request_type === 'change-program') ? 'fa-exchange-alt' : 'fa-undo-alt';
+        const typeColor = (r.request_type === 'change_program' || r.request_type === 'change-program') ? '#4C1D95' : '#059669';
 
         const statusClass = r.status || 'approved';
         const statusLabel = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
@@ -1391,11 +1393,11 @@ function selectEnrType(type) {
     if (type === 'change-program') {
         if (currentSection) currentSection.style.display = 'block';
         if (previousSection) previousSection.style.display = 'none';
-        if (currentDisplay) currentDisplay.value = ENR_STATE.currentStudentProgram || 'N/A';
+        if (currentDisplay) currentDisplay.textContent = ENR_STATE.currentStudentProgram || 'N/A';
     } else {
         if (currentSection) currentSection.style.display = 'none';
         if (previousSection) previousSection.style.display = 'block';
-        if (previousDisplay) previousDisplay.value = ENR_STATE.currentStudentProgram || 'N/A';
+        if (previousDisplay) previousDisplay.textContent = ENR_STATE.currentStudentProgram || 'N/A';
     }
 }
 
@@ -1461,10 +1463,13 @@ async function submitEnrollmentRequest() {
             }
         }
 
+        // Keep the UI value compact, but store the database value consistently.
+        const dbRequestType = requestType === 'change-program' ? 'change_program' : 'readmission';
+
         const requestData = {
             student_id: studentId,
             student_name: studentName,
-            request_type: requestType,
+            request_type: dbRequestType,
             current_program: requestType === 'change-program' ? currentProgram : null,
             previous_program: requestType === 'readmission' ? currentProgram : null,
             requested_program: requestedProgram,
@@ -1550,17 +1555,27 @@ async function submitEnrollmentRequest() {
 // ============================================================
 // REFRESH ENROLLMENT
 // ============================================================
-function refreshEnrollment() {
+async function refreshEnrollment() {
     console.log('🔄 Refreshing all enrollment data...');
-    loadStudentInfo();
-    loadEnrollmentRequests();
-    loadEnrollmentHistory();
-    loadSessionReports();
-    updateEnrollmentStats();
-    updateEnrollmentBadges();
-    updateReportBadge();
-    if (typeof showNotification === 'function') {
-        showNotification('🔄 Data refreshed!', 'success');
+    try {
+        await loadStudentInfo();
+        await Promise.all([
+            loadEnrollmentRequests(),
+            loadEnrollmentHistory(),
+            loadSessionReports()
+        ]);
+        updateEnrollmentStats();
+        updateEnrollmentBadges();
+        updateReportBadge();
+
+        if (typeof showNotification === 'function') {
+            showNotification('🔄 Data refreshed!', 'success');
+        }
+    } catch (error) {
+        console.error('Error refreshing enrollment data:', error);
+        if (typeof showNotification === 'function') {
+            showNotification('❌ Error refreshing enrollment data', 'error');
+        }
     }
 }
 
@@ -1628,13 +1643,6 @@ function escapeHtml(str) {
 // SETUP EVENT LISTENERS
 // ============================================================
 function setupEnrollmentEventListeners() {
-    document.querySelectorAll('#enrTypeChangeProgram, #enrTypeReadmission').forEach(btn => {
-        btn.addEventListener('click', function() {
-            const type = this.id === 'enrTypeChangeProgram' ? 'change-program' : 'readmission';
-            selectEnrType(type);
-        });
-    });
-
     const form = safeGetElement('enrRequestForm');
     if (form) {
         form.addEventListener('change', function() {
