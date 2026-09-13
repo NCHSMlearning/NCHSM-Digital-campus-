@@ -2904,20 +2904,380 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
       </div>
     </div>
 
-    <section class="timetable-panel">
-      <div class="timetable-head">
-        <div class="timetable-title"><span class="timetable-icon"><i class="fas fa-table-cells"></i></span><div><h3>Weekly Class Schedule</h3><p>Your classes organized by teaching week</p></div></div>
-        <span id="timetable-block-title" class="block-badge">Loading...</span>
-        <span id="class-count-display" class="class-count"></span>
+    <!-- ==================== STUDENT TIMETABLE TAB ==================== -->
+<section class="tab-content" id="hub-timetable" style="padding:20px;max-width:100%;overflow-x:hidden;">
+
+  <style>
+    #hub-timetable{
+      --tt-blue:#0A3D62;
+      --tt-blue-2:#1769aa;
+      --tt-blue-3:#2d8cff;
+      --tt-yellow:#FDB913;
+      --tt-green:#10b981;
+      --tt-purple:#7c3aed;
+      --tt-text:#183153;
+      --tt-muted:#6b82a5;
+      --tt-border:#dbe7f3;
+      --tt-soft:#f7fafc;
+      box-sizing:border-box;
+      font-family:Inter,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--tt-text);
+    }
+    #hub-timetable *{box-sizing:border-box}
+    #hub-timetable .tt-hero{
+      min-height:126px;
+      display:flex;
+      align-items:center;
+      gap:24px;
+      padding:23px 30px;
+      border-radius:12px;
+      color:#fff;
+      background:
+        linear-gradient(155deg,rgba(255,255,255,.05) 0 28%,transparent 28%),
+        linear-gradient(160deg,#176fa5 0%,#0d4d7d 52%,#0a3d62 100%);
+      box-shadow:0 5px 18px rgba(10,61,98,.20);
+      position:relative;
+      overflow:hidden;
+    }
+    #hub-timetable .tt-hero:after{
+      content:"";
+      position:absolute;
+      right:-120px;top:-85px;
+      width:430px;height:220px;
+      background:rgba(255,255,255,.045);
+      transform:rotate(-18deg);
+      border-radius:40%;
+    }
+    #hub-timetable .tt-hero-icon{
+      width:82px;height:82px;min-width:82px;
+      border-radius:16px;
+      display:grid;place-items:center;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.15);
+      position:relative;z-index:1;
+    }
+    #hub-timetable .tt-hero-icon i{font-size:42px;color:var(--tt-yellow)}
+    #hub-timetable .tt-hero-copy{position:relative;z-index:1;flex:1}
+    #hub-timetable .tt-hero-copy h2{
+      margin:0 0 7px;font-size:31px;line-height:1.1;font-weight:800;
+      letter-spacing:-.5px;
+    }
+    #hub-timetable .tt-hero-copy p{
+      margin:0;font-size:18px;color:#dcecff;font-weight:500;
+    }
+    #hub-timetable .tt-hero-actions{
+      display:flex;align-items:center;gap:14px;position:relative;z-index:2;
+    }
+    #hub-timetable .tt-block-badge{
+      min-width:272px;padding:13px 20px;border-radius:13px;
+      display:flex;align-items:center;gap:15px;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.18);
+    }
+    #hub-timetable .tt-block-badge i{font-size:27px;color:var(--tt-yellow)}
+    #hub-timetable .tt-block-badge strong{display:block;font-size:16px}
+    #hub-timetable .tt-block-badge small{display:block;margin-top:3px;color:#dcecff;font-size:13px}
+    #hub-timetable .tt-refresh{
+      height:58px;padding:0 22px;border-radius:13px;
+      border:2px solid rgba(255,255,255,.9);
+      background:rgba(255,255,255,.04);color:#fff;
+      font-weight:800;font-size:16px;cursor:pointer;
+      display:flex;align-items:center;gap:10px;
+      transition:.18s ease;
+    }
+    #hub-timetable .tt-refresh:hover{background:#fff;color:var(--tt-blue)}
+    #hub-timetable .tt-refresh.is-loading i{animation:ttSpin .8s linear infinite}
+    @keyframes ttSpin{to{transform:rotate(360deg)}}
+
+    #hub-timetable .tt-stats{
+      display:grid;grid-template-columns:repeat(4,minmax(0,1fr));
+      gap:16px;margin-top:18px;
+    }
+    #hub-timetable .tt-stat{
+      min-height:142px;background:#fff;border:1px solid var(--tt-border);
+      border-top:4px solid var(--tt-blue-3);border-radius:11px;
+      box-shadow:0 3px 14px rgba(25,75,115,.09);
+      padding:20px 24px;display:flex;align-items:center;gap:19px;
+    }
+    #hub-timetable .tt-stat.green{border-top-color:var(--tt-green);background:linear-gradient(135deg,#fff,#f5fffb)}
+    #hub-timetable .tt-stat.yellow{border-top-color:#f5b000;background:linear-gradient(135deg,#fff,#fffaf0)}
+    #hub-timetable .tt-stat.purple{border-top-color:var(--tt-purple);background:linear-gradient(135deg,#fff,#fbf8ff)}
+    #hub-timetable .tt-stat.blue{background:linear-gradient(135deg,#fff,#f5faff)}
+    #hub-timetable .tt-stat-icon{
+      width:64px;height:64px;min-width:64px;border-radius:14px;
+      display:grid;place-items:center;background:#eaf4ff;color:#1478e5;
+    }
+    #hub-timetable .tt-stat.green .tt-stat-icon{background:#e1f7ef;color:#059669}
+    #hub-timetable .tt-stat.yellow .tt-stat-icon{background:#fff3d6;color:#e6a000}
+    #hub-timetable .tt-stat.purple .tt-stat-icon{background:#efe3ff;color:#7134d5}
+    #hub-timetable .tt-stat-icon i{font-size:29px}
+    #hub-timetable .tt-stat-label{
+      font-size:13px;font-weight:700;color:#60779a;text-transform:uppercase;
+      letter-spacing:.2px;margin-bottom:6px;
+    }
+    #hub-timetable .tt-stat-value{font-size:29px;font-weight:850;color:#122b4d;line-height:1}
+    #hub-timetable .tt-stat-value.status{font-size:25px;color:#079866}
+    #hub-timetable .tt-stat-note{font-size:13px;color:#7187a8;margin-top:8px}
+
+    #hub-timetable .tt-weekbar{
+      margin-top:18px;background:#fff;border:1px solid #e4edf6;
+      border-radius:10px;padding:12px 18px;
+      box-shadow:0 3px 13px rgba(25,75,115,.07);
+      display:flex;align-items:center;gap:17px;overflow:hidden;
+    }
+    #hub-timetable .tt-week-title{
+      white-space:nowrap;display:flex;align-items:center;gap:10px;
+      font-weight:800;color:#29466c;font-size:15px;
+    }
+    #hub-timetable .tt-week-title i{font-size:19px;color:#526f93}
+    #hub-timetable #week-buttons{
+      display:flex;align-items:center;gap:8px;overflow-x:auto;scrollbar-width:none;
+      flex:1;padding:1px 0;
+    }
+    #hub-timetable #week-buttons::-webkit-scrollbar{display:none}
+    #hub-timetable .tt-week-btn{
+      flex:0 0 auto;height:35px;padding:0 15px;border-radius:8px;
+      border:1px solid #d5e1ee;background:#fff;color:#31577f;
+      font-size:13px;font-weight:650;cursor:pointer;transition:.16s ease;
+    }
+    #hub-timetable .tt-week-btn:hover{border-color:#6ea7df;background:#f3f8fd}
+    #hub-timetable .tt-week-btn.active{
+      background:linear-gradient(135deg,#1769aa,#0d4d7d);
+      color:#fff;border-color:#1769aa;box-shadow:0 3px 8px rgba(23,105,170,.22);
+    }
+
+    #hub-timetable .tt-next{
+      margin-top:20px;border:1.5px solid #f4b400;border-radius:11px;
+      background:linear-gradient(100deg,#fffdf5,#fffaf0);
+      min-height:101px;padding:16px 20px;display:flex;align-items:center;gap:19px;
+    }
+    #hub-timetable .tt-next-icon{
+      width:64px;height:64px;min-width:64px;border-radius:13px;
+      display:grid;place-items:center;background:#fff0c9;color:#efa900;
+    }
+    #hub-timetable .tt-next-icon i{font-size:32px}
+    #hub-timetable .tt-next-title{
+      width:210px;min-width:210px;padding-right:20px;
+      border-right:2px solid #f4ca66;
+    }
+    #hub-timetable .tt-next-title strong{display:block;font-size:19px;color:#122b4d}
+    #hub-timetable .tt-next-title span{display:block;margin-top:4px;color:#6880a2;font-size:13px}
+    #hub-timetable .tt-next-details{
+      flex:1;display:grid;grid-template-columns:1fr 1fr;gap:6px 36px;
+      padding-left:20px;
+    }
+    #hub-timetable .tt-detail{font-size:14px;color:#31577f;line-height:1.35}
+    #hub-timetable .tt-detail b{display:inline-block;width:63px;color:#274b73}
+    #hub-timetable .tt-next-action{
+      height:48px;padding:0 20px;border:0;border-radius:11px;
+      background:#ffc928;color:#102c4e;font-size:14px;font-weight:850;
+      cursor:pointer;white-space:nowrap;box-shadow:0 2px 5px rgba(218,161,0,.18);
+    }
+    #hub-timetable .tt-next-action:hover{background:#f6b900}
+
+    #hub-timetable .tt-schedule{
+      margin-top:20px;background:#fff;border:1px solid #dce8f4;
+      border-radius:11px;padding:19px;box-shadow:0 3px 15px rgba(25,75,115,.08);
+    }
+    #hub-timetable .tt-schedule-head{
+      display:flex;align-items:center;justify-content:space-between;gap:15px;margin:0 0 17px;
+    }
+    #hub-timetable .tt-schedule-title{display:flex;align-items:center;gap:15px}
+    #hub-timetable .tt-schedule-title-icon{
+      width:40px;height:40px;border-radius:9px;background:#e8f3ff;color:#1379e5;
+      display:grid;place-items:center;
+    }
+    #hub-timetable .tt-schedule-title-icon i{font-size:22px}
+    #hub-timetable .tt-schedule-title strong{display:block;font-size:19px;color:#122b4d}
+    #hub-timetable .tt-schedule-title span{display:block;margin-top:2px;color:#7186a6;font-size:13px}
+    #hub-timetable .tt-week-label{
+      padding:9px 18px;border-radius:9px;background:#e8f3ff;color:#0967c6;
+      font-size:14px;font-weight:800;white-space:nowrap;
+    }
+
+    #hub-timetable .tt-table-wrap{
+      border:1px solid #d9e5f0;border-radius:10px;overflow:auto;
+    }
+    #hub-timetable .tt-table{width:100%;border-collapse:separate;border-spacing:0;min-width:950px}
+    #hub-timetable .tt-table thead th{
+      height:40px;padding:0 16px;text-align:left;background:#eaf2f9;
+      color:#355a83;font-size:13px;font-weight:800;white-space:nowrap;
+      border-bottom:1px solid #d8e4ef;
+    }
+    #hub-timetable .tt-table thead th:first-child{border-top-left-radius:9px}
+    #hub-timetable .tt-table thead th:last-child{border-top-right-radius:9px}
+    #hub-timetable .tt-table tbody td{
+      height:41px;padding:5px 16px;color:#35577f;font-size:13px;
+      border-bottom:1px solid #dfe8f1;background:#fff;white-space:nowrap;
+    }
+    #hub-timetable .tt-table tbody tr:last-child td{border-bottom:0}
+    #hub-timetable .tt-table tbody tr:hover td{background:#f9fbfd}
+    #hub-timetable .tt-day{
+      display:inline-flex;align-items:center;justify-content:center;
+      min-width:84px;height:27px;padding:0 12px;border-radius:6px;
+      color:#fff;font-weight:800;font-size:12px;
+    }
+    #hub-timetable .tt-day.mon{background:#147fe6}
+    #hub-timetable .tt-day.tue{background:#0da36f}
+    #hub-timetable .tt-day.wed{background:#7127d9}
+    #hub-timetable .tt-day.thu{background:#ec720b}
+    #hub-timetable .tt-day.fri{background:#e52343}
+    #hub-timetable .tt-day.sat{background:#64748b}
+    #hub-timetable .tt-day.sun{background:#475569}
+    #hub-timetable .tt-type{
+      display:inline-flex;padding:5px 12px;border-radius:6px;
+      background:#dfeeff;color:#1477dc;font-size:12px;font-weight:800;
+    }
+    #hub-timetable .tt-type.tutorial{background:#d9f6e9;color:#07966a}
+    #hub-timetable .tt-type.practical{background:#eadfff;color:#7134d5}
+    #hub-timetable .tt-type.clinical{background:#ffe7cf;color:#c65b00}
+    #hub-timetable .tt-type.exam{background:#ffe0e7;color:#d71f43}
+
+    #hub-timetable .tt-state{
+      min-height:118px;border:1px solid #dce7f2;border-radius:10px;
+      margin-top:20px;display:none;align-items:center;justify-content:center;
+      flex-direction:column;text-align:center;padding:20px;background:#fff;
+    }
+    #hub-timetable .tt-state i{font-size:31px;color:#7891b2;margin-bottom:9px}
+    #hub-timetable .tt-state strong{font-size:16px;color:#173455}
+    #hub-timetable .tt-state span{font-size:13px;color:#7a90ad;margin-top:5px}
+    #hub-timetable .tt-spinner{
+      width:28px;height:28px;border:3px solid #dce9f6;border-top-color:#1479d8;
+      border-radius:50%;animation:ttSpin .8s linear infinite;margin-bottom:9px;
+    }
+    #hub-timetable .tt-error{background:#fff9fa;border-color:#f2ccd4}
+    #hub-timetable .tt-error i{color:#d92d4c}
+    #hub-timetable .tt-empty{display:flex}
+    #hub-timetable .tt-empty[hidden],#hub-timetable .tt-loading[hidden],
+    #hub-timetable .tt-error[hidden]{display:none!important}
+
+    @media(max-width:1100px){
+      #hub-timetable .tt-hero{flex-wrap:wrap}
+      #hub-timetable .tt-hero-actions{width:100%;justify-content:flex-end}
+      #hub-timetable .tt-stats{grid-template-columns:repeat(2,minmax(0,1fr))}
+      #hub-timetable .tt-next-details{gap:5px 15px}
+    }
+    @media(max-width:760px){
+      #hub-timetable{padding:12px!important}
+      #hub-timetable .tt-hero{padding:18px;gap:14px;min-height:auto}
+      #hub-timetable .tt-hero-icon{width:60px;height:60px;min-width:60px}
+      #hub-timetable .tt-hero-icon i{font-size:30px}
+      #hub-timetable .tt-hero-copy h2{font-size:22px}
+      #hub-timetable .tt-hero-copy p{font-size:14px}
+      #hub-timetable .tt-hero-actions{justify-content:stretch;flex-wrap:wrap}
+      #hub-timetable .tt-block-badge{min-width:0;flex:1}
+      #hub-timetable .tt-refresh{flex:0 0 auto}
+      #hub-timetable .tt-stats{grid-template-columns:1fr}
+      #hub-timetable .tt-weekbar{align-items:flex-start;flex-direction:column;gap:8px}
+      #hub-timetable #week-buttons{width:100%}
+      #hub-timetable .tt-next{align-items:flex-start;flex-wrap:wrap}
+      #hub-timetable .tt-next-title{width:auto;min-width:0;flex:1}
+      #hub-timetable .tt-next-details{width:100%;padding-left:0;grid-template-columns:1fr}
+      #hub-timetable .tt-next-action{width:100%}
+      #hub-timetable .tt-schedule{padding:12px}
+    }
+  </style>
+
+  <div class="tt-hero">
+    <div class="tt-hero-icon"><i class="fas fa-calendar-alt"></i></div>
+    <div class="tt-hero-copy">
+      <h2>Weekly Class Schedule</h2>
+      <p>Your classes organized by teaching week</p>
+    </div>
+    <div class="tt-hero-actions">
+      <div class="tt-block-badge">
+        <i class="fas fa-graduation-cap"></i>
+        <div>
+          <strong id="timetable-block-value">Loading...</strong>
+          <small id="timetable-academic-year">Academic Year —</small>
+        </div>
       </div>
-      <div class="week-strip"><div id="week-buttons"></div></div>
-      <div id="timetable-container" class="timetable-content"></div>
-      <div id="timetable-loading" class="timetable-state" style="display:none;"><div class="calendar-spinner"></div><span>Loading timetable...</span></div>
-      <div id="timetable-empty" class="timetable-state" style="display:none;"><i class="fas fa-calendar-minus"></i><strong>No timetable available</strong><span>Your class timetable has not been published for this block yet.</span></div>
-    </section>
+      <button class="tt-refresh" id="timetable-refresh-btn" type="button" title="Refresh timetable">
+        <i class="fas fa-sync-alt"></i><span>Refresh</span>
+      </button>
+    </div>
   </div>
+
+  <div class="tt-stats">
+    <div class="tt-stat blue">
+      <div class="tt-stat-icon"><i class="fas fa-calendar-day"></i></div>
+      <div><div class="tt-stat-label">Total Classes</div><div class="tt-stat-value" id="timetable-total-count">0</div><div class="tt-stat-note">Scheduled classes</div></div>
+    </div>
+    <div class="tt-stat green">
+      <div class="tt-stat-icon"><i class="fas fa-forward"></i></div>
+      <div><div class="tt-stat-label">Upcoming</div><div class="tt-stat-value" id="timetable-upcoming-count">0</div><div class="tt-stat-note">Classes this week</div></div>
+    </div>
+    <div class="tt-stat yellow">
+      <div class="tt-stat-icon"><i class="fas fa-books"></i></div>
+      <div><div class="tt-stat-label">Teaching Weeks</div><div class="tt-stat-value" id="timetable-week-count">0</div><div class="tt-stat-note">Weeks in this block</div></div>
+    </div>
+    <div class="tt-stat purple">
+      <div class="tt-stat-icon"><i class="fas fa-check-circle"></i></div>
+      <div>
+        <div class="tt-stat-label">Schedule Status</div>
+        <div class="tt-stat-value status" id="timetable-status-short">Published</div>
+        <div class="tt-stat-note" id="timetable-last-updated">Last updated: —</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="tt-weekbar">
+    <div class="tt-week-title"><i class="fas fa-filter"></i><span>View Week:</span></div>
+    <div id="week-buttons"></div>
+    <select id="week-filter-select" style="display:none"></select>
+  </div>
+
+  <div class="tt-next" id="next-class-snap">
+    <div class="tt-next-icon"><i class="fas fa-alarm-clock"></i></div>
+    <div class="tt-next-title">
+      <strong>Next Class</strong>
+      <span>Your next scheduled class</span>
+    </div>
+    <div class="tt-next-details">
+      <div class="tt-detail"><b>Unit:</b> <span id="next-class-name">—</span></div>
+      <div class="tt-detail"><b>Time:</b> <span id="next-class-time">—</span></div>
+      <div class="tt-detail"><b>Date:</b> <span id="next-class-day">—</span></div>
+      <div class="tt-detail"><b>Venue:</b> <span id="next-class-venue">—</span></div>
+      <div class="tt-detail"><b>Lecturer:</b> <span id="next-class-lecturer">—</span></div>
+    </div>
+    <button class="tt-next-action" type="button" id="view-full-schedule-btn">
+      <i class="fas fa-calendar-alt"></i>&nbsp; View Full Schedule
+    </button>
+  </div>
+
+  <div class="tt-schedule">
+    <div class="tt-schedule-head">
+      <div class="tt-schedule-title">
+        <div class="tt-schedule-title-icon"><i class="fas fa-calendar-week"></i></div>
+        <div>
+          <strong>Weekly Class Schedule</strong>
+          <span id="timetable-week-label">Showing classes for All Weeks</span>
+        </div>
+      </div>
+      <div class="tt-week-label" id="timetable-week-badge">All Weeks</div>
+    </div>
+
+    <div id="timetable-loading" class="tt-state tt-loading" hidden>
+      <div class="tt-spinner"></div><strong>Loading timetable...</strong><span>Please wait while your schedule is retrieved.</span>
+    </div>
+
+    <div id="timetable-error" class="tt-state tt-error" hidden>
+      <i class="fas fa-triangle-exclamation"></i><strong>Unable to load timetable</strong><span id="timetable-error-text">Please try again.</span>
+    </div>
+
+    <div id="timetable-container" class="tt-table-wrap"></div>
+
+    <div id="timetable-empty" class="tt-state tt-empty" hidden>
+      <i class="fas fa-calendar-minus"></i>
+      <strong>No timetable available</strong>
+      <span>Your class timetable has not been published for this block yet. Please check back later.</span>
+    </div>
+  </div>
+
+  <div id="timetable-status" style="display:none"></div>
+  <span id="timetable-block-title" style="display:none"></span>
+  <span id="class-count-display" style="display:none"></span>
 </section>
-<!-- END CALENDAR TAB -->
 <!-- ==================== MY UNITS TAB ==================== -->
 <section class="tab-content" id="hub-courses" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 <!-- ========== HEADER ========== -->
