@@ -1564,6 +1564,12 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 <span class="nav-text">Academic Calendar</span>
 </a>
 </li>
+<li role="none">
+<a data-tab="hub-timetable" href="#" role="menuitem">
+<span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-table-cells"></i><span class="nav-icon-bg"></span></span>
+<span class="nav-text">Timetable</span>
+</a>
+</li>
 <li class="has-dropdown has-dropdown-premium" role="none">
 <a aria-expanded="false" aria-haspopup="true" class="dropdown-toggle-premium" href="#" role="menuitem">
 <span class="nav-icon-wrapper"><i aria-hidden="true" class="fas fa-graduation-cap"></i><span class="nav-icon-bg"></span></span>
@@ -1902,7 +1908,7 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
       <div class="nchsm-progress-item"><div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-blue" cx="50" cy="50" id="nd-ring-attendance" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-attendance-rate">--%</div></div><strong>Attendance</strong><span>--/100</span></div>
       <div class="nchsm-progress-item"><div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-green" cx="50" cy="50" id="nd-ring-verified" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-verified-count">--</div></div><strong>Verified</strong><span>Attendance</span></div>
       <div class="nchsm-progress-item"><div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-purple" cx="50" cy="50" id="nd-ring-pending" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-pending-count">--</div></div><strong>Pending</strong><span>Attendance</span></div>
-      <div class="nchsm-progress-item"><div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-gold" cx="50" cy="50" id="nd-ring-exams" r="40"></circle></svg><div class="nchsm-ring-value" id="dashboard-upcoming-exam-short">--</div></div><strong>Next Exam</strong><span id="dashboard-upcoming-exam-label">No upcoming exam</span></div>
+      <div class="nchsm-progress-item nchsm-current-block-progress"><div class="nchsm-ring"><svg aria-hidden="true" viewbox="0 0 100 100"><circle class="ring-track" cx="50" cy="50" r="40"></circle><circle class="ring-fill ring-gold" cx="50" cy="50" id="nd-ring-current-block" r="40" style="stroke-dasharray:251.2;stroke-dashoffset:0"></circle></svg><div class="nchsm-ring-value" id="dashboard-current-block-short">--</div></div><strong>Current Block</strong><span id="dashboard-current-block-label">Loading...</span></div>
       <span hidden id="dashboard-upcoming-exam">--</span>
     </div>
   </article>
@@ -2903,8 +2909,10 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
         </div>
       </div>
     </div>
-
-    <!-- ==================== STUDENT TIMETABLE TAB ==================== -->
+  </div>
+</section>
+<!-- END CALENDAR TAB -->
+<!-- ==================== STUDENT TIMETABLE TAB ==================== -->
 <section class="tab-content" id="hub-timetable" style="padding:20px;max-width:100%;overflow-x:hidden;">
 
   <style>
@@ -3278,6 +3286,7 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
   <span id="timetable-block-title" style="display:none"></span>
   <span id="class-count-display" style="display:none"></span>
 </section>
+
 <!-- ==================== MY UNITS TAB ==================== -->
 <section class="tab-content" id="hub-courses" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 <!-- ========== HEADER ========== -->
@@ -8183,6 +8192,9 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
             else if (tabId === 'enrollment' && typeof initEnrollment === 'function') {
                 setTimeout(initEnrollment, 300);
             }
+            else if (tabId === 'hub-timetable' && typeof window.initStudentTimetable === 'function') {
+                setTimeout(() => window.initStudentTimetable({ force: true }), 150);
+            }
             else if (tabId === 'student-blog' && window.studentBlogModule?.loadPosts) {
                 setTimeout(() => window.studentBlogModule.loadPosts(), 50);
             }
@@ -8321,6 +8333,25 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 <script>
 window.app = { config: null, supabase: null, db: null, user: null, isInitialized: false };
 
+// Refresh-safe authentication: wait briefly for Supabase to restore its persisted session
+// before redirecting. This does NOT replace or reassign the shared database client.
+async function getSessionWithRestoreRetry(client, maxAttempts = 20, delayMs = 300) {
+    if (!client?.auth?.getSession) return null;
+
+    for (let attempt = 0; attempt < maxAttempts; attempt++) {
+        try {
+            const { data, error } = await client.auth.getSession();
+            if (error) throw error;
+            if (data?.session) return data.session;
+        } catch (error) {
+            if (attempt === maxAttempts - 1) throw error;
+            console.warn(`⚠️ Waiting for Supabase session restore (${attempt + 1}/${maxAttempts})...`);
+        }
+        await new Promise(resolve => setTimeout(resolve, delayMs));
+    }
+    return null;
+}
+
 async function initializeApp() {
     try {
         console.log('🚀 Starting app initialization...');
@@ -8341,9 +8372,7 @@ async function initializeApp() {
         
         let userSession = null;
         if (window.db.supabase) {
-            const { data, error } = await window.db.supabase.auth.getSession();
-            if (error) throw error;
-            userSession = data.session;
+            userSession = await getSessionWithRestoreRetry(window.db.supabase);
         }
         
         if (!userSession) {
@@ -8458,6 +8487,26 @@ document.addEventListener('DOMContentLoaded', function() {
     initializeApp();
 });
 </script>
+<!-- CURRENT BLOCK PROGRESS METRIC — visual-only sync from the authenticated profile -->
+<script>
+(function syncCurrentBlockMetric(){
+    function update(){
+        const profile = window.currentUserProfile || window.db?.currentUserProfile;
+        const block = profile?.block ?? profile?.student_block ?? profile?.class_block ?? profile?.current_block;
+        if (block === null || block === undefined || String(block).trim() === '') return;
+        const value = String(block).trim();
+        const short = document.getElementById('dashboard-current-block-short');
+        const label = document.getElementById('dashboard-current-block-label');
+        const ring = document.getElementById('nd-ring-current-block');
+        if (short) short.textContent = value;
+        if (label) label.textContent = 'Block ' + value.replace(/^block\s*/i, '');
+        if (ring) { ring.style.strokeDasharray = '251.2'; ring.style.strokeDashoffset = '0'; }
+    }
+    document.addEventListener('appReady', update);
+    document.addEventListener('DOMContentLoaded', function(){ setTimeout(update, 600); setTimeout(update, 1800); });
+    setInterval(update, 2500);
+})();
+</script>
 <!-- FORCE UI UPDATE - FIXES DASHBOARD DISPLAY -->
 <script>
 (function forceUIUpdate() {
@@ -8474,17 +8523,17 @@ document.addEventListener('DOMContentLoaded', function() {
             if (rateEl && rateEl.innerText === '--%') {
                 console.log('🔄 Updating dashboard UI...');
                 
-                document.getElementById('dashboard-attendance-rate').innerText = m.attendance.rate + '%';
-                document.getElementById('dashboard-verified-count').innerText = m.attendance.verified;
-                document.getElementById('dashboard-total-count').innerText = m.attendance.total;
-                document.getElementById('dashboard-pending-count').innerText = m.attendance.pending;
-                document.getElementById('dashboard-active-courses').innerText = m.courses;
-                document.getElementById('dashboard-exam-status').innerText = m.examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
+                document.getElementById('dashboard-attendance-rate').innerText = ((attendance.rate ?? '--')) + '%';
+                document.getElementById('dashboard-verified-count').innerText = attendance.verified ?? '--';
+                document.getElementById('dashboard-total-count').innerText = attendance.total ?? '--';
+                document.getElementById('dashboard-pending-count').innerText = attendance.pending ?? '--';
+                document.getElementById('dashboard-active-courses').innerText = courses;
+                document.getElementById('dashboard-exam-status').innerText = examCard.eligible ? 'ELIGIBLE' : 'NOT ELIGIBLE';
                 document.getElementById('dashboard-exam-status').style.color = m.examCard.eligible ? '#059669' : '#dc2626';
-                document.getElementById('dashboard-approved-units').innerText = m.examCard.approved;
-                document.getElementById('dashboard-nurseiq-progress').innerText = m.nurseiq.progress + '%';
-                document.getElementById('dashboard-nurseiq-accuracy').innerText = m.nurseiq.accuracy + '%';
-                document.getElementById('dashboard-nurseiq-questions').innerText = m.nurseiq.questions;
+                document.getElementById('dashboard-approved-units').innerText = examCard.approved ?? '--';
+                document.getElementById('dashboard-nurseiq-progress').innerText = ((nurseiq.progress ?? '--')) + '%';
+                document.getElementById('dashboard-nurseiq-accuracy').innerText = ((nurseiq.accuracy ?? '--')) + '%';
+                document.getElementById('dashboard-nurseiq-questions').innerText = nurseiq.questions ?? '--';
                 
                 if (window.currentUserProfile) {
                     document.getElementById('dashboard-current-block-value').innerText = window.currentUserProfile.block || '--';
@@ -9336,7 +9385,8 @@ body.dark-mode .nchsm-footer-policy-dialog p{color:#b5c6d8!important}
 #dashboard .nchsm-progress-four .nchsm-ring{width:70px!important;height:70px!important}
 #dashboard .nchsm-progress-four .nchsm-progress-item>strong{font-size:8px!important;white-space:nowrap!important}
 #dashboard .nchsm-progress-four .nchsm-progress-item>span{font-size:7px!important;white-space:nowrap!important}
-#dashboard #dashboard-upcoming-exam-short{font-size:9px!important;max-width:54px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+#dashboard #dashboard-current-block-short{font-size:12px!important;max-width:58px!important;overflow:hidden!important;text-overflow:ellipsis!important;white-space:nowrap!important}
+#dashboard .nchsm-current-block-progress>span{font-size:7px!important;white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;max-width:72px!important}
 /* LEADERBOARD: all ranked students remain available horizontally; mobile scrolls instead of stacking. */
 #dashboard .nchsm-leaderboard{display:flex!important;flex-wrap:nowrap!important;overflow-x:auto!important;overflow-y:hidden!important;gap:8px!important;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
 #dashboard .nchsm-leaderboard .leader-row:not(.leader-head){display:grid!important;flex:0 0 calc((100% - 32px)/5)!important;min-width:150px!important;height:66px!important;min-height:66px!important}
