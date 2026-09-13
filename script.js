@@ -18765,11 +18765,145 @@ if (typeof window.selectedGroups === 'undefined') {
 // Cache for student names
 let studentNameCache = {};
 
+
+// =====================================================
+// UNIT REGISTRATION WINDOW CONTROL
+// SuperAdmin controls the student registration window.
+// Requires public.unit_registration_settings (see SQL file).
+// =====================================================
+
+window.unitRegistrationWindow = window.unitRegistrationWindow || null;
+
+function getRegistrationScopeLabel(scope) {
+    const labels = { normal: 'Normal Registration', supplementary: 'Supplementary / Retake', both: 'Both' };
+    return labels[scope] || 'Not configured';
+}
+
+function formatRegistrationDate(value) {
+    if (!value) return 'Not configured';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return 'Not configured';
+    return date.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' });
+}
+
+function getEffectiveRegistrationWindowStatus(settings) {
+    if (!settings || settings.is_open !== true) return 'closed';
+    const now = Date.now();
+    if (settings.opens_at) {
+        const opens = new Date(settings.opens_at).getTime();
+        if (!Number.isNaN(opens) && now < opens) return 'scheduled';
+    }
+    if (settings.closes_at) {
+        const closes = new Date(settings.closes_at).getTime();
+        if (!Number.isNaN(closes) && now >= closes) return 'closed';
+    }
+    return 'open';
+}
+
+function updateRegistrationControlUI(settings) {
+    const status = getEffectiveRegistrationWindowStatus(settings);
+    const statusText = document.getElementById('registration-control-status-text');
+    const statusDot = document.getElementById('registration-control-status-dot');
+    const current = document.getElementById('registration-control-current-status');
+    const scopeDisplay = document.getElementById('registration-control-scope-display');
+    const closingDisplay = document.getElementById('registration-control-closing-display');
+    const scopeSelect = document.getElementById('registration-control-scope');
+    const openAt = document.getElementById('registration-control-open-at');
+    const closeAt = document.getElementById('registration-control-close-at');
+    const labels = { open: 'Registration Open', closed: 'Registration Closed', scheduled: 'Scheduled to Open' };
+    const colors = { open: '#10b981', closed: '#ef4444', scheduled: '#f59e0b' };
+    const label = labels[status] || 'Not configured';
+    const color = colors[status] || '#94a3b8';
+
+    if (statusText) statusText.textContent = label;
+    if (statusDot) { statusDot.style.background = color; statusDot.style.boxShadow = `0 0 0 4px ${color}26`; }
+    if (current) { current.textContent = label; current.style.color = color; }
+    if (scopeDisplay) scopeDisplay.textContent = getRegistrationScopeLabel(settings?.scope);
+    if (closingDisplay) closingDisplay.textContent = formatRegistrationDate(settings?.closes_at);
+    if (scopeSelect && settings?.scope) scopeSelect.value = settings.scope;
+    if (openAt && settings?.opens_at) {
+        const d = new Date(settings.opens_at);
+        if (!Number.isNaN(d.getTime())) openAt.value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+    }
+    if (closeAt && settings?.closes_at) {
+        const d = new Date(settings.closes_at);
+        if (!Number.isNaN(d.getTime())) closeAt.value = new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0,16);
+    }
+    const openBtn = document.getElementById('registration-control-open-btn');
+    const closeBtn = document.getElementById('registration-control-close-btn');
+    if (openBtn) openBtn.disabled = status === 'open';
+    if (closeBtn) closeBtn.disabled = status === 'closed';
+}
+
+async function loadRegistrationWindowControl() {
+    const client = window.sb || window.supabase;
+    if (!client) return;
+    try {
+        const { data, error } = await client.from('unit_registration_settings')
+            .select('id,is_open,scope,opens_at,closes_at,updated_by,updated_at')
+            .eq('id', 1).maybeSingle();
+        if (error) throw error;
+        window.unitRegistrationWindow = data || null;
+        updateRegistrationControlUI(data || null);
+    } catch (error) {
+        console.error('Registration window load failed:', error);
+        updateRegistrationControlUI(null);
+        if (error.code === '42P01') window.showFeedback('Registration control table is not installed yet. Run the supplied SQL first.', 'warning');
+    }
+}
+
+function getRegistrationControlFormValues() {
+    const scope = document.getElementById('registration-control-scope')?.value || 'both';
+    const openValue = document.getElementById('registration-control-open-at')?.value || '';
+    const closeValue = document.getElementById('registration-control-close-at')?.value || '';
+    const opensAt = openValue ? new Date(openValue).toISOString() : null;
+    const closesAt = closeValue ? new Date(closeValue).toISOString() : null;
+    if (opensAt && closesAt && new Date(closesAt) <= new Date(opensAt)) throw new Error('Closing date/time must be after the opening date/time.');
+    return { scope, opens_at: opensAt, closes_at: closesAt };
+}
+
+async function saveRegistrationWindowState(isOpen) {
+    const client = window.sb || window.supabase;
+    if (!client) { window.showFeedback('Supabase is not available.', 'error'); return; }
+    try {
+        const values = getRegistrationControlFormValues();
+        const { data: userData } = await client.auth.getUser();
+        const userId = userData?.user?.id || null;
+        const payload = { id: 1, is_open: isOpen, scope: values.scope, opens_at: values.opens_at, closes_at: values.closes_at, updated_by: userId, updated_at: new Date().toISOString() };
+        const { data, error } = await client.from('unit_registration_settings')
+            .upsert(payload, { onConflict: 'id' })
+            .select('id,is_open,scope,opens_at,closes_at,updated_by,updated_at').single();
+        if (error) throw error;
+        window.unitRegistrationWindow = data;
+        updateRegistrationControlUI(data);
+        window.showFeedback(isOpen ? '✅ Unit registration is now OPEN.' : '🔒 Unit registration is now CLOSED.', 'success');
+    } catch (error) {
+        console.error('Registration window update failed:', error);
+        window.showFeedback(`Unable to update registration window: ${error.message}`, 'error');
+    }
+}
+
+function openRegistrationWindow() { saveRegistrationWindowState(true); }
+
+function closeRegistrationWindow() {
+    if (!confirm('Close unit registration for students? Existing registrations and approvals will not be deleted.')) return;
+    saveRegistrationWindowState(false);
+}
+
+function initRegistrationWindowControl() {
+    const openBtn = document.getElementById('registration-control-open-btn');
+    const closeBtn = document.getElementById('registration-control-close-btn');
+    if (openBtn && !openBtn.dataset.bound) { openBtn.dataset.bound = 'true'; openBtn.addEventListener('click', openRegistrationWindow); }
+    if (closeBtn && !closeBtn.dataset.bound) { closeBtn.dataset.bound = 'true'; closeBtn.addEventListener('click', closeRegistrationWindow); }
+    loadRegistrationWindowControl();
+}
+
 // =====================================================
 // DASHBOARD LOADER
 // =====================================================
 
 async function loadUnitDashboard() {
+    await loadRegistrationWindowControl();
     await loadUnitRegistrationStats();
     await loadUnitPendingRegistrations();
     await loadGroupedRegistrations();
@@ -20295,6 +20429,18 @@ function togglePendingList() {
         if (label) label.textContent = 'Show';
     }
 }
+
+window.loadRegistrationWindowControl = loadRegistrationWindowControl;
+window.openRegistrationWindow = openRegistrationWindow;
+window.closeRegistrationWindow = closeRegistrationWindow;
+window.updateRegistrationControlUI = updateRegistrationControlUI;
+
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initRegistrationWindowControl, { once: true });
+} else {
+    initRegistrationWindowControl();
+}
+document.addEventListener('appReady', initRegistrationWindowControl);
 
 // =====================================================
 // EXPOSE GLOBALLY
