@@ -2113,41 +2113,76 @@ function showCustomConfirm(message, title, isWarning, onConfirm, onCancel) {
         }
     };
 
-    if (confirmBtn) {
-        confirmBtn.addEventListener('pointerdown', (e) => {
-            console.log('🟢 [CONFIRM] Submit pointerdown');
-            e.stopPropagation();
-        }, true);
-        confirmBtn.addEventListener('click', (e) => {
-            console.log('🟢 [CONFIRM] Submit click');
+    // ============================================================
+    // HARDENED MOBILE/TOUCH SUBMIT HANDLER
+    // ============================================================
+    // Some Android/WebView/mobile browsers can visually receive a click
+    // while another document-level listener prevents the button action.
+    // Handle pointer/touch/click directly on the button and guard against
+    // the same physical tap firing more than once.
+    let actionHandled = false;
+
+    const activateConfirm = (e) => {
+        if (actionHandled) return;
+        if (e) {
             e.preventDefault();
             e.stopPropagation();
-            finish(true);
+            if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        }
+        actionHandled = true;
+        console.log('🟢 [CONFIRM] SUBMIT BUTTON ACTIVATED');
+        finish(true);
+    };
+
+    const activateCancel = (e) => {
+        if (actionHandled) return;
+        if (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            if (typeof e.stopImmediatePropagation === 'function') e.stopImmediatePropagation();
+        }
+        actionHandled = true;
+        console.log('🟠 [CONFIRM] CANCEL BUTTON ACTIVATED');
+        finish(false);
+    };
+
+    if (confirmBtn) {
+        confirmBtn.style.touchAction = 'manipulation';
+        confirmBtn.style.webkitTapHighlightColor = 'transparent';
+        confirmBtn.tabIndex = 0;
+        confirmBtn.onclick = activateConfirm;
+        confirmBtn.addEventListener('pointerup', activateConfirm, true);
+        confirmBtn.addEventListener('touchend', activateConfirm, { capture: true, passive: false });
+        confirmBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') activateConfirm(e);
         }, true);
     }
 
     if (cancelBtn) {
-        cancelBtn.addEventListener('pointerdown', (e) => {
-            console.log('🟠 [CONFIRM] Cancel pointerdown');
-            e.stopPropagation();
-        }, true);
-        cancelBtn.addEventListener('click', (e) => {
-            console.log('🟠 [CONFIRM] Cancel click');
-            e.preventDefault();
-            e.stopPropagation();
-            finish(false);
+        cancelBtn.style.touchAction = 'manipulation';
+        cancelBtn.style.webkitTapHighlightColor = 'transparent';
+        cancelBtn.tabIndex = 0;
+        cancelBtn.onclick = activateCancel;
+        cancelBtn.addEventListener('pointerup', activateCancel, true);
+        cancelBtn.addEventListener('touchend', activateCancel, { capture: true, passive: false });
+        cancelBtn.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' || e.key === ' ') activateCancel(e);
         }, true);
     }
 
-    // Capture phase fallback. This makes the modal resilient if another
-    // listener on the page tries to intercept the normal bubble phase.
+    // Document-level capture fallback. It uses the same one-shot guard, so
+    // it cannot submit twice if both pointer and click fire for one tap.
     const delegatedConfirmHandler = (e) => {
+        if (actionHandled) return;
         const target = e.target && e.target.closest ? e.target.closest('#confirm-submit-btn, #confirm-cancel-btn') : null;
         if (!target || !document.getElementById('custom-confirm-modal')) return;
-        console.log('🟡 [CONFIRM] Delegated capture handler:', target.id);
-        e.preventDefault();
-        e.stopPropagation();
-        finish(target.id === 'confirm-submit-btn');
+        console.log('🟡 [CONFIRM] Delegated capture handler:', target.id, e.type);
+        if (e.type === 'touchend' || e.type === 'pointerup' || e.type === 'click') {
+            if (e.type !== 'click' || !('PointerEvent' in window)) {
+                if (target.id === 'confirm-submit-btn') activateConfirm(e);
+                else activateCancel(e);
+            }
+        }
     };
     modal.__nchsmDelegatedConfirmHandler = delegatedConfirmHandler;
     document.addEventListener('click', delegatedConfirmHandler, true);
