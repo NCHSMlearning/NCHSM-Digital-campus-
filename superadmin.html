@@ -1,5 +1,6 @@
 
 
+
 <!DOCTYPE html> 
 <html lang="en"> 
 <head>  
@@ -1211,6 +1212,20 @@ textarea:focus-visible{
                 </li>
 
                 <!-- ======================================== -->
+                <!-- ======================================== -->
+                <!-- STUDENT BLOG MANAGEMENT                  -->
+                <!-- ======================================== -->
+                <li style="margin-bottom: 2px;">
+                    <a href="#" data-tab="student-blog-management"
+                       style="display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:10px;color:white;text-decoration:none;font-size:14px;font-weight:500;transition:all .2s;"
+                       onmouseover="this.style.background='rgba(255,255,255,0.1)'"
+                       onmouseout="this.style.background='transparent'">
+                        <i class="fas fa-blog" style="width:20px;text-align:center;"></i>
+                        <span>Student Blog</span>
+                        <span id="sidebarBlogPendingBadge" style="margin-left:auto;background:#ef4444;padding:2px 7px;border-radius:20px;font-size:10px;color:white;font-weight:700;display:none;">0</span>
+                    </a>
+                </li>
+
                 <!-- SECTION 9: COMMUNICATION                -->
                 <!-- ======================================== -->
                 <li class="nav-section" style="padding: 16px 12px 8px 12px; margin-top: 4px;">
@@ -14021,6 +14036,56 @@ textarea:focus-visible{
         </form>
     </div>
 </div>
+
+        
+<!-- ============================================================ -->
+<!-- STUDENT BLOG MANAGEMENT MODULE -->
+<!-- Loaded and controlled by ./js/superadmin-blog.js -->
+<!-- ============================================================ -->
+<section id="student-blog-management" class="tab-content" style="display:none;">
+  <div style="background:linear-gradient(135deg,#4C1D95,#7C3AED);border-radius:16px;padding:25px 30px;margin-bottom:22px;color:white;display:flex;justify-content:space-between;align-items:center;gap:15px;flex-wrap:wrap;">
+    <div>
+      <h2 style="margin:0 0 6px;font-size:24px;"><i class="fas fa-blog"></i> Student Blog Management</h2>
+      <p style="margin:0;opacity:.9;font-size:14px;">Review, approve, reject and manage student-submitted blog posts.</p>
+    </div>
+    <button onclick="window.loadSuperAdminBlog && window.loadSuperAdminBlog()" style="border:0;border-radius:10px;padding:10px 16px;background:white;color:#4C1D95;font-weight:700;cursor:pointer;"><i class="fas fa-sync-alt"></i> Refresh</button>
+  </div>
+
+  <div id="superadminBlogStats" style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:18px;">
+    <div class="sa-blog-stat"><strong id="blogStatAll">0</strong><span>All Posts</span></div>
+    <div class="sa-blog-stat"><strong id="blogStatPending">0</strong><span>Pending</span></div>
+    <div class="sa-blog-stat"><strong id="blogStatApproved">0</strong><span>Approved</span></div>
+    <div class="sa-blog-stat"><strong id="blogStatFeatured">0</strong><span>Featured</span></div>
+  </div>
+
+  <div style="background:white;border:1px solid #e5e7eb;border-radius:14px;padding:16px;margin-bottom:16px;">
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+      <input id="superadminBlogSearch" type="search" placeholder="Search title, author or category..." style="flex:1;min-width:220px;padding:11px 13px;border:1px solid #dbe2ea;border-radius:9px;outline:none;">
+      <select id="superadminBlogStatus" style="padding:11px 13px;border:1px solid #dbe2ea;border-radius:9px;background:white;">
+        <option value="all">All statuses</option><option value="pending">Pending</option><option value="approved">Approved</option><option value="rejected">Rejected</option>
+      </select>
+      <button onclick="window.loadSuperAdminBlog && window.loadSuperAdminBlog()" style="padding:11px 15px;border:0;border-radius:9px;background:#4C1D95;color:white;font-weight:700;cursor:pointer;"><i class="fas fa-filter"></i> Apply</button>
+    </div>
+  </div>
+
+  <div style="background:white;border:1px solid #e5e7eb;border-radius:14px;overflow:hidden;">
+    <div style="overflow-x:auto;">
+      <table style="width:100%;border-collapse:collapse;min-width:850px;">
+        <thead><tr style="background:#f8fafc;">
+          <th style="padding:13px;text-align:left;">Post</th><th style="padding:13px;text-align:left;">Author</th><th style="padding:13px;text-align:left;">Category</th><th style="padding:13px;text-align:left;">Status</th><th style="padding:13px;text-align:left;">Date</th><th style="padding:13px;text-align:right;">Actions</th>
+        </tr></thead>
+        <tbody id="superadminBlogTableBody"><tr><td colspan="6" style="padding:35px;text-align:center;color:#64748b;">Open Student Blog to load posts.</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<style>
+.sa-blog-stat{background:white;border:1px solid #e5e7eb;border-radius:14px;padding:16px;display:flex;flex-direction:column;gap:4px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+.sa-blog-stat strong{font-size:24px;color:#4C1D95}.sa-blog-stat span{font-size:12px;color:#64748b;font-weight:600}
+.sa-blog-action{border:0;border-radius:7px;padding:7px 9px;cursor:pointer;font-size:12px;font-weight:700;margin-left:4px}
+@media(max-width:700px){#superadminBlogStats{grid-template-columns:repeat(2,minmax(0,1fr))!important}.sa-blog-stat strong{font-size:20px}}
+</style>
 
         </main>
     </div>
