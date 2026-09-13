@@ -1935,167 +1935,199 @@ function updateMarksEntryStats(marks, assessmentType) {
 // ============================================================
 
 async function saveMarksEntry() {
-    console.log('💾 Saving marks with auto-approve...');
-    
+    console.log('💾 Saving marks - safe Supabase update mode...');
+
+    const sbClient = getSupabase();
     const block = me_currentBlock;
     const unit = me_currentUnit;
     const year = me_currentYear;
     const assessmentType = me_currentAssessmentType || 'full';
-    
+
+    if (!sbClient) {
+        showNotification('❌ Database connection is not available', 'error');
+        return;
+    }
     if (!block || !unit) {
         showNotification('Please select a block and unit first', 'warning');
         return;
     }
-    
-    const marksData = [];
+
+    /*
+     * IMPORTANT FIX:
+     * Never read admission/name from table cell text. The Name cell can contain
+     * retake badges/history, and the Admission cell can contain formatting text.
+     * me_currentMarks is the source of truth populated directly from Supabase.
+     */
     const rows = document.querySelectorAll('#me_marks_container table tbody tr');
-    
-    if (rows.length === 0) {
+    if (!rows.length || !Array.isArray(me_currentMarks) || !me_currentMarks.length) {
         showNotification('No students found to save', 'warning');
         return;
     }
-    
+
+    const now = new Date().toISOString();
+    const marksData = [];
+
     rows.forEach((row, index) => {
+        const source = me_currentMarks[index];
+        if (!source) return;
+
+        const admission = String(source.admission || '').trim();
+        if (!admission) return;
+
         const cat1Input = document.getElementById(`me_cat1_${index}`);
         const cat2Input = document.getElementById(`me_cat2_${index}`);
         const examInput = document.getElementById(`me_exam_${index}`);
-        
-        const cells = row.querySelectorAll('td');
-        const admission = cells[1]?.textContent?.trim() || '';
-        const name = cells[2]?.textContent?.trim() || '';
-        
-        if (admission) {
-            const cat1 = parseFloat(cat1Input?.value) || 0;
-            const cat2 = parseFloat(cat2Input?.value) || 0;
-            const exam = parseFloat(examInput?.value) || 0;
-            
-            const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
-            const gradeInfo = getMarksEntryGrade(total);
-            
-            marksData.push({
-                admission_number: admission,
-                student_name: name || 'Unknown',
-                block: block,
-                subject_name: unit,
-                assessment_type: assessmentType,
-                cat1_score: cat1,
-                cat2_score: cat2,
-                exam_score: exam,
-                final_score: total,
-                grade: gradeInfo.grade,
-                academic_year: year,
-                approval_status: 'approved',
-                approved_at: new Date().toISOString(),
-                approved_by: window.currentUser?.id || null,
-                updated_at: new Date().toISOString()
-            });
-        }
+
+        const cat1 = cat1Input ? (parseFloat(cat1Input.value) || 0) : (parseFloat(source.cat1) || 0);
+        const cat2 = cat2Input ? (parseFloat(cat2Input.value) || 0) : (parseFloat(source.cat2) || 0);
+        const exam = examInput ? (parseFloat(examInput.value) || 0) : (parseFloat(source.exam) || 0);
+
+        const total = calculateMarksEntryTotal(cat1, cat2, exam, assessmentType);
+        const gradeInfo = getMarksEntryGrade(total);
+
+        marksData.push({
+            id: source.id || null,
+            admission_number: admission,
+            student_name: String(source.name || 'Unknown').trim(),
+            block,
+            subject_name: unit,
+            assessment_type: assessmentType,
+            cat1_score: cat1,
+            cat2_score: cat2,
+            exam_score: exam,
+            final_score: total,
+            grade: gradeInfo.grade,
+            academic_year: year
+        });
     });
-    
-    if (marksData.length === 0) {
-        showNotification('No marks to save', 'warning');
+
+    if (!marksData.length) {
+        showNotification('No valid student marks found to save', 'warning');
         return;
     }
-    
-    console.log(`📋 Saving ${marksData.length} marks with auto-approve...`);
+
+    console.log(`📋 Preparing ${marksData.length} marks...`);
     showLoading(`Saving ${marksData.length} marks...`);
-    
+
+    let saved = 0;
+    let errors = 0;
+    const errorDetails = [];
+
     try {
-        let saved = 0;
-        let errors = 0;
-        
         for (const mark of marksData) {
             try {
-                const { data: existing, error: fetchError } = await sb
-                    .from('student_marks')
-                    .select('id')
-                    .eq('admission_number', mark.admission_number)
-                    .eq('subject_name', mark.subject_name)
-                    .eq('block', mark.block)
-                    .eq('academic_year', mark.academic_year)
-                    .maybeSingle();
-                
-                if (fetchError) {
-                    console.error('❌ Fetch error:', fetchError);
-                    errors++;
-                    continue;
+                let recordId = mark.id;
+
+                // If the row has no ID, resolve it safely. Do NOT use maybeSingle()
+                // because duplicate legacy records can make maybeSingle() fail.
+                if (!recordId) {
+                    const { data: existingRows, error: lookupError } = await sbClient
+                        .from('student_marks')
+                        .select('id')
+                        .eq('admission_number', mark.admission_number)
+                        .eq('subject_name', mark.subject_name)
+                        .eq('block', mark.block)
+                        .eq('academic_year', mark.academic_year)
+                        .order('created_at', { ascending: true })
+                        .limit(1);
+
+                    if (lookupError) throw lookupError;
+                    recordId = existingRows?.[0]?.id || null;
                 }
-                
+
+                /*
+                 * ROOT-CAUSE FIX FOR THE 400 PATCH:
+                 * Do not send approved_by from the browser. In this portal the
+                 * logged-in admin identifier can be values such as SA-001, while
+                 * student_marks.approved_by may be a UUID/reference column.
+                 * Sending that value causes PostgREST to reject the PATCH with 400.
+                 *
+                 * We therefore update only columns known to belong to the marks
+                 * record and leave approved_by untouched. Auto-approval remains.
+                 */
                 const updateData = {
-                    student_name: mark.student_name,
+                    student_name: mark.student_name || 'Unknown',
                     assessment_type: mark.assessment_type,
-                    cat1_score: mark.cat1_score,
-                    cat2_score: mark.cat2_score,
-                    exam_score: mark.exam_score,
-                    final_score: mark.final_score,
+                    cat1_score: Number(mark.cat1_score),
+                    cat2_score: Number(mark.cat2_score),
+                    exam_score: Number(mark.exam_score),
+                    final_score: Number(mark.final_score),
                     grade: mark.grade,
                     approval_status: 'approved',
-                    approved_at: new Date().toISOString(),
-                    approved_by: window.currentUser?.id || null,
-                    updated_at: new Date().toISOString()
+                    approved_at: now,
+                    updated_at: now
                 };
-                
-                if (existing) {
-                    const { error: updateError } = await sb
+
+                let result;
+
+                if (recordId) {
+                    result = await sbClient
                         .from('student_marks')
                         .update(updateData)
-                        .eq('id', existing.id);
-                    
-                    if (updateError) {
-                        console.error('❌ Update error:', updateError);
-                        errors++;
-                        continue;
-                    }
+                        .eq('id', recordId)
+                        .select('id');
                 } else {
-                    const { error: insertError } = await sb
+                    // New records are created without approved_by for the same
+                    // schema-safe reason explained above.
+                    result = await sbClient
                         .from('student_marks')
                         .insert({
                             admission_number: mark.admission_number,
-                            student_name: mark.student_name,
+                            student_name: mark.student_name || 'Unknown',
                             block: mark.block,
                             subject_name: mark.subject_name,
                             assessment_type: mark.assessment_type,
-                            cat1_score: mark.cat1_score,
-                            cat2_score: mark.cat2_score,
-                            exam_score: mark.exam_score,
-                            final_score: mark.final_score,
+                            cat1_score: Number(mark.cat1_score),
+                            cat2_score: Number(mark.cat2_score),
+                            exam_score: Number(mark.exam_score),
+                            final_score: Number(mark.final_score),
                             grade: mark.grade,
                             academic_year: mark.academic_year,
                             approval_status: 'approved',
-                            approved_at: new Date().toISOString(),
-                            approved_by: window.currentUser?.id || null,
-                            created_at: new Date().toISOString(),
-                            updated_at: new Date().toISOString()
-                        });
-                    
-                    if (insertError) {
-                        console.error('❌ Insert error:', insertError);
-                        errors++;
-                        continue;
-                    }
+                            approved_at: now,
+                            created_at: now,
+                            updated_at: now
+                        })
+                        .select('id');
                 }
+
+                if (result.error) throw result.error;
+
                 saved++;
             } catch (err) {
-                console.error('❌ Error:', err);
                 errors++;
+                const detail = {
+                    admission: mark.admission_number,
+                    message: err?.message || 'Unknown database error',
+                    code: err?.code || '',
+                    details: err?.details || '',
+                    hint: err?.hint || ''
+                };
+                errorDetails.push(detail);
+                console.error('❌ Mark save failed:', detail);
             }
         }
-        
+    } finally {
         hideLoading();
-        
-        if (errors > 0) {
-            showNotification(`⚠️ Saved ${saved} marks with ${errors} errors`, 'warning');
-        } else {
-            showNotification(`✅ ${saved} marks saved and auto-approved!`, 'success');
-        }
-        
-        setTimeout(() => loadMarksEntry(), 500);
-        
-    } catch (error) {
-        hideLoading();
-        console.error('❌ Error saving marks:', error);
-        showNotification('❌ Error saving marks: ' + error.message, 'error');
     }
+
+    console.log(`✅ Marks save complete: ${saved} saved, ${errors} failed`);
+
+    if (errors > 0) {
+        const first = errorDetails[0];
+        console.error('❌ FIRST MARK ERROR:', first);
+        showNotification(
+            `⚠️ Saved ${saved} marks; ${errors} failed. Check console for the exact database error.`,
+            'warning'
+        );
+    } else {
+        showNotification(`✅ ${saved} marks saved and auto-approved!`, 'success');
+    }
+
+    // Keep the locally edited values until the refresh completes.
+    setTimeout(() => {
+        if (typeof loadMarksEntry === 'function') loadMarksEntry();
+    }, 500);
 }
 
 // ============================================================
