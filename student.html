@@ -2867,104 +2867,115 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 <!-- ============================================================ -->
 <section class="tab-content" id="hub-register" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 <!-- ============================================================ -->
-<!-- HEADER                                                       -->
+<!-- NCHSM UNIT REGISTRATION — MODERN PRODUCTION UI                -->
 <!-- ============================================================ -->
-<div style="background: linear-gradient(135deg, #0A3D62, #1a5a7a); border-radius: 16px; padding: 25px 30px; margin-bottom: 25px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 15px; box-shadow: 0 4px 20px rgba(10,61,98,0.3);">
-<div>
-<h2 style="color: white; margin: 0; font-weight: 700; display: flex; align-items: center; gap: 12px;">
-<i class="fas fa-plus-circle" style="color: #FDB913;"></i> Unit Registration
-            </h2>
-<p style="color: rgba(255,255,255,0.9); margin: 4px 0 0 0; font-size: 14px;">
-<i class="fas fa-clipboard-check"></i> Select your units for the current trimester. Admin will review and approve your selections.
-            </p>
+<div class="nchsm-reg-hero">
+  <div class="nchsm-reg-hero-main">
+    <div class="nchsm-reg-icon"><i class="fas fa-book-open"></i></div>
+    <div>
+      <div class="nchsm-reg-kicker"><i class="fas fa-graduation-cap"></i> ACADEMIC SERVICES</div>
+      <h2>Unit Registration</h2>
+      <p>Select your units for the current academic period. Your selections are submitted to the College for review and approval.</p>
+    </div>
+  </div>
+  <div class="nchsm-reg-hero-brand">
+    <div class="nchsm-reg-motto">Building Healthcare Leaders<br><span>for a Better Tomorrow</span></div>
+    <div id="registration-status-badge" class="nchsm-reg-status nchsm-status-loading" data-registration-controlled="true">
+      <span class="nchsm-status-dot"></span>
+      <div>
+        <strong id="regStatusText">Loading status...</strong>
+        <small><i class="fas fa-calendar-alt"></i> <span id="registration-closes-text">Checking registration window...</span></small>
+      </div>
+    </div>
+  </div>
 </div>
-<div style="display: flex; gap: 10px; flex-wrap: wrap;">
-<span id="registration-status-badge" style="background: #fef3c7; color: #92400e; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-<i class="fas fa-clock"></i> <span id="regStatusText">Open</span>
-</span>
+
+<div id="registration-closed-banner" class="nchsm-reg-closed-banner" hidden>
+  <div class="nchsm-closed-icon"><i class="fas fa-lock"></i></div>
+  <div class="nchsm-closed-copy">
+    <strong id="registration-closed-title">Unit registration is currently closed</strong>
+    <span id="registration-closed-message">The registration window has been closed by the Academic Administration.</span>
+  </div>
+  <span class="nchsm-admin-controlled"><i class="fas fa-shield-alt"></i> Admin controlled</span>
 </div>
+
+<!-- LIVE SUMMARY — values are populated from the existing registration module -->
+<div class="nchsm-reg-summary" aria-label="Registration summary">
+  <div class="nchsm-reg-stat stat-available">
+    <div class="nchsm-stat-icon"><i class="fas fa-book"></i></div>
+    <div><strong id="nchsm-available-summary">0</strong><span>Available Units</span><small>For this academic period</small></div>
+  </div>
+  <div class="nchsm-reg-stat stat-registered">
+    <div class="nchsm-stat-icon"><i class="fas fa-check"></i></div>
+    <div><strong id="nchsm-registered-summary">0</strong><span>Registered</span><small>Your selections</small></div>
+  </div>
+  <div class="nchsm-reg-stat stat-pending">
+    <div class="nchsm-stat-icon"><i class="fas fa-clock"></i></div>
+    <div><strong id="nchsm-pending-summary">0</strong><span>Pending</span><small>Awaiting approval</small></div>
+  </div>
+  <div class="nchsm-reg-stat stat-approved">
+    <div class="nchsm-stat-icon"><i class="fas fa-check-circle"></i></div>
+    <div><strong id="nchsm-approved-summary">0</strong><span>Approved</span><small>Ready for academic processing</small></div>
+  </div>
+  <div class="nchsm-reg-stat stat-supp">
+    <div class="nchsm-stat-icon"><i class="fas fa-redo-alt"></i></div>
+    <div><strong id="nchsm-supp-summary">0</strong><span>Supplementary</span><small>Eligible units</small></div>
+  </div>
 </div>
-<!-- ============================================================ -->
-<!-- SUB TABS                                                     -->
-<!-- ============================================================ -->
-<div style="background: white; border-radius: 14px; border: 1px solid #e5e7eb; margin-bottom: 25px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-<div style="display: flex; border-bottom: 2px solid #e5e7eb; background: #f8fafc;">
-<button class="reg-sub-tab active" data-subtab="regular" style="flex: 1; padding: 14px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #4C1D95; border-bottom: 3px solid #4C1D95; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;">
-<i class="fas fa-book"></i> Regular Registration
-            </button>
-<button class="reg-sub-tab" data-subtab="supplementary" style="flex: 1; padding: 14px 20px; border: none; background: transparent; cursor: pointer; font-weight: 600; color: #6b7280; border-bottom: 3px solid transparent; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 8px; font-size: 14px;">
-<i class="fas fa-redo-alt"></i> Supplementary / Retake
-                <span id="suppBadge" style="background: #B45309; color: white; padding: 2px 10px; border-radius: 12px; font-size: 10px; font-weight: 700; margin-left: 5px;">0</span>
-</button>
+
+<!-- SUB TABS -->
+<div class="nchsm-reg-tabs" role="tablist" aria-label="Unit registration type">
+  <button class="reg-sub-tab active" data-subtab="regular" role="tab" aria-selected="true">
+    <i class="fas fa-book"></i><span>Regular Registration</span>
+  </button>
+  <button class="reg-sub-tab" data-subtab="supplementary" role="tab" aria-selected="false">
+    <i class="fas fa-sync-alt"></i><span>Supplementary / Retake</span>
+    <span id="suppBadge" class="nchsm-tab-badge">0</span>
+  </button>
 </div>
+
+<!-- REGISTRATION EXPLAINER -->
+<div id="registration-legend" class="nchsm-reg-explainer">
+  <div class="nchsm-explainer-head">
+    <div class="nchsm-explainer-title"><span class="nchsm-info-icon"><i class="fas fa-info"></i></span><div><strong>Understanding Registration</strong><small>Choose the correct registration pathway for your academic status.</small></div></div>
+    <span id="program-badge-legend" class="nchsm-program-pill">Loading program...</span>
+  </div>
+  <div id="legend-content" class="nchsm-explainer-grid"></div>
+  <div class="nchsm-reg-rules">
+    <span><i class="fas fa-circle"></i> Max 8 units per registration</span>
+    <span><i class="fas fa-circle"></i> Supplementary: 1 extra exam attempt</span>
+    <span><i class="fas fa-circle"></i> Retake: full unit re-enrollment</span>
+    <span id="pass-mark-legend"><i class="fas fa-bullseye"></i> Pass Mark: Loading...</span>
+  </div>
 </div>
-<!-- ============================================================ -->
-<!-- LEGEND                                                       -->
-<!-- ============================================================ -->
-<div id="registration-legend" style="background: white; border-radius: 14px; border: 1px solid #e5e7eb; padding: 16px 24px; margin-bottom: 25px; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-<div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
-<i class="fas fa-info-circle" style="color: #4C1D95; font-size: 18px;"></i>
-<span style="font-weight: 700; color: #0A3D62; font-size: 15px;">Understanding Registration Types</span>
-<span id="program-badge-legend" style="background: #4C1D95; color: white; padding: 4px 16px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-left: auto;">Loading...</span>
-</div>
-<div id="legend-content" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px;">
-<!-- Legend items will be populated by JavaScript -->
-</div>
-<div style="margin-top: 12px; padding-top: 12px; border-top: 1px solid #e5e7eb; font-size: 12px; color: #94a3b8; display: flex; gap: 20px; flex-wrap: wrap;">
-<span><i class="fas fa-circle" style="color: #059669; font-size: 8px;"></i> Max 8 units per registration</span>
-<span><i class="fas fa-circle" style="color: #f59e0b; font-size: 8px;"></i> Supplementary: 1 extra exam attempt</span>
-<span><i class="fas fa-circle" style="color: #dc2626; font-size: 8px;"></i> Retake: Full unit re-enrollment</span>
-<span id="pass-mark-legend" style="font-weight: 600;">🎯 Pass Mark: Loading...</span>
-</div>
-</div>
-<!-- ============================================================ -->
-<!-- REGULAR REGISTRATION                                         -->
-<!-- ============================================================ -->
+
+<!-- REGULAR REGISTRATION -->
 <div class="reg-sub-content" id="regular-registration">
-<!-- FILTERS -->
-<div style="background: white; border-radius: 14px; padding: 20px 24px; margin-bottom: 25px; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04);">
-<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 16px;">
-<div>
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
-<i class="fas fa-tag"></i> Registration Type
-                    </label>
-<select id="RegType" onblur="this.style.borderColor='#e2e8f0'" onfocus="this.style.borderColor='#4C1D95'" style="width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s;">
-<option value="">-- Select --</option>
-<option value="Normal">📘 Normal Registration</option>
-</select>
-<small style="color: #94a3b8; font-size: 11px; display: block; margin-top: 4px;">
-<i class="fas fa-info-circle"></i> For Supplementary/Retake, use the tab above
-                    </small>
-</div>
-<div>
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
-<i class="fas fa-layer-group"></i> Block/Trimester
-                    </label>
-<select id="BlockFilter" onblur="this.style.borderColor='#e2e8f0'" onfocus="this.style.borderColor='#4C1D95'" style="width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s;">
-<option value="">All Blocks</option>
-</select>
-</div>
-<div>
-<label style="font-weight: 600; font-size: 13px; color: #475569; display: block; margin-bottom: 6px;">
-<i class="fas fa-star"></i> Unit Type
-                    </label>
-<select id="UnitTypeFilter" onblur="this.style.borderColor='#e2e8f0'" onfocus="this.style.borderColor='#4C1D95'" style="width: 100%; padding: 10px 14px; border-radius: 10px; border: 1px solid #e2e8f0; background: #f8fafc; font-size: 14px; transition: all 0.3s;">
-<option value="">All Types</option>
-<option value="Core">⭐ Core Units</option>
-<option value="Elective">📗 Elective Units</option>
-</select>
-</div>
-<div style="display: flex; align-items: flex-end; gap: 8px;">
-<button id="refreshUnitsBtn" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(76,29,149,0.25)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(76,29,149,0.35)'" style="flex: 1; padding: 11px 20px; background: #4C1D95; color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(76,29,149,0.25);">
-<i class="fas fa-sync-alt"></i> Load Units
-                    </button>
-<button id="submitRegistrationBtn" onmouseout="this.style.transform='none'; this.style.boxShadow='0 2px 8px rgba(16,185,129,0.3)'" onmouseover="this.style.transform='translateY(-2px)'; this.style.boxShadow='0 4px 12px rgba(16,185,129,0.4)'" style="flex: 1; padding: 11px 20px; background: linear-gradient(135deg, #10b981, #059669); color: white; border: none; border-radius: 10px; cursor: pointer; font-weight: 600; font-size: 14px; display: flex; align-items: center; justify-content: center; gap: 8px; transition: all 0.3s ease; box-shadow: 0 2px 8px rgba(16,185,129,0.3);">
-<i class="fas fa-paper-plane"></i> Submit
-                    </button>
-</div>
-</div>
-</div>
-<!-- ============================================================ -->
+  <div class="nchsm-reg-filter-card">
+    <div class="nchsm-filter-heading">
+      <div><strong><i class="fas fa-sliders-h"></i> Find Units</strong><small>Filter the units available to your programme and block.</small></div>
+      <span class="nchsm-live-chip"><i class="fas fa-circle"></i> Live data</span>
+    </div>
+    <div class="nchsm-filter-grid">
+      <label>Registration Type
+        <select id="RegType"><option value="">-- Select --</option><option value="Normal">📘 Normal Registration</option></select>
+      </label>
+      <label>Block / Trimester
+        <select id="BlockFilter"><option value="">All Blocks</option></select>
+      </label>
+      <label>Unit Type
+        <select id="UnitTypeFilter"><option value="">All Types</option><option value="Core">⭐ Core Units</option><option value="Elective">📗 Elective Units</option></select>
+      </label>
+      <label class="nchsm-search-field">Search units
+        <span><i class="fas fa-search"></i><input id="registration-unit-search" type="search" placeholder="Search by code or unit name..." autocomplete="off"></span>
+      </label>
+    </div>
+    <div class="nchsm-filter-actions">
+      <button id="refreshUnitsBtn" class="nchsm-btn nchsm-btn-secondary"><i class="fas fa-sync-alt"></i> Refresh Units</button>
+      <button id="submitRegistrationBtn" class="nchsm-btn nchsm-btn-primary"><i class="fas fa-paper-plane"></i> Submit Registration</button>
+    </div>
+  </div>
+
 <!-- AVAILABLE UNITS TABLE - BEAUTIFIED                          -->
 <!-- ============================================================ -->
 <div style="background: white; border-radius: 14px; border: 1px solid #e5e7eb; box-shadow: 0 2px 8px rgba(0,0,0,0.04); overflow: hidden; margin-bottom: 25px;">
@@ -3132,7 +3143,7 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 <i class="fas fa-clock"></i> <span id="suppRegStatus">Open</span>
 </span>
 <span style="background: #fee2e2; color: #991b1b; padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px;">
-<i class="fas fa-calendar-times"></i> Deadline: <span id="suppDeadline">2026-08-20</span>
+<i class="fas fa-calendar-times"></i> Deadline: <span id="suppDeadline">Loading...</span>
 </span>
 </div>
 </div>
@@ -3323,130 +3334,435 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 </div>
 </div>
 <!-- CSS Animation for spinner -->
-<style>
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-            
-            input[type="checkbox"] {
-                accent-color: #B45309;
-                width: 16px;
-                height: 16px;
-                cursor: pointer;
-            }
-            
-            input[type="checkbox"]:hover {
-                transform: scale(1.1);
-            }
-            
-            #suppRegType:focus {
-                outline: none;
-                border-color: #B45309;
-                box-shadow: 0 0 0 3px rgba(180, 83, 9, 0.1);
-            }
-            
-            .reg-sub-tab {
-                transition: all 0.3s ease;
-            }
-            
-            .reg-sub-tab:hover {
-                background: rgba(76, 29, 149, 0.05);
-            }
-            
-            /* Table row hover effect */
-            #availableUnitsBody tr:hover,
-            #registeredUnitsBody tr:hover,
-            #eligibleUnitsBody tr:hover,
-            #suppRegisteredBody tr:hover {
-                background: #f8fafc;
-            }
-            
-            /* Download button styles when enabled */
-            #downloadAllSuppExamCardsBtn:not([disabled]) {
-                opacity: 1 !important;
-                cursor: pointer !important;
-            }
-            
-            #downloadAllSuppExamCardsBtn:not([disabled]):hover {
-                transform: translateY(-2px);
-                box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
-            }
-            
-            #downloadAllSuppExamCardsBtn[disabled] {
-                opacity: 0.5 !important;
-                cursor: not-allowed !important;
-                transform: none !important;
-            }
-            
-            /* Status badge styles */
-            .status-pending {
-                background: #fef3c7;
-                color: #92400e;
-                padding: 4px 14px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-                display: inline-block;
-            }
-            
-            .status-approved {
-                background: #dbeafe;
-                color: #1e40af;
-                padding: 4px 14px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-                display: inline-block;
-            }
-            
-            .status-completed {
-                background: #d1fae5;
-                color: #065f46;
-                padding: 4px 14px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-                display: inline-block;
-            }
-            
-            .status-available {
-                background: #d1fae5;
-                color: #065f46;
-                padding: 4px 14px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-                display: inline-block;
-            }
-            
-            .status-eligible {
-                background: #d1fae5;
-                color: #065f46;
-                padding: 4px 14px;
-                border-radius: 20px;
-                font-size: 12px;
-                font-weight: 600;
-                display: inline-block;
-            }
-            
-            @media (max-width: 768px) {
-                table {
-                    font-size: 12px !important;
-                }
-                th, td {
-                    padding: 10px 12px !important;
-                }
-                .reg-sub-tab {
-                    font-size: 12px !important;
-                    padding: 10px 12px !important;
-                }
-            }
-        </style>
 </div>
 <!-- END SUPPLEMENTARY REGISTRATION -->
 </section>
 <!-- END HUB REGISTER -->
+
+
+<style id="nchsm-registration-modern-overrides">
+/* ============================================================
+   NCHSM UNIT REGISTRATION — MODERN VISUAL OVERRIDES
+   Visual layer only: existing IDs / JS hooks are preserved.
+   ============================================================ */
+
+#hub-register {
+    --reg-navy: #0A3D62;
+    --reg-blue: #145B83;
+    --reg-purple: #4C1D95;
+    --reg-purple-2: #6D28D9;
+    --reg-green: #059669;
+    --reg-amber: #B45309;
+    --reg-bg: #f5f7fb;
+    --reg-border: #e5e7eb;
+    --reg-text: #1e293b;
+    --reg-muted: #64748b;
+    background: linear-gradient(180deg, #f7f9fc 0%, #f3f5f9 100%);
+    min-height: 100%;
+}
+
+/* Main hero */
+#hub-register > div:first-of-type {
+    position: relative;
+    overflow: hidden;
+    background:
+        radial-gradient(circle at 88% 15%, rgba(255,255,255,.16), transparent 28%),
+        radial-gradient(circle at 75% 120%, rgba(253,185,19,.12), transparent 32%),
+        linear-gradient(135deg, #082f49 0%, #0A3D62 48%, #155f88 100%) !important;
+    border: 1px solid rgba(255,255,255,.08);
+    min-height: 116px;
+    padding: 25px 30px !important;
+    box-shadow: 0 12px 30px rgba(10,61,98,.18) !important;
+}
+#hub-register > div:first-of-type::after {
+    content: "";
+    position: absolute;
+    width: 190px;
+    height: 190px;
+    right: -70px;
+    bottom: -105px;
+    border: 1px solid rgba(255,255,255,.12);
+    border-radius: 50%;
+    box-shadow: 0 0 0 24px rgba(255,255,255,.025),
+                0 0 0 48px rgba(255,255,255,.018);
+    pointer-events: none;
+}
+#hub-register > div:first-of-type h2 {
+    font-size: clamp(20px, 2vw, 27px) !important;
+    letter-spacing: -.3px;
+}
+#hub-register > div:first-of-type h2 i {
+    filter: drop-shadow(0 4px 8px rgba(0,0,0,.2));
+}
+#hub-register > div:first-of-type p {
+    max-width: 700px;
+    line-height: 1.55;
+}
+
+/* Sub-navigation becomes a polished segmented control */
+#hub-register > div:nth-of-type(2) {
+    position: sticky;
+    top: 10px;
+    z-index: 20;
+    border: 1px solid rgba(15,23,42,.07) !important;
+    box-shadow: 0 8px 24px rgba(15,23,42,.07) !important;
+    backdrop-filter: blur(12px);
+}
+#hub-register > div:nth-of-type(2) > div {
+    padding: 5px !important;
+    border: 0 !important;
+    background: rgba(248,250,252,.94) !important;
+    gap: 5px;
+}
+#hub-register .reg-sub-tab {
+    border: 0 !important;
+    border-bottom: 0 !important;
+    border-radius: 10px;
+    min-height: 48px;
+    color: #64748b !important;
+}
+#hub-register .reg-sub-tab.active {
+    color: #fff !important;
+    background: linear-gradient(135deg, #4C1D95, #6D28D9) !important;
+    box-shadow: 0 5px 14px rgba(76,29,149,.24);
+}
+#hub-register .reg-sub-tab:not(.active):hover {
+    color: #4C1D95 !important;
+    background: rgba(76,29,149,.07) !important;
+}
+
+/* All primary cards */
+#hub-register .reg-sub-content > div,
+#hub-register #registration-legend {
+    border-color: rgba(148,163,184,.22) !important;
+    box-shadow: 0 5px 18px rgba(15,23,42,.055) !important;
+}
+
+/* Legend */
+#hub-register #registration-legend {
+    background: linear-gradient(135deg, #ffffff, #fbfcff) !important;
+}
+#hub-register #legend-content > * {
+    border: 1px solid #edf0f5;
+    border-radius: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+}
+
+/* Filter area */
+#hub-register #regular-registration > div:first-of-type {
+    background: #fff !important;
+    padding: 18px 22px !important;
+}
+#hub-register select {
+    min-height: 44px;
+    color: #334155;
+    border-color: #dbe2ea !important;
+    box-shadow: inset 0 1px 2px rgba(15,23,42,.025);
+}
+#hub-register select:hover {
+    border-color: #c4ced9 !important;
+    background: #fff !important;
+}
+#hub-register select:focus {
+    outline: none;
+    border-color: #4C1D95 !important;
+    box-shadow: 0 0 0 3px rgba(76,29,149,.10) !important;
+    background: #fff !important;
+}
+
+/* Buttons */
+#hub-register #refreshUnitsBtn,
+#hub-register #submitRegistrationBtn,
+#hub-register #registerSupplementaryBtn {
+    min-height: 44px;
+    border-radius: 10px !important;
+    font-weight: 700 !important;
+}
+#hub-register #refreshUnitsBtn {
+    background: linear-gradient(135deg,#4C1D95,#6D28D9) !important;
+}
+#hub-register #submitRegistrationBtn {
+    background: linear-gradient(135deg,#059669,#047857) !important;
+}
+#hub-register #refreshUnitsBtn:hover,
+#hub-register #submitRegistrationBtn:hover,
+#hub-register #registerSupplementaryBtn:hover {
+    filter: brightness(1.03);
+    transform: translateY(-1px);
+}
+
+/* Table shells */
+#hub-register table {
+    border-collapse: separate !important;
+    border-spacing: 0;
+}
+#hub-register thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background: #f8fafc !important;
+    color: #64748b !important;
+    border-bottom: 1px solid #e2e8f0 !important;
+}
+#hub-register tbody tr {
+    transition: background .16s ease, transform .16s ease;
+}
+#hub-register tbody tr:hover {
+    background: #f8faff !important;
+}
+#hub-register tbody td {
+    border-bottom: 1px solid #eef2f7;
+    color: #334155;
+}
+#hub-register tbody tr:last-child td {
+    border-bottom: 0;
+}
+
+/* Count pills */
+#availableUnitsCount,
+#registeredUnitsCount,
+#eligibleUnitsCount,
+#suppRegisteredCount {
+    min-width: 72px;
+    text-align: center;
+    box-shadow: 0 3px 8px rgba(15,23,42,.08);
+}
+
+/* Registered units section */
+#hub-register #regular-registration > div:nth-of-type(3) > div:first-child {
+    background: linear-gradient(135deg,#f0fdf7,#ecfdf5) !important;
+}
+
+/* Supplementary section */
+#hub-register #supplementary-registration > div:first-of-type {
+    background:
+        radial-gradient(circle at 90% 10%, rgba(255,255,255,.18), transparent 25%),
+        linear-gradient(135deg,#92400e,#B45309,#D97706) !important;
+    box-shadow: 0 10px 26px rgba(180,83,9,.16) !important;
+}
+#hub-register #supplementary-registration > div:nth-of-type(2),
+#hub-register #suppUnitsContainer,
+#hub-register #supplementary-registration > div:nth-of-type(4) {
+    box-shadow: 0 5px 18px rgba(15,23,42,.055) !important;
+}
+
+/* Registration type information */
+#hub-register #regTypeInfo {
+    animation: regFadeIn .2s ease;
+}
+@keyframes regFadeIn {
+    from { opacity: 0; transform: translateY(-3px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+/* Loading states */
+#hub-register .loading-spinner,
+#hub-register [style*="animation: spin"] {
+    filter: drop-shadow(0 2px 4px rgba(76,29,149,.12));
+}
+
+/* Accessibility / focus */
+#hub-register button:focus-visible,
+#hub-register select:focus-visible,
+#hub-register input:focus-visible {
+    outline: 3px solid rgba(76,29,149,.18);
+    outline-offset: 2px;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+    #hub-register {
+        padding: 12px !important;
+    }
+
+    #hub-register > div:first-of-type {
+        padding: 20px !important;
+        border-radius: 14px !important;
+    }
+
+    #hub-register > div:first-of-type h2 {
+        font-size: 20px !important;
+    }
+
+    #hub-register > div:nth-of-type(2) {
+        top: 5px;
+    }
+
+    #hub-register .reg-sub-tab {
+        min-height: 44px;
+        padding: 10px 8px !important;
+        font-size: 12px !important;
+    }
+
+    #hub-register #registration-legend {
+        padding: 14px !important;
+    }
+
+    #hub-register .reg-sub-content > div {
+        border-radius: 12px !important;
+    }
+
+    #hub-register #regular-registration > div:first-of-type > div {
+        grid-template-columns: 1fr !important;
+    }
+
+    #hub-register #regular-registration > div:first-of-type > div > div:last-child {
+        display: grid !important;
+        grid-template-columns: 1fr 1fr;
+    }
+
+    #hub-register #regular-registration > div:first-of-type > div > div:last-child button {
+        min-width: 0;
+    }
+
+    #hub-register table {
+        min-width: 760px;
+    }
+
+    #hub-register .reg-sub-content {
+        overflow: visible;
+    }
+
+    #hub-register #supplementary-registration > div:nth-of-type(2) form > div {
+        grid-template-columns: 1fr !important;
+    }
+
+    #hub-register #supplementary-registration > div:first-of-type,
+    #hub-register #suppUnitsContainer > div:first-child,
+    #hub-register #supplementary-registration > div:nth-of-type(4) > div:first-child {
+        padding-left: 16px !important;
+        padding-right: 16px !important;
+    }
+
+    #hub-register #legend-content {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Very small phones */
+@media (max-width: 430px) {
+    #hub-register #regular-registration > div:first-of-type > div > div:last-child {
+        grid-template-columns: 1fr;
+    }
+
+    #hub-register > div:first-of-type > div:last-child {
+        width: 100%;
+    }
+
+    #hub-register #registration-status-badge {
+        width: fit-content;
+    }
+}
+
+/* Dark-mode compatibility with the portal theme */
+body.dark-mode #hub-register,
+.dark-mode #hub-register {
+    --reg-bg: #0f172a;
+    --reg-text: #e2e8f0;
+    --reg-muted: #94a3b8;
+    background: linear-gradient(180deg,#0b1220,#0f172a) !important;
+}
+body.dark-mode #hub-register .reg-sub-content > div,
+body.dark-mode #hub-register #registration-legend,
+.dark-mode #hub-register .reg-sub-content > div,
+.dark-mode #hub-register #registration-legend {
+    background: #111c2e !important;
+    border-color: #243247 !important;
+    color: #e2e8f0;
+}
+body.dark-mode #hub-register thead th,
+.dark-mode #hub-register thead th {
+    background: #162235 !important;
+    color: #a9b7c8 !important;
+}
+body.dark-mode #hub-register tbody td,
+.dark-mode #hub-register tbody td {
+    color: #dbe5f0;
+    border-color: #243247;
+}
+body.dark-mode #hub-register tbody tr:hover,
+.dark-mode #hub-register tbody tr:hover {
+    background: #17263a !important;
+}
+body.dark-mode #hub-register select,
+.dark-mode #hub-register select {
+    background: #0f1a2b !important;
+    color: #e2e8f0 !important;
+    border-color: #334155 !important;
+}
+
+<style id="nchsm-registration-modern-overrides">
+#hub-register{--nchsm-navy:#0A3D62;--nchsm-indigo:#4C1D95;--nchsm-purple:#6D28D9;--nchsm-green:#059669;--nchsm-amber:#D97706;--nchsm-red:#DC2626;--nchsm-bg:#f4f7fb;--nchsm-border:#e5eaf2;--nchsm-text:#0f172a;--nchsm-muted:#64748b;background:var(--nchsm-bg);}
+#hub-register .nchsm-reg-hero{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:24px;min-height:128px;padding:24px 28px;margin:0 0 18px;border-radius:18px;background:linear-gradient(135deg,#0a3d62 0%,#174d78 55%,#1b6380 100%);box-shadow:0 12px 30px rgba(10,61,98,.20);color:#fff}
+#hub-register .nchsm-reg-hero:after{content:"";position:absolute;right:-60px;top:-100px;width:420px;height:300px;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 65%);pointer-events:none}
+#hub-register .nchsm-reg-hero-main,#hub-register .nchsm-reg-hero-brand{position:relative;z-index:1;display:flex;align-items:center;gap:16px}
+#hub-register .nchsm-reg-icon{width:56px;height:56px;border-radius:16px;display:grid;place-items:center;background:rgba(109,40,217,.9);font-size:24px;box-shadow:0 8px 18px rgba(0,0,0,.18)}
+#hub-register .nchsm-reg-kicker{font-size:10px;letter-spacing:1.2px;font-weight:800;opacity:.72;margin-bottom:4px}
+#hub-register .nchsm-reg-hero h2{margin:0;color:#fff;font-size:28px;line-height:1.15;font-weight:800}
+#hub-register .nchsm-reg-hero p{margin:6px 0 0;color:rgba(255,255,255,.84);font-size:13px;max-width:620px}
+#hub-register .nchsm-reg-hero-brand{margin-left:auto;gap:22px}
+#hub-register .nchsm-reg-motto{text-align:right;font-size:13px;font-weight:800;line-height:1.3;opacity:.92}
+#hub-register .nchsm-reg-motto span{font-weight:500;opacity:.72}
+#hub-register .nchsm-reg-status{min-width:190px;padding:10px 14px;border-radius:14px;background:#fff;color:#0f172a;display:flex;align-items:center;gap:10px;box-shadow:0 8px 24px rgba(0,0,0,.12)}
+#hub-register .nchsm-status-dot{width:12px;height:12px;border-radius:50%;background:#10b981;box-shadow:0 0 0 5px rgba(16,185,129,.13);flex:0 0 auto}
+#hub-register .nchsm-reg-status strong{display:block;font-size:13px;line-height:1.2}
+#hub-register .nchsm-reg-status small{display:block;color:#64748b;font-size:10px;margin-top:3px}
+#hub-register .nchsm-status-loading .nchsm-status-dot{background:#94a3b8;box-shadow:0 0 0 5px rgba(148,163,184,.13)}
+#hub-register .nchsm-status-closed .nchsm-status-dot{background:#dc2626;box-shadow:0 0 0 5px rgba(220,38,38,.12)}
+#hub-register .nchsm-status-closed strong{color:#b91c1c}
+#hub-register .nchsm-reg-closed-banner{display:flex;align-items:center;gap:13px;padding:13px 16px;margin:-5px 0 18px;border:1px solid #fecaca;background:#fff1f2;border-radius:14px;color:#991b1b}
+#hub-register .nchsm-reg-closed-banner[hidden]{display:none!important}
+#hub-register .nchsm-closed-icon{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;background:#fee2e2;color:#dc2626}
+#hub-register .nchsm-closed-copy{display:flex;flex-direction:column;gap:2px;flex:1}.nchsm-closed-copy strong{font-size:13px}.nchsm-closed-copy span{font-size:11px;color:#7f1d1d}
+#hub-register .nchsm-admin-controlled{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:.4px;padding:6px 9px;border-radius:999px;background:#fff;color:#991b1b;border:1px solid #fecaca}
+#hub-register .nchsm-reg-summary{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:12px;margin-bottom:18px}
+#hub-register .nchsm-reg-stat{min-height:86px;display:flex;align-items:center;gap:11px;padding:14px;border-radius:15px;background:#fff;border:1px solid var(--nchsm-border);box-shadow:0 4px 14px rgba(15,23,42,.045)}
+#hub-register .nchsm-stat-icon{width:40px;height:40px;border-radius:12px;display:grid;place-items:center;font-size:15px;flex:0 0 auto}
+#hub-register .nchsm-reg-stat strong{display:block;font-size:23px;line-height:1;font-weight:850;color:var(--nchsm-text)}
+#hub-register .nchsm-reg-stat span{display:block;margin-top:4px;font-size:11px;font-weight:800;color:#334155}.nchsm-reg-stat small{display:block;margin-top:2px;color:#94a3b8;font-size:9px}
+#hub-register .stat-available .nchsm-stat-icon{background:#eff6ff;color:#2563eb}.stat-registered .nchsm-stat-icon{background:#ecfdf5;color:#059669}.stat-pending .nchsm-stat-icon{background:#fffbeb;color:#d97706}.stat-approved .nchsm-stat-icon{background:#ecfdf5;color:#047857}.stat-supp .nchsm-stat-icon{background:#f5f3ff;color:#7c3aed}
+#hub-register .nchsm-reg-tabs{display:grid;grid-template-columns:1fr 1fr;background:#fff;border:1px solid var(--nchsm-border);border-radius:14px;padding:5px;margin-bottom:15px;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+#hub-register .nchsm-reg-tabs .reg-sub-tab{position:relative;border:0!important;border-radius:10px!important;background:transparent!important;color:#64748b!important;padding:12px 15px!important;font-weight:800!important;font-size:13px!important;display:flex!important;align-items:center!important;justify-content:center!important;gap:9px!important;cursor:pointer;transition:.2s}
+#hub-register .nchsm-reg-tabs .reg-sub-tab.active{background:linear-gradient(135deg,#5b21b6,#6d28d9)!important;color:#fff!important;box-shadow:0 5px 14px rgba(109,40,217,.24)}
+#hub-register .nchsm-tab-badge{min-width:21px;height:21px;padding:0 6px;border-radius:999px;background:#fee2e2;color:#b91c1c;display:inline-grid;place-items:center;font-size:10px}.reg-sub-tab.active .nchsm-tab-badge{background:rgba(255,255,255,.22);color:#fff}
+#hub-register .nchsm-reg-explainer{padding:17px 19px;margin-bottom:18px;border-radius:15px;border:1px solid #dbeafe;background:linear-gradient(135deg,#f7fbff,#f8f7ff);box-shadow:0 4px 12px rgba(15,23,42,.035)}
+#hub-register .nchsm-explainer-head{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:13px}.nchsm-explainer-title{display:flex;align-items:center;gap:10px}.nchsm-info-icon{width:30px;height:30px;border-radius:9px;display:grid;place-items:center;background:#dbeafe;color:#2563eb}.nchsm-explainer-title strong{display:block;font-size:14px;color:#0f172a}.nchsm-explainer-title small{display:block;color:#64748b;font-size:10px;margin-top:2px}.nchsm-program-pill{padding:7px 12px;border-radius:999px;background:#ede9fe;color:#5b21b6;font-size:10px;font-weight:800;white-space:nowrap}
+#hub-register .nchsm-explainer-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.nchsm-explainer-grid>div{background:#fff;border:1px solid #e7edf5;border-radius:12px;padding:11px}.nchsm-reg-rules{display:flex;flex-wrap:wrap;gap:12px 20px;margin-top:12px;padding-top:10px;border-top:1px solid #e5eaf2;color:#64748b;font-size:10px}.nchsm-reg-rules i.fa-circle{font-size:6px;color:#10b981;margin-right:5px}.nchsm-reg-rules span:nth-child(2) i{color:#f59e0b}.nchsm-reg-rules span:nth-child(3) i{color:#dc2626}.nchsm-reg-rules span:last-child{font-weight:800;color:#475569}
+#hub-register .nchsm-reg-filter-card{background:#fff;border:1px solid var(--nchsm-border);border-radius:15px;padding:16px 18px;margin-bottom:18px;box-shadow:0 4px 12px rgba(15,23,42,.04)}
+#hub-register .nchsm-filter-heading{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:13px}.nchsm-filter-heading strong{display:block;color:#0f172a;font-size:14px}.nchsm-filter-heading small{display:block;color:#94a3b8;font-size:10px;margin-top:2px}.nchsm-live-chip{font-size:9px;font-weight:800;color:#047857;background:#ecfdf5;padding:6px 9px;border-radius:999px}.nchsm-live-chip i{font-size:6px;margin-right:3px}
+#hub-register .nchsm-filter-grid{display:grid;grid-template-columns:1fr 1fr 1fr 1.5fr;gap:11px}.nchsm-filter-grid label{font-size:10px;font-weight:800;color:#475569}.nchsm-filter-grid select,.nchsm-filter-grid input{width:100%;box-sizing:border-box;margin-top:5px;padding:10px 11px;border:1px solid #dfe6ef;border-radius:10px;background:#f8fafc;color:#334155;font-size:12px;outline:none}.nchsm-filter-grid select:focus,.nchsm-filter-grid input:focus{border-color:#7c3aed;box-shadow:0 0 0 3px rgba(124,58,237,.09);background:#fff}.nchsm-search-field>span{display:block;position:relative}.nchsm-search-field i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:11px}.nchsm-search-field input{padding-left:31px}
+#hub-register .nchsm-filter-actions{display:flex;justify-content:flex-end;gap:9px;margin-top:12px}.nchsm-btn{border:0;border-radius:10px;padding:10px 15px;font-size:11px;font-weight:800;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;justify-content:center;gap:7px}.nchsm-btn:hover{transform:translateY(-1px)}.nchsm-btn:disabled{opacity:.48;cursor:not-allowed;transform:none}.nchsm-btn-secondary{background:#eef2ff;color:#4c1d95}.nchsm-btn-primary{background:linear-gradient(135deg,#5b21b6,#7c3aed);color:#fff;box-shadow:0 5px 13px rgba(109,40,217,.22)}
+#hub-register .nchsm-reg-filter-card+div,#hub-register .nchsm-reg-filter-card~div{border-color:var(--nchsm-border)!important;box-shadow:0 4px 14px rgba(15,23,42,.045)!important;border-radius:15px!important}
+#hub-register table thead th{position:sticky;top:0;z-index:2;background:#f7f9fc!important}.nchsm-registration-disabled{pointer-events:none;opacity:.62;filter:saturate(.7)}
+#hub-register .nchsm-reg-hero~.nchsm-reg-summary + .nchsm-reg-tabs{}
+body.dark-mode #hub-register,.dark-mode #hub-register{--nchsm-bg:#0b1220;--nchsm-border:#243247;--nchsm-text:#f1f5f9;background:var(--nchsm-bg)}
+body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm-reg-tabs,body.dark-mode #hub-register .nchsm-reg-explainer,body.dark-mode #hub-register .nchsm-reg-filter-card,.dark-mode #hub-register .nchsm-reg-stat,.dark-mode #hub-register .nchsm-reg-tabs,.dark-mode #hub-register .nchsm-reg-explainer,.dark-mode #hub-register .nchsm-reg-filter-card{background:#111c2e!important;border-color:#243247!important}.dark-mode #hub-register .nchsm-explainer-grid>div{background:#0f1a2b;border-color:#243247}.dark-mode #hub-register .nchsm-explainer-title strong,.dark-mode #hub-register .nchsm-filter-heading strong{color:#f1f5f9}.dark-mode #hub-register .nchsm-filter-grid select,.dark-mode #hub-register .nchsm-filter-grid input{background:#0f1a2b;color:#e2e8f0;border-color:#334155}.dark-mode #hub-register .nchsm-reg-rules{border-color:#243247}.dark-mode #hub-register .nchsm-reg-closed-banner{background:#2a1117;border-color:#6b1d28}
+@media(max-width:1050px){#hub-register .nchsm-reg-summary{grid-template-columns:repeat(3,1fr)}#hub-register .nchsm-filter-grid{grid-template-columns:1fr 1fr}.nchsm-search-field{grid-column:1/-1}}
+@media(max-width:700px){#hub-register{padding:12px!important}.nchsm-reg-hero{flex-direction:column;align-items:flex-start!important;padding:19px!important}.nchsm-reg-hero-brand{width:100%;margin-left:0!important;justify-content:space-between}.nchsm-reg-motto{display:none}.nchsm-reg-status{min-width:0;flex:1}.nchsm-reg-summary{grid-template-columns:1fr 1fr!important}.nchsm-reg-stat{min-height:72px;padding:10px}.nchsm-reg-stat strong{font-size:20px}.nchsm-explainer-grid{grid-template-columns:1fr!important}.nchsm-explainer-head{align-items:flex-start;flex-direction:column}.nchsm-program-pill{align-self:flex-start}.nchsm-reg-tabs .reg-sub-tab{padding:11px 7px!important;font-size:11px!important}.nchsm-filter-grid{grid-template-columns:1fr!important}.nchsm-search-field{grid-column:auto}.nchsm-filter-actions{display:grid!important;grid-template-columns:1fr 1fr}.nchsm-btn{padding:10px 8px}.nchsm-reg-closed-banner{align-items:flex-start}.nchsm-admin-controlled{display:none}}
+</style>
+
+<script id="nchsm-registration-ui-integration">
+(function(){
+  'use strict';
+  const root=document.getElementById('hub-register'); if(!root) return;
+  const q=(id)=>document.getElementById(id);
+  const syncCounts=()=>{
+    const map=[['availableUnitsCount','nchsm-available-summary'],['registeredUnitsCount','nchsm-registered-summary'],['pendingCountDisplay','nchsm-pending-summary'],['approvedCountDisplay','nchsm-approved-summary'],['suppCountDisplay','nchsm-supp-summary']];
+    map.forEach(([a,b])=>{const s=q(a),d=q(b);if(s&&d){const m=(s.textContent||'').match(/\d+/);d.textContent=m?m[0]:'0';}});
+  };
+  const filterRows=()=>{
+    const input=q('registration-unit-search'); const term=(input?.value||'').trim().toLowerCase();
+    const body=q('availableUnitsBody'); if(!body) return;
+    [...body.querySelectorAll('tr')].forEach(row=>{if(!term){row.style.display='';return;}row.style.display=(row.textContent||'').toLowerCase().includes(term)?'':'none';});
+  };
+  window.NCHSMRegistrationUI={syncCounts,filterRows};
+  document.addEventListener('input',e=>{if(e.target?.id==='registration-unit-search')filterRows();});
+  const observer=new MutationObserver(()=>syncCounts());
+  ['availableUnitsCount','registeredUnitsCount','pendingCountDisplay','approvedCountDisplay','suppCountDisplay'].forEach(id=>{const el=q(id);if(el)observer.observe(el,{childList:true,subtree:true,characterData:true});});
+  syncCounts();
+})();
+</script>
 <!-- ==================== HUB ONLINE LEARNING TAB ==================== -->
 <section class="tab-content" hidden="" id="hub-online-learning">
 <div class="online-learning-container" style="text-align: center; padding: 60px 20px;">
