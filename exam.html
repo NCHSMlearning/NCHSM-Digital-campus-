@@ -1888,6 +1888,40 @@ body{
   }
 }
 </style>
+
+<style id="header-symbol-fix">
+/* NCHSM header hardening: prevent broken icon-font glyphs from appearing */
+.site-header .brand,
+.site-header .brand * {
+  font-family: Arial, Helvetica, sans-serif !important;
+  font-style: normal;
+  text-decoration: none;
+}
+
+/* Keep the brand clean and text-based if the icon font fails. */
+.site-header .brand-wordmark {
+  display: inline-flex;
+  align-items: center;
+  font-weight: 800;
+  letter-spacing: .02em;
+  line-height: 1;
+}
+
+/* Hide empty decorative pseudo-elements that can expose icon-font glyphs. */
+.site-header .brand::before,
+.site-header .brand::after {
+  content: none !important;
+}
+
+/* Do not allow icon font ligatures in the header branding. */
+.site-header .brand,
+.site-header .brand span,
+.site-header .brand strong {
+  font-variant-ligatures: none !important;
+  text-rendering: geometricPrecision;
+}
+</style>
+
 </head>
 
 <body>
@@ -2570,7 +2604,7 @@ body{
   } else {
     startProfilePhotoSync();
   }
-
+ 
   // If the profile page/module broadcasts a photo update, refresh here too.
   document.addEventListener('photoUpdated', function () {
     setTimeout(loadProfilePhotoFromSameRecord, 300);
