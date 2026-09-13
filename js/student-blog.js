@@ -31,12 +31,46 @@
         // ========================================================
 
         getSupabase() {
-            return (
-                window.db?.supabase ||
-                window.supabaseClient ||
-                window.sb ||
-                null
-            );
+            // Reuse the portal's existing Supabase client first.
+            if (window.db?.supabase && typeof window.db.supabase.from === 'function') {
+                return window.db.supabase;
+            }
+
+            if (window.nchsmSupabase && typeof window.nchsmSupabase.from === 'function') {
+                return window.nchsmSupabase;
+            }
+
+            if (window.sb && typeof window.sb.from === 'function') {
+                return window.sb;
+            }
+
+            if (window.supabaseClient && typeof window.supabaseClient.from === 'function') {
+                return window.supabaseClient;
+            }
+
+            // Fallback: create the SAME public Supabase client used by the portal.
+            // Important: do not overwrite window.supabase because the CDN exposes
+            // createClient through that object.
+            const SUPABASE_URL = 'https://lwhtjozfsmbyihenfunw.supabase.co';
+            const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imx3aHRqb3pmc21ieWloZW5mdW53Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTk2NTgxMjcsImV4cCI6MjA3NTIzNDEyN30.7Z8AYvPQwTAEEEhODlW6Xk-IR1FK3Uj5ivZS7P17Wpk';
+
+            if (window.supabase && typeof window.supabase.createClient === 'function') {
+                try {
+                    const client = window.supabase.createClient(
+                        SUPABASE_URL,
+                        SUPABASE_ANON_KEY
+                    );
+
+                    window.sb = client;
+                    window.nchsmSupabase = client;
+
+                    return client;
+                } catch (error) {
+                    console.error('❌ Failed to initialize Supabase:', error);
+                }
+            }
+
+            return null;
         }
 
         // ========================================================
@@ -144,17 +178,20 @@
 
             this.updateUserData();
 
-            if (!this.userId) {
-                const interval = setInterval(() => {
-                    if (this.updateUserData()) {
-                        clearInterval(interval);
-                    }
-                }, 1000);
+            // Give the authentication/Supabase layer time to finish initializing.
+            const interval = setInterval(() => {
+                this.updateUserData();
 
-                setTimeout(() => {
+                const supabase = this.getSupabase();
+                if (this.userId && supabase) {
                     clearInterval(interval);
-                }, 15000);
-            }
+                    this.loadPosts();
+                }
+            }, 1000);
+
+            setTimeout(() => {
+                clearInterval(interval);
+            }, 15000);
         }
 
         updateUserData() {
@@ -1126,6 +1163,16 @@
         // ========================================================
 
         refresh() {
+            return this.loadPosts();
+        }
+
+        // Public aliases used by the Student Portal navigation.
+        load() {
+            return this.loadPosts();
+        }
+
+        open() {
+            this.refreshElements();
             return this.loadPosts();
         }
 
