@@ -3004,8 +3004,11 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 <table style="width: 100%; border-collapse: collapse; font-size: 14px;">
 <thead>
 <tr style="background: #f1f5f9; border-bottom: 2px solid #e2e8f0;">
-<th style="padding: 14px 18px; text-align: center; width: 45px; font-weight: 700; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
-<i class="fas fa-check-square"></i>
+<th style="padding: 10px 14px; text-align: center; width: 58px; font-weight: 700; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
+<label for="selectAllUnits" style="display:flex; flex-direction:column; align-items:center; gap:4px; cursor:pointer; margin:0;">
+<input type="checkbox" id="selectAllUnits" aria-label="Select all available units" style="width:18px; height:18px; cursor:pointer; accent-color:#4C1D95; margin:0;">
+<span style="font-size:9px; font-weight:700; letter-spacing:.4px; color:#64748b;">ALL</span>
+</label>
 </th>
 <th style="padding: 14px 18px; text-align: left; font-weight: 700; color: #475569; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px;">
 <i class="fas fa-hashtag"></i> Code
@@ -3741,6 +3744,7 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 @media(max-width:1050px){#hub-register .nchsm-reg-summary{grid-template-columns:repeat(3,1fr)}#hub-register .nchsm-filter-grid{grid-template-columns:1fr 1fr}.nchsm-search-field{grid-column:1/-1}}
 @media(max-width:700px){#hub-register{padding:12px!important}.nchsm-reg-hero{flex-direction:column;align-items:flex-start!important;padding:19px!important}.nchsm-reg-hero-brand{width:100%;margin-left:0!important;justify-content:space-between}.nchsm-reg-motto{display:none}.nchsm-reg-status{min-width:0;flex:1}.nchsm-reg-summary{grid-template-columns:1fr 1fr!important}.nchsm-reg-stat{min-height:72px;padding:10px}.nchsm-reg-stat strong{font-size:20px}.nchsm-explainer-grid{grid-template-columns:1fr!important}.nchsm-explainer-head{align-items:flex-start;flex-direction:column}.nchsm-program-pill{align-self:flex-start}.nchsm-reg-tabs .reg-sub-tab{padding:11px 7px!important;font-size:11px!important}.nchsm-filter-grid{grid-template-columns:1fr!important}.nchsm-search-field{grid-column:auto}.nchsm-filter-actions{display:grid!important;grid-template-columns:1fr 1fr}.nchsm-btn{padding:10px 8px}.nchsm-reg-closed-banner{align-items:flex-start}.nchsm-admin-controlled{display:none}}
 </style>
+
  
 <!-- ==================== HUB ONLINE LEARNING TAB ==================== -->
 <section class="tab-content" hidden="" id="hub-online-learning">
