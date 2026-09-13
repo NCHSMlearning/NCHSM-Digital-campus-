@@ -759,13 +759,12 @@ updateSelectedCount() {
     }
     
     // Update "Select All" checkbox state
-    const selectAll = document.getElementById('selectAllUnits');
+    const selectAll = this.selectAllCheckbox || document.getElementById('selectAllUnits');
     if (selectAll) {
-        const allCheckboxes = document.querySelectorAll('.unit-checkbox');
-        const checkedCheckboxes = document.querySelectorAll('.unit-checkbox:checked');
-        if (allCheckboxes.length > 0) {
-            selectAll.checked = checkedCheckboxes.length === allCheckboxes.length;
-        }
+        const allCheckboxes = document.querySelectorAll('#availableUnitsBody .unit-checkbox:not([disabled])');
+        const checkedCheckboxes = document.querySelectorAll('#availableUnitsBody .unit-checkbox:not([disabled]):checked');
+        selectAll.checked = allCheckboxes.length > 0 && checkedCheckboxes.length === allCheckboxes.length;
+        selectAll.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < allCheckboxes.length;
     }
 }
 
@@ -791,6 +790,12 @@ displayAvailableUnits() {
                 </td>
             </tr>
         `;
+        if (this.selectAllCheckbox) {
+            this.selectAllCheckbox.checked = false;
+            this.selectAllCheckbox.indeterminate = false;
+        }
+        const availableSummary = document.getElementById('nchsm-available-summary');
+        if (availableSummary) availableSummary.textContent = '0';
         return;
     }
     
@@ -806,6 +811,12 @@ displayAvailableUnits() {
                 </td>
             </tr>
         `;
+        if (this.selectAllCheckbox) {
+            this.selectAllCheckbox.checked = false;
+            this.selectAllCheckbox.indeterminate = false;
+        }
+        const availableSummary = document.getElementById('nchsm-available-summary');
+        if (availableSummary) availableSummary.textContent = '0';
         return;
     }
     
@@ -845,6 +856,16 @@ displayAvailableUnits() {
     }
     
     this.availableBody.innerHTML = html;
+
+    const availableSummary = document.getElementById('nchsm-available-summary');
+    if (availableSummary) availableSummary.textContent = displayUnits.length;
+
+    // A freshly loaded unit list must never inherit a stale "Select All" state.
+    if (this.selectAllCheckbox) {
+        this.selectAllCheckbox.checked = false;
+        this.selectAllCheckbox.indeterminate = false;
+    }
+
     this.updateSelectedCount();
     this.attachCheckboxEvents();
 }
@@ -852,10 +873,30 @@ displayAvailableUnits() {
 
 
         // ============================================================
-// UPDATE SELECTED COUNT - UPDATED
-// ============================================================
+        // SELECT / DESELECT ALL AVAILABLE UNITS
+        // ============================================================
 
-updateSelectedCount() {
+        selectAllUnits() {
+            const selectAll = this.selectAllCheckbox || document.getElementById('selectAllUnits');
+            if (!selectAll) return;
+
+            const checkboxes = document.querySelectorAll(
+                '#availableUnitsBody .unit-checkbox:not([disabled])'
+            );
+
+            const shouldSelect = Boolean(selectAll.checked);
+            checkboxes.forEach(cb => {
+                cb.checked = shouldSelect;
+            });
+
+            this.updateSelectedCount();
+        }
+
+        // ============================================================
+        // UPDATE SELECTED COUNT - UPDATED
+        // ============================================================
+
+        updateSelectedCount() {
     const checkboxes = document.querySelectorAll('.unit-checkbox:checked');
     const count = checkboxes.length;
     
@@ -881,13 +922,12 @@ updateSelectedCount() {
     }
     
     // Update "Select All" checkbox state
-    const selectAll = document.getElementById('selectAllUnits');
+    const selectAll = this.selectAllCheckbox || document.getElementById('selectAllUnits');
     if (selectAll) {
-        const allCheckboxes = document.querySelectorAll('.unit-checkbox');
-        const checkedCheckboxes = document.querySelectorAll('.unit-checkbox:checked');
-        if (allCheckboxes.length > 0) {
-            selectAll.checked = checkedCheckboxes.length === allCheckboxes.length;
-        }
+        const allCheckboxes = document.querySelectorAll('#availableUnitsBody .unit-checkbox:not([disabled])');
+        const checkedCheckboxes = document.querySelectorAll('#availableUnitsBody .unit-checkbox:not([disabled]):checked');
+        selectAll.checked = allCheckboxes.length > 0 && checkedCheckboxes.length === allCheckboxes.length;
+        selectAll.indeterminate = checkedCheckboxes.length > 0 && checkedCheckboxes.length < allCheckboxes.length;
     }
 }
     
@@ -899,9 +939,7 @@ attachCheckboxEvents() {
     const checkboxes = document.querySelectorAll('.unit-checkbox');
     
     checkboxes.forEach(cb => {
-        cb.removeEventListener('change', this._checkboxChangeHandler);
-        this._checkboxChangeHandler = () => this.updateSelectedCount();
-        cb.addEventListener('change', this._checkboxChangeHandler);
+        cb.onchange = () => this.updateSelectedCount();
     });
 }
         // ============================================================
@@ -920,9 +958,22 @@ attachCheckboxEvents() {
             if (this.approvedCountDisplay) this.approvedCountDisplay.textContent = approvedCount;
             if (this.completedCountDisplay) this.completedCountDisplay.textContent = completedCount;
             if (this.suppCountDisplay) this.suppCountDisplay.textContent = suppCount;
-            
+
             const countEl = document.getElementById('registeredUnitsCount');
             if (countEl) countEl.textContent = this.registeredUnits.length + ' units';
+
+            const totalEl = document.getElementById('registeredUnitsTotal');
+            if (totalEl) totalEl.textContent = this.registeredUnits.length + ' units';
+
+            // Modern dashboard summary cards
+            const registeredSummary = document.getElementById('nchsm-registered-summary');
+            const pendingSummary = document.getElementById('nchsm-pending-summary');
+            const approvedSummary = document.getElementById('nchsm-approved-summary');
+            const suppSummary = document.getElementById('nchsm-supp-summary');
+            if (registeredSummary) registeredSummary.textContent = this.registeredUnits.length;
+            if (pendingSummary) pendingSummary.textContent = pendingCount;
+            if (approvedSummary) approvedSummary.textContent = approvedCount;
+            if (suppSummary) suppSummary.textContent = suppCount;
             
             if (this.registeredUnits.length === 0) {
                 this.registeredBody.innerHTML = `
@@ -989,8 +1040,33 @@ attachCheckboxEvents() {
                 }
             }
             
+            // Some older registration rows contain the unit code but not the unit
+            // name/block/type. Resolve those fields from the live units catalog so
+            // the Registered Units table never shows an empty Unit Name when the
+            // catalog contains the matching unit.
+            let catalogByCode = {};
+            if (supabase) {
+                try {
+                    const { data: catalogRows } = await supabase
+                        .from('units_catalog')
+                        .select('unit_code, unit_name, block, unit_type, credits')
+                        .eq('program', this.programCode || 'KRCHN');
+
+                    (catalogRows || []).forEach(row => {
+                        if (row.unit_code) catalogByCode[row.unit_code] = row;
+                    });
+                } catch (catalogError) {
+                    console.warn('Could not resolve registered unit details from catalog:', catalogError);
+                }
+            }
+
             let html = '';
             for (const unit of this.registeredUnits) {
+                const catalogUnit = catalogByCode[unit.unit_code] || {};
+                const displayUnitName = unit.unit_name || catalogUnit.unit_name || 'Unit name unavailable';
+                const displayBlock = unit.block || catalogUnit.block || '—';
+                const displayUnitType = unit.unit_type || catalogUnit.unit_type || 'Core';
+                const displayCredits = unit.credits || catalogUnit.credits || 3;
                 // ✅ Check if this unit has a published mark
                 const publishedMark = publishedGrades.get(unit.unit_code);
                 const hasPublishedGrade = !!publishedMark;
@@ -1029,9 +1105,8 @@ attachCheckboxEvents() {
                     ${this.escapeHtml(unit.reg_type || 'Normal')}
                 </span>`;
                 
-                const dateDisplay = unit.completed_at ? 
-                    new Date(unit.completed_at).toLocaleDateString() : 
-                    (unit.submitted_date ? new Date(unit.submitted_date).toLocaleDateString() : '—');
+                const dateValue = unit.completed_at || unit.submitted_date || unit.created_at || unit.updated_at;
+                const dateDisplay = dateValue ? new Date(dateValue).toLocaleDateString() : '—';
                 
                 let actionButtons = '—';
                 if (unit.status === 'pending') {
@@ -1043,8 +1118,11 @@ attachCheckboxEvents() {
                 
                 html += `<tr>
                     <td style="padding:12px 16px;"><strong>${this.escapeHtml(unit.unit_code)}</strong></td>
-                    <td style="padding:12px 16px;">${this.escapeHtml(unit.unit_name)}</td>
-                    <td style="padding:12px 16px;">${this.escapeHtml(unit.block)}</td>
+                    <td style="padding:12px 16px; min-width:240px;">
+                        <div style="font-weight:600; color:#0f172a; line-height:1.35;">${this.escapeHtml(displayUnitName)}</div>
+                        ${unit.unit_name ? '' : '<div style="font-size:10px; color:#94a3b8; margin-top:3px;"><i class="fas fa-database"></i> Catalog details</div>'}
+                    </td>
+                    <td style="padding:12px 16px;">${this.escapeHtml(displayBlock)}</td>
                     <td style="padding:12px 16px; text-align:center;">${regBadge}</td>
                     <td style="padding:12px 16px; text-align:center;">
                         <span style="background:${statusBg}; color:${statusColor}; padding:4px 14px; border-radius:20px; font-size:12px; font-weight:600; display:inline-block;">
