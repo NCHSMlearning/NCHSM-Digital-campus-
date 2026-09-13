@@ -1802,6 +1802,91 @@ body{
     min-width:60px!important;
   }
 }
+
+/* HIGH VISIBILITY EXAM LOBBY TIMER */
+.high-visibility-timer,
+.remaining-time,
+.time-remaining,
+.exam-time-remaining,
+#remainingTime,
+#lobbyRemainingTime,
+#remaining-time{
+  color:#fff!important;
+  background:linear-gradient(135deg,#063b60,#075b83)!important;
+  border:1px solid rgba(255,255,255,.2)!important;
+  border-radius:14px!important;
+  padding:10px 14px!important;
+  box-shadow:0 8px 20px rgba(4,52,78,.18)!important;
+  text-shadow:0 1px 2px rgba(0,0,0,.25);
+}
+.high-visibility-timer.warning,
+.high-visibility-timer.danger,
+.remaining-time.warning,
+.remaining-time.danger,
+.time-remaining.warning,
+.time-remaining.danger,
+#remainingTime.warning,
+#remainingTime.danger,
+#lobbyRemainingTime.warning,
+#lobbyRemainingTime.danger{
+  color:#fff!important;
+  background:linear-gradient(135deg,#9f1730,#d12d42)!important;
+  border-color:rgba(255,255,255,.3)!important;
+}
+.high-visibility-timer strong,
+.high-visibility-timer .value,
+.remaining-time strong,
+.remaining-time .value,
+.time-remaining strong,
+.time-remaining .value,
+#remainingTime strong,
+#remainingTime .value,
+#lobbyRemainingTime strong,
+#lobbyRemainingTime .value{
+  color:#fff!important;
+  font-size:20px!important;
+  font-weight:900!important;
+}
+.high-visibility-timer .label,
+.remaining-time .label,
+.time-remaining .label,
+#remainingTime .label,
+#lobbyRemainingTime .label{
+  color:rgba(255,255,255,.8)!important;
+  font-size:8px!important;
+  font-weight:800!important;
+  text-transform:uppercase;
+  letter-spacing:1px;
+}
+.high-visibility-timer i,
+.remaining-time i,
+.time-remaining i,
+#remainingTime i,
+#lobbyRemainingTime i{
+  color:#fff!important;
+  background:rgba(255,255,255,.14)!important;
+  border-radius:50%;
+}
+@media(max-width:768px){
+  .high-visibility-timer,
+  .remaining-time,
+  .time-remaining,
+  #remainingTime,
+  #lobbyRemainingTime{
+    padding:8px 10px!important;
+    border-radius:12px!important;
+  }
+  .high-visibility-timer strong,
+  .high-visibility-timer .value,
+  .remaining-time strong,
+  .remaining-time .value,
+  #remainingTime strong,
+  #remainingTime .value,
+  #lobbyRemainingTime strong,
+  #lobbyRemainingTime .value{
+    font-size:17px!important;
+  }
+}
 </style>
 </head>
 
@@ -2300,6 +2385,23 @@ body{
 })();
 </script>
 
+
+<script>
+(function(){
+  function enhanceLobbyTimer(){
+    document.querySelectorAll(
+      '#remainingTime,#lobbyRemainingTime,#remaining-time,.remaining-time,.time-remaining,.exam-time-remaining'
+    ).forEach(function(el){
+      el.classList.add('high-visibility-timer');
+      el.setAttribute('aria-label','Examination time remaining');
+    });
+  }
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',enhanceLobbyTimer);
+  }else{ enhanceLobbyTimer(); }
+  [300,800,1500,3000].forEach(function(ms){setTimeout(enhanceLobbyTimer,ms);});
+})();
+</script>
 <script src="exam.js"></script>
 
 <script>
