@@ -1397,6 +1397,165 @@ async function loadSectionData(tabId) {
             break;
     }
 }
+
+/* ============================================================
+   NCHSM SUPERADMIN — HARDENED SECTION NAVIGATION
+   Fixes sidebar sections that do not open in the LIVE file.
+   This module intentionally works with the existing HTML.
+   ============================================================ */
+(function () {
+    'use strict';
+
+    let navigationInstalled = false;
+
+    function normalizeTabId(tabId) {
+        return String(tabId || '').trim().replace(/^#/, '');
+    }
+
+    function setActiveSection(tabId) {
+        tabId = normalizeTabId(tabId);
+
+        const target = document.getElementById(tabId);
+        if (!target) {
+            console.warn('❌ SuperAdmin: section not found:', tabId);
+            return false;
+        }
+
+        const sections = document.querySelectorAll('.tab-content');
+
+        sections.forEach(function (section) {
+            const isTarget = section === target;
+
+            section.classList.toggle('active', isTarget);
+            section.setAttribute('aria-hidden', isTarget ? 'false' : 'true');
+
+            // Inline display is intentional: it overrides stale CSS/classes
+            // from previous navigation fixes in the live file.
+            section.style.display = isTarget ? 'block' : 'none';
+        });
+
+        // Support the existing #mainNav structure.
+        document.querySelectorAll('#mainNav a[data-tab]').forEach(function (link) {
+            const isActive = normalizeTabId(link.getAttribute('data-tab')) === tabId;
+            link.classList.toggle('active', isActive);
+            link.setAttribute('aria-current', isActive ? 'page' : 'false');
+        });
+
+        // Also support sidebar links outside #mainNav if any exist.
+        document.querySelectorAll('a[data-tab]').forEach(function (link) {
+            const isActive = normalizeTabId(link.getAttribute('data-tab')) === tabId;
+            link.classList.toggle('active', isActive);
+        });
+
+        // Keep the URL hash optional; do not reload the page.
+        try {
+            if (history.replaceState) {
+                history.replaceState(null, '', '#' + encodeURIComponent(tabId));
+            }
+        } catch (_) {}
+
+        // Load the section only after it has been made visible.
+        try {
+            if (typeof window.loadSectionData === 'function') {
+                Promise.resolve(window.loadSectionData(tabId)).catch(function (err) {
+                    console.error('❌ Section loader failed:', tabId, err);
+                });
+            }
+        } catch (err) {
+            console.error('❌ Section loader error:', tabId, err);
+        }
+
+        return true;
+    }
+
+    // Replace the fragile live showTab implementation with this hardened one.
+    window.showTab = function (tabId) {
+        return setActiveSection(tabId);
+    };
+
+    function handleNavigationClick(event) {
+        const link = event.target && event.target.closest
+            ? event.target.closest('a[data-tab]')
+            : null;
+
+        if (!link) return;
+
+        const tabId = normalizeTabId(link.getAttribute('data-tab'));
+        if (!tabId) return;
+
+        // Only handle links that actually point to an existing section.
+        if (!document.getElementById(tabId)) return;
+
+        event.preventDefault();
+        event.stopPropagation();
+
+        // Stop older sidebar handlers from opening/hiding the wrong section.
+        if (typeof event.stopImmediatePropagation === 'function') {
+            event.stopImmediatePropagation();
+        }
+
+        setActiveSection(tabId);
+    }
+
+    function installNavigation() {
+        if (navigationInstalled) return;
+        navigationInstalled = true;
+
+        // Capture phase makes this work even if older scripts attached
+        // competing click handlers.
+        document.addEventListener('click', handleNavigationClick, true);
+
+        // Expose a manual diagnostic helper in the browser console.
+        window.NCHSM_NAVIGATION = {
+            open: setActiveSection,
+            refresh: installNavigation,
+            listSections: function () {
+                return Array.from(document.querySelectorAll('.tab-content'))
+                    .map(function (el) { return el.id; })
+                    .filter(Boolean);
+            }
+        };
+
+        console.log('✅ NCHSM SuperAdmin hardened navigation installed.');
+    }
+
+    function bootNavigation() {
+        installNavigation();
+
+        // The live HTML has an old inline "FINAL TAB NAVIGATION FIX".
+        // Re-apply our hardened showTab after all synchronous scripts finish.
+        setTimeout(function () {
+            window.showTab = setActiveSection;
+        }, 0);
+
+        setTimeout(function () {
+            window.showTab = setActiveSection;
+        }, 250);
+
+        // Restore the current/initial section.
+        const hash = decodeURIComponent((location.hash || '').replace(/^#/, ''));
+        const hashTarget = hash && document.getElementById(hash);
+
+        const current = document.querySelector('.tab-content.active');
+        const initial = hashTarget || current ||
+            document.getElementById('dashboard') ||
+            document.querySelector('.tab-content');
+
+        if (initial) {
+            setActiveSection(initial.id);
+        }
+    }
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', bootNavigation, { once: true });
+    } else {
+        bootNavigation();
+    }
+})();
+
+/* Make the section loader explicitly available to the navigation layer. */
+window.loadSectionData = loadSectionData;
+
 /*******************************************************
  * 5. AUDIT LOGGING - XSS SAFE VERSION
  *******************************************************/
