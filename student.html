@@ -3741,28 +3741,7 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 @media(max-width:1050px){#hub-register .nchsm-reg-summary{grid-template-columns:repeat(3,1fr)}#hub-register .nchsm-filter-grid{grid-template-columns:1fr 1fr}.nchsm-search-field{grid-column:1/-1}}
 @media(max-width:700px){#hub-register{padding:12px!important}.nchsm-reg-hero{flex-direction:column;align-items:flex-start!important;padding:19px!important}.nchsm-reg-hero-brand{width:100%;margin-left:0!important;justify-content:space-between}.nchsm-reg-motto{display:none}.nchsm-reg-status{min-width:0;flex:1}.nchsm-reg-summary{grid-template-columns:1fr 1fr!important}.nchsm-reg-stat{min-height:72px;padding:10px}.nchsm-reg-stat strong{font-size:20px}.nchsm-explainer-grid{grid-template-columns:1fr!important}.nchsm-explainer-head{align-items:flex-start;flex-direction:column}.nchsm-program-pill{align-self:flex-start}.nchsm-reg-tabs .reg-sub-tab{padding:11px 7px!important;font-size:11px!important}.nchsm-filter-grid{grid-template-columns:1fr!important}.nchsm-search-field{grid-column:auto}.nchsm-filter-actions{display:grid!important;grid-template-columns:1fr 1fr}.nchsm-btn{padding:10px 8px}.nchsm-reg-closed-banner{align-items:flex-start}.nchsm-admin-controlled{display:none}}
 </style>
-
-<script id="nchsm-registration-ui-integration">
-(function(){
-  'use strict';
-  const root=document.getElementById('hub-register'); if(!root) return;
-  const q=(id)=>document.getElementById(id);
-  const syncCounts=()=>{
-    const map=[['availableUnitsCount','nchsm-available-summary'],['registeredUnitsCount','nchsm-registered-summary'],['pendingCountDisplay','nchsm-pending-summary'],['approvedCountDisplay','nchsm-approved-summary'],['suppCountDisplay','nchsm-supp-summary']];
-    map.forEach(([a,b])=>{const s=q(a),d=q(b);if(s&&d){const m=(s.textContent||'').match(/\d+/);d.textContent=m?m[0]:'0';}});
-  };
-  const filterRows=()=>{
-    const input=q('registration-unit-search'); const term=(input?.value||'').trim().toLowerCase();
-    const body=q('availableUnitsBody'); if(!body) return;
-    [...body.querySelectorAll('tr')].forEach(row=>{if(!term){row.style.display='';return;}row.style.display=(row.textContent||'').toLowerCase().includes(term)?'':'none';});
-  };
-  window.NCHSMRegistrationUI={syncCounts,filterRows};
-  document.addEventListener('input',e=>{if(e.target?.id==='registration-unit-search')filterRows();});
-  const observer=new MutationObserver(()=>syncCounts());
-  ['availableUnitsCount','registeredUnitsCount','pendingCountDisplay','approvedCountDisplay','suppCountDisplay'].forEach(id=>{const el=q(id);if(el)observer.observe(el,{childList:true,subtree:true,characterData:true});});
-  syncCounts();
-})();
-</script>
+ 
 <!-- ==================== HUB ONLINE LEARNING TAB ==================== -->
 <section class="tab-content" hidden="" id="hub-online-learning">
 <div class="online-learning-container" style="text-align: center; padding: 60px 20px;">
@@ -6394,18 +6373,15 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 </section>
 <!-- END REVIEWS -->
 <!-- ============================================================ -->
-```html
-<!-- ENROLLMENT MODULE -->
+<!-- ENROLLMENT MODULE - Change of Program & Readmission & Session Reporting -->
 <section class="tab-content enrollment-modern" id="enrollment" style="display:none;">
-
-  <!-- HERO -->
-  <div class="enr-hero" style="background-image:url('images/campus-header.jpg');">
+  <div class="enr-hero">
     <div class="enr-hero-main">
       <div class="enr-hero-icon"><i class="fas fa-user-graduate"></i></div>
       <div>
         <div class="enr-eyebrow">STUDENT SERVICES</div>
         <h2>Enrollment &amp; Student Status</h2>
-        <p>Manage programme changes, readmission and session reporting.</p>
+        <p>Manage program changes, readmission and session reporting from one place.</p>
         <div class="enr-student-meta">
           <span><i class="fas fa-user"></i><b id="enrollmentStudentName">Loading...</b></span>
           <span><i class="fas fa-id-card"></i><b id="enrollmentStudentId">Loading...</b></span>
@@ -6419,7 +6395,6 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
     </div>
   </div>
 
-  <!-- STATISTICS -->
   <div class="enr-stat-grid">
     <div class="enr-stat-card purple"><div class="enr-stat-icon"><i class="fas fa-layer-group"></i></div><div><span>My Requests</span><strong id="enrTotalRequests">0</strong><small>Total submitted</small></div></div>
     <div class="enr-stat-card amber"><div class="enr-stat-icon"><i class="fas fa-hourglass-half"></i></div><div><span>Pending</span><strong id="enrPendingCount">0</strong><small>Awaiting review</small></div></div>
@@ -6428,7 +6403,6 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
     <div class="enr-stat-card blue"><div class="enr-stat-icon"><i class="fas fa-calendar-check"></i></div><div><span>Pending Reports</span><strong id="enrPendingReports">0</strong><small>Session reports</small></div></div>
   </div>
 
-  <!-- NAVIGATION -->
   <div class="enr-nav-wrap">
     <div class="enr-nav-title"><i class="fas fa-compass"></i><span>Enrollment Centre</span></div>
     <div class="enr-tabs" role="tablist">
@@ -6439,348 +6413,88 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
     </div>
   </div>
 
-  <!-- SESSION REPORTING -->
-  <div class="enr-tab-content" id="enrSessionReportingTab">
-
-    <div class="enr-section-head">
-      <div><span class="enr-section-kicker">ACADEMIC SESSION</span><h3>Session Reporting</h3><p>Report your current academic session and keep your student status up to date.</p></div>
-    </div>
-
-    <div id="enrProgramInfoBanner" class="enr-program-banner">
-      <div class="enr-program-icon"><i class="fas fa-graduation-cap"></i></div>
-      <div><span>Current Program</span><strong id="enrReportCurrentProgram">Loading...</strong><em id="enrReportProgramType">Loading...</em></div>
-      <div class="enr-auto"><i class="fas fa-wand-magic-sparkles"></i><span id="enrReportAutoDetect">Auto-detecting reporting structure...</span></div>
-    </div>
-
-    <div class="enr-report-layout">
-
-      <div class="enr-form-card">
-        <form id="enrReportForm" onsubmit="event.preventDefault(); submitSessionReport();">
-
-          <div class="enr-report-title"><div><i class="fas fa-calendar-check"></i></div><div><h4>Report Back to Semester</h4><p id="enrReportInstructions">Select your current academic session.</p></div></div>
-
-          <div class="enr-field-grid">
-
-            <div class="enr-field">
-              <label for="enrReportYear"><i class="fas fa-calendar"></i> Academic Year *</label>
-              <select id="enrReportYear" required>
-                <option value="">-- Select Year --</option>
-                <option value="2024/2025">2024/2025</option>
-                <option selected value="2025/2026">2025/2026</option>
-                <option value="2026/2027">2026/2027</option>
-              </select>
-            </div>
-
-            <div class="enr-field">
-              <label for="enrReportSession"><i class="fas fa-layer-group"></i> <span id="enrReportSessionLabel">Session *</span></label>
-              <select id="enrReportSession" required><option value="">-- Select --</option></select>
-              <small id="enrReportSessionHelp"><i class="fas fa-info-circle"></i> <span id="enrReportSessionHelpText">Select your current session</span></small>
-            </div>
-
-            <div class="enr-field">
-              <label for="enrReportStatus"><i class="fas fa-user-check"></i> Current Status *</label>
-              <select id="enrReportStatus" required>
-                <option value="Continuing">Continuing</option>
-                <option value="Repeating">Repeating</option>
-                <option value="Probation">Probation</option>
-              </select>
-            </div>
-
-            <div class="enr-field">
-              <label for="enrReportRemarks"><i class="fas fa-comment-dots"></i> Remarks <span>Optional</span></label>
-              <textarea id="enrReportRemarks" placeholder="Any additional information..." rows="3"></textarea>
-            </div>
-
-          </div>
-
-          <div class="enr-form-actions">
-            <button class="enr-btn enr-btn-green enr-submit" type="submit"><i class="fas fa-paper-plane"></i> Submit Report</button>
-            <button class="enr-btn enr-btn-muted" type="reset"><i class="fas fa-rotate-left"></i> Clear</button>
-          </div>
-
-          <div id="enrReportFeedback" class="enr-feedback" style="display:none;"></div>
-
-        </form>
-      </div>
-
-      <aside class="enr-help-card green-help">
-        <div class="enr-help-icon"><i class="fas fa-calendar-days"></i></div>
-        <h4>Why report?</h4>
-        <p>Session reporting helps the college keep your academic status and current session information up to date.</p>
-        <div class="enr-help-note"><i class="fas fa-shield-halved"></i><span>Use your current academic session when submitting.</span></div>
-      </aside>
-
-    </div>
-
-    <div class="enr-table-card enr-report-table">
-      <div class="enr-table-title"><div><i class="fas fa-list"></i><strong>My Session Reports</strong></div><span>Your submitted reports</span></div>
-      <div class="enr-table-scroll">
-        <table class="enr-table">
-          <thead><tr><th>Academic Year</th><th>Session</th><th>Status</th><th>Date</th><th>Approval</th></tr></thead>
-          <tbody id="enrReportsBody"><tr><td colspan="5" class="enr-empty"><div class="loading-spinner"></div><span>Loading reports...</span></td></tr></tbody>
-        </table>
-      </div>
-    </div>
-
-  </div>
-
-
   <!-- MY REQUESTS -->
   <div class="enr-tab-content" id="enrMyRequestsTab" style="display:none;">
-
     <div class="enr-section-head">
       <div><span class="enr-section-kicker">OVERVIEW</span><h3>My Enrollment Requests</h3><p>Track every change-of-program or readmission request you have submitted.</p></div>
       <button class="enr-btn enr-btn-primary" onclick="showEnrSubTab('new-request')"><i class="fas fa-plus"></i> New Request</button>
     </div>
-
     <div class="enr-filter-card">
       <div class="enr-search"><i class="fas fa-search"></i><input id="enrSearch" onkeyup="filterEnrRequests()" placeholder="Search program, ID or request..." type="text"/></div>
       <select id="enrStatusFilter" onchange="filterEnrRequests()"><option value="all">All Status</option><option value="pending">⏳ Pending</option><option value="approved">✅ Approved</option><option value="rejected">❌ Rejected</option><option value="processing">🔄 Processing</option></select>
       <select id="enrTypeFilter" onchange="filterEnrRequests()"><option value="all">All Types</option><option value="change-program">Change of Program</option><option value="readmission">Readmission</option></select>
-      <button class="enr-icon-btn" onclick="loadEnrollmentRequests()"><i class="fas fa-sliders"></i><span>Apply</span></button>
+      <button class="enr-icon-btn" onclick="loadEnrollmentRequests()" title="Apply filters"><i class="fas fa-sliders"></i><span>Apply</span></button>
     </div>
-
     <div class="enr-table-card">
       <div class="enr-table-title"><div><i class="fas fa-list-check"></i><strong>Request Activity</strong></div><span>Live status from your account</span></div>
-      <div class="enr-table-scroll">
-        <table class="enr-table">
-          <thead><tr><th>Request</th><th>Program / Details</th><th>Date</th><th>Status</th><th>Action</th></tr></thead>
-          <tbody id="enrRequestsBody"><tr><td colspan="5" class="enr-empty"><div class="loading-spinner"></div><span>Loading your requests...</span></td></tr></tbody>
-        </table>
-      </div>
+      <div class="enr-table-scroll"><table class="enr-table"><thead><tr><th>Request</th><th>Program / Details</th><th>Date</th><th>Status</th><th>Action</th></tr></thead><tbody id="enrRequestsBody"><tr><td colspan="5" class="enr-empty"><div class="loading-spinner"></div><span>Loading your requests...</span></td></tr></tbody></table></div>
     </div>
-
   </div>
-
 
   <!-- NEW REQUEST -->
   <div class="enr-tab-content" id="enrNewRequestTab" style="display:none;">
-
     <div class="enr-section-head">
       <div><span class="enr-section-kicker">START A REQUEST</span><h3>Submit Enrollment Request</h3><p>Choose what you need and provide the information required for review.</p></div>
       <div class="enr-secure"><i class="fas fa-shield-halved"></i> Secure student submission</div>
     </div>
-
     <div class="enr-form-layout">
-
       <div class="enr-form-card">
-
         <form id="enrRequestForm" onsubmit="event.preventDefault(); submitEnrollmentRequest();">
-
           <div class="enr-form-step"><span>01</span><div><h4>What would you like to do?</h4><p>Select one request type.</p></div></div>
-
           <div class="enr-type-grid">
-
-            <button id="enrTypeChangeProgram" onclick="selectEnrType('change-program')" class="enr-type-choice" type="button">
-              <i class="fas fa-right-left"></i>
-              <div><strong>Change of Program</strong><small>Request transfer to another programme.</small></div>
-              <em><i class="fas fa-check"></i></em>
-            </button>
-
-            <button id="enrTypeReadmission" onclick="selectEnrType('readmission')" class="enr-type-choice" type="button">
-              <i class="fas fa-arrow-rotate-left"></i>
-              <div><strong>Readmission</strong><small>Request to rejoin your programme.</small></div>
-              <em><i class="fas fa-check"></i></em>
-            </button>
-
+            <button id="enrTypeChangeProgram" onclick="selectEnrType('change-program')" class="enr-type-choice" type="button"><i class="fas fa-right-left"></i><div><strong>Change of Program</strong><small>Request transfer to another programme.</small></div><em><i class="fas fa-check"></i></em></button>
+            <button id="enrTypeReadmission" onclick="selectEnrType('readmission')" class="enr-type-choice" type="button"><i class="fas fa-arrow-rotate-left"></i><div><strong>Readmission</strong><small>Request to rejoin your programme.</small></div><em><i class="fas fa-check"></i></em></button>
           </div>
-
           <input id="enrRequestType" type="hidden" value=""/>
-
           <div id="enrTypeError" class="enr-error" style="display:none;">Please select a request type.</div>
 
           <div class="enr-form-step"><span>02</span><div><h4>Programme details</h4><p>Your current details are used to process the request.</p></div></div>
-
           <div class="enr-field-grid">
-
-            <div id="enrCurrentProgramSection" class="enr-field" style="display:none;">
-              <label><i class="fas fa-graduation-cap"></i> Current Program *</label>
-              <div class="enr-readonly"><span id="enrCurrentProgramDisplay"></span><i class="fas fa-lock"></i></div>
-            </div>
-
-            <div id="enrPreviousProgramSection" class="enr-field" style="display:none;">
-              <label><i class="fas fa-clock-rotate-left"></i> Previous Program *</label>
-              <div class="enr-readonly"><span id="enrPreviousProgramDisplay"></span><i class="fas fa-lock"></i></div>
-            </div>
-
-            <div class="enr-field enr-field-full">
-
-              <label for="enrRequestedProgram"><i class="fas fa-graduation-cap"></i> Requested Program *</label>
-
-              <select id="enrRequestedProgram" required>
-
-                <option value="">-- Select Program --</option>
-
-                <optgroup label="🎓 KRCHN Nursing">
-                  <option value="KRCHN">KRCHN - Kenya Registered Community Health Nursing</option>
-                </optgroup>
-
-                <optgroup label="🎯 TVET Diploma Programs">
-                  <option value="DPOTT">DPOTT - Diploma in Perioperative Theatre Technology</option>
-                  <option value="DCH">DCH - Diploma in Community Health</option>
-                  <option value="DHRIT">DHRIT - Diploma in Health Records and IT</option>
-                  <option value="DSL">DSL - Diploma in Science Lab</option>
-                  <option value="DSW">DSW - Diploma in Social Work &amp; Community Development</option>
-                  <option value="DCJS">DCJS - Diploma in Criminal Justice</option>
-                  <option value="DHSS">DHSS - Diploma in Health Support Services</option>
-                  <option value="DICT">DICT - Diploma in ICT</option>
-                  <option value="DME">DME - Diploma in Medical Engineering</option>
-                </optgroup>
-
-                <optgroup label="📜 TVET Certificate Programs">
-                  <option value="CPOTT">CPOTT - Certificate in Perioperative Theatre Technology</option>
-                  <option value="CCH">CCH - Certificate in Community Health</option>
-                  <option value="CHRIT">CHRIT - Certificate in Health Records and IT</option>
-                  <option value="CPC">CPC - Certificate in Patient Care</option>
-                  <option value="CSL">CSL - Certificate in Science Lab</option>
-                  <option value="CSW">CSW - Certificate in Social Work &amp; Community Development</option>
-                  <option value="CCJS">CCJS - Certificate in Criminal Justice</option>
-                  <option value="CAG">CAG - Certificate in Agriculture</option>
-                  <option value="CHSS">CHSS - Certificate in Health Support Services</option>
-                  <option value="CICT">CICT - Certificate in ICT</option>
-                  <option value="CCG">CCG - Certificate in Caregiver</option>
-                  <option value="COMT">COMT - Certificate in Orthopedic Trauma Medicine</option>
-                </optgroup>
-
-                <optgroup label="🔧 TVET Artisan Programs">
-                  <option value="ACH">ACH - Artisan in Community Health</option>
-                  <option value="AAG">AAG - Artisan in Agriculture</option>
-                  <option value="ASW">ASW - Artisan in Social Work &amp; Community Development</option>
-                </optgroup>
-
-                <optgroup label="📊 Other TVET Programs">
-                  <option value="CCA">CCA - Certificate in Computer Applications</option>
-                  <option value="PTE">PTE - TVET/CDACC (PTE)</option>
-                </optgroup>
-
-              </select>
-
-            </div>
-
+            <div id="enrCurrentProgramSection" class="enr-field" style="display:none;"><label><i class="fas fa-graduation-cap"></i> Current Program *</label><div class="enr-readonly"><span id="enrCurrentProgramDisplay"></span><i class="fas fa-lock"></i></div></div>
+            <div id="enrPreviousProgramSection" class="enr-field" style="display:none;"><label><i class="fas fa-clock-rotate-left"></i> Previous Program *</label><div class="enr-readonly"><span id="enrPreviousProgramDisplay"></span><i class="fas fa-lock"></i></div></div>
+            <div class="enr-field enr-field-full"><label for="enrRequestedProgram"><i class="fas fa-graduation-cap"></i> Requested Program *</label><select id="enrRequestedProgram" required><option value="">-- Select Program --</option><optgroup label="🎓 KRCHN Nursing"><option value="KRCHN">KRCHN - Kenya Registered Community Health Nursing</option></optgroup><optgroup label="🎯 TVET Diploma Programs (6-24 months)"><option value="DPOTT">DPOTT - Diploma in Perioperative Theatre Technology</option><option value="DCH">DCH - Diploma in Community Health</option><option value="DHRIT">DHRIT - Diploma in Health Records and IT</option><option value="DSL">DSL - Diploma in Science Lab</option><option value="DSW">DSW - Diploma in Social Work &amp; Community Development</option><option value="DCJS">DCJS - Diploma in Criminal Justice</option><option value="DHSS">DHSS - Diploma in Health Support Services</option><option value="DICT">DICT - Diploma in ICT</option><option value="DME">DME - Diploma in Medical Engineering</option></optgroup><optgroup label="📜 TVET Certificate Programs (3-12 months)"><option value="CPOTT">CPOTT - Certificate in Perioperative Theatre Technology</option><option value="CCH">CCH - Certificate in Community Health</option><option value="CHRIT">CHRIT - Certificate in Health Records and IT</option><option value="CPC">CPC - Certificate in Patient Care</option><option value="CSL">CSL - Certificate in Science Lab</option><option value="CSW">CSW - Certificate in Social Work &amp; Community Development</option><option value="CCJS">CCJS - Certificate in Criminal Justice</option><option value="CAG">CAG - Certificate in Agriculture</option><option value="CHSS">CHSS - Certificate in Health Support Services</option><option value="CICT">CICT - Certificate in ICT</option><option value="CCG">CCG - Certificate in Caregiver</option><option value="COMT">COMT - Certificate in Orthopedic Trauma Medicine</option></optgroup><optgroup label="🔧 TVET Artisan Programs (2-12 months)"><option value="ACH">ACH - Artisan in Community Health</option><option value="AAG">AAG - Artisan in Agriculture</option><option value="ASW">ASW - Artisan in Social Work &amp; Community Development</option></optgroup><optgroup label="📊 Other TVET Programs"><option value="CCA">CCA - Certificate in Computer Applications</option><option value="PTE">PTE - TVET/CDACC (PTE)</option></optgroup></select></div>
           </div>
 
           <div class="enr-form-step"><span>03</span><div><h4>Supporting information</h4><p>Give the academic office enough information to review your request.</p></div></div>
-
-          <div class="enr-field">
-            <label for="enrReason"><i class="fas fa-message"></i> Reason / Justification *</label>
-            <textarea id="enrReason" placeholder="Explain why you are requesting this change or readmission..." required rows="4"></textarea>
-            <small>Be clear and concise. Your explanation will be reviewed by the relevant office.</small>
-          </div>
-
-          <div class="enr-upload">
-            <div class="enr-upload-icon"><i class="fas fa-cloud-arrow-up"></i></div>
-            <div><label for="enrSupportingDocs">Supporting documents <span>Optional</span></label><p>PDF, JPG or PNG · Maximum 5MB per file.</p></div>
-            <input accept=".pdf,.jpg,.png,.jpeg" id="enrSupportingDocs" multiple type="file"/>
-          </div>
-
-          <div class="enr-form-actions">
-            <button class="enr-btn enr-btn-primary enr-submit" type="submit"><i class="fas fa-paper-plane"></i> Submit Request</button>
-            <button class="enr-btn enr-btn-muted" type="reset"><i class="fas fa-rotate-left"></i> Clear</button>
-          </div>
-
+          <div class="enr-field"><label for="enrReason"><i class="fas fa-message"></i> Reason / Justification *</label><textarea id="enrReason" placeholder="Explain why you are requesting this change or readmission..." required rows="5"></textarea><small>Be clear and concise. Your explanation will be reviewed by the relevant office.</small></div>
+          <div class="enr-upload"><div class="enr-upload-icon"><i class="fas fa-cloud-arrow-up"></i></div><div><label for="enrSupportingDocs">Supporting documents <span>Optional</span></label><p>Upload PDF, JPG or PNG files. Maximum 5MB per file.</p></div><input accept=".pdf,.jpg,.png,.jpeg" id="enrSupportingDocs" multiple type="file"/></div>
+          <div class="enr-form-actions"><button class="enr-btn enr-btn-primary enr-submit" type="submit"><i class="fas fa-paper-plane"></i> Submit Request</button><button class="enr-btn enr-btn-muted" type="reset"><i class="fas fa-rotate-left"></i> Clear</button></div>
           <div id="enrFormFeedback" class="enr-feedback" style="display:none;"></div>
-
         </form>
-
       </div>
-
-
-      <aside class="enr-help-card">
-
-        <div class="enr-help-icon"><i class="fas fa-circle-info"></i></div>
-
-        <h4>Before you submit</h4>
-
-        <ul>
-          <li>Select the correct request type.</li>
-          <li>Check the requested programme carefully.</li>
-          <li>Provide a genuine justification.</li>
-          <li>Attach supporting documents where necessary.</li>
-        </ul>
-
-        <div class="enr-help-note">
-          <i class="fas fa-clock"></i>
-          <span>Your request will remain visible under <b>My Requests</b> while it is being reviewed.</span>
-        </div>
-
-      </aside>
-
+      <aside class="enr-help-card"><div class="enr-help-icon"><i class="fas fa-circle-info"></i></div><h4>Before you submit</h4><ul><li>Select the correct request type.</li><li>Check the requested programme carefully.</li><li>Provide a genuine justification.</li><li>Attach supporting documents where necessary.</li></ul><div class="enr-help-note"><i class="fas fa-clock"></i><span>Your request will remain visible under <b>My Requests</b> while it is being reviewed.</span></div></aside>
     </div>
-
   </div>
 
+  <!-- SESSION REPORTING -->
+  <div class="enr-tab-content" id="enrSessionReportingTab">
+    <div class="enr-section-head"><div><span class="enr-section-kicker">ACADEMIC SESSION</span><h3>Session Reporting</h3><p>Report back to your current academic session and keep your student status up to date.</p></div></div>
+    <div id="enrProgramInfoBanner" class="enr-program-banner"><div class="enr-program-icon"><i class="fas fa-graduation-cap"></i></div><div><span>Current Program</span><strong id="enrReportCurrentProgram">Loading...</strong><em id="enrReportProgramType">Loading...</em></div><div class="enr-auto"><i class="fas fa-wand-magic-sparkles"></i><span id="enrReportAutoDetect">Auto-detecting reporting structure...</span></div></div>
+    <div class="enr-report-layout">
+      <div class="enr-form-card">
+        <form id="enrReportForm" onsubmit="event.preventDefault(); submitSessionReport();">
+          <div class="enr-report-title"><div><i class="fas fa-calendar-check"></i></div><div><h4>Report Back to Semester</h4><p id="enrReportInstructions">Select your current academic session.</p></div></div>
+          <div class="enr-field"><label for="enrReportYear"><i class="fas fa-calendar"></i> Academic Year *</label><select id="enrReportYear" required><option value="">-- Select Year --</option><option value="2024/2025">2024/2025</option><option selected value="2025/2026">2025/2026</option><option value="2026/2027">2026/2027</option></select></div>
+          <div class="enr-field"><label for="enrReportSession"><i class="fas fa-layer-group"></i> <span id="enrReportSessionLabel">Session *</span></label><select id="enrReportSession" required><option value="">-- Select --</option></select><small id="enrReportSessionHelp"><i class="fas fa-info-circle"></i> <span id="enrReportSessionHelpText">Select your current session</span></small></div>
+          <div class="enr-field"><label for="enrReportStatus"><i class="fas fa-user-check"></i> Current Status *</label><select id="enrReportStatus" required><option value="Continuing">Continuing</option><option value="Repeating">Repeating</option><option value="Probation">Probation</option></select></div>
+          <div class="enr-field"><label for="enrReportRemarks"><i class="fas fa-comment-dots"></i> Remarks <span>Optional</span></label><textarea id="enrReportRemarks" placeholder="Any additional information..." rows="4"></textarea></div>
+          <div class="enr-form-actions"><button class="enr-btn enr-btn-green enr-submit" type="submit"><i class="fas fa-paper-plane"></i> Submit Report</button><button class="enr-btn enr-btn-muted" type="reset"><i class="fas fa-rotate-left"></i> Clear</button></div>
+          <div id="enrReportFeedback" class="enr-feedback" style="display:none;"></div>
+        </form>
+      </div>
+      <aside class="enr-help-card green-help"><div class="enr-help-icon"><i class="fas fa-calendar-days"></i></div><h4>Why report?</h4><p>Session reporting helps the college keep your academic status and current session information up to date.</p><div class="enr-help-note"><i class="fas fa-shield-halved"></i><span>Use your current academic session when submitting.</span></div></aside>
+    </div>
+    <div class="enr-table-card enr-report-table"><div class="enr-table-title"><div><i class="fas fa-list"></i><strong>My Session Reports</strong></div><span>Your submitted reports</span></div><div class="enr-table-scroll"><table class="enr-table"><thead><tr><th>Academic Year</th><th>Session</th><th>Status</th><th>Date</th><th>Approval</th></tr></thead><tbody id="enrReportsBody"><tr><td colspan="5" class="enr-empty"><div class="loading-spinner"></div><span>Loading reports...</span></td></tr></tbody></table></div></div>
+  </div>
 
   <!-- HISTORY -->
   <div class="enr-tab-content" id="enrHistoryTab" style="display:none;">
-
-    <div class="enr-section-head">
-      <div><span class="enr-section-kicker">RECORDS</span><h3>Enrollment History</h3><p>Review completed change-of-program and readmission decisions.</p></div>
-    </div>
-
-    <div class="enr-filter-card">
-
-      <select id="enrHistoryType" onchange="loadEnrollmentHistory()">
-        <option value="all">All Types</option>
-        <option value="change-program">Change of Program</option>
-        <option value="readmission">Readmission</option>
-      </select>
-
-      <select id="enrHistoryStatus" onchange="loadEnrollmentHistory()">
-        <option value="all">All Status</option>
-        <option value="approved">✅ Approved</option>
-        <option value="rejected">❌ Rejected</option>
-      </select>
-
-      <button class="enr-icon-btn" onclick="loadEnrollmentHistory()">
-        <i class="fas fa-search"></i>
-        <span>Search</span>
-      </button>
-
-    </div>
-
-    <div class="enr-table-card">
-
-      <div class="enr-table-title">
-        <div><i class="fas fa-clock-rotate-left"></i><strong>Previous Requests</strong></div>
-        <span>Completed enrollment records</span>
-      </div>
-
-      <div class="enr-table-scroll">
-
-        <table class="enr-table">
-
-          <thead>
-            <tr>
-              <th>Type</th>
-              <th>From → To</th>
-              <th>Date</th>
-              <th>Status</th>
-              <th>Approved By</th>
-            </tr>
-          </thead>
-
-          <tbody id="enrHistoryBody">
-            <tr>
-              <td colspan="5" class="enr-empty">
-                <div class="loading-spinner"></div>
-                <span>Loading history...</span>
-              </td>
-            </tr>
-          </tbody>
-
-        </table>
-
-      </div>
-
-    </div>
-
+    <div class="enr-section-head"><div><span class="enr-section-kicker">RECORDS</span><h3>Enrollment History</h3><p>Review completed change-of-program and readmission decisions.</p></div></div>
+    <div class="enr-filter-card"><select id="enrHistoryType" onchange="loadEnrollmentHistory()"><option value="all">All Types</option><option value="change-program">Change of Program</option><option value="readmission">Readmission</option></select><select id="enrHistoryStatus" onchange="loadEnrollmentHistory()"><option value="all">All Status</option><option value="approved">✅ Approved</option><option value="rejected">❌ Rejected</option></select><button class="enr-icon-btn" onclick="loadEnrollmentHistory()"><i class="fas fa-search"></i><span>Search</span></button></div>
+    <div class="enr-table-card"><div class="enr-table-title"><div><i class="fas fa-clock-rotate-left"></i><strong>Previous Requests</strong></div><span>Completed enrollment records</span></div><div class="enr-table-scroll"><table class="enr-table"><thead><tr><th>Type</th><th>From → To</th><th>Date</th><th>Status</th><th>Approved By</th></tr></thead><tbody id="enrHistoryBody"><tr><td colspan="5" class="enr-empty"><div class="loading-spinner"></div><span>Loading history...</span></td></tr></tbody></table></div></div>
   </div>
-
 </section>
 <!-- END ENROLLMENT -->
-```
-
-
 <!-- ============================================================ -->
 <!-- FINANCE TAB - STUDENT VIEW WITH COMPLETE WORKING MODAL        -->
 <!-- ============================================================ -->
