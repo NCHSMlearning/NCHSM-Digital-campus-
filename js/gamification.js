@@ -144,7 +144,13 @@
                     }
                 }, 500);
                 
-                setTimeout(() => clearInterval(checkInterval), 10000);
+                setTimeout(() => {
+                    clearInterval(checkInterval);
+                    if (!this.userId) {
+                        console.warn('⚠️ Gamification: no authenticated user became available within 10 seconds.');
+                        resolve();
+                    }
+                }, 10000);
             });
         }
         
@@ -181,18 +187,16 @@
                 const { data, error } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
                     .select('login_count, total_points')
-                    .eq('user_id', this.userId)
+                    .eq('user_id', String(this.userId))
                     .single();
                 
                 if (data && !error) {
                     this.loginCount = data.login_count || 0;
                     this.loginPoints = this.loginCount * 10;
-                    
-                    // If total_points exists in DB, use it
-                    if (data.total_points) {
-                        this.totalPoints = data.total_points;
-                    }
-                }
+                    // totalPoints is recalculated centrally from the current
+                    // gamification/attendance + NurseIQ + login components.
+                    // Do not overwrite it here with a potentially stale DB value.
+}
             } catch (error) {
                 console.warn('Could not load login data:', error);
                 this.loginCount = 0;
@@ -224,7 +228,11 @@
                 let perfectScores = 0;
                 
                 for (const attempt of this.nurseiqAttempts) {
-                    const scorePercent = (attempt.score / attempt.total_questions) * 100;
+                    const totalQuestionsForAttempt = Number(attempt.total_questions) || 0;
+                    const scoreForAttempt = Number(attempt.score) || 0;
+                    const scorePercent = totalQuestionsForAttempt > 0
+                        ? (scoreForAttempt / totalQuestionsForAttempt) * 100
+                        : 0;
                     
                     // Points per attempt based on score
                     if (scorePercent >= 90) {
@@ -239,7 +247,7 @@
                     
                     totalQuestions += attempt.total_questions || 0;
                     
-                    if (scorePercent === 100) {
+                    if (totalQuestionsForAttempt > 0 && scoreForAttempt >= totalQuestionsForAttempt) {
                         perfectScores++;
                     }
                 }
@@ -281,7 +289,7 @@
                 const { data, error } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
                     .select('*')
-                    .eq('user_id', this.userId)
+                    .eq('user_id', String(this.userId))
                     .single();
                 
                 if (data && !error) {
@@ -316,7 +324,7 @@
                 const { data: existing } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
                     .select('user_id')
-                    .eq('user_id', this.userId)
+                    .eq('user_id', String(this.userId))
                     .single();
                 
                 if (!existing) {
@@ -393,7 +401,7 @@
                         total_points: this.totalPoints, // ✅ Store total points
                         updated_at: new Date().toISOString()
                     })
-                    .eq('user_id', this.userId);
+                    .eq('user_id', String(this.userId));
                 
                 if (error) throw error;
                 
