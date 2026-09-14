@@ -503,6 +503,10 @@
       state.data = sortRows(rows);
       state.weeks = buildWeeks(state.data);
 
+      // A previous failed initialization can hide the table container.
+      // Always restore visibility once Supabase has returned successfully.
+      show('timetable-container', true);
+
       if (state.selectedWeek !== 'all' && !state.weeks.includes(Number(state.selectedWeek))) {
         state.selectedWeek = 'all';
       }
@@ -511,6 +515,9 @@
       renderStats();
       renderNextClass(state.data);
       renderTable();
+
+      // Keep the timetable panel available even when no rows are published yet.
+      show('timetable-container', true);
 
       state.initialized = true;
       return true;
