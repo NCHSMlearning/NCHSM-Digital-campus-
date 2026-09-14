@@ -34,6 +34,7 @@ class DashboardModule {
         this.userId = null;
         this.userProfile = null;
         this.autoRefreshInterval = null;
+        this._refreshInProgress = false;
         this.gamificationPoints = 0;
         this.totalPoints = 0;
         this.nurseIQPoints = 0;
@@ -710,6 +711,7 @@ class DashboardModule {
         this.userId = userId;
         this.userProfile = userProfile;
         this.cacheKey = `dashboard_${this.userId}`;
+        window.currentUserProfile = userProfile;
 
         const displayName = userProfile?.full_name || 'Student';
         ['header-user-name','sidebarUserName'].forEach(id => {
@@ -729,8 +731,9 @@ class DashboardModule {
         this.updateLastLoginDisplay();
         
         if (this.elements.currentBlock) {
-            this.elements.currentBlock.innerText = userProfile.block || 'Introductory';
+            this.elements.currentBlock.innerText = userProfile.block || userProfile.student_block || userProfile.class_block || userProfile.current_block || 'Introductory';
         }
+        this.updateCurrentBlockMetric();
         if (this.elements.programName) {
             this.elements.programName.innerText = userProfile.program || 'Not assigned';
         }
@@ -1322,11 +1325,23 @@ class DashboardModule {
                 throw new Error('Dashboard Supabase client is unavailable.');
             }
 
-            const { data: sessionData, error: sessionError } = await this.sb.auth.getSession();
-            if (sessionError) throw sessionError;
-            if (!sessionData?.session?.user?.id) {
-                throw new Error('No authenticated user session for dashboard.');
+            let sessionData = null;
+            let sessionError = null;
+            for (let attempt = 0; attempt < 8; attempt++) {
+                try {
+                    const result = await this.sb.auth.getSession();
+                    sessionData = result.data;
+                    sessionError = result.error;
+                    if (sessionError) throw sessionError;
+                    if (sessionData?.session?.user?.id) break;
+                } catch (error) {
+                    sessionError = error;
+                    if (attempt === 7) throw error;
+                }
+                await new Promise(resolve => setTimeout(resolve, 250));
             }
+            if (sessionError) throw sessionError;
+            if (!sessionData?.session?.user?.id) throw new Error('No authenticated user session for dashboard.');
 
             if (sessionData.session.user.id !== this.userId) {
                 console.warn('⚠️ Dashboard user ID changed; synchronizing...');
@@ -2558,6 +2573,25 @@ class DashboardModule {
         }
     }
 
+    updateCurrentBlockMetric() {
+        const profile = this.userProfile || window.currentUserProfile || window.db?.currentUserProfile || {};
+        const rawBlock = profile.block ?? profile.student_block ?? profile.class_block ?? profile.current_block;
+        const block = rawBlock == null ? '' : String(rawBlock).trim();
+        const shortEl = this.elements?.progressCurrentBlockShort;
+        const labelEl = this.elements?.progressCurrentBlockLabel;
+        const ringEl = this.elements?.progressCurrentBlockRing;
+        if (!block) {
+            if (shortEl) shortEl.textContent = '--';
+            if (labelEl) labelEl.textContent = 'Not assigned';
+            if (ringEl) { ringEl.style.strokeDasharray = '251.2'; ringEl.style.strokeDashoffset = '251.2'; }
+            return;
+        }
+        const cleanBlock = block.replace(/^block\s*/i, '').trim();
+        if (shortEl) shortEl.textContent = block;
+        if (labelEl) labelEl.textContent = `Block ${cleanBlock}`;
+        if (ringEl) { ringEl.style.strokeDasharray = '251.2'; ringEl.style.strokeDashoffset = '0'; }
+    }
+
     updateUIFromMetrics() {
         const m = this.metrics || {};
         const attendance = m.attendance || {};
@@ -2729,10 +2763,12 @@ class DashboardModule {
     
     startAutoRefresh() {
         if (this.autoRefreshInterval) clearInterval(this.autoRefreshInterval);
-        this.autoRefreshInterval = setInterval(() => {
-            if (!document.hidden) {
-                this.loadFreshData();
-            }
+        this.autoRefreshInterval = setInterval(async () => {
+            if (document.hidden || this._refreshInProgress) return;
+            this._refreshInProgress = true;
+            try { await this.loadFreshData(); }
+            catch (error) { console.warn('Automatic dashboard refresh skipped:', error); }
+            finally { this._refreshInProgress = false; }
         }, 120000);
     }
     
