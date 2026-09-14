@@ -259,6 +259,11 @@ function notifySuperAdmin(eventType, data) {
                         is_read: false,
                         timestamp: new Date().toISOString()
                     }])
+                    .then(result => {
+                        if (result?.error) {
+                            console.warn('⚠️ Could not save notification:', result.error.message);
+                        }
+                    })
                     .catch((error) => {
                         console.warn('⚠️ Could not save notification:', error.message);
                     });
@@ -309,16 +314,25 @@ function formatPhoneNumber(phone) {
 }
 
 function getSupabaseClient() {
-    if (window.sb) return window.sb;
-    if (window.supabase) return window.supabase;
-    if (typeof supabase !== 'undefined') return supabase;
-    console.error('❌ No Supabase client found');
-    return null;
-}
+    const candidates = [
+        window.sb,
+        window.supabaseClient,
+        window.db?.supabase,
+        window.NCHSMLogin?.supabase,
+        (typeof supabase !== 'undefined' ? supabase : null),
+        window.supabase
+    ];
 
-// ============================================================
-// 📄 GENERATE PDF RECEIPT - NEW FUNCTION
-// ============================================================
+    const client = candidates.find(c =>
+        c &&
+        typeof c.from === 'function' &&
+        c.auth &&
+        typeof c.auth.getSession === 'function'
+    );
+
+    if (!client) console.error('❌ No Supabase client found');
+    return client || null;
+}
 
 async function generatePDFReceipt(payment, receiptNumber, studentName) {
     try {
@@ -1125,90 +1139,107 @@ window.printReceipt = printReceipt;
 
 async function fetchFinanceDataFromSupabase(user) {
     try {
-        if (typeof supabase === 'undefined' || !supabase) return null;
-        
+        const supabase = getSupabaseClient();
+        if (!supabase) return null;
+
         const userId = user?.user_id || user?.id;
-        if (!userId) {
-            console.warn('⚠️ No user ID found');
-            return null;
+        if (!userId) return null;
+
+        let profile = null;
+
+        try {
+            const { data, error } = await supabase
+                .from('consolidated_user_profiles_table')
+                .select('id,user_id,student_id,full_name,email,program,intake_year,phone,block')
+                .eq('user_id', userId)
+                .maybeSingle();
+
+            if (!error && data) profile = data;
+            else if (error) console.warn('⚠️ Profile lookup:', error.message);
+        } catch (e) {
+            console.warn('⚠️ Profile lookup failed:', e.message);
         }
-        
-        const { data: profile, error: profileError } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('id, student_id, full_name, program')
-            .eq('user_id', userId)
-            .single();
-        
-        if (profileError || !profile) {
-            console.warn('⚠️ Could not find profile:', profileError);
-            var profileId = userId;
-            var studentName = user?.full_name || user?.name || 'Student';
-            var program = user?.program || 'KRCHN';
-        } else {
-            var profileId = profile.id;
-            var studentName = profile.full_name || user?.full_name || user?.name || 'Student';
-            var program = profile.program || user?.program || 'KRCHN';
-            console.log('✅ Found profile ID:', profileId);
-            console.log('📋 Student ID:', profile.student_id);
-        }
-        
+
+        const profileId = profile?.id || null;
+        const studentName = profile?.full_name || user?.full_name || user?.name || 'Student';
+        const program = profile?.program || user?.program || 'KRCHN';
+        const studentId = profile?.student_id || user?.student_id || 'N/A';
+        const intake = profile?.intake_year || user?.intake_year || 'N/A';
+
         const programType = getProgramType(program);
         const programLevel = getProgramLevel(program);
         const periods = getPeriods(programType, programLevel);
-        
-        console.log('📊 Fetching data using profile_id:', profileId);
-        console.log('📚 Program:', program);
-        console.log('🏷️ Program Type:', programType);
-        
+
         let accountData = null;
-        try {
-            const { data, error } = await supabase
-                .from('finance_student_accounts')
-                .select('*')
-                .eq('student_id', profileId)
-                .maybeSingle();
-            
-            if (!error && data) {
-                accountData = data;
-                console.log('✅ Account data found:', accountData);
-            } else {
-                console.log('ℹ️ No account data found for student');
+
+        for (const id of [profileId, userId].filter(Boolean)) {
+            try {
+                const { data, error } = await supabase
+                    .from('finance_student_accounts')
+                    .select('*')
+                    .eq('student_id', id)
+                    .maybeSingle();
+
+                if (!error && data) {
+                    accountData = data;
+                    console.log('✅ Finance account found using:', id);
+                    break;
+                }
+            } catch (e) {
+                console.warn('⚠️ Account lookup failed:', e.message);
             }
-        } catch (e) {
-            console.log('ℹ️ Account table error:', e.message);
         }
-        
+
         let paymentsData = [];
-        try {
-            const { data, error } = await supabase                .from('finance_payments')
-                .select('*')
-                .eq('student_id', profileId)
-                .order('payment_date', { ascending: false });
-            
-            if (!error && data) {
-                paymentsData = data;
-                console.log('✅ Payments found:', data.length);
-            } else {
-                console.log('ℹ️ No payments found');
+
+        for (const id of [profileId, userId].filter(Boolean)) {
+            try {
+                const { data, error } = await supabase
+                    .from('finance_payments')
+                    .select('*')
+                    .eq('student_id', id)
+                    .order('payment_date', { ascending: false });
+
+                if (!error && Array.isArray(data)) {
+                    paymentsData.push(...data);
+                    console.log(`✅ Payments found for ${id}:`, data.length);
+                }
+            } catch (e) {
+                console.warn('⚠️ Payments lookup failed:', e.message);
             }
-        } catch (e) {
-            console.log('ℹ️ Payments table error:', e.message);
         }
-        
+
+        const seen = new Set();
+
+        paymentsData = paymentsData.filter(p => {
+            const key =
+                p.id ||
+                `${p.checkout_request_id || ''}|${p.reference_number || ''}|${p.payment_date || ''}|${p.amount || ''}`;
+
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+
+        paymentsData.sort((a, b) =>
+            new Date(b.payment_date || b.created_at || 0) -
+            new Date(a.payment_date || a.created_at || 0)
+        );
+
         let feeStructureData = null;
+
         try {
             const programFullName = mapProgramCodeToFullName(program);
-            
+
             const { data, error } = await supabase
                 .from('finance_fee_structure')
                 .select('*')
                 .eq('program', programFullName)
                 .eq('is_active', true)
                 .order('period_index', { ascending: true });
-            
-            if (!error && data && data.length > 0) {
+
+            if (!error && data?.length) {
                 feeStructureData = data;
-                console.log('✅ Fee structure found for:', programFullName);
             } else {
                 const { data: altData, error: altError } = await supabase
                     .from('finance_fee_structure')
@@ -1216,245 +1247,647 @@ async function fetchFinanceDataFromSupabase(user) {
                     .eq('program', program)
                     .eq('is_active', true)
                     .order('period_index', { ascending: true });
-                
-                if (!altError && altData && altData.length > 0) {
-                    feeStructureData = altData;
-                    console.log('✅ Fee structure found for program code:', program);
-                } else {
-                    console.log('ℹ️ No fee structure found');
-                }
+
+                if (!altError && altData?.length) feeStructureData = altData;
             }
         } catch (e) {
-            console.log('ℹ️ Fee structure table error:', e.message);
+            console.warn('⚠️ Fee structure lookup failed:', e.message);
         }
-        
+
         let processedFeeStructure = [];
         let voteHeads = [];
         let periodTotals = [];
-        
-        if (feeStructureData && feeStructureData.length > 0) {
+
+        if (feeStructureData?.length) {
             const allVoteHeads = new Map();
-            const periodsList = [];
-            
+
             feeStructureData.forEach(record => {
-                const periodName = record.block_term || record.period_name || 'Unknown';
+                const periodName =
+                    record.block_term ||
+                    record.period_name ||
+                    record.period ||
+                    'Unknown';
+
                 const displayPeriod = mapPeriodToDisplay(periodName);
-                const amount = parseFloat(record.amount) || 0;
-                const hostel = parseFloat(record.hostel) || 0;
-                const components = record.components || [];
-                
-                periodsList.push({
+                const amount = Number(record.amount) || 0;
+                const hostel = Number(record.hostel) || 0;
+                const components = Array.isArray(record.components)
+                    ? record.components
+                    : [];
+
+                processedFeeStructure.push({
                     name: displayPeriod,
-                    amount: amount,
-                    hostel: hostel,
-                    components: components
+                    amount,
+                    hostel,
+                    components
                 });
+
                 periodTotals.push(amount);
-                
+
                 components.forEach(comp => {
-                    if (!allVoteHeads.has(comp.label)) {
-                        allVoteHeads.set(comp.label, { label: comp.label, amounts: [] });
+                    const label = comp?.label || comp?.name;
+                    if (label && !allVoteHeads.has(label)) {
+                        allVoteHeads.set(label, { label, amounts: [] });
                     }
                 });
             });
-            
+
             allVoteHeads.forEach((vh, label) => {
-                const amounts = periodsList.map(period => {
-                    const comp = period.components.find(c => c.label === label);
-                    return comp ? comp.amount : 0;
+                vh.amounts = processedFeeStructure.map(period => {
+                    const comp = period.components.find(c =>
+                        (c?.label || c?.name) === label
+                    );
+                    return Number(comp?.amount) || 0;
                 });
-                voteHeads.push({ label, amounts });
+                voteHeads.push(vh);
             });
-            
-            processedFeeStructure = periodsList;
         } else {
             periods.forEach((period, index) => {
                 const amount = getFeeAmount(programType, index, programLevel);
+
                 processedFeeStructure.push({
                     name: period,
-                    amount: amount,
+                    amount,
                     hostel: 0,
                     components: []
                 });
+
                 periodTotals.push(amount);
             });
         }
-        
-        const currentPeriod = accountData?.current_period || periods[0] || 'Term 1';
-        const currentPeriodIndex = periods.indexOf(currentPeriod) >= 0 ? periods.indexOf(currentPeriod) : 0;
-        
-        let balance, totalPaid, outstanding, totalDue;
-        if (accountData) {
-            balance = parseFloat(accountData.balance) || 0;
-            totalPaid = parseFloat(accountData.total_paid) || 0;
-            outstanding = parseFloat(accountData.outstanding) || 0;
-            totalDue = parseFloat(accountData.total_due) || 0;
-        } else {
-            const allPayments = paymentsData.filter(p => p.status === 'completed');
-            totalPaid = allPayments.reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-            totalDue = getFeeAmount(programType, currentPeriodIndex, programLevel);
+
+        const currentPeriod = mapPeriodToDisplay(
+            accountData?.current_period ||
+            accountData?.current_period_name ||
+            periods[0]
+        );
+
+        const currentPeriodIndex =
+            periods.indexOf(currentPeriod) >= 0
+                ? periods.indexOf(currentPeriod)
+                : 0;
+
+        const completedPayments = paymentsData.filter(
+            p => String(p.status || '').toLowerCase() === 'completed'
+        );
+
+        const completedTotal = completedPayments.reduce(
+            (sum, p) => sum + (Number(p.amount) || 0),
+            0
+        );
+
+        let balance = Number(accountData?.balance) || 0;
+        let totalPaid = Number(accountData?.total_paid) || 0;
+        let outstanding =
+            Number(accountData?.outstanding ?? balance) || 0;
+        let totalDue = Number(accountData?.total_due) || 0;
+
+        if (
+            !accountData ||
+            (totalDue <= 0 && balance <= 0 && outstanding <= 0 && totalPaid <= 0)
+        ) {
+            totalPaid = completedTotal;
+
+            totalDue =
+                Number(processedFeeStructure[currentPeriodIndex]?.amount) ||
+                getFeeAmount(programType, currentPeriodIndex, programLevel);
+
             balance = Math.max(totalDue - totalPaid, 0);
             outstanding = balance;
         }
-        
-        const paidThisSemester = paymentsData
-            .filter(p => {
-                const pPeriod = mapPeriodToDisplay(p.period);
-                return pPeriod === currentPeriod && p.status === 'completed';
-            })
-            .reduce((sum, p) => sum + parseFloat(p.amount || 0), 0);
-        
-        const semesterFee = totalDue > 0 ? totalDue : getFeeAmount(programType, currentPeriodIndex, programLevel);
-        
+
+        const paidThisSemester = completedPayments
+            .filter(p => mapPeriodToDisplay(p.period) === currentPeriod)
+            .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+        const semesterFee =
+            Number(processedFeeStructure[currentPeriodIndex]?.amount) ||
+            totalDue ||
+            getFeeAmount(programType, currentPeriodIndex, programLevel);
+
+        if (!accountData) {
+            balance = Math.max(semesterFee - paidThisSemester, 0);
+            outstanding = balance;
+        }
+
+        const paymentProgress = semesterFee > 0
+            ? Math.min((paidThisSemester / semesterFee) * 100, 100)
+            : 0;
+
         const formattedPayments = paymentsData.map(p => ({
-            date: p.payment_date || p.created_at?.split('T')[0] || new Date().toISOString().split('T')[0],
-            description: p.notes || `${mapPeriodToDisplay(p.period)} Fees`,
+            id: p.id || null,
+            date: p.payment_date || (p.created_at || '').split('T')[0],
+            description:
+                p.notes ||
+                `${mapPeriodToDisplay(p.period) || 'Tuition'} Fees`,
             period: mapPeriodToDisplay(p.period) || 'N/A',
-            amount: parseFloat(p.amount || 0),
-            method: p.payment_method || 'Cash',
-            reference: p.reference_number || p.checkout_request_id || '-',
-            status: p.status || 'pending',
+            amount: Number(p.amount) || 0,
+            method: p.payment_method || 'M-Pesa',
+            reference:
+                p.reference_number ||
+                p.receipt_number ||
+                p.checkout_request_id ||
+                '-',
+            status: String(p.status || 'pending').toLowerCase(),
             transaction_id: p.checkout_request_id || null,
-            payment_method: p.payment_method || 'Cash'
+            receipt_number: p.receipt_number || null,
+            payment_method: p.payment_method || 'M-Pesa'
         }));
-        
-        const formattedFees = processedFeeStructure.map((f, index) => ({
-            block: f.name,
-            amount: f.amount,
-            description: `${f.name} Tuition Fees`,
-            status: index <= currentPeriodIndex ? (index === currentPeriodIndex && paidThisSemester > 0 ? 'Partial' : 'Paid') : 'Pending'
-        }));
-        
+
+        const formattedFees = processedFeeStructure.map(f => {
+            const paidForPeriod = completedPayments
+                .filter(p => mapPeriodToDisplay(p.period) === f.name)
+                .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+
+            return {
+                block: f.name,
+                amount: f.amount,
+                description: `${f.name} Tuition Fees`,
+                status:
+                    paidForPeriod >= f.amount && f.amount > 0
+                        ? 'Paid'
+                        : paidForPeriod > 0
+                            ? 'Partial'
+                            : 'Pending',
+                paid: paidForPeriod
+            };
+        });
+
         return {
-            balance: balance,
-            totalPaid: totalPaid,
+            balance,
+            totalPaid,
             totalDue: semesterFee,
-            outstanding: outstanding,
-            paymentProgress: semesterFee > 0 ? (paidThisSemester / semesterFee * 100) : 0,
+            outstanding,
+            paymentProgress,
             payments: formattedPayments,
             feeStructure: formattedFees,
-            programType: programType,
-            programLevel: programLevel,
+            programType,
+            programLevel,
             periodLabel: getPeriodLabel(programType),
-            currentPeriod: currentPeriod,
-            currentPeriodIndex: currentPeriodIndex,
-            semesterFee: semesterFee,
-            paidThisSemester: paidThisSemester,
-            voteHeads: voteHeads,
-            feeStructureRaw: { periods: processedFeeStructure, voteHeads: voteHeads, periodTotals: periodTotals },
+            currentPeriod,
+            currentPeriodIndex,
+            semesterFee,
+            paidThisSemester,
+            voteHeads,
+            feeStructureRaw: {
+                periods: processedFeeStructure,
+                voteHeads,
+                periodTotals
+            },
             student: {
                 name: studentName,
-                id: profile?.student_id || user?.student_id || user?.id || 'N/A',
+                full_name: studentName,
+                id: studentId,
+                student_id: studentId,
                 userId: userId,
-                profileId: profileId,
-                program: program,
-                intake: user?.intake_year || '2026',
-                programType: programType,
-                programLevel: programLevel
+                user_id: userId,
+                profileId,
+                program,
+                intake,
+                intake_year: intake,
+                phone:
+                    profile?.phone ||
+                    user?.phone ||
+                    user?.phone_number ||
+                    '',
+                block: profile?.block || user?.block || '',
+                programType,
+                programLevel
             }
         };
     } catch (error) {
-        console.error('❌ Error fetching from Supabase:', error);
+        console.error('❌ Error fetching finance data:', error);
         return null;
     }
 }
 
-// ============================================================
-// 📊 MAIN LOAD FUNCTION - FIXED
-// ============================================================
-
-async function loadStudentFinance() {
+async function loadStudentFinance(forceRefresh = false) {
     try {
         console.log('💰 Loading student finance...');
-        
-        const user = window.currentUserProfile || window.currentUser || window.userData;
+
+        let user =
+            window.currentUserProfile ||
+            window.currentUser ||
+            window.userData ||
+            null;
+
         if (!user) {
-            console.warn('No user found');
+            const sb = getSupabaseClient();
+
+            for (let attempt = 0; attempt < 8 && !user; attempt++) {
+                try {
+                    if (sb?.auth?.getSession) {
+                        const { data } = await sb.auth.getSession();
+
+                        if (data?.session?.user) {
+                            user = data.session.user;
+                            window.currentUser = user;
+                        }
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Finance session retry:', e.message);
+                }
+
+                if (!user && attempt < 7) {
+                    await new Promise(resolve => setTimeout(resolve, 250));
+                }
+            }
+        }
+
+        if (!user) {
             showFinanceError('Please login to view your finance data.');
             return;
         }
 
-        console.log('👤 User:', user.full_name || user.name);
-        console.log('📚 Program:', user.program);
-        console.log('🆔 User ID:', user.user_id || user.id);
+        const userId = user.user_id || user.id;
+
+        if (!userId) {
+            showFinanceError('Your student account could not be identified.');
+            return;
+        }
 
         const program = user.program || 'KRCHN';
         const programType = getProgramType(program);
         const programLevel = getProgramLevel(program);
+
         studentFinanceState.programType = programType;
         studentFinanceState.programLevel = programLevel;
         studentFinanceState.student = user;
-        
-        console.log('🏷️ Program Type:', programType);
-        console.log('📊 Program Level:', programLevel);
 
         updateProgramInfo(user, programType, programLevel);
         showFinanceLoading();
 
-        const financeData = await fetchFinanceDataFromSupabase(user);
-        
-        if (financeData) {
-            if (financeData.feeStructureRaw) {
-                studentFinanceState.feeStructureRaw = financeData.feeStructureRaw;
-                studentFinanceState.voteHeads = financeData.voteHeads || [];
-            }
-            
-            updateFinanceUI(financeData);
-            studentFinanceState.isLoaded = true;
-            studentFinanceState.lastUpdated = new Date();
-            console.log('✅ Finance data loaded successfully');
-            
-            notifySuperAdmin('student_finance_viewed', {
-                studentId: user.user_id || user.id,
-                studentName: user.full_name || user.name,
-                program: program,
-                balance: financeData.balance,
-                timestamp: new Date().toISOString()
-            });
-        } else {
-            console.log('📊 No data found, showing empty state');
-            showFinanceError('No finance data available. Please contact finance office.');
+        const financeData =
+            await fetchFinanceDataFromSupabase(user);
+
+        if (!financeData) {
+            showFinanceError(
+                'No finance data available. Please contact the finance office.'
+            );
+            return;
         }
+
+        studentFinanceState.feeStructureRaw =
+            financeData.feeStructureRaw || null;
+
+        studentFinanceState.voteHeads =
+            financeData.voteHeads || [];
+
+        updateFinanceUI(financeData);
+
+        studentFinanceState.isLoaded = true;
+        studentFinanceState.lastUpdated = new Date();
+
+        notifySuperAdmin('student_finance_viewed', {
+            studentId: financeData.student.userId,
+            studentNumber: financeData.student.id,
+            studentName: financeData.student.name,
+            program: financeData.student.program,
+            balance: financeData.balance,
+            timestamp: new Date().toISOString()
+        });
+
     } catch (error) {
-        console.error('Error loading finance:', error);
-        showFinanceError('Unable to load finance data. Please try again.');
+        console.error('❌ Error loading finance:', error);
+        showFinanceError(
+            'Unable to load finance data. Please try again.'
+        );
     }
 }
 
-// ============================================================
-// 🎨 UI UPDATE FUNCTIONS - FIXED
-// ============================================================
-
 function updateProgramInfo(user, programType, programLevel) {
-    const periodLabel = getPeriodLabel(programType);
-    const periods = getPeriods(programType, programLevel);
-    
-    const programDisplay = document.getElementById('finance-studentProgramDisplay');
-    if (programDisplay) programDisplay.textContent = user.program || user.program_name || 'N/A';
-    
-    const periodTypeBadge = document.getElementById('finance-periodTypeBadge');
-    if (periodTypeBadge) {
-        if (programType === 'KRCHN') {
-            periodTypeBadge.textContent = 'KRCHN';
-            periodTypeBadge.style.background = 'rgba(253,185,19,0.2)';
-            periodTypeBadge.style.color = '#FDB913';
-        } else {
-            periodTypeBadge.textContent = programLevel === 'certificate' ? 'TVET (Cert)' : 'TVET (Dip)';
-            periodTypeBadge.style.background = 'rgba(59,130,246,0.2)';
-            periodTypeBadge.style.color = '#3b82f6';
+    const program = user?.program || user?.program_name || 'N/A';
+    const intake = user?.intake_year || user?.intake || 'N/A';
+    const studentId = user?.student_id || user?.id || 'N/A';
+
+    const programDisplay =
+        document.getElementById('finance-studentProgramDisplay');
+
+    if (programDisplay) programDisplay.textContent = program;
+
+    const intakeDisplay =
+        document.getElementById('finance-studentIntakeDisplay');
+
+    if (intakeDisplay) intakeDisplay.textContent = intake;
+
+    const studentIdDisplay =
+        document.getElementById('finance-studentIdDisplay');
+
+    if (studentIdDisplay) {
+        studentIdDisplay.textContent = studentId;
+    }
+
+    updatePeriodFilter(programType, programLevel);
+}
+
+function updatePeriodFilter(programType, programLevel) {
+    const periodFilter =
+        document.getElementById('finance-periodFilter');
+
+    if (!periodFilter) return;
+
+    const periods =
+        getPeriods(programType, programLevel);
+
+    while (periodFilter.options.length > 1) {
+        periodFilter.remove(1);
+    }
+
+    periods.forEach(period => {
+        const option = document.createElement('option');
+        option.value = period;
+        option.textContent = period;
+        periodFilter.appendChild(option);
+    });
+}
+
+function updateFinanceUI(data) {
+    if (!data) return;
+
+    studentFinanceState.student = data.student;
+    studentFinanceState.payments = data.payments || [];
+    studentFinanceState.feeStructure = data.feeStructure || [];
+    studentFinanceState.currentPeriod = data.currentPeriod;
+    studentFinanceState.semesterFee = Number(data.semesterFee) || 0;
+    studentFinanceState.paidThisSemester =
+        Number(data.paidThisSemester) || 0;
+    studentFinanceState.balance = Number(data.balance) || 0;
+    studentFinanceState.totalPaid = Number(data.totalPaid) || 0;
+    studentFinanceState.outstanding =
+        Number(data.outstanding) || 0;
+
+    updateProgramInfo(
+        data.student,
+        data.programType,
+        data.programLevel
+    );
+
+    updateBalance(data);
+    updateStats(data);
+    renderPayments(data.payments || []);
+    renderFeeStructureData();
+
+    const periodBadge =
+        document.getElementById('finance-currentPeriodBadge');
+
+    if (periodBadge) {
+        periodBadge.textContent = data.currentPeriod || '--';
+    }
+
+    const academicYear =
+        document.getElementById('finance-academicYearDisplay');
+
+    if (academicYear) {
+        academicYear.textContent =
+            data.student?.intake_year
+                ? `Intake ${data.student.intake_year}`
+                : 'Academic Finance';
+    }
+
+    const nextPayment =
+        document.getElementById('finance-nextPaymentDue');
+
+    if (nextPayment) {
+        nextPayment.textContent =
+            Number(data.balance || 0) > 0
+                ? 'Outstanding'
+                : 'No outstanding payment';
+    }
+
+    const message =
+        document.getElementById('finance-periodMessage');
+
+    if (message) {
+        message.innerHTML =
+            Number(data.balance || 0) > 0
+                ? `<i class="fas fa-info-circle"></i><span>Outstanding balance: KES ${Number(data.balance).toLocaleString()}</span>`
+                : `<i class="fas fa-check-circle"></i><span>Your current payment period is fully paid.</span>`;
+    }
+
+    updateDashboardFinanceBridge(data);
+}
+
+function updateBalance(data) {
+    const balance =
+        Math.max(Number(data.balance) || 0, 0);
+
+    const semesterFee =
+        Math.max(Number(data.semesterFee) || 0, 0);
+
+    const paidThisSemester =
+        Math.max(Number(data.paidThisSemester) || 0, 0);
+
+    const progress =
+        Math.min(Math.max(Number(data.paymentProgress) || 0, 0), 100);
+
+    const balanceDisplay =
+        document.getElementById('finance-studentBalanceDisplay');
+
+    if (balanceDisplay) {
+        balanceDisplay.textContent =
+            `KES ${balance.toLocaleString()}`;
+    }
+
+    const periodFeeDisplay =
+        document.getElementById('finance-studentPeriodFee');
+
+    if (periodFeeDisplay) {
+        periodFeeDisplay.textContent =
+            `KES ${semesterFee.toLocaleString()}`;
+    }
+
+    const paidDisplay =
+        document.getElementById('finance-studentPaidThisPeriod');
+
+    if (paidDisplay) {
+        paidDisplay.textContent =
+            `KES ${paidThisSemester.toLocaleString()}`;
+    }
+
+    const outstandingDisplay =
+        document.getElementById('finance-studentOutstanding');
+
+    if (outstandingDisplay) {
+        outstandingDisplay.textContent =
+            `KES ${balance.toLocaleString()}`;
+    }
+
+    const totalDue =
+        document.getElementById('finance-totalDueAmount');
+
+    if (totalDue) {
+        totalDue.textContent =
+            `KES ${semesterFee.toLocaleString()}`;
+    }
+
+    const totalPaid =
+        document.getElementById('finance-totalPaidAmount');
+
+    if (totalPaid) {
+        totalPaid.textContent =
+            `KES ${paidThisSemester.toLocaleString()}`;
+    }
+
+    const balanceAmount =
+        document.getElementById('finance-balanceAmount');
+
+    if (balanceAmount) {
+        balanceAmount.textContent =
+            `KES ${balance.toLocaleString()}`;
+    }
+
+    const fill =
+        document.getElementById('finance-paymentProgressFill');
+
+    if (fill) fill.style.width = `${Math.round(progress)}%`;
+
+    const progressText =
+        document.getElementById('finance-paymentProgressText');
+
+    if (progressText) {
+        progressText.textContent =
+            `${Math.round(progress)}%`;
+    }
+
+    const progressText2 =
+        document.getElementById('finance-paymentProgressText2');
+
+    if (progressText2) {
+        progressText2.textContent =
+            `${Math.round(progress)}%`;
+    }
+
+    const circle =
+        document.getElementById('finance-progressCircle');
+
+    if (circle) {
+        const circumference = 2 * Math.PI * 48;
+
+        circle.style.strokeDasharray =
+            `${circumference}`;
+
+        circle.style.strokeDashoffset =
+            `${circumference - (progress / 100) * circumference}`;
+    }
+
+    updateBalanceStatus(balance, progress);
+}
+
+function updateBalanceStatus(balance, progress = 0) {
+    const statusEl =
+        document.getElementById('finance-balanceStatusDisplay');
+
+    const dot =
+        document.getElementById('finance-statusDot');
+
+    const text =
+        document.getElementById('finance-statusText');
+
+    if (!statusEl) return;
+
+    if (balance <= 0) {
+        statusEl.style.background = '#ddf8eb';
+
+        if (dot) dot.style.background = '#10b981';
+
+        if (text) {
+            text.textContent = 'Paid in Full';
+            text.style.color = '#079361';
+        }
+
+    } else if (progress > 0) {
+        statusEl.style.background = '#fff2d7';
+
+        if (dot) dot.style.background = '#f59e0b';
+
+        if (text) {
+            text.textContent = 'Partially Paid';
+            text.style.color = '#b77900';
+        }
+
+    } else {
+        statusEl.style.background = '#ffe8e9';
+
+        if (dot) dot.style.background = '#ef4444';
+
+        if (text) {
+            text.textContent = 'Outstanding Balance';
+            text.style.color = '#ef3139';
         }
     }
-    
-    const currentPeriodLabel = document.getElementById('finance-currentPeriodLabel');
-    if (currentPeriodLabel) currentPeriodLabel.textContent = `Current ${periodLabel}`;
-    
-    const progressPeriodLabel = document.getElementById('finance-progressPeriodLabel');
-    if (progressPeriodLabel) progressPeriodLabel.textContent = `Current ${periodLabel}`;
-    
-    const feeStructureLabel = document.getElementById('finance-feeStructureLabel');
-    if (feeStructureLabel) feeStructureLabel.textContent = periodLabel;
-    
-    updatePeriodFilter(programType, programLevel);
+}
+
+function updateStats(data) {
+    const payments = data.payments || [];
+
+    const paid =
+        payments.filter(p => p.status === 'completed').length;
+
+    const pending =
+        payments.filter(p => p.status === 'pending').length;
+
+    const overdue =
+        payments.filter(p =>
+            ['failed', 'overdue', 'cancelled'].includes(p.status)
+        ).length;
+
+    const paidEl =
+        document.getElementById('finance-paidCount');
+
+    if (paidEl) paidEl.textContent = paid;
+
+    const pendingEl =
+        document.getElementById('finance-pendingCount');
+
+    if (pendingEl) pendingEl.textContent = pending;
+
+    const overdueEl =
+        document.getElementById('finance-overdueCount');
+
+    if (overdueEl) overdueEl.textContent = overdue;
+
+    const transactionsEl =
+        document.getElementById('finance-totalTransactions');
+
+    if (transactionsEl) {
+        transactionsEl.textContent = payments.length;
+    }
+
+    const recordCount =
+        document.getElementById('finance-paymentRecordCount');
+
+    if (recordCount) {
+        recordCount.textContent =
+            `Showing ${payments.length} payment${payments.length === 1 ? '' : 's'}`;
+    }
+}
+
+function updateDashboardFinanceBridge(data) {
+    const balance =
+        document.getElementById('dashboard-finance-balance');
+
+    const status =
+        document.getElementById('dashboard-finance-status');
+
+    if (balance) {
+        balance.textContent =
+            `KES ${Number(data?.balance || 0).toLocaleString()}`;
+    }
+
+    if (status) {
+        const value = Number(data?.balance || 0);
+
+        status.textContent =
+            value <= 0
+                ? 'Paid in Full'
+                : Number(data?.paidThisSemester || 0) > 0
+                    ? 'Partially Paid'
+                    : 'Outstanding Balance';
+    }
+}
+
+function renderPaymentTimeline() {
+    return;
 }
 
 function updatePeriodFilter(programType, programLevel) {
@@ -1603,7 +2036,7 @@ function renderPaymentTimeline(feeStructure) {
             amountText = `KES ${f.amount.toLocaleString()}`;
         } else if (isPartial) {
             bgColor = '#fef3c7'; borderColor = '#f59e0b'; textColor = '#d97706'; statusIcon = '⏳'; statusText = 'Partial';
-            amountText = `Paid: KES ${Math.round(f.amount * 0.4).toLocaleString()}`;
+            amountText = `Paid: KES ${Number(f.paid || 0).toLocaleString()}`;
         } else {
             bgColor = '#fee2e2'; borderColor = '#dc2626'; textColor = '#dc2626'; statusIcon = '❌'; statusText = 'Unpaid';
             amountText = `Due: KES ${f.amount.toLocaleString()}`;
@@ -1629,150 +2062,146 @@ function renderPaymentTimeline(feeStructure) {
 // ============================================================
 
 function renderPayments(payments) {
-    const tbody = document.getElementById('finance-studentPaymentHistory');
+    const tbody =
+        document.getElementById('finance-studentPaymentHistory');
+
     if (!tbody) return;
-    
-    if (!payments || payments.length === 0) {
+
+    if (!Array.isArray(payments) || payments.length === 0) {
         tbody.innerHTML = `
             <tr>
-                <td colspan="5" style="text-align: center; padding: 24px; color: #94a3b8; font-size: 12px;">
-                    <i class="fas fa-inbox" style="font-size: 24px; display: block; margin-bottom: 4px;"></i>
+                <td colspan="8" style="padding:32px 10px;text-align:center;color:#7b8ba5;">
+                    <i class="fas fa-inbox" style="display:block;font-size:24px;margin-bottom:7px;"></i>
                     No payment records found
                 </td>
             </tr>
         `;
         return;
     }
-    
-    tbody.innerHTML = payments.map(p => {
-        const statusColors = {
-            completed: 'background: #d1fae5; color: #059669;',
-            pending: 'background: #fef3c7; color: #d97706;',
-            failed: 'background: #fee2e2; color: #dc2626;',
-            overdue: 'background: #fee2e2; color: #dc2626;'
-        };
-        const statusLabel = p.status.charAt(0).toUpperCase() + p.status.slice(1);
-        const statusStyle = statusColors[p.status] || statusColors.completed;
-        
+
+    const statusStyles = {
+        completed: 'background:#ddf8eb;color:#079361;',
+        pending: 'background:#fff2d7;color:#b77900;',
+        failed: 'background:#ffe5e7;color:#ed3038;',
+        overdue: 'background:#ffe5e7;color:#ed3038;',
+        cancelled: 'background:#eef2f6;color:#64748b;'
+    };
+
+    tbody.innerHTML = payments.map((p, index) => {
+        const status =
+            String(p.status || 'pending').toLowerCase();
+
+        const label =
+            status.charAt(0).toUpperCase() + status.slice(1);
+
+        const style =
+            statusStyles[status] || statusStyles.pending;
+
         return `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 6px 8px; font-weight: 600; color: #0A3D62; font-size: 10px;">${p.period}</td>
-                <td style="padding: 6px 8px; font-size: 10px;">${p.description}</td>
-                <td style="padding: 6px 8px; font-weight: 600; color: #4C1D95; font-size: 10px;">KES ${p.amount.toLocaleString()}</td>
-                <td style="padding: 6px 8px; text-align: center; font-size: 9px;">
-                    <span style="display: inline-block; padding: 2px 6px; border-radius: 8px; font-size: 8px; font-weight: 600; ${statusStyle}">
-                        ${statusLabel}
+            <tr style="border-bottom:1px solid #edf1f6;">
+                <td style="padding:10px 9px;color:#71819d;font-size:10px;">
+                    ${index + 1}
+                </td>
+                <td style="padding:10px 9px;color:#405579;font-size:10px;white-space:nowrap;">
+                    ${p.date || '-'}
+                </td>
+                <td style="padding:10px 9px;color:#102d69;font-size:10px;font-weight:700;">
+                    ${p.period || 'N/A'}
+                </td>
+                <td style="padding:10px 9px;color:#102d69;font-size:10px;font-weight:800;white-space:nowrap;">
+                    KES ${Number(p.amount || 0).toLocaleString()}
+                </td>
+                <td style="padding:10px 9px;color:#536783;font-size:10px;">
+                    ${p.method || 'M-Pesa'}
+                </td>
+                <td style="padding:10px 9px;color:#536783;font-size:9px;font-family:monospace;">
+                    ${p.reference || '-'}
+                </td>
+                <td style="padding:10px 9px;">
+                    <span style="display:inline-block;padding:4px 8px;border-radius:12px;font-size:9px;font-weight:700;${style}">
+                        ${label}
                     </span>
                 </td>
-                <td style="padding: 6px 4px; text-align: center; white-space: nowrap;">
-                    <button onclick="viewFeeStructure('${p.period}')" style="background: #dbeafe; color: #1e40af; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 8px;">
-                        <i class="fas fa-eye"></i>
-                    </button>
-                    ${p.status === 'completed' ? `<button onclick="resendPaymentEmail()" style="background: #d1fae5; color: #059669; border: none; padding: 2px 6px; border-radius: 3px; cursor: pointer; font-size: 8px;">
-                        <i class="fas fa-envelope"></i>
-                    </button>` : ''}
+                <td style="padding:10px 9px;text-align:center;">
+                    ${
+                        status === 'completed'
+                            ? `<button type="button"
+                                onclick="printPaymentById('${p.id || ''}')"
+                                style="width:27px;height:27px;border:0;border-radius:6px;background:#e5efff;color:#0864dc;cursor:pointer;"
+                                title="Print receipt">
+                                <i class="fas fa-print"></i>
+                               </button>`
+                            : '<span style="color:#a2afc0;">—</span>'
+                    }
                 </td>
             </tr>
         `;
     }).join('');
-}
 
-// ============================================================
-// 📄 RENDER FEE STRUCTURE - MOBILE OPTIMIZED - FIXED
-// ============================================================
+    const recordCount =
+        document.getElementById('finance-paymentRecordCount');
+
+    if (recordCount) {
+        recordCount.textContent =
+            `Showing ${payments.length} payment${payments.length === 1 ? '' : 's'}`;
+    }
+}
 
 function renderFeeStructureData() {
-    const container = document.getElementById('finance-feeStructureContent');
-    if (!container) return;
-    
-    const displayContainer = document.getElementById('finance-studentFeeStructureDisplay');
-    if (displayContainer && displayContainer.style.display === 'none') return;
-    
+    const body =
+        document.getElementById('finance-feeStructureBody');
+
+    const totalEl =
+        document.getElementById('finance-feeStructureTotal');
+
+    if (!body) return;
+
     const data = studentFinanceState.feeStructureRaw;
-    if (!data || !data.periods || data.periods.length === 0) {
-        container.innerHTML = `
-            <div style="text-align: center; padding: 16px; color: #94a3b8; font-size: 12px;">
-                <i class="fas fa-info-circle" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>
-                <p>No fee structure available.</p>
-            </div>
-        `;
-        container.style.display = 'block';
-        return;
-    }
-    
-    const { periods, voteHeads, periodTotals } = data;
-    const programType = studentFinanceState.programType || 'TVET';
-    
-    let html = `
-        <div style="overflow-x: auto; margin: 0 -4px;">
-            <table style="width: 100%; border-collapse: collapse; font-size: 10px; min-width: 420px;">
-                <thead>
-                    <tr style="background: #f8fafc; border-bottom: 2px solid #e5e7eb;">
-                        <th style="padding: 4px 6px; text-align: left; font-weight: 600; color: #475569; font-size: 9px; text-transform: uppercase; width: 28px;">#</th>
-                        <th style="padding: 4px 6px; text-align: left; font-weight: 600; color: #475569; font-size: 9px; text-transform: uppercase;">VOTE HEAD</th>
-                        ${periods.map((p, i) => `
-                            <th style="padding: 4px 4px; text-align: right; font-weight: 600; color: #475569; font-size: 8px; text-transform: uppercase; min-width: 50px;">
-                                ${p.name}
-                                ${i === 0 ? ' <span style="background: #4C1D95; color: white; padding: 1px 3px; border-radius: 6px; font-size: 6px;">C</span>' : ''}
-                            </th>
-                        `).join('')}
-                    </tr>
-                </thead>
-                <tbody>
-    `;
-    
-    let sn = 0;
-    voteHeads.forEach((vh) => {
-        const hasAnyAmount = vh.amounts.some(a => a > 0);
-        if (!hasAnyAmount) return;
-        sn++;
-        html += `
-            <tr style="border-bottom: 1px solid #f1f5f9;">
-                <td style="padding: 3px 6px; text-align: center; font-weight: 500; color: #94a3b8; font-size: 9px;">${sn}</td>
-                <td style="padding: 3px 6px; font-weight: 500; color: #0b1124; font-size: 9px;">${vh.label}</td>
-                ${vh.amounts.map(amount => `
-                    <td style="padding: 3px 4px; text-align: right; font-weight: 500; color: #0A3D62; font-size: 9px;">
-                        ${amount > 0 ? `KES ${amount.toLocaleString()}` : '---'}
-                    </td>
-                `).join('')}
+
+    if (!data?.periods?.length) {
+        body.innerHTML = `
+            <tr>
+                <td colspan="2" style="padding:28px 10px;text-align:center;color:#71819d;">
+                    <i class="fas fa-info-circle"></i>
+                    &nbsp; No fee structure available.
+                </td>
             </tr>
         `;
-    });
-    
-    html += `
-        <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
-            <td style="padding: 4px 6px; text-align: center; color: #0A3D62; font-size: 9px;">-</td>
-            <td style="padding: 4px 6px; font-weight: 700; color: #0A3D62; font-size: 9px;">
-                <i class="fas fa-calculator" style="color: #4C1D95; margin-right: 3px; font-size: 9px;"></i> TOTAL
-            </td>
-            ${periodTotals.map(total => `
-                <td style="padding: 4px 4px; text-align: right; font-weight: 700; color: #4C1D95; font-size: 10px;">
-                    KES ${total.toLocaleString()}
-                </td>
-            `).join('')}
-        </tr>
-    `;
-    
-    html += `
-                </tbody>
-            </table>
-        </div>
-        <div style="margin-top: 6px; padding: 6px 8px; background: #f8fafc; border-radius: 4px; border: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 4px; font-size: 9px;">
-            <span style="color: #64748b;">📚 ${periods.length} ${programType === 'KRCHN' ? 'Semesters' : 'Terms'}</span>
-            <span style="color: #64748b;">📋 ${voteHeads.filter(v => v.amounts.some(a => a > 0)).length} Vote Heads</span>
-            <button onclick="printFeeStructureTable()" style="background: #475569; color: white; padding: 2px 10px; border-radius: 4px; border: none; cursor: pointer; font-size: 9px;">
-                <i class="fas fa-print"></i> Print
-            </button>
-        </div>
-    `;
-    
-    container.innerHTML = html;
-    container.style.display = 'block';
-}
 
-// ============================================================
-// 🔄 TOGGLE FEE STRUCTURE
-// ============================================================
+        if (totalEl) totalEl.textContent = '0';
+        return;
+    }
+
+    const currentIndex =
+        Number(studentFinanceState.currentPeriodIndex || 0);
+
+    body.innerHTML = data.periods.map((period, index) => {
+        const amount = Number(period.amount) || 0;
+        const current = index === currentIndex;
+
+        return `
+            <tr style="border-bottom:1px solid #edf1f6;${current ? 'background:#f7fbff;' : ''}">
+                <td style="padding:10px 12px;color:#405579;font-size:10px;">
+                    <span style="display:inline-block;width:7px;height:7px;margin-right:7px;border-radius:50%;background:${current ? '#0864dc' : '#cbd5e1'};"></span>
+                    <strong style="color:#102d69;">${period.name}</strong>
+                    ${current ? '<span style="margin-left:5px;padding:2px 5px;border-radius:8px;background:#e5efff;color:#0864dc;font-size:8px;font-weight:700;">CURRENT</span>' : ''}
+                </td>
+                <td style="padding:10px 12px;text-align:right;color:#102d69;font-size:10px;font-weight:800;white-space:nowrap;">
+                    KES ${amount.toLocaleString()}
+                </td>
+            </tr>
+        `;
+    }).join('');
+
+    const total = data.periods.reduce(
+        (sum, p) => sum + (Number(p.amount) || 0),
+        0
+    );
+
+    if (totalEl) {
+        totalEl.textContent = total.toLocaleString();
+    }
+}
 
 function toggleFeeStructure() {
     const container = document.getElementById('finance-studentFeeStructureDisplay');
@@ -1990,14 +2419,107 @@ function viewFullFeeStructure() {
 // ============================================================
 
 function downloadStudentStatement() {
-    showToast('📄 Generating statement...', 'info');
-    setTimeout(() => {
-        showToast('✅ Statement downloaded!', 'success');
-        notifySuperAdmin('statement_downloaded', {
-            studentId: studentFinanceState.student?.user_id || studentFinanceState.student?.id,
-            timestamp: new Date().toISOString()
-        });
-    }, 1500);
+    const student =
+        studentFinanceState.student || {};
+
+    const payments =
+        studentFinanceState.payments || [];
+
+    const completedTotal =
+        payments
+            .filter(p => p.status === 'completed')
+            .reduce(
+                (sum, p) =>
+                    sum + Number(p.amount || 0),
+                0
+            );
+
+    const rows = payments.map((p, i) => `
+        <tr>
+            <td>${i + 1}</td>
+            <td>${p.date || '-'}</td>
+            <td>${p.period || '-'}</td>
+            <td>KES ${Number(p.amount || 0).toLocaleString()}</td>
+            <td>${p.method || '-'}</td>
+            <td>${p.reference || '-'}</td>
+            <td>${p.status || '-'}</td>
+        </tr>
+    `).join('');
+
+    const html = `
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>NCHSM Finance Statement</title>
+<style>
+body{font-family:Arial,sans-serif;padding:30px;color:#102d69}
+h1{margin-bottom:4px}.meta{color:#536783;margin-bottom:20px}
+.summary{display:flex;gap:15px;margin-bottom:20px}
+.card{flex:1;padding:14px;border:1px solid #dfe6ef;border-radius:8px}
+.card strong{display:block;font-size:20px;margin-top:5px}
+table{width:100%;border-collapse:collapse;font-size:11px}
+th,td{padding:8px;border:1px solid #dfe6ef;text-align:left}
+th{background:#f2f5f9}
+</style>
+</head>
+<body>
+<h1>NCHSM — Student Finance Statement</h1>
+<div class="meta">
+<strong>${student.full_name || student.name || 'Student'}</strong><br>
+Student ID: ${student.student_id || student.id || '-'}<br>
+Program: ${student.program || '-'} |
+Intake: ${student.intake_year || student.intake || '-'}
+</div>
+<div class="summary">
+<div class="card">Total Paid<strong>KES ${completedTotal.toLocaleString()}</strong></div>
+<div class="card">Outstanding<strong>KES ${Number(studentFinanceState.balance || 0).toLocaleString()}</strong></div>
+<div class="card">Transactions<strong>${payments.length}</strong></div>
+</div>
+<table>
+<thead>
+<tr>
+<th>#</th><th>Date</th><th>Period</th><th>Amount</th>
+<th>Method</th><th>Reference</th><th>Status</th>
+</tr>
+</thead>
+<tbody>${rows || '<tr><td colspan="7">No payment records.</td></tr>'}</tbody>
+</table>
+</body>
+</html>`;
+
+    const blob =
+        new Blob([html], { type: 'text/html' });
+
+    const url =
+        URL.createObjectURL(blob);
+
+    const a =
+        document.createElement('a');
+
+    a.href = url;
+    a.download =
+        `NCHSM-Finance-Statement-${student.student_id || 'student'}.html`;
+
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+
+    URL.revokeObjectURL(url);
+
+    notifySuperAdmin('statement_downloaded', {
+        studentId:
+            student.userId ||
+            student.user_id ||
+            student.id,
+        timestamp:
+            new Date().toISOString()
+    });
+
+    showToast(
+        '📄 Finance statement downloaded.',
+        'success'
+    );
 }
 
 function viewStudentInvoice() {
@@ -2059,315 +2581,183 @@ function resendPaymentEmail() {
 // ============================================================
 
 function openPaymentModal() {
-    console.log('💰 Opening payment modal...');
-    
-    const modal = document.getElementById('finance-paymentModal');
+    const modal =
+        document.getElementById('finance-paymentModal');
+
     if (!modal) {
-        console.error('❌ Modal not found');
-        showToast('Payment system error. Please refresh the page.', 'error');
+        showToast('❌ Payment system error. Please refresh the page.', 'error');
         return;
     }
-    
-    const content = document.getElementById('finance-paymentContent');
-    const title = document.getElementById('finance-paymentModalTitle');
-    const formContainer = document.getElementById('finance-paymentFormContainer');
-    const periodSelect = document.getElementById('finance-paymentPeriodSelect');
-    const amountInput = document.getElementById('finance-paymentAmountInput');
-    const descInput = document.getElementById('finance-paymentDescriptionInput');
-    const mpesaFields = document.getElementById('finance-mpesaFields');
-    const methodDetails = document.getElementById('finance-paymentMethodDetails');
-    
-    if (title) title.textContent = '💳 Make Payment';
-    if (content) content.style.display = 'none';
-    if (formContainer) formContainer.style.display = 'block';
-    
-    if (periodSelect) {
-        const programType = studentFinanceState.programType || 'TVET';
-        const programLevel = studentFinanceState.programLevel || 'certificate';
-        const periods = getPeriods(programType, programLevel);
-        const currentPeriod = studentFinanceState.currentPeriod || periods[0];
-        
-        periodSelect.innerHTML = '<option value="">Select period...</option>';
-        periods.forEach(p => {
-            const option = document.createElement('option');
-            option.value = p;
-            option.textContent = p;
-            if (p === currentPeriod) option.selected = true;
-            periodSelect.appendChild(option);
-        });
-        
-        const selectedPeriod = periodSelect.value;
-        if (selectedPeriod) {
-            const index = periods.indexOf(selectedPeriod);
-            if (index !== -1 && amountInput) {
-                const amount = getFeeAmount(programType, index, programLevel);
-                if (!amountInput.value) amountInput.value = amount;
-            }
-            if (descInput) {
-                descInput.value = `${selectedPeriod} Tuition Fees`;
-            }
-        }
+
+    const amountInput =
+        document.getElementById('finance-paymentAmount');
+
+    const methodSelect =
+        document.getElementById('finance-paymentMethod');
+
+    if (
+        amountInput &&
+        !amountInput.value &&
+        Number(studentFinanceState.balance || 0) > 0
+    ) {
+        amountInput.value = Number(studentFinanceState.balance);
     }
-    
-    if (amountInput) {
-        const balance = studentFinanceState.balance || 0;
-        if (balance > 0) {
-            amountInput.placeholder = `Suggested: KES ${balance.toLocaleString()}`;
-            if (!amountInput.value) amountInput.value = balance;
-        }
-    }
-    
-    if (descInput && studentFinanceState.currentPeriod) {
-        if (!descInput.value) {
-            descInput.value = `${studentFinanceState.currentPeriod} Tuition Fees`;
-        }
-    }
-    
-    document.querySelectorAll('.payment-method-item').forEach(el => {
-        el.classList.remove('selected');
-    });
-    
-    if (mpesaFields) mpesaFields.style.display = 'none';
-    if (methodDetails) methodDetails.style.display = 'none';
-    
-    document.querySelectorAll('.finance-validation-error').forEach(el => el.style.display = 'none');
-    
+
+    if (methodSelect) methodSelect.value = 'mpesa';
+
     selectPaymentMethod('mpesa');
-    
-    modal.classList.add('active');
+
+    modal.style.display = 'flex';
+    modal.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
-    
-    console.log('✅ Payment modal opened successfully');
+
+    pendingPayment.cancelled = false;
+    pendingPayment.status = 'idle';
 }
 
 function closePaymentModal() {
-    const modal = document.getElementById('finance-paymentModal');
+    const modal =
+        document.getElementById('finance-paymentModal');
+
     if (modal) {
-        modal.classList.remove('active');
-        document.body.style.overflow = 'auto';
-        
-        const content = document.getElementById('finance-paymentContent');
-        const formContainer = document.getElementById('finance-paymentFormContainer');
-        if (content) content.style.display = 'none';
-        if (formContainer) formContainer.style.display = 'block';
+        modal.style.display = 'none';
+        modal.setAttribute('aria-hidden', 'true');
     }
+
+    document.body.style.overflow = '';
+
     pendingPayment.isProcessing = false;
     pendingPayment.cancelled = false;
+    pendingPayment.status = 'idle';
 }
 
 function selectPaymentMethod(method) {
-    console.log('📱 Selecting payment method:', method);
-    
-    document.querySelectorAll('.payment-method-item').forEach(el => {
-        el.classList.remove('selected');
-    });
-    
-    const selectedEl = document.getElementById(`finance-method-${method}`);
-    if (selectedEl) {
-        selectedEl.classList.add('selected');
-    }
-    
-    const mpesaFields = document.getElementById('finance-mpesaFields');
-    if (mpesaFields) {
-        mpesaFields.style.display = 'none';
-    }
-    
-    const detailsContent = document.getElementById('finance-methodDetailsContent');
-    const detailsContainer = document.getElementById('finance-paymentMethodDetails');
-    
-    const methodNames = { 
-        mpesa: 'M-Pesa STK Push', 
-        paypal: 'PayPal', 
-        card: 'Card Payment', 
-        bank: 'Bank Transfer' 
-    };
-    const methodIcons = { 
-        mpesa: '📱', 
-        paypal: '💳', 
-        card: '💳', 
-        bank: '🏦' 
-    };
-    const methodDescriptions = {
-        mpesa: 'Pay instantly using M-Pesa. You will receive a prompt on your phone.',
-        paypal: 'Pay using your PayPal account.',
-        card: 'Pay using your Visa or Mastercard.',
-        bank: 'Pay via bank transfer.'
-    };
-    
-    if (detailsContent) {
-        detailsContent.innerHTML = `
-            <div style="display: flex; align-items: center; gap: 4px;">
-                <span style="font-size: 14px;">${methodIcons[method] || '💳'}</span>
-                <strong style="color: #0A3D62; font-size: 12px;">${methodNames[method] || method}</strong>
-            </div>
-            <p style="margin: 2px 0 0 0; font-size: 10px; color: #64748b;">${methodDescriptions[method] || 'Select this payment method'}</p>
-        `;
-    }
-    if (detailsContainer) {
-        detailsContainer.style.display = 'block';
-    }
-    
-    if (method === 'mpesa') {
-        if (mpesaFields) {
-            mpesaFields.style.display = 'block';
-        }
-        const user = window.currentUserProfile || window.currentUser;
-        if (user?.phone) {
-            const phoneInput = document.getElementById('finance-mpesaPhoneInput');
-            if (phoneInput) phoneInput.value = user.phone;
-        }
-    }
-    
-    studentFinanceState.selectedPaymentMethod = method;
-    const methodError = document.getElementById('finance-methodError');
-    if (methodError) methodError.style.display = 'none';
-}
+    const select =
+        document.getElementById('finance-paymentMethod');
 
-// ============================================================
-// 📝 VALIDATE PAYMENT FORM
-// ============================================================
+    if (select) select.value = method;
+
+    studentFinanceState.selectedPaymentMethod = method;
+
+    const info =
+        document.getElementById('finance-paymentInfo');
+
+    if (info) {
+        info.innerHTML =
+            method === 'mpesa'
+                ? `<i class="fas fa-info-circle"></i><span>You will receive an M-Pesa payment prompt on your registered phone.</span>`
+                : `<i class="fas fa-info-circle"></i><span>Only M-Pesa is currently enabled.</span>`;
+    }
+}
 
 function validatePaymentForm() {
-    let isValid = true;
-    document.querySelectorAll('.finance-validation-error').forEach(err => err.style.display = 'none');
-    
-    const period = document.getElementById('finance-paymentPeriodSelect');
-    if (!period || !period.value) {
-        const errorEl = period?.nextElementSibling;
-        if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
-        isValid = false;
+    const amount = Number(
+        document.getElementById('finance-paymentAmount')?.value || 0
+    );
+
+    const method =
+        document.getElementById('finance-paymentMethod')?.value || '';
+
+    if (!amount || amount < 1) {
+        showToast('❌ Please enter a valid payment amount.', 'error');
+        return false;
     }
-    
-    const amount = document.getElementById('finance-paymentAmountInput');
-    if (!amount || !amount.value || parseFloat(amount.value) < 1) {
-        const errorEl = amount?.nextElementSibling;
-        if (errorEl && errorEl.classList.contains('finance-validation-error')) errorEl.style.display = 'block';
-        isValid = false;
+
+    if (
+        Number(studentFinanceState.balance || 0) > 0 &&
+        amount > Number(studentFinanceState.balance)
+    ) {
+        showToast(
+            '❌ Payment amount cannot exceed the current outstanding balance.',
+            'error'
+        );
+        return false;
     }
-    
-    const selectedMethod = document.querySelector('.payment-method-item.selected');
-    if (!selectedMethod) {
-        const errorEl = document.getElementById('finance-methodError');
-        if (errorEl) errorEl.style.display = 'block';
-        isValid = false;
+
+    if (method !== 'mpesa') {
+        showToast(
+            '❌ Only M-Pesa payments are currently enabled.',
+            'error'
+        );
+        return false;
     }
-    
-    let method = null;
-    if (selectedMethod) {
-        const id = selectedMethod.id || '';
-        method = id.replace('finance-method-', '');
-    }
-    
-    if (method === 'mpesa') {
-        const phone = document.getElementById('finance-mpesaPhoneInput');
-        if (!phone || !phone.value || phone.value.replace(/\D/g, '').length < 10) {
-            const mpesaContainer = document.getElementById('finance-mpesaFields');
-            if (mpesaContainer) {
-                const errorEl = mpesaContainer.querySelector('.finance-validation-error');
-                if (errorEl) errorEl.style.display = 'block';
-            }
-            isValid = false;
-        }
-    }
-    
-    if (!isValid) showToast('Please fix all validation errors.', 'error');
-    return isValid;
+
+    return true;
 }
-
-// ============================================================
-// 💰 GET SUPABASE CLIENT
-// ============================================================
-
-function getSupabaseClient() {
-    if (window.sb) return window.sb;
-    if (window.supabase) return window.supabase;
-    if (typeof supabase !== 'undefined') return supabase;
-    console.error('❌ No Supabase client found');
-    return null;
-}
-
-// ============================================================
-// 💰 SAVE PAYMENT RECORD - FIXED (NO .catch())
-// ============================================================
 
 async function saveSTKPaymentRecord(amount, period, result) {
     try {
         const supabase = getSupabaseClient();
-        if (!supabase) {
-            console.error('❌ No Supabase client available');
-            savePaymentLocally({
-                amount: amount,
-                period: period,
-                status: 'pending',
-                reference: result?.reference || `TXN-${Date.now()}`
-            });
-            return false;
-        }
+        if (!supabase) return false;
 
-        const user = window.currentUserProfile || window.currentUser;
-        const transactionId = result.transactionId || result.checkoutRequestID || `TXN-${Date.now()}`;
-        const method = result.paymentMethod || studentFinanceState.selectedPaymentMethod || 'M-Pesa STK';
-        const status = result.status === 'success' ? 'completed' : 'pending';
-        const reference = result.reference || `PAY-${Date.now()}`;
-        
-        const dbPeriod = mapPeriodToDatabase(period);
-        
+        const user =
+            studentFinanceState.student ||
+            window.currentUserProfile ||
+            window.currentUser;
+
+        const userId =
+            user?.userId ||
+            user?.user_id ||
+            user?.id;
+
+        if (!userId) return false;
+
+        const transactionId =
+            result?.transactionId ||
+            result?.checkoutRequestID ||
+            null;
+
+        const reference =
+            result?.reference ||
+            transactionId ||
+            `PAY-${Date.now()}`;
+
         const paymentRecord = {
-            student_id: user?.user_id || user?.id || 'student_001',
+            student_id: userId,
             student_name: user?.full_name || user?.name || 'Student',
             student_email: user?.email || '',
             program: user?.program || 'KRCHN',
-            amount: parseFloat(amount),
-            payment_method: method,
+            amount: Number(amount),
+            payment_method: 'M-Pesa',
             reference_number: reference,
             payment_date: new Date().toISOString().split('T')[0],
-            period: dbPeriod || period,
-            status: status,
-            notes: `${period} Tuition Fees - ${method} Payment`,
+            period: mapPeriodToDatabase(period) || period,
+            status:
+                result?.status === 'success'
+                    ? 'completed'
+                    : 'pending',
+            notes: `${period} Tuition Fees - M-Pesa Payment`,
             checkout_request_id: transactionId,
-            phone_number: result.phoneNumber || '',
-            program_type: studentFinanceState.programType || 'KRCHN',
-            metadata: { source: 'payhero', original_period: period },
+            phone_number: result?.phoneNumber || '',
+            program_type:
+                studentFinanceState.programType || 'KRCHN',
+            metadata: {
+                source: 'payhero',
+                original_period: period
+            },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
-        
-        console.log('📝 Saving payment record:', paymentRecord);
 
-        try {
-            const { data, error } = await supabase
-                .from('finance_payments')
-                .insert([paymentRecord])
-                .select();
+        const { data, error } = await supabase
+            .from('finance_payments')
+            .insert([paymentRecord])
+            .select()
+            .maybeSingle();
 
-            if (error) {
-                console.error('❌ Database error:', error);
-                savePaymentLocally(paymentRecord);
-                return false;
-            }
-            
-            console.log('✅ Payment record saved:', data);
-            return true;
-            
-        } catch (insertError) {
-            console.error('❌ Insert error:', insertError.message);
+        if (error) {
+            console.error('❌ Payment record save error:', error);
             savePaymentLocally(paymentRecord);
             return false;
         }
-        
+
+        if (data?.id) {
+            pendingPayment.paymentId = data.id;
+        }
+
+        return true;
     } catch (error) {
-        console.error('❌ Error saving payment:', error.message);
-        const user = window.currentUserProfile || window.currentUser;
-        const fallbackRecord = {
-            student_id: user?.user_id || user?.id || 'student_001',
-            student_name: user?.full_name || user?.name || 'Student',
-            amount: amount,
-            period: period,
-            status: 'pending',
-            reference_number: result?.reference || `TXN-${Date.now()}`,
-            checkout_request_id: result?.transactionId || result?.checkoutRequestID || null
-        };
-        savePaymentLocally(fallbackRecord);
+        console.error('❌ Error saving payment:', error);
         return false;
     }
 }
@@ -2586,66 +2976,98 @@ async function checkPaymentStatus(reference) {
 
 async function updateStudentBalanceAfterPayment(amount) {
     try {
-        const user = window.currentUserProfile || window.currentUser;
+        const user =
+            studentFinanceState.student ||
+            window.currentUserProfile ||
+            window.currentUser;
+
         if (!user) return;
-        
-        const userId = user.user_id || user.id;
+
+        const userId =
+            user.userId ||
+            user.user_id ||
+            user.id;
+
         if (!userId) return;
-        
+
         const supabase = getSupabaseClient();
         if (!supabase) return;
-        
-        try {
-            const { data: account } = await supabase
-                .from('finance_student_accounts')
-                .select('balance, total_paid')
-                .eq('student_id', userId)
-                .single();
-            
-            if (account) {
-                const newBalance = Math.max((account.balance || 0) - amount, 0);
-                const newTotalPaid = (account.total_paid || 0) + amount;
-                
-                await supabase
-                    .from('finance_student_accounts')
-                    .update({
-                        balance: newBalance,
-                        total_paid: newTotalPaid,
-                        last_payment_date: new Date().toISOString().split('T')[0],
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('student_id', userId);
-                
-                console.log(`✅ Balance updated: New balance KES ${newBalance.toLocaleString()}`);
-                studentFinanceState.balance = newBalance;
-                studentFinanceState.outstanding = newBalance;
-                studentFinanceState.totalPaid = newTotalPaid;
+
+        const candidateIds = [
+            studentFinanceState.student?.profileId,
+            userId
+        ].filter(Boolean);
+
+        for (const id of candidateIds) {
+            try {
+                const { data: account, error } =
+                    await supabase
+                        .from('finance_student_accounts')
+                        .select('balance,total_paid')
+                        .eq('student_id', id)
+                        .maybeSingle();
+
+                if (error || !account) continue;
+
+                const currentBalance =
+                    Number(account.balance) || 0;
+
+                const currentPaid =
+                    Number(account.total_paid) || 0;
+
+                const newBalance =
+                    Math.max(
+                        currentBalance - Number(amount),
+                        0
+                    );
+
+                const newTotalPaid =
+                    currentPaid + Number(amount);
+
+                const { error: updateError } =
+                    await supabase
+                        .from('finance_student_accounts')
+                        .update({
+                            balance: newBalance,
+                            total_paid: newTotalPaid,
+                            last_payment_date:
+                                new Date().toISOString().split('T')[0],
+                            updated_at:
+                                new Date().toISOString()
+                        })
+                        .eq('student_id', id);
+
+                if (!updateError) {
+                    studentFinanceState.balance =
+                        newBalance;
+
+                    studentFinanceState.outstanding =
+                        newBalance;
+
+                    studentFinanceState.totalPaid =
+                        newTotalPaid;
+
+                    return;
+                }
+            } catch (e) {
+                console.warn(
+                    '⚠️ Account update failed:',
+                    e.message
+                );
             }
-        } catch (e) {
-            console.log('⚠️ No account found, creating one...');
-            await supabase
-                .from('finance_student_accounts')
-                .insert({
-                    student_id: userId,
-                    student_name: user.full_name || user.name,
-                    program: user.program || 'KRCHN',
-                    balance: 0,
-                    total_paid: amount,
-                    current_period: studentFinanceState.currentPeriod,
-                    last_payment_date: new Date().toISOString().split('T')[0],
-                    created_at: new Date().toISOString(),
-                    updated_at: new Date().toISOString()
-                });
-            console.log('✅ Account created');
         }
+
+        console.log(
+            'ℹ️ No finance account updated; payment record remains the source of truth.'
+        );
+
     } catch (error) {
-        console.error('❌ Error updating balance:', error);
+        console.error(
+            '❌ Error updating balance:',
+            error
+        );
     }
 }
-
-// ============================================================
-// 🔄 UPDATE STK STATUS - STUDENT FINANCE
-// ============================================================
 
 function updateStudentSTKStatus(attempt, maxAttempts, message) {
     const content = document.getElementById('finance-paymentContent');
@@ -3111,204 +3533,253 @@ function showStudentPaymentSuccess(amount, reference, period) {
 
 async function processPayment() {
     if (!validatePaymentForm()) return;
-    
-    const period = document.getElementById('finance-paymentPeriodSelect')?.value;
-    const amount = parseFloat(document.getElementById('finance-paymentAmountInput')?.value);
-    const method = studentFinanceState.selectedPaymentMethod || 'mpesa';
-    
-    if (!period) { showToast('❌ Please select a payment period', 'error'); return; }
-    if (!amount || amount <= 0) { showToast('❌ Please enter a valid amount', 'error'); return; }
-    
-    const user = window.currentUserProfile || window.currentUser;
+
+    const amount = Number(
+        document.getElementById('finance-paymentAmount')?.value || 0
+    );
+
+    const user =
+        studentFinanceState.student ||
+        window.currentUserProfile ||
+        window.currentUser;
+
     if (!user) {
-        showToast('❌ Please login first', 'error');
+        showToast('❌ Please login first.', 'error');
         return;
     }
-    
-    const reference = 'STU-' + Date.now();
-    
-    if (method === 'mpesa') {
-        const phoneInput = document.getElementById('finance-mpesaPhoneInput');
-        let phone = phoneInput?.value || user?.phone || '';
-        if (!phone || phone.trim() === '') {
-            showToast('❌ Please enter your M-Pesa phone number', 'error');
-            return;
-        }
-        
-        let formattedPhone = formatPhoneNumber(phone);
-        if (!formattedPhone) {
-            showToast('❌ Invalid phone number', 'error');
-            return;
-        }
-        
-        pendingPayment.isProcessing = true;
-        pendingPayment.cancelled = false;
-        pendingPayment.transactionId = null;
-        pendingPayment.status = 'processing';
-        
-        const content = document.getElementById('finance-paymentContent');
-        const formContainer = document.getElementById('finance-paymentFormContainer');
-        const title = document.getElementById('finance-paymentModalTitle');
-        
-        if (title) title.textContent = '⏳ Processing Payment';
-        if (content) {
-            content.style.display = 'block';
-            content.innerHTML = `
-                <div class="spinner"></div>
-                <p class="status-text">⏳ Sending STK Push...</p>
-                <p class="status-sub" id="finance-paymentDetails">Amount: KES ${amount.toLocaleString()}</p>
-                <p class="status-sub" style="font-size:12px;margin-top:8px;">📱 Check your phone and enter your PIN</p>
-                <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:4px;">🔄 Payment will auto-confirm</p>
-                <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
-                    <i class="fas fa-times"></i> Cancel Payment
+
+    const phone =
+        user.phone ||
+        user.phone_number ||
+        '';
+
+    const formattedPhone = formatPhoneNumber(phone);
+
+    if (!formattedPhone) {
+        showToast(
+            '❌ No valid registered M-Pesa phone number was found.',
+            'error'
+        );
+        return;
+    }
+
+    const supabase = getSupabaseClient();
+
+    if (!supabase) {
+        showToast(
+            '❌ Supabase client is not available.',
+            'error'
+        );
+        return;
+    }
+
+    const period =
+        studentFinanceState.currentPeriod ||
+        getPeriods(
+            studentFinanceState.programType || 'TVET',
+            studentFinanceState.programLevel || 'diploma'
+        )[0];
+
+    const reference = `STU-${Date.now()}`;
+
+    pendingPayment.isProcessing = true;
+    pendingPayment.cancelled = false;
+    pendingPayment.transactionId = null;
+    pendingPayment.paymentId = null;
+    pendingPayment.status = 'processing';
+
+    const modal =
+        document.getElementById('finance-paymentModal');
+
+    const dialog = modal?.lastElementChild;
+
+    if (dialog) {
+        dialog.innerHTML = `
+            <div style="padding:30px 22px;text-align:center;">
+                <div style="width:62px;height:62px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e5efff;color:#0864dc;font-size:25px;">
+                    <i class="fas fa-mobile-alt"></i>
+                </div>
+
+                <h3 style="margin:0 0 6px;color:#112d69;font-size:19px;">
+                    Processing Payment
+                </h3>
+
+                <p style="margin:0;color:#71819d;font-size:12px;">
+                    Sending M-Pesa prompt...
+                </p>
+
+                <div style="margin:18px auto;padding:13px;border-radius:9px;background:#f3f7fb;">
+                    <strong style="display:block;color:#102d69;font-size:24px;">
+                        KES ${amount.toLocaleString()}
+                    </strong>
+
+                    <span style="display:block;margin-top:4px;color:#71819d;font-size:10px;">
+                        ${period}
+                    </span>
+                </div>
+
+                <p style="margin:10px 0;color:#536783;font-size:11px;">
+                    Check <strong>${formattedPhone}</strong> and enter your M-Pesa PIN.
+                </p>
+
+                <button
+                    type="button"
+                    onclick="cancelStudentPayment()"
+                    style="width:100%;height:40px;margin-top:10px;border:1px solid #ef4444;border-radius:7px;background:#fff;color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;"
+                >
+                    <i class="fas fa-times"></i>
+                    Cancel Payment
                 </button>
-            `;
-        }
-        if (formContainer) formContainer.style.display = 'none';
-        
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-            showToast('❌ Supabase client not available', 'error');
-            pendingPayment.isProcessing = false;
-            return;
-        }
-        
-        const { data: profile } = await supabase
-            .from('consolidated_user_profiles_table')
-            .select('id')
-            .eq('user_id', user.user_id || user.id)
-            .single();
-        
-        if (!profile) {
-            showToast('❌ Could not find profile', 'error');
-            pendingPayment.isProcessing = false;
-            return;
-        }
-        
-        const profileId = profile.id;
-        const dbPeriod = mapPeriodToDatabase(period);
-        
+            </div>
+        `;
+    }
+
+    try {
+        // Canonical identity for new finance records.
         const paymentRecord = {
-            student_id: profileId,
-            student_name: user?.full_name || user?.name || 'Student',
-            student_email: user?.email || '',
-            program: user?.program || 'KRCHN',
-            amount: amount,
+            student_id: user.user_id || user.id,
+            student_name:
+                user.full_name || user.name || 'Student',
+            student_email: user.email || '',
+            program: user.program || 'KRCHN',
+            amount,
             payment_method: 'M-Pesa',
             reference_number: reference,
-            payment_date: new Date().toISOString().split('T')[0],
-            period: dbPeriod || period,
+            payment_date:
+                new Date().toISOString().split('T')[0],
+            period:
+                mapPeriodToDatabase(period) || period,
             status: 'pending',
-            notes: `${period} Tuition Fees - M-Pesa Payment`,
+            notes:
+                `${period} Tuition Fees - M-Pesa Payment`,
             phone_number: formattedPhone,
-            program_type: studentFinanceState.programType || 'KRCHN',
+            program_type:
+                studentFinanceState.programType || 'KRCHN',
+            metadata: {
+                source: 'payhero',
+                original_period: period
+            },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         };
-        
-        let savedPayment = null;
-        
-        try {
-            const { data, error } = await supabase
+
+        const { data: savedPayment, error: saveError } =
+            await supabase
                 .from('finance_payments')
                 .insert([paymentRecord])
                 .select()
-                .single();
-            
-            if (error) {
-                console.error('❌ Save error:', error);
-                showToast('❌ Could not save payment', 'error');
-                pendingPayment.isProcessing = false;
-                return;
-            }
-            
-            savedPayment = data;
-            pendingPayment.paymentId = savedPayment.id;
-            console.log('✅ Payment created:', savedPayment.id);
-            console.log('📋 Reference:', savedPayment.reference_number);
-            
-        } catch (e) {
-            console.error('❌ Error:', e);
-            showToast('❌ Could not save payment', 'error');
-            pendingPayment.isProcessing = false;
-            return;
+                .maybeSingle();
+
+        if (saveError) {
+            throw new Error(
+                saveError.message ||
+                'Could not save payment.'
+            );
         }
-        
-        console.log('📱 Sending STK Push...');
-        console.log('📤 External Reference:', reference);
-        
-        try {
-            const { data: stkData, error: stkError } = await supabase.functions.invoke('payhero', {
-                body: {
-                    action: 'stk_push',
-                    phone: formattedPhone,
-                    amount: Math.round(amount),
-                    order_id: reference,
-                    payment_id: savedPayment.id,
-                    customer_name: user?.full_name || user?.name || 'Student',
-                    description: `${period} Tuition Fees Payment`
+
+        pendingPayment.paymentId =
+            savedPayment?.id || null;
+
+        const { data: stkData, error: stkError } =
+            await supabase.functions.invoke(
+                'payhero',
+                {
+                    body: {
+                        action: 'stk_push',
+                        phone: formattedPhone,
+                        amount: Math.round(amount),
+                        order_id: reference,
+                        payment_id:
+                            savedPayment?.id || null,
+                        customer_name:
+                            user.full_name ||
+                            user.name ||
+                            'Student',
+                        description:
+                            `${period} Tuition Fees Payment`
+                    }
                 }
-            });
-            
-            if (stkError) {
-                console.error('❌ STK Error:', stkError);
-                throw new Error('STK Push failed: ' + stkError.message);
-            }
-            
-            if (!stkData.success) {
-                throw new Error(stkData.message || 'STK Push failed');
-            }
-            
-            console.log('✅ STK Push sent:', stkData);
-            console.log('📱 Transaction ID:', stkData.transaction_id);
-            
-            pendingPayment.transactionId = stkData.transaction_id;
-            
-            await supabase
-                .from('finance_payments')
-                .update({
-                    checkout_request_id: stkData.transaction_id,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', savedPayment.id);
-            
-            console.log('✅ Payment updated with checkout ID');
-            console.log('📋 Reference (unchanged):', savedPayment.reference_number);
-            
-            await pollStudentPaymentStatus(stkData.transaction_id, amount, period);
-            
-        } catch (stkError) {
-            console.error('❌ STK Error:', stkError);
-            pendingPayment.isProcessing = false;
-            pendingPayment.status = 'failed';
-            
-            try {
+            );
+
+        if (stkError) {
+            throw new Error(
+                stkError.message ||
+                'STK Push failed.'
+            );
+        }
+
+        if (!stkData?.success) {
+            throw new Error(
+                stkData?.message ||
+                stkData?.error ||
+                'STK Push failed.'
+            );
+        }
+
+        const transactionId =
+            stkData.transaction_id;
+
+        if (!transactionId) {
+            throw new Error(
+                'No PayHero transaction ID was returned.'
+            );
+        }
+
+        pendingPayment.transactionId =
+            transactionId;
+
+        await supabase
+            .from('finance_payments')
+            .update({
+                checkout_request_id: transactionId,
+                updated_at: new Date().toISOString()
+            })
+            .eq('id', savedPayment.id);
+
+        await pollStudentPaymentStatus(
+            transactionId,
+            amount,
+            period
+        );
+
+    } catch (error) {
+        console.error(
+            '❌ Payment initiation error:',
+            error
+        );
+
+        pendingPayment.isProcessing = false;
+        pendingPayment.status = 'failed';
+
+        try {
+            if (pendingPayment.paymentId) {
                 await supabase
                     .from('finance_payments')
                     .update({
                         status: 'failed',
-                        notes: `STK Push failed: ${stkError.message}`,
-                        updated_at: new Date().toISOString()
+                        notes:
+                            `STK Push failed: ${error.message}`,
+                        updated_at:
+                            new Date().toISOString()
                     })
-                    .eq('id', savedPayment.id);
-            } catch (e) {}
-            
-            showStudentPaymentFailure(stkError.message || 'Payment initiation failed');
-            showToast('❌ Payment failed: ' + (stkError.message || 'Please try again'), 'error');
+                    .eq(
+                        'id',
+                        pendingPayment.paymentId
+                    );
+            }
+        } catch (e) {
+            console.warn(
+                '⚠️ Could not mark failed payment:',
+                e.message
+            );
         }
-        
-    } else {
-        showToast('💰 Payment processing...', 'info');
-        setTimeout(() => {
-            showToast('✅ Payment recorded', 'success');
-            loadStudentFinance();
-        }, 2000);
+
+        showStudentPaymentFailure(
+            error.message ||
+            'Payment initiation failed.'
+        );
     }
 }
-
-// ============================================================
-// ⏳ SHOW LOADING / ERROR
-// ============================================================
 
 function showFinanceLoading() {
     const historyBody = document.getElementById('finance-studentPaymentHistory');
@@ -3385,29 +3856,61 @@ function showToast(message, type = 'info') {
 // ============================================================
 
 function filterStudentPayments() {
-    const statusFilter = document.getElementById('finance-paymentFilter')?.value || 'all';
-    const periodFilter = document.getElementById('finance-periodFilter')?.value || 'all';
-    const searchTerm = document.getElementById('finance-search')?.value?.toLowerCase() || '';
-    
-    const payments = studentFinanceState.payments || [];
-    let filtered = payments.filter(p => {
-        if (statusFilter !== 'all' && p.status !== statusFilter) return false;
-        if (periodFilter !== 'all' && p.period !== periodFilter) return false;
-        if (searchTerm) {
-            const searchable = `${p.description} ${p.reference} ${p.method} ${p.period}`.toLowerCase();
-            if (!searchable.includes(searchTerm)) return false;
+    const statusFilter =
+        document.getElementById('finance-paymentFilter')?.value || 'all';
+
+    const periodFilter =
+        document.getElementById('finance-periodFilter')?.value || 'all';
+
+    const searchTerm =
+        document.getElementById('finance-search')?.value?.trim().toLowerCase() || '';
+
+    const payments =
+        studentFinanceState.payments || [];
+
+    const filtered = payments.filter(p => {
+        if (
+            statusFilter !== 'all' &&
+            p.status !== statusFilter
+        ) {
+            return false;
         }
+
+        if (
+            periodFilter !== 'all' &&
+            p.period !== periodFilter
+        ) {
+            return false;
+        }
+
+        if (searchTerm) {
+            const searchable = [
+                p.description,
+                p.reference,
+                p.method,
+                p.period,
+                p.date,
+                p.amount
+            ].join(' ').toLowerCase();
+
+            if (!searchable.includes(searchTerm)) {
+                return false;
+            }
+        }
+
         return true;
     });
-    
-    renderPayments(filtered);
-    const recordCount = document.getElementById('finance-paymentRecordCount');
-    if (recordCount) recordCount.textContent = `${filtered.length} records`;
-}
 
-// ============================================================
-// 📧 EMAIL NOTIFICATION
-// ============================================================
+    renderPayments(filtered);
+
+    const count =
+        document.getElementById('finance-paymentRecordCount');
+
+    if (count) {
+        count.textContent =
+            `Showing ${filtered.length} payment${filtered.length === 1 ? '' : 's'}`;
+    }
+}
 
 async function sendPaymentConfirmationEmail(studentId, paymentData) {
     try {
@@ -3444,63 +3947,214 @@ async function sendPaymentConfirmationEmail(studentId, paymentData) {
 }
 
 // ============================================================
+// 🖨️ PRINT PAYMENT FROM HISTORY
+// ============================================================
+
+async function printPaymentById(paymentId) {
+    const payment =
+        (studentFinanceState.payments || [])
+            .find(
+                p => String(p.id || '') ===
+                    String(paymentId || '')
+            );
+
+    if (!payment) {
+        showToast(
+            '❌ Payment record not found.',
+            'error'
+        );
+        return;
+    }
+
+    const receiptNumber =
+        payment.receipt_number ||
+        payment.reference ||
+        payment.transaction_id ||
+        'N/A';
+
+    window._lastReceiptData = {
+        amount: payment.amount,
+        receiptNumber,
+        period: payment.period,
+        transactionId: payment.transaction_id,
+        reference: payment.reference
+    };
+
+    printReceipt();
+}
+
+// ============================================================
 // 🚀 INITIALIZATION
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
-    if (!document.getElementById('financeSpinStyle')) {
-        const style = document.createElement('style');
-        style.id = 'financeSpinStyle';
-        style.textContent = `
-            @keyframes finance-spin { to { transform: rotate(360deg); } }
-            @keyframes slideInRight { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
-            @keyframes pulse-badge { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-            @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-            @keyframes fadeOut { from { opacity: 1; transform: translateY(0); } to { opacity: 0; transform: translateY(-10px); } }
-            @keyframes fadeInOverlay { from { opacity: 0; } to { opacity: 1; } }
-            @keyframes popIn { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
-            .payment-method-item.selected { border: 2px solid #4C1D95 !important; background: #ede9fe !important; box-shadow: 0 0 0 2px rgba(76, 29, 149, 0.1); }
-        `;
-        document.head.appendChild(style);
-    }
-    
-    const financeTab = document.querySelector('a[data-tab="finance"]');
+
+    const financeTab =
+        document.querySelector('a[data-tab="finance"]');
+
     if (financeTab) {
         financeTab.addEventListener('click', function() {
-            setTimeout(loadStudentFinance, 300);
+            setTimeout(
+                () => loadStudentFinance(true),
+                300
+            );
         });
     }
-    
+
     document.addEventListener('appReady', function() {
-        console.log('📱 App ready, loading student finance...');
-        setTimeout(loadStudentFinance, 800);
+        console.log(
+            '📱 App ready, loading student finance...'
+        );
+
+        setTimeout(
+            () => loadStudentFinance(),
+            800
+        );
     });
-    
-    const paymentFilter = document.getElementById('finance-paymentFilter');
-    if (paymentFilter) paymentFilter.addEventListener('change', filterStudentPayments);
-    
-    const periodFilter = document.getElementById('finance-periodFilter');
-    if (periodFilter) periodFilter.addEventListener('change', filterStudentPayments);
-    
-    const searchInput = document.getElementById('finance-search');
-    if (searchInput) searchInput.addEventListener('keyup', filterStudentPayments);
-    
-    const paymentForm = document.getElementById('finance-paymentForm');
-    if (paymentForm) {
-        paymentForm.addEventListener('submit', function(e) {
-            e.preventDefault();
-            processPayment();
-        });
+
+    const paymentFilter =
+        document.getElementById('finance-paymentFilter');
+
+    if (paymentFilter) {
+        paymentFilter.addEventListener(
+            'change',
+            filterStudentPayments
+        );
     }
-    
+
+    const periodFilter =
+        document.getElementById('finance-periodFilter');
+
+    if (periodFilter) {
+        periodFilter.addEventListener(
+            'change',
+            filterStudentPayments
+        );
+    }
+
+    const searchInput =
+        document.getElementById('finance-search');
+
+    if (searchInput) {
+        searchInput.addEventListener(
+            'input',
+            filterStudentPayments
+        );
+    }
+
+    const paymentForm =
+        document.getElementById('finance-paymentForm');
+
+    if (paymentForm) {
+        paymentForm.addEventListener(
+            'submit',
+            function(event) {
+                event.preventDefault();
+                processPayment();
+            }
+        );
+    }
+
+    const methodSelect =
+        document.getElementById('finance-paymentMethod');
+
+    if (methodSelect) {
+        methodSelect.addEventListener(
+            'change',
+            function() {
+                selectPaymentMethod(this.value);
+            }
+        );
+    }
+
+    const closeButton =
+        document.getElementById(
+            'finance-closePaymentModal'
+        );
+
+    if (closeButton) {
+        closeButton.addEventListener(
+            'click',
+            closePaymentModal
+        );
+    }
+
+    const cancelButton =
+        document.getElementById(
+            'finance-cancelPayment'
+        );
+
+    if (cancelButton) {
+        cancelButton.addEventListener(
+            'click',
+            closePaymentModal
+        );
+    }
+
+    const modal =
+        document.getElementById(
+            'finance-paymentModal'
+        );
+
+    const overlay =
+        modal?.querySelector(
+            '.finance-modal-overlay'
+        );
+
+    if (overlay) {
+        overlay.addEventListener(
+            'click',
+            closePaymentModal
+        );
+    }
+
+    const statementButton =
+        document.getElementById(
+            'finance-downloadStatementBtn'
+        );
+
+    if (statementButton) {
+        statementButton.addEventListener(
+            'click',
+            downloadStudentStatement
+        );
+    }
+
+    const viewFeesButton =
+        document.getElementById(
+            'finance-viewAllFees'
+        );
+
+    if (viewFeesButton) {
+        viewFeesButton.addEventListener(
+            'click',
+            viewFullFeeStructure
+        );
+    }
+
+    const contactButton =
+        document.getElementById(
+            'finance-contactOfficeBtn'
+        );
+
+    if (contactButton) {
+        contactButton.addEventListener(
+            'click',
+            function() {
+                window.location.href =
+                    'tel:+254790969743';
+            }
+        );
+    }
+
     listenForAdminEvents();
-    
+
     notifySuperAdmin('module_ready', {
-        version: '2.4.0',
-        timestamp: new Date().toISOString()
+        version: '3.0.0',
+        timestamp:
+            new Date().toISOString()
     });
-    
-    // Expose functions globally
+
     window.toggleFeeStructure = toggleFeeStructure;
     window.loadStudentFinance = loadStudentFinance;
     window.openPaymentModal = openPaymentModal;
@@ -3533,6 +4187,22 @@ document.addEventListener('DOMContentLoaded', function() {
     window.showSuccessPopup = showSuccessPopup;
     window.closeSuccessPopupAndRefresh = closeSuccessPopupAndRefresh;
     window.downloadReceipt = downloadReceipt;
+    window.printPaymentById = printPaymentById;
+
+    setTimeout(() => {
+        const financeSection =
+            document.getElementById('finance');
+
+        if (
+            financeSection &&
+            (
+                financeSection.classList.contains('active') ||
+                financeSection.style.display === 'block'
+            )
+        ) {
+            loadStudentFinance();
+        }
+    }, 1000);
 });
 
 console.log('✅ Student Finance module loaded successfully!');
