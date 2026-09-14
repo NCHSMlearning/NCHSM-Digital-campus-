@@ -309,7 +309,25 @@ class Database {
             throw new Error('Database is not initialized.');
         }
 
-        const { data, error } = await this.supabase.auth.getSession();
+        // Supabase may briefly return a null session while the persisted
+        // session is being restored after a hard refresh. Retry instead of
+        // treating that short window as a real logout.
+        let data = null;
+        let error = null;
+        for (let attempt = 0; attempt < 12; attempt++) {
+            try {
+                const result = await this.supabase.auth.getSession();
+                data = result?.data || null;
+                error = result?.error || null;
+                if (error) throw error;
+                if (data?.session?.user?.id) break;
+            } catch (err) {
+                error = err;
+                if (attempt === 11) throw err;
+            }
+
+            await new Promise(resolve => setTimeout(resolve, 250));
+        }
 
         if (error) {
             throw error;
