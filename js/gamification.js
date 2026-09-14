@@ -14,7 +14,11 @@
             this.userId = null;
             this.userProfile = null;
             this.streak = 0;
+            // Points awarded for gamification activities/badges.
+            // Kept under the legacy property name for compatibility.
             this.attendancePoints = 0;
+            // Real verified-attendance points: 10 points per verified record.
+            this.realAttendancePoints = 0;
             this.level = 1;
             this.xp = 0;
             this.xpToNextLevel = 100;
@@ -114,6 +118,7 @@
         async init() {
             await this.waitForUser();
             await this.loadUserGamificationData();
+            await this.loadAttendancePoints();
             await this.loadNurseIQData();
             await this.loadLoginData();
             this.calculateTotalPoints();
@@ -144,13 +149,7 @@
                     }
                 }, 500);
                 
-                setTimeout(() => {
-                    clearInterval(checkInterval);
-                    if (!this.userId) {
-                        console.warn('⚠️ Gamification: no authenticated user became available within 10 seconds.');
-                        resolve();
-                    }
-                }, 10000);
+                setTimeout(() => clearInterval(checkInterval), 10000);
             });
         }
         
@@ -159,23 +158,29 @@
         // ============================================================
         
         calculateTotalPoints() {
-            // Sum all sources
-            this.totalPoints = (this.attendancePoints || 0) + 
-                               (this.nurseiqPoints || 0) + 
-                               (this.loginPoints || 0);
-            
-            // Also include any bonus points from badges
-            let badgeBonus = 0;
-            for (const badge of this.badges) {
-                const def = this.badgeDefinitions[badge.id];
-                if (def) badgeBonus += def.points;
-            }
-            // Badge points are already included in attendancePoints when awarded
-            
-            console.log(`💰 Total points: ${this.totalPoints} (Attendance: ${this.attendancePoints}, NurseIQ: ${this.nurseiqPoints}, Login: ${this.loginPoints})`);
+            const attendancePoints = Number(this.realAttendancePoints) || 0;
+            const nurseIQPoints = Number(this.nurseiqPoints) || 0;
+            const loginPoints = Number(this.loginPoints) || 0;
+            const gamificationPoints = Number(this.attendancePoints) || 0;
+
+            // ONE authoritative formula for the student's overall points:
+            // Attendance + NurseIQ + Login + Gamification/Activity.
+            this.totalPoints =
+                attendancePoints +
+                nurseIQPoints +
+                loginPoints +
+                gamificationPoints;
+
+            console.log(
+                `💰 TOTAL = ${this.totalPoints} ` +
+                `(Attendance ${attendancePoints} + ` +
+                `NurseIQ ${nurseIQPoints} + ` +
+                `Login ${loginPoints} + ` +
+                `Gamification ${gamificationPoints})`
+            );
+
             return this.totalPoints;
         }
-        
         // ============================================================
         // 🔑 LOAD LOGIN DATA
         // ============================================================
@@ -193,9 +198,6 @@
                 if (data && !error) {
                     this.loginCount = data.login_count || 0;
                     this.loginPoints = this.loginCount * 10;
-                    // totalPoints is recalculated centrally from the current
-                    // gamification/attendance + NurseIQ + login components.
-                    // Do not overwrite it here with a potentially stale DB value.
 }
             } catch (error) {
                 console.warn('Could not load login data:', error);
@@ -210,78 +212,75 @@
         
         async loadNurseIQData() {
             if (!this.userId || !window.db?.supabase) return;
-            
+
             try {
-                // Get NurseIQ attempts
-                const { data: attempts, error } = await window.db.supabase
+                const { data: attempts, error: attemptsError } = await window.db.supabase
                     .from('nurseiq_attempts')
                     .select('*')
-                    .eq('student_id', this.userId)
+                    .eq('student_id', String(this.userId))
                     .order('completed_at', { ascending: false });
-                
-                if (error) throw error;
-                
+
+                if (attemptsError) throw attemptsError;
+
                 this.nurseiqAttempts = attempts || [];
-                
-                let totalNurseIQPoints = 0;
-                let totalQuestions = 0;
-                let perfectScores = 0;
-                
-                for (const attempt of this.nurseiqAttempts) {
-                    const totalQuestionsForAttempt = Number(attempt.total_questions) || 0;
-                    const scoreForAttempt = Number(attempt.score) || 0;
-                    const scorePercent = totalQuestionsForAttempt > 0
-                        ? (scoreForAttempt / totalQuestionsForAttempt) * 100
-                        : 0;
-                    
-                    // Points per attempt based on score
-                    if (scorePercent >= 90) {
-                        totalNurseIQPoints += 30;
-                    } else if (scorePercent >= 70) {
-                        totalNurseIQPoints += 20;
-                    } else if (scorePercent >= 50) {
-                        totalNurseIQPoints += 10;
-                    } else {
-                        totalNurseIQPoints += 5;
-                    }
-                    
-                    totalQuestions += attempt.total_questions || 0;
-                    
-                    if (totalQuestionsForAttempt > 0 && scoreForAttempt >= totalQuestionsForAttempt) {
-                        perfectScores++;
-                    }
+
+                // nurseiq_points is the authoritative accumulated NurseIQ
+                // points stored for the student. Do not recalculate it with a
+                // second scoring system, otherwise the dashboard and profile
+                // totals can disagree.
+                const { data: profilePoints, error: profileError } = await window.db.supabase
+                    .from('consolidated_user_profiles_table')
+                    .select('nurseiq_points')
+                    .eq('user_id', String(this.userId))
+                    .maybeSingle();
+
+                if (profileError) {
+                    console.warn('⚠️ Could not load stored NurseIQ points:', profileError);
                 }
-                
-                // Bonus for reaching milestones
-                if (totalQuestions >= 50) {
-                    if (!this.hasBadge('nurseiq_master')) {
-                        await this.unlockBadge('nurseiq_master');
-                    }
-                    totalNurseIQPoints += 100;
-                }
-                
-                if (perfectScores >= 3) {
-                    if (!this.hasBadge('nurseiq_perfect')) {
-                        await this.unlockBadge('nurseiq_perfect');
-                    }
-                    totalNurseIQPoints += 75;
-                }
-                
-                this.nurseiqPoints = totalNurseIQPoints;
-                
-                console.log(`📊 NurseIQ: ${this.nurseiqPoints} points from ${this.nurseiqAttempts.length} attempts`);
-                
+
+                this.nurseiqPoints = Number(profilePoints?.nurseiq_points) || 0;
+
+                console.log(
+                    `📊 NurseIQ: ${this.nurseiqPoints} points ` +
+                    `from ${this.nurseiqAttempts.length} attempts`
+                );
+
             } catch (error) {
                 console.error('Error loading NurseIQ data:', error);
                 this.nurseiqPoints = 0;
                 this.nurseiqAttempts = [];
             }
         }
-        
         // ============================================================
         // 👤 LOAD USER GAMIFICATION DATA
         // ============================================================
         
+        async loadAttendancePoints() {
+            if (!this.userId || !window.db?.supabase) return;
+
+            try {
+                const { data, error } = await window.db.supabase
+                    .from('attendance')
+                    .select('id')
+                    .eq('student_id', String(this.userId))
+                    .eq('status', 'verified');
+
+                if (error) {
+                    console.warn('⚠️ Could not load verified attendance points:', error);
+                    this.realAttendancePoints = 0;
+                    return;
+                }
+
+                const verifiedCount = Array.isArray(data) ? data.length : 0;
+                this.realAttendancePoints = verifiedCount * 10;
+
+                console.log(`📅 Attendance points: ${this.realAttendancePoints} (${verifiedCount} verified records)`);
+            } catch (error) {
+                console.warn('⚠️ Attendance points unavailable:', error);
+                this.realAttendancePoints = 0;
+            }
+        }
+
         async loadUserGamificationData() {
             if (!this.userId || !window.db?.supabase) return;
             
@@ -390,15 +389,15 @@
                 const { error } = await window.db.supabase
                     .from('consolidated_user_profiles_table')
                     .update({
-                        gamification_points: this.attendancePoints,
+                        gamification_points: Number(this.attendancePoints) || 0,
                         attendance_streak: this.streak,
                         gamification_level: this.level,
                         gamification_xp: this.xp,
                         earned_badges: this.badges,
                         last_check_in: this.lastCheckIn ? this.lastCheckIn.toISOString() : null,
-                        nurseiq_points: this.nurseiqPoints,
+                        nurseiq_points: Number(this.nurseiqPoints) || 0,
                         total_nurseiq_attempts: this.nurseiqAttempts.length,
-                        total_points: this.totalPoints, // ✅ Store total points
+                        total_points: Number(this.totalPoints) || 0, // ✅ Store total points
                         updated_at: new Date().toISOString()
                     })
                     .eq('user_id', String(this.userId));
@@ -814,6 +813,13 @@
         
         updateUI() {
             this.calculateTotalPoints();
+
+            // Keep the main dashboard total synchronized with the same
+            // four-source calculation.
+            const dashboardTotal = document.getElementById('total-points-display');
+            if (dashboardTotal) {
+                dashboardTotal.textContent = this.totalPoints;
+            }
             
             // Update progress bar
             const progressFill = document.getElementById('level-progress-fill');
