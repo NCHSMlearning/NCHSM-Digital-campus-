@@ -2258,7 +2258,14 @@ class DashboardModule {
                 }
             }
 
-            const normalized = courses.slice(0, 4);
+            const normalized = courses
+                .filter((course, index, list) => {
+                    const key = `${String(course.code || '').trim().toLowerCase()}|${String(course.name || '').trim().toLowerCase()}`;
+                    return list.findIndex(item =>
+                        `${String(item.code || '').trim().toLowerCase()}|${String(item.name || '').trim().toLowerCase()}` === key
+                    ) === index;
+                })
+                .slice(0, 4);
             container.innerHTML = '';
 
             if (!normalized.length) {
@@ -2315,8 +2322,9 @@ class DashboardModule {
             const now = this.getKenyaNow();
             const upcoming = (events || []).filter(event => {
                 if (!event.class_date) return false;
-                const date = new Date(`${event.class_date}T${event.start_time || '00:00:00'}`);
-                return date >= now;
+                const time = event.start_time || '00:00:00';
+                const date = new Date(`${event.class_date}T${time}`);
+                return !Number.isNaN(date.getTime()) && date >= now;
             }).slice(0, 2);
 
             container.innerHTML = '';
@@ -2653,14 +2661,14 @@ class DashboardModule {
         setText(this.elements.verifiedCount, attendance.verified ?? 0);
         setText(this.elements.totalCount, attendance.total ?? 0);
         setText(this.elements.pendingCount, attendance.pending ?? 0);
-        setText(this.elements.activeCourses, m.courses ?? 0);
-        setText(this.elements.approvedUnits, m.examCard?.approved ?? 0);
+        setText(this.elements.activeCourses, Number(m.courses) || 0);
+        setText(this.elements.approvedUnits, Number(m.examCard?.approved) || 0);
         setText(this.elements.resources, m.resources ?? 0);
         setText(this.elements.upcomingExam, m.exams || 'No upcoming exams');
 
-        setText(this.elements.snapshotActiveCourses, m.courses ?? 0);
-        setText(this.elements.snapshotApprovedUnits, m.examCard?.approved ?? 0);
-        setText(this.elements.snapshotResources, m.resources ?? 0);
+        setText(this.elements.snapshotActiveCourses, Number(m.courses) || 0);
+        setText(this.elements.snapshotApprovedUnits, Number(m.examCard?.approved) || 0);
+        setText(this.elements.snapshotResources, Number(m.resources) || 0);
         if (this.elements.snapshotCGPA && !this.elements.snapshotCGPA.textContent.trim()) {
             this.elements.snapshotCGPA.textContent = '--';
         }
@@ -2867,7 +2875,7 @@ window.DashboardModule = DashboardModule;
 window.initDashboardModule = initDashboardModule;
 window.refreshDashboard = () => dashboardModule?.refreshAll();
 
-console.log('✅ Dashboard module COMPLETE with all fixes!');
+console.log('✅ Dashboard module MERGED — authoritative metrics + previous dashboard cards!');
 console.log('   - ✅ Total Points uses RPC data');
 console.log('   - ✅ Gamification included in totals');
 console.log('   - ✅ XP calculation uses all sources');
