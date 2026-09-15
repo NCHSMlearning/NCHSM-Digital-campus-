@@ -3,8 +3,15 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NCHSM Blog | Healthcare Education Insights</title>
-    <meta name="description" content="Latest news, tips, and insights from Nakuru College of Health Sciences and Management">
+    <title>NCHSM Blog | Nursing, Health Sciences, Admissions & Student Life</title>
+    <meta name="description" content="Useful and original articles from Nakuru College of Health Sciences and Management covering nursing education, health sciences, admissions, clinical learning, student life, careers and healthcare.">
+    <meta name="robots" content="index, follow, max-image-preview:large">
+    <link rel="canonical" href="https://nchsm.co.ke/blog/">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="NCHSM Blog | Nursing, Health Sciences, Admissions & Student Life">
+    <meta property="og:description" content="Useful information and original articles from Nakuru College of Health Sciences and Management.">
+    <meta property="og:url" content="https://nchsm.co.ke/blog/">
+    <meta property="og:site_name" content="Nakuru College of Health Sciences and Management">
     <!-- ===== FAVICON ===== -->
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="32x32">
 <link rel="icon" type="image/png" href="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" sizes="16x16">
@@ -124,27 +131,7 @@
             max-width: 600px;
             margin: 0 auto;
         }
-        
-        /* ===== AD BANNER ===== */
-        .ad-banner {
-            background: white;
-            padding: 20px;
-            text-align: center;
-            border-radius: 12px;
-            margin: 20px auto;
-            max-width: 1200px;
-            box-shadow: 0 2px 8px rgba(0,0,0,0.04);
-            border: 1px solid #e5e7eb;
-        }
-        .ad-banner .ad-label {
-            font-size: 10px;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-        
-        /* ===== BLOG GRID ===== */
+/* ===== BLOG GRID ===== */
         .blog-container {
             max-width: 1200px;
             margin: 0 auto;
@@ -295,26 +282,7 @@
         @media (max-width: 768px) {
             #studentBlogGrid { grid-template-columns:1fr; }
         }
-        
-        /* ===== AD PLACEMENTS ===== */
-        .ad-inline {
-            background: #f8fafc;
-            padding: 20px;
-            text-align: center;
-            border-radius: 8px;
-            margin: 20px 0;
-            border: 1px dashed #e2e8f0;
-            grid-column: 1 / -1;
-        }
-        .ad-inline .ad-label {
-            font-size: 10px;
-            color: #94a3b8;
-            text-transform: uppercase;
-            letter-spacing: 1px;
-            margin-bottom: 10px;
-        }
-        
-        /* ===== SIDEBAR ===== */
+/* ===== SIDEBAR ===== */
         .sidebar {
             display: flex;
             flex-direction: column;
@@ -463,6 +431,22 @@
             }
         }
     </style>
+
+    <script type="application/ld+json">
+    {
+      "@context":"https://schema.org",
+      "@type":"Blog",
+      "name":"NCHSM Blog",
+      "description":"Original articles and useful information from Nakuru College of Health Sciences and Management.",
+      "url":"https://nchsm.co.ke/blog/",
+      "publisher":{
+        "@type":"Organization",
+        "name":"Nakuru College of Health Sciences and Management",
+        "url":"https://nchsm.co.ke/"
+      }
+    }
+    </script>
+
 </head>
 <body>
 
@@ -474,7 +458,7 @@
                 <h1>NCHSM <span>Blog</span></h1>
             </div>
             <div class="nav">
-                <a href="/login" class="home-link">🏠 Home</a>
+                <a href="/" class="home-link">🏠 Home</a>
                 <a href="/blog/">📝 Blog</a>
                 <a href="/about">ℹ️ About</a>
                 <a href="/contact">📧 Contact</a>
@@ -492,21 +476,6 @@
             <p>Stay updated with the latest news, tips, and resources from Nakuru College of Health Sciences and Management.</p>
         </div>
     </section>
-
-    <!-- ===== TOP AD BANNER ===== -->
-    <div class="ad-banner">
-        <div class="ad-label">— Advertisement —</div>
-        <ins class="adsbygoogle"
-             style="display:block"
-             data-ad-client="ca-pub-9019033253872768"
-             data-ad-slot="5212305907"
-             data-ad-format="auto"
-             data-full-width-responsive="true"></ins>
-        <script>
-             (adsbygoogle = window.adsbygoogle || []).push({});
-        </script>
-    </div>
-
     <!-- ===== MAIN CONTENT ===== -->
     <div class="blog-container">
 
@@ -525,6 +494,15 @@
         </section>
 
         <!-- ===== BLOG GRID ===== -->
+        <section aria-labelledby="latest-articles-title" style="grid-column:1 / -1;">
+            <div style="background:white;border:1px solid #e5e7eb;border-radius:12px;padding:22px 24px;margin-bottom:24px;">
+                <h2 id="latest-articles-title" style="color:#0A3D62;font-size:1.45rem;margin-bottom:10px;">Latest NCHSM Articles</h2>
+                <p style="color:#475569;line-height:1.75;margin:0;">
+                    Explore practical resources written for prospective students, current learners and the wider health sciences community.
+                    For official admission requirements, fees, programme availability and institutional information, please confirm the current details directly with NCHSM.
+                </p>
+            </div>
+        </section>
         <div class="blog-grid">
 
             <!-- ============================================================ -->
@@ -564,24 +542,6 @@
                     <a href="post.html?slug=student-life-tips" class="read-more">Read More →</a>
                 </div>
             </article>
-
-            <!-- ============================================================ -->
-            <!-- INLINE AD                                                     -->
-            <!-- ============================================================ -->
-            <div class="ad-inline">
-                <div class="ad-label">— Advertisement —</div>
-                <ins class="adsbygoogle"
-                     style="display:block; text-align:center;"
-                     data-ad-layout="in-article"
-                     data-ad-format="fluid"
-                     data-ad-client="ca-pub-9019033253872768"
-                     data-ad-slot="7494854318"></ins>
-                <script>
-                     (adsbygoogle = window.adsbygoogle || []).push({});
-                </script>
-            </div>
-
-            <!-- ============================================================ -->
             <!-- BLOG POST 3: Study Tips                                      -->
             <!-- ============================================================ -->
             <article class="blog-card">
@@ -713,18 +673,6 @@
                     <a href="post.html?slug=nchsm-culture-community" class="read-more">Read More →</a>
                 </div>
             </article>
-
-            <!-- ============================================================ -->
-            <!-- PAGINATION                                                   -->
-            <!-- ============================================================ -->
-            <div class="pagination">
-                <button disabled><i class="fas fa-chevron-left"></i></button>
-                <button class="active">1</button>
-                <button>2</button>
-                <button>3</button>
-                <button><i class="fas fa-chevron-right"></i></button>
-            </div>
-
         </div>
 
         <!-- ===== SIDEBAR ===== -->
@@ -734,40 +682,25 @@
             <div class="sidebar-widget">
                 <h4>📖 About NCHSM</h4>
                 <p style="color: #64748b; font-size: 0.9rem; line-height: 1.6;">
-                    Nakuru College of Health Sciences and Management is a premier institution dedicated to 
-                    excellence in healthcare education since 1978.
+                    Nakuru College of Health Sciences and Management provides education and practical preparation
+                    in health sciences and related fields. Explore the college website for current programmes,
+                    admissions information and institutional updates.
                 </p>
                 <a href="/about" style="color: #0A3D62; font-weight: 600; text-decoration: none; display: inline-block; margin-top: 10px;">
                     Learn More →
                 </a>
             </div>
 
-            <!-- Sidebar Ad -->
-            <div class="sidebar-ad">
-                <div>
-                    <div class="ad-label">— Advertisement —</div>
-                    <ins class="adsbygoogle"
-                         style="display:block"
-                         data-ad-client="ca-pub-9019033253872768"
-                         data-ad-slot="5195054685"
-                         data-ad-format="auto"
-                         data-full-width-responsive="true"></ins>
-                    <script>
-                         (adsbygoogle = window.adsbygoogle || []).push({});
-                    </script>
-                </div>
-            </div>
-
             <!-- Categories Widget -->
             <div class="sidebar-widget">
                 <h4>📂 Categories</h4>
                 <ul>
-                    <li><a href="#">Career Advice</a></li>
-                    <li><a href="#">Student Life</a></li>
-                    <li><a href="#">Study Tips</a></li>
-                    <li><a href="#">Healthcare News</a></li>
-                    <li><a href="#">Admissions</a></li>
-                    <li><a href="#">Campus Life</a></li>
+                    <li><a href="#career">Career & Professional Development</a></li>
+                    <li><a href="#student-life">Student Life & Learning</a></li>
+                    <li><a href="#study-tips">Study Tips</a></li>
+                    <li><a href="#healthcare">Healthcare</a></li>
+                    <li><a href="#admissions">Admissions</a></li>
+                    <li><a href="#campus-life">Campus Life</a></li>
                 </ul>
             </div>
 
@@ -790,7 +723,7 @@
                 <p style="color: #64748b; font-size: 0.85rem; margin-bottom: 12px;">
                     Get the latest updates delivered to your inbox.
                 </p>
-                <form style="display: flex; gap: 8px;">
+                <form id="newsletterForm" style="display: flex; gap: 8px;" onsubmit="return handleNewsletter(event);">
                     <input type="email" placeholder="Your email" style="flex: 1; padding: 10px; border: 1px solid #e2e8f0; border-radius: 8px; font-size: 0.85rem;">
                     <button type="submit" style="background: #0A3D62; color: white; border: none; padding: 10px 16px; border-radius: 8px; cursor: pointer; font-weight: 600;">
                         Subscribe
@@ -805,7 +738,7 @@
     <footer class="blog-footer">
         <div class="container">
             <div class="links">
-                <a href="/login">🏠 Home</a>
+                <a href="/">🏠 Home</a>
                 <a href="/blog/">📝 Blog</a>
                 <a href="/about">ℹ️ About</a>
                 <a href="/contact">📧 Contact</a>
@@ -814,6 +747,7 @@
             </div>
             <div class="copyright">
                 © 2026 Nakuru College of Health Sciences and Management. All rights reserved.
+                <span style="display:block;margin-top:6px;">NCHSM Blog • Educational and institutional information</span>
             </div>
         </div>
     </footer>
@@ -821,5 +755,26 @@
     <!-- Live Student Blog integration. Safe fallback: existing editorial posts remain visible if Supabase is not configured. -->
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="./js/student-blog-public.js"></script>
+
+    <script>
+    function handleNewsletter(event) {
+        event.preventDefault();
+        const input = event.target.querySelector('input[type="email"]');
+        const message = document.getElementById('newsletterMessage');
+        if (!input || !input.value.trim()) return false;
+        message.textContent = 'Newsletter subscriptions will be enabled when the NCHSM mailing service is connected.';
+        input.value = '';
+        return false;
+    }
+
+    // If the live student-blog service fails, keep the editorial articles visible.
+    window.addEventListener('error', function (event) {
+        const grid = document.getElementById('studentBlogGrid');
+        if (grid && /student-blog-public|supabase/i.test(event.filename || '')) {
+            grid.innerHTML = '<div class="blog-loading">Student posts are temporarily unavailable. Please explore the NCHSM editorial articles below.</div>';
+        }
+    });
+    </script>
+
 </body>
 </html>
