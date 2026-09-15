@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 
 <html lang="en">
@@ -10937,6 +10938,187 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   #enrollment .enr-tab-btn{min-height:46px!important;padding:9px 12px!important;font-size:12px!important;}
 }
 </style>
+
+<!-- ============================================================
+     NCHSM STUDENT PORTAL — REFRESH-SAFE SPA ROUTING
+     Keeps existing modules/Supabase logic intact.
+     Supports clean routes such as:
+       /student/
+       /student/profile
+       /student/attendance
+       /student/cats
+       /student/exams
+       /student/finance
+       /student/courses
+       /student/timetable
+       /student/resources
+       /student/nurseiq
+       /student/enrollment
+       /student/blog
+       /student/academic-reports
+       /student/exam-card
+       /student/lecture-card
+     ============================================================ -->
+<script id="nchsm-refresh-safe-routing">
+(function () {
+    'use strict';
+
+    const ROUTES = {
+        dashboard: '/student/',
+        profile: '/student/profile',
+        attendance: '/student/attendance',
+        cats: '/student/cats',
+        exams: '/student/exams',
+        finance: '/student/finance',
+        'hub-courses': '/student/courses',
+        'hub-register': '/student/unit-registration',
+        'hub-exam-card': '/student/exam-card',
+        'hub-lecture-card': '/student/lecture-card',
+        'hub-timetable': '/student/timetable',
+        resources: '/student/resources',
+        nurseiq: '/student/nurseiq',
+        enrollment: '/student/enrollment',
+        'student-blog': '/student/blog',
+        'academic-reports': '/student/academic-reports'
+    };
+
+    const PATH_TO_TAB = {};
+    Object.keys(ROUTES).forEach(function (tab) {
+        PATH_TO_TAB[ROUTES[tab]] = tab;
+    });
+
+    function normalizePath(path) {
+        if (!path) return '/student/';
+        path = path.split('?')[0].split('#')[0].replace(/\/+$/, '');
+        return path || '/';
+    }
+
+    function routeFromCurrentLocation() {
+        const params = new URLSearchParams(window.location.search);
+        const queryRoute = params.get('route');
+
+        if (queryRoute) {
+            const clean = queryRoute.startsWith('/')
+                ? normalizePath(queryRoute)
+                : normalizePath('/student/' + queryRoute);
+            return PATH_TO_TAB[clean] || 'dashboard';
+        }
+
+        const path = normalizePath(window.location.pathname);
+        return PATH_TO_TAB[path] || (
+            path === '/student' || path === '/student.html' || path === '/'
+                ? 'dashboard'
+                : null
+        );
+    }
+
+    function pathForTab(tabId) {
+        return ROUTES[tabId] || ROUTES.dashboard;
+    }
+
+    function setCleanUrl(tabId, replace) {
+        const target = pathForTab(tabId);
+        const current = normalizePath(window.location.pathname);
+
+        if (current !== target || window.location.search) {
+            const method = replace ? 'replaceState' : 'pushState';
+            window.history[method](
+                { nchsmStudentTab: tabId },
+                '',
+                target
+            );
+        }
+    }
+
+    function activateTab(tabId, replaceUrl) {
+        if (!tabId) tabId = 'dashboard';
+
+        if (typeof window.showTab === 'function') {
+            window.showTab(tabId);
+        } else {
+            // If the original handler has not exposed showTab yet,
+            // wait for the portal scripts to finish.
+            setTimeout(function () {
+                if (typeof window.showTab === 'function') {
+                    window.showTab(tabId);
+                }
+            }, 250);
+        }
+
+        try {
+            localStorage.setItem('nchsm_current_tab', tabId);
+        } catch (_) {}
+
+        setCleanUrl(tabId, !!replaceUrl);
+    }
+
+    function initializeRoute() {
+        const requestedTab = routeFromCurrentLocation() || 'dashboard';
+
+        // If GitHub Pages 404 redirected us to student.html?route=...
+        // remove the query and expose the clean module URL.
+        activateTab(requestedTab, true);
+
+        // The existing initialization code can force the dashboard
+        // briefly during startup, so apply the requested route again
+        // after authentication/module initialization has completed.
+        setTimeout(function () {
+            activateTab(requestedTab, true);
+        }, 450);
+
+        setTimeout(function () {
+            activateTab(requestedTab, true);
+        }, 1000);
+
+        setTimeout(function () {
+            activateTab(requestedTab, true);
+        }, 1800);
+    }
+
+    // Wrap the existing showTab so every normal click also updates
+    // the browser URL without reloading the page.
+    function installNavigationWrapper() {
+        if (typeof window.showTab !== 'function') {
+            setTimeout(installNavigationWrapper, 100);
+            return;
+        }
+
+        if (window.showTab.__nchsmRouteWrapped) return;
+
+        const originalShowTab = window.showTab;
+
+        function routedShowTab(tabId) {
+            originalShowTab(tabId);
+            if (ROUTES[tabId]) {
+                setCleanUrl(tabId, false);
+            }
+        }
+
+        routedShowTab.__nchsmRouteWrapped = true;
+        routedShowTab.__nchsmOriginal = originalShowTab;
+        window.showTab = routedShowTab;
+        window.nchsmNavigateToTab = routedShowTab;
+    }
+
+    window.addEventListener('popstate', function () {
+        const tab = routeFromCurrentLocation() || 'dashboard';
+        activateTab(tab, true);
+    });
+
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', function () {
+            installNavigationWrapper();
+            initializeRoute();
+        }, { once: true });
+    } else {
+        installNavigationWrapper();
+        initializeRoute();
+    }
+
+    window.nchsmStudentRoutes = ROUTES;
+})();
+</script>
+
 </body>
 
 <style id="nchsm-final-reference-lock">
