@@ -9328,21 +9328,157 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 
     </div>
 
-<style id="nchsm-finance-payment-upgrade-css">
-#finance-paymentModal select,
-#finance-paymentModal input { box-sizing:border-box; }
+<style id="nchsm-finance-payment-polished-css">
+/* ============================================================
+   NCHSM FINANCE PAYMENT MODAL — POLISHED / RESPONSIVE LAYOUT
+   Keeps all existing IDs and JS hooks unchanged.
+   ============================================================ */
+#finance-paymentModal {
+    box-sizing:border-box !important;
+    padding:16px !important;
+}
+
+#finance-paymentModal > div:last-child {
+    width:min(560px, 100%) !important;
+    max-width:560px !important;
+    max-height:calc(100vh - 32px) !important;
+    display:flex !important;
+    flex-direction:column !important;
+    overflow:hidden !important;
+    border-radius:16px !important;
+}
+
+#finance-paymentModal > div:last-child > div:first-child {
+    flex:0 0 auto !important;
+    min-height:68px !important;
+    padding:15px 18px !important;
+}
+
+#finance-paymentModal > div:last-child > div:first-child h3 {
+    font-size:18px !important;
+    line-height:1.2 !important;
+}
+
+#finance-paymentModal > div:last-child > div:first-child p {
+    font-size:11px !important;
+}
+
+#finance-paymentForm {
+    box-sizing:border-box !important;
+    width:100% !important;
+    min-width:0 !important;
+    padding:16px 18px 18px !important;
+    overflow-y:auto !important;
+    overflow-x:hidden !important;
+    scrollbar-width:thin;
+}
+
+#finance-paymentForm > div {
+    box-sizing:border-box !important;
+}
+
+#finance-paymentForm label {
+    display:block !important;
+    line-height:1.25 !important;
+}
+
+#finance-paymentForm select,
+#finance-paymentForm input {
+    box-sizing:border-box !important;
+    max-width:100% !important;
+    font-family:inherit !important;
+}
+
 #finance-paymentPeriod,
 #finance-paymentBlock,
-#finance-paymentMethod,
+#finance-paymentMethod {
+    width:100% !important;
+    min-width:0 !important;
+    height:43px !important;
+}
+
 #finance-paymentAmount,
 #finance-paymentPhone,
-#finance-bankReference { max-width:100%; }
-@media (max-width:600px){
-  #finance-paymentModal { padding:8px !important; }
-  #finance-paymentModal > div:last-child { max-height:96vh !important; overflow-y:auto !important; }
-  #finance-paymentForm { padding:16px !important; }
-  #finance-paymentForm > div[style*="justify-content:flex-end"] { flex-direction:column-reverse !important; }
-  #finance-submitPayment, #finance-cancelPayment { width:100% !important; }
+#finance-bankReference {
+    min-width:0 !important;
+}
+
+/* Fee period + block sit together on wider screens. */
+#finance-paymentForm > div:nth-of-type(1),
+#finance-paymentForm > div:nth-of-type(2) {
+    width:100%;
+}
+
+#finance-paymentInfo {
+    box-sizing:border-box !important;
+    width:100% !important;
+}
+
+#finance-paymentForm > div:last-child {
+    box-sizing:border-box !important;
+    width:100% !important;
+    padding-top:2px !important;
+    position:sticky;
+    bottom:0;
+    background:#fff;
+}
+
+#finance-submitPayment,
+#finance-cancelPayment {
+    min-height:42px !important;
+    white-space:nowrap !important;
+}
+
+#finance-submitPayment {
+    min-width:190px !important;
+}
+
+@media (min-width:700px) {
+    /* Two compact columns for period/block only. */
+    #finance-paymentForm > div:nth-of-type(1),
+    #finance-paymentForm > div:nth-of-type(2) {
+        display:inline-block;
+        vertical-align:top;
+        width:calc(50% - 6px) !important;
+    }
+    #finance-paymentForm > div:nth-of-type(1) { margin-right:8px !important; }
+}
+
+@media (max-width:699px) {
+    #finance-paymentModal { padding:8px !important; }
+    #finance-paymentModal > div:last-child {
+        max-height:calc(100vh - 16px) !important;
+        width:100% !important;
+        border-radius:14px !important;
+    }
+    #finance-paymentForm { padding:14px !important; }
+    #finance-paymentForm > div:last-child {
+        flex-direction:column-reverse !important;
+        gap:8px !important;
+        position:sticky;
+        bottom:0;
+        padding-top:10px !important;
+    }
+    #finance-submitPayment,
+    #finance-cancelPayment {
+        width:100% !important;
+        min-width:0 !important;
+    }
+}
+
+@media (max-height:720px) and (min-width:700px) {
+    #finance-paymentModal { padding:8px !important; }
+    #finance-paymentModal > div:last-child {
+        max-height:calc(100vh - 16px) !important;
+    }
+    #finance-paymentForm { padding:12px 16px 14px !important; }
+    #finance-paymentForm > div { margin-bottom:11px !important; }
+}
+
+#finance-paymentForm input:focus,
+#finance-paymentForm select:focus {
+    border-color:#2878d7 !important;
+    box-shadow:0 0 0 3px rgba(40,120,215,.10) !important;
 }
 </style>
 </section>
