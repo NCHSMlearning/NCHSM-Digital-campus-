@@ -45,6 +45,9 @@ const studentFinanceState = {
     feeStructureRaw: null,
     voteHeads: [],
     paymentProgress: 0,
+    overallProgress: 0,
+    currentPeriodProgress: 0,
+    currentPeriodOutstanding: 0,
     lastUpdated: null,
     isLoaded: false,
     programType: 'TVET',
@@ -56,6 +59,7 @@ const studentFinanceState = {
     feeStructureVisible: false,
     student: null,
     selectedPeriod: null,
+    selectedBlock: null,
     selectedPaymentMethod: 'mpesa',
     stkPayment: {
         isProcessing: false,
@@ -1372,10 +1376,15 @@ async function fetchFinanceDataFromSupabase(user) {
             periods[0]
         );
 
-        const currentPeriodIndex =
-            periods.indexOf(currentPeriod) >= 0
+        let currentPeriodIndex = processedFeeStructure.findIndex(
+            row => mapPeriodToDisplay(row?.name) === currentPeriod
+        );
+
+        if (currentPeriodIndex < 0) {
+            currentPeriodIndex = periods.indexOf(currentPeriod) >= 0
                 ? periods.indexOf(currentPeriod)
                 : 0;
+        }
 
         const completedPayments = paymentsData.filter(
             p => String(p.status || '').toLowerCase() === 'completed'
@@ -1386,25 +1395,67 @@ async function fetchFinanceDataFromSupabase(user) {
             0
         );
 
-        let balance = Number(accountData?.balance) || 0;
-        let totalPaid = Number(accountData?.total_paid) || 0;
-        let outstanding =
-            Number(accountData?.outstanding ?? balance) || 0;
-        let totalDue = Number(accountData?.total_due) || 0;
+        // ------------------------------------------------------------
+        // FINANCE CALCULATION
+        // Overall figures use the complete active fee structure and all
+        // completed payments. Current-period figures are calculated separately.
+        // This prevents a previous/current term payment from being mistaken
+        // for the student's entire account balance.
+        // ------------------------------------------------------------
+        const feeStructureTotal = processedFeeStructure.reduce(
+            (sum, row) => sum + (Number(row.amount) || 0),
+            0
+        );
 
-        if (
-            !accountData ||
-            (totalDue <= 0 && balance <= 0 && outstanding <= 0 && totalPaid <= 0)
-        ) {
-            totalPaid = completedTotal;
+        const accountTotalDue = Number(accountData?.total_due) || 0;
+        const accountTotalPaid = Number(accountData?.total_paid) || 0;
 
-            totalDue =
-                Number(processedFeeStructure[currentPeriodIndex]?.amount) ||
-                getFeeAmount(programType, currentPeriodIndex, programLevel);
+        // Prefer transaction records because they represent the payments
+        // actually loaded for this student. Fall back to the account total
+        // only when no completed transaction amount was returned.
+        const totalPaid = completedTotal > 0
+            ? completedTotal
+            : accountTotalPaid;
 
-            balance = Math.max(totalDue - totalPaid, 0);
-            outstanding = balance;
-        }
+        // Fee structure is the source of the assessed fee total when available.
+        // If it is unavailable, use the finance account's total_due.
+        const totalDue = feeStructureTotal > 0
+            ? feeStructureTotal
+            : accountTotalDue;
+
+        // Recognise common account-level adjustments without depending on a
+        // single schema. Positive values add to the amount owed; credits reduce it.
+        const positiveAdjustments = [
+            'previous_balance',
+            'opening_balance',
+            'balance_forward',
+            'adjustments',
+            'additional_charges',
+            'charges'
+        ].reduce((sum, key) => sum + (Number(accountData?.[key]) || 0), 0);
+
+        const credits = [
+            'credit',
+            'credits',
+            'approved_credit',
+            'scholarship',
+            'discount'
+        ].reduce((sum, key) => sum + (Number(accountData?.[key]) || 0), 0);
+
+        const netAdjustments = positiveAdjustments - credits;
+
+        // If the fee structure is present, calculate the account balance from
+        // the actual assessed fees and completed payments. This is the key fix.
+        // When no fee structure exists, retain an authoritative account balance.
+        let outstanding = feeStructureTotal > 0
+            ? Math.max(totalDue + netAdjustments - totalPaid, 0)
+            : Math.max(
+                Number(accountData?.outstanding ?? accountData?.balance) ||
+                (totalDue + netAdjustments - totalPaid),
+                0
+            );
+
+        const balance = outstanding;
 
         const paidThisSemester = completedPayments
             .filter(p => mapPeriodToDisplay(p.period) === currentPeriod)
@@ -1412,16 +1463,20 @@ async function fetchFinanceDataFromSupabase(user) {
 
         const semesterFee =
             Number(processedFeeStructure[currentPeriodIndex]?.amount) ||
-            totalDue ||
+            getProfilePeriodFee(processedFeeStructure, currentPeriod, 0) ||
             getFeeAmount(programType, currentPeriodIndex, programLevel);
 
-        if (!accountData) {
-            balance = Math.max(semesterFee - paidThisSemester, 0);
-            outstanding = balance;
-        }
+        const currentPeriodOutstanding = Math.max(
+            semesterFee - paidThisSemester,
+            0
+        );
 
-        const paymentProgress = semesterFee > 0
+        const currentPeriodProgress = semesterFee > 0
             ? Math.min((paidThisSemester / semesterFee) * 100, 100)
+            : 0;
+
+        const paymentProgress = totalDue > 0
+            ? Math.min((totalPaid / totalDue) * 100, 100)
             : 0;
 
         const formattedPayments = paymentsData.map(p => ({
@@ -1466,9 +1521,12 @@ async function fetchFinanceDataFromSupabase(user) {
         return {
             balance,
             totalPaid,
-            totalDue: semesterFee,
+            totalDue,
             outstanding,
             paymentProgress,
+            overallProgress: paymentProgress,
+            currentPeriodOutstanding,
+            currentPeriodProgress,
             payments: formattedPayments,
             feeStructure: formattedFees,
             programType,
@@ -1593,6 +1651,14 @@ async function loadStudentFinance(forceRefresh = false) {
 
         studentFinanceState.voteHeads =
             financeData.voteHeads || [];
+        studentFinanceState.currentPeriodIndex =
+            Number(financeData.currentPeriodIndex) || 0;
+        studentFinanceState.totalDue =
+            Number(financeData.totalDue) || 0;
+        studentFinanceState.currentPeriodOutstanding =
+            Number(financeData.currentPeriodOutstanding) || 0;
+        studentFinanceState.currentPeriodProgress =
+            Number(financeData.currentPeriodProgress) || 0;
 
         updateFinanceUI(financeData);
 
@@ -1642,480 +1708,214 @@ function updateProgramInfo(user, programType, programLevel) {
 }
 
 function updatePeriodFilter(programType, programLevel) {
-    const periodFilter =
-        document.getElementById('finance-periodFilter');
-
+    const periodFilter = document.getElementById('finance-periodFilter');
     if (!periodFilter) return;
 
-    const periods =
-        getPeriods(programType, programLevel);
+    const actualPeriods = (studentFinanceState.feeStructureRaw?.periods || [])
+        .map(p => p?.name)
+        .filter(Boolean);
+    const fallbackPeriods = getPeriods(programType, programLevel);
+    const periods = [...new Set([...actualPeriods, ...fallbackPeriods])];
 
-    while (periodFilter.options.length > 1) {
-        periodFilter.remove(1);
+    const currentValue = periodFilter.value;
+    periodFilter.innerHTML = '<option value="all">All Periods</option>' +
+        periods.map(period =>
+            `<option value="${escapeFinanceHtml(period)}">${escapeFinanceHtml(period)}</option>`
+        ).join('');
+
+    if (currentValue && periods.includes(currentValue)) {
+        periodFilter.value = currentValue;
     }
-
-    periods.forEach(period => {
-        const option = document.createElement('option');
-        option.value = period;
-        option.textContent = period;
-        periodFilter.appendChild(option);
-    });
 }
 
 function updateFinanceUI(data) {
     if (!data) return;
 
     studentFinanceState.student = data.student;
-    studentFinanceState.payments = data.payments || [];
-    studentFinanceState.feeStructure = data.feeStructure || [];
-    studentFinanceState.currentPeriod = data.currentPeriod;
+    studentFinanceState.payments = Array.isArray(data.payments) ? data.payments : [];
+    studentFinanceState.feeStructure = Array.isArray(data.feeStructure) ? data.feeStructure : [];
+    studentFinanceState.feeStructureRaw = data.feeStructureRaw || studentFinanceState.feeStructureRaw;
+    studentFinanceState.voteHeads = data.voteHeads || [];
+    studentFinanceState.currentPeriod = data.currentPeriod || null;
+    studentFinanceState.currentPeriodIndex = Number(data.currentPeriodIndex) || 0;
     studentFinanceState.semesterFee = Number(data.semesterFee) || 0;
-    studentFinanceState.paidThisSemester =
-        Number(data.paidThisSemester) || 0;
-    studentFinanceState.balance = Number(data.balance) || 0;
-    studentFinanceState.totalPaid = Number(data.totalPaid) || 0;
-    studentFinanceState.outstanding =
-        Number(data.outstanding) || 0;
+    studentFinanceState.paidThisSemester = Number(data.paidThisSemester) || 0;
+    studentFinanceState.currentPeriodOutstanding = Number(data.currentPeriodOutstanding) || 0;
+    studentFinanceState.currentPeriodProgress = Number(data.currentPeriodProgress) || 0;
+    studentFinanceState.balance = Math.max(Number(data.balance) || 0, 0);
+    studentFinanceState.totalPaid = Math.max(Number(data.totalPaid) || 0, 0);
+    studentFinanceState.totalDue = Math.max(Number(data.totalDue) || 0, 0);
+    studentFinanceState.outstanding = Math.max(Number(data.outstanding) || 0, 0);
+    studentFinanceState.paymentProgress = Math.min(Math.max(Number(data.paymentProgress) || 0, 0), 100);
+    studentFinanceState.overallProgress = studentFinanceState.paymentProgress;
 
-    updateProgramInfo(
-        data.student,
-        data.programType,
-        data.programLevel
-    );
-
+    updateProgramInfo(data.student, data.programType, data.programLevel);
     updateBalance(data);
     updateStats(data);
     renderPayments(data.payments || []);
+    renderPaymentTimeline(data.feeStructure || []);
     renderFeeStructureData();
+    updateSelectedPaymentPeriodInfo(
+        document.getElementById('finance-paymentPeriod')?.value ||
+        data.currentPeriod
+    );
 
-    const periodBadge =
-        document.getElementById('finance-currentPeriodBadge');
+    const periodBadge = document.getElementById('finance-currentPeriodBadge');
+    if (periodBadge) periodBadge.textContent = data.currentPeriod || '--';
 
-    if (periodBadge) {
-        periodBadge.textContent = data.currentPeriod || '--';
-    }
-
-    const academicYear =
-        document.getElementById('finance-academicYearDisplay');
-
+    const academicYear = document.getElementById('finance-academicYearDisplay');
     if (academicYear) {
-        academicYear.textContent =
-            data.student?.intake_year
-                ? `Intake ${data.student.intake_year}`
-                : 'Academic Finance';
+        academicYear.textContent = data.student?.intake_year
+            ? `Intake ${data.student.intake_year}`
+            : 'Academic Finance';
     }
 
-    const nextPayment =
-        document.getElementById('finance-nextPaymentDue');
-
+    const nextPayment = document.getElementById('finance-nextPaymentDue');
     if (nextPayment) {
-        nextPayment.textContent =
-            Number(data.balance || 0) > 0
-                ? 'Outstanding'
-                : 'No outstanding payment';
+        nextPayment.textContent = studentFinanceState.outstanding > 0
+            ? 'Outstanding'
+            : 'No outstanding payment';
     }
 
-    const message =
-        document.getElementById('finance-periodMessage');
-
+    const message = document.getElementById('finance-periodMessage');
     if (message) {
-        message.innerHTML =
-            Number(data.balance || 0) > 0
-                ? `<i class="fas fa-info-circle"></i><span>Outstanding balance: KES ${Number(data.balance).toLocaleString()}</span>`
-                : `<i class="fas fa-check-circle"></i><span>Your current payment period is fully paid.</span>`;
+        message.innerHTML = studentFinanceState.currentPeriodOutstanding > 0
+            ? `<i class="fas fa-info-circle"></i><span>Current period outstanding: KES ${studentFinanceState.currentPeriodOutstanding.toLocaleString()}</span>`
+            : `<i class="fas fa-check-circle"></i><span>Your current payment period is fully paid.</span>`;
     }
 
     updateDashboardFinanceBridge(data);
 }
 
 function updateBalance(data) {
-    const balance =
-        Math.max(Number(data.balance) || 0, 0);
+    const balance = Math.max(Number(data?.balance) || 0, 0);
+    const totalDue = Math.max(Number(data?.totalDue) || 0, 0);
+    const totalPaid = Math.max(Number(data?.totalPaid) || 0, 0);
+    const semesterFee = Math.max(Number(data?.semesterFee) || 0, 0);
+    const paidThisSemester = Math.max(Number(data?.paidThisSemester) || 0, 0);
+    const currentOutstanding = Math.max(
+        Number(data?.currentPeriodOutstanding ?? (semesterFee - paidThisSemester)) || 0,
+        0
+    );
+    const overallProgress = Math.min(Math.max(Number(data?.paymentProgress) || 0, 0), 100);
+    const currentProgress = Math.min(Math.max(Number(data?.currentPeriodProgress) || 0, 0), 100);
 
-    const semesterFee =
-        Math.max(Number(data.semesterFee) || 0, 0);
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
 
-    const paidThisSemester =
-        Math.max(Number(data.paidThisSemester) || 0, 0);
+    setText('finance-studentBalanceDisplay', `KES ${balance.toLocaleString()}`);
+    setText('finance-studentPeriodFee', `KES ${semesterFee.toLocaleString()}`);
+    setText('finance-studentPaidThisPeriod', `KES ${paidThisSemester.toLocaleString()}`);
+    setText('finance-studentOutstanding', `KES ${currentOutstanding.toLocaleString()}`);
+    setText('finance-totalDueAmount', `KES ${totalDue.toLocaleString()}`);
+    setText('finance-totalPaidAmount', `KES ${totalPaid.toLocaleString()}`);
+    setText('finance-balanceAmount', `KES ${balance.toLocaleString()}`);
 
-    const progress =
-        Math.min(Math.max(Number(data.paymentProgress) || 0, 0), 100);
+    const fill = document.getElementById('finance-paymentProgressFill');
+    if (fill) fill.style.width = `${Math.round(overallProgress)}%`;
 
-    const balanceDisplay =
-        document.getElementById('finance-studentBalanceDisplay');
+    setText('finance-paymentProgressText', `${Math.round(overallProgress)}%`);
+    setText('finance-paymentProgressText2', `${Math.round(currentProgress)}%`);
 
-    if (balanceDisplay) {
-        balanceDisplay.textContent =
-            `KES ${balance.toLocaleString()}`;
-    }
-
-    const periodFeeDisplay =
-        document.getElementById('finance-studentPeriodFee');
-
-    if (periodFeeDisplay) {
-        periodFeeDisplay.textContent =
-            `KES ${semesterFee.toLocaleString()}`;
-    }
-
-    const paidDisplay =
-        document.getElementById('finance-studentPaidThisPeriod');
-
-    if (paidDisplay) {
-        paidDisplay.textContent =
-            `KES ${paidThisSemester.toLocaleString()}`;
-    }
-
-    const outstandingDisplay =
-        document.getElementById('finance-studentOutstanding');
-
-    if (outstandingDisplay) {
-        outstandingDisplay.textContent =
-            `KES ${balance.toLocaleString()}`;
-    }
-
-    const totalDue =
-        document.getElementById('finance-totalDueAmount');
-
-    if (totalDue) {
-        totalDue.textContent =
-            `KES ${semesterFee.toLocaleString()}`;
-    }
-
-    const totalPaid =
-        document.getElementById('finance-totalPaidAmount');
-
-    if (totalPaid) {
-        totalPaid.textContent =
-            `KES ${paidThisSemester.toLocaleString()}`;
-    }
-
-    const balanceAmount =
-        document.getElementById('finance-balanceAmount');
-
-    if (balanceAmount) {
-        balanceAmount.textContent =
-            `KES ${balance.toLocaleString()}`;
-    }
-
-    const fill =
-        document.getElementById('finance-paymentProgressFill');
-
-    if (fill) fill.style.width = `${Math.round(progress)}%`;
-
-    const progressText =
-        document.getElementById('finance-paymentProgressText');
-
-    if (progressText) {
-        progressText.textContent =
-            `${Math.round(progress)}%`;
-    }
-
-    const progressText2 =
-        document.getElementById('finance-paymentProgressText2');
-
-    if (progressText2) {
-        progressText2.textContent =
-            `${Math.round(progress)}%`;
-    }
-
-    const circle =
-        document.getElementById('finance-progressCircle');
-
+    const circle = document.getElementById('finance-progressCircle');
     if (circle) {
         const circumference = 2 * Math.PI * 48;
-
-        circle.style.strokeDasharray =
-            `${circumference}`;
-
-        circle.style.strokeDashoffset =
-            `${circumference - (progress / 100) * circumference}`;
+        circle.style.strokeDasharray = `${circumference}`;
+        circle.style.strokeDashoffset = `${circumference - (currentProgress / 100) * circumference}`;
     }
 
-    updateBalanceStatus(balance, progress);
+    const statusProgress = totalDue > 0 ? overallProgress : currentProgress;
+    updateBalanceStatus(balance, statusProgress);
 }
 
 function updateBalanceStatus(balance, progress = 0) {
-    const statusEl =
-        document.getElementById('finance-balanceStatusDisplay');
-
-    const dot =
-        document.getElementById('finance-statusDot');
-
-    const text =
-        document.getElementById('finance-statusText');
-
+    const statusEl = document.getElementById('finance-balanceStatusDisplay');
+    const dot = document.getElementById('finance-statusDot');
+    const text = document.getElementById('finance-statusText');
     if (!statusEl) return;
 
     if (balance <= 0) {
         statusEl.style.background = '#ddf8eb';
-
         if (dot) dot.style.background = '#10b981';
-
-        if (text) {
-            text.textContent = 'Paid in Full';
-            text.style.color = '#079361';
-        }
-
+        if (text) { text.textContent = 'Paid in Full'; text.style.color = '#079361'; }
     } else if (progress > 0) {
         statusEl.style.background = '#fff2d7';
-
         if (dot) dot.style.background = '#f59e0b';
-
-        if (text) {
-            text.textContent = 'Partially Paid';
-            text.style.color = '#b77900';
-        }
-
+        if (text) { text.textContent = 'Partially Paid'; text.style.color = '#b77900'; }
     } else {
         statusEl.style.background = '#ffe8e9';
-
         if (dot) dot.style.background = '#ef4444';
-
-        if (text) {
-            text.textContent = 'Outstanding Balance';
-            text.style.color = '#ef3139';
-        }
+        if (text) { text.textContent = 'Outstanding Balance'; text.style.color = '#ef3139'; }
     }
 }
 
 function updateStats(data) {
-    const payments = data.payments || [];
+    const payments = Array.isArray(data?.payments) ? data.payments : [];
+    const paid = payments.filter(p => String(p.status).toLowerCase() === 'completed').length;
+    const pending = payments.filter(p => String(p.status).toLowerCase() === 'pending').length;
+    const overdue = payments.filter(p => ['failed', 'overdue', 'cancelled'].includes(String(p.status).toLowerCase())).length;
 
-    const paid =
-        payments.filter(p => p.status === 'completed').length;
+    const setText = (id, value) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = value;
+    };
 
-    const pending =
-        payments.filter(p => p.status === 'pending').length;
-
-    const overdue =
-        payments.filter(p =>
-            ['failed', 'overdue', 'cancelled'].includes(p.status)
-        ).length;
-
-    const paidEl =
-        document.getElementById('finance-paidCount');
-
-    if (paidEl) paidEl.textContent = paid;
-
-    const pendingEl =
-        document.getElementById('finance-pendingCount');
-
-    if (pendingEl) pendingEl.textContent = pending;
-
-    const overdueEl =
-        document.getElementById('finance-overdueCount');
-
-    if (overdueEl) overdueEl.textContent = overdue;
-
-    const transactionsEl =
-        document.getElementById('finance-totalTransactions');
-
-    if (transactionsEl) {
-        transactionsEl.textContent = payments.length;
-    }
-
-    const recordCount =
-        document.getElementById('finance-paymentRecordCount');
-
-    if (recordCount) {
-        recordCount.textContent =
-            `Showing ${payments.length} payment${payments.length === 1 ? '' : 's'}`;
-    }
+    setText('finance-paidCount', paid);
+    setText('finance-pendingCount', pending);
+    setText('finance-overdueCount', overdue);
+    setText('finance-totalTransactions', payments.length);
+    setText('finance-paymentRecordCount', `Showing ${payments.length} payment${payments.length === 1 ? '' : 's'}`);
 }
 
 function updateDashboardFinanceBridge(data) {
-    const balance =
-        document.getElementById('dashboard-finance-balance');
+    const balance = document.getElementById('dashboard-finance-balance');
+    const status = document.getElementById('dashboard-finance-status');
+    const value = Number(data?.balance || 0);
 
-    const status =
-        document.getElementById('dashboard-finance-status');
-
-    if (balance) {
-        balance.textContent =
-            `KES ${Number(data?.balance || 0).toLocaleString()}`;
-    }
-
+    if (balance) balance.textContent = `KES ${value.toLocaleString()}`;
     if (status) {
-        const value = Number(data?.balance || 0);
-
-        status.textContent =
-            value <= 0
-                ? 'Paid in Full'
-                : Number(data?.paidThisSemester || 0) > 0
-                    ? 'Partially Paid'
-                    : 'Outstanding Balance';
+        status.textContent = value <= 0
+            ? 'Paid in Full'
+            : Number(data?.totalPaid || 0) > 0
+                ? 'Partially Paid'
+                : 'Outstanding Balance';
     }
-}
-
-function renderPaymentTimeline() {
-    return;
-}
-
-function updatePeriodFilter(programType, programLevel) {
-    const periodFilter = document.getElementById('finance-periodFilter');
-    if (!periodFilter) return;
-    const periods = getPeriods(programType, programLevel);
-    while (periodFilter.options.length > 1) periodFilter.remove(1);
-    periods.forEach(period => {
-        const option = document.createElement('option');
-        option.value = period;
-        option.textContent = period;
-        periodFilter.appendChild(option);
-    });
-}
-
-function updateFinanceUI(data) {
-    if (!data) return;
-    
-    studentFinanceState.student = data.student;
-    studentFinanceState.payments = data.payments || [];
-    studentFinanceState.feeStructure = data.feeStructure || [];
-    studentFinanceState.currentPeriod = data.currentPeriod;
-    studentFinanceState.semesterFee = data.semesterFee;
-    studentFinanceState.paidThisSemester = data.paidThisSemester;
-    studentFinanceState.balance = data.balance;
-    studentFinanceState.totalPaid = data.totalPaid;
-    studentFinanceState.outstanding = data.outstanding;
-    
-    updateProgramInfo(data.student, data.programType, data.programLevel);
-    updateBalance(data);
-    updateStats(data);
-    renderPayments(data.payments || []);
-    renderPaymentTimeline(data.feeStructure || []);
-    
-    const container = document.getElementById('finance-studentFeeStructureDisplay');
-    if (container && container.style.display !== 'none') renderFeeStructureData();
-    
-    const lastUpdated = document.getElementById('finance-lastUpdated');
-    if (lastUpdated) lastUpdated.textContent = new Date().toLocaleString();
-}
-
-function updateBalance(data) {
-    const balance = data.balance || 0;
-    const semesterFee = data.semesterFee || 0;
-    const paidThisSemester = data.paidThisSemester || 0;
-    const progress = data.paymentProgress || 0;
-    
-    const balanceDisplay = document.getElementById('finance-studentBalanceDisplay');
-    if (balanceDisplay) balanceDisplay.textContent = `KES ${balance.toLocaleString()}`;
-    
-    const semesterFeeDisplay = document.getElementById('finance-studentPeriodFee');
-    if (semesterFeeDisplay) semesterFeeDisplay.textContent = `KES ${semesterFee.toLocaleString()}`;
-    
-    const paidDisplay = document.getElementById('finance-studentPaidThisPeriod');
-    if (paidDisplay) paidDisplay.textContent = `KES ${paidThisSemester.toLocaleString()}`;
-    
-    const outstandingDisplay = document.getElementById('finance-studentOutstanding');
-    if (outstandingDisplay) outstandingDisplay.textContent = `KES ${balance.toLocaleString()}`;
-    
-    updateBalanceStatus(balance);
-    
-    const progressPercent = Math.min(Math.round(progress), 100);
-    const progressFill = document.getElementById('finance-paymentProgressFill');
-    if (progressFill) progressFill.style.width = `${progressPercent}%`;
-    
-    const progressText = document.getElementById('finance-paymentProgressText');
-    if (progressText) progressText.textContent = `${progressPercent}%`;
-    
-    const totalDueAmount = document.getElementById('finance-totalDueAmount');
-    if (totalDueAmount) totalDueAmount.textContent = `KES ${semesterFee.toLocaleString()}`;
-    
-    const totalPaidAmount = document.getElementById('finance-totalPaidAmount');
-    if (totalPaidAmount) totalPaidAmount.textContent = `KES ${paidThisSemester.toLocaleString()}`;
-    
-    const balanceAmount = document.getElementById('finance-balanceAmount');
-    if (balanceAmount) balanceAmount.textContent = `KES ${balance.toLocaleString()}`;
-}
-
-function updateBalanceStatus(balance) {
-    const statusEl = document.getElementById('finance-balanceStatusDisplay');
-    if (!statusEl) return;
-    const dot = document.getElementById('finance-statusDot');
-    const text = document.getElementById('finance-statusText');
-    if (balance === 0) {
-        statusEl.style.background = 'rgba(16,185,129,0.2)';
-        statusEl.style.color = '#10b981';
-        if (dot) dot.style.background = '#10b981';
-        if (text) text.textContent = 'Paid in Full';
-    } else if (balance > 0 && balance <= 10000) {
-        statusEl.style.background = 'rgba(245,158,11,0.2)';
-        statusEl.style.color = '#f59e0b';
-        if (dot) dot.style.background = '#f59e0b';
-        if (text) text.textContent = 'Partial Payment';
-    } else {
-        statusEl.style.background = 'rgba(239,68,68,0.2)';
-        statusEl.style.color = '#ef4444';
-        if (dot) dot.style.background = '#ef4444';
-        if (text) text.textContent = 'Outstanding Balance';
-    }
-}
-
-function updateStats(data) {
-    const payments = data.payments || [];
-    const paid = payments.filter(p => p.status === 'completed').length;
-    const pending = payments.filter(p => p.status === 'pending').length;
-    const overdue = payments.filter(p => p.status === 'failed' || p.status === 'overdue').length;
-    
-    const paidEl = document.getElementById('finance-paidCount');
-    if (paidEl) paidEl.textContent = paid;
-    const pendingEl = document.getElementById('finance-pendingCount');
-    if (pendingEl) pendingEl.textContent = pending;
-    const overdueEl = document.getElementById('finance-overdueCount');
-    if (overdueEl) overdueEl.textContent = overdue;
-    const transactionsEl = document.getElementById('finance-totalTransactions');
-    if (transactionsEl) transactionsEl.textContent = payments.length;
-    const recordCount = document.getElementById('finance-paymentRecordCount');
-    if (recordCount) recordCount.textContent = `${payments.length} records`;
 }
 
 function renderPaymentTimeline(feeStructure) {
     const timeline = document.getElementById('finance-paymentTimeline');
     if (!timeline) return;
-    
+
     const programType = studentFinanceState.programType || 'TVET';
     const programLevel = studentFinanceState.programLevel || 'certificate';
-    
     const timelineLabel = document.getElementById('finance-timelineProgramLabel');
-    if (timelineLabel) {
-        timelineLabel.textContent = `${programType} - ${programLevel === 'certificate' ? 'Certificate' : 'Diploma'}`;
-    }
-    
-    if (!feeStructure || feeStructure.length === 0) {
-        timeline.innerHTML = `<div style="text-align: center; padding: 12px; color: #94a3b8; font-size: 11px;"><i class="fas fa-info-circle"></i> No fee structure</div>`;
+    if (timelineLabel) timelineLabel.textContent = `${programType} - ${programLevel === 'certificate' ? 'Certificate' : 'Diploma'}`;
+
+    if (!Array.isArray(feeStructure) || !feeStructure.length) {
+        timeline.innerHTML = `<div style="text-align:center;padding:12px;color:#94a3b8;font-size:11px;"><i class="fas fa-info-circle"></i> No fee structure</div>`;
         return;
     }
-    
-    let html = '';
-    feeStructure.forEach((f, index) => {
-        const isPaid = f.status === 'Paid';
-        const isPartial = f.status === 'Partial';
-        
-        let bgColor, borderColor, textColor, statusIcon, statusText, amountText;
-        
-        if (isPaid) {
-            bgColor = '#d1fae5'; borderColor = '#10b981'; textColor = '#059669'; statusIcon = '✅'; statusText = 'Paid';
-            amountText = `KES ${f.amount.toLocaleString()}`;
-        } else if (isPartial) {
-            bgColor = '#fef3c7'; borderColor = '#f59e0b'; textColor = '#d97706'; statusIcon = '⏳'; statusText = 'Partial';
-            amountText = `Paid: KES ${Number(f.paid || 0).toLocaleString()}`;
-        } else {
-            bgColor = '#fee2e2'; borderColor = '#dc2626'; textColor = '#dc2626'; statusIcon = '❌'; statusText = 'Unpaid';
-            amountText = `Due: KES ${f.amount.toLocaleString()}`;
-        }
-        
-        html += `
-            <div style="min-width: 70px; text-align: center; padding: 4px 6px; background: ${bgColor}; border-radius: 4px; border: 1px solid ${borderColor};">
-                <div style="font-size: 7px; color: ${index === 0 ? '#0A3D62' : '#6b7280'}; font-weight: 600;">
-                    ${f.block}
-                    ${index === 0 ? ' <span style="background: #4C1D95; color: white; padding: 1px 3px; border-radius: 6px; font-size: 6px;">C</span>' : ''}
-                </div>
-                <div style="font-weight: 700; color: ${textColor}; font-size: 11px;">${statusIcon} ${statusText}</div>
-                <div style="font-size: 7px; color: #94a3b8;">${amountText}</div>
-            </div>
-        `;
-    });
-    
-    timeline.innerHTML = html;
+
+    timeline.innerHTML = feeStructure.map(f => {
+        const amount = Number(f.amount) || 0;
+        const paid = Number(f.paid) || 0;
+        const status = String(f.status || '').toLowerCase();
+        const isPaid = status === 'paid';
+        const isPartial = status === 'partial';
+        const bg = isPaid ? '#d1fae5' : isPartial ? '#fef3c7' : '#fee2e2';
+        const border = isPaid ? '#10b981' : isPartial ? '#f59e0b' : '#dc2626';
+        const color = isPaid ? '#059669' : isPartial ? '#d97706' : '#dc2626';
+        const icon = isPaid ? '✅' : isPartial ? '⏳' : '❌';
+        const label = isPaid ? 'Paid' : isPartial ? 'Partial' : 'Unpaid';
+        const amountText = isPaid ? `KES ${amount.toLocaleString()}` : isPartial ? `Paid: KES ${paid.toLocaleString()}` : `Due: KES ${amount.toLocaleString()}`;
+        return `<div style="min-width:70px;text-align:center;padding:4px 6px;background:${bg};border-radius:4px;border:1px solid ${border};margin-right:4px;display:inline-block;">
+            <div style="font-size:7px;color:#0A3D62;font-weight:600;">${escapeFinanceHtml(f.block || '')}</div>
+            <div style="font-weight:700;color:${color};font-size:11px;">${icon} ${label}</div>
+            <div style="font-size:7px;color:#94a3b8;">${amountText}</div>
+        </div>`;
+    }).join('');
 }
 
 // ============================================================
@@ -2883,6 +2683,63 @@ function ensurePaymentPhoneField(container, currentPhone='') {
     return input;
 }
 
+function escapeFinanceHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function getStudentAcademicBlocks() {
+    const student = studentFinanceState.student || window.currentUserProfile || window.currentUser || {};
+    const candidates = [
+        student.block,
+        student.current_block,
+        student.currentBlock,
+        student.block_term,
+        student.student_block,
+        student.class_block
+    ];
+
+    return [...new Set(candidates
+        .filter(Boolean)
+        .flatMap(value => Array.isArray(value) ? value : String(value).split(',').map(v => v.trim()))
+        .filter(Boolean))];
+}
+
+function getPeriodFinanceSummary(period) {
+    const normalized = mapPeriodToDisplay(period || '');
+    const periods = studentFinanceState.feeStructureRaw?.periods || [];
+    const feeRow = periods.find(p => mapPeriodToDisplay(p?.name || p?.period || '') === normalized);
+    const fee = Number(feeRow?.amount) || 0;
+    const paid = (studentFinanceState.payments || [])
+        .filter(p => String(p.status).toLowerCase() === 'completed')
+        .filter(p => mapPeriodToDisplay(p.period) === normalized)
+        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+    const outstanding = Math.max(fee - paid, 0);
+    const progress = fee > 0 ? Math.min((paid / fee) * 100, 100) : 0;
+    return { period: normalized, fee, paid, outstanding, progress };
+}
+
+function updateSelectedPaymentPeriodInfo(period) {
+    if (!period) return;
+    const summary = getPeriodFinanceSummary(period);
+    const info = document.getElementById('finance-selectedPeriodInfo');
+    const fee = document.getElementById('finance-selectedPeriodFee');
+    const paid = document.getElementById('finance-selectedPeriodPaid');
+    const balance = document.getElementById('finance-selectedPeriodBalance');
+
+    if (fee) fee.textContent = `KES ${summary.fee.toLocaleString()}`;
+    if (paid) paid.textContent = `KES ${summary.paid.toLocaleString()}`;
+    if (balance) balance.textContent = `KES ${summary.outstanding.toLocaleString()}`;
+    if (info) {
+        info.style.display = 'block';
+        info.innerHTML = `<strong>${escapeFinanceHtml(summary.period)}</strong> — Fee: KES ${summary.fee.toLocaleString()} | Paid: KES ${summary.paid.toLocaleString()} | Balance: KES ${summary.outstanding.toLocaleString()}`;
+    }
+}
+
 function populatePaymentPeriodOptions() {
     const select = document.getElementById('finance-paymentPeriod');
     if (!select) return;
@@ -2911,6 +2768,8 @@ function populatePaymentPeriodOptions() {
         select.value = periods[0];
         studentFinanceState.selectedPeriod = periods[0];
     }
+
+    updateSelectedPaymentPeriodInfo(select.value);
 }
 
 
@@ -2980,6 +2839,7 @@ function openPaymentModal() {
 
     populatePaymentPeriodOptions();
     populatePaymentBlockOptions();
+    updateSelectedPaymentPeriodInfo(document.getElementById('finance-paymentPeriod')?.value || studentFinanceState.currentPeriod);
 
     const method =
         document.getElementById('finance-paymentMethod');
@@ -3062,8 +2922,14 @@ function validatePaymentForm() {
         return false;
     }
 
-    if (Number(studentFinanceState.balance || 0) > 0 && amount > Number(studentFinanceState.balance)) {
-        showToast('❌ Payment amount cannot exceed the current outstanding balance.', 'error');
+    const overallBalance = Number(studentFinanceState.balance || 0);
+    if (overallBalance <= 0) {
+        showToast('ℹ️ Your account currently has no outstanding balance.', 'info');
+        return false;
+    }
+
+    if (amount > overallBalance) {
+        showToast('❌ Payment amount cannot exceed the overall outstanding balance.', 'error');
         return false;
     }
 
@@ -3437,6 +3303,151 @@ async function processPayment() {
     }
 }
 
+async function pollStudentPaymentStatus(transactionId, amount, period) {
+    const supabase = getSupabaseClient();
+    const paymentId = pendingPayment.paymentId;
+    const startedAt = Date.now();
+    const timeoutMs = 120000;
+    const intervalMs = 3000;
+
+    if (!supabase || !paymentId) {
+        throw new Error('Payment record is not available for status checking.');
+    }
+
+    const check = async () => {
+        if (pendingPayment.cancelled) return 'cancelled';
+
+        const { data, error } = await supabase
+            .from('finance_payments')
+            .select('*')
+            .eq('id', paymentId)
+            .maybeSingle();
+
+        if (error) throw new Error(error.message || 'Could not check payment status.');
+
+        const status = String(data?.status || 'pending').toLowerCase();
+        console.log('💳 Payment status:', status, data);
+
+        if (status === 'completed' || status === 'paid' || status === 'success' || status === 'successful') {
+            pendingPayment.isProcessing = false;
+            pendingPayment.status = 'completed';
+            pendingPayment.transactionId = data?.checkout_request_id || transactionId;
+
+            const receiptNumber = data?.receipt_number || data?.reference_number || transactionId || `NCHSM-${Date.now()}`;
+            window._lastReceiptData = {
+                amount,
+                receiptNumber,
+                period: mapPeriodToDisplay(data?.period || period),
+                transactionId: data?.checkout_request_id || transactionId,
+                reference: data?.reference_number || receiptNumber
+            };
+
+            closePaymentModal();
+
+            const emailSent = await sendPaymentReceiptEmail({
+                ...data,
+                amount,
+                receipt_number: receiptNumber,
+                period: mapPeriodToDisplay(data?.period || period),
+                transaction_id: data?.checkout_request_id || transactionId,
+                reference_number: data?.reference_number || receiptNumber,
+                program: studentFinanceState.student?.program || 'KRCHN'
+            });
+
+            showSuccessPopup(amount, receiptNumber, mapPeriodToDisplay(data?.period || period), emailSent);
+            await loadStudentFinance(true);
+            return 'completed';
+        }
+
+        if (['failed', 'cancelled', 'canceled', 'rejected', 'declined'].includes(status)) {
+            pendingPayment.isProcessing = false;
+            pendingPayment.status = status;
+            showStudentPaymentFailure(`Payment ${status}.`);
+            return status;
+        }
+
+        if (Date.now() - startedAt >= timeoutMs) {
+            pendingPayment.isProcessing = false;
+            pendingPayment.status = 'timeout';
+            showStudentPaymentFailure('Payment confirmation timed out. If you completed the M-Pesa prompt, please wait for Finance to update the transaction.');
+            return 'timeout';
+        }
+
+        return 'pending';
+    };
+
+    while (pendingPayment.isProcessing && !pendingPayment.cancelled) {
+        const result = await check();
+        if (result !== 'pending') return result;
+        await new Promise(resolve => setTimeout(resolve, intervalMs));
+    }
+
+    return pendingPayment.cancelled ? 'cancelled' : pendingPayment.status;
+}
+
+async function cancelStudentPayment() {
+    pendingPayment.cancelled = true;
+    pendingPayment.isProcessing = false;
+    pendingPayment.status = 'cancelled';
+
+    const supabase = getSupabaseClient();
+    if (supabase && pendingPayment.paymentId) {
+        try {
+            await supabase
+                .from('finance_payments')
+                .update({
+                    status: 'cancelled',
+                    notes: 'Payment cancelled by student before completion.',
+                    updated_at: new Date().toISOString()
+                })
+                .eq('id', pendingPayment.paymentId);
+        } catch (error) {
+            console.warn('⚠️ Could not mark payment cancelled:', error.message);
+        }
+    }
+
+    closePaymentModal();
+    showToast('Payment cancelled.', 'warning');
+}
+
+function showStudentPaymentFailure(message) {
+    closePaymentModal();
+    const text = message || 'Payment could not be completed.';
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'error',
+            title: 'Payment Not Completed',
+            text,
+            confirmButtonColor: '#0A3D62'
+        });
+    } else {
+        showToast(`❌ ${text}`, 'error');
+    }
+}
+
+function showBankPaymentPending(amount, reference, period, block) {
+    closePaymentModal();
+    const message = `Bank transfer submitted successfully. Reference: ${reference}. It will remain pending until verified by the Finance Office.`;
+
+    if (typeof Swal !== 'undefined') {
+        Swal.fire({
+            icon: 'info',
+            title: 'Bank Transfer Submitted',
+            html: `<div style="text-align:left;font-size:13px;line-height:1.7;">Amount: <strong>KES ${Number(amount).toLocaleString()}</strong><br>Period: <strong>${escapeFinanceHtml(period)}</strong>${block ? `<br>Block: <strong>${escapeFinanceHtml(block)}</strong>` : ''}<br>Reference: <strong>${escapeFinanceHtml(reference)}</strong><br><br>Your payment will be reflected after Finance verifies the transfer.</div>`,
+            confirmButtonColor: '#0A3D62'
+        });
+    } else {
+        showToast(message, 'info');
+    }
+
+    loadStudentFinance(true);
+}
+
+async function initiatePayHeroSTK() {
+    return processPayment();
+}
+
 function showFinanceLoading() {
     const historyBody = document.getElementById('finance-studentPaymentHistory');
     if (historyBody) {
@@ -3702,14 +3713,21 @@ document.addEventListener('DOMContentLoaded', function() {
     const paymentForm =
         document.getElementById('finance-paymentForm');
 
-    if (paymentForm) {
-        paymentForm.addEventListener(
-            'submit',
-            function(event) {
-                event.preventDefault();
-                processPayment();
-            }
-        );
+    if (paymentForm && !paymentForm.dataset.financeBound) {
+        paymentForm.dataset.financeBound = 'true';
+        paymentForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            processPayment();
+        });
+    }
+
+    const paymentPeriodSelect = document.getElementById('finance-paymentPeriod');
+    if (paymentPeriodSelect && !paymentPeriodSelect.dataset.financeBound) {
+        paymentPeriodSelect.dataset.financeBound = 'true';
+        paymentPeriodSelect.addEventListener('change', function() {
+            studentFinanceState.selectedPeriod = this.value || null;
+            updateSelectedPaymentPeriodInfo(this.value);
+        });
     }
 
     const methodSelect =
@@ -3807,7 +3825,7 @@ document.addEventListener('DOMContentLoaded', function() {
     listenForAdminEvents();
 
     notifySuperAdmin('module_ready', {
-        version: '3.0.0',
+        version: '3.1.0',
         timestamp:
             new Date().toISOString()
     });
