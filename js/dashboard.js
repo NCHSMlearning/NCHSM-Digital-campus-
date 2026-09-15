@@ -47,6 +47,7 @@ class DashboardModule {
             resources: 0,
             examCard: { approved: 0, eligible: false },
             nurseiq: { progress: 0, accuracy: 0, questions: 0, points: 0, score: 0 },
+            academic: { cumulative_gpa: null, published_marks: 0 },
             courses: 0,
             exams: 'No upcoming exams',
             xp: { current: 0, max: 100, level: 1, percent: 0, total: 0 },
@@ -768,101 +769,111 @@ class DashboardModule {
     // ============================================================
     
     async fixNurseIQDisplay() {
-        console.log('🔧 Fixing NurseIQ display...');
-        
+        console.log('🔧 Synchronizing dashboard metrics from authoritative RPC...');
+
         try {
-            if (!this.userId || !this.sb) {
-                console.warn('⚠️ Cannot fix NurseIQ: No userId or Supabase client');
-                return;
-            }
-            
-            // Get NurseIQ points from database directly
-            const { data, error } = await this.sb
-                .from('consolidated_user_profiles_table')
-                .select('nurseiq_points, total_points, gamification_points, login_count')
-                .eq('user_id', this.userId)
-                .single();
-            
-            if (error) {
-                console.error('Error fetching NurseIQ:', error);
-                // Try fallback from RPC
-                const { data: rpcData } = await this.sb.rpc('get_student_dashboard', {
-                    p_user_id: this.userId
-                });
-                if (rpcData) {
-                    const points = rpcData?.nurseiq?.points || 0;
-                    this.nurseIQPoints = points;
-                    this.metrics.nurseiq.points = points;
-                    if (this.elements.nurseiqPoints) {
-                        this.elements.nurseiqPoints.innerText = points;
-                    }
-                    console.log(`✅ NurseIQ points from RPC: ${points}`);
-                    return;
-                }
-                return;
-            }
-            
-            const nurseiqPoints = data?.nurseiq_points || 0;
-            const totalPoints = data?.total_points || 0;
-            const gamificationPoints = data?.gamification_points || 0;
-            const loginCount = data?.login_count || 0;
-            
-            console.log(`📊 Database NurseIQ: ${nurseiqPoints}`);
-            console.log(`📊 Database Total: ${totalPoints}`);
-            console.log(`🏆 Gamification: ${gamificationPoints}`);
-            
-            // Store in metrics
+            if (!this.userId || !this.sb) return;
+
+            const { data, error } = await this.sb.rpc('get_student_dashboard', {
+                p_user_id: this.userId
+            });
+
+            if (error) throw error;
+
+            const nurseiq = data?.nurseiq || {};
+            const xp = data?.xp || {};
+            const login = data?.login || {};
+            const academic = data?.academic || {};
+
+            // IMPORTANT: The RPC is the source of truth.
+            // Never overwrite calculated NurseIQ/XP totals with stale
+            // profile summary columns such as nurseiq_points/total_points.
+            const nurseiqPoints = Number(nurseiq.points ?? 0);
+            const totalXP = Number(xp.total ?? data?.total_points ?? 0);
+
             this.nurseIQPoints = nurseiqPoints;
+            this.totalPoints = totalXP;
+            this.gamificationPoints = Number(data?.gamification?.points ?? 0);
+
+            this.metrics.nurseiq = {
+                questions: Number(nurseiq.questions ?? 0),
+                attempts: Number(nurseiq.attempts ?? 0),
+                score: Number(nurseiq.score ?? 0),
+                accuracy: Number(nurseiq.accuracy ?? 0),
+                progress: Number(nurseiq.progress ?? 0),
+                points: nurseiqPoints
+            };
             this.metrics.nurseiqPoints = nurseiqPoints;
-            this.metrics.totalPoints = totalPoints;
-            this.gamificationPoints = gamificationPoints;
-            
-            if (this.metrics.nurseiq) {
-                this.metrics.nurseiq.points = nurseiqPoints;
-            }
-            
-            // ✅ Update the UI elements directly
+
+            this.metrics.login = {
+                count: Number(login.count ?? 0),
+                points: Number(login.points ?? 0),
+                streak: Number(login.streak ?? 0),
+                maxStreak: Number(login.maxStreak ?? 0),
+                streakRestores: Number(login.restores ?? 0)
+            };
+
+            this.metrics.gamification = {
+                points: this.gamificationPoints,
+                achievements: data?.gamification?.badges || []
+            };
+
+            this.metrics.xp = {
+                current: Number(xp.current ?? (totalXP % 100)),
+                max: Number(xp.max ?? 100),
+                level: Number(xp.level ?? (Math.floor(totalXP / 100) + 1)),
+                percent: Number(xp.percent ?? (totalXP % 100)),
+                total: totalXP
+            };
+            this.metrics.totalPoints = totalXP;
+
+            this.metrics.academic = {
+                cumulative_gpa:
+                    academic.cumulative_gpa == null
+                        ? null
+                        : Number(academic.cumulative_gpa),
+                published_marks: Number(academic.published_marks ?? 0)
+            };
+
+            // Direct UI update
             if (this.elements.nurseiqPoints) {
-                this.elements.nurseiqPoints.innerText = nurseiqPoints;
+                this.elements.nurseiqPoints.textContent = nurseiqPoints.toLocaleString();
             }
             if (this.elements.dashboardNurseIQPoints) {
-                this.elements.dashboardNurseIQPoints.textContent = nurseiqPoints;
+                this.elements.dashboardNurseIQPoints.textContent = nurseiqPoints.toLocaleString();
             }
-            if (!this.elements.nurseiqPoints && !this.elements.dashboardNurseIQPoints) {
-                console.warn('⚠️ NurseIQ points element not found');
-            }
-            
             if (this.elements.totalPointsDisplay) {
-                this.elements.totalPointsDisplay.innerText = totalPoints;
-                console.log(`✅ Total points set to: ${totalPoints}`);
+                this.elements.totalPointsDisplay.textContent = totalXP.toLocaleString();
             }
-            
-            if (this.elements.gamificationPointsDisplay) {
-                this.elements.gamificationPointsDisplay.innerText = gamificationPoints;
-            }
-            
-            // ✅ Update login count display
-            if (this.elements.loginCountDisplay) {
-                this.elements.loginCountDisplay.innerText = loginCount;
-            }
-            
-            // ✅ Update login points (10 per login)
-            const loginPoints = loginCount * 10;
             if (this.elements.loginPointsDisplay) {
-                this.elements.loginPointsDisplay.innerText = loginPoints;
+                this.elements.loginPointsDisplay.textContent = Number(login.points ?? 0).toLocaleString();
             }
-            
-            // ✅ Update the XP stats
+            if (this.elements.loginCountDisplay) {
+                this.elements.loginCountDisplay.textContent = Number(login.count ?? 0).toLocaleString();
+            }
+
+            this.updateUIFromMetrics();
+            this.updateStreakUI();
             this.updateNurseIQStats(nurseiqPoints);
-            
-            // ✅ Update leaderboard
-            this.loadLeaderboardData('all');
-            
+
+            const gpaTarget = this.elements.snapshotCGPA;
+            if (gpaTarget) {
+                gpaTarget.textContent =
+                    academic.cumulative_gpa == null ||
+                    !Number.isFinite(Number(academic.cumulative_gpa))
+                        ? '—'
+                        : Number(academic.cumulative_gpa).toFixed(2);
+            }
+
+            console.log('✅ RPC NurseIQ points:', nurseiqPoints);
+            console.log('✅ RPC Total XP:', totalXP);
+            console.log('✅ RPC GPA:', academic.cumulative_gpa);
+
         } catch (error) {
-            console.error('Error fixing NurseIQ display:', error);
+            console.error('Error synchronizing dashboard RPC metrics:', error);
         }
     }
-    
+
     // ============================================================
     // 📊 UPDATE NURSEIQ STATS IN THE UI
     // ============================================================
@@ -906,41 +917,32 @@ class DashboardModule {
     
     async fetchGamificationPoints() {
         if (!this.userId || !this.sb) return 0;
-        
+
         try {
+            // Only read badge/gamification summary here. Calculated NurseIQ
+            // and total XP are populated by the dashboard RPC.
             const { data, error } = await this.sb
                 .from('consolidated_user_profiles_table')
-                .select('gamification_points, earned_badges, total_points, nurseiq_points')
+                .select('gamification_points, earned_badges')
                 .eq('user_id', this.userId)
-                .single();
-            
+                .maybeSingle();
+
             if (error) throw error;
-            
-            this.gamificationPoints = data?.gamification_points || 0;
-            this.totalPoints = data?.total_points || 0;
-            this.nurseIQPoints = data?.nurseiq_points || 0;
-            
-            this.metrics.gamification.points = this.gamificationPoints;
-            this.metrics.gamification.achievements = data?.earned_badges || [];
-            this.metrics.totalPoints = this.totalPoints;
-            this.metrics.nurseiqPoints = this.nurseIQPoints;
-            
-            if (this.metrics.nurseiq) {
-                this.metrics.nurseiq.points = this.nurseIQPoints;
-            }
-            
-            console.log(`🏆 Gamification points: ${this.gamificationPoints}`);
-            console.log(`💰 Total points: ${this.totalPoints}`);
-            console.log(`🧠 NurseIQ points: ${this.nurseIQPoints}`);
-            
+
+            this.gamificationPoints = Number(data?.gamification_points ?? 0);
+            this.metrics.gamification = {
+                points: this.gamificationPoints,
+                achievements: data?.earned_badges || []
+            };
+
             return this.gamificationPoints;
-            
+
         } catch (error) {
             console.error('Error fetching gamification points:', error);
             return 0;
         }
     }
-    
+
     // ============================================================
     // 📊 CALCULATE TOTAL POINTS - FIXED!
     // ============================================================
@@ -1355,39 +1357,34 @@ class DashboardModule {
             
             if (error) throw error;
             
-            // ✅ Store total points from RPC
-            this.metrics.totalPoints = Number(data?.total_points ?? 0);
+            // ✅ RPC is authoritative for calculated totals.
+            this.metrics.totalPoints = Number(data?.xp?.total ?? data?.total_points ?? 0);
             this.totalPoints = this.metrics.totalPoints;
+            this.metrics.academic = {
+                cumulative_gpa:
+                    data?.academic?.cumulative_gpa == null
+                        ? null
+                        : Number(data.academic.cumulative_gpa),
+                published_marks: Number(data?.academic?.published_marks ?? 0)
+            };
 
-            // If the RPC omits point fields, recover them from the student's profile.
-            // This does not fabricate values; it only reads the existing profile totals.
+            // The RPC is authoritative for calculated dashboard metrics.
+            // Do not fall back to stale profile point summaries.
+            // Only refresh the display name if it is missing locally.
             try {
-                const { data: profilePoints } = await this.sb
-                    .from('consolidated_user_profiles_table')
-                    .select('login_count, gamification_points, total_points, nurseiq_points, full_name')
-                    .eq('user_id', this.userId)
-                    .maybeSingle();
-                if (profilePoints) {
-                    if (!this.metrics.totalPoints && profilePoints.total_points != null) {
-                        this.metrics.totalPoints = Number(profilePoints.total_points) || 0;
-                        this.totalPoints = this.metrics.totalPoints;
-                    }
-                    if (!this.gamificationPoints && profilePoints.gamification_points != null) {
-                        this.gamificationPoints = Number(profilePoints.gamification_points) || 0;
-                    }
-                    if (!this.nurseIQPoints && profilePoints.nurseiq_points != null) {
-                        this.nurseIQPoints = Number(profilePoints.nurseiq_points) || 0;
-                    }
-                    if ((!data?.login?.count || !data?.login?.points) && profilePoints.login_count != null) {
-                        const count = Number(profilePoints.login_count) || 0;
-                        this.metrics.login = { ...(this.metrics.login || {}), count, points: count * 10 };
-                    }
-                    if (profilePoints.full_name && this.userProfile) {
-                        this.userProfile.full_name = this.userProfile.full_name || profilePoints.full_name;
+                if (!this.userProfile?.full_name) {
+                    const { data: profileIdentity } = await this.sb
+                        .from('consolidated_user_profiles_table')
+                        .select('full_name')
+                        .eq('user_id', this.userId)
+                        .maybeSingle();
+
+                    if (profileIdentity?.full_name && this.userProfile) {
+                        this.userProfile.full_name = profileIdentity.full_name;
                     }
                 }
-            } catch (profilePointError) {
-                console.warn('Profile point fallback unavailable:', profilePointError);
+            } catch (profileIdentityError) {
+                console.warn('Profile identity refresh unavailable:', profileIdentityError);
             }
             
             // ✅ Store gamification data
@@ -1464,23 +1461,18 @@ class DashboardModule {
             this.metrics.exams = data?.exam?.title || 'No upcoming exams';
             this.metrics.resources = Number(data?.resources ?? 0);
 
-            // Courses are independent from exam-card approvals.
-            let courseCount = Number(data?.courses ?? 0);
-            try {
-                if (window.db && typeof window.db.getCourses === 'function') {
-                    const courses = await window.db.getCourses();
-                    if (Array.isArray(courses)) courseCount = courses.length;
-                }
-            } catch (courseError) {
-                console.warn('⚠️ Could not refresh course count:', courseError);
-            }
-            this.metrics.courses = courseCount;
+            // The RPC 'courses' value is the number of course records
+            // available to the programme, not necessarily enrolled units.
+            // loadDashboardCourses() sets the actual enrolled-unit count.
+            this.metrics.courses = Number(data?.courses ?? 0);
             
             console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
             console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
             console.log(`📊 Level from RPC: ${this.metrics.xp.level}`);
             console.log(`🔥 Streak from RPC: ${this.metrics.login.streak}`);
             console.log(`🧠 NurseIQ Points from RPC: ${this.nurseIQPoints}`);
+            window.nchsmDashboardRPCData = data;
+            window.dispatchEvent(new CustomEvent('nchsmDashboardRPCReady', { detail: data }));
             
             // Load reviews and newsletter
             await this.loadReviewsSnapshot();
@@ -2258,6 +2250,9 @@ class DashboardModule {
                 }
             }
 
+            // This card represents actual enrolled/registered units.
+            this.metrics.courses = courses.length;
+
             const normalized = courses.slice(0, 4);
             container.innerHTML = '';
 
@@ -2490,49 +2485,50 @@ class DashboardModule {
     // ============================================================
     
     async loadXPMetrics() {
-        let loginCount = 0;
-        let gamificationPoints = 0;
-        let nurseIQPoints = 0;
-        
-        if (this.userId && this.sb) {
-            try {
-                const { data } = await this.sb
-                    .from('consolidated_user_profiles_table')
-                    .select('login_count, gamification_points, total_points, nurseiq_points')
-                    .eq('user_id', this.userId)
-                    .single();
-                loginCount = data?.login_count || 0;
-                gamificationPoints = data?.gamification_points || 0;
-                this.metrics.totalPoints = data?.total_points || 0;
-                this.gamificationPoints = gamificationPoints;
-                nurseIQPoints = data?.nurseiq_points || 0;
-                this.nurseIQPoints = nurseIQPoints;
-            } catch (e) {
-                console.warn('Could not fetch login count for XP:', e);
+        // This method is retained for compatibility. Calculated XP must come
+        // from get_student_dashboard, not profile summary columns.
+        if (!this.userId || !this.sb) return;
+
+        try {
+            const { data, error } = await this.sb.rpc('get_student_dashboard', {
+                p_user_id: this.userId
+            });
+            if (error) throw error;
+
+            if (data?.xp) {
+                this.metrics.xp = {
+                    current: Number(data.xp.current ?? 0),
+                    max: Number(data.xp.max ?? 100),
+                    level: Number(data.xp.level ?? 1),
+                    percent: Number(data.xp.percent ?? 0),
+                    total: Number(data.xp.total ?? 0)
+                };
+                this.metrics.totalPoints = Number(data.xp.total ?? data.total_points ?? 0);
+                this.totalPoints = this.metrics.totalPoints;
             }
+
+            if (data?.login) {
+                this.metrics.login = {
+                    ...(this.metrics.login || {}),
+                    count: Number(data.login.count ?? 0),
+                    points: Number(data.login.points ?? 0),
+                    streak: Number(data.login.streak ?? 0),
+                    maxStreak: Number(data.login.maxStreak ?? 0),
+                    streakRestores: Number(data.login.restores ?? 0)
+                };
+            }
+
+            if (this.elements.userLevel) this.elements.userLevel.innerText = this.metrics.xp.level;
+            if (this.elements.userXp) this.elements.userXp.innerText = this.metrics.xp.current;
+            if (this.elements.userXpMax) this.elements.userXpMax.innerText = this.metrics.xp.max;
+            if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width =
+                `${Math.max(0, Math.min(100, this.metrics.xp.percent))}%`;
+
+        } catch (e) {
+            console.warn('Could not refresh authoritative XP:', e);
         }
-        
-        const loginPoints = loginCount * 10;
-        const attendancePoints = (this.metrics.attendance.verified || 0) * 10;
-        const totalXP = loginPoints + attendancePoints + nurseIQPoints + gamificationPoints;
-        
-        const maxXP = 100;
-        const currentXP = totalXP % maxXP;
-        const level = Math.floor(totalXP / maxXP) + 1;
-        const percent = (currentXP / maxXP) * 100;
-        
-        this.metrics.xp = { current: currentXP, max: maxXP, level, percent, total: totalXP };
-        this.metrics.login = { count: loginCount, points: loginPoints };
-        if (!Number.isFinite(Number(this.metrics.totalPoints)) || this.metrics.totalPoints === 0) {
-            this.metrics.totalPoints = totalXP;
-        }
-        
-        if (this.elements.userLevel) this.elements.userLevel.innerText = level;
-        if (this.elements.userXp) this.elements.userXp.innerText = currentXP;
-        if (this.elements.userXpMax) this.elements.userXpMax.innerText = maxXP;
-        if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width = percent + '%';
     }
-    
+
     // ============================================================
     // 🎨 UPDATE UI FROM METRICS - FIXED!
     // ============================================================
@@ -2661,8 +2657,13 @@ class DashboardModule {
         setText(this.elements.snapshotActiveCourses, m.courses ?? 0);
         setText(this.elements.snapshotApprovedUnits, m.examCard?.approved ?? 0);
         setText(this.elements.snapshotResources, m.resources ?? 0);
-        if (this.elements.snapshotCGPA && !this.elements.snapshotCGPA.textContent.trim()) {
-            this.elements.snapshotCGPA.textContent = '--';
+
+        if (this.elements.snapshotCGPA) {
+            const gpa = m.academic?.cumulative_gpa;
+            this.elements.snapshotCGPA.textContent =
+                gpa != null && Number.isFinite(Number(gpa))
+                    ? Number(gpa).toFixed(2)
+                    : '—';
         }
 
         const warningText = document.getElementById('warning-text');
@@ -2700,30 +2701,28 @@ class DashboardModule {
             const target = this.elements?.snapshotCGPA || document.getElementById('snapshot-cgpa');
             if (!target) return;
 
-            const readGpa = () => {
-                const source = document.getElementById('transcript-cgpa');
-                if (!source) return false;
-                const raw = (source.textContent || source.innerText || '').trim();
-                if (!raw) return false;
-                target.textContent = raw;
-                return true;
-            };
-
-            if (readGpa()) return;
-
-            try {
-                if (window.academicReportsModule &&
-                    typeof window.academicReportsModule.loadReports === 'function') {
-                    await window.academicReportsModule.loadReports();
-                }
-            } catch (reportError) {
-                console.warn('Academic Reports snapshot load:', reportError);
+            // First preference: authoritative dashboard RPC GPA.
+            const rpcGpa = this.metrics?.academic?.cumulative_gpa;
+            if (rpcGpa != null && Number.isFinite(Number(rpcGpa))) {
+                target.textContent = Number(rpcGpa).toFixed(2);
+                return;
             }
 
-            if (readGpa()) return;
-            target.textContent = '--';
+            // Second preference: Academic Reports transcript GPA.
+            const source = document.getElementById('transcript-cgpa');
+            if (source) {
+                const raw = (source.textContent || source.innerText || '').trim();
+                if (raw && raw !== '0.00' && raw !== '0') {
+                    target.textContent = raw;
+                    return;
+                }
+            }
+
+            target.textContent = '—';
         } catch (error) {
             console.warn('Cumulative GPA snapshot unavailable:', error);
+            const target = this.elements?.snapshotCGPA || document.getElementById('snapshot-cgpa');
+            if (target) target.textContent = '—';
         }
     }
 
