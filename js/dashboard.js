@@ -46,7 +46,7 @@ class DashboardModule {
             attendance: { rate: 0, verified: 0, total: 0, pending: 0, points: 0 },
             resources: 0,
             examCard: { approved: 0, eligible: false },
-            nurseiq: { progress: 0, accuracy: 0, questions: 0, points: 0, score: 0 },
+            nurseiq: { progress: 0, accuracy: 0, questions: 0, points: 0, score: 0, attempts: 0 },
             academic: { cumulative_gpa: null, published_marks: 0 },
             courses: 0,
             exams: 'No upcoming exams',
@@ -769,7 +769,7 @@ class DashboardModule {
     // ============================================================
     
     async fixNurseIQDisplay() {
-        console.log('🔧 Synchronizing dashboard metrics from authoritative RPC...');
+        console.log('🔧 Syncing dashboard metrics from authoritative RPC...');
 
         try {
             if (!this.userId || !this.sb) return;
@@ -777,33 +777,24 @@ class DashboardModule {
             const { data, error } = await this.sb.rpc('get_student_dashboard', {
                 p_user_id: this.userId
             });
-
             if (error) throw error;
 
             const nurseiq = data?.nurseiq || {};
             const xp = data?.xp || {};
             const login = data?.login || {};
+            const attendance = data?.attendance || {};
             const academic = data?.academic || {};
-
-            // IMPORTANT: The RPC is the source of truth.
-            // Never overwrite calculated NurseIQ/XP totals with stale
-            // profile summary columns such as nurseiq_points/total_points.
-            const nurseiqPoints = Number(nurseiq.points ?? 0);
-            const totalXP = Number(xp.total ?? data?.total_points ?? 0);
-
-            this.nurseIQPoints = nurseiqPoints;
-            this.totalPoints = totalXP;
-            this.gamificationPoints = Number(data?.gamification?.points ?? 0);
 
             this.metrics.nurseiq = {
                 questions: Number(nurseiq.questions ?? 0),
-                attempts: Number(nurseiq.attempts ?? 0),
                 score: Number(nurseiq.score ?? 0),
                 accuracy: Number(nurseiq.accuracy ?? 0),
                 progress: Number(nurseiq.progress ?? 0),
-                points: nurseiqPoints
+                attempts: Number(nurseiq.attempts ?? 0),
+                points: Number(nurseiq.points ?? 0)
             };
-            this.metrics.nurseiqPoints = nurseiqPoints;
+            this.nurseIQPoints = this.metrics.nurseiq.points;
+            this.metrics.nurseiqPoints = this.nurseIQPoints;
 
             this.metrics.login = {
                 count: Number(login.count ?? 0),
@@ -813,64 +804,55 @@ class DashboardModule {
                 streakRestores: Number(login.restores ?? 0)
             };
 
+            this.metrics.attendance = {
+                rate: Number(attendance.rate ?? 0),
+                verified: Number(attendance.verified ?? 0),
+                total: Number(attendance.total ?? 0),
+                pending: Number(attendance.pending ?? 0),
+                points: Number(attendance.points ?? 0)
+            };
+
+            this.gamificationPoints = Number(data?.gamification?.points ?? 0);
             this.metrics.gamification = {
                 points: this.gamificationPoints,
                 achievements: data?.gamification?.badges || []
             };
 
             this.metrics.xp = {
-                current: Number(xp.current ?? (totalXP % 100)),
+                current: Number(xp.current ?? 0),
                 max: Number(xp.max ?? 100),
-                level: Number(xp.level ?? (Math.floor(totalXP / 100) + 1)),
-                percent: Number(xp.percent ?? (totalXP % 100)),
-                total: totalXP
+                level: Number(xp.level ?? 1),
+                percent: Number(xp.percent ?? 0),
+                total: Number(xp.total ?? data?.total_points ?? 0)
             };
-            this.metrics.totalPoints = totalXP;
+            this.metrics.totalPoints = this.metrics.xp.total;
+            this.totalPoints = this.metrics.totalPoints;
 
+            this.metrics.examCard = data?.examCard || {
+                total: 0, pending: 0, approved: 0, eligible: false
+            };
+            this.metrics.resources = Number(data?.resources ?? 0);
+            this.metrics.exams = data?.exam?.title || 'No upcoming exams';
             this.metrics.academic = {
-                cumulative_gpa:
-                    academic.cumulative_gpa == null
-                        ? null
-                        : Number(academic.cumulative_gpa),
+                cumulative_gpa: academic.cumulative_gpa == null ? null : Number(academic.cumulative_gpa),
                 published_marks: Number(academic.published_marks ?? 0)
             };
 
-            // Direct UI update
-            if (this.elements.nurseiqPoints) {
-                this.elements.nurseiqPoints.textContent = nurseiqPoints.toLocaleString();
-            }
-            if (this.elements.dashboardNurseIQPoints) {
-                this.elements.dashboardNurseIQPoints.textContent = nurseiqPoints.toLocaleString();
-            }
-            if (this.elements.totalPointsDisplay) {
-                this.elements.totalPointsDisplay.textContent = totalXP.toLocaleString();
-            }
-            if (this.elements.loginPointsDisplay) {
-                this.elements.loginPointsDisplay.textContent = Number(login.points ?? 0).toLocaleString();
-            }
-            if (this.elements.loginCountDisplay) {
-                this.elements.loginCountDisplay.textContent = Number(login.count ?? 0).toLocaleString();
-            }
+            window.nchsmDashboardRPCData = data;
+            window.dispatchEvent(new CustomEvent('nchsmDashboardRPCReady', {detail: data}));
 
             this.updateUIFromMetrics();
             this.updateStreakUI();
-            this.updateNurseIQStats(nurseiqPoints);
 
-            const gpaTarget = this.elements.snapshotCGPA;
-            if (gpaTarget) {
-                gpaTarget.textContent =
-                    academic.cumulative_gpa == null ||
-                    !Number.isFinite(Number(academic.cumulative_gpa))
-                        ? '—'
-                        : Number(academic.cumulative_gpa).toFixed(2);
-            }
-
-            console.log('✅ RPC NurseIQ points:', nurseiqPoints);
-            console.log('✅ RPC Total XP:', totalXP);
-            console.log('✅ RPC GPA:', academic.cumulative_gpa);
-
+            console.log('✅ Authoritative RPC:', {
+                totalXP: this.metrics.totalPoints,
+                level: this.metrics.xp.level,
+                nurseIQ: this.metrics.nurseiq.points,
+                attendance: this.metrics.attendance.rate,
+                gpa: this.metrics.academic.cumulative_gpa
+            });
         } catch (error) {
-            console.error('Error synchronizing dashboard RPC metrics:', error);
+            console.error('❌ RPC dashboard resync failed:', error);
         }
     }
 
@@ -917,28 +899,19 @@ class DashboardModule {
     
     async fetchGamificationPoints() {
         if (!this.userId || !this.sb) return 0;
-
         try {
-            // Only read badge/gamification summary here. Calculated NurseIQ
-            // and total XP are populated by the dashboard RPC.
-            const { data, error } = await this.sb
-                .from('consolidated_user_profiles_table')
-                .select('gamification_points, earned_badges')
-                .eq('user_id', this.userId)
-                .maybeSingle();
-
+            const { data, error } = await this.sb.rpc('get_student_dashboard', {
+                p_user_id: this.userId
+            });
             if (error) throw error;
-
-            this.gamificationPoints = Number(data?.gamification_points ?? 0);
+            this.gamificationPoints = Number(data?.gamification?.points ?? 0);
             this.metrics.gamification = {
                 points: this.gamificationPoints,
-                achievements: data?.earned_badges || []
+                achievements: data?.gamification?.badges || []
             };
-
             return this.gamificationPoints;
-
         } catch (error) {
-            console.error('Error fetching gamification points:', error);
+            console.warn('⚠️ Gamification RPC preload unavailable:', error);
             return 0;
         }
     }
@@ -1357,34 +1330,39 @@ class DashboardModule {
             
             if (error) throw error;
             
-            // ✅ RPC is authoritative for calculated totals.
-            this.metrics.totalPoints = Number(data?.xp?.total ?? data?.total_points ?? 0);
+            // ✅ Store total points from RPC
+            this.metrics.totalPoints = Number(data?.total_points ?? 0);
             this.totalPoints = this.metrics.totalPoints;
-            this.metrics.academic = {
-                cumulative_gpa:
-                    data?.academic?.cumulative_gpa == null
-                        ? null
-                        : Number(data.academic.cumulative_gpa),
-                published_marks: Number(data?.academic?.published_marks ?? 0)
-            };
 
-            // The RPC is authoritative for calculated dashboard metrics.
-            // Do not fall back to stale profile point summaries.
-            // Only refresh the display name if it is missing locally.
+            // If the RPC omits point fields, recover them from the student's profile.
+            // This does not fabricate values; it only reads the existing profile totals.
             try {
-                if (!this.userProfile?.full_name) {
-                    const { data: profileIdentity } = await this.sb
-                        .from('consolidated_user_profiles_table')
-                        .select('full_name')
-                        .eq('user_id', this.userId)
-                        .maybeSingle();
-
-                    if (profileIdentity?.full_name && this.userProfile) {
-                        this.userProfile.full_name = profileIdentity.full_name;
+                const { data: profilePoints } = await this.sb
+                    .from('consolidated_user_profiles_table')
+                    .select('login_count, gamification_points, total_points, nurseiq_points, full_name')
+                    .eq('user_id', this.userId)
+                    .maybeSingle();
+                if (profilePoints) {
+                    if (!this.metrics.totalPoints && profilePoints.total_points != null) {
+                        this.metrics.totalPoints = Number(profilePoints.total_points) || 0;
+                        this.totalPoints = this.metrics.totalPoints;
+                    }
+                    if (!this.gamificationPoints && profilePoints.gamification_points != null) {
+                        this.gamificationPoints = Number(profilePoints.gamification_points) || 0;
+                    }
+                    if (!this.nurseIQPoints && profilePoints.nurseiq_points != null) {
+                        this.nurseIQPoints = Number(profilePoints.nurseiq_points) || 0;
+                    }
+                    if ((!data?.login?.count || !data?.login?.points) && profilePoints.login_count != null) {
+                        const count = Number(profilePoints.login_count) || 0;
+                        this.metrics.login = { ...(this.metrics.login || {}), count, points: count * 10 };
+                    }
+                    if (profilePoints.full_name && this.userProfile) {
+                        this.userProfile.full_name = this.userProfile.full_name || profilePoints.full_name;
                     }
                 }
-            } catch (profileIdentityError) {
-                console.warn('Profile identity refresh unavailable:', profileIdentityError);
+            } catch (profilePointError) {
+                console.warn('Profile point fallback unavailable:', profilePointError);
             }
             
             // ✅ Store gamification data
@@ -1457,22 +1435,33 @@ class DashboardModule {
             };
             this.metrics.xp.percent = (this.metrics.xp.current / this.metrics.xp.max) * 100;
             
-            // Exam/resources data
+            // Exam/resources/academic data
             this.metrics.exams = data?.exam?.title || 'No upcoming exams';
+            this.metrics.academic = {
+                cumulative_gpa: data?.academic?.cumulative_gpa == null
+                    ? null
+                    : Number(data.academic.cumulative_gpa),
+                published_marks: Number(data?.academic?.published_marks ?? 0)
+            };
             this.metrics.resources = Number(data?.resources ?? 0);
 
-            // The RPC 'courses' value is the number of course records
-            // available to the programme, not necessarily enrolled units.
-            // loadDashboardCourses() sets the actual enrolled-unit count.
-            this.metrics.courses = Number(data?.courses ?? 0);
+            // Courses are independent from exam-card approvals.
+            let courseCount = Number(data?.courses ?? 0);
+            try {
+                if (window.db && typeof window.db.getCourses === 'function') {
+                    const courses = await window.db.getCourses();
+                    if (Array.isArray(courses)) courseCount = courses.length;
+                }
+            } catch (courseError) {
+                console.warn('⚠️ Could not refresh course count:', courseError);
+            }
+            this.metrics.courses = courseCount;
             
             console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
             console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
             console.log(`📊 Level from RPC: ${this.metrics.xp.level}`);
             console.log(`🔥 Streak from RPC: ${this.metrics.login.streak}`);
             console.log(`🧠 NurseIQ Points from RPC: ${this.nurseIQPoints}`);
-            window.nchsmDashboardRPCData = data;
-            window.dispatchEvent(new CustomEvent('nchsmDashboardRPCReady', { detail: data }));
             
             // Load reviews and newsletter
             await this.loadReviewsSnapshot();
@@ -1509,7 +1498,7 @@ class DashboardModule {
             console.log('✅ Dashboard loaded from DATABASE');
             
             // Load dashboard cards that are independent of the RPC payload.
-            await Promise.all([
+            await Promise.allSettled([
                 this.loadLeaderboardData('all'),
                 this.loadQuickNextClass(),
                 this.loadDashboardCourses(),
@@ -1518,8 +1507,12 @@ class DashboardModule {
             ]);
             
         } catch (error) {
-            console.error('Dashboard error:', error);
-            await this.loadIndividualMetrics();
+            console.error('❌ Dashboard RPC/load error:', error);
+            // Keep valid cached/current metrics. Never overwrite them with
+            // stale profile total_points/nurseiq_points.
+            this.updateUIFromMetrics();
+            this.updateStreakUI();
+            return false;
         }
     }
     
@@ -1528,60 +1521,77 @@ class DashboardModule {
     // ============================================================
     
     async loadIndividualMetrics() {
-        console.log('⚠️ Falling back to individual metrics...');
-        
-        if (this.userId && this.sb) {
-            try {
-                const { data: profileData } = await this.sb
-                    .from('consolidated_user_profiles_table')
-                    .select('login_count, gamification_points, total_points, nurseiq_points')
-                    .eq('user_id', this.userId)
-                    .single();
-                
-                const loginCount = profileData?.login_count || 0;
-                this.gamificationPoints = profileData?.gamification_points || 0;
-                this.metrics.totalPoints = profileData?.total_points || 0;
-                this.nurseIQPoints = profileData?.nurseiq_points || 0;
-                
-                const streakData = await this.calculateDailyStreak();
-                this.metrics.login = { 
-                    count: loginCount, 
-                    points: loginCount * 10, 
-                    streak: streakData.streak,
-                    maxStreak: streakData.maxStreak,
-                    streakRestores: streakData.restores
-                };
-                this.metrics.gamification.points = this.gamificationPoints;
-                this.metrics.nurseiqPoints = this.nurseIQPoints;
-                
-                console.log(`🧠 Fallback NurseIQ: ${this.nurseIQPoints}`);
-            } catch (e) {
-                console.warn('Could not fetch profile data:', e);
-            }
+        console.warn('⚠️ Retrying authoritative dashboard RPC...');
+
+        if (!this.userId || !this.sb) return false;
+
+        try {
+            const { data, error } = await this.sb.rpc('get_student_dashboard', {
+                p_user_id: this.userId
+            });
+            if (error) throw error;
+
+            const nurseiq = data?.nurseiq || {};
+            const xp = data?.xp || {};
+            const login = data?.login || {};
+            const attendance = data?.attendance || {};
+
+            this.metrics.login = {
+                count: Number(login.count ?? 0),
+                points: Number(login.points ?? 0),
+                streak: Number(login.streak ?? 0),
+                maxStreak: Number(login.maxStreak ?? 0),
+                streakRestores: Number(login.restores ?? 0)
+            };
+            this.metrics.attendance = {
+                rate: Number(attendance.rate ?? 0),
+                verified: Number(attendance.verified ?? 0),
+                total: Number(attendance.total ?? 0),
+                pending: Number(attendance.pending ?? 0),
+                points: Number(attendance.points ?? 0)
+            };
+            this.metrics.nurseiq = {
+                questions: Number(nurseiq.questions ?? 0),
+                score: Number(nurseiq.score ?? 0),
+                accuracy: Number(nurseiq.accuracy ?? 0),
+                progress: Number(nurseiq.progress ?? 0),
+                attempts: Number(nurseiq.attempts ?? 0),
+                points: Number(nurseiq.points ?? 0)
+            };
+            this.nurseIQPoints = this.metrics.nurseiq.points;
+            this.metrics.nurseiqPoints = this.nurseIQPoints;
+            this.gamificationPoints = Number(data?.gamification?.points ?? 0);
+            this.metrics.gamification = {
+                points: this.gamificationPoints,
+                achievements: data?.gamification?.badges || []
+            };
+            this.metrics.xp = {
+                current: Number(xp.current ?? 0),
+                max: Number(xp.max ?? 100),
+                level: Number(xp.level ?? 1),
+                percent: Number(xp.percent ?? 0),
+                total: Number(xp.total ?? data?.total_points ?? 0)
+            };
+            this.metrics.totalPoints = this.metrics.xp.total;
+            this.totalPoints = this.metrics.totalPoints;
+            this.metrics.examCard = data?.examCard || {total:0,pending:0,approved:0,eligible:false};
+            this.metrics.resources = Number(data?.resources ?? 0);
+            this.metrics.exams = data?.exam?.title || 'No upcoming exams';
+            this.metrics.academic = {
+                cumulative_gpa: data?.academic?.cumulative_gpa == null ? null : Number(data.academic.cumulative_gpa),
+                published_marks: Number(data?.academic?.published_marks ?? 0)
+            };
+
+            this.updateUIFromMetrics();
+            this.updateStreakUI();
+            this.saveToCache();
+            return true;
+        } catch (error) {
+            console.error('❌ Authoritative RPC retry failed:', error);
+            return false;
         }
-        
-        await Promise.all([
-            this.loadAttendanceMetrics(),
-            this.loadResourcesMetrics(),
-            this.loadExamCardMetrics(),
-            this.loadNurseIQMetrics(),
-            this.updateExamsMetric(),
-            this.loadXPMetrics(),
-            this.loadAnnouncement(),
-            this.loadReviewsSnapshot(),
-            this.loadNewsletterSnapshot(),
-            this.loadDashboardCourses(),
-            this.loadDashboardEvents(),
-            this.syncAcademicReportsSnapshot()
-        ]);
-        this.updateUIFromMetrics();
-        this.updateStreakUI();
-        this.saveToCache();
-        
-        // ✅ FIX: Force NurseIQ display after fallback
-        await this.fixNurseIQDisplay();
     }
-    
+
     async loadAttendanceMetrics() {
         if (!this.userId || !this.sb) return;
         
@@ -2250,9 +2260,6 @@ class DashboardModule {
                 }
             }
 
-            // This card represents actual enrolled/registered units.
-            this.metrics.courses = courses.length;
-
             const normalized = courses.slice(0, 4);
             container.innerHTML = '';
 
@@ -2485,48 +2492,18 @@ class DashboardModule {
     // ============================================================
     
     async loadXPMetrics() {
-        // This method is retained for compatibility. Calculated XP must come
-        // from get_student_dashboard, not profile summary columns.
-        if (!this.userId || !this.sb) return;
+        // Compatibility method. Calculated XP comes from the dashboard RPC.
+        const totalXP = Number(this.metrics?.xp?.total ?? this.metrics?.totalPoints ?? 0);
+        const maxXP = 100;
+        const currentXP = Number(this.metrics?.xp?.current ?? (totalXP % maxXP));
+        const level = Number(this.metrics?.xp?.level ?? (Math.floor(totalXP / maxXP) + 1));
+        const percent = Number(this.metrics?.xp?.percent ?? ((currentXP / maxXP) * 100));
 
-        try {
-            const { data, error } = await this.sb.rpc('get_student_dashboard', {
-                p_user_id: this.userId
-            });
-            if (error) throw error;
-
-            if (data?.xp) {
-                this.metrics.xp = {
-                    current: Number(data.xp.current ?? 0),
-                    max: Number(data.xp.max ?? 100),
-                    level: Number(data.xp.level ?? 1),
-                    percent: Number(data.xp.percent ?? 0),
-                    total: Number(data.xp.total ?? 0)
-                };
-                this.metrics.totalPoints = Number(data.xp.total ?? data.total_points ?? 0);
-                this.totalPoints = this.metrics.totalPoints;
-            }
-
-            if (data?.login) {
-                this.metrics.login = {
-                    ...(this.metrics.login || {}),
-                    count: Number(data.login.count ?? 0),
-                    points: Number(data.login.points ?? 0),
-                    streak: Number(data.login.streak ?? 0),
-                    maxStreak: Number(data.login.maxStreak ?? 0),
-                    streakRestores: Number(data.login.restores ?? 0)
-                };
-            }
-
-            if (this.elements.userLevel) this.elements.userLevel.innerText = this.metrics.xp.level;
-            if (this.elements.userXp) this.elements.userXp.innerText = this.metrics.xp.current;
-            if (this.elements.userXpMax) this.elements.userXpMax.innerText = this.metrics.xp.max;
-            if (this.elements.xpProgressFill) this.elements.xpProgressFill.style.width =
-                `${Math.max(0, Math.min(100, this.metrics.xp.percent))}%`;
-
-        } catch (e) {
-            console.warn('Could not refresh authoritative XP:', e);
-        }
+        this.metrics.xp = {current: currentXP, max: maxXP, level, percent, total: totalXP};
+        this.metrics.totalPoints = totalXP;
+        this.totalPoints = totalXP;
+        this.updateUIFromMetrics();
+        return this.metrics.xp;
     }
 
     // ============================================================
@@ -2657,7 +2634,6 @@ class DashboardModule {
         setText(this.elements.snapshotActiveCourses, m.courses ?? 0);
         setText(this.elements.snapshotApprovedUnits, m.examCard?.approved ?? 0);
         setText(this.elements.snapshotResources, m.resources ?? 0);
-
         if (this.elements.snapshotCGPA) {
             const gpa = m.academic?.cumulative_gpa;
             this.elements.snapshotCGPA.textContent =
@@ -2701,28 +2677,30 @@ class DashboardModule {
             const target = this.elements?.snapshotCGPA || document.getElementById('snapshot-cgpa');
             if (!target) return;
 
-            // First preference: authoritative dashboard RPC GPA.
-            const rpcGpa = this.metrics?.academic?.cumulative_gpa;
-            if (rpcGpa != null && Number.isFinite(Number(rpcGpa))) {
-                target.textContent = Number(rpcGpa).toFixed(2);
-                return;
-            }
-
-            // Second preference: Academic Reports transcript GPA.
-            const source = document.getElementById('transcript-cgpa');
-            if (source) {
+            const readGpa = () => {
+                const source = document.getElementById('transcript-cgpa');
+                if (!source) return false;
                 const raw = (source.textContent || source.innerText || '').trim();
-                if (raw && raw !== '0.00' && raw !== '0') {
-                    target.textContent = raw;
-                    return;
+                if (!raw) return false;
+                target.textContent = raw;
+                return true;
+            };
+
+            if (readGpa()) return;
+
+            try {
+                if (window.academicReportsModule &&
+                    typeof window.academicReportsModule.loadReports === 'function') {
+                    await window.academicReportsModule.loadReports();
                 }
+            } catch (reportError) {
+                console.warn('Academic Reports snapshot load:', reportError);
             }
 
-            target.textContent = '—';
+            if (readGpa()) return;
+            target.textContent = '--';
         } catch (error) {
             console.warn('Cumulative GPA snapshot unavailable:', error);
-            const target = this.elements?.snapshotCGPA || document.getElementById('snapshot-cgpa');
-            if (target) target.textContent = '—';
         }
     }
 
