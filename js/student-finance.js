@@ -2810,6 +2810,34 @@ function normalizeMpesaPhone(value) {
 function ensurePaymentPhoneField(container, currentPhone='') {
     if (!container) return null;
 
+    // The master HTML already contains the canonical M-Pesa phone field.
+    // Do NOT create another one. The previous implementation looked only
+    // for .nchsm-payment-phone and therefore inserted a second field beside
+    // the static HTML field.
+    const existingInput = container.querySelector('#finance-paymentPhone');
+    if (existingInput) {
+        if (!existingInput.value && currentPhone) {
+            let v = String(currentPhone).trim();
+            if (v.startsWith('+254')) v = '0' + v.slice(4);
+            else if (v.startsWith('254')) v = '0' + v.slice(3);
+            existingInput.value = v;
+        }
+
+        if (!existingInput.dataset.bound) {
+            existingInput.dataset.bound = 'true';
+            existingInput.addEventListener('input', function() {
+                this.value = this.value.replace(/[^\d+]/g, '');
+                const err = document.getElementById('finance-paymentPhoneError');
+                if (err) {
+                    err.style.display = 'none';
+                    err.textContent = '';
+                }
+            });
+        }
+
+        return existingInput;
+    }
+
     let wrap = container.querySelector('.nchsm-payment-phone');
 
     if (!wrap) {
