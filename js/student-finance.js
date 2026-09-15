@@ -1,99 +1,59 @@
-// ============================================================
-// 📊 STUDENT FINANCE MODULE - COMPLETE WITH ALL FIXES
-// ✅ FULL ORIGINAL CODE + NEW EMAIL RECEIPT + SUCCESS POPUP
-// ✅ Handles cancellation, insufficient funds, timeout
-// ✅ Stops polling immediately on failure
-// ✅ Sends email receipt after successful payment
-// ============================================================
+// ============================================================ // 📊
+STUDENT FINANCE MODULE - COMPLETE WITH ALL FIXES // ✅ FULL ORIGINAL
+CODE + NEW EMAIL RECEIPT + SUCCESS POPUP // ✅ Handles cancellation,
+insufficient funds, timeout // ✅ Stops polling immediately on failure
+// ✅ Sends email receipt after successful payment //
+============================================================
 
-// ============================================================
-// 💳 PAYHERO CONFIGURATION
-// ============================================================
+// ============================================================ // 💳
+PAYHERO CONFIGURATION //
+============================================================
 
-const PAYHERO_CONFIG = {
-    baseUrl: 'https://backend.payhero.co.ke/api/v2/payments',
-    accountId: '11408',
-    channelId: '11445',
-    authToken: 'Basic R2FWbHhQUFRQbFV6a05kMnNwcFc6QkF6WXlLaGFUMFM0MVpyNFk4QkRRZW9pOUJWVzNjR0FhZ2ExTTJPZw==',
-    provider: 'm-pesa',
-    callbackUrl: 'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/mpesa-callback',
-    lipwaLink: 'https://lipwa.link/11408'
-};
+const PAYHERO_CONFIG = { baseUrl:
+‘https://backend.payhero.co.ke/api/v2/payments’, accountId: ‘11408’,
+channelId: ‘11445’, authToken: ‘Basic
+R2FWbHhQUFRQbFV6a05kMnNwcFc6QkF6WXlLaGFUMFM0MVpyNFk4QkRRZW9pOUJWVzNjR0FhZ2ExTTJPZw==’,
+provider: ‘m-pesa’, callbackUrl:
+‘https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/mpesa-callback’,
+lipwaLink: ‘https://lipwa.link/11408’ };
 
-// ============================================================
-// 🔄 PAYHERO STATE
-// ============================================================
+// ============================================================ // 🔄
+PAYHERO STATE //
+============================================================
 
-const payheroState = {
-    isInitialized: true,
-    isProcessing: false,
-    currentTransaction: null,
-    stkCheckInterval: null
-};
+const payheroState = { isInitialized: true, isProcessing: false,
+currentTransaction: null, stkCheckInterval: null };
 
-// ============================================================
-// 📦 STATE
-// ============================================================
+// ============================================================ // 📦
+STATE // ============================================================
 
-const studentFinanceState = {
-    balance: 0,
-    totalPaid: 0,
-    totalDue: 0,
-    outstanding: 0,
-    payments: [],
-    feeStructure: [],
-    feeStructureRaw: null,
-    voteHeads: [],
-    paymentProgress: 0,
-    overallProgress: 0,
-    currentPeriodProgress: 0,
-    currentPeriodOutstanding: 0,
-    lastUpdated: null,
-    isLoaded: false,
-    programType: 'TVET',
-    programLevel: 'diploma',
-    currentPeriod: null,
-    semesterFee: 0,
-    paidThisSemester: 0,
-    currentPeriodIndex: 0,
-    feeStructureVisible: false,
-    student: null,
-    selectedPeriod: null,
-    selectedBlock: null,
-    selectedPaymentMethod: 'mpesa',
-    stkPayment: {
-        isProcessing: false,
-        checkoutRequestID: null,
-        merchantRequestID: null,
-        phoneNumber: null,
-        amount: 0,
-        period: null,
-        status: 'idle'
-    }
-};
+const studentFinanceState = { balance: 0, totalPaid: 0, totalDue: 0,
+outstanding: 0, payments: [], feeStructure: [], feeStructureRaw: null,
+voteHeads: [], paymentProgress: 0, overallProgress: 0,
+currentPeriodProgress: 0, currentPeriodOutstanding: 0, lastUpdated:
+null, isLoaded: false, programType: ‘TVET’, programLevel: ‘diploma’,
+currentPeriod: null, semesterFee: 0, paidThisSemester: 0,
+currentPeriodIndex: 0, feeStructureVisible: false, student: null,
+selectedPeriod: null, selectedBlock: null, selectedPaymentMethod:
+‘mpesa’, stkPayment: { isProcessing: false, checkoutRequestID: null,
+merchantRequestID: null, phoneNumber: null, amount: 0, period: null,
+status: ‘idle’ } };
 
-// ============================================================
-// 📦 PENDING PAYMENT STATE (FOR POS STYLE MODAL)
-// ============================================================
+// ============================================================ // 📦
+PENDING PAYMENT STATE (FOR POS STYLE MODAL) //
+============================================================
 
-const pendingPayment = {
-    orderId: null,
-    paymentId: null,
-    transactionId: null,
-    isProcessing: false,
-    cancelled: false,
-    status: 'idle'
-};
+const pendingPayment = { orderId: null, paymentId: null, transactionId:
+null, isProcessing: false, cancelled: false, status: ‘idle’ };
 
-// ============================================================
-// 🔧 UTILITY FUNCTIONS - FIXED FOR DATABASE STRUCTURE
-// ============================================================
+// ============================================================ // 🔧
+UTILITY FUNCTIONS - FIXED FOR DATABASE STRUCTURE //
+============================================================
 
-function mapPeriodToDisplay(dbPeriod) {
-    if (!dbPeriod) return dbPeriod;
-    if (/^Y\d+\s+[ST]\d+$/.test(dbPeriod)) return dbPeriod;
+function mapPeriodToDisplay(dbPeriod) { if (!dbPeriod) return dbPeriod;
+if (/^Y+[ST]$/.test(dbPeriod)) return dbPeriod;
     if (/^Y\d+[ST]\d+$/.test(dbPeriod)) return dbPeriod;
-    
+
     const termMatch = dbPeriod.match(/Term\s*(\d+)/i);
     if (termMatch) {
         const termNum = parseInt(termMatch[1]);
@@ -101,14 +61,14 @@ function mapPeriodToDisplay(dbPeriod) {
         const termInYear = ((termNum - 1) % 3) + 1;
         return `Y${year} T${termInYear}`;
     }
-    
+
     const yearTermMatch = dbPeriod.match(/Year\s*(\d+)\s*[-–]\s*Term\s*(\d+)/i);
     if (yearTermMatch) {
         const year = parseInt(yearTermMatch[1]);
         const term = parseInt(yearTermMatch[2]);
         return `Y${year} T${term}`;
     }
-    
+
     const semMatch = dbPeriod.match(/Semester\s*(\d+)/i);
     if (semMatch) {
         const semNum = parseInt(semMatch[1]);
@@ -116,13 +76,14 @@ function mapPeriodToDisplay(dbPeriod) {
         const semInYear = ((semNum - 1) % 3) + 1;
         return `Y${year} S${semInYear}`;
     }
-    
+
     return dbPeriod;
+
 }
 
-function mapPeriodToDatabase(displayPeriod) {
-    if (!displayPeriod) return displayPeriod;
-    
+function mapPeriodToDatabase(displayPeriod) { if (!displayPeriod) return
+displayPeriod;
+
     const match = displayPeriod.match(/^Y(\d+)\s*([ST])(\d+)$/i);
     if (match) {
         const year = parseInt(match[1]);
@@ -137,13 +98,14 @@ function mapPeriodToDatabase(displayPeriod) {
             return `Semester ${semNum}`;
         }
     }
-    
+
     return displayPeriod;
+
 }
 
-function mapProgramCodeToFullName(programCode) {
-    if (!programCode) return programCode;
-    
+function mapProgramCodeToFullName(programCode) { if (!programCode)
+return programCode;
+
     const programMap = {
         'KRCHN': 'KRCHN',
         'CCH': 'Caregiving',
@@ -161,13 +123,14 @@ function mapProgramCodeToFullName(programCode) {
         'HRIT': 'Health Records & IT',
         'CNA': 'Nursing Assistant'
     };
-    
+
     return programMap[programCode] || programCode;
+
 }
 
-function mapProgramFullNameToCode(fullName) {
-    if (!fullName) return fullName;
-    
+function mapProgramFullNameToCode(fullName) { if (!fullName) return
+fullName;
+
     const reverseMap = {
         'KRCHN': 'KRCHN',
         'Caregiving': 'CCH',
@@ -178,73 +141,53 @@ function mapProgramFullNameToCode(fullName) {
         'ICT': 'CICT',
         'Nursing Assistant': 'CNA'
     };
-    
+
     return reverseMap[fullName] || fullName;
+
 }
 
-// ============================================================
-// 🏷️ PROGRAM DETECTION - FIXED
-// ============================================================
+// ============================================================ // 🏷️
+PROGRAM DETECTION - FIXED //
+============================================================
 
-function getProgramType(program) {
-    if (!program) return 'TVET';
-    const upper = program.toUpperCase();
-    if (upper === 'KRCHN') return 'KRCHN';
-    return 'TVET';
-}
+function getProgramType(program) { if (!program) return ‘TVET’; const
+upper = program.toUpperCase(); if (upper === ‘KRCHN’) return ‘KRCHN’;
+return ‘TVET’; }
 
-function getProgramLevel(program) {
-    if (!program) return 'diploma';
-    const certPrograms = ['CCH', 'CPOTT', 'CHRIT', 'CPC', 'CSL', 'CSW', 'CCJS', 'CAG', 'CHSS', 'CICT', 'CCA', 'CNA'];
-    return certPrograms.includes(program) ? 'certificate' : 'diploma';
-}
+function getProgramLevel(program) { if (!program) return ‘diploma’;
+const certPrograms = [‘CCH’, ‘CPOTT’, ‘CHRIT’, ‘CPC’, ‘CSL’, ‘CSW’,
+‘CCJS’, ‘CAG’, ‘CHSS’, ‘CICT’, ‘CCA’, ‘CNA’]; return
+certPrograms.includes(program) ? ‘certificate’ : ‘diploma’; }
 
-function getPeriodLabel(programType) {
-    return programType === 'KRCHN' ? 'Semester' : 'Term';
-}
+function getPeriodLabel(programType) { return programType === ‘KRCHN’ ?
+‘Semester’ : ‘Term’; }
 
-function getPeriods(programType, programLevel = 'diploma') {
-    if (programType === 'KRCHN') {
-        return ['Y1 S1', 'Y1 S2', 'Y1 S3', 'Y2 S1', 'Y2 S2', 'Y2 S3', 'Y3 S1', 'Y3 S2', 'Y3 S3'];
-    } else {
-        if (programLevel === 'certificate') {
-            return ['Y1 T1', 'Y1 T2', 'Y1 T3'];
-        } else {
-            return ['Y1 T1', 'Y1 T2', 'Y1 T3', 'Y2 T1', 'Y2 T2', 'Y2 T3'];
-        }
-    }
-}
+function getPeriods(programType, programLevel = ‘diploma’) { if
+(programType === ‘KRCHN’) { return [‘Y1 S1’, ‘Y1 S2’, ‘Y1 S3’, ‘Y2 S1’,
+‘Y2 S2’, ‘Y2 S3’, ‘Y3 S1’, ‘Y3 S2’, ‘Y3 S3’]; } else { if (programLevel
+=== ‘certificate’) { return [‘Y1 T1’, ‘Y1 T2’, ‘Y1 T3’]; } else { return
+[‘Y1 T1’, ‘Y1 T2’, ‘Y1 T3’, ‘Y2 T1’, ‘Y2 T2’, ‘Y2 T3’]; } } }
 
-// ============================================================
-// 🔧 FEE AMOUNT FUNCTION
-// ============================================================
+// ============================================================ // 🔧
+FEE AMOUNT FUNCTION //
+============================================================
 
-function getFeeAmount(programType, periodIndex, programLevel = 'diploma') {
-    if (programType === 'KRCHN') {
-        const krchnFees = [94600, 95181, 93291, 64100, 78576, 64100, 64100, 64100, 64100];
-        return krchnFees[periodIndex] || 64100;
-    } else {
-        return periodIndex === 0 ? 57500 : 50000;
-    }
-}
+function getFeeAmount(programType, periodIndex, programLevel =
+‘diploma’) { if (programType === ‘KRCHN’) { const krchnFees = [94600,
+95181, 93291, 64100, 78576, 64100, 64100, 64100, 64100]; return
+krchnFees[periodIndex] || 64100; } else { return periodIndex === 0 ?
+57500 : 50000; } }
 
-// ============================================================
-// 🔗 COMMUNICATION WITH SUPER ADMIN MODULE
-// ============================================================
+// ============================================================ // 🔗
+COMMUNICATION WITH SUPER ADMIN MODULE //
+============================================================
 
-function notifySuperAdmin(eventType, data) {
-    try {
-        const adminEvent = new CustomEvent('studentFinanceEvent', {
-            detail: {
-                type: eventType,
-                data: data,
-                timestamp: new Date().toISOString(),
-                source: 'student-module'
-            }
-        });
-        window.dispatchEvent(adminEvent);
-        console.log(`📤 Notified Super Admin: ${eventType}`, data);
-        
+function notifySuperAdmin(eventType, data) { try { const adminEvent =
+new CustomEvent(‘studentFinanceEvent’, { detail: { type: eventType,
+data: data, timestamp: new Date().toISOString(), source:
+‘student-module’ } }); window.dispatchEvent(adminEvent);
+console.log(📤 Notified Super Admin: ${eventType}, data);
+
         if (typeof window.handleStudentFinanceEvent === 'function') {
             window.handleStudentFinanceEvent(eventType, data);
         }
@@ -280,52 +223,33 @@ function notifySuperAdmin(eventType, data) {
         console.warn('⚠️ Could not notify admin:', error.message);
         return false;
     }
+
 }
 
 function listenForAdminEvents() {
-    window.addEventListener('adminFinanceEvent', function(event) {
-        console.log('📥 Received admin event:', event.detail);
-        const { type, data } = event.detail;
-        switch(type) {
-            case 'fee_structure_updated':
-            case 'payment_verified':
-            case 'balance_updated':
-            case 'payment_recorded':
-                if (data?.studentId === studentFinanceState.student?.user_id) {
-                    loadStudentFinance();
-                    showToast('📋 Finance data updated', 'info');
-                }
-                break;
-            default:
-                console.log('📥 Unhandled admin event:', type);
-        }
-    });
-    console.log('👂 Listening for admin finance events');
-}
+window.addEventListener(‘adminFinanceEvent’, function(event) {
+console.log(‘📥 Received admin event:’, event.detail); const { type,
+data } = event.detail; switch(type) { case ‘fee_structure_updated’: case
+‘payment_verified’: case ‘balance_updated’: case ‘payment_recorded’: if
+(data?.studentId === studentFinanceState.student?.user_id) {
+loadStudentFinance(); showToast(‘📋 Finance data updated’, ‘info’); }
+break; default: console.log(‘📥 Unhandled admin event:’, type); } });
+console.log(‘👂 Listening for admin finance events’); }
 
-// ============================================================
-// 📱 FORMAT PHONE NUMBER
-// ============================================================
+// ============================================================ // 📱
+FORMAT PHONE NUMBER //
+============================================================
 
-function formatPhoneNumber(phone) {
-    if (!phone) return null;
-    let clean = phone.replace(/\D/g, '');
-    if (clean.length === 10 && (clean.startsWith('07') || clean.startsWith('01'))) 
-        return '254' + clean.substring(1);
-    if (clean.length === 12 && clean.startsWith('254')) return clean;
-    if (clean.length === 9 && clean.startsWith('7')) return '254' + clean;
-    return clean;
-}
+function formatPhoneNumber(phone) { if (!phone) return null; let clean =
+phone.replace(//g, ’‘); if (clean.length === 10 &&
+(clean.startsWith(’07’) || clean.startsWith(‘01’))) return ‘254’ +
+clean.substring(1); if (clean.length === 12 && clean.startsWith(‘254’))
+return clean; if (clean.length === 9 && clean.startsWith(‘7’)) return
+‘254’ + clean; return clean; }
 
-function getSupabaseClient() {
-    const candidates = [
-        window.sb,
-        window.supabaseClient,
-        window.db?.supabase,
-        window.NCHSMLogin?.supabase,
-        (typeof supabase !== 'undefined' ? supabase : null),
-        window.supabase
-    ];
+function getSupabaseClient() { const candidates = [ window.sb,
+window.supabaseClient, window.db?.supabase, window.NCHSMLogin?.supabase,
+(typeof supabase !== ‘undefined’ ? supabase : null), window.supabase ];
 
     const client = candidates.find(c =>
         c &&
@@ -336,12 +260,12 @@ function getSupabaseClient() {
 
     if (!client) console.error('❌ No Supabase client found');
     return client || null;
+
 }
 
 async function generatePDFReceipt(payment, receiptNumber, studentName) {
-    try {
-        console.log('📄 Generating PDF receipt...');
-        
+try { console.log(‘📄 Generating PDF receipt…’);
+
         // Check if jsPDF is loaded
         if (typeof window.jspdf === 'undefined') {
             console.warn('⚠️ jsPDF not loaded, loading from CDN...');
@@ -399,30 +323,25 @@ async function generatePDFReceipt(payment, receiptNumber, studentName) {
         console.error('❌ PDF generation error:', error);
         return null;
     }
+
 }
 
-// ============================================================
-// 📥 LOAD SCRIPT HELPER
-// ============================================================
+// ============================================================ // 📥
+LOAD SCRIPT HELPER //
+============================================================
 
-function loadScript(src) {
-    return new Promise((resolve, reject) => {
-        const script = document.createElement('script');
-        script.src = src;
-        script.onload = resolve;
-        script.onerror = reject;
-        document.head.appendChild(script);
-    });
-}
+function loadScript(src) { return new Promise((resolve, reject) => {
+const script = document.createElement(‘script’); script.src = src;
+script.onload = resolve; script.onerror = reject;
+document.head.appendChild(script); }); }
 
-// ============================================================
-// 📧 SEND PAYMENT RECEIPT EMAIL WITH PDF ATTACHMENT - UPDATED
-// ============================================================
+// ============================================================ // 📧
+SEND PAYMENT RECEIPT EMAIL WITH PDF ATTACHMENT - UPDATED //
+============================================================
 
-async function sendPaymentReceiptEmail(paymentData) {
-    try {
-        console.log('📧 Sending payment receipt email with PDF...');
-        
+async function sendPaymentReceiptEmail(paymentData) { try {
+console.log(‘📧 Sending payment receipt email with PDF…’);
+
         const supabase = getSupabaseClient();
         if (!supabase) {
             console.warn('⚠️ No Supabase client, cannot send email');
@@ -559,52 +478,22 @@ async function sendPaymentReceiptEmail(paymentData) {
         console.error('❌ Email error:', error);
         return false;
     }
+
 }
 
-// ============================================================
-// 📧 GENERATE EMAIL HTML (with PDF attachment notice)
-// ============================================================
+// ============================================================ // 📧
+GENERATE EMAIL HTML (with PDF attachment notice) //
+============================================================
 
-function generateEmailHTML(payment, receiptNumber, studentName, date, time) {
-    const amount = parseFloat(payment.amount).toFixed(2);
-    const period = payment.period || 'N/A';
-    const method = payment.payment_method || 'M-Pesa';
-    const program = payment.program || 'KRCHN';
-    
+function generateEmailHTML(payment, receiptNumber, studentName, date,
+time) { const amount = parseFloat(payment.amount).toFixed(2); const
+period = payment.period || ‘N/A’; const method = payment.payment_method
+|| ‘M-Pesa’; const program = payment.program || ‘KRCHN’;
+
     return `
+
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Receipt</title>
-    <style>
-        body { font-family: 'Segoe UI', Tahoma, Arial, sans-serif; background: #f5f7fa; padding: 20px; }
-        .container { max-width: 600px; margin: 0 auto; background: white; border-radius: 12px; padding: 30px; box-shadow: 0 4px 20px rgba(0,0,0,0.08); }
-        .header { text-align: center; border-bottom: 3px solid #0A3D62; padding-bottom: 20px; margin-bottom: 20px; }
-        .header h1 { color: #0A3D62; margin: 0; font-size: 24px; }
-        .header .subtitle { color: #666; margin: 5px 0 0; font-size: 14px; }
-        .greeting { font-size: 15px; color: #2c3e50; margin-bottom: 16px; }
-        .greeting strong { color: #0A3D62; }
-        .amount-box { background: linear-gradient(135deg, #eaf2f8, #d6eaf8); border-radius: 12px; padding: 20px; text-align: center; margin: 16px 0; border: 2px solid #0A3D62; }
-        .amount-box .label { font-size: 12px; color: #2c3e50; font-weight: 500; }
-        .amount-box .amount { font-size: 32px; font-weight: 800; color: #0A3D62; }
-        .details { margin: 16px 0; }
-        .details table { width: 100%; border-collapse: collapse; }
-        .details td { padding: 8px 0; border-bottom: 1px solid #eee; }
-        .details .label { color: #666; font-weight: 500; }
-        .details .value { text-align: right; font-weight: 600; color: #0A3D62; }
-        .pdf-notice { background: #fef9e7; padding: 12px 16px; border-radius: 8px; border-left: 4px solid #f39c12; margin: 16px 0; }
-        .pdf-notice p { margin: 0; color: #7d6608; font-size: 13px; }
-        .status-badge { display: inline-block; background: #d4edda; color: #155724; padding: 4px 16px; border-radius: 20px; font-weight: 600; font-size: 13px; }
-        .footer { text-align: center; margin-top: 20px; padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #999; }
-        .footer .contact { font-size: 13px; color: #0A3D62; margin: 4px 0; }
-        .btn { display: inline-block; padding: 10px 24px; background: #0A3D62; color: white; text-decoration: none; border-radius: 6px; margin-top: 10px; }
-        @media (max-width: 480px) { .container { padding: 20px; } .amount-box .amount { font-size: 24px; } }
-    </style>
-</head>
-<body>
-    <div class="container">
+Payment Receipt
         <div class="header">
             <h1>NCH<span style="color:#f1c40f;">SM</span></h1>
             <div class="subtitle">Nakuru College of Health Sciences and Management</div>
@@ -644,65 +533,25 @@ function generateEmailHTML(payment, receiptNumber, studentName, date, time) {
             <p style="font-size: 10px; color: #bbb;">NCHSM &bull; ${new Date().getFullYear()}</p>
         </div>
     </div>
-</body>
-</html>`;
-}
 
-// ============================================================
-// 📄 GENERATE RECEIPT HTML - NEW FUNCTION
-// ============================================================
+`; }
 
-function generateReceiptHTML(payment, receiptNumber, studentName, date, time) {
-    const amount = parseFloat(payment.amount).toFixed(2);
-    const period = payment.period || 'N/A';
-    const method = payment.payment_method || 'M-Pesa';
-    const transactionId = payment.transaction_id || payment.checkout_request_id || 'N/A';
-    const reference = payment.reference_number || 'N/A';
-    const program = payment.program || 'KRCHN';
-    
+// ============================================================ // 📄
+GENERATE RECEIPT HTML - NEW FUNCTION //
+============================================================
+
+function generateReceiptHTML(payment, receiptNumber, studentName, date,
+time) { const amount = parseFloat(payment.amount).toFixed(2); const
+period = payment.period || ‘N/A’; const method = payment.payment_method
+|| ‘M-Pesa’; const transactionId = payment.transaction_id ||
+payment.checkout_request_id || ‘N/A’; const reference =
+payment.reference_number || ‘N/A’; const program = payment.program ||
+‘KRCHN’;
+
     return `
+
 <!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment Receipt - ${receiptNumber}</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
-        .receipt-container { max-width: 700px; margin: 0 auto; background: #ffffff; border-radius: 16px; box-shadow: 0 10px 40px rgba(0,0,0,0.12); overflow: hidden; }
-        .header { background: linear-gradient(135deg, #0A3D62, #1a5276); padding: 30px 35px 25px; text-align: center; color: white; }
-        .header .logo { font-size: 28px; font-weight: 700; letter-spacing: 1px; }
-        .header .logo span { color: #f1c40f; }
-        .header .subtitle { font-size: 14px; opacity: 0.85; margin-top: 4px; font-weight: 300; }
-        .header .receipt-badge { display: inline-block; background: rgba(255,255,255,0.15); padding: 6px 24px; border-radius: 20px; margin-top: 12px; font-size: 13px; font-weight: 600; letter-spacing: 1px; border: 1px solid rgba(255,255,255,0.2); }
-        .body { padding: 30px 35px 20px; }
-        .greeting { font-size: 15px; color: #2c3e50; margin-bottom: 20px; }
-        .greeting strong { color: #0A3D62; }
-        .status-banner { background: #d4edda; border-radius: 10px; padding: 14px 20px; text-align: center; margin-bottom: 22px; border-left: 4px solid #28a745; }
-        .status-banner .status-icon { font-size: 20px; margin-right: 8px; }
-        .status-banner .status-text { font-weight: 700; color: #155724; font-size: 16px; }
-        .details-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 20px; background: #f8f9fa; border-radius: 12px; padding: 18px 22px; margin-bottom: 20px; }
-        .details-grid .item { display: flex; justify-content: space-between; padding: 5px 0; border-bottom: 1px solid #e9ecef; }
-        .details-grid .item:last-child { border-bottom: none; }
-        .details-grid .label { color: #6c757d; font-size: 13px; font-weight: 500; }
-        .details-grid .value { color: #2c3e50; font-size: 13px; font-weight: 600; text-align: right; }
-        .amount-box { background: linear-gradient(135deg, #eaf2f8, #d6eaf8); border-radius: 12px; padding: 20px; text-align: center; margin-bottom: 20px; border: 2px solid #0A3D62; }
-        .amount-box .label { font-size: 13px; color: #2c3e50; font-weight: 500; }
-        .amount-box .amount { font-size: 38px; font-weight: 800; color: #0A3D62; letter-spacing: 1px; }
-        .mpesa-confirm { background: #fef9e7; border-radius: 10px; padding: 14px 18px; border-left: 4px solid #f39c12; margin-bottom: 20px; }
-        .mpesa-confirm p { margin: 0; font-size: 13px; color: #7d6608; display: flex; justify-content: space-between; align-items: center; }
-        .mpesa-confirm .code { font-weight: 700; font-family: monospace; font-size: 15px; color: #0A3D62; }
-        .footer { background: #f8f9fa; padding: 20px 35px 25px; text-align: center; border-top: 1px solid #e9ecef; }
-        .footer .thanks { font-size: 18px; font-weight: 700; color: #0A3D62; margin-bottom: 4px; }
-        .footer .contact { font-size: 12px; color: #6c757d; margin: 4px 0; }
-        .footer .secure { display: inline-block; background: #28a745; color: white; font-size: 11px; padding: 3px 16px; border-radius: 20px; font-weight: 600; margin-top: 8px; }
-        @media print { body { background: white; padding: 0; } .receipt-container { box-shadow: none; border-radius: 0; } .header { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .status-banner { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .amount-box { -webkit-print-color-adjust: exact; print-color-adjust: exact; } .mpesa-confirm { -webkit-print-color-adjust: exact; print-color-adjust: exact; } }
-        @media (max-width: 480px) { .body { padding: 20px; } .header { padding: 20px; } .details-grid { grid-template-columns: 1fr; gap: 4px; } .amount-box .amount { font-size: 28px; } }
-    </style>
-</head>
-<body>
-    <div class="receipt-container">
+Payment Receipt - ${receiptNumber}
         <div class="header">
             <div class="logo">NCH<span>SM</span></div>
             <div class="subtitle">Nakuru College of Health Sciences and Management</div>
@@ -748,18 +597,18 @@ function generateReceiptHTML(payment, receiptNumber, studentName, date, time) {
             <span class="secure">🔒 Secure Payment Receipt</span>
         </div>
     </div>
-</body>
-</html>`;
-}
 
-// ============================================================
-// 🎉 SHOW SUCCESS POPUP WITH EMAIL STATUS - UPDATED WITH PRINT
-// ============================================================
+`; }
 
-function showSuccessPopup(amount, receiptNumber, period, emailSent = false) {
-    const existingOverlay = document.getElementById('payment-success-overlay');
-    if (existingOverlay) existingOverlay.remove();
-    
+// ============================================================ // 🎉
+SHOW SUCCESS POPUP WITH EMAIL STATUS - UPDATED WITH PRINT //
+============================================================
+
+function showSuccessPopup(amount, receiptNumber, period, emailSent =
+false) { const existingOverlay =
+document.getElementById(‘payment-success-overlay’); if (existingOverlay)
+existingOverlay.remove();
+
     const overlay = document.createElement('div');
     overlay.id = 'payment-success-overlay';
     overlay.style.cssText = `
@@ -776,7 +625,7 @@ function showSuccessPopup(amount, receiptNumber, period, emailSent = false) {
         z-index: 10000;
         animation: fadeInOverlay 0.3s ease;
     `;
-    
+
     const popup = document.createElement('div');
     popup.style.cssText = `
         background: white;
@@ -791,7 +640,7 @@ function showSuccessPopup(amount, receiptNumber, period, emailSent = false) {
         max-height: 90vh;
         overflow-y: auto;
     `;
-    
+
     const checkmark = document.createElement('div');
     checkmark.style.cssText = `
         width: 80px;
@@ -807,7 +656,7 @@ function showSuccessPopup(amount, receiptNumber, period, emailSent = false) {
         box-shadow: 0 8px 30px rgba(16, 185, 129, 0.4);
     `;
     checkmark.textContent = '✅';
-    
+
     const content = document.createElement('div');
     content.innerHTML = `
         <h2 style="color: #0A3D62; margin: 0 0 8px 0; font-size: 24px;">Payment Successful! 🎉</h2>
@@ -839,12 +688,12 @@ function showSuccessPopup(amount, receiptNumber, period, emailSent = false) {
             </button>
         </div>
     `;
-    
+
     popup.appendChild(checkmark);
     popup.appendChild(content);
     overlay.appendChild(popup);
     document.body.appendChild(overlay);
-    
+
     if (!document.getElementById('payment-popup-styles')) {
         const style = document.createElement('style');
         style.id = 'payment-popup-styles';
@@ -860,31 +709,20 @@ function showSuccessPopup(amount, receiptNumber, period, emailSent = false) {
         `;
         document.head.appendChild(style);
     }
-    
+
     window._lastReceiptData = { amount, receiptNumber, period };
+
 }
 
-function closeSuccessPopupAndRefresh() {
-    const overlay = document.getElementById('payment-success-overlay');
-    if (overlay) {
-        overlay.style.transition = 'opacity 0.3s ease';
-        overlay.style.opacity = '0';
-        setTimeout(() => {
-            overlay.remove();
-            if (typeof loadStudentFinance === 'function') {
-                loadStudentFinance();
-            }
-        }, 300);
-    }
-}
+function closeSuccessPopupAndRefresh() { const overlay =
+document.getElementById(‘payment-success-overlay’); if (overlay) {
+overlay.style.transition = ‘opacity 0.3s ease’; overlay.style.opacity =
+‘0’; setTimeout(() => { overlay.remove(); if (typeof loadStudentFinance
+=== ‘function’) { loadStudentFinance(); } }, 300); } }
 
-function downloadReceipt() {
-    const data = window._lastReceiptData;
-    if (!data) {
-        showToast('❌ No receipt data available', 'error');
-        return;
-    }
-    
+function downloadReceipt() { const data = window._lastReceiptData; if
+(!data) { showToast(‘❌ No receipt data available’, ‘error’); return; }
+
     const receiptHTML = generateReceiptHTML(
         { 
             amount: data.amount, 
@@ -899,7 +737,7 @@ function downloadReceipt() {
         new Date().toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' }),
         new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
     );
-    
+
     const blob = new Blob([receiptHTML], { type: 'text/html' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -909,26 +747,22 @@ function downloadReceipt() {
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    showToast('📥 Receipt downloaded!', 'success');
-}
-// ============================================================
-// 🖨️ PRINT RECEIPT - ADD THIS AFTER downloadReceipt()
-// ============================================================
 
-function printReceipt() {
-    const data = window._lastReceiptData;
-    if (!data) {
-        showToast('❌ No receipt data available', 'error');
-        return;
-    }
-    
+    showToast('📥 Receipt downloaded!', 'success');
+
+} // ============================================================ // 🖨️
+PRINT RECEIPT - ADD THIS AFTER downloadReceipt() //
+============================================================
+
+function printReceipt() { const data = window._lastReceiptData; if
+(!data) { showToast(‘❌ No receipt data available’, ‘error’); return; }
+
     // Get student details
     const studentName = studentFinanceState.student?.full_name || 
                        studentFinanceState.student?.name || 
                        'Student';
     const program = studentFinanceState.student?.program || 'KRCHN';
-    
+
     // Generate receipt HTML
     const receiptHTML = generateReceiptHTML(
         { 
@@ -944,14 +778,14 @@ function printReceipt() {
         new Date().toLocaleDateString('en-KE', { year: 'numeric', month: 'long', day: 'numeric' }),
         new Date().toLocaleTimeString('en-KE', { hour: '2-digit', minute: '2-digit' })
     );
-    
+
     // Open in new window for printing
     const printWindow = window.open('', '_blank', 'width=800,height=600,scrollbars=yes');
     if (!printWindow) {
         showToast('❌ Please allow popups to print', 'error');
         return;
     }
-    
+
     printWindow.document.write(`
         <!DOCTYPE html>
         <html>
@@ -1129,30 +963,25 @@ function printReceipt() {
         </body>
         </html>
     `);
-    
+
     printWindow.document.close();
     printWindow.focus();
-    
+
     showToast('🖨️ Receipt ready for printing', 'info');
-}
-window.printReceipt = printReceipt;
 
-// ============================================================
-// 📊 FETCH FINANCE DATA FROM SUPABASE - FIXED
-// ============================================================
+} window.printReceipt = printReceipt;
 
+// ============================================================ // 📊
+FETCH FINANCE DATA FROM SUPABASE - FIXED //
+============================================================
 
-// ============================================================
-// 🎓 CURRENT BLOCK / TERM FROM STUDENT PROFILE
-// ============================================================
+// ============================================================ // 🎓
+CURRENT BLOCK / TERM FROM STUDENT PROFILE //
+============================================================
 
-function getCurrentProfileFinancePeriod(profile = null) {
-    const p =
-        profile ||
-        studentFinanceState.student ||
-        window.currentUserProfile ||
-        window.currentUser ||
-        {};
+function getCurrentProfileFinancePeriod(profile = null) { const p =
+profile || studentFinanceState.student || window.currentUserProfile ||
+window.currentUser || {};
 
     // Profile is authoritative. We deliberately do not use a guessed
     // future term or the last fee period when the profile has a value.
@@ -1169,12 +998,12 @@ function getCurrentProfileFinancePeriod(profile = null) {
         null;
 
     return raw ? mapPeriodToDisplay(raw) : null;
+
 }
 
-function getProfilePeriodFee(feeRows, profilePeriod, fallback=0) {
-    if (!Array.isArray(feeRows) || !profilePeriod) {
-        return Number(fallback) || 0;
-    }
+function getProfilePeriodFee(feeRows, profilePeriod, fallback=0) { if
+(!Array.isArray(feeRows) || !profilePeriod) { return Number(fallback) ||
+0; }
 
     const match = feeRows.find(row =>
         mapPeriodToDisplay(row?.name || row?.period || row?.block || '') ===
@@ -1184,13 +1013,11 @@ function getProfilePeriodFee(feeRows, profilePeriod, fallback=0) {
     return match
         ? Number(match.amount) || 0
         : Number(fallback) || 0;
+
 }
 
-
-async function fetchFinanceDataFromSupabase(user) {
-    try {
-        const supabase = getSupabaseClient();
-        if (!supabase) return null;
+async function fetchFinanceDataFromSupabase(user) { try { const supabase
+= getSupabaseClient(); if (!supabase) return null;
 
         const userId = user?.user_id || user?.id;
         if (!userId) return null;
@@ -1578,11 +1405,11 @@ async function fetchFinanceDataFromSupabase(user) {
         console.error('❌ Error fetching finance data:', error);
         return null;
     }
+
 }
 
-async function loadStudentFinance(forceRefresh = false) {
-    try {
-        console.log('💰 Loading student finance...');
+async function loadStudentFinance(forceRefresh = false) { try {
+console.log(‘💰 Loading student finance…’);
 
         let user =
             window.currentUserProfile ||
@@ -1680,12 +1507,13 @@ async function loadStudentFinance(forceRefresh = false) {
             'Unable to load finance data. Please try again.'
         );
     }
+
 }
 
-function updateProgramInfo(user, programType, programLevel) {
-    const program = user?.program || user?.program_name || 'N/A';
-    const intake = user?.intake_year || user?.intake || 'N/A';
-    const studentId = user?.student_id || user?.id || 'N/A';
+function updateProgramInfo(user, programType, programLevel) { const
+program = user?.program || user?.program_name || ‘N/A’; const intake =
+user?.intake_year || user?.intake || ‘N/A’; const studentId =
+user?.student_id || user?.id || ‘N/A’;
 
     const programDisplay =
         document.getElementById('finance-studentProgramDisplay');
@@ -1705,11 +1533,12 @@ function updateProgramInfo(user, programType, programLevel) {
     }
 
     updatePeriodFilter(programType, programLevel);
+
 }
 
-function updatePeriodFilter(programType, programLevel) {
-    const periodFilter = document.getElementById('finance-periodFilter');
-    if (!periodFilter) return;
+function updatePeriodFilter(programType, programLevel) { const
+periodFilter = document.getElementById(‘finance-periodFilter’); if
+(!periodFilter) return;
 
     const actualPeriods = (studentFinanceState.feeStructureRaw?.periods || [])
         .map(p => p?.name)
@@ -1726,10 +1555,10 @@ function updatePeriodFilter(programType, programLevel) {
     if (currentValue && periods.includes(currentValue)) {
         periodFilter.value = currentValue;
     }
+
 }
 
-function updateFinanceUI(data) {
-    if (!data) return;
+function updateFinanceUI(data) { if (!data) return;
 
     studentFinanceState.student = data.student;
     studentFinanceState.payments = Array.isArray(data.payments) ? data.payments : [];
@@ -1785,20 +1614,20 @@ function updateFinanceUI(data) {
     }
 
     updateDashboardFinanceBridge(data);
+
 }
 
-function updateBalance(data) {
-    const balance = Math.max(Number(data?.balance) || 0, 0);
-    const totalDue = Math.max(Number(data?.totalDue) || 0, 0);
-    const totalPaid = Math.max(Number(data?.totalPaid) || 0, 0);
-    const semesterFee = Math.max(Number(data?.semesterFee) || 0, 0);
-    const paidThisSemester = Math.max(Number(data?.paidThisSemester) || 0, 0);
-    const currentOutstanding = Math.max(
-        Number(data?.currentPeriodOutstanding ?? (semesterFee - paidThisSemester)) || 0,
-        0
-    );
-    const overallProgress = Math.min(Math.max(Number(data?.paymentProgress) || 0, 0), 100);
-    const currentProgress = Math.min(Math.max(Number(data?.currentPeriodProgress) || 0, 0), 100);
+function updateBalance(data) { const balance =
+Math.max(Number(data?.balance) || 0, 0); const totalDue =
+Math.max(Number(data?.totalDue) || 0, 0); const totalPaid =
+Math.max(Number(data?.totalPaid) || 0, 0); const semesterFee =
+Math.max(Number(data?.semesterFee) || 0, 0); const paidThisSemester =
+Math.max(Number(data?.paidThisSemester) || 0, 0); const
+currentOutstanding = Math.max( Number(data?.currentPeriodOutstanding ??
+(semesterFee - paidThisSemester)) || 0, 0 ); const overallProgress =
+Math.min(Math.max(Number(data?.paymentProgress) || 0, 0), 100); const
+currentProgress = Math.min(Math.max(Number(data?.currentPeriodProgress)
+|| 0, 0), 100);
 
     const setText = (id, value) => {
         const el = document.getElementById(id);
@@ -1809,7 +1638,9 @@ function updateBalance(data) {
     setText('finance-studentPeriodFee', `KES ${semesterFee.toLocaleString()}`);
     setText('finance-studentPaidThisPeriod', `KES ${paidThisSemester.toLocaleString()}`);
     setText('finance-studentOutstanding', `KES ${currentOutstanding.toLocaleString()}`);
-    setText('finance-totalDueAmount', `KES ${totalDue.toLocaleString()}`);
+    // Display only the current term/semester fee in the dashboard.
+    // totalDue remains available internally for overall calculations.
+    setText('finance-totalDueAmount', `KES ${semesterFee.toLocaleString()}`);
     setText('finance-totalPaidAmount', `KES ${totalPaid.toLocaleString()}`);
     setText('finance-balanceAmount', `KES ${balance.toLocaleString()}`);
 
@@ -1826,15 +1657,15 @@ function updateBalance(data) {
         circle.style.strokeDashoffset = `${circumference - (currentProgress / 100) * circumference}`;
     }
 
-    const statusProgress = totalDue > 0 ? overallProgress : currentProgress;
+    const statusProgress = currentProgress;
     updateBalanceStatus(balance, statusProgress);
+
 }
 
-function updateBalanceStatus(balance, progress = 0) {
-    const statusEl = document.getElementById('finance-balanceStatusDisplay');
-    const dot = document.getElementById('finance-statusDot');
-    const text = document.getElementById('finance-statusText');
-    if (!statusEl) return;
+function updateBalanceStatus(balance, progress = 0) { const statusEl =
+document.getElementById(‘finance-balanceStatusDisplay’); const dot =
+document.getElementById(‘finance-statusDot’); const text =
+document.getElementById(‘finance-statusText’); if (!statusEl) return;
 
     if (balance <= 0) {
         statusEl.style.background = '#ddf8eb';
@@ -1849,13 +1680,16 @@ function updateBalanceStatus(balance, progress = 0) {
         if (dot) dot.style.background = '#ef4444';
         if (text) { text.textContent = 'Outstanding Balance'; text.style.color = '#ef3139'; }
     }
+
 }
 
-function updateStats(data) {
-    const payments = Array.isArray(data?.payments) ? data.payments : [];
-    const paid = payments.filter(p => String(p.status).toLowerCase() === 'completed').length;
-    const pending = payments.filter(p => String(p.status).toLowerCase() === 'pending').length;
-    const overdue = payments.filter(p => ['failed', 'overdue', 'cancelled'].includes(String(p.status).toLowerCase())).length;
+function updateStats(data) { const payments =
+Array.isArray(data?.payments) ? data.payments : []; const paid =
+payments.filter(p => String(p.status).toLowerCase() ===
+‘completed’).length; const pending = payments.filter(p =>
+String(p.status).toLowerCase() === ‘pending’).length; const overdue =
+payments.filter(p => [‘failed’, ‘overdue’,
+‘cancelled’].includes(String(p.status).toLowerCase())).length;
 
     const setText = (id, value) => {
         const el = document.getElementById(id);
@@ -1867,12 +1701,13 @@ function updateStats(data) {
     setText('finance-overdueCount', overdue);
     setText('finance-totalTransactions', payments.length);
     setText('finance-paymentRecordCount', `Showing ${payments.length} payment${payments.length === 1 ? '' : 's'}`);
+
 }
 
-function updateDashboardFinanceBridge(data) {
-    const balance = document.getElementById('dashboard-finance-balance');
-    const status = document.getElementById('dashboard-finance-status');
-    const value = Number(data?.balance || 0);
+function updateDashboardFinanceBridge(data) { const balance =
+document.getElementById(‘dashboard-finance-balance’); const status =
+document.getElementById(‘dashboard-finance-status’); const value =
+Number(data?.balance || 0);
 
     if (balance) balance.textContent = `KES ${value.toLocaleString()}`;
     if (status) {
@@ -1882,11 +1717,12 @@ function updateDashboardFinanceBridge(data) {
                 ? 'Partially Paid'
                 : 'Outstanding Balance';
     }
+
 }
 
-function renderPaymentTimeline(feeStructure) {
-    const timeline = document.getElementById('finance-paymentTimeline');
-    if (!timeline) return;
+function renderPaymentTimeline(feeStructure) { const timeline =
+document.getElementById(‘finance-paymentTimeline’); if (!timeline)
+return;
 
     const programType = studentFinanceState.programType || 'TVET';
     const programLevel = studentFinanceState.programLevel || 'certificate';
@@ -1916,15 +1752,15 @@ function renderPaymentTimeline(feeStructure) {
             <div style="font-size:7px;color:#94a3b8;">${amountText}</div>
         </div>`;
     }).join('');
+
 }
 
-// ============================================================
-// 📄 RENDER PAYMENTS - MOBILE OPTIMIZED
-// ============================================================
+// ============================================================ // 📄
+RENDER PAYMENTS - MOBILE OPTIMIZED //
+============================================================
 
-function renderPayments(payments) {
-    const tbody =
-        document.getElementById('finance-studentPaymentHistory');
+function renderPayments(payments) { const tbody =
+document.getElementById(‘finance-studentPaymentHistory’);
 
     if (!tbody) return;
 
@@ -2006,11 +1842,11 @@ function renderPayments(payments) {
         recordCount.textContent =
             `Showing ${payments.length} payment${payments.length === 1 ? '' : 's'}`;
     }
+
 }
 
-function renderFeeStructureData() {
-    const body =
-        document.getElementById('finance-feeStructureBody');
+function renderFeeStructureData() { const body =
+document.getElementById(‘finance-feeStructureBody’);
 
     const totalEl =
         document.getElementById('finance-feeStructureTotal');
@@ -2062,18 +1898,20 @@ function renderFeeStructureData() {
     if (totalEl) {
         totalEl.textContent = total.toLocaleString();
     }
+
 }
 
-function toggleFeeStructure() {
-    const container = document.getElementById('finance-studentFeeStructureDisplay');
-    const toggleBtn = document.querySelector('[aria-controls="finance-studentFeeStructureDisplay"]');
-    const toggleText = document.getElementById('finance-toggleFeeText');
-    
+function toggleFeeStructure() { const container =
+document.getElementById(‘finance-studentFeeStructureDisplay’); const
+toggleBtn =
+document.querySelector(‘[aria-controls=“finance-studentFeeStructureDisplay”]’);
+const toggleText = document.getElementById(‘finance-toggleFeeText’);
+
     if (!container) {
         console.warn('⚠️ finance-studentFeeStructureDisplay not found');
         return;
     }
-    
+
     if (container.style.display === 'none' || container.style.display === '') {
         container.style.display = 'block';
         container.style.animation = 'fadeIn 0.3s ease';
@@ -2113,20 +1951,20 @@ function toggleFeeStructure() {
         }
         studentFinanceState.feeStructureVisible = false;
     }
+
 }
 
-// ============================================================
-// 👁️ VIEW FUNCTIONS
-// ============================================================
+// ============================================================ // 👁️
+VIEW FUNCTIONS //
+============================================================
 
-function viewFeeStructure(periodName) {
-    if (!periodName) return;
-    studentFinanceState.selectedPeriod = periodName;
-    
+function viewFeeStructure(periodName) { if (!periodName) return;
+studentFinanceState.selectedPeriod = periodName;
+
     const container = document.getElementById('finance-studentFeeStructureDisplay');
     const toggleBtn = document.querySelector('[aria-controls="finance-studentFeeStructureDisplay"]');
     const toggleText = document.getElementById('finance-toggleFeeText');
-    
+
     if (container.style.display === 'none') {
         container.style.display = 'block';
         if (toggleBtn) {
@@ -2136,34 +1974,35 @@ function viewFeeStructure(periodName) {
         if (toggleText) toggleText.textContent = 'Hide Fee Structure';
         studentFinanceState.feeStructureVisible = true;
     }
-    
+
     renderFeeStructureData();
     setTimeout(() => container.scrollIntoView({ behavior: 'smooth', block: 'start' }), 300);
     showToast(`📋 Viewing fee structure for: ${periodName}`, 'info');
+
 }
 
-function viewVoteHeadDetails(voteHeadName) {
-    console.log('👁️ Viewing vote head:', voteHeadName);
-    
+function viewVoteHeadDetails(voteHeadName) { console.log(‘👁️ Viewing
+vote head:’, voteHeadName);
+
     const data = studentFinanceState.feeStructureRaw;
     if (!data || !data.voteHeads) {
         showToast('❌ Fee data not loaded', 'error');
         return;
     }
-    
+
     const vh = data.voteHeads.find(v => v.label === voteHeadName);
     if (!vh) {
         showToast(`❌ Vote head "${voteHeadName}" not found`, 'error');
         return;
     }
-    
+
     const periods = data.periods;
     let detailsHtml = `
         <div style="text-align: left;">
             <h4 style="color: #0A3D62; margin: 0 0 8px 0; font-size: 14px;">📊 ${vh.label}</h4>
             <div style="background: #f8fafc; padding: 8px; border-radius: 6px;">
     `;
-    
+
     periods.forEach((period, index) => {
         const amount = vh.amounts[index] || 0;
         if (amount > 0) {
@@ -2175,12 +2014,12 @@ function viewVoteHeadDetails(voteHeadName) {
             `;
         }
     });
-    
+
     detailsHtml += `
             </div>
         </div>
     `;
-    
+
     if (typeof Swal !== 'undefined') {
         Swal.fire({
             title: 'Vote Head Details',
@@ -2192,18 +2031,16 @@ function viewVoteHeadDetails(voteHeadName) {
     } else {
         alert(detailsHtml.replace(/<[^>]*>/g, ''));
     }
+
 }
 
-function viewFullFeeStructure() {
-    const data = studentFinanceState.feeStructureRaw;
-    if (!data) {
-        showToast('❌ Fee data not loaded', 'error');
-        return;
-    }
-    
+function viewFullFeeStructure() { const data =
+studentFinanceState.feeStructureRaw; if (!data) { showToast(‘❌ Fee data
+not loaded’, ‘error’); return; }
+
     const { periods, voteHeads } = data;
     const programType = studentFinanceState.programType || 'TVET';
-    
+
     let tableHtml = `
         <div style="text-align: left; overflow-x: auto;">
             <table style="width: 100%; border-collapse: collapse; font-size: 10px;">
@@ -2216,7 +2053,7 @@ function viewFullFeeStructure() {
                 </thead>
                 <tbody>
     `;
-    
+
     let sn = 0;
     voteHeads.forEach(vh => {
         sn++;
@@ -2233,7 +2070,7 @@ function viewFullFeeStructure() {
             </tr>
         `;
     });
-    
+
     tableHtml += `
         <tr style="background: #f8fafc; font-weight: 700; border-top: 2px solid #4C1D95;">
             <td colspan="2" style="padding: 4px 8px;">TOTAL</td>
@@ -2242,7 +2079,7 @@ function viewFullFeeStructure() {
             `).join('')}
         </tr>
     `;
-    
+
     const hasHostel = periods.some(p => p.hostel > 0);
     if (hasHostel) {
         tableHtml += `
@@ -2254,13 +2091,13 @@ function viewFullFeeStructure() {
             </tr>
         `;
     }
-    
+
     tableHtml += `
                 </tbody>
             </table>
         </div>
     `;
-    
+
     if (typeof Swal !== 'undefined') {
         Swal.fire({
             title: `📋 Full Fee Structure - ${programType}`,
@@ -2273,15 +2110,15 @@ function viewFullFeeStructure() {
     } else {
         alert(tableHtml.replace(/<[^>]*>/g, ''));
     }
+
 }
 
-// ============================================================
-// 🎯 ACTION FUNCTIONS
-// ============================================================
+// ============================================================ // 🎯
+ACTION FUNCTIONS //
+============================================================
 
-function downloadStudentStatement() {
-    const student =
-        studentFinanceState.student || {};
+function downloadStudentStatement() { const student =
+studentFinanceState.student || {};
 
     const payments =
         studentFinanceState.payments || [];
@@ -2308,46 +2145,31 @@ function downloadStudentStatement() {
     `).join('');
 
     const html = `
+
 <!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>NCHSM Finance Statement</title>
-<style>
-body{font-family:Arial,sans-serif;padding:30px;color:#102d69}
-h1{margin-bottom:4px}.meta{color:#536783;margin-bottom:20px}
-.summary{display:flex;gap:15px;margin-bottom:20px}
-.card{flex:1;padding:14px;border:1px solid #dfe6ef;border-radius:8px}
-.card strong{display:block;font-size:20px;margin-top:5px}
-table{width:100%;border-collapse:collapse;font-size:11px}
-th,td{padding:8px;border:1px solid #dfe6ef;text-align:left}
-th{background:#f2f5f9}
-</style>
-</head>
-<body>
-<h1>NCHSM — Student Finance Statement</h1>
-<div class="meta">
-<strong>${student.full_name || student.name || 'Student'}</strong><br>
-Student ID: ${student.student_id || student.id || '-'}<br>
-Program: ${student.program || '-'} |
-Intake: ${student.intake_year || student.intake || '-'}
-</div>
-<div class="summary">
-<div class="card">Total Paid<strong>KES ${completedTotal.toLocaleString()}</strong></div>
-<div class="card">Outstanding<strong>KES ${Number(studentFinanceState.balance || 0).toLocaleString()}</strong></div>
-<div class="card">Transactions<strong>${payments.length}</strong></div>
-</div>
-<table>
-<thead>
-<tr>
-<th>#</th><th>Date</th><th>Period</th><th>Amount</th>
-<th>Method</th><th>Reference</th><th>Status</th>
-</tr>
-</thead>
-<tbody>${rows || '<tr><td colspan="7">No payment records.</td></tr>'}</tbody>
-</table>
-</body>
-</html>`;
+NCHSM Finance Statement
+NCHSM — Student Finance Statement
+${student.full_name || student.name || ‘Student’} Student ID:
+${student.student_id || student.id || ‘-’} Program: ${student.program ||
+‘-’} | Intake: ${student.intake_year || student.intake || ‘-’}
+
+Total PaidKES ${completedTotal.toLocaleString()}
+
+OutstandingKES
+${Number(studentFinanceState.balance || 0).toLocaleString()}</strong></div>
+<div class="card">Transactions<strong>${payments.length}
+
+#
+Date
+Period
+Amount
+Method
+Reference
+Status
+${rows || ’
+No payment records.
+’}
+`;
 
     const blob =
         new Blob([html], { type: 'text/html' });
@@ -2381,16 +2203,17 @@ Intake: ${student.intake_year || student.intake || '-'}
         '📄 Finance statement downloaded.',
         'success'
     );
+
 }
 
-function viewStudentInvoice() {
-    const programType = studentFinanceState.programType || 'TVET';
-    const programLevel = studentFinanceState.programLevel || 'certificate';
-    const periods = getPeriods(programType, programLevel);
-    
+function viewStudentInvoice() { const programType =
+studentFinanceState.programType || ‘TVET’; const programLevel =
+studentFinanceState.programLevel || ‘certificate’; const periods =
+getPeriods(programType, programLevel);
+
     let invoicesHtml = '';
     const statuses = ['✅ Paid', '⏳ Partial', '🔴 Outstanding'];
-    
+
     periods.forEach((period, index) => {
         const status = index < 1 ? statuses[0] : (index === 1 ? statuses[1] : statuses[2]);
         const color = index < 1 ? '#059669' : (index === 1 ? '#d97706' : '#dc2626');
@@ -2403,7 +2226,7 @@ function viewStudentInvoice() {
             </div>
         `;
     });
-    
+
     if (typeof Swal !== 'undefined') {
         Swal.fire({
             title: '📄 Fee Breakdown',
@@ -2424,30 +2247,27 @@ function viewStudentInvoice() {
             width: 360
         });
     }
+
 }
 
-function printFeeStructureTable() {
-    window.print();
-}
+function printFeeStructureTable() { window.print(); }
 
-function resendPaymentEmail() {
-    const user = studentFinanceState.student;
-    if (!user?.user_id && !user?.id) { showToast('❌ User not found', 'error'); return; }
-    showToast('📧 Resending confirmation email...', 'info');
-    setTimeout(() => showToast('✅ Email resent!', 'success'), 1500);
-}
+function resendPaymentEmail() { const user =
+studentFinanceState.student; if (!user?.user_id && !user?.id) {
+showToast(‘❌ User not found’, ‘error’); return; } showToast(‘📧
+Resending confirmation email…’, ‘info’); setTimeout(() => showToast(‘✅
+Email resent!’, ‘success’), 1500); }
 
-// ============================================================
-// 💳 PAYMENT MODAL - POS STYLE
-// ============================================================
+// ============================================================ // 💳
+PAYMENT MODAL - POS STYLE //
+============================================================
 
+// ============================================================ // 📱
+RESPONSIVE FINANCE + M-PESA PHONE INPUT //
+============================================================
 
-// ============================================================
-// 📱 RESPONSIVE FINANCE + M-PESA PHONE INPUT
-// ============================================================
-
-function ensureFinanceResponsiveStyles() {
-    if (document.getElementById('nchsm-finance-responsive-css')) return;
+function ensureFinanceResponsiveStyles() { if
+(document.getElementById(‘nchsm-finance-responsive-css’)) return;
 
     const style = document.createElement('style');
     style.id = 'nchsm-finance-responsive-css';
@@ -2590,10 +2410,11 @@ function ensureFinanceResponsiveStyles() {
         }
     `;
     document.head.appendChild(style);
+
 }
 
-function normalizeMpesaPhone(value) {
-    let phone = String(value || '').trim().replace(/[^\d+]/g, '');
+function normalizeMpesaPhone(value) { let phone = String(value ||
+’‘).trim().replace(/[^\d+]/g,’’);
 
     if (phone.startsWith('+254')) {
         phone = phone.slice(1);
@@ -2604,10 +2425,11 @@ function normalizeMpesaPhone(value) {
     if (/^(7|1)\d{8}$/.test(phone)) return '+254' + phone;
 
     return null;
+
 }
 
-function ensurePaymentPhoneField(container, currentPhone='') {
-    if (!container) return null;
+function ensurePaymentPhoneField(container, currentPhone=’’) { if
+(!container) return null;
 
     // Reuse the existing master HTML phone field.
     // Do not create a duplicate if #finance-paymentPhone already exists.
@@ -2681,55 +2503,44 @@ function ensurePaymentPhoneField(container, currentPhone='') {
     }
 
     return input;
+
 }
 
-function escapeFinanceHtml(value) {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
+function escapeFinanceHtml(value) { return String(value ?? ’‘)
+.replace(/&/g,’&‘) .replace(/</g,’<‘) .replace(/>/g,’>‘)
+.replace(/“/g,’"‘) .replace(/’/g, ’'’); }
 
-function getStudentAcademicBlocks() {
-    const student = studentFinanceState.student || window.currentUserProfile || window.currentUser || {};
-    const candidates = [
-        student.block,
-        student.current_block,
-        student.currentBlock,
-        student.block_term,
-        student.student_block,
-        student.class_block
-    ];
+function getStudentAcademicBlocks() { const student =
+studentFinanceState.student || window.currentUserProfile ||
+window.currentUser || {}; const candidates = [ student.block,
+student.current_block, student.currentBlock, student.block_term,
+student.student_block, student.class_block ];
 
     return [...new Set(candidates
         .filter(Boolean)
         .flatMap(value => Array.isArray(value) ? value : String(value).split(',').map(v => v.trim()))
         .filter(Boolean))];
+
 }
 
-function getPeriodFinanceSummary(period) {
-    const normalized = mapPeriodToDisplay(period || '');
-    const periods = studentFinanceState.feeStructureRaw?.periods || [];
-    const feeRow = periods.find(p => mapPeriodToDisplay(p?.name || p?.period || '') === normalized);
-    const fee = Number(feeRow?.amount) || 0;
-    const paid = (studentFinanceState.payments || [])
-        .filter(p => String(p.status).toLowerCase() === 'completed')
-        .filter(p => mapPeriodToDisplay(p.period) === normalized)
-        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
-    const outstanding = Math.max(fee - paid, 0);
-    const progress = fee > 0 ? Math.min((paid / fee) * 100, 100) : 0;
-    return { period: normalized, fee, paid, outstanding, progress };
-}
+function getPeriodFinanceSummary(period) { const normalized =
+mapPeriodToDisplay(period || ’‘); const periods =
+studentFinanceState.feeStructureRaw?.periods || []; const feeRow =
+periods.find(p => mapPeriodToDisplay(p?.name || p?.period ||’‘) ===
+normalized); const fee = Number(feeRow?.amount) || 0; const paid =
+(studentFinanceState.payments || []) .filter(p =>
+String(p.status).toLowerCase() === ’completed’) .filter(p =>
+mapPeriodToDisplay(p.period) === normalized) .reduce((sum, p) => sum +
+(Number(p.amount) || 0), 0); const outstanding = Math.max(fee - paid,
+0); const progress = fee > 0 ? Math.min((paid / fee) * 100, 100) : 0;
+return { period: normalized, fee, paid, outstanding, progress }; }
 
-function updateSelectedPaymentPeriodInfo(period) {
-    if (!period) return;
-    const summary = getPeriodFinanceSummary(period);
-    const info = document.getElementById('finance-selectedPeriodInfo');
-    const fee = document.getElementById('finance-selectedPeriodFee');
-    const paid = document.getElementById('finance-selectedPeriodPaid');
-    const balance = document.getElementById('finance-selectedPeriodBalance');
+function updateSelectedPaymentPeriodInfo(period) { if (!period) return;
+const summary = getPeriodFinanceSummary(period); const info =
+document.getElementById(‘finance-selectedPeriodInfo’); const fee =
+document.getElementById(‘finance-selectedPeriodFee’); const paid =
+document.getElementById(‘finance-selectedPeriodPaid’); const balance =
+document.getElementById(‘finance-selectedPeriodBalance’);
 
     if (fee) fee.textContent = `KES ${summary.fee.toLocaleString()}`;
     if (paid) paid.textContent = `KES ${summary.paid.toLocaleString()}`;
@@ -2738,11 +2549,11 @@ function updateSelectedPaymentPeriodInfo(period) {
         info.style.display = 'block';
         info.innerHTML = `<strong>${escapeFinanceHtml(summary.period)}</strong> — Fee: KES ${summary.fee.toLocaleString()} | Paid: KES ${summary.paid.toLocaleString()} | Balance: KES ${summary.outstanding.toLocaleString()}`;
     }
+
 }
 
-function populatePaymentPeriodOptions() {
-    const select = document.getElementById('finance-paymentPeriod');
-    if (!select) return;
+function populatePaymentPeriodOptions() { const select =
+document.getElementById(‘finance-paymentPeriod’); if (!select) return;
 
     const programType = studentFinanceState.programType || getProgramType(studentFinanceState.student?.program || 'TVET');
     const level = studentFinanceState.programLevel || getProgramLevel(studentFinanceState.student?.program || '');
@@ -2770,12 +2581,11 @@ function populatePaymentPeriodOptions() {
     }
 
     updateSelectedPaymentPeriodInfo(select.value);
+
 }
 
-
-function populatePaymentBlockOptions() {
-    const select = document.getElementById('finance-paymentBlock');
-    if (!select) return;
+function populatePaymentBlockOptions() { const select =
+document.getElementById(‘finance-paymentBlock’); if (!select) return;
 
     const blocks = getStudentAcademicBlocks();
     const current = studentFinanceState.selectedBlock || blocks[0] || '';
@@ -2792,11 +2602,11 @@ function populatePaymentBlockOptions() {
 
     select.value = current;
     studentFinanceState.selectedBlock = current;
+
 }
 
-
-function openPaymentModal() {
-    const modal = document.getElementById('finance-paymentModal');
+function openPaymentModal() { const modal =
+document.getElementById(‘finance-paymentModal’);
 
     if (!modal) {
         showToast('❌ Payment system error. Please refresh the page.', 'error');
@@ -2854,11 +2664,11 @@ function openPaymentModal() {
 
     pendingPayment.cancelled = false;
     pendingPayment.status = 'idle';
+
 }
 
-function closePaymentModal() {
-    const modal =
-        document.getElementById('finance-paymentModal');
+function closePaymentModal() { const modal =
+document.getElementById(‘finance-paymentModal’);
 
     if (modal) {
         modal.style.display = 'none';
@@ -2870,13 +2680,13 @@ function closePaymentModal() {
     pendingPayment.isProcessing = false;
     pendingPayment.cancelled = false;
     pendingPayment.status = 'idle';
+
 }
 
-
-function selectPaymentMethod(method) {
-    const normalized = String(method || '').toLowerCase() === 'bank' ? 'bank' : 'mpesa';
-    const select = document.getElementById('finance-paymentMethod');
-    if (select) select.value = normalized;
+function selectPaymentMethod(method) { const normalized = String(method
+|| ’‘).toLowerCase() === ’bank’ ? ‘bank’ : ‘mpesa’; const select =
+document.getElementById(‘finance-paymentMethod’); if (select)
+select.value = normalized;
 
     studentFinanceState.selectedPaymentMethod = normalized;
 
@@ -2909,13 +2719,14 @@ function selectPaymentMethod(method) {
         if (submitIcon) submitIcon.className = 'fas fa-university';
         if (submitText) submitText.textContent = ' Submit Bank Transfer';
     }
+
 }
 
-
-function validatePaymentForm() {
-    const amount = Number(document.getElementById('finance-paymentAmount')?.value || 0);
-    const method = document.getElementById('finance-paymentMethod')?.value || '';
-    const period = document.getElementById('finance-paymentPeriod')?.value || '';
+function validatePaymentForm() { const amount =
+Number(document.getElementById(‘finance-paymentAmount’)?.value || 0);
+const method = document.getElementById(‘finance-paymentMethod’)?.value
+|| ’‘; const period =
+document.getElementById(’finance-paymentPeriod’)?.value || ’’;
 
     if (!amount || amount < 1) {
         showToast('❌ Please enter a valid payment amount.', 'error');
@@ -2971,11 +2782,10 @@ function validatePaymentForm() {
     }
 
     return true;
+
 }
 
-
-async function processPayment() {
-    if (!validatePaymentForm()) return;
+async function processPayment() { if (!validatePaymentForm()) return;
 
     const amount = Number(
         document.getElementById('finance-paymentAmount')?.value || 0
@@ -3301,14 +3111,13 @@ async function processPayment() {
             'Payment initiation failed.'
         );
     }
+
 }
 
 async function pollStudentPaymentStatus(transactionId, amount, period) {
-    const supabase = getSupabaseClient();
-    const paymentId = pendingPayment.paymentId;
-    const startedAt = Date.now();
-    const timeoutMs = 120000;
-    const intervalMs = 3000;
+const supabase = getSupabaseClient(); const paymentId =
+pendingPayment.paymentId; const startedAt = Date.now(); const timeoutMs
+= 120000; const intervalMs = 3000;
 
     if (!supabase || !paymentId) {
         throw new Error('Payment record is not available for status checking.');
@@ -3383,12 +3192,12 @@ async function pollStudentPaymentStatus(transactionId, amount, period) {
     }
 
     return pendingPayment.cancelled ? 'cancelled' : pendingPayment.status;
+
 }
 
-async function cancelStudentPayment() {
-    pendingPayment.cancelled = true;
-    pendingPayment.isProcessing = false;
-    pendingPayment.status = 'cancelled';
+async function cancelStudentPayment() { pendingPayment.cancelled = true;
+pendingPayment.isProcessing = false; pendingPayment.status =
+‘cancelled’;
 
     const supabase = getSupabaseClient();
     if (supabase && pendingPayment.paymentId) {
@@ -3408,11 +3217,11 @@ async function cancelStudentPayment() {
 
     closePaymentModal();
     showToast('Payment cancelled.', 'warning');
+
 }
 
-function showStudentPaymentFailure(message) {
-    closePaymentModal();
-    const text = message || 'Payment could not be completed.';
+function showStudentPaymentFailure(message) { closePaymentModal(); const
+text = message || ‘Payment could not be completed.’;
 
     if (typeof Swal !== 'undefined') {
         Swal.fire({
@@ -3424,11 +3233,12 @@ function showStudentPaymentFailure(message) {
     } else {
         showToast(`❌ ${text}`, 'error');
     }
+
 }
 
 function showBankPaymentPending(amount, reference, period, block) {
-    closePaymentModal();
-    const message = `Bank transfer submitted successfully. Reference: ${reference}. It will remain pending until verified by the Finance Office.`;
+closePaymentModal(); const message =
+Bank transfer submitted successfully. Reference: ${reference}. It will remain pending until verified by the Finance Office.;
 
     if (typeof Swal !== 'undefined') {
         Swal.fire({
@@ -3442,59 +3252,38 @@ function showBankPaymentPending(amount, reference, period, block) {
     }
 
     loadStudentFinance(true);
+
 }
 
-async function initiatePayHeroSTK() {
-    return processPayment();
-}
+async function initiatePayHeroSTK() { return processPayment(); }
 
-function showFinanceLoading() {
-    const historyBody = document.getElementById('finance-studentPaymentHistory');
-    if (historyBody) {
-        historyBody.innerHTML = `
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 24px; color: #94a3b8;">
-                    <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>
-                    <p style="margin-top: 4px; font-size: 11px;">Loading payment history...</p>
-                </td>
-            </tr>
-        `;
-    }
-}
+function showFinanceLoading() { const historyBody =
+document.getElementById(‘finance-studentPaymentHistory’); if
+(historyBody) { historyBody.innerHTML =
+<tr>                 <td colspan="5" style="text-align: center; padding: 24px; color: #94a3b8;">                     <div style="display: inline-block; width: 20px; height: 20px; border: 2px solid #e5e7eb; border-top-color: #4C1D95; border-radius: 50%; animation: finance-spin 1s linear infinite;"></div>                     <p style="margin-top: 4px; font-size: 11px;">Loading payment history...</p>                 </td>             </tr>;
+} }
 
-function showFinanceError(message) {
-    const historyBody = document.getElementById('finance-studentPaymentHistory');
-    if (historyBody) {
-        historyBody.innerHTML = `
-            <tr>
-                <td colspan="5" style="text-align: center; padding: 24px; color: #dc2626; font-size: 12px;">
-                    <i class="fas fa-exclamation-circle" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>
-                    <p>${message}</p>
-                    <button onclick="loadStudentFinance()" style="margin-top: 6px; padding: 4px 14px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">
-                        <i class="fas fa-sync-alt"></i> Retry
-                    </button>
-                </td>
-            </tr>
-        `;
-    }
-}
+function showFinanceError(message) { const historyBody =
+document.getElementById(‘finance-studentPaymentHistory’); if
+(historyBody) { historyBody.innerHTML =
+<tr>                 <td colspan="5" style="text-align: center; padding: 24px; color: #dc2626; font-size: 12px;">                     <i class="fas fa-exclamation-circle" style="font-size: 18px; display: block; margin-bottom: 4px;"></i>                     <p>${message}</p>                     <button onclick="loadStudentFinance()" style="margin-top: 6px; padding: 4px 14px; background: #4C1D95; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 11px;">                         <i class="fas fa-sync-alt"></i> Retry                     </button>                 </td>             </tr>;
+} }
 
-// ============================================================
-// 🔔 TOAST NOTIFICATIONS
-// ============================================================
+// ============================================================ // 🔔
+TOAST NOTIFICATIONS //
+============================================================
 
-function showToast(message, type = 'info') {
-    let container = document.getElementById('financeToastContainer');
-    if (!container) {
-        container = document.createElement('div');
-        container.id = 'financeToastContainer';
-        container.style.cssText = 'position: fixed; bottom: 12px; right: 12px; z-index: 9999; display: flex; flex-direction: column; gap: 4px; max-width: 92%; width: 320px;';
-        document.body.appendChild(container);
-    }
-    
+function showToast(message, type = ‘info’) { let container =
+document.getElementById(‘financeToastContainer’); if (!container) {
+container = document.createElement(‘div’); container.id =
+‘financeToastContainer’; container.style.cssText = ‘position: fixed;
+bottom: 12px; right: 12px; z-index: 9999; display: flex; flex-direction:
+column; gap: 4px; max-width: 92%; width: 320px;’;
+document.body.appendChild(container); }
+
     const toast = document.createElement('div');
     const colors = { success: '#059669', error: '#dc2626', warning: '#d97706', info: '#4C1D95' };
-    
+
     toast.style.cssText = `
         padding: 8px 14px;
         border-radius: 6px;
@@ -3506,25 +3295,25 @@ function showToast(message, type = 'info') {
         animation: slideInRight 0.3s ease;
         word-wrap: break-word;
     `;
-    
+
     toast.textContent = message;
     container.appendChild(toast);
-    
+
     setTimeout(() => {
         toast.style.opacity = '0';
         toast.style.transform = 'translateX(20px)';
         toast.style.transition = 'all 0.3s ease';
         setTimeout(() => toast.remove(), 300);
     }, 3000);
+
 }
 
-// ============================================================
-// 🔄 FILTER FUNCTIONS
-// ============================================================
+// ============================================================ // 🔄
+FILTER FUNCTIONS //
+============================================================
 
-function filterStudentPayments() {
-    const statusFilter =
-        document.getElementById('finance-paymentFilter')?.value || 'all';
+function filterStudentPayments() { const statusFilter =
+document.getElementById(‘finance-paymentFilter’)?.value || ‘all’;
 
     const periodFilter =
         document.getElementById('finance-periodFilter')?.value || 'all';
@@ -3577,13 +3366,12 @@ function filterStudentPayments() {
         count.textContent =
             `Showing ${filtered.length} payment${filtered.length === 1 ? '' : 's'}`;
     }
+
 }
 
 async function sendPaymentConfirmationEmail(studentId, paymentData) {
-    try {
-        const supabase = getSupabaseClient();
-        if (!supabase) return false;
-        
+try { const supabase = getSupabaseClient(); if (!supabase) return false;
+
         const { data: student, error } = await supabase
             .from('consolidated_user_profiles_table')
             .select('full_name, email, student_id, program, block, phone')
@@ -3611,19 +3399,16 @@ async function sendPaymentConfirmationEmail(studentId, paymentData) {
         console.error('❌ Email error:', error);
         return false;
     }
+
 }
 
-// ============================================================
-// 🖨️ PRINT PAYMENT FROM HISTORY
-// ============================================================
+// ============================================================ // 🖨️
+PRINT PAYMENT FROM HISTORY //
+============================================================
 
-async function printPaymentById(paymentId) {
-    const payment =
-        (studentFinanceState.payments || [])
-            .find(
-                p => String(p.id || '') ===
-                    String(paymentId || '')
-            );
+async function printPaymentById(paymentId) { const payment =
+(studentFinanceState.payments || []) .find( p => String(p.id || ’‘) ===
+String(paymentId ||’’) );
 
     if (!payment) {
         showToast(
@@ -3648,14 +3433,15 @@ async function printPaymentById(paymentId) {
     };
 
     printReceipt();
+
 }
 
-// ============================================================
-// 🚀 INITIALIZATION
-// ============================================================
+// ============================================================ // 🚀
+INITIALIZATION //
+============================================================
 
-document.addEventListener('DOMContentLoaded', function() {
-    ensureFinanceResponsiveStyles();
+document.addEventListener(‘DOMContentLoaded’, function() {
+ensureFinanceResponsiveStyles();
 
     const financeTab =
         document.querySelector('a[data-tab="finance"]');
@@ -3882,15 +3668,16 @@ document.addEventListener('DOMContentLoaded', function() {
             loadStudentFinance();
         }
     }, 1000);
+
 });
 
-console.log('✅ Student Finance module loaded successfully!');
-console.log('📊 Supports KRCHN (Semesters) and TVET (Terms)');
-console.log('📋 Vote heads loaded from database');
-console.log('💳 PayHero Edge Function integration enabled - No redirects!');
-console.log('🔧 POS Style Payment Modal with ALL states');
-console.log('✅ Processing, Success, Failure, Timeout, Cancelled');
-console.log('📧 Email receipt sending enabled');
-console.log('🎉 Success popup with download option');
-console.log('⛔ Handles cancellation - stops polling immediately');
-console.log('💰 Handles insufficient funds - stops polling immediately');
+console.log(‘✅ Student Finance module loaded successfully!’);
+console.log(‘📊 Supports KRCHN (Semesters) and TVET (Terms)’);
+console.log(‘📋 Vote heads loaded from database’); console.log(‘💳
+PayHero Edge Function integration enabled - No redirects!’);
+console.log(‘🔧 POS Style Payment Modal with ALL states’);
+console.log(‘✅ Processing, Success, Failure, Timeout, Cancelled’);
+console.log(‘📧 Email receipt sending enabled’); console.log(‘🎉 Success
+popup with download option’); console.log(‘⛔ Handles cancellation -
+stops polling immediately’); console.log(‘💰 Handles insufficient
+funds - stops polling immediately’);
