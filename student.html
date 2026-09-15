@@ -1967,6 +1967,64 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 </div>
 </div>
 </section>
+
+<script id="nchsm-dashboard-rpc-ui-bridge">
+(function(){
+  'use strict';
+
+  function applyRpcSnapshot(data){
+    if(!data) return;
+
+    var xp = data.xp || {};
+    var nurse = data.nurseiq || {};
+    var login = data.login || {};
+    var academic = data.academic || {};
+    var examCard = data.examCard || {};
+
+    function set(id, value){
+      var el = document.getElementById(id);
+      if(el && value !== undefined && value !== null) el.textContent = value;
+    }
+
+    set('user-level', xp.level ?? 1);
+    set('user-xp', xp.current ?? 0);
+    set('user-xp-max', xp.max ?? 100);
+    set('dashboard-nurseiq-points', Number(nurse.points ?? 0).toLocaleString());
+    set('attendance-points-value', Number(data.attendance?.points ?? 0).toLocaleString());
+    set('login-points-display', Number(login.points ?? 0).toLocaleString());
+    set('login-count-display', Number(login.count ?? 0).toLocaleString());
+    set('total-points-display', Number(xp.total ?? data.total_points ?? 0).toLocaleString());
+    set('snapshot-approved-units', examCard.approved ?? 0);
+    set('snapshot-new-resources', data.resources ?? 0);
+
+    var gpa = academic.cumulative_gpa;
+    set('snapshot-cgpa',
+      gpa !== null && gpa !== undefined && Number.isFinite(Number(gpa))
+        ? Number(gpa).toFixed(2)
+        : '—'
+    );
+
+    var fill = document.getElementById('xp-progress-fill');
+    if(fill) fill.style.width = Math.max(0, Math.min(100, Number(xp.percent ?? 0))) + '%';
+  }
+
+  window.addEventListener('nchsmDashboardRPCReady', function(e){
+    applyRpcSnapshot(e.detail || window.nchsmDashboardRPCData);
+  });
+
+  // Dashboard JS may expose its RPC result through this object.
+  var attempts = 0;
+  var timer = setInterval(function(){
+    attempts++;
+    var data = window.nchsmDashboardRPCData ||
+               window.dashboardRPCData ||
+               window.studentDashboardData;
+    if(data) applyRpcSnapshot(data);
+    if(attempts >= 40) clearInterval(timer);
+  }, 250);
+})();
+</script>
+
 <script>
 (function(){
   function syncFinanceMetric(){
@@ -9106,7 +9164,7 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 <script src="./js/database.js"></script>
 <!-- ===== 4️⃣ FOURTH: Core Modules ===== -->
 <script src="./js/gamification.js"></script>
-<script src="./js/dashboard.js"></script>
+<script src="./js/dashboard-RPC-AUTHORITATIVE-FIXED.js"></script>
 <script src="./js/profile.js"></script>
 <script src="./js/attendance.js"></script>
 <script src="./js/courses.js"></script>
