@@ -8005,1517 +8005,227 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 </div>
 </section>
 <!-- END ENROLLMENT -->
+```html
 <!-- ==================== FINANCE TAB ==================== -->
-<section class="tab-content" id="finance" style="
-        width:100%;
-        min-height:100%;
-        padding:22px;
-        background:#f5f8fc;
-        color:#10255b;
-        box-sizing:border-box;
-        font-family:inherit;
-    ">
-<!-- =========================================================
-         TOP RIBBON
-         IMPORTANT: ORIGINAL RIBBON COLOR MAINTAINED
-         ========================================================= -->
-<div style="
-            width:100%;
-            min-height:145px;
-            padding:24px 28px;
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:25px;
-            border-radius:16px;
-            background:#12395b;
-            color:#ffffff;
-            box-sizing:border-box;
-            box-shadow:0 5px 18px rgba(18,57,91,.16);
-        ">
-<div style="
-                display:flex;
-                align-items:center;
-                gap:18px;
-                min-width:0;
-            ">
-<div style="
-                    width:68px;
-                    height:68px;
-                    min-width:68px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:50%;
-                    background:rgba(255,255,255,.10);
-                    border:1px solid rgba(255,255,255,.18);
-                    color:#ffffff;
-                    font-size:28px;
-                ">
-<i class="fas fa-wallet"></i>
-</div>
-<div style="min-width:0;">
-<h1 style="
-                        margin:0 0 5px;
-                        color:#ffffff;
-                        font-size:32px;
-                        line-height:1.15;
-                        font-weight:800;
-                        letter-spacing:-.5px;
-                    ">
-                    My Finance
-                </h1>
-<p style="
-                        margin:0 0 12px;
-                        color:rgba(255,255,255,.82);
-                        font-size:14px;
-                    ">
-                    Track payments, view statements, manage your finances
-                </p>
-<div style="
-                        display:inline-flex;
-                        align-items:center;
-                        flex-wrap:wrap;
-                        gap:8px;
-                        padding:7px 13px;
-                        border-radius:20px;
-                        background:rgba(255,255,255,.08);
-                        border:1px solid rgba(255,255,255,.12);
-                        font-size:11px;
-                    ">
-<span>
-                        Program:
-                        <strong id="finance-studentProgramDisplay" style="color:#ffffff;font-weight:700;">
-                            --
-                        </strong>
-</span>
-<span style="opacity:.45;">|</span>
-<span>
-                        Intake:
-                        <strong id="finance-studentIntakeDisplay" style="color:#ffffff;font-weight:700;">
-                            --
-                        </strong>
-</span>
-<span style="opacity:.45;">|</span>
-<span>
-                        Student ID:
-                        <strong id="finance-studentIdDisplay" style="color:#ffffff;font-weight:700;">
-                            --
-                        </strong>
-</span>
+<section class="tab-content" id="finance" style="width:100%;min-height:100%;padding:18px;background:#f5f8fc;color:#10255b;box-sizing:border-box;font-family:inherit">
+
+<!-- HEADER -->
+<div style="width:100%;padding:22px 26px;border-radius:14px;background:#12395b;color:#fff;box-shadow:0 5px 18px rgba(18,57,91,.14);box-sizing:border-box">
+<div style="display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:15px;min-width:0">
+<div style="width:58px;height:58px;min-width:58px;display:flex;align-items:center;justify-content:center;border-radius:14px;background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);font-size:24px"><i class="fas fa-wallet"></i></div>
+<div>
+<h1 style="margin:0;color:#fff;font-size:28px;font-weight:800">My Finance</h1>
+<p style="margin:5px 0 10px;color:rgba(255,255,255,.78);font-size:13px">Track payments, view statements and manage your finances</p>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:11px;color:rgba(255,255,255,.82)">
+<span>Program: <strong id="finance-studentProgramDisplay" style="color:#fff">--</strong></span><span>|</span>
+<span>Intake: <strong id="finance-studentIntakeDisplay" style="color:#fff">--</strong></span><span>|</span>
+<span>Student ID: <strong id="finance-studentIdDisplay" style="color:#fff">--</strong></span>
 </div>
 </div>
 </div>
-<div style="
-                display:flex;
-                flex-direction:column;
-                align-items:flex-end;
-                gap:13px;
-                min-width:270px;
-            ">
-<div style="
-                    color:rgba(255,255,255,.86);
-                    font-size:13px;
-                    line-height:1.4;
-                    text-align:right;
-                    font-style:italic;
-                ">
-                “Education is an investment<br/>
-                in yourself”
-            </div>
-<div style="
-                    display:flex;
-                    align-items:center;
-                    gap:9px;
-                ">
-<button id="finance-refreshBtn" onclick="loadStudentFinance(true)" style="
-                        height:38px;
-                        padding:0 15px;
-                        display:inline-flex;
-                        align-items:center;
-                        justify-content:center;
-                        gap:8px;
-                        border:1px solid rgba(255,255,255,.35);
-                        border-radius:7px;
-                        background:rgba(255,255,255,.08);
-                        color:#ffffff;
-                        font:inherit;
-                        font-size:12px;
-                        font-weight:700;
-                        cursor:pointer;
-                    " type="button">
-<i class="fas fa-sync-alt"></i>
-                    Refresh
-                </button>
-<button id="finance-downloadStatementBtn" style="
-                        height:38px;
-                        padding:0 15px;
-                        display:inline-flex;
-                        align-items:center;
-                        justify-content:center;
-                        gap:8px;
-                        border:1px solid #f5c542;
-                        border-radius:7px;
-                        background:#f5c542;
-                        color:#18314b;
-                        font:inherit;
-                        font-size:12px;
-                        font-weight:700;
-                        cursor:pointer;
-                    " type="button">
-<i class="fas fa-file-alt"></i>
-                    Download Statement
-                </button>
+<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+<button id="finance-refreshBtn" onclick="loadStudentFinance(true)" type="button" style="height:38px;padding:0 14px;border:1px solid rgba(255,255,255,.3);border-radius:7px;background:rgba(255,255,255,.08);color:#fff;font-size:11px;font-weight:700;cursor:pointer"><i class="fas fa-sync-alt"></i> Refresh</button>
+<button id="finance-downloadStatementBtn" type="button" style="height:38px;padding:0 14px;border:1px solid #f5c542;border-radius:7px;background:#f5c542;color:#18314b;font-size:11px;font-weight:700;cursor:pointer"><i class="fas fa-file-alt"></i> Download Statement</button>
 </div>
 </div>
 </div>
-<!-- =========================================================
-         SUMMARY CARDS
-         ========================================================= -->
-<div style="
-            width:100%;
-            margin-top:15px;
-            display:grid;
-            grid-template-columns:repeat(4,minmax(0,1fr));
-            gap:15px;
-        ">
-<!-- TOTAL FEE -->
-<div style="
-                min-height:108px;
-                padding:17px;
-                display:flex;
-                align-items:center;
-                gap:14px;
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                box-shadow:0 3px 12px rgba(23,55,95,.055);
-            ">
-<div style="
-                    width:55px;
-                    height:55px;
-                    min-width:55px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:15px;
-                    background:#eee5ff;
-                    color:#5823b5;
-                    font-size:22px;
-                ">
-<i class="fas fa-coins"></i>
+
+<!-- FINANCIAL SUMMARY -->
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:14px">
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;display:flex;align-items:center;gap:13px;box-shadow:0 3px 12px rgba(23,55,95,.05)">
+<div style="width:48px;height:48px;min-width:48px;border-radius:13px;background:#eee5ff;color:#5823b5;display:flex;align-items:center;justify-content:center;font-size:20px"><i class="fas fa-coins"></i></div>
+<div><span style="display:block;color:#536783;font-size:11px">Total Fee Due</span><strong id="finance-totalDueAmount" style="display:block;margin-top:3px;color:#102d69;font-size:20px">KES 0</strong><small style="color:#8190a7;font-size:9px">Total assessed fees</small></div>
 </div>
-<div style="min-width:0;">
-<span style="
-                        display:block;
-                        margin-bottom:3px;
-                        color:#536783;
-                        font-size:12px;
-                    ">
-                    Total Fee Due
-                </span>
-<strong id="finance-totalDueAmount" style="
-                        display:block;
-                        color:#102d69;
-                        font-size:21px;
-                        line-height:1.15;
-                        font-weight:800;
-                        white-space:nowrap;
-                    ">
-                    KES 0
-                </strong>
-<span style="
-                        display:block;
-                        margin-top:5px;
-                        color:#8190a7;
-                        font-size:10px;
-                    ">
-                    Current Semester
-                </span>
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;display:flex;align-items:center;gap:13px;box-shadow:0 3px 12px rgba(23,55,95,.05)">
+<div style="width:48px;height:48px;min-width:48px;border-radius:13px;background:#ddf8eb;color:#079361;display:flex;align-items:center;justify-content:center;font-size:20px"><i class="fas fa-check"></i></div>
+<div><span style="display:block;color:#536783;font-size:11px">Total Paid</span><strong id="finance-totalPaidAmount" style="display:block;margin-top:3px;color:#102d69;font-size:20px">KES 0</strong><small style="color:#8190a7;font-size:9px">Completed payments</small></div>
+</div>
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;display:flex;align-items:center;gap:13px;box-shadow:0 3px 12px rgba(23,55,95,.05)">
+<div style="width:48px;height:48px;min-width:48px;border-radius:13px;background:#ffe5e7;color:#ed3038;display:flex;align-items:center;justify-content:center;font-size:20px"><i class="fas fa-wallet"></i></div>
+<div><span style="display:block;color:#536783;font-size:11px">Outstanding Balance</span><strong id="finance-balanceAmount" style="display:block;margin-top:3px;color:#ed3038;font-size:20px">KES 0</strong><small style="color:#8190a7;font-size:9px">Current balance due</small></div>
+</div>
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:16px;display:flex;align-items:center;gap:13px;box-shadow:0 3px 12px rgba(23,55,95,.05)">
+<div style="width:48px;height:48px;min-width:48px;border-radius:13px;background:#fff2d7;color:#d38b00;display:flex;align-items:center;justify-content:center;font-size:20px"><i class="fas fa-chart-pie"></i></div>
+<div style="width:100%">
+<span style="display:block;color:#536783;font-size:11px">Payment Progress</span>
+<strong id="finance-paymentProgressText" style="display:block;margin-top:3px;color:#102d69;font-size:20px">0%</strong>
+<div style="height:7px;margin-top:7px;border-radius:10px;background:#dfe6ef;overflow:hidden"><div id="finance-paymentProgressFill" style="width:0%;height:100%;border-radius:10px;background:#10a96b;transition:width .5s"></div></div>
 </div>
 </div>
-<!-- TOTAL PAID -->
-<div style="
-                min-height:108px;
-                padding:17px;
-                display:flex;
-                align-items:center;
-                gap:14px;
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                box-shadow:0 3px 12px rgba(23,55,95,.055);
-            ">
-<div style="
-                    width:55px;
-                    height:55px;
-                    min-width:55px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:15px;
-                    background:#ddf8eb;
-                    color:#079361;
-                    font-size:22px;
-                ">
-<i class="fas fa-check"></i>
+
 </div>
-<div style="min-width:0;">
-<span style="
-                        display:block;
-                        margin-bottom:3px;
-                        color:#536783;
-                        font-size:12px;
-                    ">
-                    Total Paid
-                </span>
-<strong id="finance-totalPaidAmount" style="
-                        display:block;
-                        color:#102d69;
-                        font-size:21px;
-                        line-height:1.15;
-                        font-weight:800;
-                        white-space:nowrap;
-                    ">
-                    KES 0
-                </strong>
-<span style="
-                        display:block;
-                        margin-top:5px;
-                        color:#8190a7;
-                        font-size:10px;
-                    ">
-                    This Semester
-                </span>
+
+<!-- CURRENT PERIOD + PAYMENT STATUS -->
+<div style="display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.55fr);gap:14px;margin-top:14px">
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 3px 12px rgba(23,55,95,.05)">
+<div style="padding:14px 17px;border-bottom:1px solid #edf1f6;display:flex;align-items:center;justify-content:space-between">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:32px;height:32px;border-radius:8px;background:#e5efff;color:#0864dc;display:flex;align-items:center;justify-content:center"><i class="fas fa-calendar-alt"></i></div><h2 style="margin:0;color:#112d69;font-size:15px">Current Academic Period</h2></div>
+<div style="text-align:right"><strong id="finance-currentPeriodBadge" style="display:block;padding:5px 10px;border-radius:15px;background:#e4efff;color:#145dce;font-size:10px">--</strong><span id="finance-academicYearDisplay" style="display:block;margin-top:3px;color:#687a95;font-size:9px">Academic Year --</span></div>
 </div>
+<div style="padding:16px">
+<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+<div style="padding:14px;border-radius:9px;background:#f3f7fb;border:1px solid #e4eaf2"><span style="display:block;color:#687a95;font-size:10px">Period Fee</span><strong id="finance-studentPeriodFee" style="display:block;margin-top:5px;color:#102d6d;font-size:14px">KES 0</strong></div>
+<div style="padding:14px;border-radius:9px;background:#f3f7fb;border:1px solid #e4eaf2"><span style="display:block;color:#687a95;font-size:10px">Paid This Period</span><strong id="finance-studentPaidThisPeriod" style="display:block;margin-top:5px;color:#079361;font-size:14px">KES 0</strong></div>
+<div style="padding:14px;border-radius:9px;background:#fff3f4;border:1px solid #f2d8db"><span style="display:block;color:#687a95;font-size:10px">Period Outstanding</span><strong id="finance-studentOutstanding" style="display:block;margin-top:5px;color:#ed3038;font-size:14px">KES 0</strong></div>
 </div>
-<!-- OUTSTANDING -->
-<div style="
-                min-height:108px;
-                padding:17px;
-                display:flex;
-                align-items:center;
-                gap:14px;
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                box-shadow:0 3px 12px rgba(23,55,95,.055);
-            ">
-<div style="
-                    width:55px;
-                    height:55px;
-                    min-width:55px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:15px;
-                    background:#ffe5e7;
-                    color:#ed3038;
-                    font-size:22px;
-                ">
-<i class="fas fa-wallet"></i>
-</div>
-<div style="min-width:0;">
-<span style="
-                        display:block;
-                        margin-bottom:3px;
-                        color:#536783;
-                        font-size:12px;
-                    ">
-                    Outstanding Balance
-                </span>
-<strong id="finance-balanceAmount" style="
-                        display:block;
-                        color:#ed3038;
-                        font-size:21px;
-                        line-height:1.15;
-                        font-weight:800;
-                        white-space:nowrap;
-                    ">
-                    KES 0
-                </strong>
-<span style="
-                        display:block;
-                        margin-top:5px;
-                        color:#8190a7;
-                        font-size:10px;
-                    ">
-                    Balance Due
-                </span>
-</div>
-</div>
-<!-- PAYMENT PROGRESS -->
-<div style="
-                min-height:108px;
-                padding:17px;
-                display:flex;
-                align-items:center;
-                gap:14px;
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                box-shadow:0 3px 12px rgba(23,55,95,.055);
-            ">
-<div style="
-                    width:55px;
-                    height:55px;
-                    min-width:55px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:15px;
-                    background:#fff2d7;
-                    color:#d38b00;
-                    font-size:22px;
-                ">
-<i class="fas fa-chart-bar"></i>
-</div>
-<div style="width:100%;min-width:0;">
-<span style="
-                        display:block;
-                        margin-bottom:3px;
-                        color:#536783;
-                        font-size:12px;
-                    ">
-                    Payment Progress
-                </span>
-<strong id="finance-paymentProgressText" style="
-                        display:block;
-                        color:#102d69;
-                        font-size:21px;
-                        line-height:1.15;
-                        font-weight:800;
-                    ">
-                    0%
-                </strong>
-<div style="
-                        width:100%;
-                        height:8px;
-                        margin-top:9px;
-                        overflow:hidden;
-                        border-radius:20px;
-                        background:#dfe6ef;
-                    ">
-<div id="finance-paymentProgressFill" style="
-                            width:0%;
-                            height:100%;
-                            border-radius:20px;
-                            background:#10a96b;
-                            transition:width .5s ease;
-                        "></div>
-</div>
-</div>
-</div>
-</div>
-<!-- =========================================================
-         CURRENT PERIOD / PAYMENT STATUS
-         ========================================================= -->
-<div style="
-            width:100%;
-            margin-top:15px;
-            display:grid;
-            grid-template-columns:minmax(0,1.25fr) minmax(300px,.75fr);
-            gap:15px;
-        ">
-<!-- CURRENT PERIOD -->
-<div style="
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                overflow:hidden;
-                box-shadow:0 3px 12px rgba(23,55,95,.055);
-            ">
-<div style="
-                    min-height:60px;
-                    padding:14px 18px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    border-bottom:1px solid #edf1f6;
-                ">
-<div style="
-                        display:flex;
-                        align-items:center;
-                        gap:9px;
-                    ">
-<div style="
-                            width:31px;
-                            height:31px;
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            border-radius:8px;
-                            color:#0864dc;
-                            background:#e5efff;
-                        ">
-<i class="fas fa-calendar-alt"></i>
-</div>
-<h2 style="
-                            margin:0;
-                            color:#112d69;
-                            font-size:16px;
-                            font-weight:800;
-                        ">
-                        Current Period Details
-                    </h2>
-<span id="finance-currentPeriodBadge" style="
-                            padding:5px 11px;
-                            border-radius:15px;
-                            color:#145dce;
-                            background:#e4efff;
-                            font-size:11px;
-                            font-weight:700;
-                        ">
-                        --
-                    </span>
-</div>
-<span id="finance-academicYearDisplay" style="
-                        color:#687a95;
-                        font-size:11px;
-                    ">
-                    Academic Year --
-                </span>
-</div>
-<div style="
-                    min-height:175px;
-                    padding:20px 18px 10px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    gap:25px;
-                ">
-<div style="
-                        flex:1;
-                        overflow:hidden;
-                        border-radius:9px;
-                        background:#f3f7fb;
-                    ">
-<div style="
-                            min-height:44px;
-                            padding:0 15px;
-                            display:flex;
-                            align-items:center;
-                            justify-content:space-between;
-                            border-bottom:1px solid #e3e9f1;
-                            font-size:12px;
-                        ">
-<span style="color:#405579;">
-                            Period Fee
-                        </span>
-<strong id="finance-studentPeriodFee" style="color:#102d6d;font-size:13px;">
-                            KES 0
-                        </strong>
-</div>
-<div style="
-                            min-height:44px;
-                            padding:0 15px;
-                            display:flex;
-                            align-items:center;
-                            justify-content:space-between;
-                            border-bottom:1px solid #e3e9f1;
-                            font-size:12px;
-                        ">
-<span style="color:#405579;">
-                            Amount Paid
-                        </span>
-<strong id="finance-studentPaidThisPeriod" style="color:#102d6d;font-size:13px;">
-                            KES 0
-                        </strong>
-</div>
-<div style="
-                            min-height:44px;
-                            padding:0 15px;
-                            display:flex;
-                            align-items:center;
-                            justify-content:space-between;
-                            font-size:12px;
-                        ">
-<span style="color:#405579;">
-                            Outstanding
-                        </span>
-<strong id="finance-studentOutstanding" style="color:#ed3038;font-size:13px;">
-                            KES 0
-                        </strong>
-</div>
-</div>
-<!-- CIRCLE -->
-<div style="
-                        position:relative;
-                        width:145px;
-                        height:145px;
-                        min-width:145px;
-                    ">
-<svg style="
-                            width:100%;
-                            height:100%;
-                            transform:rotate(-90deg);
-                        " viewbox="0 0 120 120">
-<circle cx="60" cy="60" r="48" style="
-                                fill:none;
-                                stroke:#dfe6ef;
-                                stroke-width:13;
-                            "></circle>
-<circle cx="60" cy="60" id="finance-progressCircle" r="48" style="
-                                fill:none;
-                                stroke:#10a96b;
-                                stroke-width:13;
-                                stroke-linecap:round;
-                                stroke-dasharray:301.59;
-                                stroke-dashoffset:301.59;
-                                transition:stroke-dashoffset .6s ease;
-                            "></circle>
+<div style="display:flex;align-items:center;gap:15px;margin-top:14px">
+<div style="position:relative;width:100px;height:100px;min-width:100px">
+<svg viewBox="0 0 120 120" style="width:100%;height:100%;transform:rotate(-90deg)">
+<circle cx="60" cy="60" r="48" fill="none" stroke="#dfe6ef" stroke-width="13"></circle>
+<circle id="finance-progressCircle" cx="60" cy="60" r="48" fill="none" stroke="#10a96b" stroke-width="13" stroke-linecap="round" stroke-dasharray="301.59" stroke-dashoffset="301.59"></circle>
 </svg>
-<div style="
-                            position:absolute;
-                            inset:0;
-                            display:flex;
-                            flex-direction:column;
-                            align-items:center;
-                            justify-content:center;
-                        ">
-<strong id="finance-paymentProgressText2" style="
-                                color:#102d6d;
-                                font-size:23px;
-                                font-weight:800;
-                            ">
-                            0%
-                        </strong>
-<span style="
-                                color:#536783;
-                                font-size:11px;
-                            ">
-                            Paid
-                        </span>
+<div style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center"><strong id="finance-paymentProgressText2" style="color:#102d6d;font-size:19px">0%</strong><span style="color:#536783;font-size:9px">Paid</span></div>
+</div>
+<div style="flex:1"><strong style="display:block;color:#112d69;font-size:12px">Period Payment Progress</strong><p id="finance-periodMessage" style="margin:5px 0 0;color:#71819d;font-size:10px;line-height:1.5">Your payment information will appear here.</p></div>
 </div>
 </div>
 </div>
-<div id="finance-periodMessage" style="
-                    margin:0 18px 15px;
-                    padding:9px 12px;
-                    display:flex;
-                    align-items:center;
-                    gap:8px;
-                    border-radius:8px;
-                    background:#e5f2ff;
-                    color:#1260ce;
-                    font-size:11px;
-                ">
-<i class="fas fa-info-circle"></i>
-<span>
-                    Your payment information will appear here.
-                </span>
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 3px 12px rgba(23,55,95,.05)">
+<div style="padding:14px 17px;border-bottom:1px solid #edf1f6"><div style="display:flex;align-items:center;gap:9px"><div style="width:32px;height:32px;border-radius:8px;background:#dcf8eb;color:#079866;display:flex;align-items:center;justify-content:center"><i class="fas fa-heartbeat"></i></div><h2 style="margin:0;color:#112d69;font-size:15px">Payment Status</h2></div></div>
+<div style="padding:16px">
+<div id="finance-balanceStatusDisplay" style="padding:13px;border-radius:9px;background:#ffe8e9">
+<strong id="finance-statusText" style="display:block;color:#ef3139;font-size:12px">Loading...</strong>
+<span style="display:block;margin-top:3px;color:#8a5b67;font-size:9px">Your current finance status will appear here.</span>
+</div>
+<div style="display:flex;align-items:center;gap:10px;padding:13px 0">
+<div style="width:35px;height:35px;border-radius:50%;background:#e5efff;color:#0763da;display:flex;align-items:center;justify-content:center"><i class="fas fa-calendar-alt"></i></div>
+<div><span style="display:block;color:#71809a;font-size:9px">Next Payment Due</span><strong id="finance-nextPaymentDue" style="display:block;margin-top:2px;color:#132e6b;font-size:11px">--</strong></div>
+</div>
+<button id="finance-makePaymentBtn" onclick="openPaymentModal()" type="button" style="width:100%;height:40px;border:0;border-radius:7px;background:#0baa68;color:#fff;font-size:11px;font-weight:700;cursor:pointer"><i class="fas fa-credit-card"></i> Make a Payment <i class="fas fa-arrow-right" style="float:right"></i></button>
 </div>
 </div>
-<!-- PAYMENT STATUS -->
-<div style="
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                overflow:hidden;
-                box-shadow:0 3px 12px rgba(23,55,95,.055);
-            ">
-<div style="
-                    min-height:60px;
-                    padding:14px 18px;
-                    display:flex;
-                    align-items:center;
-                    border-bottom:1px solid #edf1f6;
-                ">
-<div style="
-                        display:flex;
-                        align-items:center;
-                        gap:9px;
-                    ">
-<div style="
-                            width:31px;
-                            height:31px;
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            border-radius:8px;
-                            color:#079866;
-                            background:#dcf8eb;
-                        ">
-<i class="fas fa-heartbeat"></i>
+
 </div>
-<h2 style="
-                            margin:0;
-                            color:#112d69;
-                            font-size:16px;
-                            font-weight:800;
-                        ">
-                        Payment Status
-                    </h2>
+
+<!-- TRANSACTION SUMMARY -->
+<div style="display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:14px">
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:14px;display:flex;align-items:center;gap:11px"><div style="width:42px;height:42px;border-radius:12px;background:#ddf8eb;color:#079361;display:flex;align-items:center;justify-content:center"><i class="fas fa-check"></i></div><div><span style="display:block;color:#536783;font-size:10px">Paid Payments</span><strong id="finance-paidCount" style="display:block;color:#102d69;font-size:19px">0</strong><small style="color:#8190a7;font-size:8px">Completed transactions</small></div></div>
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:14px;display:flex;align-items:center;gap:11px"><div style="width:42px;height:42px;border-radius:12px;background:#fff2d7;color:#d38b00;display:flex;align-items:center;justify-content:center"><i class="fas fa-clock"></i></div><div><span style="display:block;color:#536783;font-size:10px">Pending Payments</span><strong id="finance-pendingCount" style="display:block;color:#102d69;font-size:19px">0</strong><small style="color:#8190a7;font-size:8px">Pending transactions</small></div></div>
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:14px;display:flex;align-items:center;gap:11px"><div style="width:42px;height:42px;border-radius:12px;background:#ffe5e7;color:#ed3038;display:flex;align-items:center;justify-content:center"><i class="fas fa-exclamation-triangle"></i></div><div><span style="display:block;color:#536783;font-size:10px">Overdue Payments</span><strong id="finance-overdueCount" style="display:block;color:#ed3038;font-size:19px">0</strong><small style="color:#8190a7;font-size:8px">Overdue transactions</small></div></div>
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:11px;padding:14px;display:flex;align-items:center;gap:11px"><div style="width:42px;height:42px;border-radius:12px;background:#e5efff;color:#0864dc;display:flex;align-items:center;justify-content:center"><i class="fas fa-receipt"></i></div><div><span style="display:block;color:#536783;font-size:10px">Total Transactions</span><strong id="finance-totalTransactions" style="display:block;color:#102d69;font-size:19px">0</strong><small style="color:#8190a7;font-size:8px">All transactions</small></div></div>
+
 </div>
-</div>
-<div style="padding:18px;">
-<div id="finance-balanceStatusDisplay" style="
-                        min-height:68px;
-                        padding:12px;
-                        display:flex;
-                        align-items:center;
-                        gap:10px;
-                        border-radius:9px;
-                        background:#ffe8e9;
-                    ">
-<div style="
-                            width:31px;
-                            height:31px;
-                            min-width:31px;
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            border-radius:50%;
-                            background:#ffd2d5;
-                            color:#e3313a;
-                        ">
-<i class="fas fa-info-circle"></i>
-</div>
-<div>
-<strong id="finance-statusText" style="
-                                display:block;
-                                color:#ef3139;
-                                font-size:13px;
-                            ">
-                            Loading...
-                        </strong>
-<span style="
-                                display:block;
-                                margin-top:3px;
-                                color:#8a5b67;
-                                font-size:10px;
-                            ">
-                            Your current finance status will appear here.
-                        </span>
-</div>
-</div>
-<div style="
-                        min-height:52px;
-                        margin:12px 0;
-                        display:flex;
-                        align-items:center;
-                        gap:11px;
-                    ">
-<div style="
-                            width:38px;
-                            height:38px;
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            border-radius:50%;
-                            background:#e5efff;
-                            color:#0763da;
-                        ">
-<i class="fas fa-calendar-alt"></i>
-</div>
-<div>
-<span style="
-                                display:block;
-                                color:#71809a;
-                                font-size:10px;
-                            ">
-                            Next Payment Due
-                        </span>
-<strong id="finance-nextPaymentDue" style="
-                                display:block;
-                                margin-top:2px;
-                                color:#132e6b;
-                                font-size:12px;
-                            ">
-                            --
-                        </strong>
-</div>
-</div>
-<button id="finance-makePaymentBtn" onclick="openPaymentModal()" style="
-                        width:100%;
-                        height:40px;
-                        padding:0 14px;
-                        display:flex;
-                        align-items:center;
-                        justify-content:space-between;
-                        border:0;
-                        border-radius:7px;
-                        background:#0baa68;
-                        color:#ffffff;
-                        font:inherit;
-                        font-size:12px;
-                        font-weight:700;
-                        cursor:pointer;
-                    " type="button">
-<span>
-<i class="fas fa-check-circle"></i>
-                         Make a Payment
-                    </span>
-<i class="fas fa-arrow-right"></i>
-</button>
-</div>
-</div>
-</div>
-<!-- =========================================================
-         TRANSACTION SUMMARY
-         ========================================================= -->
-<div style="
-            width:100%;
-            margin-top:15px;
-            display:grid;
-            grid-template-columns:repeat(4,minmax(0,1fr));
-            gap:15px;
-        ">
-<!-- PAID -->
-<div style="
-                min-height:88px;
-                padding:14px;
-                display:flex;
-                align-items:center;
-                gap:12px;
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:11px;
-                box-shadow:0 3px 12px rgba(23,55,95,.05);
-            ">
-<div style="
-                    width:45px;
-                    height:45px;
-                    min-width:45px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:13px;
-                    background:#ddf8eb;
-                    color:#079361;
-                    font-size:18px;
-                ">
-<i class="fas fa-check"></i>
-</div>
-<div>
-<span style="display:block;color:#536783;font-size:11px;">
-                    Paid Payments
-                </span>
-<strong id="finance-paidCount" style="
-                        display:block;
-                        color:#102d69;
-                        font-size:20px;
-                        line-height:1.1;
-                    ">
-                    0
-                </strong>
-<small style="color:#8190a7;font-size:9px;">
-                    Transactions
-                </small>
-</div>
-</div>
-<!-- PENDING -->
-<div style="
-                min-height:88px;
-                padding:14px;
-                display:flex;
-                align-items:center;
-                gap:12px;
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:11px;
-                box-shadow:0 3px 12px rgba(23,55,95,.05);
-            ">
-<div style="
-                    width:45px;
-                    height:45px;
-                    min-width:45px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:13px;
-                    background:#fff2d7;
-                    color:#d38b00;
-                    font-size:18px;
-                ">
-<i class="fas fa-clock"></i>
-</div>
-<div>
-<span style="display:block;color:#536783;font-size:11px;">
-                    Pending Payments
-                </span>
-<strong id="finance-pendingCount" style="
-                        display:block;
-                        color:#102d69;
-                        font-size:20px;
-                        line-height:1.1;
-                    ">
-                    0
-                </strong>
-<small style="color:#8190a7;font-size:9px;">
-                    Transactions
-                </small>
-</div>
-</div>
-<!-- OVERDUE -->
-<div style="
-                min-height:88px;
-                padding:14px;
-                display:flex;
-                align-items:center;
-                gap:12px;
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:11px;
-                box-shadow:0 3px 12px rgba(23,55,95,.05);
-            ">
-<div style="
-                    width:45px;
-                    height:45px;
-                    min-width:45px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:13px;
-                    background:#ffe5e7;
-                    color:#ed3038;
-                    font-size:18px;
-                ">
-<i class="fas fa-exclamation-triangle"></i>
-</div>
-<div>
-<span style="display:block;color:#536783;font-size:11px;">
-                    Overdue Payments
-                </span>
-<strong id="finance-overdueCount" style="
-                        display:block;
-                        color:#ed3038;
-                        font-size:20px;
-                        line-height:1.1;
-                    ">
-                    0
-                </strong>
-<small style="color:#8190a7;font-size:9px;">
-                    Transactions
-                </small>
-</div>
-</div>
-<!-- TOTAL -->
-<div style="
-                min-height:88px;
-                padding:14px;
-                display:flex;
-                align-items:center;
-                gap:12px;
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:11px;
-                box-shadow:0 3px 12px rgba(23,55,95,.05);
-            ">
-<div style="
-                    width:45px;
-                    height:45px;
-                    min-width:45px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:13px;
-                    background:#e5efff;
-                    color:#0864dc;
-                    font-size:18px;
-                ">
-<i class="fas fa-file-alt"></i>
-</div>
-<div>
-<span style="display:block;color:#536783;font-size:11px;">
-                    Total Transactions
-                </span>
-<strong id="finance-totalTransactions" style="
-                        display:block;
-                        color:#102d69;
-                        font-size:20px;
-                        line-height:1.1;
-                    ">
-                    0
-                </strong>
-<small style="color:#8190a7;font-size:9px;">
-                    All time
-                </small>
-</div>
-</div>
-</div>
-<!-- =========================================================
-         PAYMENT HISTORY + FEE STRUCTURE
-         ========================================================= -->
-<div style="
-            width:100%;
-            margin-top:15px;
-            display:grid;
-            grid-template-columns:minmax(0,1.45fr) minmax(300px,.65fr);
-            gap:15px;
-        ">
+
 <!-- PAYMENT HISTORY -->
-<div style="
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                overflow:hidden;
-                box-shadow:0 3px 12px rgba(23,55,95,.055);
-            ">
-<div style="
-                    min-height:60px;
-                    padding:14px 18px;
-                    display:flex;
-                    align-items:center;
-                    border-bottom:1px solid #edf1f6;
-                ">
-<div style="
-                        width:31px;
-                        height:31px;
-                        margin-right:9px;
-                        display:flex;
-                        align-items:center;
-                        justify-content:center;
-                        border-radius:8px;
-                        background:#e5efff;
-                        color:#0864dc;
-                    ">
-<i class="fas fa-file-alt"></i>
+<div style="margin-top:14px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 3px 12px rgba(23,55,95,.05)">
+<div style="padding:15px 18px;border-bottom:1px solid #edf1f6;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:9px"><div style="width:32px;height:32px;border-radius:8px;background:#e5efff;color:#0864dc;display:flex;align-items:center;justify-content:center"><i class="fas fa-history"></i></div><h2 style="margin:0;color:#112d69;font-size:15px">Payment History</h2></div>
+<div style="display:flex;gap:8px;flex-wrap:wrap">
+<div style="height:35px;display:flex;align-items:center;border:1px solid #dce4ef;border-radius:7px;padding:0 10px"><i class="fas fa-search" style="color:#7b8ba5;font-size:10px;margin-right:7px"></i><input id="finance-search" type="search" autocomplete="off" placeholder="Search payments..." style="border:0;outline:0;font-size:10px;width:180px"></div>
+<select id="finance-paymentFilter" style="height:35px;border:1px solid #dce4ef;border-radius:7px;padding:0 9px;font-size:10px;color:#31476a"><option value="all">All Status</option><option value="completed">Completed</option><option value="pending">Pending</option><option value="failed">Failed</option><option value="overdue">Overdue</option></select>
+<select id="finance-periodFilter" style="height:35px;border:1px solid #dce4ef;border-radius:7px;padding:0 9px;font-size:10px;color:#31476a"><option value="all">All Periods</option></select>
 </div>
-<h2 style="
-                        margin:0;
-                        color:#112d69;
-                        font-size:16px;
-                        font-weight:800;
-                    ">
-                    Payment History
-                </h2>
 </div>
-<!-- FILTERS -->
-<div style="
-                    padding:12px 18px;
-                    display:flex;
-                    align-items:center;
-                    gap:9px;
-                    flex-wrap:wrap;
-                ">
-<div style="
-                        flex:1;
-                        min-width:170px;
-                        height:37px;
-                        padding:0 10px;
-                        display:flex;
-                        align-items:center;
-                        border:1px solid #dce4ef;
-                        border-radius:7px;
-                        background:#ffffff;
-                    ">
-<i class="fas fa-search" style="
-                            margin-right:8px;
-                            color:#7b8ba5;
-                            font-size:11px;
-                        "></i>
-<input autocomplete="off" id="finance-search" placeholder="Search payments..." style="
-                            width:100%;
-                            border:0;
-                            outline:0;
-                            background:transparent;
-                            color:#23395f;
-                            font:inherit;
-                            font-size:11px;
-                        " type="search"/>
-</div>
-<select id="finance-paymentFilter" style="
-                        height:37px;
-                        min-width:115px;
-                        padding:0 9px;
-                        border:1px solid #dce4ef;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#31476a;
-                        font:inherit;
-                        font-size:11px;
-                        outline:0;
-                    ">
-<option value="all">All Status</option>
-<option value="completed">Completed</option>
-<option value="pending">Pending</option>
-<option value="failed">Failed</option>
-<option value="overdue">Overdue</option>
-</select>
-<select id="finance-periodFilter" style="
-                        height:37px;
-                        min-width:115px;
-                        padding:0 9px;
-                        border:1px solid #dce4ef;
-                        border-radius:7px;
-                        background:#ffffff;
-                        color:#31476a;
-                        font:inherit;
-                        font-size:11px;
-                        outline:0;
-                    ">
-<option value="all">All Periods</option>
-</select>
-</div>
-<!-- TABLE -->
-<div style="width:100%;overflow-x:auto;">
-<table style="
-                        width:100%;
-                        min-width:720px;
-                        border-collapse:collapse;
-                        font-size:10px;
-                    ">
-<thead>
-<tr style="
-                                background:#f2f5f9;
-                                color:#304565;
-                            ">
-<th style="padding:11px 9px;text-align:left;">#</th>
-<th style="padding:11px 9px;text-align:left;">Date</th>
-<th style="padding:11px 9px;text-align:left;">Period</th>
-<th style="padding:11px 9px;text-align:left;">Amount</th>
-<th style="padding:11px 9px;text-align:left;">Method</th>
-<th style="padding:11px 9px;text-align:left;">Reference</th>
-<th style="padding:11px 9px;text-align:left;">Status</th>
-<th style="padding:11px 9px;text-align:center;">Receipt</th>
-</tr>
-</thead>
-<tbody id="finance-studentPaymentHistory">
-<tr>
-<td colspan="8" style="
-                                    padding:32px 10px;
-                                    text-align:center;
-                                    color:#7b8ba5;
-                                ">
-<i class="fas fa-spinner fa-spin"></i>
-                                  Loading payment history...
-                            </td>
-</tr>
-</tbody>
+<div style="width:100%;overflow-x:auto">
+<table style="width:100%;min-width:720px;border-collapse:collapse;font-size:10px">
+<thead><tr style="background:#f2f5f9;color:#304565"><th style="padding:11px;text-align:left">#</th><th style="padding:11px;text-align:left">Date</th><th style="padding:11px;text-align:left">Period</th><th style="padding:11px;text-align:right">Amount</th><th style="padding:11px;text-align:left">Method</th><th style="padding:11px;text-align:left">Reference</th><th style="padding:11px;text-align:center">Status</th><th style="padding:11px;text-align:center">Receipt</th></tr></thead>
+<tbody id="finance-studentPaymentHistory"><tr><td colspan="8" style="padding:30px;text-align:center;color:#7b8ba5"><i class="fas fa-spinner fa-spin"></i> Loading payment history...</td></tr></tbody>
 </table>
 </div>
-<div style="
-                    min-height:50px;
-                    padding:9px 18px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    gap:15px;
-                    color:#71819d;
-                    font-size:10px;
-                ">
-<span id="finance-paymentRecordCount">
-                    Showing 0 payments
-                </span>
-<div style="display:flex;gap:4px;">
-<button id="finance-prevPage" style="
-                            width:29px;
-                            height:29px;
-                            border:1px solid #dfe6ef;
-                            border-radius:6px;
-                            background:#f7f9fc;
-                            color:#61738f;
-                            cursor:pointer;
-                        " type="button">
-<i class="fas fa-chevron-left"></i>
-</button>
-<button id="finance-currentPage" style="
-                            width:29px;
-                            height:29px;
-                            border:1px solid #0864dc;
-                            border-radius:6px;
-                            background:#0864dc;
-                            color:#ffffff;
-                            font-size:10px;
-                            font-weight:700;
-                        " type="button">
-                        1
-                    </button>
-<button id="finance-nextPage" style="
-                            width:29px;
-                            height:29px;
-                            border:1px solid #dfe6ef;
-                            border-radius:6px;
-                            background:#f7f9fc;
-                            color:#61738f;
-                            cursor:pointer;
-                        " type="button">
-<i class="fas fa-chevron-right"></i>
-</button>
+<div style="padding:10px 18px;display:flex;align-items:center;justify-content:space-between;color:#71819d;font-size:9px"><span id="finance-paymentRecordCount">Showing 0 payments</span><div style="display:flex;gap:4px"><button id="finance-prevPage" type="button" style="width:29px;height:29px;border:1px solid #dfe6ef;border-radius:6px;background:#f7f9fc;cursor:pointer"><i class="fas fa-chevron-left"></i></button><button id="finance-currentPage" type="button" style="width:29px;height:29px;border:1px solid #0864dc;border-radius:6px;background:#0864dc;color:#fff">1</button><button id="finance-nextPage" type="button" style="width:29px;height:29px;border:1px solid #dfe6ef;border-radius:6px;background:#f7f9fc;cursor:pointer"><i class="fas fa-chevron-right"></i></button></div></div>
+</div>
+
+<!-- FEE STRUCTURE + ACCOUNT SUMMARY -->
+<div style="display:grid;grid-template-columns:minmax(0,1.4fr) minmax(280px,.6fr);gap:14px;margin-top:14px">
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;box-shadow:0 3px 12px rgba(23,55,95,.05)">
+<div style="padding:15px 18px;border-bottom:1px solid #edf1f6;display:flex;align-items:center;justify-content:space-between"><div style="display:flex;align-items:center;gap:9px"><div style="width:32px;height:32px;border-radius:8px;background:#e5efff;color:#0864dc;display:flex;align-items:center;justify-content:center"><i class="fas fa-file-invoice-dollar"></i></div><h2 style="margin:0;color:#112d69;font-size:15px">Fee Structure</h2></div><button id="finance-viewAllFees" type="button" style="border:0;background:transparent;color:#075de0;font-size:10px;font-weight:700;cursor:pointer">View All <i class="fas fa-chevron-right"></i></button></div>
+<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:10px"><thead><tr style="background:#f2f5f9"><th style="padding:10px 12px;text-align:left;color:#304565">Fee Category</th><th style="padding:10px 12px;text-align:right;color:#304565">Amount (KES)</th></tr></thead><tbody id="finance-feeStructureBody"><tr><td colspan="2" style="padding:25px;text-align:center;color:#71819d"><i class="fas fa-spinner fa-spin"></i> Loading fee structure...</td></tr></tbody><tfoot><tr style="background:#fff5d9"><td style="padding:11px 12px"><strong>Total Fee</strong></td><td id="finance-feeStructureTotal" style="padding:11px 12px;text-align:right;font-weight:800;color:#102d69">0</td></tr></tfoot></table></div>
+</div>
+
+<div style="background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:18px;box-shadow:0 3px 12px rgba(23,55,95,.05)">
+<h2 style="margin:0 0 14px;color:#112d69;font-size:15px"><i class="fas fa-calculator" style="color:#0864dc"></i> Account Summary</h2>
+<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #edf1f6;font-size:11px"><span style="color:#687a95">Total Fees</span><strong id="finance-accountTotalFees" style="color:#102d69">KES 0</strong></div>
+<div style="display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #edf1f6;font-size:11px"><span style="color:#687a95">Total Paid</span><strong id="finance-accountTotalPaid" style="color:#079361">KES 0</strong></div>
+<div style="display:flex;justify-content:space-between;padding:10px 0;font-size:11px"><span style="color:#687a95">Outstanding</span><strong id="finance-accountOutstanding" style="color:#ed3038">KES 0</strong></div>
+<div style="margin-top:12px;padding:10px;border-radius:8px;background:#f3f7fb;color:#71819d;font-size:9px;line-height:1.5">Outstanding balance is calculated from assessed fees and completed financial transactions.</div>
+</div>
+
+</div>
+
+<!-- HELP -->
+<div style="margin-top:14px;padding:14px 18px;background:#fff;border:1px solid #e2e8f0;border-radius:11px;display:flex;align-items:center;justify-content:space-between;gap:15px;flex-wrap:wrap">
+<div style="display:flex;align-items:center;gap:10px"><div style="width:34px;height:34px;border-radius:50%;background:#e5efff;color:#0864dc;display:flex;align-items:center;justify-content:center"><i class="fas fa-question"></i></div><div><strong style="display:block;color:#075de0;font-size:11px">Need Help?</strong><span style="color:#71819d;font-size:9px">For finance queries, contact the finance office or use the support section.</span></div></div>
+<button id="finance-contactOfficeBtn" type="button" style="height:35px;padding:0 14px;border:1px solid #1768dc;border-radius:7px;background:#fff;color:#075de0;font-size:10px;font-weight:700;cursor:pointer"><i class="fas fa-phone-alt"></i> Contact Finance Office</button>
+</div>
+
+<!-- DASHBOARD HOOKS -->
+<span hidden id="finance-statusDot"></span>
+<span hidden id="dashboard-finance-balance">--</span>
+<span hidden id="dashboard-finance-status">--</span>
+
+<!-- ==================== PAYMENT MODAL ==================== -->
+<div id="finance-paymentModal" aria-hidden="true" style="display:none;position:fixed;inset:0;z-index:99999;align-items:center;justify-content:center;padding:20px">
+
+<div class="finance-modal-overlay" style="position:absolute;inset:0;background:rgba(8,25,45,.62);backdrop-filter:blur(3px)"></div>
+
+<div style="position:relative;width:100%;max-width:480px;background:#fff;border-radius:14px;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.22)">
+
+<div style="padding:18px 20px;border-bottom:1px solid #e7edf4;display:flex;align-items:center;justify-content:space-between">
+<div><h3 style="margin:0;color:#112d69;font-size:18px;font-weight:800">Make a Payment</h3><p style="margin:4px 0 0;color:#71819d;font-size:10px">Select the academic period before making your payment.</p></div>
+<button id="finance-closePaymentModal" type="button" style="width:32px;height:32px;border:0;border-radius:50%;background:#f1f4f8;color:#62738e;cursor:pointer"><i class="fas fa-times"></i></button>
+</div>
+
+<form id="finance-paymentForm" style="padding:20px">
+
+<!-- PAYMENT AMOUNT -->
+<div style="margin-bottom:15px">
+<label for="finance-paymentAmount" style="display:block;margin-bottom:7px;color:#304565;font-size:11px;font-weight:700">Payment Amount</label>
+<div style="height:45px;display:flex;align-items:center;border:1px solid #dce4ef;border-radius:8px;overflow:hidden">
+<span style="height:100%;padding:0 13px;display:flex;align-items:center;background:#f3f6fa;color:#526783;font-size:11px;font-weight:700">KES</span>
+<input id="finance-paymentAmount" name="amount" type="number" min="1" step="1" required placeholder="Enter amount" style="width:100%;height:100%;padding:0 12px;border:0;outline:0;color:#1e3559;font-size:13px">
 </div>
 </div>
-</div>
-<!-- FEE STRUCTURE -->
-<div style="
-                background:#ffffff;
-                border:1px solid #e2e8f0;
-                border-radius:12px;
-                overflow:hidden;
-                box-shadow:0 3px 12px rgba(23,55,95,.055);
-            ">
-<div style="
-                    min-height:60px;
-                    padding:14px 18px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    border-bottom:1px solid #edf1f6;
-                ">
-<div style="display:flex;align-items:center;gap:9px;">
-<div style="
-                            width:31px;
-                            height:31px;
-                            display:flex;
-                            align-items:center;
-                            justify-content:center;
-                            border-radius:8px;
-                            background:#e5efff;
-                            color:#0864dc;
-                        ">
-<i class="fas fa-file-invoice-dollar"></i>
-</div>
-<h2 style="
-                            margin:0;
-                            color:#112d69;
-                            font-size:16px;
-                            font-weight:800;
-                        ">
-                        Fee Structure
-                    </h2>
-</div>
-<button id="finance-viewAllFees" style="
-                        border:0;
-                        background:transparent;
-                        color:#075de0;
-                        font-size:10px;
-                        font-weight:700;
-                        cursor:pointer;
-                    " type="button">
-                    View All
-                    <i class="fas fa-chevron-right"></i>
-</button>
-</div>
-<div style="width:100%;overflow-x:auto;">
-<table style="
-                        width:100%;
-                        border-collapse:collapse;
-                        font-size:10px;
-                    ">
-<thead>
-<tr style="background:#f2f5f9;">
-<th style="
-                                    padding:10px 12px;
-                                    text-align:left;
-                                    color:#304565;
-                                ">
-                                Fee Category
-                            </th>
-<th style="
-                                    padding:10px 12px;
-                                    text-align:right;
-                                    color:#304565;
-                                ">
-                                Amount (KES)
-                            </th>
-</tr>
-</thead>
-<tbody id="finance-feeStructureBody">
-<tr>
-<td colspan="2" style="
-                                    padding:30px 10px;
-                                    text-align:center;
-                                    color:#71819d;
-                                ">
-<i class="fas fa-spinner fa-spin"></i>
-                                  Loading fee structure...
-                            </td>
-</tr>
-</tbody>
-<tfoot>
-<tr style="background:#fff5d9;">
-<td style="
-                                    padding:11px 12px;
-                                    color:#102d69;
-                                ">
-<strong>Total Fee</strong>
-</td>
-<td id="finance-feeStructureTotal" style="
-                                    padding:11px 12px;
-                                    text-align:right;
-                                    color:#102d69;
-                                    font-size:13px;
-                                    font-weight:800;
-                                ">
-                                0
-                            </td>
-</tr>
-</tfoot>
-</table>
+
+<!-- ACADEMIC PERIOD / TERM / BLOCK -->
+<div style="margin-bottom:15px">
+<label for="finance-paymentPeriod" style="display:block;margin-bottom:7px;color:#304565;font-size:11px;font-weight:700">Academic Period / Term / Block</label>
+<select id="finance-paymentPeriod" name="academic_period" required style="width:100%;height:45px;padding:0 12px;border:1px solid #dce4ef;border-radius:8px;background:#fff;color:#304565;font-size:12px;outline:0">
+<option value="">Select Term / Block / Period</option>
+</select>
+<div id="finance-selectedPeriodInfo" style="display:none;margin-top:8px;padding:10px;border-radius:8px;background:#f3f7fb;color:#536783;font-size:10px;line-height:1.5">
+<span>Period Fee: <strong id="finance-selectedPeriodFee">KES 0</strong></span>
+<span style="margin-left:12px">Paid: <strong id="finance-selectedPeriodPaid">KES 0</strong></span>
+<span style="margin-left:12px">Balance: <strong id="finance-selectedPeriodBalance">KES 0</strong></span>
 </div>
 </div>
-</div>
-<!-- =========================================================
-         HELP PANEL
-         ========================================================= -->
-<div style="
-            width:100%;
-            min-height:60px;
-            margin-top:15px;
-            padding:11px 17px;
-            display:flex;
-            align-items:center;
-            justify-content:space-between;
-            gap:20px;
-            background:#ffffff;
-            border:1px solid #e2e8f0;
-            border-radius:11px;
-            box-shadow:0 3px 12px rgba(23,55,95,.045);
-        ">
-<div style="
-                display:flex;
-                align-items:center;
-                gap:11px;
-            ">
-<div style="
-                    width:34px;
-                    height:34px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:center;
-                    border-radius:50%;
-                    background:#e5efff;
-                    color:#0864dc;
-                ">
-<i class="fas fa-question"></i>
-</div>
-<div>
-<strong style="
-                        display:block;
-                        color:#075de0;
-                        font-size:12px;
-                    ">
-                    Need Help?
-                </strong>
-<span style="
-                        display:block;
-                        margin-top:2px;
-                        color:#71819d;
-                        font-size:9px;
-                    ">
-                    For any finance related queries, please contact the
-                    finance office or use the support section.
-                </span>
-</div>
-</div>
-<button id="finance-contactOfficeBtn" style="
-                height:36px;
-                padding:0 15px;
-                display:flex;
-                align-items:center;
-                gap:8px;
-                border:1px solid #1768dc;
-                border-radius:7px;
-                background:#ffffff;
-                color:#075de0;
-                font-size:10px;
-                font-weight:700;
-                cursor:pointer;
-            " type="button">
-<i class="fas fa-phone-alt"></i>
-            Contact Finance Office
-        </button>
-</div>
-<!-- =========================================================
-         DASHBOARD COMPATIBILITY HOOKS
-         ========================================================= -->
-<span hidden="" id="finance-statusDot"></span>
-<span hidden="" id="dashboard-finance-balance">
-        --
-    </span>
-<span hidden="" id="dashboard-finance-status">
-        --
-    </span>
-<!-- =========================================================
-         PAYMENT MODAL
-         ========================================================= -->
-<div aria-hidden="true" id="finance-paymentModal" style="
-            display:none;
-            position:fixed;
-            inset:0;
-            z-index:99999;
-            align-items:center;
-            justify-content:center;
-            padding:20px;
-        ">
-<div class="finance-modal-overlay" style="
-                position:absolute;
-                inset:0;
-                background:rgba(8,25,45,.62);
-                backdrop-filter:blur(3px);
-            "></div>
-<div style="
-                position:relative;
-                width:100%;
-                max-width:470px;
-                background:#ffffff;
-                border-radius:14px;
-                overflow:hidden;
-                box-shadow:0 20px 60px rgba(0,0,0,.22);
-            ">
-<div style="
-                    padding:18px 20px;
-                    display:flex;
-                    align-items:center;
-                    justify-content:space-between;
-                    border-bottom:1px solid #e7edf4;
-                ">
-<div>
-<h3 style="
-                            margin:0;
-                            color:#112d69;
-                            font-size:18px;
-                            font-weight:800;
-                        ">
-                        Make a Payment
-                    </h3>
-<p style="
-                            margin:4px 0 0;
-                            color:#71819d;
-                            font-size:11px;
-                        ">
-                        Enter the amount you would like to pay
-                    </p>
-</div>
-<button id="finance-closePaymentModal" style="
-                        width:32px;
-                        height:32px;
-                        border:0;
-                        border-radius:50%;
-                        background:#f1f4f8;
-                        color:#62738e;
-                        cursor:pointer;
-                    " type="button">
-<i class="fas fa-times"></i>
-</button>
-</div>
-<form id="finance-paymentForm" style="
-                    padding:20px;
-                ">
-<div style="margin-bottom:16px;">
-<label for="finance-paymentAmount" style="
-                            display:block;
-                            margin-bottom:7px;
-                            color:#304565;
-                            font-size:12px;
-                            font-weight:700;
-                        ">
-                        Payment Amount
-                    </label>
-<div style="
-                            height:45px;
-                            display:flex;
-                            align-items:center;
-                            border:1px solid #dce4ef;
-                            border-radius:8px;
-                            overflow:hidden;
-                        ">
-<span style="
-                                height:100%;
-                                padding:0 13px;
-                                display:flex;
-                                align-items:center;
-                                background:#f3f6fa;
-                                color:#526783;
-                                font-size:12px;
-                                font-weight:700;
-                            ">
-                            KES
-                        </span>
-<input id="finance-paymentAmount" min="1" name="amount" placeholder="Enter amount" required="" step="1" style="
-                                width:100%;
-                                height:100%;
-                                padding:0 12px;
-                                border:0;
-                                outline:0;
-                                color:#1e3559;
-                                font-size:13px;
-                            " type="number"/>
-</div>
-</div>
-<div style="margin-bottom:16px;">
-<label for="finance-paymentMethod" style="
-                            display:block;
-                            margin-bottom:7px;
-                            color:#304565;
-                            font-size:12px;
-                            font-weight:700;
-                        ">
-                        Payment Method
-                    </label>
-<select id="finance-paymentMethod" name="payment_method" required="" style="
-                            width:100%;
-                            height:45px;
-                            padding:0 12px;
-                            border:1px solid #dce4ef;
-                            border-radius:8px;
-                            background:#ffffff;
-                            color:#304565;
-                            font-size:12px;
-                            outline:0;
-                        ">
-<option value="">
-                            Select payment method
-                        </option>
-<option value="mpesa">
-                            M-Pesa
-                        </option>
+
+<!-- PAYMENT METHOD -->
+<div style="margin-bottom:15px">
+<label for="finance-paymentMethod" style="display:block;margin-bottom:7px;color:#304565;font-size:11px;font-weight:700">Payment Method</label>
+<select id="finance-paymentMethod" name="payment_method" required style="width:100%;height:45px;padding:0 12px;border:1px solid #dce4ef;border-radius:8px;background:#fff;color:#304565;font-size:12px;outline:0">
+<option value="">Select payment method</option>
+<option value="mpesa">M-Pesa</option>
 </select>
 </div>
-<div id="finance-paymentInfo" style="
-                        padding:11px 12px;
-                        display:flex;
-                        align-items:flex-start;
-                        gap:9px;
-                        border-radius:8px;
-                        background:#eaf3ff;
-                        color:#1761c9;
-                        font-size:10px;
-                        line-height:1.5;
-                        margin-bottom:18px;
-                    ">
+
+<!-- PAYMENT INFORMATION -->
+<div id="finance-paymentInfo" style="padding:11px 12px;display:flex;align-items:flex-start;gap:9px;border-radius:8px;background:#eaf3ff;color:#1761c9;font-size:10px;line-height:1.5;margin-bottom:18px">
 <i class="fas fa-info-circle"></i>
-<span>
-                        You will receive an M-Pesa payment prompt
-                        on your registered phone.
-                    </span>
+<span>You will receive an M-Pesa payment prompt on your registered phone.</span>
 </div>
-<div style="
-                        display:flex;
-                        justify-content:flex-end;
-                        gap:9px;
-                    ">
-<button id="finance-cancelPayment" style="
-                            height:40px;
-                            padding:0 18px;
-                            border:1px solid #dce4ef;
-                            border-radius:7px;
-                            background:#ffffff;
-                            color:#526783;
-                            font-size:12px;
-                            font-weight:700;
-                            cursor:pointer;
-                        " type="button">
-                        Cancel
-                    </button>
-<button id="finance-submitPayment" style="
-                            height:40px;
-                            padding:0 18px;
-                            border:0;
-                            border-radius:7px;
-                            background:#0baa68;
-                            color:#ffffff;
-                            font-size:12px;
-                            font-weight:700;
-                            cursor:pointer;
-                        " type="submit">
-<i class="fas fa-mobile-alt"></i>
-                         Pay with M-Pesa
-                    </button>
+
+<!-- FORM ACTIONS -->
+<div style="display:flex;justify-content:flex-end;gap:9px">
+<button id="finance-cancelPayment" type="button" style="height:40px;padding:0 18px;border:1px solid #dce4ef;border-radius:7px;background:#fff;color:#526783;font-size:11px;font-weight:700;cursor:pointer">Cancel</button>
+<button id="finance-submitPayment" type="submit" style="height:40px;padding:0 18px;border:0;border-radius:7px;background:#0baa68;color:#fff;font-size:11px;font-weight:700;cursor:pointer"><i class="fas fa-mobile-alt"></i> Pay with M-Pesa</button>
 </div>
+
 </form>
 </div>
 </div>
+
 </section>
 <!-- ==================== END FINANCE TAB ==================== -->
 <!-- ==================== NURSEIQ / TVETIQ TAB ==================== -->
