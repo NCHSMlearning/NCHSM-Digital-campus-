@@ -236,33 +236,53 @@
                     throw new Error('Failed to update user data');
                 }
                 
-                const supabase = window.db?.supabase;
-                const studentId = this.userProfile?.user_id || this.userProfile?.id;
-                
-                if (!supabase || !studentId) {
-                    throw new Error('Database connection or student ID not available');
+                // Resolve the REAL Supabase JS client.
+                // This prevents: "supabase.from is not a function".
+                const supabase = this.getSupabaseClient();
+                const studentId =
+                    this.userProfile?.user_id ||
+                    this.userProfile?.id ||
+                    this.userProfile?.auth_user_id;
+
+                if (!supabase) {
+                    throw new Error('Supabase client is not available');
                 }
-                
-                // Get ALL registrations (approved and completed)
-                let query = supabase
+
+                if (!studentId) {
+                    throw new Error('Student authentication ID not available');
+                }
+
+                // student_unit_registrations is authoritative for the
+                // student's enrolled units.
+                const { data: registrations, error: regError } = await supabase
                     .from('student_unit_registrations')
                     .select('*')
-                    .eq('student_id', studentId);
-                
-                const { data: registrations, error: regError } = await query
+                    .eq('student_id', studentId)
                     .order('unit_code', { ascending: true });
-                
+
                 if (regError) throw regError;
-                
+
                 this.allRegistrations = registrations || [];
+
+                // Resolve human-readable unit names from the courses table.
+                await this.resolveCourseNames(this.allRegistrations, supabase);
                 
                 // ✅ NEW: Separate into approved and completed based on status
-                this.approvedUnits = this.allRegistrations.filter(r => 
-                    r.status === 'approved' && r.completion_status !== 'completed'
-                );
-                this.completedUnits = this.allRegistrations.filter(r => 
-                    r.completion_status === 'completed' || r.status === 'completed' || (r.grade && r.grade !== '')
-                );
+                this.approvedUnits = this.allRegistrations.filter(r => {
+                    const status = String(r.status || '').toLowerCase().trim();
+                    const completion = String(r.completion_status || '').toLowerCase().trim();
+                    return status === 'approved' && completion !== 'completed';
+                });
+
+                this.completedUnits = this.allRegistrations.filter(r => {
+                    const status = String(r.status || '').toLowerCase().trim();
+                    const completion = String(r.completion_status || '').toLowerCase().trim();
+                    return completion === 'completed' ||
+                           status === 'completed' ||
+                           (r.grade !== undefined &&
+                            r.grade !== null &&
+                            String(r.grade).trim() !== '');
+                });
                 
                 console.log(`✅ Found ${this.approvedUnits.length} approved units, ${this.completedUnits.length} completed units`);
                 
@@ -289,6 +309,133 @@
             }
         }
         
+        // ============================================
+        // 🔌 SUPABASE CLIENT RESOLVER
+        // ============================================
+
+        getSupabaseClient() {
+            const candidates = [
+                window.supabaseClient,
+                window.sb,
+                window.supabase,
+                window.db?.supabase,
+                window.databaseModule?.supabase,
+                window.NCHSMLogin?.supabase
+            ];
+
+            for (const client of candidates) {
+                try {
+                    if (
+                        client &&
+                        typeof client.from === 'function' &&
+                        client.auth &&
+                        typeof client.auth.getSession === 'function'
+                    ) {
+                        return client;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Supabase candidate rejected:', e.message);
+                }
+            }
+
+            return null;
+        }
+
+        // ============================================
+        // 📚 RESOLVE COURSE / UNIT NAMES
+        // ============================================
+
+        async resolveCourseNames(registrations, supabase) {
+            if (!Array.isArray(registrations) || !registrations.length) return;
+
+            const value = (obj, keys) => {
+                for (const key of keys) {
+                    const v = obj?.[key];
+                    if (v !== undefined && v !== null && String(v).trim() !== '') {
+                        return v;
+                    }
+                }
+                return '';
+            };
+
+            const normalize = v =>
+                String(v || '').trim().toUpperCase().replace(/\s+/g, '');
+
+            try {
+                const { data, error } = await supabase
+                    .from('courses')
+                    .select('*');
+
+                if (error) {
+                    console.warn('⚠️ Course catalogue lookup failed:', error.message);
+                    return;
+                }
+
+                const catalogue = Array.isArray(data) ? data : [];
+                const map = new Map();
+
+                catalogue.forEach(course => {
+                    const code = value(course, [
+                        'unit_code', 'course_code', 'code', 'course_id'
+                    ]);
+                    if (code) map.set(normalize(code), course);
+                });
+
+                registrations.forEach(reg => {
+                    const code = value(reg, [
+                        'unit_code', 'course_code', 'code'
+                    ]);
+
+                    const catalogueCourse = map.get(normalize(code));
+                    if (!catalogueCourse) return;
+
+                    const existingName = value(reg, [
+                        'unit_name', 'course_name', 'name', 'title'
+                    ]);
+
+                    if (!existingName) {
+                        const name = value(catalogueCourse, [
+                            'unit_name',
+                            'course_name',
+                            'name',
+                            'title',
+                            'unit_title',
+                            'course_title'
+                        ]);
+
+                        if (name) reg.unit_name = name;
+                    }
+
+                    if (!reg.unit_code) {
+                        reg.unit_code = value(catalogueCourse, [
+                            'unit_code', 'course_code', 'code', 'course_id'
+                        ]);
+                    }
+
+                    if (
+                        (reg.credits === undefined ||
+                         reg.credits === null ||
+                         reg.credits === '') &&
+                        catalogueCourse.credits !== undefined
+                    ) {
+                        reg.credits = catalogueCourse.credits;
+                    }
+                });
+
+                console.log(
+                    '✅ Course names resolved:',
+                    registrations.map(r => ({
+                        code: value(r, ['unit_code', 'course_code', 'code']),
+                        name: value(r, ['unit_name', 'course_name', 'name', 'title'])
+                    }))
+                );
+            } catch (error) {
+                // Name resolution must never prevent the Courses module
+                // from displaying registered units.
+                console.warn('⚠️ Course name resolution skipped:', error.message);
+            }
+        }
+
         // ============================================
         // 📊 UPDATE STATS
         // ============================================
