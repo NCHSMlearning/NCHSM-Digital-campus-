@@ -56,6 +56,7 @@ const studentFinanceState = {
     feeStructureVisible: false,
     student: null,
     selectedPeriod: null,
+    selectedBlock: null,
     selectedPaymentMethod: 'mpesa',
     stkPayment: {
         isProcessing: false,
@@ -1137,6 +1138,52 @@ window.printReceipt = printReceipt;
 // 📊 FETCH FINANCE DATA FROM SUPABASE - FIXED
 // ============================================================
 
+
+// ============================================================
+// 🎓 CURRENT BLOCK / TERM FROM STUDENT PROFILE
+// ============================================================
+
+function getCurrentProfileFinancePeriod(profile = null) {
+    const p =
+        profile ||
+        studentFinanceState.student ||
+        window.currentUserProfile ||
+        window.currentUser ||
+        {};
+
+    // Profile is authoritative. We deliberately do not use a guessed
+    // future term or the last fee period when the profile has a value.
+    const raw =
+        p.current_block ||
+        p.currentBlock ||
+        p.block_term ||
+        p.current_term ||
+        p.currentTerm ||
+        p.block ||
+        p.student_block ||
+        p.class_block ||
+        p.term ||
+        null;
+
+    return raw ? mapPeriodToDisplay(raw) : null;
+}
+
+function getProfilePeriodFee(feeRows, profilePeriod, fallback=0) {
+    if (!Array.isArray(feeRows) || !profilePeriod) {
+        return Number(fallback) || 0;
+    }
+
+    const match = feeRows.find(row =>
+        mapPeriodToDisplay(row?.name || row?.period || row?.block || '') ===
+        profilePeriod
+    );
+
+    return match
+        ? Number(match.amount) || 0
+        : Number(fallback) || 0;
+}
+
+
 async function fetchFinanceDataFromSupabase(user) {
     try {
         const supabase = getSupabaseClient();
@@ -1316,7 +1363,11 @@ async function fetchFinanceDataFromSupabase(user) {
             });
         }
 
+        const profilePeriod =
+            getCurrentProfileFinancePeriod(profile);
+
         const currentPeriod = mapPeriodToDisplay(
+            profilePeriod ||
             accountData?.current_period ||
             accountData?.current_period_name ||
             periods[0]
@@ -1450,7 +1501,18 @@ async function fetchFinanceDataFromSupabase(user) {
                     user?.phone ||
                     user?.phone_number ||
                     '',
-                block: profile?.block || user?.block || '',
+                block:
+                    profile?.block ||
+                    profile?.current_block ||
+                    user?.block ||
+                    user?.current_block ||
+                    '',
+                current_block:
+                    profile?.current_block ||
+                    user?.current_block ||
+                    profile?.block ||
+                    user?.block ||
+                    '',
                 programType,
                 programLevel
             }
@@ -2580,32 +2642,384 @@ function resendPaymentEmail() {
 // 💳 PAYMENT MODAL - POS STYLE
 // ============================================================
 
+
+// ============================================================
+// 📱 RESPONSIVE FINANCE + M-PESA PHONE INPUT
+// ============================================================
+
+function ensureFinanceResponsiveStyles() {
+    if (document.getElementById('nchsm-finance-responsive-css')) return;
+
+    const style = document.createElement('style');
+    style.id = 'nchsm-finance-responsive-css';
+    style.textContent = `
+        #finance {
+            width:100% !important;
+            max-width:100% !important;
+            overflow-x:hidden !important;
+        }
+
+        #finance, #finance * {
+            box-sizing:border-box;
+        }
+
+        #finance table {
+            width:100%;
+            min-width:650px;
+        }
+
+        #finance .table-responsive,
+        #finance .finance-table-wrapper,
+        #finance [style*="overflow-x"] {
+            max-width:100%;
+            overflow-x:auto;
+            -webkit-overflow-scrolling:touch;
+        }
+
+        #finance-paymentModal {
+            padding:12px !important;
+            overflow-y:auto !important;
+        }
+
+        .nchsm-payment-dialog {
+            width:min(480px,100%) !important;
+            max-width:100% !important;
+            max-height:calc(100vh - 24px);
+            overflow-y:auto;
+            margin:auto;
+            border-radius:18px !important;
+        }
+
+        .nchsm-payment-phone {
+            width:100%;
+            margin:14px 0;
+            text-align:left;
+        }
+
+        .nchsm-payment-phone label {
+            display:block;
+            margin-bottom:7px;
+            color:#102d69;
+            font-size:12px;
+            font-weight:800;
+        }
+
+        .nchsm-phone-box {
+            display:flex;
+            width:100%;
+            height:46px;
+            overflow:hidden;
+            border:1px solid #d8e1ec;
+            border-radius:9px;
+            background:#fff;
+        }
+
+        .nchsm-phone-prefix {
+            width:58px;
+            flex:0 0 58px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            background:#f5f7fa;
+            border-right:1px solid #e2e8f0;
+            color:#405579;
+            font-size:12px;
+            font-weight:800;
+        }
+
+        #finance-paymentPhone {
+            width:100%;
+            min-width:0;
+            border:0;
+            outline:0;
+            padding:0 12px;
+            background:#fff;
+            color:#102d69;
+            font-size:14px;
+            font-weight:600;
+        }
+
+        #finance-paymentPhone:focus {
+            outline:0;
+        }
+
+        .nchsm-phone-help {
+            margin-top:6px;
+            color:#71819d;
+            font-size:10px;
+            line-height:1.45;
+        }
+
+        #finance-paymentPhoneError {
+            display:none;
+            margin-top:5px;
+            color:#dc3545;
+            font-size:10px;
+            font-weight:700;
+        }
+
+        @media(max-width:768px) {
+            #finance-paymentModal {
+                align-items:flex-end !important;
+                padding:0 !important;
+            }
+
+            .nchsm-payment-dialog {
+                width:100% !important;
+                max-height:92vh;
+                border-radius:18px 18px 0 0 !important;
+            }
+
+            #finance-paymentPhone {
+                font-size:16px;
+            }
+
+            .nchsm-payment-dialog button {
+                min-height:44px;
+            }
+
+            #finance {
+                padding-left:0 !important;
+                padding-right:0 !important;
+            }
+        }
+
+        @media(max-width:430px) {
+            .nchsm-payment-dialog {
+                max-height:94vh;
+            }
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function normalizeMpesaPhone(value) {
+    let phone = String(value || '').trim().replace(/[^\d+]/g, '');
+
+    if (phone.startsWith('+254')) {
+        phone = phone.slice(1);
+    }
+
+    if (/^254(7|1)\d{8}$/.test(phone)) return '+' + phone;
+    if (/^0(7|1)\d{8}$/.test(phone)) return '+254' + phone.slice(1);
+    if (/^(7|1)\d{8}$/.test(phone)) return '+254' + phone;
+
+    return null;
+}
+
+function ensurePaymentPhoneField(container, currentPhone='') {
+    if (!container) return null;
+
+    let wrap = container.querySelector('.nchsm-payment-phone');
+
+    if (!wrap) {
+        wrap = document.createElement('div');
+        wrap.className = 'nchsm-payment-phone';
+        wrap.innerHTML = `
+            <label for="finance-paymentPhone">
+                <i class="fas fa-mobile-alt"></i>
+                M-Pesa Phone Number
+            </label>
+
+            <div class="nchsm-phone-box">
+                <span class="nchsm-phone-prefix">+254</span>
+                <input
+                    id="finance-paymentPhone"
+                    type="tel"
+                    inputmode="numeric"
+                    autocomplete="tel"
+                    maxlength="10"
+                    placeholder="0712345678"
+                    aria-label="M-Pesa phone number"
+                >
+            </div>
+
+            <div class="nchsm-phone-help">
+                Enter the number that will receive the M-Pesa STK Push.
+                Example: 0712345678
+            </div>
+
+            <div id="finance-paymentPhoneError"></div>
+        `;
+
+        const amount =
+            container.querySelector('#finance-paymentAmount');
+
+        if (amount) {
+            const parent = amount.closest('.form-group, .finance-form-group, div');
+            if (parent && parent.parentElement) {
+                parent.parentElement.appendChild(wrap);
+            } else {
+                amount.parentElement?.appendChild(wrap);
+            }
+        } else {
+            container.appendChild(wrap);
+        }
+    }
+
+    const input =
+        wrap.querySelector('#finance-paymentPhone');
+
+    if (input && !input.value && currentPhone) {
+        let v = String(currentPhone).trim();
+
+        if (v.startsWith('+254')) v = '0' + v.slice(4);
+        else if (v.startsWith('254')) v = '0' + v.slice(3);
+
+        input.value = v;
+    }
+
+    if (input && !input.dataset.bound) {
+        input.dataset.bound = 'true';
+
+        input.addEventListener('input', function() {
+            this.value = this.value.replace(/[^\d+]/g, '');
+
+            const err =
+                document.getElementById('finance-paymentPhoneError');
+
+            if (err) {
+                err.style.display = 'none';
+                err.textContent = '';
+            }
+        });
+    }
+
+    return input;
+}
+
+function escapeFinanceHtml(value) {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+}
+
+function getStudentAcademicBlocks() {
+    const p = studentFinanceState.student || window.currentUserProfile || window.currentUser || {};
+    const candidates = [
+        p.current_block,
+        p.block,
+        p.student_block,
+        p.class_block,
+        p.block_term
+    ].filter(v => v !== null && v !== undefined && String(v).trim() !== '');
+
+    const blocks = [];
+    candidates.forEach(v => {
+        const value = String(v).trim();
+        if (!blocks.some(x => x.toLowerCase() === value.toLowerCase())) blocks.push(value);
+    });
+
+    // Add known Block labels when the profile explicitly uses them.
+    if (blocks.length === 1 && /^block\s*\d+$/i.test(blocks[0])) return blocks;
+    return blocks;
+}
+
+function populatePaymentPeriodOptions() {
+    const select = document.getElementById('finance-paymentPeriod');
+    if (!select) return;
+
+    const programType = studentFinanceState.programType || getProgramType(studentFinanceState.student?.program || 'TVET');
+    const level = studentFinanceState.programLevel || getProgramLevel(studentFinanceState.student?.program || '');
+    const fallbackPeriods = getPeriods(programType, level);
+
+    const feePeriods = (studentFinanceState.feeStructure || [])
+        .map(row => row?.block || row?.period || row?.name || '')
+        .filter(Boolean)
+        .map(mapPeriodToDisplay);
+
+    const periods = [...new Set([...feePeriods, ...fallbackPeriods])];
+    const profilePeriod = getCurrentProfileFinancePeriod(studentFinanceState.student);
+    const preferred = studentFinanceState.selectedPeriod || profilePeriod || studentFinanceState.currentPeriod || periods[0] || '';
+
+    select.innerHTML = '<option value="">Select fee period</option>' + periods.map(period =>
+        `<option value="${escapeFinanceHtml(period)}">${escapeFinanceHtml(period)}</option>`
+    ).join('');
+
+    if (preferred && periods.includes(preferred)) {
+        select.value = preferred;
+        studentFinanceState.selectedPeriod = preferred;
+    } else if (periods[0]) {
+        select.value = periods[0];
+        studentFinanceState.selectedPeriod = periods[0];
+    }
+}
+
+function populatePaymentBlockOptions() {
+    const select = document.getElementById('finance-paymentBlock');
+    if (!select) return;
+
+    const blocks = getStudentAcademicBlocks();
+    const current = studentFinanceState.selectedBlock || blocks[0] || '';
+
+    if (!blocks.length) {
+        select.innerHTML = '<option value="">Not specified / Not applicable</option>';
+        studentFinanceState.selectedBlock = '';
+        return;
+    }
+
+    select.innerHTML = '<option value="">Select block (optional)</option>' + blocks.map(block =>
+        `<option value="${escapeFinanceHtml(block)}">${escapeFinanceHtml(block)}</option>`
+    ).join('');
+
+    select.value = current;
+    studentFinanceState.selectedBlock = current;
+}
+
 function openPaymentModal() {
-    const modal =
-        document.getElementById('finance-paymentModal');
+    const modal = document.getElementById('finance-paymentModal');
 
     if (!modal) {
         showToast('❌ Payment system error. Please refresh the page.', 'error');
         return;
     }
 
+    ensureFinanceResponsiveStyles();
+
+    const user =
+        studentFinanceState.student ||
+        window.currentUserProfile ||
+        window.currentUser ||
+        {};
+
+    const dialog =
+        modal.querySelector(
+            '.finance-modal-content, .finance-modal-dialog, .modal-content'
+        ) || modal.lastElementChild;
+
+    if (dialog) {
+        dialog.classList.add('nchsm-payment-dialog');
+
+        ensurePaymentPhoneField(
+            dialog,
+            user.phone || user.phone_number || ''
+        );
+    }
+
     const amountInput =
         document.getElementById('finance-paymentAmount');
-
-    const methodSelect =
-        document.getElementById('finance-paymentMethod');
 
     if (
         amountInput &&
         !amountInput.value &&
         Number(studentFinanceState.balance || 0) > 0
     ) {
-        amountInput.value = Number(studentFinanceState.balance);
+        amountInput.value =
+            Number(studentFinanceState.balance);
     }
 
-    if (methodSelect) methodSelect.value = 'mpesa';
+    populatePaymentPeriodOptions();
+    populatePaymentBlockOptions();
 
-    selectPaymentMethod('mpesa');
+    const method =
+        document.getElementById('finance-paymentMethod');
+
+    if (method && !method.value) method.value = studentFinanceState.selectedPaymentMethod || 'mpesa';
+
+    selectPaymentMethod(method?.value || 'mpesa');
 
     modal.style.display = 'flex';
     modal.setAttribute('aria-hidden', 'false');
@@ -2614,7 +3028,6 @@ function openPaymentModal() {
     pendingPayment.cancelled = false;
     pendingPayment.status = 'idle';
 }
-
 function closePaymentModal() {
     const modal =
         document.getElementById('finance-paymentModal');
@@ -2632,53 +3045,92 @@ function closePaymentModal() {
 }
 
 function selectPaymentMethod(method) {
-    const select =
-        document.getElementById('finance-paymentMethod');
+    const normalized = String(method || '').toLowerCase() === 'bank' ? 'bank' : 'mpesa';
+    const select = document.getElementById('finance-paymentMethod');
+    if (select) select.value = normalized;
 
-    if (select) select.value = method;
+    studentFinanceState.selectedPaymentMethod = normalized;
 
-    studentFinanceState.selectedPaymentMethod = method;
+    const mpesaFields = document.getElementById('finance-mpesaFields');
+    const bankFields = document.getElementById('finance-bankFields');
+    const info = document.getElementById('finance-paymentInfo');
+    const submit = document.getElementById('finance-submitPayment');
+    const submitText = document.getElementById('finance-submitPaymentText');
+    const submitIcon = document.getElementById('finance-submitPaymentIcon');
 
-    const info =
-        document.getElementById('finance-paymentInfo');
+    if (mpesaFields) mpesaFields.style.display = normalized === 'mpesa' ? 'block' : 'none';
+    if (bankFields) bankFields.style.display = normalized === 'bank' ? 'block' : 'none';
 
-    if (info) {
-        info.innerHTML =
-            method === 'mpesa'
-                ? `<i class="fas fa-info-circle"></i><span>You will receive an M-Pesa payment prompt on your registered phone.</span>`
-                : `<i class="fas fa-info-circle"></i><span>Only M-Pesa is currently enabled.</span>`;
+    if (normalized === 'mpesa') {
+        if (info) {
+            info.style.background = '#eaf3ff';
+            info.style.color = '#1761c9';
+            info.innerHTML = '<i class="fas fa-mobile-alt"></i><span>Enter the phone number that should receive the M-Pesa STK Push. You will be asked to enter your M-Pesa PIN on the phone.</span>';
+        }
+        if (submit) submit.style.background = '#0baa68';
+        if (submitIcon) submitIcon.className = 'fas fa-mobile-alt';
+        if (submitText) submitText.textContent = ' Pay with M-Pesa STK Push';
+    } else {
+        if (info) {
+            info.style.background = '#fff7e6';
+            info.style.color = '#9a6700';
+            info.innerHTML = '<i class="fas fa-university"></i><span>Bank transfers are recorded as pending until the Finance Office verifies the bank transaction reference.</span>';
+        }
+        if (submit) submit.style.background = '#1455a0';
+        if (submitIcon) submitIcon.className = 'fas fa-university';
+        if (submitText) submitText.textContent = ' Submit Bank Transfer';
     }
 }
 
 function validatePaymentForm() {
-    const amount = Number(
-        document.getElementById('finance-paymentAmount')?.value || 0
-    );
-
-    const method =
-        document.getElementById('finance-paymentMethod')?.value || '';
+    const amount = Number(document.getElementById('finance-paymentAmount')?.value || 0);
+    const method = document.getElementById('finance-paymentMethod')?.value || '';
+    const period = document.getElementById('finance-paymentPeriod')?.value || '';
 
     if (!amount || amount < 1) {
         showToast('❌ Please enter a valid payment amount.', 'error');
         return false;
     }
 
-    if (
-        Number(studentFinanceState.balance || 0) > 0 &&
-        amount > Number(studentFinanceState.balance)
-    ) {
-        showToast(
-            '❌ Payment amount cannot exceed the current outstanding balance.',
-            'error'
-        );
+    if (Number(studentFinanceState.balance || 0) > 0 && amount > Number(studentFinanceState.balance)) {
+        showToast('❌ Payment amount cannot exceed the current outstanding balance.', 'error');
         return false;
     }
 
-    if (method !== 'mpesa') {
-        showToast(
-            '❌ Only M-Pesa payments are currently enabled.',
-            'error'
-        );
+    if (!period) {
+        showToast('❌ Please select the fee term/semester.', 'error');
+        return false;
+    }
+
+    if (!['mpesa', 'bank'].includes(method)) {
+        showToast('❌ Please select a payment method.', 'error');
+        return false;
+    }
+
+    studentFinanceState.selectedPeriod = period;
+    studentFinanceState.selectedBlock = document.getElementById('finance-paymentBlock')?.value || null;
+
+    if (method === 'bank') {
+        const bankReference = document.getElementById('finance-bankReference')?.value?.trim() || '';
+        if (!bankReference) {
+            showToast('❌ Enter the bank transaction/reference number.', 'error');
+            document.getElementById('finance-bankReference')?.focus();
+            return false;
+        }
+        return true;
+    }
+
+    const input = document.getElementById('finance-paymentPhone');
+    const phone = normalizeMpesaPhone(input?.value || '');
+    const error = document.getElementById('finance-paymentPhoneError');
+
+    if (!phone) {
+        if (error) {
+            error.textContent = 'Enter a valid Kenyan M-Pesa number, e.g. 0712345678.';
+            error.style.display = 'block';
+        }
+        input?.focus();
+        showToast('❌ Enter a valid M-Pesa phone number.', 'error');
         return false;
     }
 
@@ -3496,6 +3948,29 @@ function showStudentPaymentTimeout() {
 // ✅ SHOW PAYMENT SUCCESS - STUDENT FINANCE (UPDATED)
 // ============================================================
 
+function showBankPaymentPending(amount, reference, period, block = null) {
+    const modal = document.getElementById('finance-paymentModal');
+    const dialog = modal?.lastElementChild;
+    if (!dialog) return;
+
+    dialog.innerHTML = `
+        <div style="padding:30px 22px;text-align:center;">
+            <div style="width:64px;height:64px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fff7e6;color:#b77900;font-size:27px;">
+                <i class="fas fa-university"></i>
+            </div>
+            <h3 style="margin:0 0 7px;color:#112d69;font-size:19px;">Bank Transfer Submitted</h3>
+            <p style="margin:0;color:#71819d;font-size:12px;">Your payment has been recorded and is awaiting Finance Office verification.</p>
+            <div style="margin:18px auto;padding:14px;border-radius:9px;background:#f3f7fb;">
+                <strong style="display:block;color:#102d69;font-size:24px;">KES ${Number(amount).toLocaleString()}</strong>
+                <span style="display:block;margin-top:5px;color:#71819d;font-size:10px;">${escapeFinanceHtml(period)}${block ? ` • ${escapeFinanceHtml(block)}` : ''}</span>
+                <span style="display:block;margin-top:8px;color:#536783;font-size:11px;">Reference: <strong>${escapeFinanceHtml(reference)}</strong></span>
+            </div>
+            <p style="margin:10px 0;color:#71819d;font-size:11px;line-height:1.5;">Keep your bank confirmation. Your Finance status will change after the transaction is verified.</p>
+            <button type="button" onclick="closePaymentModal(); loadStudentFinance(true);" style="width:100%;height:42px;border:0;border-radius:8px;background:#1455a0;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Done</button>
+        </div>
+    `;
+}
+
 function showStudentPaymentSuccess(amount, reference, period) {
     const content = document.getElementById('finance-paymentContent');
     const title = document.getElementById('finance-paymentModalTitle');
@@ -3534,53 +4009,27 @@ function showStudentPaymentSuccess(amount, reference, period) {
 async function processPayment() {
     if (!validatePaymentForm()) return;
 
-    const amount = Number(
-        document.getElementById('finance-paymentAmount')?.value || 0
-    );
+    const amount = Number(document.getElementById('finance-paymentAmount')?.value || 0);
+    const method = document.getElementById('finance-paymentMethod')?.value || 'mpesa';
+    const period = document.getElementById('finance-paymentPeriod')?.value || studentFinanceState.currentPeriod || 'Tuition Fees';
+    const block = document.getElementById('finance-paymentBlock')?.value || null;
 
-    const user =
-        studentFinanceState.student ||
-        window.currentUserProfile ||
-        window.currentUser;
-
+    const user = studentFinanceState.student || window.currentUserProfile || window.currentUser;
     if (!user) {
         showToast('❌ Please login first.', 'error');
         return;
     }
 
-    const phone =
-        user.phone ||
-        user.phone_number ||
-        '';
-
-    const formattedPhone = formatPhoneNumber(phone);
-
-    if (!formattedPhone) {
-        showToast(
-            '❌ No valid registered M-Pesa phone number was found.',
-            'error'
-        );
-        return;
-    }
-
     const supabase = getSupabaseClient();
-
     if (!supabase) {
-        showToast(
-            '❌ Supabase client is not available.',
-            'error'
-        );
+        showToast('❌ Supabase client is not available.', 'error');
         return;
     }
 
-    const period =
-        studentFinanceState.currentPeriod ||
-        getPeriods(
-            studentFinanceState.programType || 'TVET',
-            studentFinanceState.programLevel || 'diploma'
-        )[0];
-
-    const reference = `STU-${Date.now()}`;
+    const phoneInput = document.getElementById('finance-paymentPhone');
+    const formattedPhone = method === 'mpesa' ? normalizeMpesaPhone(phoneInput?.value || '') : null;
+    const bankReference = method === 'bank' ? (document.getElementById('finance-bankReference')?.value?.trim() || '') : '';
+    const reference = method === 'bank' ? bankReference : `STU-${Date.now()}`;
 
     pendingPayment.isProcessing = true;
     pendingPayment.cancelled = false;
@@ -3588,48 +4037,32 @@ async function processPayment() {
     pendingPayment.paymentId = null;
     pendingPayment.status = 'processing';
 
-    const modal =
-        document.getElementById('finance-paymentModal');
-
+    const modal = document.getElementById('finance-paymentModal');
     const dialog = modal?.lastElementChild;
 
     if (dialog) {
-        dialog.innerHTML = `
+        dialog.innerHTML = method === 'mpesa' ? `
             <div style="padding:30px 22px;text-align:center;">
-                <div style="width:62px;height:62px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e5efff;color:#0864dc;font-size:25px;">
-                    <i class="fas fa-mobile-alt"></i>
-                </div>
-
-                <h3 style="margin:0 0 6px;color:#112d69;font-size:19px;">
-                    Processing Payment
-                </h3>
-
-                <p style="margin:0;color:#71819d;font-size:12px;">
-                    Sending M-Pesa prompt...
-                </p>
-
+                <div style="width:62px;height:62px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e5efff;color:#0864dc;font-size:25px;"><i class="fas fa-mobile-alt"></i></div>
+                <h3 style="margin:0 0 6px;color:#112d69;font-size:19px;">Processing M-Pesa Payment</h3>
+                <p style="margin:0;color:#71819d;font-size:12px;">Sending STK Push...</p>
                 <div style="margin:18px auto;padding:13px;border-radius:9px;background:#f3f7fb;">
-                    <strong style="display:block;color:#102d69;font-size:24px;">
-                        KES ${amount.toLocaleString()}
-                    </strong>
-
-                    <span style="display:block;margin-top:4px;color:#71819d;font-size:10px;">
-                        ${period}
-                    </span>
+                    <strong style="display:block;color:#102d69;font-size:24px;">KES ${amount.toLocaleString()}</strong>
+                    <span style="display:block;margin-top:4px;color:#71819d;font-size:10px;">${escapeFinanceHtml(period)}${block ? ` • ${escapeFinanceHtml(block)}` : ''}</span>
                 </div>
-
-                <p style="margin:10px 0;color:#536783;font-size:11px;">
-                    Check <strong>${formattedPhone}</strong> and enter your M-Pesa PIN.
-                </p>
-
-                <button
-                    type="button"
-                    onclick="cancelStudentPayment()"
-                    style="width:100%;height:40px;margin-top:10px;border:1px solid #ef4444;border-radius:7px;background:#fff;color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;"
-                >
-                    <i class="fas fa-times"></i>
-                    Cancel Payment
-                </button>
+                <p style="margin:10px 0;color:#536783;font-size:11px;">Check <strong>${escapeFinanceHtml(formattedPhone)}</strong> and enter your M-Pesa PIN.</p>
+                <button type="button" onclick="cancelStudentPayment()" style="width:100%;height:40px;margin-top:10px;border:1px solid #ef4444;border-radius:7px;background:#fff;color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;"><i class="fas fa-times"></i> Cancel Payment</button>
+            </div>
+        ` : `
+            <div style="padding:30px 22px;text-align:center;">
+                <div style="width:62px;height:62px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#eaf3ff;color:#1455a0;font-size:25px;"><i class="fas fa-university"></i></div>
+                <h3 style="margin:0 0 6px;color:#112d69;font-size:19px;">Submitting Bank Transfer</h3>
+                <p style="margin:0;color:#71819d;font-size:12px;">Your payment will remain pending until verified by Finance.</p>
+                <div style="margin:18px auto;padding:13px;border-radius:9px;background:#f3f7fb;">
+                    <strong style="display:block;color:#102d69;font-size:24px;">KES ${amount.toLocaleString()}</strong>
+                    <span style="display:block;margin-top:4px;color:#71819d;font-size:10px;">${escapeFinanceHtml(period)}${block ? ` • ${escapeFinanceHtml(block)}` : ''}</span>
+                </div>
+                <p style="margin:10px 0;color:#536783;font-size:11px;">Reference: <strong>${escapeFinanceHtml(bankReference)}</strong></p>
             </div>
         `;
     }
@@ -3643,7 +4076,7 @@ async function processPayment() {
             student_email: user.email || '',
             program: user.program || 'KRCHN',
             amount,
-            payment_method: 'M-Pesa',
+            payment_method: method === 'mpesa' ? 'M-Pesa STK Push' : 'Bank Transfer',
             reference_number: reference,
             payment_date:
                 new Date().toISOString().split('T')[0],
@@ -3651,13 +4084,17 @@ async function processPayment() {
                 mapPeriodToDatabase(period) || period,
             status: 'pending',
             notes:
-                `${period} Tuition Fees - M-Pesa Payment`,
+                method === 'mpesa'
+                    ? `${period} Tuition Fees - M-Pesa STK Push`
+                    : `${period} Tuition Fees - Bank Transfer submitted for verification`,
             phone_number: formattedPhone,
             program_type:
                 studentFinanceState.programType || 'KRCHN',
             metadata: {
-                source: 'payhero',
-                original_period: period
+                source: method === 'mpesa' ? 'payhero' : 'student-bank-transfer',
+                original_period: period,
+                academic_block: block,
+                bank_reference: method === 'bank' ? bankReference : null
             },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -3679,6 +4116,37 @@ async function processPayment() {
 
         pendingPayment.paymentId =
             savedPayment?.id || null;
+
+        // ============================================================
+        // 🏦 BANK TRANSFER: record as pending and wait for Finance review
+        // No gateway call is made for bank transfers.
+        // ============================================================
+        if (method === 'bank') {
+            await supabase
+                .from('finance_payments')
+                .update({
+                    updated_at: new Date().toISOString(),
+                    notes: `${period} Tuition Fees - Bank Transfer submitted for verification. Reference: ${bankReference}`
+                })
+                .eq('id', savedPayment.id);
+
+            notifySuperAdmin('payment_recorded', {
+                studentId: user.user_id || user.id,
+                studentName: user.full_name || user.name || 'Student',
+                amount,
+                method: 'Bank Transfer',
+                reference: bankReference,
+                period,
+                block,
+                status: 'pending_verification'
+            });
+
+            pendingPayment.isProcessing = false;
+            pendingPayment.status = 'pending_verification';
+
+            showBankPaymentPending(amount, bankReference, period, block);
+            return;
+        }
 
         const { data: stkData, error: stkError } =
             await supabase.functions.invoke(
@@ -3988,6 +4456,7 @@ async function printPaymentById(paymentId) {
 // ============================================================
 
 document.addEventListener('DOMContentLoaded', function() {
+    ensureFinanceResponsiveStyles();
 
     const financeTab =
         document.querySelector('a[data-tab="finance"]');
@@ -4053,6 +4522,20 @@ document.addEventListener('DOMContentLoaded', function() {
                 processPayment();
             }
         );
+    }
+
+    const periodSelect = document.getElementById('finance-paymentPeriod');
+    if (periodSelect) {
+        periodSelect.addEventListener('change', function() {
+            studentFinanceState.selectedPeriod = this.value || null;
+        });
+    }
+
+    const blockSelect = document.getElementById('finance-paymentBlock');
+    if (blockSelect) {
+        blockSelect.addEventListener('change', function() {
+            studentFinanceState.selectedBlock = this.value || null;
+        });
     }
 
     const methodSelect =
@@ -4160,6 +4643,9 @@ document.addEventListener('DOMContentLoaded', function() {
     window.openPaymentModal = openPaymentModal;
     window.closePaymentModal = closePaymentModal;
     window.selectPaymentMethod = selectPaymentMethod;
+    window.populatePaymentPeriodOptions = populatePaymentPeriodOptions;
+    window.populatePaymentBlockOptions = populatePaymentBlockOptions;
+    window.showBankPaymentPending = showBankPaymentPending;
     window.processPayment = processPayment;
     window.downloadStudentStatement = downloadStudentStatement;
     window.viewStudentInvoice = viewStudentInvoice;
@@ -4188,6 +4674,10 @@ document.addEventListener('DOMContentLoaded', function() {
     window.closeSuccessPopupAndRefresh = closeSuccessPopupAndRefresh;
     window.downloadReceipt = downloadReceipt;
     window.printPaymentById = printPaymentById;
+    window.ensureFinanceResponsiveStyles = ensureFinanceResponsiveStyles;
+    window.ensurePaymentPhoneField = ensurePaymentPhoneField;
+    window.normalizeMpesaPhone = normalizeMpesaPhone;
+    window.getCurrentProfileFinancePeriod = getCurrentProfileFinancePeriod;
 
     setTimeout(() => {
         const financeSection =
