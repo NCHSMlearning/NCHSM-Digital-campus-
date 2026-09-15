@@ -391,9 +391,68 @@
     }
 
     function calculateGPA(marks) {
-        if (!marks || marks.length === 0) return 0;
-        const totalPoints = marks.reduce((sum, m) => sum + (m.points || 0), 0);
-        return marks.length > 0 ? (totalPoints / marks.length) : 0;
+        if (!Array.isArray(marks) || marks.length === 0) return 0;
+        let weightedPoints = 0, totalCredits = 0;
+        marks.forEach(m => {
+            const points = Number(m?.points);
+            if (!Number.isFinite(points)) return;
+            const credits = Number(m?.credits);
+            const c = Number.isFinite(credits) && credits > 0 ? credits : 3;
+            weightedPoints += points * c;
+            totalCredits += c;
+        });
+        return totalCredits > 0 ? weightedPoints / totalCredits : 0;
+    }
+
+    function numericMark(obj, keys) {
+        for (const key of keys) {
+            if (obj && obj[key] !== null && obj[key] !== undefined && obj[key] !== '') {
+                const n = Number(obj[key]);
+                if (Number.isFinite(n)) return n;
+            }
+        }
+        return null;
+    }
+
+    function getAssessmentValues(mark) {
+        return {
+            cat1: numericMark(mark, ['cat1','cat_1','cat1_score','cat_1_score','cat1_marks','cat_1_marks','cat1_mark','cat_1_mark']),
+            cat2: numericMark(mark, ['cat2','cat_2','cat2_score','cat_2_score','cat2_marks','cat_2_marks','cat2_mark','cat_2_mark']),
+            finalExam: numericMark(mark, ['final_exam','final_exam_score','final_score','final','exam_score','end_term_score','endterm_score']),
+            total: numericMark(mark, ['total','total_score','overall_score','final_total','total_marks'])
+        };
+    }
+
+    function getPublishedScore(mark) {
+        const a = getAssessmentValues(mark);
+        if (a.total !== null) return a.total;
+        if (a.finalExam !== null && a.cat1 === null && a.cat2 === null) return a.finalExam;
+        if (a.cat1 !== null || a.cat2 !== null || a.finalExam !== null) {
+            return (a.cat1 || 0) + (a.cat2 || 0) + (a.finalExam || 0);
+        }
+        return 0;
+    }
+
+    function normalizeAcademicMark(mark, program) {
+        const score = getPublishedScore(mark);
+        const grade = calculateGrade(score, program);
+        const assessments = getAssessmentValues(mark);
+        return {
+            ...mark,
+            unit_code: mark.unit_code || mark.course_code || getUnitCode(mark.subject_name || mark.course_name),
+            subject_name: mark.subject_name || mark.course_name || mark.unit_name || 'N/A',
+            credits: Number(mark.credits) > 0 ? Number(mark.credits) : 3,
+            final_score: score,
+            grade,
+            points: calculatePoints(grade, program),
+            status: getGradingStatus(score, program),
+            cat1: assessments.cat1,
+            cat2: assessments.cat2,
+            final_exam: assessments.finalExam,
+            total: score,
+            block: mark.block || mark.block_term || mark.term || 'General',
+            academic_year: mark.academic_year || mark.year || ''
+        };
     }
 
     // ============================================================
@@ -585,7 +644,7 @@
             
             const yearFilter = document.getElementById('my_marks_year_filter');
             if (yearFilter) {
-                const years = [...new Set(myMarksData.map(m => m.academic_year || m.year || '2025').filter(Boolean))];
+                const years = [...new Set(myMarksData.map(m => m.academic_year || m.year || '').filter(Boolean))];
                 yearFilter.innerHTML = '<option value="all">All Years</option>';
                 years.sort().reverse().forEach(year => {
                     const option = document.createElement('option');
@@ -728,7 +787,7 @@
             filtered = filtered.filter(m => m.block === blockFilter);
         }
         if (yearFilter !== 'all') {
-            filtered = filtered.filter(m => (m.academic_year || m.year || '2025') === yearFilter);
+            filtered = filtered.filter(m => (m.academic_year || m.year || '') === yearFilter);
         }
         if (searchTerm) {
             filtered = filtered.filter(m => 
@@ -979,101 +1038,90 @@
     let gradeChart = null;
     let currentGrades = [];
 
-    function loadSemesterReport() {
+    async function loadSemesterReport() {
         const tbody = document.getElementById('grades-table-body');
         if (!tbody) return;
-        
-        tbody.innerHTML = `<tr><td colspan="9"><div class="loading-spinner"></div> Loading grades...</td></tr>`;
-        
+        tbody.innerHTML = `<tr><td colspan="9" style="padding:40px;text-align:center;color:#94a3b8;"><div class="loading-spinner"></div> Loading grades...</td></tr>`;
+
         try {
-            const user = window.currentUserProfile || {};
-            const userProgram = user.program || '';
-            let grades = [];
-            
-            if (window.examsModule && window.examsModule.allExams) {
-                const exams = window.examsModule.allExams || [];
-                const releasedExams = exams.filter(e => 
-                    (e.isReleased === true || e.released === true) && 
-                    e.totalPercentage !== null && e.totalPercentage !== undefined
-                );
-                
-                if (releasedExams.length > 0) {
-                    grades = releasedExams.map(e => ({
-                        courseCode: e.unit_code || e.course_code || getUnitCode(e.exam_name || e.title),
-                        courseName: e.exam_name || e.title || 'Exam',
-                        credits: e.credits || 3,
-                        total: e.totalPercentage || 0,
-                        grade: calculateGrade(e.totalPercentage || 0, userProgram),
-                        points: calculatePoints(calculateGrade(e.totalPercentage || 0, userProgram), userProgram),
-                        status: getGradingStatus(e.totalPercentage || 0, userProgram),
-                        blockTerm: e.block_term || e.block || 'General',
-                        year: e.intake_year || '2024'
-                    }));
-                }
+            const user = window.currentUserProfile || window.db?.currentUserProfile || {};
+            const program = user.program || '';
+            const admission = user.student_id || user.admission_number || user.user_id;
+
+            if ((!myMarksData || myMarksData.length === 0) && admission) {
+                await loadMyMarks();
             }
-            
-            if (grades.length === 0) {
-                // ✅ No demo data - show empty state
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="9" style="text-align: center; padding: 40px; color: #94a3b8;">
-                            <i class="fas fa-file-alt" style="font-size: 32px; display: block; margin-bottom: 10px;"></i>
-                            No semester grades available
-                        </td>
-                    </tr>
-                `;
+
+            let grades = (myMarksData || []).map(m => normalizeAcademicMark(m, program));
+
+            const selected = document.getElementById('semester-filter')?.value || '';
+            if (selected && grades.length) {
+                const startYear = String(selected).split('-')[0];
+                const matched = grades.filter(g => {
+                    const y = String(g.academic_year || '').trim();
+                    return y === selected || y === `${startYear}/${Number(startYear) + 1}` || y.includes(startYear);
+                });
+                if (matched.length) grades = matched;
+            }
+
+            currentGrades = grades;
+
+            if (!grades.length) {
+                tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:50px;color:#94a3b8;"><i class="fas fa-file-circle-xmark" style="font-size:34px;display:block;margin-bottom:10px;"></i><strong style="display:block;color:#1e293b;">No published academic results</strong><span>Results will appear here after they are published by the academic office.</span></td></tr>`;
+                setAcademicSummary(0, '-', 0);
                 return;
             }
-            
-            currentGrades = grades;
-            
-            const total = grades.length;
-            const totalScore = grades.reduce((sum, g) => sum + g.total, 0);
-            const avgScore = total > 0 ? (totalScore / total) : 0;
+
+            const passMark = PROGRAM.isTVET(program) ? 50 : 60;
+            const earnedCredits = grades.filter(g => Number(g.final_score) >= passMark)
+                .reduce((s,g) => s + (Number(g.credits) || 3), 0);
             const gpa = calculateGPA(grades);
-            const grade = calculateGrade(avgScore, userProgram);
-            
-            document.getElementById('semester-gpa').textContent = gpa.toFixed(2);
-            document.getElementById('semester-grade').textContent = grade;
-            document.getElementById('cumulative-gpa').textContent = gpa.toFixed(2);
-            document.getElementById('cumulative-grade').textContent = grade;
-            document.getElementById('total-credits-earned').textContent = total * 3;
-            document.getElementById('class-rank').textContent = total > 0 ? 'Top 30%' : 'N/A';
-            
-            let html = '';
-            grades.forEach((g, i) => {
-                const statusColor = getStatusColor(g.status);
+            const avgScore = grades.reduce((s,g) => s + (Number(g.final_score) || 0), 0) / grades.length;
+            setAcademicSummary(gpa, calculateGrade(avgScore, program), earnedCredits);
+
+            tbody.innerHTML = grades.map(g => {
+                const a = getAssessmentValues(g);
                 const gradeColor = getGradeColor(g.grade);
-                
-                html += `
-                    <tr style="border-bottom: 1px solid #e2e8f0;">
-                        <td style="padding: 12px;">${escapeHtml(g.courseCode)}</td>
-                        <td style="padding: 12px;">${escapeHtml(g.courseName)}</td>
-                        <td style="padding: 12px; text-align: center;">${g.credits}</td>
-                        <td style="padding: 12px; text-align: center;">${g.total}%</td>
-                        <td style="padding: 12px; text-align: center;">
-                            <span style="background: ${gradeColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 700; font-size: 13px;">
-                                ${g.grade}
-                            </span>
-                        </td>
-                        <td style="padding: 12px; text-align: center; font-weight: 600;">${g.points.toFixed(1)}</td>
-                        <td style="padding: 12px; text-align: center;">
-                            <span style="background: ${statusColor}; color: white; padding: 2px 12px; border-radius: 12px; font-weight: 600; font-size: 11px;">
-                                ${g.status}
-                            </span>
-                        </td>
-                        <td style="padding: 12px; text-align: center;">${escapeHtml(g.blockTerm)}</td>
-                        <td style="padding: 12px; text-align: center;">${g.year}</td>
-                    </tr>
-                `;
-            });
-            
-            tbody.innerHTML = html;
+                const statusColor = getStatusColor(g.status);
+                return `<tr style="border-bottom:1px solid #e2e8f0;">
+                    <td style="padding:12px;white-space:nowrap;">${escapeHtml(g.unit_code || 'N/A')}</td>
+                    <td style="padding:12px;">${escapeHtml(g.subject_name || 'N/A')}</td>
+                    <td style="padding:12px;text-align:center;">${g.credits || 3}</td>
+                    <td style="padding:12px;text-align:center;">${a.cat1 !== null ? a.cat1 : '—'}</td>
+                    <td style="padding:12px;text-align:center;">${a.cat2 !== null ? a.cat2 : '—'}</td>
+                    <td style="padding:12px;text-align:center;">${a.finalExam !== null ? a.finalExam : '—'}</td>
+                    <td style="padding:12px;text-align:center;font-weight:700;">${Number(g.final_score || 0).toFixed(1)}</td>
+                    <td style="padding:12px;text-align:center;"><span style="background:${gradeColor};color:white;padding:2px 10px;border-radius:12px;font-weight:700;font-size:12px;">${escapeHtml(g.grade || '-')}</span></td>
+                    <td style="padding:12px;text-align:center;"><span style="background:${statusColor};color:white;padding:2px 10px;border-radius:12px;font-weight:600;font-size:10px;">${escapeHtml(g.status || 'PENDING')}</span></td>
+                </tr>`;
+            }).join('');
+
             createGradeChart(grades);
-            
+            window.currentCumulativeGPA = gpa;
+            document.dispatchEvent(new CustomEvent('academicGpaUpdated', {detail:{semesterGPA:gpa,cumulativeGPA:gpa,formatted:gpa.toFixed(2)}}));
         } catch (error) {
-            tbody.innerHTML = `<tr><td colspan="9" style="color: red; text-align: center; padding: 40px;">Error: ${error.message}</td></tr>`;
+            console.error('Academic Reports semester load failed:', error);
+            tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:45px;color:#dc2626;">Unable to load academic results. Please refresh and try again.</td></tr>`;
         }
+    }
+
+    function setAcademicSummary(gpa, grade, earnedCredits) {
+        const ids = {
+            'semester-gpa': Number(gpa || 0).toFixed(2),
+            'semester-grade': grade || '-',
+            'cumulative-gpa': Number(gpa || 0).toFixed(2),
+            'cumulative-grade': grade || '-',
+            'total-credits-earned': String(earnedCredits || 0)
+        };
+        Object.keys(ids).forEach(id => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = ids[id];
+        });
+        const rank = document.getElementById('class-rank');
+        const user = window.currentUserProfile || {};
+        if (rank) rank.textContent = user.class_rank || user.rank || 'N/A';
+        window.currentCumulativeGPA = Number(gpa || 0);
+        document.dispatchEvent(new CustomEvent('academicGpaUpdated', {detail:{semesterGPA:Number(gpa||0),cumulativeGPA:Number(gpa||0),formatted:Number(gpa||0).toFixed(2)}}));
     }
 
     function createGradeChart(grades) {
@@ -1153,30 +1201,33 @@
     // ============================================================
     function loadYearlyReport() {
         const user = window.currentUserProfile || {};
-        const userProgram = user.program || '';
-        const grades = currentGrades.length > 0 ? currentGrades : [];
-        
-        if (grades.length === 0) {
-            // ✅ No demo data - show zeros
-            document.getElementById('year-gpa').textContent = '0.00';
-            document.getElementById('year-credits').textContent = '0';
-            document.getElementById('year-courses').textContent = '0';
-            document.getElementById('year-awards').textContent = '0';
-            return;
+        const program = user.program || '';
+        const selectedYear = document.getElementById('year-filter')?.value || '';
+        let grades = (currentGrades.length ? currentGrades : myMarksData)
+            .map(m => normalizeAcademicMark(m, program));
+
+        if (selectedYear && grades.length) {
+            const matched = grades.filter(g => String(g.academic_year || g.year || '').includes(String(selectedYear)));
+            if (matched.length) grades = matched;
         }
-        
-        const total = grades.length;
-        const avg = total > 0 ? (grades.reduce((sum, g) => sum + g.total, 0) / total) : 0;
+
         const gpa = calculateGPA(grades);
-        
-        document.getElementById('year-gpa').textContent = gpa.toFixed(2);
-        document.getElementById('year-credits').textContent = total * 3;
-        document.getElementById('year-courses').textContent = total;
-        document.getElementById('year-awards').textContent = total > 4 ? '2' : '0';
+        const passMark = PROGRAM.isTVET(program) ? 50 : 60;
+        const credits = grades.filter(g => Number(g.final_score) >= passMark)
+            .reduce((s,g) => s + (Number(g.credits) || 3), 0);
+
+        const set = (id, value) => {
+            const el = document.getElementById(id);
+            if (el) el.textContent = value;
+        };
+
+        set('year-gpa', gpa.toFixed(2));
+        set('year-credits', credits);
+        set('year-courses', grades.length);
+        set('year-awards', Number.isFinite(Number(user.year_awards)) ? Number(user.year_awards) : 0);
     }
 
-   // ============================================================
-// 17. FULL TRANSCRIPT WITH "PROCEED TO NEXT BLOCK" MESSAGE
+    // 17. FULL TRANSCRIPT WITH "PROCEED TO NEXT BLOCK" MESSAGE
 // Message appears AFTER block summary (at bottom of each block)
 // ============================================================
 function loadTranscript() {
@@ -1398,7 +1449,7 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         
         const user = window.currentUserProfile || {};
         const userProgram = user.program || '';
-        const grades = currentGrades.length > 0 ? currentGrades : [];
+        const grades = currentGrades.length > 0 ? currentGrades : (myMarksData.length > 0 ? myMarksData.map(m => normalizeAcademicMark(m, userProgram)) : []);
         
         if (grades.length === 0) {
             container.innerHTML = '<div style="text-align: center; padding: 40px; color: #94a3b8;">No course data available</div>';
@@ -1459,7 +1510,24 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
         }
         
         console.log('📊 Generating transcript PDF for', marksData.length, 'courses');
-        alert('Transcript download coming soon!');
+        const rows = marksData.map((m,i) => {
+            const score = Number(m.final_score ?? m.total ?? 0);
+            const grade = m.grade || calculateGrade(score, userProgram);
+            const points = Number(m.points ?? calculatePoints(grade, userProgram));
+            return `<tr><td>${i+1}</td><td>${escapeHtml(m.block || m.block_term || 'General')}</td><td>${escapeHtml(m.unit_code || getUnitCode(m.subject_name) || 'N/A')}</td><td>${escapeHtml(m.subject_name || 'N/A')}</td><td>${Number(m.credits || 3)}</td><td>${score.toFixed(1)}</td><td>${escapeHtml(grade)}</td><td>${points.toFixed(1)}</td></tr>`;
+        }).join('');
+        const gpa = calculateGPA(marksData);
+        const w = window.open('', '_blank', 'width=1100,height=800');
+        if (!w) { alert('Please allow popups to generate the transcript.'); return; }
+        w.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>Academic Transcript</title><style>
+        body{font-family:Arial,sans-serif;margin:30px;color:#1e293b}h1{text-align:center;color:#0A3D62;font-size:22px;margin:0}h2{text-align:center;font-size:16px;margin:5px 0 20px}.meta{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;border:1px solid #ddd;padding:12px;margin-bottom:20px}table{width:100%;border-collapse:collapse;font-size:11px}th{background:#0A3D62;color:white;padding:8px;border:1px solid #ccc}td{padding:7px;border:1px solid #ddd}.summary{margin-top:20px;font-weight:700}@media print{body{margin:12mm}.no-print{display:none}}</style></head><body>
+        <h1>Nakuru College of Health Sciences and Management</h1><h2>Academic Transcript</h2>
+        <div class="meta"><div><b>Student:</b> ${escapeHtml(user.full_name || 'Student')}</div><div><b>Admission:</b> ${escapeHtml(user.student_id || user.admission_number || 'N/A')}</div><div><b>Program:</b> ${escapeHtml(userProgram || 'N/A')}</div></div>
+        <table><thead><tr><th>#</th><th>Block/Term</th><th>Unit Code</th><th>Unit Name</th><th>Credits</th><th>Score</th><th>Grade</th><th>Points</th></tr></thead><tbody>${rows}</tbody></table>
+        <div class="summary">Cumulative GPA: ${gpa.toFixed(2)} &nbsp; | &nbsp; Units: ${marksData.length}</div>
+        <div class="no-print" style="text-align:center;margin-top:25px"><button onclick="window.print()">Print / Save as PDF</button></div>
+        </body></html>`);
+        w.document.close();
     }
 
     // ============================================================
@@ -2146,6 +2214,19 @@ function updateTranscriptSummary(attempted, earned, courses, cgpa) {
     window.hasRetake = hasRetake;
     window.getRetakeCount = getRetakeCount;
     window.getHollowStarHtml = getHollowStarHtml;
+
+    window.academicReportsModule = {
+        loadReports: async function() {
+            await loadMyMarks();
+            return true;
+        },
+        loadMyMarks,
+        loadSemesterReport,
+        loadYearlyReport,
+        loadTranscript,
+        loadCourseProgress,
+        calculateGPA
+    };
 
     // ============================================================
     // 24. AUTO-INIT
