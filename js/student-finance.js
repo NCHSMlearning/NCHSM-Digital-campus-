@@ -56,7 +56,6 @@ const studentFinanceState = {
     feeStructureVisible: false,
     student: null,
     selectedPeriod: null,
-    selectedBlock: null,
     selectedPaymentMethod: 'mpesa',
     stkPayment: {
         isProcessing: false,
@@ -2810,102 +2809,70 @@ function normalizeMpesaPhone(value) {
 function ensurePaymentPhoneField(container, currentPhone='') {
     if (!container) return null;
 
-    // The master HTML already contains the canonical M-Pesa phone field.
-    // Do NOT create another one. The previous implementation looked only
-    // for .nchsm-payment-phone and therefore inserted a second field beside
-    // the static HTML field.
-    const existingInput = container.querySelector('#finance-paymentPhone');
-    if (existingInput) {
-        if (!existingInput.value && currentPhone) {
-            let v = String(currentPhone).trim();
-            if (v.startsWith('+254')) v = '0' + v.slice(4);
-            else if (v.startsWith('254')) v = '0' + v.slice(3);
-            existingInput.value = v;
-        }
+    // Reuse the existing master HTML phone field.
+    // Do not create a duplicate if #finance-paymentPhone already exists.
+    let input = container.querySelector('#finance-paymentPhone');
 
-        if (!existingInput.dataset.bound) {
-            existingInput.dataset.bound = 'true';
-            existingInput.addEventListener('input', function() {
-                this.value = this.value.replace(/[^\d+]/g, '');
-                const err = document.getElementById('finance-paymentPhoneError');
-                if (err) {
-                    err.style.display = 'none';
-                    err.textContent = '';
+    if (!input) {
+        let wrap = container.querySelector('.nchsm-payment-phone');
+
+        if (!wrap) {
+            wrap = document.createElement('div');
+            wrap.className = 'nchsm-payment-phone';
+            wrap.innerHTML = `
+                <label for="finance-paymentPhone">
+                    <i class="fas fa-mobile-alt"></i>
+                    M-Pesa Phone Number
+                </label>
+                <div class="nchsm-phone-box">
+                    <span class="nchsm-phone-prefix">+254</span>
+                    <input
+                        id="finance-paymentPhone"
+                        type="tel"
+                        inputmode="numeric"
+                        autocomplete="tel"
+                        maxlength="10"
+                        placeholder="0712345678"
+                        aria-label="M-Pesa phone number"
+                    >
+                </div>
+                <div class="nchsm-phone-help">
+                    Enter the number that will receive the M-Pesa STK Push.
+                    Example: 0712345678
+                </div>
+                <div id="finance-paymentPhoneError"></div>
+            `;
+
+            const amount = container.querySelector('#finance-paymentAmount');
+            if (amount) {
+                const parent = amount.closest(
+                    '.form-group, .finance-form-group, div'
+                );
+                if (parent && parent.parentElement) {
+                    parent.parentElement.appendChild(wrap);
+                } else {
+                    amount.parentElement?.appendChild(wrap);
                 }
-            });
-        }
-
-        return existingInput;
-    }
-
-    let wrap = container.querySelector('.nchsm-payment-phone');
-
-    if (!wrap) {
-        wrap = document.createElement('div');
-        wrap.className = 'nchsm-payment-phone';
-        wrap.innerHTML = `
-            <label for="finance-paymentPhone">
-                <i class="fas fa-mobile-alt"></i>
-                M-Pesa Phone Number
-            </label>
-
-            <div class="nchsm-phone-box">
-                <span class="nchsm-phone-prefix">+254</span>
-                <input
-                    id="finance-paymentPhone"
-                    type="tel"
-                    inputmode="numeric"
-                    autocomplete="tel"
-                    maxlength="10"
-                    placeholder="0712345678"
-                    aria-label="M-Pesa phone number"
-                >
-            </div>
-
-            <div class="nchsm-phone-help">
-                Enter the number that will receive the M-Pesa STK Push.
-                Example: 0712345678
-            </div>
-
-            <div id="finance-paymentPhoneError"></div>
-        `;
-
-        const amount =
-            container.querySelector('#finance-paymentAmount');
-
-        if (amount) {
-            const parent = amount.closest('.form-group, .finance-form-group, div');
-            if (parent && parent.parentElement) {
-                parent.parentElement.appendChild(wrap);
             } else {
-                amount.parentElement?.appendChild(wrap);
+                container.appendChild(wrap);
             }
-        } else {
-            container.appendChild(wrap);
         }
-    }
 
-    const input =
-        wrap.querySelector('#finance-paymentPhone');
+        input = wrap.querySelector('#finance-paymentPhone');
+    }
 
     if (input && !input.value && currentPhone) {
         let v = String(currentPhone).trim();
-
         if (v.startsWith('+254')) v = '0' + v.slice(4);
         else if (v.startsWith('254')) v = '0' + v.slice(3);
-
         input.value = v;
     }
 
     if (input && !input.dataset.bound) {
         input.dataset.bound = 'true';
-
         input.addEventListener('input', function() {
             this.value = this.value.replace(/[^\d+]/g, '');
-
-            const err =
-                document.getElementById('finance-paymentPhoneError');
-
+            const err = document.getElementById('finance-paymentPhoneError');
             if (err) {
                 err.style.display = 'none';
                 err.textContent = '';
@@ -2914,36 +2881,6 @@ function ensurePaymentPhoneField(container, currentPhone='') {
     }
 
     return input;
-}
-
-function escapeFinanceHtml(value) {
-    return String(value ?? '')
-        .replace(/&/g, '&amp;')
-        .replace(/</g, '&lt;')
-        .replace(/>/g, '&gt;')
-        .replace(/"/g, '&quot;')
-        .replace(/'/g, '&#039;');
-}
-
-function getStudentAcademicBlocks() {
-    const p = studentFinanceState.student || window.currentUserProfile || window.currentUser || {};
-    const candidates = [
-        p.current_block,
-        p.block,
-        p.student_block,
-        p.class_block,
-        p.block_term
-    ].filter(v => v !== null && v !== undefined && String(v).trim() !== '');
-
-    const blocks = [];
-    candidates.forEach(v => {
-        const value = String(v).trim();
-        if (!blocks.some(x => x.toLowerCase() === value.toLowerCase())) blocks.push(value);
-    });
-
-    // Add known Block labels when the profile explicitly uses them.
-    if (blocks.length === 1 && /^block\s*\d+$/i.test(blocks[0])) return blocks;
-    return blocks;
 }
 
 function populatePaymentPeriodOptions() {
@@ -2976,6 +2913,7 @@ function populatePaymentPeriodOptions() {
     }
 }
 
+
 function populatePaymentBlockOptions() {
     const select = document.getElementById('finance-paymentBlock');
     if (!select) return;
@@ -2996,6 +2934,7 @@ function populatePaymentBlockOptions() {
     select.value = current;
     studentFinanceState.selectedBlock = current;
 }
+
 
 function openPaymentModal() {
     const modal = document.getElementById('finance-paymentModal');
@@ -3056,6 +2995,7 @@ function openPaymentModal() {
     pendingPayment.cancelled = false;
     pendingPayment.status = 'idle';
 }
+
 function closePaymentModal() {
     const modal =
         document.getElementById('finance-paymentModal');
@@ -3071,6 +3011,7 @@ function closePaymentModal() {
     pendingPayment.cancelled = false;
     pendingPayment.status = 'idle';
 }
+
 
 function selectPaymentMethod(method) {
     const normalized = String(method || '').toLowerCase() === 'bank' ? 'bank' : 'mpesa';
@@ -3109,6 +3050,7 @@ function selectPaymentMethod(method) {
         if (submitText) submitText.textContent = ' Submit Bank Transfer';
     }
 }
+
 
 function validatePaymentForm() {
     const amount = Number(document.getElementById('finance-paymentAmount')?.value || 0);
@@ -3165,899 +3107,80 @@ function validatePaymentForm() {
     return true;
 }
 
-async function saveSTKPaymentRecord(amount, period, result) {
-    try {
-        const supabase = getSupabaseClient();
-        if (!supabase) return false;
-
-        const user =
-            studentFinanceState.student ||
-            window.currentUserProfile ||
-            window.currentUser;
-
-        const userId =
-            user?.userId ||
-            user?.user_id ||
-            user?.id;
-
-        if (!userId) return false;
-
-        const transactionId =
-            result?.transactionId ||
-            result?.checkoutRequestID ||
-            null;
-
-        const reference =
-            result?.reference ||
-            transactionId ||
-            `PAY-${Date.now()}`;
-
-        const paymentRecord = {
-            student_id: userId,
-            student_name: user?.full_name || user?.name || 'Student',
-            student_email: user?.email || '',
-            program: user?.program || 'KRCHN',
-            amount: Number(amount),
-            payment_method: 'M-Pesa',
-            reference_number: reference,
-            payment_date: new Date().toISOString().split('T')[0],
-            period: mapPeriodToDatabase(period) || period,
-            status:
-                result?.status === 'success'
-                    ? 'completed'
-                    : 'pending',
-            notes: `${period} Tuition Fees - M-Pesa Payment`,
-            checkout_request_id: transactionId,
-            phone_number: result?.phoneNumber || '',
-            program_type:
-                studentFinanceState.programType || 'KRCHN',
-            metadata: {
-                source: 'payhero',
-                original_period: period
-            },
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-        };
-
-        const { data, error } = await supabase
-            .from('finance_payments')
-            .insert([paymentRecord])
-            .select()
-            .maybeSingle();
-
-        if (error) {
-            console.error('❌ Payment record save error:', error);
-            savePaymentLocally(paymentRecord);
-            return false;
-        }
-
-        if (data?.id) {
-            pendingPayment.paymentId = data.id;
-        }
-
-        return true;
-    } catch (error) {
-        console.error('❌ Error saving payment:', error);
-        return false;
-    }
-}
-
-function savePaymentLocally(paymentRecord) {
-    try {
-        let payments = JSON.parse(localStorage.getItem('local_payments') || '[]');
-        payments.unshift(paymentRecord);
-        if (payments.length > 50) payments = payments.slice(0, 50);
-        localStorage.setItem('local_payments', JSON.stringify(payments));
-        console.log('💾 Payment saved locally:', paymentRecord.reference_number);
-    } catch (e) {
-        console.error('❌ Failed to save locally:', e);
-    }
-}
-
-// ============================================================
-// 🔍 CHECK PAYMENT STATUS - FIXED
-// ============================================================
-
-async function checkPaymentStatusDB(reference) {
-    try {
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-            console.warn('⚠️ No Supabase client, checking local storage');
-            return checkLocalPayment(reference);
-        }
-        
-        console.log(`🔍 Checking payment status for: ${reference}`);
-        
-        let payment = null;
-        
-        try {
-            const { data, error } = await supabase
-                .from('finance_payments')
-                .select('*')
-                .eq('checkout_request_id', reference)
-                .maybeSingle();
-            
-            if (!error && data) {
-                payment = data;
-                console.log('📊 Found by checkout_request_id:', payment.status);
-            }
-        } catch (e) {
-            console.log('⚠️ Check by checkout_request_id failed:', e.message);
-        }
-        
-        if (!payment) {
-            try {
-                const { data, error } = await supabase
-                    .from('finance_payments')
-                    .select('*')
-                    .eq('reference_number', reference)
-                    .maybeSingle();
-                    
-                if (!error && data) {
-                    payment = data;
-                    console.log('📊 Found by reference_number:', payment.status);
-                }
-            } catch (e) {
-                console.log('⚠️ Check by reference_number failed:', e.message);
-            }
-        }
-        
-        if (payment) {
-            return payment;
-        }
-        
-        return checkLocalPayment(reference);
-        
-    } catch (error) {
-        console.error('❌ Database check error:', error.message);
-        return checkLocalPayment(reference);
-    }
-}
-
-function checkLocalPayment(reference) {
-    try {
-        const localPayments = JSON.parse(localStorage.getItem('local_payments') || '[]');
-        const found = localPayments.find(p => 
-            p.checkout_request_id === reference || 
-            p.reference_number === reference
-        );
-        return found || null;
-    } catch (e) {
-        return null;
-    }
-}
-
-// ============================================================
-// 💰 INITIATE STK PUSH - USING EDGE FUNCTION
-// ============================================================
-
-async function initiatePayHeroSTK(amount, phoneNumber, reference, period, customerName = '') {
-    try {
-        let cleanPhone = formatPhoneNumber(phoneNumber);
-        if (!cleanPhone) {
-            showToast('❌ Enter valid phone (e.g., 0712345678)', 'error');
-            return { success: false, error: 'Invalid phone number' };
-        }
-
-        const user = window.currentUserProfile || window.currentUser;
-        const studentName = customerName || user?.full_name || user?.name || 'Student';
-
-        console.log('📤 Sending STK Push via Edge Function...');
-        console.log('📱 Phone:', cleanPhone);
-        console.log('💰 Amount:', amount);
-        console.log('📋 Reference:', reference);
-
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-            throw new Error('Supabase client not available');
-        }
-
-        const { data, error } = await supabase.functions.invoke('payhero', {
-            body: {
-                action: 'stk_push',
-                phone: cleanPhone,
-                amount: Math.round(amount),
-                order_id: reference,
-                payment_id: pendingPayment.paymentId || null,
-                customer_name: studentName,
-                description: `${period} Tuition Fees Payment`
-            }
-        });
-
-        if (error) {
-            console.error('❌ Edge Function error:', error);
-            return { success: false, error: error.message || 'STK Push failed' };
-        }
-
-        console.log('📥 Response:', data);
-
-        if (data.success) {
-            console.log('✅ STK Push initiated!');
-            
-            const result = {
-                transactionId: data.transaction_id,
-                checkoutRequestID: data.transaction_id,
-                reference: data.transaction_id || reference,
-                status: 'pending',
-                paymentMethod: 'M-Pesa STK Push',
-                phoneNumber: cleanPhone
-            };
-            
-            await saveSTKPaymentRecord(amount, period, result);
-            
-            return { 
-                success: true, 
-                data: data,
-                reference: data.transaction_id || reference,
-                transactionId: data.transaction_id
-            };
-        } else {
-            console.error('❌ STK Push failed:', data);
-            return { 
-                success: false, 
-                error: data.message || data.error || 'STK Push failed' 
-            };
-        }
-
-    } catch (error) {
-        console.error('❌ Request error:', error);
-        showToast('❌ Network error. Please try again.', 'error');
-        return { success: false, error: error.message };
-    }
-}
-
-// ============================================================
-// 🔍 CHECK PAYMENT STATUS - USING EDGE FUNCTION
-// ============================================================
-
-async function checkPaymentStatus(reference) {
-    try {
-        const supabase = getSupabaseClient();
-        if (!supabase) {
-            return await checkPaymentStatusDB(reference);
-        }
-
-        const { data, error } = await supabase.functions.invoke('payhero', {
-            body: {
-                action: 'status',
-                transaction_id: reference
-            }
-        });
-
-        if (error) {
-            console.error('❌ Status check error:', error);
-            return await checkPaymentStatusDB(reference);
-        }
-
-        console.log('📊 Status response:', data);
-
-        if (data && data.success) {
-            return {
-                status: data.status || 'pending',
-                reference_number: reference,
-                receipt_number: data.receipt_number,
-                checkout_request_id: reference,
-                result_description: data.result_description,
-                ...data
-            };
-        }
-
-        return await checkPaymentStatusDB(reference);
-
-    } catch (error) {
-        console.error('❌ Status check error:', error);
-        return await checkPaymentStatusDB(reference);
-    }
-}
-
-// ============================================================
-// 💰 UPDATE BALANCE AFTER PAYMENT
-// ============================================================
-
-async function updateStudentBalanceAfterPayment(amount) {
-    try {
-        const user =
-            studentFinanceState.student ||
-            window.currentUserProfile ||
-            window.currentUser;
-
-        if (!user) return;
-
-        const userId =
-            user.userId ||
-            user.user_id ||
-            user.id;
-
-        if (!userId) return;
-
-        const supabase = getSupabaseClient();
-        if (!supabase) return;
-
-        const candidateIds = [
-            studentFinanceState.student?.profileId,
-            userId
-        ].filter(Boolean);
-
-        for (const id of candidateIds) {
-            try {
-                const { data: account, error } =
-                    await supabase
-                        .from('finance_student_accounts')
-                        .select('balance,total_paid')
-                        .eq('student_id', id)
-                        .maybeSingle();
-
-                if (error || !account) continue;
-
-                const currentBalance =
-                    Number(account.balance) || 0;
-
-                const currentPaid =
-                    Number(account.total_paid) || 0;
-
-                const newBalance =
-                    Math.max(
-                        currentBalance - Number(amount),
-                        0
-                    );
-
-                const newTotalPaid =
-                    currentPaid + Number(amount);
-
-                const { error: updateError } =
-                    await supabase
-                        .from('finance_student_accounts')
-                        .update({
-                            balance: newBalance,
-                            total_paid: newTotalPaid,
-                            last_payment_date:
-                                new Date().toISOString().split('T')[0],
-                            updated_at:
-                                new Date().toISOString()
-                        })
-                        .eq('student_id', id);
-
-                if (!updateError) {
-                    studentFinanceState.balance =
-                        newBalance;
-
-                    studentFinanceState.outstanding =
-                        newBalance;
-
-                    studentFinanceState.totalPaid =
-                        newTotalPaid;
-
-                    return;
-                }
-            } catch (e) {
-                console.warn(
-                    '⚠️ Account update failed:',
-                    e.message
-                );
-            }
-        }
-
-        console.log(
-            'ℹ️ No finance account updated; payment record remains the source of truth.'
-        );
-
-    } catch (error) {
-        console.error(
-            '❌ Error updating balance:',
-            error
-        );
-    }
-}
-
-function updateStudentSTKStatus(attempt, maxAttempts, message) {
-    const content = document.getElementById('finance-paymentContent');
-    const formContainer = document.getElementById('finance-paymentFormContainer');
-    const title = document.getElementById('finance-paymentModalTitle');
-    
-    if (title) title.textContent = '⏳ Processing Payment';
-    if (content) {
-        content.style.display = 'block';
-        const remaining = Math.round((maxAttempts - attempt) * 2);
-        const progress = Math.min(Math.round((attempt / maxAttempts) * 100), 100);
-        
-        content.innerHTML = `
-            <div class="spinner"></div>
-            <p class="status-text">⏳ Waiting for payment confirmation... (${attempt}/${maxAttempts})</p>
-            <div style="width:100%;max-width:300px;margin:8px auto;height:4px;background:#e5e7eb;border-radius:2px;overflow:hidden;">
-                <div style="height:100%;background:linear-gradient(90deg,#4C1D95,#7c3aed);border-radius:2px;width:${progress}%;transition:width 0.5s ease;"></div>
-            </div>
-            <p class="status-sub">${message || 'Please check your phone and enter your PIN'}</p>
-            <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:8px;">
-                ⏱️ ${remaining} seconds remaining
-            </p>
-            <button class="btn btn-danger" style="margin-top:12px;width:100%;" onclick="cancelStudentPayment()">
-                <i class="fas fa-times"></i> Cancel Payment
-            </button>
-        `;
-    }
-    if (formContainer) formContainer.style.display = 'none';
-}
-
-// ============================================================
-// 🔍 POLL STUDENT PAYMENT STATUS - FIXED WITH CANCELLATION & INSUFFICIENT FUNDS
-// ============================================================
-
-async function pollStudentPaymentStatus(transactionId, amount, period) {
-    let attempts = 0;
-    const maxAttempts = 30;
-    let paymentConfirmed = false;
-    let paymentData = null;
-    let shouldStopPolling = false;
-    
-    updateStudentSTKStatus(0, maxAttempts, 'Waiting for payment confirmation...');
-    
-    while (attempts < maxAttempts && !paymentConfirmed && !shouldStopPolling) {
-        // ✅ Check if user cancelled
-        if (pendingPayment.cancelled) {
-            pendingPayment.isProcessing = false;
-            shouldStopPolling = true;
-            
-            try {
-                const supabase = getSupabaseClient();
-                if (supabase) {
-                    await supabase
-                        .from('finance_payments')
-                        .update({
-                            status: 'cancelled',
-                            notes: 'Payment cancelled by user',
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('checkout_request_id', transactionId);
-                    
-                    console.log('✅ Payment marked as CANCELLED in database');
-                }
-            } catch (e) {
-                console.log('⚠️ Could not update cancelled status:', e);
-            }
-            
-            showStudentPaymentFailure('You cancelled the payment');
-            showToast('⛔ Payment cancelled', 'warning');
-            return;
-        }
-        
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        attempts++;
-        
-        updateStudentSTKStatus(attempts, maxAttempts, 'Please check your phone and enter your PIN');
-        
-        try {
-            const supabase = getSupabaseClient();
-            if (!supabase) {
-                console.log('⚠️ No Supabase client');
-                continue;
-            }
-            
-            const { data: statusData, error: statusError } = await supabase.functions.invoke('payhero', {
-                body: {
-                    action: 'status',
-                    transaction_id: transactionId
-                }
-            });
-            
-            if (statusError) {
-                console.log('⚠️ Status check error:', statusError);
-                continue;
-            }
-            
-            console.log(`📊 Attempt ${attempts}/${maxAttempts}: Status = ${statusData?.status}`);
-            console.log(`📊 Result Description: ${statusData?.result_description || 'N/A'}`);
-            
-            // ✅ Check for FAILED status (includes cancellation, insufficient funds, etc.)
-            if (statusData?.status === 'failed') {
-                paymentConfirmed = true;
-                paymentData = statusData;
-                shouldStopPolling = true;
-                
-                try {
-                    await supabase
-                        .from('finance_payments')
-                        .update({
-                            status: 'failed',
-                            notes: `Payment failed: ${statusData?.result_description || 'Transaction declined'}`,
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('checkout_request_id', transactionId);
-                    
-                    console.log('✅ Payment marked as FAILED in database');
-                } catch (e) {
-                    console.log('⚠️ Could not update failed status:', e);
-                }
-                
-                const failReason = statusData?.result_description || statusData?.message || 'Transaction failed';
-                showStudentPaymentFailure(failReason);
-                showToast(`❌ Payment failed: ${failReason}`, 'error');
-                return;
-            }
-            
-            // ✅ Check for COMPLETED status
-            if (statusData?.status === 'completed') {
-                paymentConfirmed = true;
-                paymentData = statusData;
-                console.log('✅ Payment confirmed!');
-                console.log('📱 Receipt:', statusData.receipt_number);
-                break;
-            }
-            
-            // ✅ Also check database directly
-            const { data: dbCheck } = await supabase
-                .from('finance_payments')
-                .select('status, receipt_number, checkout_request_id, updated_at, notes, amount, period, payment_method, reference_number, program')
-                .eq('checkout_request_id', transactionId)
-                .maybeSingle();
-            
-            if (dbCheck) {
-                console.log(`📊 DB Status: ${dbCheck.status}`);
-                
-                if (dbCheck.status === 'completed') {
-                    paymentConfirmed = true;
-                    paymentData = dbCheck;
-                    console.log('✅ Payment confirmed (DB)!');
-                    console.log('📱 Receipt:', dbCheck.receipt_number);
-                    break;
-                }
-                
-                if (dbCheck.status === 'failed') {
-                    paymentConfirmed = true;
-                    paymentData = dbCheck;
-                    shouldStopPolling = true;
-                    showStudentPaymentFailure(dbCheck.notes || 'Transaction failed');
-                    showToast('❌ Payment failed', 'error');
-                    return;
-                }
-                
-                if (dbCheck.status === 'cancelled') {
-                    paymentConfirmed = true;
-                    paymentData = dbCheck;
-                    shouldStopPolling = true;
-                    showStudentPaymentFailure('Payment was cancelled');
-                    showToast('⛔ Payment cancelled', 'warning');
-                    return;
-                }
-            }
-            
-        } catch (pollError) {
-            console.log('⚠️ Polling error:', pollError);
-        }
-    }
-    
-    // ✅ Process result
-    if (paymentConfirmed && !shouldStopPolling) {
-        pendingPayment.isProcessing = false;
-        pendingPayment.status = 'completed';
-        
-        try {
-            const supabase = getSupabaseClient();
-            if (supabase) {
-                await supabase
-                    .from('finance_payments')
-                    .update({
-                        status: 'completed',
-                        updated_at: new Date().toISOString()
-                    })
-                    .eq('checkout_request_id', transactionId);
-            }
-        } catch (e) {}
-        
-        const receiptNumber = paymentData?.receipt_number || paymentData?.mpesa_receipt_number || 'N/A';
-        
-        closePaymentModal();
-        
-        showSuccessPopup(amount, receiptNumber, period, false);
-        
-        try {
-            const emailSent = await sendPaymentReceiptEmail({
-                amount: amount,
-                receipt_number: receiptNumber,
-                period: period,
-                transaction_id: transactionId,
-                reference_number: paymentData?.reference_number || 'N/A',
-                payment_method: 'M-Pesa',
-                program: studentFinanceState.student?.program || 'KRCHN'
-            });
-            
-            if (emailSent) {
-                const emailContainer = document.querySelector('#email-status-container');
-                if (emailContainer) {
-                    emailContainer.style.background = '#f0fdf4';
-                    emailContainer.style.border = '1px solid #86efac';
-                    emailContainer.innerHTML = `
-                        <div style="font-size: 13px; color: #065f46;">
-                            ✅ Receipt sent to your email
-                        </div>
-                    `;
-                }
-            }
-        } catch (emailError) {
-            console.error('❌ Email error:', emailError);
-        }
-        
-        await updateStudentBalanceAfterPayment(amount);
-        setTimeout(loadStudentFinance, 1000);
-        showToast('✅ Payment successful! Receipt sent to your email.', 'success');
-        
-    } else if (pendingPayment.cancelled) {
-        pendingPayment.isProcessing = false;
-        pendingPayment.status = 'cancelled';
-        
-    } else if (shouldStopPolling) {
-        pendingPayment.isProcessing = false;
-        pendingPayment.status = 'failed';
-        
-    } else {
-        pendingPayment.isProcessing = false;
-        pendingPayment.status = 'failed';
-        
-        try {
-            const supabase = getSupabaseClient();
-            if (supabase) {
-                const { data: finalCheck } = await supabase
-                    .from('finance_payments')
-                    .select('status, receipt_number')
-                    .eq('checkout_request_id', transactionId)
-                    .maybeSingle();
-                
-                if (finalCheck && finalCheck.status === 'completed') {
-                    closePaymentModal();
-                    showSuccessPopup(amount, finalCheck.receipt_number || 'N/A', period, false);
-                    await updateStudentBalanceAfterPayment(amount);
-                    setTimeout(loadStudentFinance, 1000);
-                    showToast('✅ Payment successful!', 'success');
-                    return;
-                }
-                
-                if (finalCheck && finalCheck.status === 'pending') {
-                    await supabase
-                        .from('finance_payments')
-                        .update({
-                            status: 'failed',
-                            notes: 'Payment timeout - user did not complete transaction',
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('checkout_request_id', transactionId);
-                    console.log('✅ Payment marked as FAILED due to timeout');
-                }
-            }
-        } catch (e) {}
-        
-        showStudentPaymentTimeout();
-        showToast('⏰ Payment timeout. Please check your M-Pesa transactions and try again.', 'warning');
-    }
-}
-
-// ============================================================
-// ❌ CANCEL PAYMENT - STUDENT FINANCE
-// ============================================================
-
-function cancelStudentPayment() {
-    if (pendingPayment && pendingPayment.isProcessing) {
-        pendingPayment.cancelled = true;
-        pendingPayment.isProcessing = false;
-        pendingPayment.status = 'cancelled';
-        console.log('⛔ Student payment cancellation triggered');
-        
-        (async function updateCancelledStatus() {
-            try {
-                const supabase = getSupabaseClient();
-                if (supabase && pendingPayment.transactionId) {
-                    await supabase
-                        .from('finance_payments')
-                        .update({
-                            status: 'cancelled',
-                            notes: 'Payment cancelled by user',
-                            updated_at: new Date().toISOString()
-                        })
-                        .eq('checkout_request_id', pendingPayment.transactionId);
-                    
-                    console.log('✅ Payment marked as CANCELLED in database');
-                }
-            } catch (e) {
-                console.log('⚠️ Could not update cancelled status:', e);
-            }
-        })();
-        
-        const content = document.getElementById('finance-paymentContent');
-        const title = document.getElementById('finance-paymentModalTitle');
-        const formContainer = document.getElementById('finance-paymentFormContainer');
-        
-        if (title) title.textContent = '⛔ Payment Cancelled';
-        if (content) {
-            content.style.display = 'block';
-            content.innerHTML = `
-                <div class="status-icon warning">⛔</div>
-                <p class="status-text">Payment Cancelled</p>
-                <p class="status-sub">You cancelled the payment.</p>
-                <button class="btn btn-success" style="margin-top:12px;width:100%;" onclick="closePaymentModal()">OK</button>
-            `;
-        }
-        if (formContainer) formContainer.style.display = 'none';
-        showToast('⛔ Payment cancelled', 'warning');
-    } else {
-        closePaymentModal();
-        showToast('Payment cancelled', 'warning');
-    }
-}
-
-// ============================================================
-// ❌ SHOW PAYMENT FAILURE - STUDENT FINANCE (UPDATED)
-// ============================================================
-
-function showStudentPaymentFailure(message) {
-    const content = document.getElementById('finance-paymentContent');
-    const title = document.getElementById('finance-paymentModalTitle');
-    const formContainer = document.getElementById('finance-paymentFormContainer');
-    
-    if (title) title.textContent = '❌ Payment Failed';
-    if (content) {
-        content.style.display = 'block';
-        
-        let icon = '❌';
-        let buttonText = 'Try Again';
-        let buttonAction = 'closePaymentModal()';
-        let subMessage = message || 'Transaction was not completed';
-        let extraInfo = '';
-        
-        if (message && message.toLowerCase().includes('cancel')) {
-            icon = '⛔';
-            buttonText = 'OK';
-            subMessage = 'You cancelled the payment';
-        } else if (message && (message.toLowerCase().includes('insufficient') || message.toLowerCase().includes('balance'))) {
-            icon = '💰';
-            subMessage = 'Insufficient funds. Please check your M-Pesa balance and try again.';
-            buttonText = 'Try Again';
-            extraInfo = '💡 Ensure you have enough money in your M-Pesa account.';
-        } else if (message && (message.toLowerCase().includes('pin') || message.toLowerCase().includes('incorrect'))) {
-            icon = '🔐';
-            subMessage = 'Incorrect PIN. Please try again with the correct PIN.';
-            buttonText = 'Try Again';
-            extraInfo = '💡 Make sure you enter the correct M-Pesa PIN.';
-        } else if (message && (message.toLowerCase().includes('network') || message.toLowerCase().includes('timeout'))) {
-            icon = '📡';
-            subMessage = 'Network issue. Please check your connection and try again.';
-            buttonText = 'Retry';
-            extraInfo = '💡 Ensure you have a stable network connection.';
-        } else if (message && (message.toLowerCase().includes('declined') || message.toLowerCase().includes('rejected'))) {
-            icon = '🚫';
-            subMessage = 'Transaction declined by M-Pesa.';
-            buttonText = 'Try Again';
-            extraInfo = '💡 Contact your bank or M-Pesa support for assistance.';
-        }
-        
-        content.innerHTML = `
-            <div class="status-icon failed">${icon}</div>
-            <p class="status-text">${icon} Payment Failed</p>
-            <p class="status-sub">${subMessage}</p>
-            ${extraInfo ? `<p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:4px;">${extraInfo}</p>` : ''}
-            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-primary" style="flex:1;min-width:80px;" onclick="${buttonAction}">${buttonText}</button>
-                <button class="btn btn-outline" style="flex:1;min-width:80px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;" onclick="closePaymentModal()">Close</button>
-            </div>
-        `;
-    }
-    if (formContainer) formContainer.style.display = 'none';
-}
-
-// ============================================================
-// ⏰ SHOW PAYMENT TIMEOUT - STUDENT FINANCE
-// ============================================================
-
-function showStudentPaymentTimeout() {
-    const content = document.getElementById('finance-paymentContent');
-    const title = document.getElementById('finance-paymentModalTitle');
-    const formContainer = document.getElementById('finance-paymentFormContainer');
-    
-    if (title) title.textContent = '⏰ Payment Timeout';
-    if (content) {
-        content.style.display = 'block';
-        content.innerHTML = `
-            <div class="status-icon warning">⏰</div>
-            <p class="status-text">Payment Timeout</p>
-            <p class="status-sub">The payment took too long to complete.</p>
-            <p class="status-sub" style="font-size:12px;color:#94A3B8;margin-top:8px;">
-                Possible reasons:<br>
-                • You didn't enter your PIN<br>
-                • You didn't confirm the payment<br>
-                • Network issues
-            </p>
-            <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap;">
-                <button class="btn btn-primary" style="flex:1;min-width:80px;" onclick="closePaymentModal()">Try Again</button>
-                <button class="btn btn-outline" style="flex:1;min-width:80px;background:#f3f4f6;color:#374151;border:1px solid #d1d5db;" onclick="closePaymentModal()">Close</button>
-            </div>
-        `;
-    }
-    if (formContainer) formContainer.style.display = 'none';
-}
-
-// ============================================================
-// ✅ SHOW PAYMENT SUCCESS - STUDENT FINANCE (UPDATED)
-// ============================================================
-
-function showBankPaymentPending(amount, reference, period, block = null) {
-    const modal = document.getElementById('finance-paymentModal');
-    const dialog = modal?.lastElementChild;
-    if (!dialog) return;
-
-    dialog.innerHTML = `
-        <div style="padding:30px 22px;text-align:center;">
-            <div style="width:64px;height:64px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#fff7e6;color:#b77900;font-size:27px;">
-                <i class="fas fa-university"></i>
-            </div>
-            <h3 style="margin:0 0 7px;color:#112d69;font-size:19px;">Bank Transfer Submitted</h3>
-            <p style="margin:0;color:#71819d;font-size:12px;">Your payment has been recorded and is awaiting Finance Office verification.</p>
-            <div style="margin:18px auto;padding:14px;border-radius:9px;background:#f3f7fb;">
-                <strong style="display:block;color:#102d69;font-size:24px;">KES ${Number(amount).toLocaleString()}</strong>
-                <span style="display:block;margin-top:5px;color:#71819d;font-size:10px;">${escapeFinanceHtml(period)}${block ? ` • ${escapeFinanceHtml(block)}` : ''}</span>
-                <span style="display:block;margin-top:8px;color:#536783;font-size:11px;">Reference: <strong>${escapeFinanceHtml(reference)}</strong></span>
-            </div>
-            <p style="margin:10px 0;color:#71819d;font-size:11px;line-height:1.5;">Keep your bank confirmation. Your Finance status will change after the transaction is verified.</p>
-            <button type="button" onclick="closePaymentModal(); loadStudentFinance(true);" style="width:100%;height:42px;border:0;border-radius:8px;background:#1455a0;color:#fff;font-size:12px;font-weight:700;cursor:pointer;">Done</button>
-        </div>
-    `;
-}
-
-function showStudentPaymentSuccess(amount, reference, period) {
-    const content = document.getElementById('finance-paymentContent');
-    const title = document.getElementById('finance-paymentModalTitle');
-    const formContainer = document.getElementById('finance-paymentFormContainer');
-    
-    if (title) title.textContent = '✅ Payment Successful! 🎉';
-    if (content) {
-        content.style.display = 'block';
-        content.innerHTML = `
-            <div class="status-icon success">✅</div>
-            <p class="status-text">Payment Successful! 🎉</p>
-            <p class="status-sub">${period || 'Tuition Fees'}</p>
-            <p class="status-sub" style="font-size:18px;font-weight:700;color:#10B981;margin-top:8px;">
-                KES ${amount.toLocaleString()}
-            </p>
-            <p class="status-sub" style="font-size:12px;color:#94A3B8;">
-                Reference: ${reference}
-            </p>
-            <button class="btn btn-success" style="margin-top:12px;" onclick="closePaymentModal()">Done</button>
-        `;
-    }
-    if (formContainer) formContainer.style.display = 'none';
-    
-    setTimeout(() => {
-        const modal = document.getElementById('finance-paymentModal');
-        if (modal && modal.classList.contains('active')) {
-            closePaymentModal();
-        }
-    }, 3000);
-}
-
-// ============================================================
-// 💰 PROCESS PAYMENT - FIXED (DOES NOT OVERWRITE REFERENCE)
-// ============================================================
 
 async function processPayment() {
     if (!validatePaymentForm()) return;
 
-    const amount = Number(document.getElementById('finance-paymentAmount')?.value || 0);
-    const method = document.getElementById('finance-paymentMethod')?.value || 'mpesa';
-    const period = document.getElementById('finance-paymentPeriod')?.value || studentFinanceState.currentPeriod || 'Tuition Fees';
-    const block = document.getElementById('finance-paymentBlock')?.value || null;
+    const amount = Number(
+        document.getElementById('finance-paymentAmount')?.value || 0
+    );
 
-    const user = studentFinanceState.student || window.currentUserProfile || window.currentUser;
+    const method =
+        document.getElementById('finance-paymentMethod')?.value || 'mpesa';
+
+    const selectedPeriod =
+        document.getElementById('finance-paymentPeriod')?.value ||
+        studentFinanceState.selectedPeriod ||
+        studentFinanceState.currentPeriod ||
+        '';
+
+    const selectedBlock =
+        document.getElementById('finance-paymentBlock')?.value ||
+        studentFinanceState.selectedBlock ||
+        '';
+
+    const user =
+        studentFinanceState.student ||
+        window.currentUserProfile ||
+        window.currentUser;
+
     if (!user) {
         showToast('❌ Please login first.', 'error');
         return;
     }
 
-    const supabase = getSupabaseClient();
-    if (!supabase) {
-        showToast('❌ Supabase client is not available.', 'error');
+    const phoneInput =
+        document.getElementById('finance-paymentPhone');
+
+    const formattedPhone =
+        method === 'mpesa'
+            ? normalizeMpesaPhone(phoneInput?.value || '')
+            : null;
+
+    if (method === 'mpesa' && !formattedPhone) {
+        showToast(
+            '❌ Please enter a valid M-Pesa phone number.',
+            'error'
+        );
+        phoneInput?.focus();
         return;
     }
 
-    const phoneInput = document.getElementById('finance-paymentPhone');
-    const formattedPhone = method === 'mpesa' ? normalizeMpesaPhone(phoneInput?.value || '') : null;
-    const bankReference = method === 'bank' ? (document.getElementById('finance-bankReference')?.value?.trim() || '') : '';
-    const reference = method === 'bank' ? bankReference : `STU-${Date.now()}`;
+    const supabase = getSupabaseClient();
+
+    if (!supabase) {
+        showToast(
+            '❌ Supabase client is not available.',
+            'error'
+        );
+        return;
+    }
+
+    const period =
+        selectedPeriod ||
+        studentFinanceState.currentPeriod ||
+        getPeriods(
+            studentFinanceState.programType || 'TVET',
+            studentFinanceState.programLevel || 'diploma'
+        )[0];
+
+    const reference =
+        method === 'bank'
+            ? (
+                document.getElementById('finance-bankReference')
+                    ?.value?.trim() || `BANK-${Date.now()}`
+            )
+            : `STU-${Date.now()}`;
 
     pendingPayment.isProcessing = true;
     pendingPayment.cancelled = false;
@@ -4065,34 +3188,75 @@ async function processPayment() {
     pendingPayment.paymentId = null;
     pendingPayment.status = 'processing';
 
-    const modal = document.getElementById('finance-paymentModal');
+    const modal =
+        document.getElementById('finance-paymentModal');
+
     const dialog = modal?.lastElementChild;
 
     if (dialog) {
-        dialog.innerHTML = method === 'mpesa' ? `
+        dialog.innerHTML = method === 'mpesa'
+            ? `
             <div style="padding:30px 22px;text-align:center;">
-                <div style="width:62px;height:62px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e5efff;color:#0864dc;font-size:25px;"><i class="fas fa-mobile-alt"></i></div>
-                <h3 style="margin:0 0 6px;color:#112d69;font-size:19px;">Processing M-Pesa Payment</h3>
-                <p style="margin:0;color:#71819d;font-size:12px;">Sending STK Push...</p>
-                <div style="margin:18px auto;padding:13px;border-radius:9px;background:#f3f7fb;">
-                    <strong style="display:block;color:#102d69;font-size:24px;">KES ${amount.toLocaleString()}</strong>
-                    <span style="display:block;margin-top:4px;color:#71819d;font-size:10px;">${escapeFinanceHtml(period)}${block ? ` • ${escapeFinanceHtml(block)}` : ''}</span>
+                <div style="width:62px;height:62px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#e5efff;color:#0864dc;font-size:25px;">
+                    <i class="fas fa-mobile-alt"></i>
                 </div>
-                <p style="margin:10px 0;color:#536783;font-size:11px;">Check <strong>${escapeFinanceHtml(formattedPhone)}</strong> and enter your M-Pesa PIN.</p>
-                <button type="button" onclick="cancelStudentPayment()" style="width:100%;height:40px;margin-top:10px;border:1px solid #ef4444;border-radius:7px;background:#fff;color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;"><i class="fas fa-times"></i> Cancel Payment</button>
-            </div>
-        ` : `
-            <div style="padding:30px 22px;text-align:center;">
-                <div style="width:62px;height:62px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#eaf3ff;color:#1455a0;font-size:25px;"><i class="fas fa-university"></i></div>
-                <h3 style="margin:0 0 6px;color:#112d69;font-size:19px;">Submitting Bank Transfer</h3>
-                <p style="margin:0;color:#71819d;font-size:12px;">Your payment will remain pending until verified by Finance.</p>
+
+                <h3 style="margin:0 0 6px;color:#112d69;font-size:19px;">
+                    Processing Payment
+                </h3>
+
+                <p style="margin:0;color:#71819d;font-size:12px;">
+                    Sending M-Pesa prompt...
+                </p>
+
                 <div style="margin:18px auto;padding:13px;border-radius:9px;background:#f3f7fb;">
-                    <strong style="display:block;color:#102d69;font-size:24px;">KES ${amount.toLocaleString()}</strong>
-                    <span style="display:block;margin-top:4px;color:#71819d;font-size:10px;">${escapeFinanceHtml(period)}${block ? ` • ${escapeFinanceHtml(block)}` : ''}</span>
+                    <strong style="display:block;color:#102d69;font-size:24px;">
+                        KES ${amount.toLocaleString()}
+                    </strong>
+
+                    <span style="display:block;margin-top:4px;color:#71819d;font-size:10px;">
+                        ${period}
+                    </span>
                 </div>
-                <p style="margin:10px 0;color:#536783;font-size:11px;">Reference: <strong>${escapeFinanceHtml(bankReference)}</strong></p>
+
+                <p style="margin:10px 0;color:#536783;font-size:11px;">
+                    Check <strong>${formattedPhone}</strong> and enter your M-Pesa PIN.
+                </p>
+
+                <button
+                    type="button"
+                    onclick="cancelStudentPayment()"
+                    style="width:100%;height:40px;margin-top:10px;border:1px solid #ef4444;border-radius:7px;background:#fff;color:#ef4444;font-size:12px;font-weight:700;cursor:pointer;"
+                >
+                    <i class="fas fa-times"></i>
+                    Cancel Payment
+                </button>
             </div>
-        `;
+        `
+            : `
+                <div style="padding:30px 22px;text-align:center;">
+                    <div style="width:62px;height:62px;margin:0 auto 15px;display:flex;align-items:center;justify-content:center;border-radius:50%;background:#eaf3ff;color:#0864dc;font-size:25px;">
+                        <i class="fas fa-university"></i>
+                    </div>
+                    <h3 style="margin:0 0 6px;color:#112d69;font-size:19px;">
+                        Submitting Bank Transfer
+                    </h3>
+                    <p style="margin:0;color:#71819d;font-size:12px;">
+                        Your payment will remain pending until verified by Finance.
+                    </p>
+                    <div style="margin:18px auto;padding:13px;border-radius:9px;background:#f3f7fb;">
+                        <strong style="display:block;color:#102d69;font-size:24px;">
+                            KES ${amount.toLocaleString()}
+                        </strong>
+                        <span style="display:block;margin-top:4px;color:#71819d;font-size:10px;">
+                            ${period}${selectedBlock ? ` • ${selectedBlock}` : ''}
+                        </span>
+                    </div>
+                    <p style="margin:10px 0;color:#536783;font-size:11px;">
+                        Reference: <strong>${reference}</strong>
+                    </p>
+                </div>
+            `;
     }
 
     try {
@@ -4104,7 +3268,7 @@ async function processPayment() {
             student_email: user.email || '',
             program: user.program || 'KRCHN',
             amount,
-            payment_method: method === 'mpesa' ? 'M-Pesa STK Push' : 'Bank Transfer',
+            payment_method: method === 'mpesa' ? 'M-Pesa' : 'Bank Transfer',
             reference_number: reference,
             payment_date:
                 new Date().toISOString().split('T')[0],
@@ -4113,16 +3277,16 @@ async function processPayment() {
             status: 'pending',
             notes:
                 method === 'mpesa'
-                    ? `${period} Tuition Fees - M-Pesa STK Push`
-                    : `${period} Tuition Fees - Bank Transfer submitted for verification`,
+                    ? `${period} Tuition Fees - M-Pesa Payment`
+                    : `${period} Tuition Fees - Bank Transfer submitted for verification. Reference: ${reference}`,
             phone_number: formattedPhone,
             program_type:
                 studentFinanceState.programType || 'KRCHN',
             metadata: {
                 source: method === 'mpesa' ? 'payhero' : 'student-bank-transfer',
                 original_period: period,
-                academic_block: block,
-                bank_reference: method === 'bank' ? bankReference : null
+                academic_block: selectedBlock,
+                bank_reference: method === 'bank' ? reference : null
             },
             created_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
@@ -4145,37 +3309,33 @@ async function processPayment() {
         pendingPayment.paymentId =
             savedPayment?.id || null;
 
-        // ============================================================
-        // 🏦 BANK TRANSFER: record as pending and wait for Finance review
-        // No gateway call is made for bank transfers.
-        // ============================================================
+        // BANK TRANSFER: save as pending; no gateway call.
         if (method === 'bank') {
-            await supabase
-                .from('finance_payments')
-                .update({
-                    updated_at: new Date().toISOString(),
-                    notes: `${period} Tuition Fees - Bank Transfer submitted for verification. Reference: ${bankReference}`
-                })
-                .eq('id', savedPayment.id);
+            pendingPayment.isProcessing = false;
+            pendingPayment.status = 'pending_verification';
 
             notifySuperAdmin('payment_recorded', {
                 studentId: user.user_id || user.id,
                 studentName: user.full_name || user.name || 'Student',
                 amount,
                 method: 'Bank Transfer',
-                reference: bankReference,
+                reference,
                 period,
-                block,
+                block: selectedBlock,
                 status: 'pending_verification'
             });
 
-            pendingPayment.isProcessing = false;
-            pendingPayment.status = 'pending_verification';
+            showBankPaymentPending(
+                amount,
+                reference,
+                period,
+                selectedBlock
+            );
 
-            showBankPaymentPending(amount, bankReference, period, block);
             return;
         }
 
+        // M-PESA: ORIGINAL V5 STK PUSH FLOW BELOW.
         const { data: stkData, error: stkError } =
             await supabase.functions.invoke(
                 'payhero',
@@ -4552,20 +3712,6 @@ document.addEventListener('DOMContentLoaded', function() {
         );
     }
 
-    const periodSelect = document.getElementById('finance-paymentPeriod');
-    if (periodSelect) {
-        periodSelect.addEventListener('change', function() {
-            studentFinanceState.selectedPeriod = this.value || null;
-        });
-    }
-
-    const blockSelect = document.getElementById('finance-paymentBlock');
-    if (blockSelect) {
-        blockSelect.addEventListener('change', function() {
-            studentFinanceState.selectedBlock = this.value || null;
-        });
-    }
-
     const methodSelect =
         document.getElementById('finance-paymentMethod');
 
@@ -4671,9 +3817,6 @@ document.addEventListener('DOMContentLoaded', function() {
     window.openPaymentModal = openPaymentModal;
     window.closePaymentModal = closePaymentModal;
     window.selectPaymentMethod = selectPaymentMethod;
-    window.populatePaymentPeriodOptions = populatePaymentPeriodOptions;
-    window.populatePaymentBlockOptions = populatePaymentBlockOptions;
-    window.showBankPaymentPending = showBankPaymentPending;
     window.processPayment = processPayment;
     window.downloadStudentStatement = downloadStudentStatement;
     window.viewStudentInvoice = viewStudentInvoice;
