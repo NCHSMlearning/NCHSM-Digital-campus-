@@ -1,86 +1,846 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <meta charset="utf-8">
-    <title>NCHSM Digital Campus</title>
-    <script>
-        // Get current path
-        const path = window.location.pathname;
-        const hash = window.location.hash;
-        const search = window.location.search;
-        
-        // Remove trailing slash
-        const cleanPath = path.replace(/\/$/, '');
-        
-        // Route mapping - without extra hashtags
-        const routes = {
-            '/': '/student',
-            '/index.html': '/student',
-            '/student': '/student.html',
-            '/superadmin': '/superadmin.html',
-            '/login': '/login.html',
-            '/profile': '/student',
-            '/calendar': '/student',
-            '/learning-hub': '/student',
-            '/attendance': '/student',
-            '/exam-card': '/student',
-            '/cats': '/student',
-            '/resources': '/student',
-            '/messages': '/student',
-            '/support-tickets': '/student',
-            '/nurseiq': '/student'
-        };
-        
-        // Hash mapping (what comes after #)
-        const hashMap = {
-            '/profile': 'profile',
-            '/calendar': 'calendar',
-            '/learning-hub': 'learning-hub',
-            '/attendance': 'attendance',
-            '/exam-card': 'exam-card',
-            '/cats': 'cats',
-            '/resources': 'resources',
-            '/messages': 'messages',
-            '/support-tickets': 'support-tickets',
-            '/nurseiq': 'nurseiq'
-        };
-        
-        let destination;
-        
-        // Check if direct route exists
-        if (routes[cleanPath]) {
-            destination = routes[cleanPath];
-        }
-        // Check if it's a hash route
-        else if (hashMap[cleanPath]) {
-            // Clean: only one # symbol
-            destination = '/student#' + hashMap[cleanPath];
-        }
-        // Default
-        else {
-            destination = '/student';
-        }
-        
-        // Add search params if any
-        if (search && !destination.includes('?')) {
-            destination += search;
-        }
-        
-        console.log('Redirecting to:', destination);
-        window.location.href = destination;
-    </script>
-</head>
-<body>
-    <div style="display: flex; justify-content: center; align-items: center; height: 100vh; font-family: sans-serif;">
-        <div style="text-align: center;">
-            <div style="width: 40px; height: 40px; border: 3px solid #4C1D95; border-top-color: transparent; border-radius: 50%; animation: spin 1s linear infinite; margin: 0 auto 20px;"></div>
-            <p>Loading NCHSM Digital Campus...</p>
-        </div>
-    </div>
+
+    <meta charset="UTF-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1.0"
+    >
+
+    <title>Page Not Found | NCHSM</title>
+
+    <meta
+        name="description"
+        content="The page you are looking for could not be found on the Nakuru College of Health Sciences and Management website."
+    >
+
+    <meta
+        name="robots"
+        content="noindex, follow"
+    >
+
+    <!-- NCHSM FAVICON & APP ICONS -->
+    <link
+        href="images/Logo_NCHSM.png"
+        rel="icon"
+        type="image/png"
+        sizes="16x16"
+    >
+
+    <link
+        href="images/Logo_NCHSM.png"
+        rel="icon"
+        type="image/png"
+        sizes="32x32"
+    >
+
+    <link
+        href="images/Logo_NCHSM.png"
+        rel="icon"
+        type="image/png"
+        sizes="192x192"
+    >
+
+    <link
+        href="images/Logo_NCHSM.png"
+        rel="icon"
+        type="image/png"
+        sizes="512x512"
+    >
+
+    <link
+        href="images/Logo_NCHSM.png"
+        rel="apple-touch-icon"
+        sizes="180x180"
+    >
+
+    <meta
+        name="theme-color"
+        content="#073b5c"
+    >
+
+    <meta
+        name="msapplication-TileColor"
+        content="#073b5c"
+    >
+
+
     <style>
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+
+        :root {
+
+            --primary: #073b5c;
+            --primary-dark: #04283e;
+            --accent: #f2b705;
+
+            --text: #17232c;
+            --muted: #687780;
+
+            --background: #f6f8fa;
+
+            --white: #ffffff;
+
+            --border: #e3e9ed;
+
         }
+
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+
+        html {
+            scroll-behavior: smooth;
+        }
+
+
+        body {
+
+            min-height: 100vh;
+
+            font-family:
+                Inter,
+                ui-sans-serif,
+                system-ui,
+                -apple-system,
+                BlinkMacSystemFont,
+                "Segoe UI",
+                sans-serif;
+
+            background:
+                linear-gradient(
+                    135deg,
+                    #f7fafb 0%,
+                    #edf4f7 100%
+                );
+
+            color: var(--text);
+
+            display: flex;
+
+            flex-direction: column;
+        }
+
+
+        a {
+            text-decoration: none;
+        }
+
+
+        .container {
+
+            width:
+                min(
+                    1180px,
+                    calc(100% - 36px)
+                );
+
+            margin: auto;
+        }
+
+
+        /* ==========================================
+           HEADER
+        ========================================== */
+
+        header {
+
+            background:
+                rgba(255,255,255,.97);
+
+            border-bottom:
+                1px solid var(--border);
+
+            box-shadow:
+                0 5px 25px rgba(7,59,92,.05);
+        }
+
+
+        .nav {
+
+            min-height: 76px;
+
+            display: flex;
+
+            align-items: center;
+
+            justify-content: space-between;
+
+            gap: 20px;
+        }
+
+
+        .brand {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 12px;
+
+            color: var(--text);
+        }
+
+
+        .brand img {
+
+            width: 52px;
+
+            height: 52px;
+
+            object-fit: contain;
+        }
+
+
+        .brand-name {
+
+            font-weight: 900;
+
+            font-size: 1.05rem;
+
+            line-height: 1.15;
+        }
+
+
+        .brand-subtitle {
+
+            color: var(--muted);
+
+            font-size: .65rem;
+
+            font-weight: 700;
+
+            letter-spacing: .05em;
+
+            margin-top: 4px;
+        }
+
+
+        .nav-links {
+
+            display: flex;
+
+            align-items: center;
+
+            gap: 22px;
+        }
+
+
+        .nav-links a {
+
+            color: #43525c;
+
+            font-size: .85rem;
+
+            font-weight: 750;
+
+            transition: .2s;
+        }
+
+
+        .nav-links a:hover {
+
+            color: var(--primary);
+        }
+
+
+        .apply-btn {
+
+            background:
+                var(--primary);
+
+            color:
+                #ffffff !important;
+
+            padding:
+                11px 17px;
+
+            border-radius:
+                10px;
+        }
+
+
+        .apply-btn:hover {
+
+            background:
+                var(--primary-dark);
+        }
+
+
+        /* ==========================================
+           MAIN
+        ========================================== */
+
+        main {
+
+            flex:
+                1;
+
+            display:
+                flex;
+
+            align-items:
+                center;
+
+            justify-content:
+                center;
+
+            padding:
+                80px 0;
+        }
+
+
+        .error-card {
+
+            width:
+                min(
+                    760px,
+                    100%
+                );
+
+            text-align:
+                center;
+
+            background:
+                #ffffff;
+
+            border:
+                1px solid var(--border);
+
+            border-radius:
+                25px;
+
+            padding:
+                55px 35px;
+
+            box-shadow:
+                0 25px 70px rgba(7,59,92,.10);
+        }
+
+
+        .error-code {
+
+            font-size:
+                clamp(
+                    5rem,
+                    14vw,
+                    9rem
+                );
+
+            font-weight:
+                950;
+
+            line-height:
+                .9;
+
+            letter-spacing:
+                -.08em;
+
+            color:
+                var(--primary);
+        }
+
+
+        .error-card h1 {
+
+            font-size:
+                clamp(
+                    1.7rem,
+                    4vw,
+                    2.5rem
+                );
+
+            margin:
+                22px 0 12px;
+
+            letter-spacing:
+                -.035em;
+        }
+
+
+        .error-card p {
+
+            max-width:
+                590px;
+
+            margin:
+                0 auto;
+
+            color:
+                var(--muted);
+
+            font-size:
+                .96rem;
+        }
+
+
+        .actions {
+
+            display:
+                flex;
+
+            justify-content:
+                center;
+
+            flex-wrap:
+                wrap;
+
+            gap:
+                10px;
+
+            margin-top:
+                30px;
+        }
+
+
+        .btn {
+
+            display:
+                inline-flex;
+
+            align-items:
+                center;
+
+            justify-content:
+                center;
+
+            padding:
+                12px 19px;
+
+            border-radius:
+                11px;
+
+            font-size:
+                .86rem;
+
+            font-weight:
+                850;
+
+            transition:
+                .2s;
+        }
+
+
+        .btn-primary {
+
+            background:
+                var(--primary);
+
+            color:
+                #ffffff;
+        }
+
+
+        .btn-primary:hover {
+
+            background:
+                var(--primary-dark);
+
+            transform:
+                translateY(-1px);
+        }
+
+
+        .btn-outline {
+
+            background:
+                #ffffff;
+
+            color:
+                var(--primary);
+
+            border:
+                1px solid var(--border);
+        }
+
+
+        .btn-outline:hover {
+
+            border-color:
+                var(--primary);
+        }
+
+
+        .quick-links {
+
+            margin-top:
+                35px;
+
+            padding-top:
+                25px;
+
+            border-top:
+                1px solid var(--border);
+
+            display:
+                flex;
+
+            justify-content:
+                center;
+
+            flex-wrap:
+                wrap;
+
+            gap:
+                18px;
+        }
+
+
+        .quick-links a {
+
+            color:
+                var(--primary);
+
+            font-size:
+                .78rem;
+
+            font-weight:
+                800;
+        }
+
+
+        .quick-links a:hover {
+
+            text-decoration:
+                underline;
+        }
+
+
+        /* ==========================================
+           FOOTER
+        ========================================== */
+
+        footer {
+
+            background:
+                var(--primary-dark);
+
+            color:
+                #bfd1d9;
+
+            padding:
+                30px 0;
+        }
+
+
+        .footer-inner {
+
+            display:
+                flex;
+
+            justify-content:
+                space-between;
+
+            align-items:
+                center;
+
+            gap:
+                20px;
+        }
+
+
+        .footer-copy {
+
+            font-size:
+                .75rem;
+        }
+
+
+        .footer-links {
+
+            display:
+                flex;
+
+            gap:
+                18px;
+
+            flex-wrap:
+                wrap;
+        }
+
+
+        .footer-links a {
+
+            color:
+                #d8e5ea;
+
+            font-size:
+                .75rem;
+        }
+
+
+        .footer-links a:hover {
+
+            color:
+                #ffffff;
+        }
+
+
+        /* ==========================================
+           MOBILE
+        ========================================== */
+
+        @media(max-width:760px) {
+
+            .nav-links {
+
+                display:
+                    none;
+            }
+
+
+            .brand-subtitle {
+
+                display:
+                    none;
+            }
+
+
+            .error-card {
+
+                padding:
+                    45px 22px;
+            }
+
+
+            .error-card p {
+
+                font-size:
+                    .88rem;
+            }
+
+
+            .footer-inner {
+
+                flex-direction:
+                    column;
+
+                text-align:
+                    center;
+            }
+
+        }
+
+
     </style>
+
+</head>
+
+
+<body>
+
+
+<!-- ======================================================
+     HEADER
+======================================================= -->
+
+<header>
+
+    <div class="container nav">
+
+
+        <a
+            href="/"
+            class="brand"
+            aria-label="NCHSM Home"
+        >
+
+            <img
+                src="images/Logo_NCHSM.png"
+                alt="Nakuru College of Health Sciences and Management logo"
+            >
+
+
+            <div>
+
+                <div class="brand-name">
+                    NCHSM
+                </div>
+
+                <div class="brand-subtitle">
+                    QUALITY EDUCATION • PRACTICAL TRAINING
+                </div>
+
+            </div>
+
+        </a>
+
+
+        <nav class="nav-links">
+
+            <a href="/">
+                Home
+            </a>
+
+            <a href="/about.html">
+                About
+            </a>
+
+            <a href="/nursing.html">
+                Programmes
+            </a>
+
+            <a href="/admission.html">
+                Admissions
+            </a>
+
+            <a href="/contact.html">
+                Contact
+            </a>
+
+            <a
+                href="/student.html"
+                class="apply-btn"
+            >
+                Student Portal
+            </a>
+
+        </nav>
+
+    </div>
+
+</header>
+
+
+
+<!-- ======================================================
+     ERROR CONTENT
+======================================================= -->
+
+<main>
+
+    <div class="container">
+
+        <div class="error-card">
+
+
+            <div class="error-code">
+                404
+            </div>
+
+
+            <h1>
+                Page Not Found
+            </h1>
+
+
+            <p>
+                The page you are looking for may have been
+                moved, updated or is temporarily unavailable.
+                Please return to the NCHSM homepage or use
+                one of the links below to continue.
+            </p>
+
+
+            <div class="actions">
+
+                <a
+                    href="/"
+                    class="btn btn-primary"
+                >
+                    ← Back to NCHSM Home
+                </a>
+
+
+                <a
+                    href="/admission.html"
+                    class="btn btn-outline"
+                >
+                    Admissions
+                </a>
+
+            </div>
+
+
+            <div class="quick-links">
+
+                <a href="/about.html">
+                    About NCHSM
+                </a>
+
+                <a href="/nursing.html">
+                    Programmes
+                </a>
+
+                <a href="/admission.html">
+                    Apply
+                </a>
+
+                <a href="/contact.html">
+                    Contact
+                </a>
+
+                <a href="/student.html">
+                    Student Portal
+                </a>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</main>
+
+
+
+<!-- ======================================================
+     FOOTER
+======================================================= -->
+
+<footer>
+
+    <div class="container footer-inner">
+
+
+        <div class="footer-copy">
+
+            © <span id="year"></span>
+            Nakuru College of Health Sciences and Management.
+            All rights reserved.
+
+        </div>
+
+
+        <div class="footer-links">
+
+            <a href="/">
+                Home
+            </a>
+
+            <a href="/privacy.html">
+                Privacy
+            </a>
+
+            <a href="/terms.html">
+                Terms
+            </a>
+
+            <a href="/contact.html">
+                Contact
+            </a>
+
+        </div>
+
+
+    </div>
+
+</footer>
+
+
+
+<script>
+
+    document.getElementById("year").textContent =
+        new Date().getFullYear();
+
+</script>
+
+
 </body>
 </html>
