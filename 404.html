@@ -629,6 +629,32 @@
 
     </style>
 
+
+    <!-- ======================================================
+         GITHUB PAGES STUDENT PORTAL ROUTING FALLBACK
+         Keeps the original NCHSM 404 page for normal missing
+         pages, but forwards /student/* routes to student.html.
+    ======================================================= -->
+    <script>
+    (function () {
+        var path = window.location.pathname;
+
+        // Only intercept Student Portal SPA routes.
+        if (path === "/student" || path === "/student/" || path.indexOf("/student/") === 0) {
+            var route = path.replace(/^\/student\/?/, "");
+            var target = "/student.html";
+
+            if (route) {
+                target += "?route=" + encodeURIComponent("/student/" + route);
+            }
+
+            // Replace the 404 URL so the browser does not keep
+            // the temporary error page in the navigation history.
+            window.location.replace(target);
+        }
+    })();
+    </script>
+
 </head>
 
 
