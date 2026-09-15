@@ -1,0 +1,33 @@
+NCHSM STUDENT PORTAL REFRESH ROUTING FIX
+
+1. Replace your current student.html with the supplied student.html.
+2. Put 404.html in the GitHub Pages repository ROOT (same level as student.html).
+3. Keep all existing /js, /css, /images and config files unchanged.
+4. Push the changes and wait for GitHub Pages deployment.
+
+Expected clean URLs:
+  /student/
+  /student/profile
+  /student/attendance
+  /student/cats
+  /student/exams
+  /student/finance
+  /student/courses
+  /student/unit-registration
+  /student/exam-card
+  /student/lecture-card
+  /student/timetable
+  /student/resources
+  /student/nurseiq
+  /student/enrollment
+  /student/blog
+  /student/academic-reports
+
+How it works:
+- Clicking a module changes the URL with history.pushState without reloading.
+- Refreshing /student/profile (or another module) hits GitHub Pages 404.html.
+- 404.html redirects to student.html?route=/student/profile.
+- student.html loads the existing Supabase portal, opens Profile, then restores
+  the clean URL /student/profile.
+- Browser Back/Forward is supported with popstate.
+- Existing module/data logic is preserved.
