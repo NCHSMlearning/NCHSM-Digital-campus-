@@ -117,6 +117,27 @@ class Database {
                 window.supabaseClient = this.supabase;
 
                 await this.testConnection();
+
+                // ============================================================
+                // 🔐 RESTORE USER ID WHEN THE SESSION IS ALREADY AVAILABLE
+                // This is intentionally non-fatal: database initialization
+                // must still succeed for a page while Supabase restores auth.
+                // ============================================================
+                try {
+                    const { data: sessionData } = await this.supabase.auth.getSession();
+                    const restoredUser = sessionData?.session?.user;
+                    if (restoredUser?.id) {
+                        this.currentUserId = restoredUser.id;
+                        window.currentUserId = restoredUser.id;
+                        window.currentUser = restoredUser;
+                        console.log('✅ Database: restored authenticated user:', restoredUser.id);
+                    } else {
+                        console.log('⏳ Database: no session yet; auth restoration may still be in progress.');
+                    }
+                } catch (sessionError) {
+                    console.warn('⚠️ Database: initial session restore deferred:', sessionError?.message || sessionError);
+                }
+
                 this.isInitialized = true;
                 this.connectionCount += 1;
                 this.lastConnectionTime = new Date();
@@ -364,6 +385,13 @@ class Database {
     clearUserState() {
         this.currentUserId = null;
         this.currentUserProfile = null;
+
+        // Keep global identity references synchronized with Database.
+        // This is only local in-memory state; actual Supabase sign-out is
+        // performed by logout().
+        if (window.currentUserId !== undefined) window.currentUserId = null;
+        if (window.currentUserProfile !== undefined) window.currentUserProfile = null;
+
         this.cachedData = {
             courses: [],
             exams: [],
@@ -374,6 +402,30 @@ class Database {
         };
     }
 
+    // ============================================================
+    // 🔎 AUTH STATE DIAGNOSTIC
+    // ============================================================
+    async getAuthStateSnapshot() {
+        try {
+            const sessionResult = await this.supabase?.auth?.getSession();
+            const session = sessionResult?.data?.session || null;
+            return {
+                authenticated: !!session?.user?.id,
+                userId: session?.user?.id || this.currentUserId || null,
+                hasLocalUserId: !!this.currentUserId,
+                hasProfile: !!this.currentUserProfile
+            };
+        } catch (error) {
+            return {
+                authenticated: false,
+                userId: this.currentUserId || null,
+                hasLocalUserId: !!this.currentUserId,
+                hasProfile: !!this.currentUserProfile,
+                error: error?.message || String(error)
+            };
+        }
+    }
+
     async checkAuth() {
         try {
             await this.initialize();
@@ -381,7 +433,16 @@ class Database {
             const session = await this.getAuthenticatedSession();
             const userId = session.user.id;
 
+            // Keep all application identity references synchronized.
+            window.currentUserId = userId;
+            window.currentUser = session.user;
+
             const profile = await this.loadUserProfile(userId);
+
+            if (profile) {
+                window.currentUserProfile = profile;
+                this.currentUserProfile = profile;
+            }
 
             if (!profile) {
                 return false;
@@ -406,6 +467,8 @@ class Database {
             console.error('Authentication check failed:', error);
 
             if (error?.message === 'No authenticated user session.') {
+                // This is a genuine unauthenticated state after restoration
+                // attempts have completed. Do not call signOut() here.
                 this.showDatabaseError('Your session has expired. Please sign in again.');
             } else {
                 this.showDatabaseError(error?.message || 'Unable to verify your account.');
@@ -415,13 +478,52 @@ class Database {
         }
     }
 
-    async loadUserProfile() {
+    async loadUserProfile(userId = null) {
         try {
             console.log('👤 Loading user profile...');
 
+            // ============================================================
+            // 🔐 HARD-REFRESH SAFE AUTH RESTORE
+            // Never treat a temporarily empty currentUserId as a logout.
+            // Supabase may still be restoring the persisted session.
+            // ============================================================
+            if (userId && !this.currentUserId) {
+                this.currentUserId = userId;
+            }
+
             if (!this.currentUserId) {
-                console.error('❌ No user ID available');
-                this.showDatabaseError('No User ID', 'Please login again.');
+                try {
+                    await this.getAuthenticatedSession();
+                } catch (authError) {
+                    // Give Supabase a final short restoration window before
+                    // showing any user-facing error.
+                    console.warn('⏳ Waiting for Supabase session restoration...', authError?.message || authError);
+
+                    let restored = false;
+                    for (let attempt = 0; attempt < 8; attempt++) {
+                        await new Promise(resolve => setTimeout(resolve, 250));
+                        try {
+                            await this.getAuthenticatedSession();
+                            restored = !!this.currentUserId;
+                            if (restored) break;
+                        } catch (_) {
+                            // Keep waiting. A hard refresh can briefly expose
+                            // a null session while the persisted token loads.
+                        }
+                    }
+
+                    if (!restored) {
+                        console.warn('ℹ️ No authenticated session after restoration window.');
+                        // Do NOT replace the whole page with a "No User ID"
+                        // error from this low-level profile loader.
+                        return null;
+                    }
+                }
+            }
+
+            // Final authoritative guard.
+            if (!this.currentUserId) {
+                console.warn('⚠️ Profile load skipped: authenticated user ID is not ready.');
                 return null;
             }
 
