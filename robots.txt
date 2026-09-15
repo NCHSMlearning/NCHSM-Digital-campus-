@@ -1,0 +1,41 @@
+User-agent: *
+Allow: /
+
+# Private/authenticated areas
+Disallow: /admin.html
+Disallow: /admin-login
+Disallow: /admin-login%20(1).html
+Disallow: /adminlogin.html
+Disallow: /adminexams.html
+Disallow: /superadmin.html
+Disallow: /superadminlogin.html
+Disallow: /student.html
+Disallow: /student-login.html
+Disallow: /lecturer.html
+Disallow: /lecturerexams.html
+Disallow: /finance.html
+Disallow: /financelogin.html
+Disallow: /exam.html
+Disallow: /exam_login.html
+Disallow: /exam_dashboard.html
+Disallow: /examresults.html
+Disallow: /marks.html
+Disallow: /marks-management.html
+Disallow: /markmanagement.html
+Disallow: /drms.html
+Disallow: /drms_login.html
+Disallow: /drms_dashboard.html
+Disallow: /nchsmaccounts.html
+Disallow: /nurseiqadmin.html
+Disallow: /nurseiq-admin-login.html
+Disallow: /parents.html
+Disallow: /reports.html
+Disallow: /classroom.html
+Disallow: /demo.html
+Disallow: /forgot-password.html
+Disallow: /register.html
+Disallow: /redirect.html
+Disallow: /icon-generator.html
+Disallow: /indexx.html
+
+Sitemap: https://nchsm.co.ke/sitemap.xml
