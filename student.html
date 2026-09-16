@@ -8726,7 +8726,7 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
                         </strong>
 </div>
 </div>
-<button id="finance-makePaymentBtn" onclick="openPaymentModal()" style="
+<button id="finance-makePaymentBtn" onclick="openPaymentModal(); return false;" style="
                         width:100%;
                         height:40px;
                         padding:0 14px;
@@ -9327,23 +9327,858 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
         --
     </span>
 <!-- =========================================================
-         PAYMENT MODAL
-         ========================================================= -->
-<div aria-hidden="true" id="finance-paymentModal" style="display:none;position:fixed;inset:0;z-index:99999;align-items:center;justify-content:center;padding:16px;background:rgba(8,25,45,.62);backdrop-filter:blur(4px);">
-<div class="finance-modal-overlay" style="position:absolute;inset:0;background:transparent;"></div>
-<div class="finance-modal-content nchsm-payment-dialog" style="position:relative;width:min(500px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.25);">
-<div style="padding:18px 20px;border-bottom:1px solid #e7edf4;display:flex;align-items:center;justify-content:space-between;gap:12px;"><div><h3 style="margin:0;color:#112d69;font-size:18px;font-weight:800;">Make a Payment</h3><p style="margin:4px 0 0;color:#71819d;font-size:11px;">Pay your current fee securely using M-Pesa.</p></div><button id="finance-closePaymentModal" type="button" aria-label="Close payment" style="width:34px;height:34px;border:0;border-radius:50%;background:#f1f4f8;color:#62738e;cursor:pointer;"><i class="fas fa-times"></i></button></div>
-<form id="finance-paymentForm" style="padding:20px;">
-<div style="padding:12px 14px;margin-bottom:15px;border:1px solid #e4ecf5;border-radius:11px;background:#f7fbff;"><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:7px;font-size:11px;"><span style="color:#71819d;">Current Fee</span><strong id="finance-selectedPeriodFee" style="color:#102d69;">KES 0</strong></div><div style="display:flex;justify-content:space-between;gap:12px;margin-bottom:7px;font-size:11px;"><span style="color:#71819d;">Paid This Period</span><strong id="finance-selectedPeriodPaid" style="color:#079361;">KES 0</strong></div><div style="display:flex;justify-content:space-between;gap:12px;font-size:11px;"><span style="color:#71819d;">Current Outstanding</span><strong id="finance-selectedPeriodBalance" style="color:#ed3038;">KES 0</strong></div><div id="finance-selectedPeriodInfo" style="display:none;margin-top:9px;padding-top:8px;border-top:1px solid #e4ecf5;color:#536783;font-size:10px;line-height:1.5;"></div></div>
-<div style="margin-bottom:15px;"><label for="finance-paymentPeriod" style="display:block;margin-bottom:7px;color:#304565;font-size:12px;font-weight:700;">Fee Period / Semester</label><select id="finance-paymentPeriod" name="payment_period" required style="width:100%;height:45px;padding:0 12px;border:1px solid #dce4ef;border-radius:9px;background:#fff;color:#304565;font-size:12px;outline:0;"><option value="">Select fee period</option></select></div>
-<div id="finance-paymentBlockWrap" style="margin-bottom:15px;"><label for="finance-paymentBlock" style="display:block;margin-bottom:7px;color:#304565;font-size:12px;font-weight:700;">Academic Block <span style="font-weight:500;color:#8a99ad;">(optional)</span></label><select id="finance-paymentBlock" name="academic_block" style="width:100%;height:45px;padding:0 12px;border:1px solid #dce4ef;border-radius:9px;background:#fff;color:#304565;font-size:12px;outline:0;"><option value="">Not specified / Not applicable</option></select></div>
-<div style="margin-bottom:15px;"><label for="finance-paymentAmount" style="display:block;margin-bottom:7px;color:#304565;font-size:12px;font-weight:700;">Payment Amount</label><div style="height:46px;display:flex;align-items:center;border:1px solid #dce4ef;border-radius:9px;overflow:hidden;"><span style="height:100%;padding:0 13px;display:flex;align-items:center;background:#f3f6fa;color:#526783;font-size:12px;font-weight:800;">KES</span><input id="finance-paymentAmount" name="amount" type="number" min="1" step="1" inputmode="numeric" placeholder="Enter amount" required style="width:100%;height:100%;padding:0 12px;border:0;outline:0;color:#1e3559;font-size:14px;font-weight:600;"></div><div style="margin-top:6px;color:#8190a7;font-size:10px;">You cannot pay more than the outstanding amount for the selected period.</div></div>
-<div style="margin-bottom:15px;"><label for="finance-paymentMethod" style="display:block;margin-bottom:7px;color:#304565;font-size:12px;font-weight:700;">Payment Method</label><select id="finance-paymentMethod" name="payment_method" required style="width:100%;height:45px;padding:0 12px;border:1px solid #dce4ef;border-radius:9px;background:#fff;color:#304565;font-size:12px;outline:0;"><option value="">Select payment method</option><option value="mpesa">M-Pesa STK Push</option><option value="bank">Bank Transfer</option></select></div>
-<div id="finance-mpesaFields" style="display:block;"><div class="nchsm-payment-phone" style="margin:0 0 15px;text-align:left;"><label for="finance-paymentPhone" style="display:block;margin-bottom:7px;color:#304565;font-size:12px;font-weight:700;"><i class="fas fa-mobile-alt"></i> M-Pesa Phone Number</label><div class="nchsm-phone-box" style="display:flex;width:100%;height:46px;overflow:hidden;border:1px solid #d8e1ec;border-radius:9px;background:#fff;"><span class="nchsm-phone-prefix" style="width:58px;flex:0 0 58px;display:flex;align-items:center;justify-content:center;background:#f5f7fa;border-right:1px solid #e2e8f0;color:#405579;font-size:12px;font-weight:800;">+254</span><input id="finance-paymentPhone" name="phone" type="tel" inputmode="numeric" autocomplete="tel" maxlength="13" placeholder="0712345678" aria-label="M-Pesa phone number" style="width:100%;min-width:0;border:0;outline:0;padding:0 12px;background:#fff;color:#102d69;font-size:14px;font-weight:600;"></div><div class="nchsm-phone-help" style="margin-top:6px;color:#71819d;font-size:10px;line-height:1.45;">Enter the number that should receive the M-Pesa STK Push.</div><div id="finance-paymentPhoneError" style="display:none;margin-top:5px;color:#dc3545;font-size:10px;font-weight:700;"></div></div></div>
-<div id="finance-bankFields" style="display:none;margin-bottom:15px;"><label for="finance-bankReference" style="display:block;margin-bottom:7px;color:#304565;font-size:12px;font-weight:700;">Bank Transaction / Reference Number</label><input id="finance-bankReference" name="bank_reference" type="text" placeholder="Enter bank transaction reference" style="width:100%;height:45px;padding:0 12px;border:1px solid #dce4ef;border-radius:9px;outline:0;color:#304565;font-size:12px;"></div>
-<div id="finance-paymentInfo" style="padding:11px 12px;display:flex;align-items:flex-start;gap:9px;border-radius:9px;background:#eaf3ff;color:#1761c9;font-size:10px;line-height:1.5;margin-bottom:18px;"><i class="fas fa-mobile-alt"></i><span>Enter the phone number that should receive the M-Pesa STK Push. You will enter your M-Pesa PIN on your phone.</span></div>
-<div style="display:flex;justify-content:flex-end;gap:9px;"><button id="finance-cancelPayment" type="button" style="height:42px;padding:0 18px;border:1px solid #dce4ef;border-radius:8px;background:#fff;color:#526783;font-size:12px;font-weight:700;cursor:pointer;">Cancel</button><button id="finance-submitPayment" type="submit" style="height:42px;padding:0 18px;border:0;border-radius:8px;background:#0baa68;color:#fff;font-size:12px;font-weight:800;cursor:pointer;"><i id="finance-submitPaymentIcon" class="fas fa-mobile-alt"></i><span id="finance-submitPaymentText"> Pay with M-Pesa STK Push</span></button></div>
-</form></div></div>
+     MODERN TWO-COLUMN PAYMENT MODAL
+     ========================================================= -->
+<style>
+    .nchsm-payment-dialog {
+        width: min(940px, calc(100vw - 28px));
+        max-height: 90vh;
+        overflow: hidden;
+        background: #ffffff;
+        border-radius: 22px;
+        box-shadow: 0 30px 90px rgba(5, 30, 65, .30);
+    }
+
+    .nchsm-payment-header {
+        min-height: 76px;
+        padding: 15px 20px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 15px;
+        border-bottom: 1px solid #e7edf4;
+        background: #ffffff;
+    }
+
+    .nchsm-payment-header-main {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-width: 0;
+    }
+
+    .nchsm-payment-header-icon {
+        width: 42px;
+        height: 42px;
+        min-width: 42px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 13px;
+        background: #eaf3ff;
+        color: #1768dc;
+        font-size: 17px;
+    }
+
+    .nchsm-payment-header h3 {
+        margin: 0;
+        color: #102d69;
+        font-size: 18px;
+        font-weight: 800;
+        line-height: 1.15;
+    }
+
+    .nchsm-payment-header p {
+        margin: 4px 0 0;
+        color: #71819d;
+        font-size: 11px;
+        line-height: 1.35;
+    }
+
+    .nchsm-payment-close {
+        width: 36px;
+        height: 36px;
+        min-width: 36px;
+        border: 0;
+        border-radius: 50%;
+        background: #f1f4f8;
+        color: #62738e;
+        cursor: pointer;
+        transition: .2s ease;
+    }
+
+    .nchsm-payment-close:hover {
+        background: #e6edf6;
+        color: #102d69;
+        transform: rotate(4deg);
+    }
+
+    .nchsm-payment-body {
+        display: grid;
+        grid-template-columns: minmax(270px, .82fr) minmax(430px, 1.38fr);
+        min-height: 0;
+    }
+
+    .nchsm-payment-summary {
+        padding: 18px;
+        background: #f7faff;
+        border-right: 1px solid #e3eaf3;
+    }
+
+    .nchsm-payment-summary-card {
+        padding: 17px;
+        border-radius: 16px;
+        color: #ffffff;
+        background: linear-gradient(145deg, #1768dc 0%, #0c3f88 100%);
+        box-shadow: 0 12px 30px rgba(16, 73, 145, .20);
+    }
+
+    .nchsm-payment-summary-title {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 15px;
+    }
+
+    .nchsm-payment-summary-title-icon {
+        width: 38px;
+        height: 38px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 11px;
+        background: rgba(255,255,255,.14);
+        font-size: 16px;
+    }
+
+    .nchsm-payment-summary-title strong {
+        display: block;
+        font-size: 16px;
+        font-weight: 800;
+    }
+
+    .nchsm-payment-summary-title span {
+        display: block;
+        margin-top: 3px;
+        color: rgba(255,255,255,.72);
+        font-size: 10px;
+    }
+
+    .nchsm-payment-period-badge {
+        display: inline-flex;
+        align-items: center;
+        margin-top: 6px;
+        padding: 3px 8px;
+        border-radius: 999px;
+        background: #09b86d;
+        color: #ffffff;
+        font-size: 9px;
+        font-weight: 800;
+    }
+
+    .nchsm-payment-metrics {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        border-top: 1px solid rgba(255,255,255,.16);
+        padding-top: 15px;
+    }
+
+    .nchsm-payment-metric {
+        min-width: 0;
+        padding: 0 8px;
+        text-align: center;
+        border-right: 1px solid rgba(255,255,255,.14);
+    }
+
+    .nchsm-payment-metric:last-child {
+        border-right: 0;
+    }
+
+    .nchsm-payment-metric i {
+        display: block;
+        margin-bottom: 6px;
+        color: rgba(255,255,255,.78);
+        font-size: 12px;
+    }
+
+    .nchsm-payment-metric strong {
+        display: block;
+        color: #ffffff;
+        font-size: 13px;
+        line-height: 1.2;
+        white-space: nowrap;
+    }
+
+    .nchsm-payment-metric span {
+        display: block;
+        margin-top: 4px;
+        color: rgba(255,255,255,.70);
+        font-size: 9px;
+    }
+
+    .nchsm-payment-help {
+        margin-top: 14px;
+        padding: 13px;
+        border: 1px solid #e2eaf4;
+        border-radius: 14px;
+        background: #ffffff;
+    }
+
+    .nchsm-payment-help-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 8px;
+        color: #1768dc;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .nchsm-payment-help ul {
+        margin: 0;
+        padding-left: 17px;
+        color: #526783;
+        font-size: 10px;
+        line-height: 1.55;
+    }
+
+    .nchsm-payment-secure {
+        margin-top: 10px;
+        padding: 12px 13px;
+        display: flex;
+        align-items: flex-start;
+        gap: 9px;
+        border-radius: 14px;
+        background: #ecfbf4;
+        color: #087c53;
+        font-size: 10px;
+        line-height: 1.45;
+    }
+
+    .nchsm-payment-secure i {
+        margin-top: 1px;
+        font-size: 13px;
+    }
+
+    .nchsm-payment-form-area {
+        min-width: 0;
+        padding: 18px 20px 20px;
+        background: #ffffff;
+        overflow-y: auto;
+        max-height: calc(90vh - 76px);
+    }
+
+    .nchsm-payment-form-title {
+        margin-bottom: 14px;
+    }
+
+    .nchsm-payment-form-title strong {
+        display: block;
+        color: #102d69;
+        font-size: 15px;
+        font-weight: 800;
+    }
+
+    .nchsm-payment-form-title span {
+        display: block;
+        margin-top: 3px;
+        color: #8190a7;
+        font-size: 10px;
+    }
+
+    .nchsm-payment-fields {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 13px;
+    }
+
+    .nchsm-payment-field {
+        min-width: 0;
+    }
+
+    .nchsm-payment-field.full {
+        grid-column: 1 / -1;
+    }
+
+    .nchsm-payment-field label {
+        display: block;
+        margin-bottom: 6px;
+        color: #304565;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .nchsm-payment-field label i {
+        margin-right: 5px;
+        color: #1768dc;
+    }
+
+    .nchsm-payment-field select,
+    .nchsm-payment-field input[type="text"],
+    .nchsm-payment-field input[type="tel"] {
+        width: 100%;
+        height: 43px;
+        padding: 0 11px;
+        border: 1px solid #d8e2ee;
+        border-radius: 9px;
+        outline: 0;
+        background: #ffffff;
+        color: #304565;
+        font-size: 11px;
+        box-sizing: border-box;
+        transition: border-color .18s, box-shadow .18s;
+    }
+
+    .nchsm-payment-field select:focus,
+    .nchsm-payment-field input:focus {
+        border-color: #1768dc;
+        box-shadow: 0 0 0 3px rgba(23,104,220,.09);
+    }
+
+    .nchsm-payment-amount-box {
+        height: 43px;
+        display: flex;
+        align-items: center;
+        overflow: hidden;
+        border: 1px solid #d8e2ee;
+        border-radius: 9px;
+        background: #ffffff;
+        transition: border-color .18s, box-shadow .18s;
+    }
+
+    .nchsm-payment-amount-box:focus-within {
+        border-color: #1768dc;
+        box-shadow: 0 0 0 3px rgba(23,104,220,.09);
+    }
+
+    .nchsm-payment-amount-box > span {
+        height: 100%;
+        padding: 0 12px;
+        display: flex;
+        align-items: center;
+        background: #f3f6fa;
+        border-right: 1px solid #e3e9f1;
+        color: #526783;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .nchsm-payment-amount-box input {
+        width: 100%;
+        min-width: 0;
+        height: 100%;
+        padding: 0 10px;
+        border: 0;
+        outline: 0;
+        color: #102d69;
+        font-size: 13px;
+        font-weight: 700;
+    }
+
+    .nchsm-payment-amount-help,
+    .nchsm-payment-phone-help {
+        margin-top: 5px;
+        color: #8190a7;
+        font-size: 9px;
+        line-height: 1.4;
+    }
+
+    .nchsm-payment-phone-box {
+        display: flex;
+        width: 100%;
+        height: 43px;
+        overflow: hidden;
+        border: 1px solid #d8e2ee;
+        border-radius: 9px;
+        background: #ffffff;
+        box-sizing: border-box;
+    }
+
+    .nchsm-payment-phone-prefix {
+        width: 58px;
+        min-width: 58px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: #f3f6fa;
+        border-right: 1px solid #e3e9f1;
+        color: #405579;
+        font-size: 11px;
+        font-weight: 800;
+    }
+
+    .nchsm-payment-phone-box input {
+        width: 100%;
+        min-width: 0;
+        border: 0;
+        outline: 0;
+        padding: 0 11px;
+        color: #102d69;
+        font-size: 13px;
+        font-weight: 600;
+    }
+
+    .nchsm-payment-info {
+        grid-column: 1 / -1;
+        padding: 10px 11px;
+        display: flex;
+        align-items: flex-start;
+        gap: 8px;
+        border-radius: 9px;
+        background: #eaf3ff;
+        color: #1761c9;
+        font-size: 9px;
+        line-height: 1.45;
+    }
+
+    .nchsm-payment-actions {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: 105px 1fr;
+        gap: 9px;
+        margin-top: 1px;
+    }
+
+    .nchsm-payment-actions button {
+        height: 43px;
+        border-radius: 9px;
+        font-size: 11px;
+        font-weight: 800;
+        cursor: pointer;
+        transition: .18s ease;
+    }
+
+    .nchsm-payment-cancel {
+        border: 1px solid #d8e2ee;
+        background: #ffffff;
+        color: #526783;
+    }
+
+    .nchsm-payment-cancel:hover {
+        background: #f5f8fc;
+    }
+
+    .nchsm-payment-submit {
+        border: 0;
+        background: #09ad68;
+        color: #ffffff;
+        box-shadow: 0 7px 18px rgba(9,173,104,.18);
+    }
+
+    .nchsm-payment-submit:hover {
+        background: #07965a;
+        transform: translateY(-1px);
+    }
+
+    .nchsm-payment-submit:disabled {
+        opacity: .65;
+        cursor: not-allowed;
+        transform: none;
+    }
+
+    @media (max-width: 760px) {
+        .nchsm-payment-dialog {
+            width: min(96vw, 620px);
+            max-height: 94vh;
+            border-radius: 18px;
+        }
+
+        .nchsm-payment-body {
+            grid-template-columns: 1fr;
+        }
+
+        .nchsm-payment-summary {
+            border-right: 0;
+            border-bottom: 1px solid #e3eaf3;
+            padding: 13px;
+        }
+
+        .nchsm-payment-help,
+        .nchsm-payment-secure {
+            display: none;
+        }
+
+        .nchsm-payment-form-area {
+            max-height: calc(94vh - 76px);
+            padding: 15px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .nchsm-payment-header {
+            padding: 13px 14px;
+        }
+
+        .nchsm-payment-header-icon {
+            width: 36px;
+            height: 36px;
+            min-width: 36px;
+        }
+
+        .nchsm-payment-header h3 {
+            font-size: 16px;
+        }
+
+        .nchsm-payment-header p {
+            font-size: 9px;
+        }
+
+        .nchsm-payment-metrics {
+            grid-template-columns: 1fr;
+            gap: 9px;
+        }
+
+        .nchsm-payment-metric {
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            border-right: 0;
+        }
+
+        .nchsm-payment-metric i {
+            display: none;
+        }
+
+        .nchsm-payment-metric span {
+            margin-top: 0;
+        }
+
+        .nchsm-payment-fields {
+            grid-template-columns: 1fr;
+            gap: 11px;
+        }
+
+        .nchsm-payment-field.full,
+        .nchsm-payment-info,
+        .nchsm-payment-actions {
+            grid-column: auto;
+        }
+
+        .nchsm-payment-actions {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+
+<div
+    id="finance-paymentModal"
+    aria-hidden="true"
+    style="
+        display:none;
+        position:fixed;
+        inset:0;
+        z-index:99999;
+        align-items:center;
+        justify-content:center;
+        padding:14px;
+        background:rgba(8,25,45,.66);
+        backdrop-filter:blur(5px);
+    "
+>
+    <div
+        class="finance-modal-overlay"
+        style="position:absolute;inset:0;background:transparent;"
+    ></div>
+
+    <div
+        class="finance-modal-content nchsm-payment-dialog"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="finance-paymentTitle"
+    >
+        <!-- HEADER -->
+        <div class="nchsm-payment-header">
+            <div class="nchsm-payment-header-main">
+                <div class="nchsm-payment-header-icon">
+                    <i class="fas fa-wallet"></i>
+                </div>
+                <div>
+                    <h3 id="finance-paymentTitle">Make a Payment</h3>
+                    <p>Make a payment anytime using M-Pesa STK Push or Bank Transfer.</p>
+                </div>
+            </div>
+
+            <button
+                id="finance-closePaymentModal"
+                class="nchsm-payment-close"
+                type="button"
+                aria-label="Close payment"
+            >
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <!-- TWO-COLUMN BODY -->
+        <div class="nchsm-payment-body">
+
+            <!-- LEFT: PAYMENT SUMMARY -->
+            <aside class="nchsm-payment-summary">
+
+                <div class="nchsm-payment-summary-card">
+                    <div class="nchsm-payment-summary-title">
+                        <div class="nchsm-payment-summary-title-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <div>
+                            <strong id="finance-paymentSummaryPeriod">Current Period</strong>
+                            <span>Selected fee period</span>
+                            <span class="nchsm-payment-period-badge">
+                                Current Period
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="nchsm-payment-metrics">
+                        <div class="nchsm-payment-metric">
+                            <div>
+                                <i class="fas fa-coins"></i>
+                                <strong id="finance-selectedPeriodFee">KES 0</strong>
+                                <span>Current Fee</span>
+                            </div>
+                        </div>
+
+                        <div class="nchsm-payment-metric">
+                            <div>
+                                <i class="fas fa-check-circle"></i>
+                                <strong id="finance-selectedPeriodPaid">KES 0</strong>
+                                <span>Paid This Period</span>
+                            </div>
+                        </div>
+
+                        <div class="nchsm-payment-metric">
+                            <div>
+                                <i class="fas fa-exclamation-circle"></i>
+                                <strong id="finance-selectedPeriodBalance">KES 0</strong>
+                                <span>Outstanding</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div
+                        id="finance-selectedPeriodInfo"
+                        style="
+                            display:none;
+                            margin-top:10px;
+                            padding-top:9px;
+                            border-top:1px solid rgba(255,255,255,.16);
+                            color:rgba(255,255,255,.78);
+                            font-size:9px;
+                            line-height:1.45;
+                        "
+                    ></div>
+                </div>
+
+                <div class="nchsm-payment-help">
+                    <div class="nchsm-payment-help-title">
+                        <i class="fas fa-info-circle"></i>
+                        Payment Information
+                    </div>
+                    <ul>
+                        <li>You can make a payment anytime.</li>
+                        <li>Choose the fee period you want to pay.</li>
+                        <li>Enter the amount you wish to pay.</li>
+                        <li>For M-Pesa, the STK Push is sent to the number provided.</li>
+                    </ul>
+                </div>
+
+                <div class="nchsm-payment-secure">
+                    <i class="fas fa-shield-alt"></i>
+                    <div>
+                        <strong style="display:block;margin-bottom:2px;font-size:10px;">
+                            Secure Payment
+                        </strong>
+                        Your payment is processed securely. For M-Pesa, enter your PIN on your phone.
+                    </div>
+                </div>
+
+            </aside>
+
+            <!-- RIGHT: PAYMENT FORM -->
+            <div class="nchsm-payment-form-area">
+
+                <div class="nchsm-payment-form-title">
+                    <strong>
+                        <i class="fas fa-credit-card" style="color:#1768dc;margin-right:6px;"></i>
+                        Payment Details
+                    </strong>
+                    <span>Fill in the details below to complete your payment.</span>
+                </div>
+
+                <form id="finance-paymentForm">
+
+                    <div class="nchsm-payment-fields">
+
+                        <!-- PERIOD -->
+                        <div class="nchsm-payment-field">
+                            <label for="finance-paymentPeriod">
+                                <i class="fas fa-graduation-cap"></i>
+                                Fee Period / Semester
+                            </label>
+                            <select
+                                id="finance-paymentPeriod"
+                                name="payment_period"
+                                required
+                            >
+                                <option value="">Select fee period</option>
+                            </select>
+                        </div>
+
+                        <!-- BLOCK -->
+                        <div
+                            id="finance-paymentBlockWrap"
+                            class="nchsm-payment-field"
+                        >
+                            <label for="finance-paymentBlock">
+                                <i class="fas fa-layer-group"></i>
+                                Academic Block
+                                <span style="font-weight:500;color:#8a99ad;">(optional)</span>
+                            </label>
+                            <select
+                                id="finance-paymentBlock"
+                                name="academic_block"
+                            >
+                                <option value="">Not specified / Not applicable</option>
+                            </select>
+                        </div>
+
+                        <!-- AMOUNT -->
+                        <div class="nchsm-payment-field">
+                            <label for="finance-paymentAmount">
+                                <i class="fas fa-money-bill-wave"></i>
+                                Payment Amount
+                            </label>
+
+                            <div class="nchsm-payment-amount-box">
+                                <span>KES</span>
+                                <input
+                                    id="finance-paymentAmount"
+                                    name="amount"
+                                    type="number"
+                                    min="1"
+                                    step="1"
+                                    inputmode="numeric"
+                                    placeholder="Enter amount"
+                                    required
+                                >
+                            </div>
+
+                            <div class="nchsm-payment-amount-help">
+                                You may pay any amount up to the outstanding balance.
+                            </div>
+                        </div>
+
+                        <!-- METHOD -->
+                        <div class="nchsm-payment-field">
+                            <label for="finance-paymentMethod">
+                                <i class="fas fa-credit-card"></i>
+                                Payment Method
+                            </label>
+                            <select
+                                id="finance-paymentMethod"
+                                name="payment_method"
+                                required
+                            >
+                                <option value="">Select payment method</option>
+                                <option value="mpesa">M-Pesa STK Push</option>
+                                <option value="bank">Bank Transfer</option>
+                            </select>
+                        </div>
+
+                        <!-- M-PESA -->
+                        <div
+                            id="finance-mpesaFields"
+                            class="nchsm-payment-field full"
+                            style="display:block;"
+                        >
+                            <label for="finance-paymentPhone">
+                                <i class="fas fa-mobile-alt"></i>
+                                M-Pesa Phone Number
+                            </label>
+
+                            <div class="nchsm-payment-phone-box">
+                                <span class="nchsm-payment-phone-prefix">+254</span>
+                                <input
+                                    id="finance-paymentPhone"
+                                    name="phone"
+                                    type="tel"
+                                    inputmode="numeric"
+                                    autocomplete="tel"
+                                    maxlength="13"
+                                    placeholder="0712345678"
+                                    aria-label="M-Pesa phone number"
+                                >
+                            </div>
+
+                            <div class="nchsm-payment-phone-help">
+                                Enter the number that should receive the M-Pesa STK Push.
+                            </div>
+
+                            <div
+                                id="finance-paymentPhoneError"
+                                style="
+                                    display:none;
+                                    margin-top:5px;
+                                    color:#dc3545;
+                                    font-size:9px;
+                                    font-weight:700;
+                                "
+                            ></div>
+                        </div>
+
+                        <!-- BANK -->
+                        <div
+                            id="finance-bankFields"
+                            class="nchsm-payment-field full"
+                            style="display:none;"
+                        >
+                            <label for="finance-bankReference">
+                                <i class="fas fa-receipt"></i>
+                                Bank Transaction / Reference Number
+                            </label>
+                            <input
+                                id="finance-bankReference"
+                                name="bank_reference"
+                                type="text"
+                                placeholder="Enter bank transaction reference"
+                            >
+                        </div>
+
+                        <!-- INFO -->
+                        <div
+                            id="finance-paymentInfo"
+                            class="nchsm-payment-info"
+                        >
+                            <i class="fas fa-mobile-alt"></i>
+                            <span>
+                                Enter the phone number that should receive the M-Pesa STK Push.
+                                You will enter your M-Pesa PIN on your phone.
+                            </span>
+                        </div>
+
+                        <!-- ACTIONS -->
+                        <div class="nchsm-payment-actions">
+                            <button
+                                id="finance-cancelPayment"
+                                class="nchsm-payment-cancel"
+                                type="button"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                id="finance-submitPayment"
+                                class="nchsm-payment-submit"
+                                type="submit"
+                            >
+                                <i
+                                    id="finance-submitPaymentIcon"
+                                    class="fas fa-mobile-alt"
+                                    style="margin-right:6px;"
+                                ></i>
+                                <span id="finance-submitPaymentText">
+                                    Pay with M-Pesa STK Push
+                                </span>
+                            </button>
+                        </div>
+
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 </section>
 <!-- ==================== END FINANCE TAB ==================== -->
 <!-- ==================== NURSEIQ / TVETIQ TAB ==================== -->
