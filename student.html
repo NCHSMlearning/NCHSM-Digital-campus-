@@ -3754,7 +3754,7 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 
             <button
                 class="action-btn"
-                id="view-completed-only"
+                id="courses-view-completed-only"
                 type="button"
                 style="
                     padding:8px 16px;
@@ -4008,7 +4008,7 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
                     </div>
 
                     <span
-                        id="completed-count"
+                        id="courses-completed-count"
                         style="
                             background:#059669;
                             color:#fff;
@@ -4160,17 +4160,6 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
         </div>
     </div>
 
-
-    <!-- ==================== DASHBOARD / JS HOOKS ==================== -->
-    <div
-        class="nchsm-course-hooks"
-        hidden
-        aria-hidden="true"
-    >
-        <span id="dashboard-active-courses">--</span>
-        <span id="dashboard-approved-units">--</span>
-        <span id="dashboard-new-resources">--</span>
-    </div>
 
 </section>
 <!-- ==================== END MY UNITS TAB ==================== -->
@@ -4999,7 +4988,7 @@ body.dark-mode #hub-register select,
     border-color: #334155 !important;
 }
 
-<style id="nchsm-registration-modern-overrides">
+<style id="nchsm-registration-modern-overrides-final">
 #hub-register{--nchsm-navy:#0A3D62;--nchsm-indigo:#4C1D95;--nchsm-purple:#6D28D9;--nchsm-green:#059669;--nchsm-amber:#D97706;--nchsm-red:#DC2626;--nchsm-bg:#f4f7fb;--nchsm-border:#e5eaf2;--nchsm-text:#0f172a;--nchsm-muted:#64748b;background:var(--nchsm-bg);}
 #hub-register .nchsm-reg-hero{position:relative;overflow:hidden;display:flex;justify-content:space-between;align-items:center;gap:24px;min-height:128px;padding:24px 28px;margin:0 0 18px;border-radius:18px;background:linear-gradient(135deg,#0a3d62 0%,#174d78 55%,#1b6380 100%);box-shadow:0 12px 30px rgba(10,61,98,.20);color:#fff}
 #hub-register .nchsm-reg-hero:after{content:"";position:absolute;right:-60px;top:-100px;width:420px;height:300px;background:radial-gradient(circle,rgba(255,255,255,.16),transparent 65%);pointer-events:none}
@@ -9316,16 +9305,8 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
             Contact Finance Office
         </button>
 </div>
-<!-- =========================================================
-         DASHBOARD COMPATIBILITY HOOKS
-         ========================================================= -->
+<!-- Dashboard finance hooks are owned by the Dashboard compatibility block. -->
 <span hidden="" id="finance-statusDot"></span>
-<span hidden="" id="dashboard-finance-balance">
-        --
-    </span>
-<span hidden="" id="dashboard-finance-status">
-        --
-    </span>
 <!-- =========================================================
      MODERN TWO-COLUMN PAYMENT MODAL
      ========================================================= -->
