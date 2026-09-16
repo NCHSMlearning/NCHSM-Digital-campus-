@@ -2288,6 +2288,12 @@ class DashboardModule {
             }
 
             const normalized = uniqueCourses.slice(0, 4);
+
+            // Prevent legacy course-container rules from forcing truncation.
+            container.style.overflow = 'visible';
+            container.style.height = 'auto';
+            container.style.minHeight = '0';
+
             container.innerHTML = '';
 
             if (!normalized.length) {
@@ -2296,17 +2302,79 @@ class DashboardModule {
             }
 
             const codeClasses = ['code-blue', 'code-green', 'code-purple', 'code-orange'];
+
+            // Render each enrolled unit as a proper two-level course card:
+            // unit code = badge, full unit name = primary text.
+            // Inline layout rules override legacy truncation CSS.
             normalized.forEach((course, index) => {
                 const row = document.createElement('div');
                 row.className = 'course-row';
+                row.style.cssText = [
+                    'position:relative',
+                    'display:flex',
+                    'flex-direction:column',
+                    'align-items:flex-start',
+                    'justify-content:flex-start',
+                    'gap:10px',
+                    'min-height:86px',
+                    'height:auto',
+                    'padding:14px 42px 14px 14px',
+                    'box-sizing:border-box',
+                    'overflow:visible',
+                    'cursor:pointer'
+                ].join(';');
+
                 const code = document.createElement('span');
                 code.className = `course-code ${codeClasses[index % codeClasses.length]}`;
                 code.textContent = course.code || 'UNIT';
+                code.style.cssText = [
+                    'display:inline-flex',
+                    'align-items:center',
+                    'width:max-content',
+                    'max-width:100%',
+                    'white-space:nowrap',
+                    'overflow:visible',
+                    'text-overflow:clip',
+                    'flex:none'
+                ].join(';');
+
                 const name = document.createElement('strong');
-                name.textContent = course.name || course.code || 'Unit';
+                const fullName = String(course.name || course.code || 'Unit').trim();
+                name.textContent = fullName;
+                name.title = fullName;
+                name.setAttribute('aria-label', fullName);
+                name.style.cssText = [
+                    'display:block',
+                    'width:100%',
+                    'max-width:100%',
+                    'min-width:0',
+                    'height:auto',
+                    'max-height:none',
+                    'margin:0',
+                    'padding:0',
+                    'box-sizing:border-box',
+                    'font-size:14px',
+                    'font-weight:700',
+                    'line-height:1.35',
+                    'white-space:normal',
+                    'word-break:normal',
+                    'overflow-wrap:anywhere',
+                    'overflow:visible',
+                    'text-overflow:clip',
+                    'flex:none'
+                ].join(';');
+
                 const icon = document.createElement('i');
                 icon.className = 'fas fa-chevron-right';
                 icon.setAttribute('aria-hidden', 'true');
+                icon.style.cssText = [
+                    'position:absolute',
+                    'right:16px',
+                    'top:50%',
+                    'transform:translateY(-50%)',
+                    'font-size:13px'
+                ].join(';');
+
                 row.append(code, name, icon);
                 row.addEventListener('click', () => this.navigateTo('hub-courses'));
                 container.appendChild(row);
