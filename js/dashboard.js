@@ -2287,7 +2287,7 @@ class DashboardModule {
                 this.elements.snapshotActiveCourses.textContent = String(uniqueCourses.length);
             }
 
-            const normalized = uniqueCourses.slice(0, 4);
+            const normalized = uniqueCourses;
 
             // Prevent legacy course-container rules from forcing truncation.
             container.style.overflow = 'visible';
