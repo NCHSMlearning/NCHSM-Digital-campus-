@@ -11,7 +11,7 @@
 
     // PayHero credentials are handled by the Supabase Edge Function.
     // Do not expose gateway secrets in the browser.
-const PAYHERO_CONFIG = {
+ const PAYHERO_CONFIG = {
         baseUrl: 'https://backend.payhero.co.ke/api/v2/payments',
         accountId: '11408',
         channelId: '11445',
@@ -2538,11 +2538,20 @@ function ensureFinanceResponsiveStyles() {
             overflow-y:auto !important;
         }
 
+        #finance-paymentModal .finance-modal-overlay {
+            position:absolute !important;
+            inset:0 !important;
+            z-index:1 !important;
+            pointer-events:auto !important;
+        }
+
         .nchsm-payment-dialog {
-            width:min(480px,100%) !important;
-            max-width:100% !important;
+            position:relative;
+            z-index:2;
+            width:min(940px,calc(100vw - 28px)) !important;
+            max-width:940px !important;
             max-height:calc(100vh - 24px);
-            overflow-y:auto;
+            overflow:hidden;
             margin:auto;
             border-radius:18px !important;
         }
@@ -2623,6 +2632,7 @@ function ensureFinanceResponsiveStyles() {
 
             .nchsm-payment-dialog {
                 width:100% !important;
+                max-width:100% !important;
                 max-height:92vh;
                 border-radius:18px 18px 0 0 !important;
             }
@@ -4035,17 +4045,10 @@ document.addEventListener('DOMContentLoaded', function() {
             'finance-paymentModal'
         );
 
-    const overlay =
-        modal?.querySelector(
-            '.finance-modal-overlay'
-        );
-
-    if (overlay) {
-        overlay.addEventListener(
-            'click',
-            closePaymentModal
-        );
-    }
+    // Do NOT close the payment modal when the student clicks the backdrop.
+    // The modal closes only through the X button, Cancel button, or the
+    // normal payment-completion flow. This prevents accidental dismissal
+    // while entering payment details.
 
     const statementButton =
         document.getElementById(
