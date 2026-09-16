@@ -196,6 +196,11 @@ class DashboardModule {
             nurseiqPoints: document.getElementById('dashboard-nurseiq-points'),
             welcomeStudentName: document.getElementById('welcome-student-name'),
             currentBlock: document.getElementById('dashboard-current-block-value'),
+            currentBlockShort: document.getElementById('dashboard-current-block-short'),
+            currentBlockLabel: document.getElementById('dashboard-current-block-label'),
+            progressCurrentBlockShort: document.getElementById('dashboard-current-block-short'),
+            progressCurrentBlockLabel: document.getElementById('dashboard-current-block-label'),
+            progressCurrentBlockRing: document.getElementById('nd-ring-current-block'),
             programName: document.getElementById('dashboard-program-name'),
             intakeYear: document.getElementById('dashboard-intake-year'),
             userLevel: document.getElementById('user-level'),
@@ -232,11 +237,11 @@ class DashboardModule {
             progressAttendance: document.getElementById('dashboard-attendance-rate'),
             progressAssignments: document.getElementById('dashboard-verified-count'),
             progressExams: document.getElementById('dashboard-pending-count'),
-            progressOverall: document.getElementById('dashboard-upcoming-exam'),
+            progressOverall: document.getElementById('dashboard-current-block-short'),
             progressAttendanceRing: document.getElementById('nd-ring-attendance'),
             progressAssignmentsRing: document.getElementById('nd-ring-verified'),
             progressExamsRing: document.getElementById('nd-ring-pending'),
-            progressOverallRing: document.getElementById('nd-ring-exams'),
+            progressOverallRing: document.getElementById('nd-ring-current-block'),
             dashboardEvents: document.querySelector('.nchsm-events'),
             dashboardCourses: document.querySelector('.nchsm-courses'),
             dashboardLeaderboard: document.querySelector('.nchsm-leaderboard'),
@@ -1354,6 +1359,14 @@ class DashboardModule {
             });
             
             if (error) throw error;
+
+            // Expose the authoritative RPC payload for the dashboard HTML bridge.
+            window.nchsmDashboardRPCData = data || null;
+            try {
+                window.dispatchEvent(new CustomEvent('nchsmDashboardRPCReady', { detail: data || {} }));
+            } catch (eventError) {
+                console.warn('Dashboard RPC event dispatch unavailable:', eventError);
+            }
             
             // ✅ Store total points from RPC
             this.metrics.totalPoints = Number(data?.total_points ?? 0);
@@ -1464,17 +1477,9 @@ class DashboardModule {
             this.metrics.exams = data?.exam?.title || 'No upcoming exams';
             this.metrics.resources = Number(data?.resources ?? 0);
 
-            // Courses are independent from exam-card approvals.
-            let courseCount = Number(data?.courses ?? 0);
-            try {
-                if (window.db && typeof window.db.getCourses === 'function') {
-                    const courses = await window.db.getCourses();
-                    if (Array.isArray(courses)) courseCount = courses.length;
-                }
-            } catch (courseError) {
-                console.warn('⚠️ Could not refresh course count:', courseError);
-            }
-            this.metrics.courses = courseCount;
+            // Courses count comes from the authoritative dashboard RPC.
+            // The visible My Courses card separately reads the student's actual registrations.
+            this.metrics.courses = Number(data?.courses ?? 0);
             
             console.log(`💰 Total Points from RPC: ${this.metrics.totalPoints}`);
             console.log(`🏆 Gamification from RPC: ${this.gamificationPoints}`);
@@ -1524,6 +1529,12 @@ class DashboardModule {
                 this.loadDashboardEvents(),
                 this.syncAcademicReportsSnapshot()
             ]);
+
+            // Repaint the dashboard after registration-backed cards finish loading.
+            // This prevents an RPC course count of 0 from overwriting the visible
+            // student's actual enrolled-unit count.
+            this.updateUIFromMetrics();
+            this.updateCurrentBlockMetric();
             
         } catch (error) {
             console.error('Dashboard error:', error);
@@ -2258,14 +2269,25 @@ class DashboardModule {
                 }
             }
 
-            const normalized = courses
-                .filter((course, index, list) => {
-                    const key = `${String(course.code || '').trim().toLowerCase()}|${String(course.name || '').trim().toLowerCase()}`;
-                    return list.findIndex(item =>
-                        `${String(item.code || '').trim().toLowerCase()}|${String(item.name || '').trim().toLowerCase()}` === key
-                    ) === index;
-                })
-                .slice(0, 4);
+            const uniqueCourses = courses.filter((course, index, list) => {
+                const key = `${String(course.code || '').trim().toLowerCase()}|${String(course.name || '').trim().toLowerCase()}`;
+                return list.findIndex(item =>
+                    `${String(item.code || '').trim().toLowerCase()}|${String(item.name || '').trim().toLowerCase()}` === key
+                ) === index;
+            });
+
+            // Keep the dashboard course metric tied to actual enrolled registrations when available.
+            // Keep every dashboard Active Courses hook synchronized. The HTML currently
+            // contains two compatibility hooks with the same legacy ID, so update both.
+            this.metrics.courses = uniqueCourses.length;
+            document.querySelectorAll('#dashboard-active-courses').forEach(el => {
+                el.textContent = String(uniqueCourses.length);
+            });
+            if (this.elements?.snapshotActiveCourses) {
+                this.elements.snapshotActiveCourses.textContent = String(uniqueCourses.length);
+            }
+
+            const normalized = uniqueCourses.slice(0, 4);
             container.innerHTML = '';
 
             if (!normalized.length) {
@@ -2595,8 +2617,9 @@ class DashboardModule {
             return;
         }
         const cleanBlock = block.replace(/^block\s*/i, '').trim();
-        if (shortEl) shortEl.textContent = block;
+        if (shortEl) shortEl.textContent = cleanBlock;
         if (labelEl) labelEl.textContent = `Block ${cleanBlock}`;
+        if (this.elements?.currentBlock) this.elements.currentBlock.textContent = `Block ${cleanBlock}`;
         if (ringEl) { ringEl.style.strokeDasharray = '251.2'; ringEl.style.strokeDashoffset = '0'; }
     }
 
@@ -2661,14 +2684,22 @@ class DashboardModule {
         setText(this.elements.verifiedCount, attendance.verified ?? 0);
         setText(this.elements.totalCount, attendance.total ?? 0);
         setText(this.elements.pendingCount, attendance.pending ?? 0);
-        setText(this.elements.activeCourses, Number(m.courses) || 0);
+        const activeCourseCount = Number(m.courses) || 0;
+        document.querySelectorAll('#dashboard-active-courses').forEach(el => {
+            el.textContent = String(activeCourseCount);
+        });
+        setText(this.elements.activeCourses, activeCourseCount);
         setText(this.elements.approvedUnits, Number(m.examCard?.approved) || 0);
         setText(this.elements.resources, m.resources ?? 0);
         setText(this.elements.upcomingExam, m.exams || 'No upcoming exams');
 
-        setText(this.elements.snapshotActiveCourses, Number(m.courses) || 0);
+        setText(this.elements.snapshotActiveCourses, activeCourseCount);
         setText(this.elements.snapshotApprovedUnits, Number(m.examCard?.approved) || 0);
         setText(this.elements.snapshotResources, Number(m.resources) || 0);
+
+        // Current Block is the fourth My Progress metric in the current HTML.
+        this.updateCurrentBlockMetric();
+
         if (this.elements.snapshotCGPA && !this.elements.snapshotCGPA.textContent.trim()) {
             this.elements.snapshotCGPA.textContent = '--';
         }
