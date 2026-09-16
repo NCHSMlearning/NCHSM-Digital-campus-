@@ -1140,8 +1140,8 @@ function getCurrentProfileFinancePeriod(profile = null) {
         window.currentUser ||
         {};
 
-    // Profile is authoritative. We deliberately do not use a guessed
-    // future term or the last fee period when the profile has a value.
+    // Profile is authoritative. Convert "Block N" to the finance period
+    // used by this module instead of falling back to the first fee period.
     const raw =
         p.current_block ||
         p.currentBlock ||
@@ -1154,7 +1154,26 @@ function getCurrentProfileFinancePeriod(profile = null) {
         p.term ||
         null;
 
-    return raw ? mapPeriodToDisplay(raw) : null;
+    if (!raw) return null;
+
+    const blockMatch = String(raw).trim().match(/^Block\s*(\d+)$/i);
+    if (blockMatch) {
+        const blockNumber = parseInt(blockMatch[1], 10);
+        if (Number.isFinite(blockNumber) && blockNumber > 0) {
+            const program = String(
+                p.program || studentFinanceState.programType || ''
+            ).toUpperCase();
+
+            const year = Math.ceil(blockNumber / 3);
+            const periodInYear = ((blockNumber - 1) % 3) + 1;
+
+            return program === 'KRCHN'
+                ? `Y${year} S${periodInYear}`
+                : `Y${year} T${periodInYear}`;
+        }
+    }
+
+    return mapPeriodToDisplay(raw);
 }
 
 function getProfilePeriodFee(feeRows, profilePeriod, fallback=0) {
@@ -1512,6 +1531,7 @@ async function fetchFinanceDataFromSupabase(user) {
             paymentProgress,
             overallProgress: paymentProgress,
             currentPeriodOutstanding,
+            currentPeriodBalance: currentPeriodOutstanding,
             currentPeriodProgress,
             payments: formattedPayments,
             feeStructure: formattedFees,
@@ -1858,15 +1878,53 @@ function updateStats(data) {
 function updateDashboardFinanceBridge(data) {
     const balance = document.getElementById('dashboard-finance-balance');
     const status = document.getElementById('dashboard-finance-status');
-    const value = Number(data?.balance || 0);
 
-    if (balance) balance.textContent = `KES ${value.toLocaleString()}`;
+    // Dashboard = CURRENT block/semester outstanding.
+    // data.balance remains the FULL account outstanding for the Finance page.
+    const currentOutstanding = Math.max(
+        Number(
+            data?.currentPeriodOutstanding ??
+            (
+                Number(data?.semesterFee || 0) -
+                Number(data?.paidThisSemester || 0)
+            )
+        ) || 0,
+        0
+    );
+
+    const currentFee = Math.max(Number(data?.semesterFee) || 0, 0);
+    const currentPaid = Math.max(Number(data?.paidThisSemester) || 0, 0);
+
+    if (balance) {
+        balance.textContent = `KES ${currentOutstanding.toLocaleString()}`;
+        balance.setAttribute(
+            'title',
+            data?.currentPeriod
+                ? `Current period: ${data.currentPeriod}`
+                : 'Current period outstanding'
+        );
+    }
+
     if (status) {
-        status.textContent = value <= 0
-            ? 'Paid in Full'
-            : Number(data?.totalPaid || 0) > 0
+        status.textContent = currentOutstanding <= 0
+            ? 'Current Period Paid'
+            : currentPaid > 0
                 ? 'Partially Paid'
-                : 'Outstanding Balance';
+                : 'Current Period Outstanding';
+    }
+
+    const label = document.getElementById('dashboard-finance-label');
+    if (label) {
+        label.textContent = data?.currentPeriod
+            ? `${data.currentPeriod} Outstanding`
+            : 'Current Period Outstanding';
+    }
+
+    const sublabel = document.getElementById('dashboard-finance-sublabel');
+    if (sublabel) {
+        sublabel.textContent = currentFee > 0
+            ? `Fee: KES ${currentFee.toLocaleString()} • Paid: KES ${currentPaid.toLocaleString()}`
+            : 'Current period fee balance';
     }
 }
 
