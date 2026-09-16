@@ -9,15 +9,8 @@
     // 💳 PAYHERO CONFIGURATION
     // ============================================================
 
-    const PAYHERO_CONFIG = {
-        baseUrl: 'https://backend.payhero.co.ke/api/v2/payments',
-        accountId: '11408',
-        channelId: '11445',
-        authToken: 'Basic R2FWbHhQUFRQbFV6a05kMnNwcFc6QkF6WXlLaGFUMFM0MVpyNFk4QkRRZW9pOUJWVzNjR0FhZ2ExTTJPZw==',
-        provider: 'm-pesa',
-        callbackUrl: 'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/mpesa-callback',
-        lipwaLink: 'https://lipwa.link/11408'
-    };
+    // PayHero credentials are handled by the Supabase Edge Function.
+    // Do not expose gateway secrets in the browser.
 
 // ============================================================
 // 🔄 PAYHERO STATE
@@ -2768,16 +2761,80 @@ function getStudentAcademicBlocks() {
 
 function getPeriodFinanceSummary(period) {
     const normalized = mapPeriodToDisplay(period || '');
-    const periods = studentFinanceState.feeStructureRaw?.periods || [];
-    const feeRow = periods.find(p => mapPeriodToDisplay(p?.name || p?.period || '') === normalized);
-    const fee = Number(feeRow?.amount) || 0;
+    const programType =
+        studentFinanceState.programType ||
+        getProgramType(studentFinanceState.student?.program || 'TVET');
+    const programLevel =
+        studentFinanceState.programLevel ||
+        getProgramLevel(studentFinanceState.student?.program || '');
+
+    const configuredPeriods =
+        studentFinanceState.feeStructureRaw?.periods || [];
+
+    const fallbackPeriods = getPeriods(programType, programLevel);
+
+    // Find the fee structure row first.
+    const feeRow = configuredPeriods.find(p =>
+        mapPeriodToDisplay(
+            p?.name || p?.period || p?.block || ''
+        ) === normalized
+    );
+
+    let periodIndex = fallbackPeriods.findIndex(
+        p => mapPeriodToDisplay(p) === normalized
+    );
+
+    if (periodIndex < 0) {
+        periodIndex = configuredPeriods.findIndex(p =>
+            mapPeriodToDisplay(
+                p?.name || p?.period || p?.block || ''
+            ) === normalized
+        );
+    }
+
+    // Use the configured fee where available. If a student selects another
+    // valid term/semester that is not yet represented in the fee table,
+    // use this module's period fee schedule as the fallback.
+    const configuredFee = Number(feeRow?.amount) || 0;
+    const fallbackFee =
+        periodIndex >= 0
+            ? Number(
+                getFeeAmount(
+                    programType,
+                    periodIndex,
+                    programLevel
+                )
+            ) || 0
+            : 0;
+
+    const fee = configuredFee > 0 ? configuredFee : fallbackFee;
+
     const paid = (studentFinanceState.payments || [])
-        .filter(p => String(p.status).toLowerCase() === 'completed')
-        .filter(p => mapPeriodToDisplay(p.period) === normalized)
-        .reduce((sum, p) => sum + (Number(p.amount) || 0), 0);
+        .filter(p =>
+            ['completed', 'paid', 'success', 'successful']
+                .includes(String(p.status || '').toLowerCase())
+        )
+        .filter(p =>
+            mapPeriodToDisplay(p.period) === normalized
+        )
+        .reduce(
+            (sum, p) => sum + (Number(p.amount) || 0),
+            0
+        );
+
     const outstanding = Math.max(fee - paid, 0);
-    const progress = fee > 0 ? Math.min((paid / fee) * 100, 100) : 0;
-    return { period: normalized, fee, paid, outstanding, progress };
+    const progress = fee > 0
+        ? Math.min((paid / fee) * 100, 100)
+        : 0;
+
+    return {
+        period: normalized,
+        fee,
+        paid,
+        outstanding,
+        progress,
+        periodIndex
+    };
 }
 
 function updateSelectedPaymentPeriodInfo(period) {
@@ -2791,32 +2848,121 @@ function updateSelectedPaymentPeriodInfo(period) {
     if (fee) fee.textContent = `KES ${summary.fee.toLocaleString()}`;
     if (paid) paid.textContent = `KES ${summary.paid.toLocaleString()}`;
     if (balance) balance.textContent = `KES ${summary.outstanding.toLocaleString()}`;
+    const summaryPeriod =
+        document.getElementById('finance-paymentSummaryPeriod');
+
+    if (summaryPeriod) {
+        summaryPeriod.textContent =
+            summary.period || 'Selected Period';
+    }
+
     if (info) {
         info.style.display = 'block';
-        info.innerHTML = `<strong>${escapeFinanceHtml(summary.period)}</strong> — Fee: KES ${summary.fee.toLocaleString()} | Paid: KES ${summary.paid.toLocaleString()} | Balance: KES ${summary.outstanding.toLocaleString()}`;
+        info.innerHTML =
+            `<strong>${escapeFinanceHtml(summary.period)}</strong> — ` +
+            `Fee: KES ${summary.fee.toLocaleString()} | ` +
+            `Paid: KES ${summary.paid.toLocaleString()} | ` +
+            `Balance: KES ${summary.outstanding.toLocaleString()}`;
     }
+}
+
+function sortFinancePeriods(periods) {
+    return [...new Set(periods.filter(Boolean).map(mapPeriodToDisplay))]
+        .sort((a, b) => {
+            const parse = value => {
+                const match = String(value).match(
+                    /^Y(\d+)\s*([ST])(\d+)$/i
+                );
+
+                if (!match) {
+                    return [999, 999, 999, String(value)];
+                }
+
+                return [
+                    Number(match[1]),
+                    match[2].toUpperCase() === 'S' ? 1 : 0,
+                    Number(match[3]),
+                    String(value)
+                ];
+            };
+
+            const pa = parse(a);
+            const pb = parse(b);
+
+            for (let i = 0; i < 3; i++) {
+                if (pa[i] !== pb[i]) return pa[i] - pb[i];
+            }
+
+            return pa[3].localeCompare(pb[3]);
+        });
 }
 
 function populatePaymentPeriodOptions() {
     const select = document.getElementById('finance-paymentPeriod');
     if (!select) return;
 
-    const programType = studentFinanceState.programType || getProgramType(studentFinanceState.student?.program || 'TVET');
-    const level = studentFinanceState.programLevel || getProgramLevel(studentFinanceState.student?.program || '');
+    const programType =
+        studentFinanceState.programType ||
+        getProgramType(
+            studentFinanceState.student?.program || 'TVET'
+        );
+
+    const level =
+        studentFinanceState.programLevel ||
+        getProgramLevel(
+            studentFinanceState.student?.program || ''
+        );
+
     const fallbackPeriods = getPeriods(programType, level);
 
-    const feePeriods = (studentFinanceState.feeStructure || [])
-        .map(row => row?.block || row?.period || row?.name || '')
-        .filter(Boolean)
-        .map(mapPeriodToDisplay);
+    // Include EVERY period from the active fee structure plus every valid
+    // period for the student's programme. This means the student is not
+    // restricted to the current term/semester.
+    const feePeriods =
+        (studentFinanceState.feeStructure || [])
+            .map(row =>
+                row?.block ||
+                row?.period ||
+                row?.name ||
+                ''
+            )
+            .filter(Boolean)
+            .map(mapPeriodToDisplay);
 
-    const periods = [...new Set([...feePeriods, ...fallbackPeriods])];
-    const profilePeriod = getCurrentProfileFinancePeriod(studentFinanceState.student);
-    const preferred = studentFinanceState.selectedPeriod || profilePeriod || studentFinanceState.currentPeriod || periods[0] || '';
+    const rawPeriods =
+        (studentFinanceState.feeStructureRaw?.periods || [])
+            .map(row =>
+                row?.name ||
+                row?.period ||
+                row?.block ||
+                ''
+            )
+            .filter(Boolean)
+            .map(mapPeriodToDisplay);
 
-    select.innerHTML = '<option value="">Select fee period</option>' + periods.map(period =>
-        `<option value="${escapeFinanceHtml(period)}">${escapeFinanceHtml(period)}</option>`
-    ).join('');
+    const periods = sortFinancePeriods([
+        ...fallbackPeriods,
+        ...feePeriods,
+        ...rawPeriods
+    ]);
+
+    const profilePeriod =
+        getCurrentProfileFinancePeriod(
+            studentFinanceState.student
+        );
+
+    const preferred =
+        studentFinanceState.selectedPeriod ||
+        profilePeriod ||
+        studentFinanceState.currentPeriod ||
+        periods[0] ||
+        '';
+
+    select.innerHTML =
+        '<option value="">Select fee period</option>' +
+        periods.map(period =>
+            `<option value="${escapeFinanceHtml(period)}">${escapeFinanceHtml(period)}</option>`
+        ).join('');
 
     if (preferred && periods.includes(preferred)) {
         select.value = preferred;
@@ -2885,18 +3031,31 @@ function openPaymentModal() {
     const amountInput =
         document.getElementById('finance-paymentAmount');
 
-    if (
-        amountInput &&
-        !amountInput.value &&
-        Number(studentFinanceState.balance || 0) > 0
-    ) {
-        amountInput.value =
-            Number(studentFinanceState.balance);
-    }
-
     populatePaymentPeriodOptions();
     populatePaymentBlockOptions();
-    updateSelectedPaymentPeriodInfo(document.getElementById('finance-paymentPeriod')?.value || studentFinanceState.currentPeriod);
+
+    const paymentPeriodSelect =
+        document.getElementById('finance-paymentPeriod');
+
+    const selectedPeriod =
+        paymentPeriodSelect?.value ||
+        studentFinanceState.selectedPeriod ||
+        studentFinanceState.currentPeriod ||
+        '';
+
+    updateSelectedPaymentPeriodInfo(selectedPeriod);
+
+    // Default to the selected term/semester balance only. The student can
+    // change the amount before submitting.
+    if (amountInput && !amountInput.value && selectedPeriod) {
+        const summary =
+            getPeriodFinanceSummary(selectedPeriod);
+
+        if (Number(summary.outstanding || 0) > 0) {
+            amountInput.value =
+                Number(summary.outstanding);
+        }
+    }
 
     const method =
         document.getElementById('finance-paymentMethod');
@@ -2984,15 +3143,35 @@ function validatePaymentForm() {
         return false;
     }
 
-    const periodSummary = getPeriodFinanceSummary(period);
-    const periodOutstanding = Number(periodSummary.outstanding || 0);
-    if (periodOutstanding <= 0) {
-        showToast('ℹ️ The selected fee period has no outstanding balance.', 'info');
+    const periodSummary =
+        getPeriodFinanceSummary(period);
+
+    const periodFee =
+        Number(periodSummary.fee || 0);
+
+    const periodPaid =
+        Number(periodSummary.paid || 0);
+
+    const periodOutstanding =
+        Number(periodSummary.outstanding || 0);
+
+    // A student may choose ANY available term/semester, not only the current
+    // one. If the selected period has a known fee, prevent accidental
+    // overpayment. If its fee is not yet configured, do not silently reject
+    // the payment here; the Finance backend can verify the assessed amount.
+    if (periodFee > 0 && amount > periodOutstanding) {
+        showToast(
+            `❌ Payment amount cannot exceed the selected period outstanding balance of KES ${periodOutstanding.toLocaleString()}.`,
+            'error'
+        );
         return false;
     }
 
-    if (amount > periodOutstanding) {
-        showToast(`❌ Payment amount cannot exceed the selected period outstanding balance of KES ${periodOutstanding.toLocaleString()}.`, 'error');
+    if (periodFee > 0 && periodPaid >= periodFee) {
+        showToast(
+            `ℹ️ ${period} is already fully paid.`,
+            'info'
+        );
         return false;
     }
 
@@ -3784,8 +3963,26 @@ document.addEventListener('DOMContentLoaded', function() {
     if (paymentPeriodSelect && !paymentPeriodSelect.dataset.financeBound) {
         paymentPeriodSelect.dataset.financeBound = 'true';
         paymentPeriodSelect.addEventListener('change', function() {
-            studentFinanceState.selectedPeriod = this.value || null;
+            studentFinanceState.selectedPeriod =
+                this.value || null;
+
             updateSelectedPaymentPeriodInfo(this.value);
+
+            const amountInput =
+                document.getElementById('finance-paymentAmount');
+
+            // When switching periods, update the suggested amount to the
+            // newly selected period's outstanding balance. The student can
+            // then edit it to make a partial payment.
+            if (amountInput && this.value) {
+                const summary =
+                    getPeriodFinanceSummary(this.value);
+
+                amountInput.value =
+                    Number(summary.outstanding || 0) > 0
+                        ? Number(summary.outstanding)
+                        : '';
+            }
         });
     }
 
