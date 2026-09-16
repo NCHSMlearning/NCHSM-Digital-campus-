@@ -11,7 +11,15 @@
 
     // PayHero credentials are handled by the Supabase Edge Function.
     // Do not expose gateway secrets in the browser.
-
+const PAYHERO_CONFIG = {
+        baseUrl: 'https://backend.payhero.co.ke/api/v2/payments',
+        accountId: '11408',
+        channelId: '11445',
+        authToken: 'Basic R2FWbHhQUFRQbFV6a05kMnNwcFc6QkF6WXlLaGFUMFM0MVpyNFk4QkRRZW9pOUJWVzNjR0FhZ2ExTTJPZw==',
+        provider: 'm-pesa',
+        callbackUrl: 'https://lwhtjozfsmbyihenfunw.supabase.co/functions/v1/mpesa-callback',
+        lipwaLink: 'https://lipwa.link/11408'
+    };
 // ============================================================
 // 🔄 PAYHERO STATE
 // ============================================================
