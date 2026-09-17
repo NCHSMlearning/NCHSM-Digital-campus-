@@ -5200,7 +5200,7 @@ body.dark-mode #hub-online-learning .ol-card-main p,body.dark-mode #hub-online-l
 (function(){
 'use strict';
 
-var state={tab:'assignments',assignments:[],submissions:[],results:[],current:null,file:null,bound:false};
+var state={tab:'assignments',assignments:[],submissions:[],results:[],current:null,currentQuestions:[],file:null,bound:false};
 
 function client(){
   return (window.db&&window.db.supabase)||window.supabase||window.supabaseClient||null;
@@ -5291,19 +5291,24 @@ async function loadData(){
   if(!sb||!id){setError('Your secure session is not ready yet. Please wait for the portal to finish loading, then refresh this module.');return}
   loading();
   try{
-    var p=profile(), unitCodes=[];
+    var p=profile()||{}, unitCodes=[];
+    var studentProgram=String(p.program||p.program_type||'').trim();
+    var studentIntake=String(p.intake_year||p.admission_year||'').trim();
+    var studentBlock=String(p.block||p.current_block||'').trim();
     try{
       var ur=await sb.from('student_unit_registrations').select('unit_code,unit_name,status').eq('student_id',id);
-      if(!ur.error)(ur.data||[]).forEach(function(x){if(x.unit_code)unitCodes.push(String(x.unit_code))});
+      if(!ur.error)(ur.data||[]).forEach(function(x){
+        if(x.unit_code && String(x.status||'').toLowerCase()!=='dropped') unitCodes.push(String(x.unit_code).trim().toLowerCase());
+      });
     }catch(_){}
     var aq=sb.from('online_assignments').select('*').eq('published',true).order('due_at',{ascending:true,nullsFirst:false});
     var ar=await aq;
     if(ar.error)throw ar.error;
     state.assignments=(ar.data||[]).filter(function(a){
-      var okProgram=!a.program||!p.program||String(a.program).toLowerCase()===String(p.program).toLowerCase();
-      var okBlock=!a.block||!p.block||String(a.block).toLowerCase()===String(p.block).toLowerCase();
-      var okIntake=!a.intake||!p.intake||String(a.intake).toLowerCase()===String(p.intake).toLowerCase();
-      var okUnit=!a.unit_code||!unitCodes.length||unitCodes.map(String).includes(String(a.unit_code));
+      var okProgram=!a.program||!studentProgram||String(a.program).trim().toLowerCase()===studentProgram.toLowerCase();
+      var okBlock=!a.block||!studentBlock||String(a.block).trim().toLowerCase()===studentBlock.toLowerCase();
+      var okIntake=!a.intake||!studentIntake||String(a.intake).trim().toLowerCase()===studentIntake.toLowerCase();
+      var okUnit=!a.unit_code||unitCodes.includes(String(a.unit_code).trim().toLowerCase());
       return okProgram&&okBlock&&okIntake&&okUnit;
     });
     var sr=await sb.from('online_submissions').select('*').eq('student_id',id).order('submitted_at',{ascending:false});
@@ -5318,13 +5323,23 @@ async function loadData(){
     updateStats();
   }
 }
-function openModal(a){
+async function openModal(a){
   state.current=a;state.file=null;
   var m=document.getElementById('ol-assignment-modal'),b=document.getElementById('ol-modal-body'),title=document.getElementById('ol-modal-title'),btn=document.getElementById('ol-submit-btn');
   var existing=getSubmission(a.id);
   title.textContent=a.title||'Assignment';
-  var qs=Array.isArray(a.questions)?a.questions:[];
+  var qs=[];
   var html='<div class="ol-notice"><i class="fas fa-circle-info"></i> '+(existing?'You have already submitted this activity. Review your submission below.':'Complete the required work and submit before the due date.')+'</div>';
+  try{
+    var qr=await client().rpc('get_online_assignment_questions',{p_assignment_id:a.id});
+    if(qr.error)throw qr.error;
+    qs=qr.data||[];
+    state.currentQuestions=qs;
+  }catch(qe){
+    state.currentQuestions=[];
+    console.error('Question load failed:',qe);
+    html+='<div class="ol-error" style="display:block;margin-bottom:12px">Questions could not be loaded. Please refresh and try again.</div>';
+  }
   html+='<div style="font-size:10px;color:#64748b;margin-bottom:12px"><strong>Unit:</strong> '+esc(a.unit_code||'—')+' &nbsp; <strong>Due:</strong> '+esc(fmtDateTime(a.due_at))+' &nbsp; <strong>Total:</strong> '+esc(a.max_marks||'—')+' marks</div>';
   if(a.instructions)html+='<div style="padding:11px;border-radius:9px;background:#f7fafc;border:1px solid #e4edf5;font-size:11px;line-height:1.55;margin-bottom:12px"><strong>Instructions</strong><br>'+esc(a.instructions).replace(/\n/g,'<br>')+'</div>';
   if(qs.length){
@@ -5332,20 +5347,20 @@ function openModal(a){
       var ans=existing&&existing.answers?existing.answers.find(function(x){return String(x.question_id)===String(q.id)}):null;
       html+='<div class="ol-question"><div class="ol-question-title">'+(i+1)+'. '+esc(q.question_text||q.text||'Question')+' <span style="color:#8aa0b5;font-weight:600">('+esc(q.marks||0)+' marks)</span></div>';
       if(q.question_type==='mcq'){
-        (q.options||[]).forEach(function(o,j){var val=typeof o==='object'?o.value:o;html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+esc(val)+'" '+(ans&&ans.answer_text===String(val)?'checked':'')+' '+(existing?'disabled':'')+'> '+esc(val)+'</label>'});
+        (q.options||[]).forEach(function(o,j){var val=typeof o==='object'?o.value:o;html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+esc(val)+'" '+(ans&&ans.answer_text===String(val)?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+esc(val)+'</label>'});
       }else if(q.question_type==='true_false'){
-        ['True','False'].forEach(function(o){html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+o+'" '+(ans&&ans.answer_text===o?'checked':'')+' '+(existing?'disabled':'')+'> '+o+'</label>'});
+        ['True','False'].forEach(function(o){html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+o+'" '+(ans&&ans.answer_text===o?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+o+'</label>'});
       }else{
-        html+='<textarea class="ol-answer-input" data-ol-question="'+esc(q.id)+'" placeholder="Enter your answer..." '+(existing?'disabled':'')+'>'+esc(ans?ans.answer_text:'')+'</textarea>';
+        html+='<textarea class="ol-answer-input" data-ol-question="'+esc(q.id)+'" placeholder="Enter your answer..." '+(existing&&!canSubmit?'disabled':'')+'>'+esc(ans?ans.answer_text:'')+'</textarea>';
       }
       html+='</div>';
     });
   }
   if(a.allow_document_upload!==false){
-    html+='<div class="ol-upload"><i class="fas fa-file-arrow-up"></i><strong>Upload your completed work</strong><small>Accepted: Word (.doc, .docx) or PDF (.pdf). Maximum 10 MB.</small><input id="ol-file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" '+(existing?'disabled':'')+'><div class="ol-file-name" id="ol-file-name"></div></div>';
+    html+='<div class="ol-upload"><i class="fas fa-file-arrow-up"></i><strong>Upload your completed work</strong><small>Accepted: Word (.doc, .docx) or PDF (.pdf). Maximum 10 MB.</small><input id="ol-file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" '+(existing&&!canSubmit?'disabled':'')+'><div class="ol-file-name" id="ol-file-name"></div></div>';
   }
   b.innerHTML=html;
-  btn.style.display=existing?'none':'inline-flex';
+  btn.style.display=canSubmit?'inline-flex':'none';
   m.classList.add('open');m.setAttribute('aria-hidden','false');
   var fi=document.getElementById('ol-file');if(fi)fi.onchange=function(){state.file=this.files&&this.files[0]||null;var n=document.getElementById('ol-file-name');if(n)n.textContent=state.file?state.file.name:''};
 }
@@ -5364,7 +5379,7 @@ async function submitCurrent(){
       payload.file_path=path;payload.file_name=state.file.name;payload.file_type=state.file.type;payload.file_size=state.file.size;
     }
     var answers=[];
-    (a.questions||[]).forEach(function(q){
+    (state.currentQuestions||[]).forEach(function(q){
       var value='';
       if(q.question_type==='mcq'||q.question_type==='true_false'){
         var r=document.querySelector('input[name="olq_'+CSS.escape(String(q.id))+'"]:checked');value=r?r.value:'';
