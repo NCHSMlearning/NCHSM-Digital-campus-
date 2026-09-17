@@ -3782,7 +3782,7 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 
             <button
                 class="action-btn refresh"
-                data-legacy-id="refresh-courses-btn"
+                data-legacy-id="refresh-courses-btn-secondary"
                 id="refresh-courses-btn-secondary"
                 type="button"
                 style="
@@ -5045,15 +5045,68 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 @media(max-width:1050px){#hub-register .nchsm-reg-summary{grid-template-columns:repeat(3,1fr)}#hub-register .nchsm-filter-grid{grid-template-columns:1fr 1fr}.nchsm-search-field{grid-column:1/-1}}
 @media(max-width:700px){#hub-register{padding:12px!important}.nchsm-reg-hero{flex-direction:column;align-items:flex-start!important;padding:19px!important}.nchsm-reg-hero-brand{width:100%;margin-left:0!important;justify-content:space-between}.nchsm-reg-motto{display:none}.nchsm-reg-status{min-width:0;flex:1}.nchsm-reg-summary{grid-template-columns:1fr 1fr!important}.nchsm-reg-stat{min-height:72px;padding:10px}.nchsm-reg-stat strong{font-size:20px}.nchsm-explainer-grid{grid-template-columns:1fr!important}.nchsm-explainer-head{align-items:flex-start;flex-direction:column}.nchsm-program-pill{align-self:flex-start}.nchsm-reg-tabs .reg-sub-tab{padding:11px 7px!important;font-size:11px!important}.nchsm-filter-grid{grid-template-columns:1fr!important}.nchsm-search-field{grid-column:auto}.nchsm-filter-actions{display:grid!important;grid-template-columns:1fr 1fr}.nchsm-btn{padding:10px 8px}.nchsm-reg-closed-banner{align-items:flex-start}.nchsm-admin-controlled{display:none}}
 </style>
+
+<style id="nchsm-online-learning-css">
+.nchsm-ol-shell{padding:18px;max-width:1200px;margin:0 auto;color:#14243d}.nchsm-ol-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:24px;border-radius:16px;background:linear-gradient(135deg,#062f55,#0a4a7b);color:#fff;box-shadow:0 10px 28px rgba(6,47,85,.16)}.nchsm-ol-eyebrow{font-size:10px;font-weight:800;letter-spacing:1px;color:#ffd36a}.nchsm-ol-hero h2{margin:7px 0 5px;font-size:26px}.nchsm-ol-hero p{margin:0;max-width:760px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.88)}.nchsm-ol-hero-stat{min-width:90px;height:90px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22)}.nchsm-ol-hero-stat strong{font-size:25px}.nchsm-ol-hero-stat span{font-size:10px;opacity:.8}.nchsm-ol-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0}.nchsm-ol-tabs button{border:1px solid #dbe7f1;background:#fff;color:#45627f;border-radius:9px;padding:10px 13px;font-size:11px;font-weight:800;cursor:pointer}.nchsm-ol-tabs button.active{background:#0875dc;color:#fff;border-color:#0875dc}.nchsm-ol-view{min-width:0}.nchsm-ol-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 12px}.nchsm-ol-toolbar strong{display:block;font-size:15px}.nchsm-ol-toolbar span{display:block;color:#66809e;font-size:11px;margin-top:3px}.nchsm-ol-toolbar button{border:1px solid #cfe0ef;background:#fff;color:#0875dc;border-radius:8px;padding:8px 11px;font-size:11px;font-weight:800;cursor:pointer}.nchsm-ol-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.nchsm-ol-card,.nchsm-ol-list-item{background:#fff;border:1px solid #dbe7f1;border-radius:13px;box-shadow:0 3px 12px rgba(25,63,97,.05)}.nchsm-ol-card{padding:15px}.nchsm-ol-card-top{display:flex;justify-content:space-between;gap:10px}.nchsm-ol-type{font-size:9px;font-weight:800;text-transform:uppercase;color:#0875dc;background:#eaf5ff;border-radius:20px;padding:5px 8px}.nchsm-ol-type.case{color:#9a5b00;background:#fff2d5}.nchsm-ol-card h3{font-size:14px;margin:10px 0 5px}.nchsm-ol-card p{font-size:11px;color:#66809e;line-height:1.55;margin:0 0 10px}.nchsm-ol-meta{display:flex;gap:7px;flex-wrap:wrap;color:#58728d;font-size:10px;margin-bottom:12px}.nchsm-ol-meta span{background:#f5f8fb;border-radius:6px;padding:5px 7px}.nchsm-ol-card button{width:100%;border:0;border-radius:8px;background:#0875dc;color:#fff;padding:9px;font-size:11px;font-weight:800;cursor:pointer}.nchsm-ol-empty,.nchsm-ol-state{padding:30px;text-align:center;color:#71869d;background:#fff;border:1px dashed #cbd9e6;border-radius:12px}.nchsm-ol-state{margin:10px 0}.nchsm-ol-error{color:#a32929;background:#fff5f5;border-color:#f1b8b8}.nchsm-ol-list{display:grid;gap:9px}.nchsm-ol-list-item{padding:13px;display:flex;justify-content:space-between;align-items:center;gap:12px}.nchsm-ol-list-item strong{font-size:12px}.nchsm-ol-list-item small{display:block;color:#66809e;margin-top:3px;font-size:10px}.nchsm-ol-score{font-size:18px;font-weight:900;color:#0875dc;text-align:right}.nchsm-ol-score small{font-size:9px;font-weight:700}.nchsm-ol-status{font-size:9px;font-weight:800;border-radius:20px;padding:5px 8px;background:#e9f8ef;color:#087a43}.nchsm-ol-status.review{background:#fff4dc;color:#9a5b00}.nchsm-ol-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:15px}.nchsm-ol-modal[hidden]{display:none}.nchsm-ol-modal-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.62)}.nchsm-ol-modal-card{position:relative;z-index:1;width:min(820px,100%);max-height:92vh;overflow:auto;background:#f7fafc;border-radius:16px;box-shadow:0 25px 80px rgba(0,0,0,.28)}.nchsm-ol-modal-head{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;gap:15px;padding:16px 18px;background:#fff;border-bottom:1px solid #e2e8f0}.nchsm-ol-modal-head span{font-size:9px;text-transform:uppercase;color:#0875dc;font-weight:800}.nchsm-ol-modal-head h3{margin:4px 0;font-size:18px}.nchsm-ol-modal-head small{color:#66809e;font-size:10px}.nchsm-ol-modal-head button{width:34px;height:34px;border:0;border-radius:8px;background:#f1f5f9;color:#64748b;cursor:pointer}.nchsm-ol-instructions{margin:14px 18px;padding:12px;border-left:3px solid #0875dc;background:#eef7ff;border-radius:8px;color:#45627f;font-size:11px;line-height:1.6}.nchsm-ol-question{margin:10px 18px;padding:14px;background:#fff;border:1px solid #dbe7f1;border-radius:11px}.nchsm-ol-question h4{margin:0 0 10px;font-size:12px;line-height:1.5}.nchsm-ol-option{display:flex;gap:8px;align-items:flex-start;margin:7px 0;font-size:11px;color:#334b68}.nchsm-ol-option input{margin-top:2px}.nchsm-ol-answer{width:100%;border:1px solid #cbd9e6;border-radius:8px;padding:9px;resize:vertical;font-size:11px;outline:none}.nchsm-ol-textarea-label{display:block;margin:10px 18px;font-size:11px;font-weight:800;color:#334b68}.nchsm-ol-textarea-label textarea{display:block;width:100%;margin-top:6px;box-sizing:border-box;border:1px solid #cbd9e6;border-radius:9px;padding:10px;resize:vertical}.nchsm-ol-auto-note{display:flex;gap:10px;margin:12px 18px;padding:11px;border-radius:9px;background:#f0fdf7;border:1px solid #b7ead0;color:#166534}.nchsm-ol-auto-note i{font-size:18px;margin-top:2px}.nchsm-ol-auto-note strong,.nchsm-ol-auto-note span{display:block}.nchsm-ol-auto-note strong{font-size:11px}.nchsm-ol-auto-note span{font-size:10px;line-height:1.5;margin-top:3px}.nchsm-ol-modal-actions{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;background:#fff;border-top:1px solid #e2e8f0;position:sticky;bottom:0}.nchsm-ol-modal-actions button{border:0;border-radius:8px;padding:10px 15px;font-size:11px;font-weight:800;cursor:pointer}.nchsm-ol-modal-actions .secondary{background:#edf2f7;color:#45627f}.nchsm-ol-modal-actions .primary{background:#0875dc;color:#fff}.nchsm-ol-result-detail{margin-top:8px;font-size:10px;color:#66809e}.nchsm-ol-result-detail b{color:#18304d}@media(max-width:760px){.nchsm-ol-shell{padding:10px}.nchsm-ol-hero{padding:18px;align-items:flex-start}.nchsm-ol-hero h2{font-size:21px}.nchsm-ol-hero-stat{min-width:68px;width:68px;height:68px}.nchsm-ol-grid{grid-template-columns:1fr}.nchsm-ol-tabs{display:grid;grid-template-columns:1fr 1fr}.nchsm-ol-tabs button{padding:9px 6px}.nchsm-ol-toolbar{align-items:flex-start}.nchsm-ol-list-item{align-items:flex-start}.nchsm-ol-modal{padding:7px}.nchsm-ol-modal-card{max-height:96vh}.nchsm-ol-question,.nchsm-ol-instructions,.nchsm-ol-textarea-label,.nchsm-ol-auto-note{margin-left:10px;margin-right:10px}}
+</style>
 <!-- ==================== HUB ONLINE LEARNING TAB ==================== -->
-<section class="tab-content" hidden="" id="hub-online-learning">
-<div class="online-learning-container" style="text-align: center; padding: 60px 20px;">
-<i class="fas fa-video" style="font-size: 64px; color: #4f46e5; margin-bottom: 20px;"></i>
-<h2>Online Learning</h2>
-<p>Video lessons, quizzes, and study materials coming soon...</p>
-<div style="width: 300px; height: 8px; background: #e5e7eb; border-radius: 4px; margin: 20px auto;"><div style="width: 45%; height: 100%; background: #4f46e5; border-radius: 4px;"></div></div>
-<p style="color: #6b7280;">Development in progress - 45% complete</p>
-</div>
+<section class="tab-content" hidden id="hub-online-learning">
+  <div class="nchsm-ol-shell">
+    <div class="nchsm-ol-hero">
+      <div>
+        <span class="nchsm-ol-eyebrow"><i class="fas fa-graduation-cap"></i> NCHSM ONLINE LEARNING</span>
+        <h2>Assignments &amp; Case Studies</h2>
+        <p>Complete lecturer-issued work, submit your answers, and receive automatic results where the assessment is structured for auto-marking.</p>
+      </div>
+      <div class="nchsm-ol-hero-stat"><strong id="ol-pending-count">0</strong><span>Pending</span></div>
+    </div>
+
+    <div class="nchsm-ol-tabs" role="tablist" aria-label="Online learning views">
+      <button class="active" data-ol-view="assigned" type="button"><i class="fas fa-tasks"></i> Assigned Work</button>
+      <button data-ol-view="case-studies" type="button"><i class="fas fa-stethoscope"></i> Case Studies</button>
+      <button data-ol-view="submissions" type="button"><i class="fas fa-paper-plane"></i> My Submissions</button>
+      <button data-ol-view="results" type="button"><i class="fas fa-chart-line"></i> Results</button>
+    </div>
+
+    <div id="ol-loading" class="nchsm-ol-state"><i class="fas fa-spinner fa-spin"></i><span>Loading your learning activities...</span></div>
+    <div id="ol-error" class="nchsm-ol-state nchsm-ol-error" hidden></div>
+
+    <div id="ol-view-assigned" class="nchsm-ol-view">
+      <div class="nchsm-ol-toolbar"><div><strong>Current Assignments</strong><span>Work assigned to your programme/block</span></div><button id="ol-refresh-btn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div>
+      <div id="ol-assignment-list" class="nchsm-ol-grid"></div>
+    </div>
+
+    <div id="ol-view-case-studies" class="nchsm-ol-view" hidden>
+      <div class="nchsm-ol-toolbar"><div><strong>Clinical Case Studies</strong><span>Apply nursing knowledge to structured cases</span></div></div>
+      <div id="ol-case-list" class="nchsm-ol-grid"></div>
+    </div>
+
+    <div id="ol-view-submissions" class="nchsm-ol-view" hidden>
+      <div class="nchsm-ol-toolbar"><div><strong>My Submissions</strong><span>Your submitted assignments and case studies</span></div></div>
+      <div id="ol-submission-list" class="nchsm-ol-list"></div>
+    </div>
+
+    <div id="ol-view-results" class="nchsm-ol-view" hidden>
+      <div class="nchsm-ol-toolbar"><div><strong>Automatic Results</strong><span>Scores released after submission</span></div></div>
+      <div id="ol-results-list" class="nchsm-ol-list"></div>
+    </div>
+
+    <div id="ol-assessment-panel" class="nchsm-ol-modal" hidden aria-hidden="true">
+      <div class="nchsm-ol-modal-backdrop" data-ol-close></div>
+      <div class="nchsm-ol-modal-card" role="dialog" aria-modal="true" aria-labelledby="ol-modal-title">
+        <div class="nchsm-ol-modal-head"><div><span id="ol-modal-type">Assignment</span><h3 id="ol-modal-title">Assessment</h3><small id="ol-modal-meta"></small></div><button type="button" data-ol-close aria-label="Close"><i class="fas fa-times"></i></button></div>
+        <div id="ol-modal-instructions" class="nchsm-ol-instructions"></div>
+        <form id="ol-assessment-form">
+          <div id="ol-question-list"></div>
+          <label class="nchsm-ol-textarea-label">Additional submission / reflection (optional)
+            <textarea id="ol-submission-text" rows="5" maxlength="12000" placeholder="Add any required explanation, reflection, or supporting response..."></textarea>
+          </label>
+          <div class="nchsm-ol-auto-note"><i class="fas fa-robot"></i><div><strong>Automatic marking</strong><span>Multiple-choice and true/false items are marked exactly. Structured short-answer and case-study items can receive partial marks from lecturer-defined answer keywords/rubrics. Open-ended/file-only work is flagged for lecturer review.</span></div></div>
+          <div class="nchsm-ol-modal-actions"><button type="button" class="secondary" data-ol-close>Cancel</button><button type="submit" class="primary" id="ol-submit-btn"><i class="fas fa-paper-plane"></i> Submit Work</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
 </section>
 <!-- END HUB ONLINE LEARNING -->
 <!-- ==================== HUB EXAM CARD TAB ==================== -->
@@ -10590,6 +10643,7 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 <script src="/js/cleanup.js"></script>
 <script src="/js/chatbot.js"></script>
 <script src="/js/student-blog.js"></script>
+<script src="/js/online-learning.js"></script>
 <!-- ============================================================ -->
 <!-- MAIN NAVIGATION HANDLER                                      -->
 <!-- ============================================================ -->
@@ -10636,8 +10690,8 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
         
         localStorage.setItem('nchsm_current_tab', tabId);
         try {
-            const nextHash = '#' + encodeURIComponent(tabId);
-            if (window.location.hash !== nextHash) window.history.replaceState(null, '', nextHash);
+            const nextUrl = (tabId && tabId !== 'dashboard') ? '/student/' + encodeURIComponent(tabId) : '/student';
+            if (window.location.pathname !== nextUrl) window.history.replaceState({ tab: tabId }, '', nextUrl);
         } catch (_) {}
         
         setTimeout(() => {
@@ -10650,6 +10704,7 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
             else if (tabId === 'dashboard' && window.dashboardModule?.refreshAll) window.dashboardModule.refreshAll();
             else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
             else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
+            else if (tabId === 'hub-online-learning' && window.onlineLearningModule?.load) window.onlineLearningModule.load();
             else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
             else if (tabId === 'finance' && typeof loadStudentFinance === 'function') {
                 setTimeout(loadStudentFinance, 300);
@@ -10757,7 +10812,11 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
     function getInitialTab() {
         const allowed = new Set(Array.from(document.querySelectorAll('.tab-content')).map(el => el.id));
         let candidate = '';
-        try { candidate = decodeURIComponent((window.location.hash || '').replace(/^#/, '')); } catch (_) {}
+        try {
+            const path = (window.location.pathname || '').replace(/\/+$/, '');
+            if (path.startsWith('/student/')) candidate = decodeURIComponent(path.replace(/^\/student\//, ''));
+            else if (path === '/student') candidate = 'dashboard';
+        } catch (_) {}
         if (!candidate) { try { candidate = localStorage.getItem('nchsm_current_tab') || ''; } catch (_) {} }
         return allowed.has(candidate) ? candidate : 'dashboard';
     }
