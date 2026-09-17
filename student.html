@@ -3782,7 +3782,7 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 
             <button
                 class="action-btn refresh"
-                data-legacy-id="refresh-courses-btn-secondary"
+                data-legacy-id="refresh-courses-btn"
                 id="refresh-courses-btn-secondary"
                 type="button"
                 style="
@@ -5045,70 +5045,377 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 @media(max-width:1050px){#hub-register .nchsm-reg-summary{grid-template-columns:repeat(3,1fr)}#hub-register .nchsm-filter-grid{grid-template-columns:1fr 1fr}.nchsm-search-field{grid-column:1/-1}}
 @media(max-width:700px){#hub-register{padding:12px!important}.nchsm-reg-hero{flex-direction:column;align-items:flex-start!important;padding:19px!important}.nchsm-reg-hero-brand{width:100%;margin-left:0!important;justify-content:space-between}.nchsm-reg-motto{display:none}.nchsm-reg-status{min-width:0;flex:1}.nchsm-reg-summary{grid-template-columns:1fr 1fr!important}.nchsm-reg-stat{min-height:72px;padding:10px}.nchsm-reg-stat strong{font-size:20px}.nchsm-explainer-grid{grid-template-columns:1fr!important}.nchsm-explainer-head{align-items:flex-start;flex-direction:column}.nchsm-program-pill{align-self:flex-start}.nchsm-reg-tabs .reg-sub-tab{padding:11px 7px!important;font-size:11px!important}.nchsm-filter-grid{grid-template-columns:1fr!important}.nchsm-search-field{grid-column:auto}.nchsm-filter-actions{display:grid!important;grid-template-columns:1fr 1fr}.nchsm-btn{padding:10px 8px}.nchsm-reg-closed-banner{align-items:flex-start}.nchsm-admin-controlled{display:none}}
 </style>
-
-<style id="nchsm-online-learning-css">
-.nchsm-ol-shell{padding:18px;max-width:1200px;margin:0 auto;color:#14243d}.nchsm-ol-hero{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:24px;border-radius:16px;background:linear-gradient(135deg,#062f55,#0a4a7b);color:#fff;box-shadow:0 10px 28px rgba(6,47,85,.16)}.nchsm-ol-eyebrow{font-size:10px;font-weight:800;letter-spacing:1px;color:#ffd36a}.nchsm-ol-hero h2{margin:7px 0 5px;font-size:26px}.nchsm-ol-hero p{margin:0;max-width:760px;font-size:13px;line-height:1.6;color:rgba(255,255,255,.88)}.nchsm-ol-hero-stat{min-width:90px;height:90px;border-radius:50%;display:flex;flex-direction:column;align-items:center;justify-content:center;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.22)}.nchsm-ol-hero-stat strong{font-size:25px}.nchsm-ol-hero-stat span{font-size:10px;opacity:.8}.nchsm-ol-tabs{display:flex;gap:7px;flex-wrap:wrap;margin:14px 0}.nchsm-ol-tabs button{border:1px solid #dbe7f1;background:#fff;color:#45627f;border-radius:9px;padding:10px 13px;font-size:11px;font-weight:800;cursor:pointer}.nchsm-ol-tabs button.active{background:#0875dc;color:#fff;border-color:#0875dc}.nchsm-ol-view{min-width:0}.nchsm-ol-toolbar{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:8px 0 12px}.nchsm-ol-toolbar strong{display:block;font-size:15px}.nchsm-ol-toolbar span{display:block;color:#66809e;font-size:11px;margin-top:3px}.nchsm-ol-toolbar button{border:1px solid #cfe0ef;background:#fff;color:#0875dc;border-radius:8px;padding:8px 11px;font-size:11px;font-weight:800;cursor:pointer}.nchsm-ol-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.nchsm-ol-card,.nchsm-ol-list-item{background:#fff;border:1px solid #dbe7f1;border-radius:13px;box-shadow:0 3px 12px rgba(25,63,97,.05)}.nchsm-ol-card{padding:15px}.nchsm-ol-card-top{display:flex;justify-content:space-between;gap:10px}.nchsm-ol-type{font-size:9px;font-weight:800;text-transform:uppercase;color:#0875dc;background:#eaf5ff;border-radius:20px;padding:5px 8px}.nchsm-ol-type.case{color:#9a5b00;background:#fff2d5}.nchsm-ol-card h3{font-size:14px;margin:10px 0 5px}.nchsm-ol-card p{font-size:11px;color:#66809e;line-height:1.55;margin:0 0 10px}.nchsm-ol-meta{display:flex;gap:7px;flex-wrap:wrap;color:#58728d;font-size:10px;margin-bottom:12px}.nchsm-ol-meta span{background:#f5f8fb;border-radius:6px;padding:5px 7px}.nchsm-ol-card button{width:100%;border:0;border-radius:8px;background:#0875dc;color:#fff;padding:9px;font-size:11px;font-weight:800;cursor:pointer}.nchsm-ol-empty,.nchsm-ol-state{padding:30px;text-align:center;color:#71869d;background:#fff;border:1px dashed #cbd9e6;border-radius:12px}.nchsm-ol-state{margin:10px 0}.nchsm-ol-error{color:#a32929;background:#fff5f5;border-color:#f1b8b8}.nchsm-ol-list{display:grid;gap:9px}.nchsm-ol-list-item{padding:13px;display:flex;justify-content:space-between;align-items:center;gap:12px}.nchsm-ol-list-item strong{font-size:12px}.nchsm-ol-list-item small{display:block;color:#66809e;margin-top:3px;font-size:10px}.nchsm-ol-score{font-size:18px;font-weight:900;color:#0875dc;text-align:right}.nchsm-ol-score small{font-size:9px;font-weight:700}.nchsm-ol-status{font-size:9px;font-weight:800;border-radius:20px;padding:5px 8px;background:#e9f8ef;color:#087a43}.nchsm-ol-status.review{background:#fff4dc;color:#9a5b00}.nchsm-ol-modal{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;padding:15px}.nchsm-ol-modal[hidden]{display:none}.nchsm-ol-modal-backdrop{position:absolute;inset:0;background:rgba(15,23,42,.62)}.nchsm-ol-modal-card{position:relative;z-index:1;width:min(820px,100%);max-height:92vh;overflow:auto;background:#f7fafc;border-radius:16px;box-shadow:0 25px 80px rgba(0,0,0,.28)}.nchsm-ol-modal-head{position:sticky;top:0;z-index:2;display:flex;justify-content:space-between;gap:15px;padding:16px 18px;background:#fff;border-bottom:1px solid #e2e8f0}.nchsm-ol-modal-head span{font-size:9px;text-transform:uppercase;color:#0875dc;font-weight:800}.nchsm-ol-modal-head h3{margin:4px 0;font-size:18px}.nchsm-ol-modal-head small{color:#66809e;font-size:10px}.nchsm-ol-modal-head button{width:34px;height:34px;border:0;border-radius:8px;background:#f1f5f9;color:#64748b;cursor:pointer}.nchsm-ol-instructions{margin:14px 18px;padding:12px;border-left:3px solid #0875dc;background:#eef7ff;border-radius:8px;color:#45627f;font-size:11px;line-height:1.6}.nchsm-ol-question{margin:10px 18px;padding:14px;background:#fff;border:1px solid #dbe7f1;border-radius:11px}.nchsm-ol-question h4{margin:0 0 10px;font-size:12px;line-height:1.5}.nchsm-ol-option{display:flex;gap:8px;align-items:flex-start;margin:7px 0;font-size:11px;color:#334b68}.nchsm-ol-option input{margin-top:2px}.nchsm-ol-answer{width:100%;border:1px solid #cbd9e6;border-radius:8px;padding:9px;resize:vertical;font-size:11px;outline:none}.nchsm-ol-textarea-label{display:block;margin:10px 18px;font-size:11px;font-weight:800;color:#334b68}.nchsm-ol-textarea-label textarea{display:block;width:100%;margin-top:6px;box-sizing:border-box;border:1px solid #cbd9e6;border-radius:9px;padding:10px;resize:vertical}.nchsm-ol-auto-note{display:flex;gap:10px;margin:12px 18px;padding:11px;border-radius:9px;background:#f0fdf7;border:1px solid #b7ead0;color:#166534}.nchsm-ol-auto-note i{font-size:18px;margin-top:2px}.nchsm-ol-auto-note strong,.nchsm-ol-auto-note span{display:block}.nchsm-ol-auto-note strong{font-size:11px}.nchsm-ol-auto-note span{font-size:10px;line-height:1.5;margin-top:3px}.nchsm-ol-modal-actions{display:flex;justify-content:flex-end;gap:8px;padding:14px 18px;background:#fff;border-top:1px solid #e2e8f0;position:sticky;bottom:0}.nchsm-ol-modal-actions button{border:0;border-radius:8px;padding:10px 15px;font-size:11px;font-weight:800;cursor:pointer}.nchsm-ol-modal-actions .secondary{background:#edf2f7;color:#45627f}.nchsm-ol-modal-actions .primary{background:#0875dc;color:#fff}.nchsm-ol-result-detail{margin-top:8px;font-size:10px;color:#66809e}.nchsm-ol-result-detail b{color:#18304d}@media(max-width:760px){.nchsm-ol-shell{padding:10px}.nchsm-ol-hero{padding:18px;align-items:flex-start}.nchsm-ol-hero h2{font-size:21px}.nchsm-ol-hero-stat{min-width:68px;width:68px;height:68px}.nchsm-ol-grid{grid-template-columns:1fr}.nchsm-ol-tabs{display:grid;grid-template-columns:1fr 1fr}.nchsm-ol-tabs button{padding:9px 6px}.nchsm-ol-toolbar{align-items:flex-start}.nchsm-ol-list-item{align-items:flex-start}.nchsm-ol-modal{padding:7px}.nchsm-ol-modal-card{max-height:96vh}.nchsm-ol-question,.nchsm-ol-instructions,.nchsm-ol-textarea-label,.nchsm-ol-auto-note{margin-left:10px;margin-right:10px}}
-</style>
 <!-- ==================== HUB ONLINE LEARNING TAB ==================== -->
-<section class="tab-content" hidden id="hub-online-learning">
-  <div class="nchsm-ol-shell">
-    <div class="nchsm-ol-hero">
-      <div>
-        <span class="nchsm-ol-eyebrow"><i class="fas fa-graduation-cap"></i> NCHSM ONLINE LEARNING</span>
-        <h2>Assignments &amp; Case Studies</h2>
-        <p>Complete lecturer-issued work, submit your answers, and receive automatic results where the assessment is structured for auto-marking.</p>
-      </div>
-      <div class="nchsm-ol-hero-stat"><strong id="ol-pending-count">0</strong><span>Pending</span></div>
+<style id="nchsm-online-learning-css">
+#hub-online-learning{padding:14px 16px 24px!important;max-width:100%;box-sizing:border-box}
+#hub-online-learning .ol-wrap{font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;color:#14243d}
+#hub-online-learning .ol-hero{background:linear-gradient(120deg,#062f55,#087bf0);color:#fff;border-radius:16px;padding:20px 22px;display:flex;align-items:center;justify-content:space-between;gap:16px;box-shadow:0 8px 22px rgba(6,47,85,.18);margin-bottom:12px}
+#hub-online-learning .ol-hero h2{margin:0;font-size:22px;font-weight:900}
+#hub-online-learning .ol-hero p{margin:5px 0 0;font-size:11px;opacity:.9}
+#hub-online-learning .ol-hero-badge{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.2);padding:9px 12px;border-radius:10px;font-size:10px;font-weight:800;white-space:nowrap}
+#hub-online-learning .ol-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:12px}
+#hub-online-learning .ol-stat{background:#fff;border:1px solid #dce8f3;border-radius:12px;padding:12px;min-height:70px;box-shadow:0 2px 8px rgba(25,63,97,.05);display:flex;align-items:center;gap:10px}
+#hub-online-learning .ol-stat i{width:38px;height:38px;border-radius:10px;display:grid;place-items:center;background:#eef5ff;color:#087bf0;font-size:16px}
+#hub-online-learning .ol-stat strong{display:block;font-size:20px;line-height:1;color:#132a48}
+#hub-online-learning .ol-stat span{display:block;font-size:10px;color:#66809e;margin-top:4px;font-weight:700}
+#hub-online-learning .ol-panel{background:#fff;border:1px solid #dce8f3;border-radius:13px;box-shadow:0 2px 8px rgba(25,63,97,.05);overflow:hidden}
+#hub-online-learning .ol-tabs{display:flex;gap:2px;border-bottom:1px solid #e5edf5;padding:7px 8px;background:#fbfdff;overflow:auto}
+#hub-online-learning .ol-tab{border:0;background:transparent;color:#607994;padding:9px 12px;border-radius:8px;font-size:11px;font-weight:800;cursor:pointer;white-space:nowrap}
+#hub-online-learning .ol-tab.active{background:#eaf4ff;color:#0875dc}
+#hub-online-learning .ol-toolbar{display:flex;align-items:center;gap:8px;padding:10px;border-bottom:1px solid #edf2f7;flex-wrap:wrap}
+#hub-online-learning .ol-search{flex:1;min-width:180px;position:relative}
+#hub-online-learning .ol-search i{position:absolute;left:11px;top:50%;transform:translateY(-50%);color:#94a3b8;font-size:11px}
+#hub-online-learning .ol-search input,#hub-online-learning .ol-select{width:100%;box-sizing:border-box;border:1px solid #dbe6ef;border-radius:9px;background:#f8fbfe;padding:9px 10px 9px 30px;outline:0;font:500 11px Inter,sans-serif;color:#263e5b}
+#hub-online-learning .ol-select{padding-left:10px;width:auto;min-width:135px}
+#hub-online-learning .ol-refresh{border:1px solid #dbe6ef;background:#fff;color:#0875dc;border-radius:9px;padding:9px 11px;cursor:pointer;font-size:11px;font-weight:800}
+#hub-online-learning .ol-list{padding:10px;display:grid;gap:8px}
+#hub-online-learning .ol-card{border:1px solid #e1eaf2;border-radius:11px;padding:13px;display:flex;align-items:center;gap:12px;background:#fff;transition:.16s}
+#hub-online-learning .ol-card:hover{box-shadow:0 6px 18px rgba(15,23,42,.07);transform:translateY(-1px)}
+#hub-online-learning .ol-card-icon{width:42px;height:42px;flex:0 0 42px;border-radius:10px;display:grid;place-items:center;background:#eef5ff;color:#087bf0;font-size:17px}
+#hub-online-learning .ol-card-main{min-width:0;flex:1}
+#hub-online-learning .ol-card-main h3{margin:0;font-size:13px;color:#152b47}
+#hub-online-learning .ol-card-main p{margin:4px 0 0;font-size:10px;color:#71859c;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#hub-online-learning .ol-meta{display:flex;gap:7px;flex-wrap:wrap;margin-top:7px}
+#hub-online-learning .ol-pill{display:inline-flex;align-items:center;gap:4px;padding:4px 7px;border-radius:99px;background:#f1f5f9;color:#526b86;font-size:9px;font-weight:800}
+#hub-online-learning .ol-pill.due{background:#fff4df;color:#a05a00}
+#hub-online-learning .ol-pill.success{background:#e9f9f1;color:#087a4d}
+#hub-online-learning .ol-pill.danger{background:#ffedf0;color:#b42338}
+#hub-online-learning .ol-actions{display:flex;gap:6px;flex-wrap:wrap}
+#hub-online-learning .ol-btn{border:0;border-radius:8px;padding:8px 10px;font-size:10px;font-weight:800;cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+#hub-online-learning .ol-btn-primary{background:#087bf0;color:#fff}
+#hub-online-learning .ol-btn-secondary{background:#edf4ff;color:#0870d6}
+#hub-online-learning .ol-btn-muted{background:#eef2f5;color:#536b84}
+#hub-online-learning .ol-empty,#hub-online-learning .ol-loading{padding:42px 20px;text-align:center;color:#72869d;font-size:11px}
+#hub-online-learning .ol-empty i,#hub-online-learning .ol-loading i{font-size:27px;display:block;margin-bottom:10px;color:#8ba6bf}
+#hub-online-learning .ol-error{margin:10px;padding:11px;border-radius:9px;background:#fff1f2;border:1px solid #fecdd3;color:#9f1239;font-size:10px}
+#hub-online-learning .ol-submission-row{display:grid;grid-template-columns:1.2fr .8fr .65fr .8fr auto;gap:10px;align-items:center;padding:11px;border-bottom:1px solid #edf2f7;font-size:10px}
+#hub-online-learning .ol-submission-row:last-child{border-bottom:0}
+#hub-online-learning .ol-submission-row strong{display:block;color:#18304d;font-size:11px}
+#hub-online-learning .ol-submission-row span{display:block;color:#71859c;margin-top:3px}
+#hub-online-learning .ol-result-card{padding:14px;border-bottom:1px solid #edf2f7;display:flex;align-items:center;gap:12px}
+#hub-online-learning .ol-result-card:last-child{border-bottom:0}
+#hub-online-learning .ol-result-score{width:58px;height:58px;flex:0 0 58px;border-radius:50%;display:grid;place-items:center;background:#eaf8f1;color:#087a4d;font-weight:900;font-size:14px}
+#hub-online-learning .ol-modal{position:fixed;inset:0;background:rgba(5,20,35,.58);z-index:10000;display:none;align-items:center;justify-content:center;padding:15px}
+#hub-online-learning .ol-modal.open{display:flex}
+#hub-online-learning .ol-dialog{width:min(900px,100%);max-height:92vh;overflow:auto;background:#fff;border-radius:15px;box-shadow:0 25px 70px rgba(0,0,0,.25)}
+#hub-online-learning .ol-dialog-head{position:sticky;top:0;z-index:2;background:#fff;border-bottom:1px solid #e5edf5;padding:14px 17px;display:flex;align-items:center;justify-content:space-between;gap:10px}
+#hub-online-learning .ol-dialog-head h3{margin:0;font-size:15px;color:#132b48}
+#hub-online-learning .ol-close{border:0;background:#f1f5f9;color:#64748b;width:30px;height:30px;border-radius:8px;cursor:pointer}
+#hub-online-learning .ol-dialog-body{padding:17px}
+#hub-online-learning .ol-question{border:1px solid #e1eaf2;border-radius:11px;padding:13px;margin-bottom:10px}
+#hub-online-learning .ol-question-title{font-size:12px;font-weight:800;color:#18304d;margin-bottom:9px}
+#hub-online-learning .ol-option{display:flex;gap:8px;align-items:flex-start;padding:7px;border-radius:7px;font-size:11px;color:#3d5873;cursor:pointer}
+#hub-online-learning .ol-option:hover{background:#f5f9fc}
+#hub-online-learning .ol-answer-input{width:100%;box-sizing:border-box;border:1px solid #dbe6ef;border-radius:8px;padding:9px;font:500 11px Inter,sans-serif;min-height:74px;resize:vertical}
+#hub-online-learning .ol-upload{border:2px dashed #bcd2e5;border-radius:11px;padding:20px;text-align:center;background:#f8fbfe}
+#hub-online-learning .ol-upload i{font-size:28px;color:#087bf0}
+#hub-online-learning .ol-upload strong{display:block;margin-top:7px;font-size:12px;color:#18304d}
+#hub-online-learning .ol-upload small{display:block;margin-top:4px;color:#71859c;font-size:10px}
+#hub-online-learning .ol-upload input{margin-top:10px;max-width:100%;font-size:10px}
+#hub-online-learning .ol-file-name{margin-top:8px;font-size:10px;font-weight:800;color:#0870d6}
+#hub-online-learning .ol-dialog-foot{padding:12px 17px;border-top:1px solid #e5edf5;display:flex;justify-content:flex-end;gap:7px;position:sticky;bottom:0;background:#fff}
+#hub-online-learning .ol-notice{padding:10px 11px;border-radius:9px;background:#eff8ff;border:1px solid #cce6ff;color:#24577d;font-size:10px;margin-bottom:10px}
+body.dark-mode #hub-online-learning .ol-wrap{color:#e8eef7}
+body.dark-mode #hub-online-learning .ol-panel,body.dark-mode #hub-online-learning .ol-stat,body.dark-mode #hub-online-learning .ol-card,body.dark-mode #hub-online-learning .ol-dialog,body.dark-mode #hub-online-learning .ol-dialog-head,body.dark-mode #hub-online-learning .ol-dialog-foot{background:#0d1b2d!important;border-color:#263d55!important}
+body.dark-mode #hub-online-learning .ol-stat strong,body.dark-mode #hub-online-learning .ol-card-main h3,body.dark-mode #hub-online-learning .ol-dialog-head h3,body.dark-mode #hub-online-learning .ol-question-title,body.dark-mode #hub-online-learning .ol-upload strong{color:#f1f5f9}
+body.dark-mode #hub-online-learning .ol-tabs,body.dark-mode #hub-online-learning .ol-toolbar{background:#0a1727;border-color:#263d55}
+body.dark-mode #hub-online-learning .ol-tab{color:#9db1c5}
+body.dark-mode #hub-online-learning .ol-search input,body.dark-mode #hub-online-learning .ol-select,body.dark-mode #hub-online-learning .ol-answer-input{background:#0a1727;color:#e2e8f0;border-color:#334b63}
+body.dark-mode #hub-online-learning .ol-card-main p,body.dark-mode #hub-online-learning .ol-stat span,body.dark-mode #hub-online-learning .ol-result-card span{color:#91a7bd}
+@media(max-width:800px){#hub-online-learning .ol-stats{grid-template-columns:repeat(2,1fr)}#hub-online-learning .ol-card{align-items:flex-start;flex-wrap:wrap}#hub-online-learning .ol-actions{width:100%;padding-left:54px}#hub-online-learning .ol-submission-row{grid-template-columns:1fr 1fr}.ol-submission-row .ol-actions{padding-left:0;width:auto}}
+@media(max-width:520px){#hub-online-learning{padding:10px 9px 18px!important}#hub-online-learning .ol-hero{padding:16px;align-items:flex-start}#hub-online-learning .ol-hero-badge{display:none}#hub-online-learning .ol-stats{gap:7px}#hub-online-learning .ol-stat{padding:9px;min-height:62px}#hub-online-learning .ol-stat strong{font-size:17px}#hub-online-learning .ol-card{padding:10px}#hub-online-learning .ol-actions{padding-left:0}#hub-online-learning .ol-btn{flex:1;justify-content:center}}
+</style>
+
+<section class="tab-content" hidden="" id="hub-online-learning">
+<div class="ol-wrap">
+  <div class="ol-hero">
+    <div>
+      <h2><i class="fas fa-laptop-medical"></i> Online Learning</h2>
+      <p>Assignments, case studies, online assessments and your released results in one place.</p>
+    </div>
+    <div class="ol-hero-badge"><i class="fas fa-shield-halved"></i> Secure Student Workspace</div>
+  </div>
+
+  <div class="ol-stats">
+    <div class="ol-stat"><i class="fas fa-list-check"></i><div><strong id="ol-stat-assigned">0</strong><span>Assigned</span></div></div>
+    <div class="ol-stat"><i class="fas fa-clock"></i><div><strong id="ol-stat-due">0</strong><span>Due Soon</span></div></div>
+    <div class="ol-stat"><i class="fas fa-paper-plane"></i><div><strong id="ol-stat-submitted">0</strong><span>Submitted</span></div></div>
+    <div class="ol-stat"><i class="fas fa-chart-line"></i><div><strong id="ol-stat-average">—</strong><span>Released Average</span></div></div>
+  </div>
+
+  <div class="ol-panel">
+    <div class="ol-tabs">
+      <button class="ol-tab active" data-ol-tab="assignments" type="button"><i class="fas fa-clipboard-list"></i> Assignments</button>
+      <button class="ol-tab" data-ol-tab="case-studies" type="button"><i class="fas fa-user-doctor"></i> Case Studies</button>
+      <button class="ol-tab" data-ol-tab="submissions" type="button"><i class="fas fa-cloud-arrow-up"></i> My Submissions</button>
+      <button class="ol-tab" data-ol-tab="results" type="button"><i class="fas fa-square-poll-vertical"></i> Results</button>
     </div>
 
-    <div class="nchsm-ol-tabs" role="tablist" aria-label="Online learning views">
-      <button class="active" data-ol-view="assigned" type="button"><i class="fas fa-tasks"></i> Assigned Work</button>
-      <button data-ol-view="case-studies" type="button"><i class="fas fa-stethoscope"></i> Case Studies</button>
-      <button data-ol-view="submissions" type="button"><i class="fas fa-paper-plane"></i> My Submissions</button>
-      <button data-ol-view="results" type="button"><i class="fas fa-chart-line"></i> Results</button>
+    <div class="ol-toolbar">
+      <div class="ol-search"><i class="fas fa-search"></i><input id="ol-search" type="search" placeholder="Search assignments, units or instructions..." autocomplete="off"></div>
+      <select class="ol-select" id="ol-status-filter">
+        <option value="all">All Status</option>
+        <option value="pending">Not Submitted</option>
+        <option value="submitted">Submitted</option>
+        <option value="graded">Graded</option>
+        <option value="released">Released</option>
+      </select>
+      <button class="ol-refresh" id="ol-refresh" type="button"><i class="fas fa-rotate"></i> Refresh</button>
     </div>
 
-    <div id="ol-loading" class="nchsm-ol-state"><i class="fas fa-spinner fa-spin"></i><span>Loading your learning activities...</span></div>
-    <div id="ol-error" class="nchsm-ol-state nchsm-ol-error" hidden></div>
-
-    <div id="ol-view-assigned" class="nchsm-ol-view">
-      <div class="nchsm-ol-toolbar"><div><strong>Current Assignments</strong><span>Work assigned to your programme/block</span></div><button id="ol-refresh-btn" type="button"><i class="fas fa-sync-alt"></i> Refresh</button></div>
-      <div id="ol-assignment-list" class="nchsm-ol-grid"></div>
-    </div>
-
-    <div id="ol-view-case-studies" class="nchsm-ol-view" hidden>
-      <div class="nchsm-ol-toolbar"><div><strong>Clinical Case Studies</strong><span>Apply nursing knowledge to structured cases</span></div></div>
-      <div id="ol-case-list" class="nchsm-ol-grid"></div>
-    </div>
-
-    <div id="ol-view-submissions" class="nchsm-ol-view" hidden>
-      <div class="nchsm-ol-toolbar"><div><strong>My Submissions</strong><span>Your submitted assignments and case studies</span></div></div>
-      <div id="ol-submission-list" class="nchsm-ol-list"></div>
-    </div>
-
-    <div id="ol-view-results" class="nchsm-ol-view" hidden>
-      <div class="nchsm-ol-toolbar"><div><strong>Automatic Results</strong><span>Scores released after submission</span></div></div>
-      <div id="ol-results-list" class="nchsm-ol-list"></div>
-    </div>
-
-    <div id="ol-assessment-panel" class="nchsm-ol-modal" hidden aria-hidden="true">
-      <div class="nchsm-ol-modal-backdrop" data-ol-close></div>
-      <div class="nchsm-ol-modal-card" role="dialog" aria-modal="true" aria-labelledby="ol-modal-title">
-        <div class="nchsm-ol-modal-head"><div><span id="ol-modal-type">Assignment</span><h3 id="ol-modal-title">Assessment</h3><small id="ol-modal-meta"></small></div><button type="button" data-ol-close aria-label="Close"><i class="fas fa-times"></i></button></div>
-        <div id="ol-modal-instructions" class="nchsm-ol-instructions"></div>
-        <form id="ol-assessment-form">
-          <div id="ol-question-list"></div>
-          <label class="nchsm-ol-textarea-label">Additional submission / reflection (optional)
-            <textarea id="ol-submission-text" rows="5" maxlength="12000" placeholder="Add any required explanation, reflection, or supporting response..."></textarea>
-          </label>
-          <div class="nchsm-ol-auto-note"><i class="fas fa-robot"></i><div><strong>Automatic marking</strong><span>Multiple-choice and true/false items are marked exactly. Structured short-answer and case-study items can receive partial marks from lecturer-defined answer keywords/rubrics. Open-ended/file-only work is flagged for lecturer review.</span></div></div>
-          <div class="nchsm-ol-modal-actions"><button type="button" class="secondary" data-ol-close>Cancel</button><button type="submit" class="primary" id="ol-submit-btn"><i class="fas fa-paper-plane"></i> Submit Work</button></div>
-        </form>
-      </div>
+    <div id="ol-error" class="ol-error" hidden></div>
+    <div id="ol-content" class="ol-list">
+      <div class="ol-loading"><i class="fas fa-spinner fa-spin"></i>Loading your learning activities...</div>
     </div>
   </div>
+</div>
+
+<div class="ol-modal" id="ol-assignment-modal" aria-hidden="true">
+  <div class="ol-dialog">
+    <div class="ol-dialog-head">
+      <h3 id="ol-modal-title">Assignment</h3>
+      <button class="ol-close" type="button" data-ol-close="assignment"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="ol-dialog-body" id="ol-modal-body"></div>
+    <div class="ol-dialog-foot">
+      <button class="ol-btn ol-btn-muted" type="button" data-ol-close="assignment">Cancel</button>
+      <button class="ol-btn ol-btn-primary" id="ol-submit-btn" type="button"><i class="fas fa-paper-plane"></i> Submit Work</button>
+    </div>
+  </div>
+</div>
+
+<div class="ol-modal" id="ol-result-modal" aria-hidden="true">
+  <div class="ol-dialog">
+    <div class="ol-dialog-head">
+      <h3 id="ol-result-title">Result</h3>
+      <button class="ol-close" type="button" data-ol-close="result"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="ol-dialog-body" id="ol-result-body"></div>
+  </div>
+</div>
 </section>
 <!-- END HUB ONLINE LEARNING -->
+
+<script id="nchsm-online-learning-module">
+(function(){
+'use strict';
+
+var state={tab:'assignments',assignments:[],submissions:[],results:[],current:null,file:null,bound:false};
+
+function client(){
+  return (window.db&&window.db.supabase)||window.supabase||window.supabaseClient||null;
+}
+function uid(){return (window.db&&window.db.currentUserId)||window.currentUserId||null}
+function profile(){return (window.db&&window.db.currentUserProfile)||window.currentUserProfile||{}}
+function esc(v){return String(v==null?'':v).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]})}
+function fmtDate(v){if(!v)return '—';var d=new Date(v);return isNaN(d)?String(v):d.toLocaleDateString(undefined,{day:'2-digit',month:'short',year:'numeric'})}
+function fmtDateTime(v){if(!v)return '—';var d=new Date(v);return isNaN(d)?String(v):d.toLocaleString(undefined,{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function daysTo(v){if(!v)return null;return Math.ceil((new Date(v).getTime()-Date.now())/86400000)}
+function setError(msg){var e=document.getElementById('ol-error');if(!e)return;e.textContent=msg||'';e.hidden=!msg}
+function setContent(html){var c=document.getElementById('ol-content');if(c)c.innerHTML=html}
+function loading(){setContent('<div class="ol-loading"><i class="fas fa-spinner fa-spin"></i>Loading...</div>')}
+function statusPill(s){
+  var x=String(s||'').toLowerCase(), cls=x==='released'?'success':(x==='graded'?'success':(x==='submitted'?'':'due'));
+  return '<span class="ol-pill '+cls+'">'+esc(s||'Pending')+'</span>';
+}
+function getSubmission(aid){return state.submissions.find(function(s){return String(s.assignment_id)===String(aid)})||null}
+function assignmentStatus(a){
+  var s=getSubmission(a.id);
+  if(s&&s.result_released)return 'released';
+  if(s&&s.status==='graded')return 'graded';
+  if(s)return 'submitted';
+  return 'pending';
+}
+function dueLabel(a){
+  if(!a.due_at)return '<span class="ol-pill">No due date</span>';
+  var n=daysTo(a.due_at);
+  if(n<0)return '<span class="ol-pill danger">Past due</span>';
+  if(n===0)return '<span class="ol-pill danger">Due today</span>';
+  if(n<=3)return '<span class="ol-pill due">Due in '+n+' day'+(n===1?'':'s')+'</span>';
+  return '<span class="ol-pill">Due '+esc(fmtDate(a.due_at))+'</span>';
+}
+function card(a){
+  var s=getSubmission(a.id), st=assignmentStatus(a), type=String(a.assignment_type||'assignment');
+  var icon=type==='case_study'?'fa-user-doctor':(type==='quiz'?'fa-circle-question':'fa-file-pen');
+  var button=s&&s.result_released
+    ? '<button class="ol-btn ol-btn-secondary" type="button" data-ol-result="'+esc(s.id)+'"><i class="fas fa-chart-column"></i> View Result</button>'
+    : '<button class="ol-btn ol-btn-primary" type="button" data-ol-open="'+esc(a.id)+'"><i class="fas '+(s?'fa-eye':'fa-paper-plane')+'"></i> '+(s?'View Submission':'Open & Submit')+'</button>';
+  return '<article class="ol-card"><div class="ol-card-icon"><i class="fas '+icon+'"></i></div><div class="ol-card-main"><h3>'+esc(a.title||'Untitled Assignment')+'</h3><p>'+esc(a.unit_code||'')+(a.unit_name?' — '+esc(a.unit_name):'')+'</p><div class="ol-meta">'+
+    '<span class="ol-pill"><i class="fas fa-tag"></i>'+esc(type.replace('_',' '))+'</span>'+
+    (a.max_marks?'<span class="ol-pill"><i class="fas fa-award"></i>'+esc(a.max_marks)+' marks</span>':'')+
+    dueLabel(a)+statusPill(st)+'</div></div><div class="ol-actions">'+button+'</div></article>';
+}
+function renderAssignments(){
+  var q=(document.getElementById('ol-search')?.value||'').toLowerCase().trim(), f=document.getElementById('ol-status-filter')?.value||'all';
+  var arr=state.assignments.filter(function(a){
+    var text=[a.title,a.unit_code,a.unit_name,a.instructions,a.assignment_type].join(' ').toLowerCase();
+    return (!q||text.includes(q))&&(f==='all'||assignmentStatus(a)===f);
+  });
+  setContent(arr.length?arr.map(card).join(''):'<div class="ol-empty"><i class="fas fa-inbox"></i><strong>No assignments found</strong><br>Published learning activities for your programme, block and units will appear here.</div>');
+}
+function renderSubmissions(){
+  var arr=state.submissions.slice().sort(function(a,b){return new Date(b.submitted_at||0)-new Date(a.submitted_at||0)});
+  if(!arr.length){setContent('<div class="ol-empty"><i class="fas fa-cloud-arrow-up"></i><strong>No submissions yet</strong><br>Your submitted assignments will appear here.</div>');return}
+  setContent(arr.map(function(s){
+    var a=state.assignments.find(function(x){return String(x.id)===String(s.assignment_id)})||{};
+    var file=s.file_name?'<span><i class="fas fa-file"></i> '+esc(s.file_name)+'</span>':'<span>No document</span>';
+    var score=s.result_released&&s.marks_obtained!=null?esc(s.marks_obtained)+' / '+esc(s.max_marks||a.max_marks||'—'):'Not released';
+    return '<div class="ol-submission-row"><div><strong>'+esc(a.title||s.assignment_title||'Assignment')+'</strong>'+file+'</div><div><strong>Submitted</strong><span>'+esc(fmtDateTime(s.submitted_at))+'</span></div><div><strong>Status</strong><span>'+statusPill(s.result_released?'Released':(s.status||'Submitted'))+'</span></div><div><strong>Result</strong><span>'+score+'</span></div><div class="ol-actions">'+(s.result_released?'<button class="ol-btn ol-btn-secondary" data-ol-result="'+esc(s.id)+'" type="button">View Result</button>':'<span class="ol-pill">Under Review</span>')+'</div></div>';
+  }).join(''));
+}
+function renderResults(){
+  var arr=state.results.filter(function(r){return r.result_released});
+  if(!arr.length){setContent('<div class="ol-empty"><i class="fas fa-chart-column"></i><strong>No released results</strong><br>Lecturer results will appear here after they are released.</div>');return}
+  setContent(arr.map(function(r){
+    var a=state.assignments.find(function(x){return String(x.id)===String(r.assignment_id)})||{};
+    var pct=r.max_marks?Math.round((Number(r.marks_obtained)/Number(r.max_marks))*100):0;
+    return '<div class="ol-result-card"><div class="ol-result-score">'+esc(r.marks_obtained)+'<small style="font-size:8px">/'+esc(r.max_marks)+'</small></div><div style="flex:1"><strong style="font-size:12px;color:#18304d">'+esc(a.title||r.assignment_title||'Assignment')+'</strong><span style="display:block;font-size:10px;color:#71859c;margin-top:4px">'+esc(a.unit_code||'')+' · '+pct+'% · Released '+esc(fmtDate(r.released_at))+'</span></div><button class="ol-btn ol-btn-secondary" data-ol-result="'+esc(r.id)+'" type="button">View</button></div>';
+  }).join(''));
+}
+function render(){
+  if(state.tab==='assignments'||state.tab==='case-studies')renderAssignments();
+  else if(state.tab==='submissions')renderSubmissions();
+  else renderResults();
+  updateStats();
+}
+function updateStats(){
+  var as=state.assignments, sub=state.submissions;
+  var avg=state.results.filter(function(r){return r.result_released&&r.max_marks}).map(function(r){return Number(r.marks_obtained)/Number(r.max_marks)*100});
+  var due=as.filter(function(a){var n=daysTo(a.due_at);return !getSubmission(a.id)&&n!==null&&n>=0&&n<=7}).length;
+  var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v};
+  set('ol-stat-assigned',as.length);set('ol-stat-due',due);set('ol-stat-submitted',sub.length);set('ol-stat-average',avg.length?(Math.round(avg.reduce(function(x,y){return x+y},0)/avg.length)+'%'):'—');
+}
+async function loadData(){
+  var sb=client(), id=uid();
+  setError('');
+  if(!sb||!id){setError('Your secure session is not ready yet. Please wait for the portal to finish loading, then refresh this module.');return}
+  loading();
+  try{
+    var p=profile(), unitCodes=[];
+    try{
+      var ur=await sb.from('student_unit_registrations').select('unit_code,unit_name,status').eq('student_id',id);
+      if(!ur.error)(ur.data||[]).forEach(function(x){if(x.unit_code)unitCodes.push(String(x.unit_code))});
+    }catch(_){}
+    var aq=sb.from('online_assignments').select('*').eq('published',true).order('due_at',{ascending:true,nullsFirst:false});
+    var ar=await aq;
+    if(ar.error)throw ar.error;
+    state.assignments=(ar.data||[]).filter(function(a){
+      var okProgram=!a.program||!p.program||String(a.program).toLowerCase()===String(p.program).toLowerCase();
+      var okBlock=!a.block||!p.block||String(a.block).toLowerCase()===String(p.block).toLowerCase();
+      var okIntake=!a.intake||!p.intake||String(a.intake).toLowerCase()===String(p.intake).toLowerCase();
+      var okUnit=!a.unit_code||!unitCodes.length||unitCodes.map(String).includes(String(a.unit_code));
+      return okProgram&&okBlock&&okIntake&&okUnit;
+    });
+    var sr=await sb.from('online_submissions').select('*').eq('student_id',id).order('submitted_at',{ascending:false});
+    if(sr.error && sr.error.code!=='PGRST116')throw sr.error;
+    state.submissions=sr.data||[];
+    state.results=state.submissions.filter(function(s){return s.result_released});
+    render();
+  }catch(e){
+    console.error('Online Learning load failed:',e);
+    setError('Online Learning could not load. Make sure the Online Learning database setup has been applied and your session is active. Details: '+(e.message||e));
+    setContent('<div class="ol-empty"><i class="fas fa-database"></i><strong>Learning data is not available yet</strong><br>Once the Online Learning tables are configured, your assignments will appear here.</div>');
+    updateStats();
+  }
+}
+function openModal(a){
+  state.current=a;state.file=null;
+  var m=document.getElementById('ol-assignment-modal'),b=document.getElementById('ol-modal-body'),title=document.getElementById('ol-modal-title'),btn=document.getElementById('ol-submit-btn');
+  var existing=getSubmission(a.id);
+  title.textContent=a.title||'Assignment';
+  var qs=Array.isArray(a.questions)?a.questions:[];
+  var html='<div class="ol-notice"><i class="fas fa-circle-info"></i> '+(existing?'You have already submitted this activity. Review your submission below.':'Complete the required work and submit before the due date.')+'</div>';
+  html+='<div style="font-size:10px;color:#64748b;margin-bottom:12px"><strong>Unit:</strong> '+esc(a.unit_code||'—')+' &nbsp; <strong>Due:</strong> '+esc(fmtDateTime(a.due_at))+' &nbsp; <strong>Total:</strong> '+esc(a.max_marks||'—')+' marks</div>';
+  if(a.instructions)html+='<div style="padding:11px;border-radius:9px;background:#f7fafc;border:1px solid #e4edf5;font-size:11px;line-height:1.55;margin-bottom:12px"><strong>Instructions</strong><br>'+esc(a.instructions).replace(/\n/g,'<br>')+'</div>';
+  if(qs.length){
+    qs.forEach(function(q,i){
+      var ans=existing&&existing.answers?existing.answers.find(function(x){return String(x.question_id)===String(q.id)}):null;
+      html+='<div class="ol-question"><div class="ol-question-title">'+(i+1)+'. '+esc(q.question_text||q.text||'Question')+' <span style="color:#8aa0b5;font-weight:600">('+esc(q.marks||0)+' marks)</span></div>';
+      if(q.question_type==='mcq'){
+        (q.options||[]).forEach(function(o,j){var val=typeof o==='object'?o.value:o;html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+esc(val)+'" '+(ans&&ans.answer_text===String(val)?'checked':'')+' '+(existing?'disabled':'')+'> '+esc(val)+'</label>'});
+      }else if(q.question_type==='true_false'){
+        ['True','False'].forEach(function(o){html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+o+'" '+(ans&&ans.answer_text===o?'checked':'')+' '+(existing?'disabled':'')+'> '+o+'</label>'});
+      }else{
+        html+='<textarea class="ol-answer-input" data-ol-question="'+esc(q.id)+'" placeholder="Enter your answer..." '+(existing?'disabled':'')+'>'+esc(ans?ans.answer_text:'')+'</textarea>';
+      }
+      html+='</div>';
+    });
+  }
+  if(a.allow_document_upload!==false){
+    html+='<div class="ol-upload"><i class="fas fa-file-arrow-up"></i><strong>Upload your completed work</strong><small>Accepted: Word (.doc, .docx) or PDF (.pdf). Maximum 10 MB.</small><input id="ol-file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" '+(existing?'disabled':'')+'><div class="ol-file-name" id="ol-file-name"></div></div>';
+  }
+  b.innerHTML=html;
+  btn.style.display=existing?'none':'inline-flex';
+  m.classList.add('open');m.setAttribute('aria-hidden','false');
+  var fi=document.getElementById('ol-file');if(fi)fi.onchange=function(){state.file=this.files&&this.files[0]||null;var n=document.getElementById('ol-file-name');if(n)n.textContent=state.file?state.file.name:''};
+}
+async function submitCurrent(){
+  var a=state.current,sb=client(),id=uid(),btn=document.getElementById('ol-submit-btn');
+  if(!a||!sb||!id)return;
+  if(a.due_at&&new Date(a.due_at).getTime()<Date.now()){setError('This assignment is past its due date and can no longer be submitted.');close('assignment');return}
+  if(state.file && state.file.size>10*1024*1024){setError('The selected document is larger than 10 MB.');return}
+  btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';
+  try{
+    var payload={assignment_id:a.id,student_id:id,status:'submitted',submitted_at:new Date().toISOString(),result_released:false};
+    if(state.file){
+      var safe=state.file.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=id+'/'+a.id+'/'+Date.now()+'_'+safe;
+      var up=await sb.storage.from('assignment-submissions').upload(path,state.file,{upsert:false,contentType:state.file.type||undefined});
+      if(up.error)throw up.error;
+      payload.file_path=path;payload.file_name=state.file.name;payload.file_type=state.file.type;payload.file_size=state.file.size;
+    }
+    var answers=[];
+    (a.questions||[]).forEach(function(q){
+      var value='';
+      if(q.question_type==='mcq'||q.question_type==='true_false'){
+        var r=document.querySelector('input[name="olq_'+CSS.escape(String(q.id))+'"]:checked');value=r?r.value:'';
+      }else{
+        var t=document.querySelector('[data-ol-question="'+CSS.escape(String(q.id))+'"]');value=t?t.value:'';
+      }
+      answers.push({question_id:q.id,answer_text:value});
+    });
+    payload.answers=answers;
+    var ins=await sb.from('online_submissions').insert(payload).select().single();
+    if(ins.error)throw ins.error;
+    state.submissions.unshift(ins.data);
+    close('assignment');render();
+    alert('Your work has been submitted successfully. The result will appear after the lecturer grades and releases it.');
+  }catch(e){
+    console.error('Submission failed:',e);
+    setError('Submission failed: '+(e.message||e));
+  }finally{btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Submit Work'}
+}
+async function viewResult(id){
+  var s=state.submissions.find(function(x){return String(x.id)===String(id)})||state.results.find(function(x){return String(x.id)===String(id)});
+  if(!s)return;
+  var a=state.assignments.find(function(x){return String(x.id)===String(s.assignment_id)})||{};
+  var body=document.getElementById('ol-result-body'),pct=s.max_marks?Math.round(Number(s.marks_obtained)/Number(s.max_marks)*100):0;
+  body.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087bf0">'+esc(s.marks_obtained??'—')+'</strong><small style="display:block;color:#71859c">Marks</small></div><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087a4d">'+(s.max_marks?pct+'%':'—')+'</strong><small style="display:block;color:#71859c">Percentage</small></div><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:13px;color:#18304d">'+esc(fmtDate(s.released_at))+'</strong><small style="display:block;color:#71859c">Released</small></div></div>'+
+  '<div class="ol-notice"><strong>'+esc(a.title||'Assignment')+'</strong><br>'+esc(a.unit_code||'')+'</div>'+
+  '<div style="padding:12px;border:1px solid #e1eaf2;border-radius:10px"><strong style="font-size:11px;color:#18304d">Lecturer Feedback</strong><p style="font-size:11px;line-height:1.55;color:#607994;white-space:pre-wrap">'+esc(s.feedback||'No feedback was added.')+'</p></div>';
+  var m=document.getElementById('ol-result-modal');m.classList.add('open');m.setAttribute('aria-hidden','false');
+}
+function close(which){var m=document.getElementById(which==='result'?'ol-result-modal':'ol-assignment-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}}
+function bind(){
+  if(state.bound)return;state.bound=true;
+  document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(b){b.addEventListener('click',function(){state.tab=this.dataset.olTab;document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(x){x.classList.toggle('active',x===b)});render()})});
+  document.getElementById('ol-search')?.addEventListener('input',render);
+  document.getElementById('ol-status-filter')?.addEventListener('change',render);
+  document.getElementById('ol-refresh')?.addEventListener('click',loadData);
+  document.getElementById('ol-submit-btn')?.addEventListener('click',submitCurrent);
+  document.querySelectorAll('#hub-online-learning [data-ol-close]').forEach(function(b){b.addEventListener('click',function(){close(this.dataset.olClose)})});
+  document.getElementById('hub-online-learning').addEventListener('click',function(e){
+    var o=e.target.closest('[data-ol-open]');if(o){var a=state.assignments.find(function(x){return String(x.id)===String(o.dataset.olOpen)});if(a)openModal(a);return}
+    var r=e.target.closest('[data-ol-result]');if(r)viewResult(r.dataset.olResult);
+  });
+  document.querySelectorAll('#hub-online-learning .ol-modal').forEach(function(m){m.addEventListener('click',function(e){if(e.target===m)close(m.id==='ol-result-modal'?'result':'assignment')})});
+  document.addEventListener('keydown',function(e){if(e.key==='Escape'){close('assignment');close('result')}});
+}
+function boot(){bind();loadData()}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+document.addEventListener('appReady',function(){setTimeout(function(){bind();loadData()},300)});
+})();
+</script>
+
 <!-- ==================== HUB EXAM CARD TAB ==================== -->
 <section class="tab-content" id="hub-exam-card" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
 <!-- ========== HEADER - MATCHING SUPER ADMIN ========== -->
@@ -10643,7 +10950,6 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
 <script src="/js/cleanup.js"></script>
 <script src="/js/chatbot.js"></script>
 <script src="/js/student-blog.js"></script>
-<script src="/js/online-learning.js"></script>
 <!-- ============================================================ -->
 <!-- MAIN NAVIGATION HANDLER                                      -->
 <!-- ============================================================ -->
@@ -10690,8 +10996,8 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
         
         localStorage.setItem('nchsm_current_tab', tabId);
         try {
-            const nextUrl = (tabId && tabId !== 'dashboard') ? '/student/' + encodeURIComponent(tabId) : '/student';
-            if (window.location.pathname !== nextUrl) window.history.replaceState({ tab: tabId }, '', nextUrl);
+            const nextHash = '#' + encodeURIComponent(tabId);
+            if (window.location.hash !== nextHash) window.history.replaceState(null, '', nextHash);
         } catch (_) {}
         
         setTimeout(() => {
@@ -10704,7 +11010,6 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
             else if (tabId === 'dashboard' && window.dashboardModule?.refreshAll) window.dashboardModule.refreshAll();
             else if (tabId === 'cats' && window.examsModule?.loadExams) window.examsModule.loadExams();
             else if (tabId === 'resources' && window.resourcesModule?.loadAllResources) window.resourcesModule.loadAllResources();
-            else if (tabId === 'hub-online-learning' && window.onlineLearningModule?.load) window.onlineLearningModule.load();
             else if (tabId === 'nurseiq' && window.nurseiqModule?.loadQuestionBankCards) window.nurseiqModule.loadQuestionBankCards();
             else if (tabId === 'finance' && typeof loadStudentFinance === 'function') {
                 setTimeout(loadStudentFinance, 300);
@@ -10812,11 +11117,7 @@ body.dark-mode #hub-register .nchsm-reg-stat,body.dark-mode #hub-register .nchsm
     function getInitialTab() {
         const allowed = new Set(Array.from(document.querySelectorAll('.tab-content')).map(el => el.id));
         let candidate = '';
-        try {
-            const path = (window.location.pathname || '').replace(/\/+$/, '');
-            if (path.startsWith('/student/')) candidate = decodeURIComponent(path.replace(/^\/student\//, ''));
-            else if (path === '/student') candidate = 'dashboard';
-        } catch (_) {}
+        try { candidate = decodeURIComponent((window.location.hash || '').replace(/^#/, '')); } catch (_) {}
         if (!candidate) { try { candidate = localStorage.getItem('nchsm_current_tab') || ''; } catch (_) {} }
         return allowed.has(candidate) ? candidate : 'dashboard';
     }
