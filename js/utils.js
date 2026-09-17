@@ -138,11 +138,12 @@ window.cache = cache;
 const SPA_ROUTER = {
     // ✅ Updated validTabs with Supplementary, Enrollment and all student tabs
     validTabs: [
-        'dashboard', 'profile', 'calendar', 'finance', 'enrollment', 'learning-hub',
-        'attendance', 'cats', 'resources', 'messages', 'support-tickets', 'nurseiq', 
-        'exam-card', 'unit-registration', 'hub-courses', 'hub-register', 
-        'hub-online-learning', 'hub-exam-card', 'hub-lecture-card', 
-        'academic-reports', 'reviews', 'newsletter', 'supplementary'
+        'dashboard', 'profile', 'calendar', 'finance', 'enrollment',
+        'hub-register', 'hub-courses', 'hub-lecture-card', 'hub-exam-card',
+        'hub-online-learning', 'cats', 'academic-reports',
+        'nurseiq', 'resources', 'attendance', 'messages',
+        'support-tickets', 'reviews', 'newsletter',
+        'courses', 'unit-registration', 'exam-card', 'supplementary'
     ],
     
     // Get current tab from URL path (using / instead of #)
@@ -240,20 +241,19 @@ const SPA_ROUTER = {
     
     // Navigate to a specific tab
     navigateTo(tab) {
-        if (tab && this.validTabs.includes(tab)) {
-            this.updateURL(tab);
-            
-            // Show the tab
-            if (window.ui && typeof window.ui.showTab === 'function') {
-                if (window.ui.currentTab !== tab) {
-                    window.ui.showTab(tab);
-                }
-            } else {
-                this.showTabFromURL();
-            }
+        if (!tab || !this.validTabs.includes(tab)) return;
+
+        // Let the UI module own navigation/history so the URL is pushed once.
+        if (window.ui && typeof window.ui.navigateToTab === 'function') {
+            window.ui.navigateToTab(tab);
+            return;
         }
+
+        // Fallback when the UI module is not available.
+        this.updateURL(tab);
+        this.showTabFromURL();
     },
-    
+
     // Initialize router
     init() {
         console.log('🔄 Initializing SPA Router (with / navigation)...');
@@ -280,27 +280,12 @@ const SPA_ROUTER = {
             }
         });
         
-        // Also intercept sidebar links (the new premium ones)
-        document.addEventListener('click', (e) => {
-            const link = e.target.closest('.nav-premium a[data-tab], .dropdown-submenu-premium a[data-tab]');
-            if (link) {
-                e.preventDefault();
-                const tab = link.getAttribute('data-tab');
-                if (tab && this.validTabs.includes(tab)) {
-                    this.navigateTo(tab);
-                }
-            }
-        });
-        
         // Initialize - show correct tab on page load
         if (document.readyState === 'loading') {
             document.addEventListener('DOMContentLoaded', () => this.showTabFromURL());
         } else {
             this.showTabFromURL();
         }
-        
-        // Also handle when app is ready
-        document.addEventListener('appReady', () => this.showTabFromURL());
         
         console.log('✅ SPA Router initialized with clean / URLs');
         console.log(`📋 Valid tabs: ${this.validTabs.join(', ')}`);
