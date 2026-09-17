@@ -6121,211 +6121,119 @@ window.displayLiveFeed = function() {
     selectedStudentIds.clear();
     if (releaseBtn) {
         releaseBtn.disabled = true;
-        releaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading all exam participants...';
+        releaseBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading graded results...';
     }
-
     if (!examId) {
         if (preview) preview.style.display = 'none';
         if (body) body.innerHTML = '';
         if (summary) summary.innerHTML = '';
         return;
     }
-
     if (preview) preview.style.display = 'block';
-    if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">⏳ Loading all students who participated in this exam...</td></tr>';
+    if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">⏳ Loading graded results...</td></tr>';
 
     try {
-        // ============================================================
-        // RELEASE PREVIEW — COMPLETE PARTICIPANT UNION
-        // ============================================================
-        // Do NOT use exam_attempts/exam_grades as the sole student list.
-        // Some legitimate participants can have an attendance record but
-        // no attempt row, or an attempt without a sentinel grade row.
-        // Build one student set from attendance + attempts + grades.
-        // ============================================================
-
-        const [attemptResult, gradeResult, attendanceResult, examResult] = await Promise.all([
+        // RELEASE SOURCE: only completed/submitted attempts that have a real
+        // sentinel final grade. Attendance, registration and ungraded attempts
+        // are intentionally excluded.
+        const [{ data: attempts, error: attemptsError }, { data: grades, error: gradesError }] = await Promise.all([
             sb.from('exam_attempts')
                 .select('id, student_id, exam_id, attempt_number, status, is_retake, started_at, submitted_at, score, percentage, total_marks, updated_at')
                 .eq('exam_id', examId)
-                .order('attempt_number', { ascending: false }),
-
+                .order('updated_at', { ascending: false }),
             sb.from('exam_grades')
-                .select('id, student_id, exam_id, attempt_id, marks, total_score, percentage, result_status, released, released_at, total_marks, updated_at, graded_at, question_id')
+                .select('id, student_id, exam_id, attempt_id, marks, total_score, percentage, result_status, released, released_at, total_marks, updated_at, graded_at, completed, grade')
                 .eq('exam_id', examId)
-                .eq('question_id', ZERO_QUESTION_ID),
-
-            sb.from('exam_attendance')
-                .select('*')
-                .eq('exam_id', examId)
-                .order('created_at', { ascending: false }),
-
-            sb.from('exams')
-                .select('id, pass_mark, total_marks, exam_name, exam_type')
-                .eq('id', examId)
-                .single()
+                .eq('question_id', ZERO_QUESTION_ID)
+                .order('updated_at', { ascending: false })
         ]);
+        if (attemptsError) throw attemptsError;
+        if (gradesError) throw gradesError;
 
-        if (attemptResult.error) throw attemptResult.error;
-        if (gradeResult.error) throw gradeResult.error;
-        if (attendanceResult.error) {
-            console.warn('⚠️ Attendance participant lookup failed:', attendanceResult.error.message);
-        }
-        if (examResult.error) throw examResult.error;
-
-        const attempts = attemptResult.data || [];
-        const grades = gradeResult.data || [];
-        const attendance = attendanceResult.data || [];
-        const exam = examResult.data;
-
-        // Latest attempt per student.
-        const latestAttemptMap = new Map();
-        attempts.forEach(a => {
-            if (!a.student_id) return;
+        const attemptMap = new Map();
+        (attempts || []).forEach(a => {
+            if (!a?.student_id || !a?.id) return;
             const key = String(a.student_id);
-            const existing = latestAttemptMap.get(key);
-            if (!existing ||
-                Number(a.attempt_number || 0) > Number(existing.attempt_number || 0) ||
-                (Number(a.attempt_number || 0) === Number(existing.attempt_number || 0) &&
-                 new Date(a.updated_at || a.submitted_at || a.started_at || 0) >
-                 new Date(existing.updated_at || existing.submitted_at || existing.started_at || 0))) {
-                latestAttemptMap.set(key, a);
-            }
+            const current = attemptMap.get(key);
+            const newer = !current ||
+                Number(a.attempt_number || 0) > Number(current.attempt_number || 0) ||
+                (Number(a.attempt_number || 0) === Number(current.attempt_number || 0) &&
+                 new Date(a.updated_at || a.submitted_at || a.started_at || 0) > new Date(current.updated_at || current.submitted_at || current.started_at || 0));
+            if (newer) attemptMap.set(key, a);
         });
 
-        // Sentinel grade for each attempt; newest legacy grade per student.
         const gradeByAttempt = new Map();
-        const legacyGradesByStudent = new Map();
-        grades.forEach(g => {
-            if (!g.student_id) return;
+        const legacyGrades = new Map();
+        (grades || []).forEach(g => {
+            if (!g?.id || !g?.student_id) return;
             if (g.attempt_id) {
                 const key = String(g.attempt_id);
-                const existing = gradeByAttempt.get(key);
-                if (!existing || new Date(g.updated_at || g.graded_at || 0) > new Date(existing.updated_at || existing.graded_at || 0)) {
+                const current = gradeByAttempt.get(key);
+                if (!current || new Date(g.updated_at || g.graded_at || 0) > new Date(current.updated_at || current.graded_at || 0)) {
                     gradeByAttempt.set(key, g);
                 }
             } else {
+                // Legacy grade rows are accepted only when a matching attempt
+                // exists and there is no attempt-linked grade.
                 const key = String(g.student_id);
-                const existing = legacyGradesByStudent.get(key);
-                if (!existing || new Date(g.updated_at || g.graded_at || 0) > new Date(existing.updated_at || existing.graded_at || 0)) {
-                    legacyGradesByStudent.set(key, g);
+                const current = legacyGrades.get(key);
+                if (!current || new Date(g.updated_at || g.graded_at || 0) > new Date(current.updated_at || current.graded_at || 0)) {
+                    legacyGrades.set(key, g);
                 }
             }
         });
 
-        // COMPLETE student union: attendance + attempts + sentinel grades.
-        const participantIds = new Set();
-        attendance.forEach(a => {
-            if (a?.student_id) participantIds.add(String(a.student_id));
-        });
-        attempts.forEach(a => {
-            if (a?.student_id) participantIds.add(String(a.student_id));
-        });
-        grades.forEach(g => {
-            if (g?.student_id) participantIds.add(String(g.student_id));
-        });
-
-        // Build one canonical record per participant.
         const currentGrades = [];
-        participantIds.forEach(studentId => {
-            const attempt = latestAttemptMap.get(String(studentId)) || null;
-            let grade = attempt ? (gradeByAttempt.get(String(attempt.id)) || null) : null;
-
-            // Legacy grade is used when there is no attempt, or when the
-            // current attempt has no sentinel grade yet.
-            if (!grade) grade = legacyGradesByStudent.get(String(studentId)) || null;
-
-            if (grade) {
-                currentGrades.push({
-                    ...grade,
-                    attempt_info: attempt,
-                    participant_only: false
-                });
-            } else if (attempt) {
-                currentGrades.push({
-                    id: null,
-                    student_id: attempt.student_id,
-                    exam_id: attempt.exam_id,
-                    attempt_id: attempt.id,
-                    marks: attempt.score ?? null,
-                    total_score: attempt.score ?? null,
-                    percentage: attempt.percentage ?? null,
-                    result_status: String(attempt.status || '').toUpperCase() === 'IN_PROGRESS' ? 'IN_PROGRESS' : 'PENDING',
-                    released: false,
-                    released_at: null,
-                    total_marks: attempt.total_marks ?? null,
-                    attempt_info: attempt,
-                    is_attempt_only: true,
-                    participant_only: false
-                });
-            } else {
-                // Attendance participant with no attempt/grade yet.
-                currentGrades.push({
-                    id: null,
-                    student_id: studentId,
-                    exam_id: examId,
-                    attempt_id: null,
-                    marks: null,
-                    total_score: null,
-                    percentage: null,
-                    result_status: 'NO_RESULT',
-                    released: false,
-                    released_at: null,
-                    total_marks: exam.total_marks ?? null,
-                    attempt_info: null,
-                    participant_only: true
-                });
+        attemptMap.forEach((attempt, studentId) => {
+            // Prefer the grade tied to the actual current attempt.
+            let grade = gradeByAttempt.get(String(attempt.id)) || null;
+            // Legacy compatibility: if no attempt_id exists, require a real
+            // submitted/completed attempt before accepting the legacy grade.
+            if (!grade && legacyGrades.has(String(studentId))) {
+                const legacy = legacyGrades.get(String(studentId));
+                const status = String(attempt.status || '').toUpperCase();
+                const submitted = !!attempt.submitted_at || ['SUBMITTED','COMPLETED','FINISHED','GRADED'].includes(status);
+                if (submitted) grade = legacy;
             }
+            if (!grade) return;
+
+            // A grade record itself is the eligibility test. Score 0 is valid.
+            currentGrades.push({ ...grade, attempt_info: attempt });
         });
 
         if (!currentGrades.length) {
-            if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">No students/participants found for this exam.</td></tr>';
-            if (summary) summary.innerHTML = '<strong>No exam participants found</strong>';
-            if (releaseBtn) {
-                releaseBtn.disabled = true;
-                releaseBtn.innerHTML = '✅ No Students to Release';
-            }
+            if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">No graded results found for this exam.</td></tr>';
+            if (summary) summary.innerHTML = '<strong>No graded results available for release</strong>';
+            if (releaseBtn) { releaseBtn.disabled = true; releaseBtn.innerHTML = '✅ No Graded Results'; }
             return;
         }
 
+        const { data: exam, error: examError } = await sb.from('exams')
+            .select('pass_mark, total_marks, exam_name, exam_type')
+            .eq('id', examId).single();
+        if (examError) throw examError;
+
         const passMark = Number(exam?.pass_mark ?? Math.round((exam?.total_marks || 100) * 0.6));
         const examName = exam?.exam_name || 'Exam';
-        const examType = exam?.exam_type || 'EXAM';
         const totalMarks = Number(exam?.total_marks || 30);
 
-        // Check release-table records in chunks.
-        const currentGradeIds = currentGrades.map(r => r.id).filter(Boolean);
+        const gradeIds = currentGrades.map(r => r.id).filter(Boolean);
         const releasedMap = new Map();
-        const releaseChunkSize = 75;
-        for (let i = 0; i < currentGradeIds.length; i += releaseChunkSize) {
-            const chunk = currentGradeIds.slice(i, i + releaseChunkSize);
-            const { data, error } = await sb
-                .from('released_exam_results')
-                .select('result_id, released_at')
-                .in('result_id', chunk);
+        for (let i = 0; i < gradeIds.length; i += 75) {
+            const chunk = gradeIds.slice(i, i + 75);
+            const { data, error } = await sb.from('released_exam_results')
+                .select('result_id, released_at').in('result_id', chunk);
             if (error) throw error;
             (data || []).forEach(r => releasedMap.set(String(r.result_id), r.released_at));
         }
 
-        // Profiles are loaded for the COMPLETE union, not only grades.
-        const studentIds = [...new Set(currentGrades.map(r => r.student_id).filter(Boolean))];
-        let profiles = [];
-        const profileChunkSize = 75;
-        for (let i = 0; i < studentIds.length; i += profileChunkSize) {
-            const chunk = studentIds.slice(i, i + profileChunkSize);
-            const { data, error } = await sb
-                .from('consolidated_user_profiles_table')
-                .select('user_id, full_name, student_id, email, program, block')
-                .in('user_id', chunk);
-            if (error) {
-                console.warn('⚠️ Profile lookup failed for chunk:', error.message);
-                continue;
-            }
-            profiles.push(...(data || []));
-        }
-        const profileMap = Object.fromEntries(profiles.map(p => [String(p.user_id), p]));
+        const studentIds = [...new Set(currentGrades.map(r => String(r.student_id)).filter(Boolean))];
+        const { data: profiles, error: profileError } = await sb.from('consolidated_user_profiles_table')
+            .select('user_id, full_name, student_id, email, program, block, intake_year')
+            .in('user_id', studentIds);
+        if (profileError) console.warn('⚠️ Profile lookup warning:', profileError.message);
+        const profileMap = Object.fromEntries((profiles || []).map(p => [String(p.user_id), p]));
 
-        // Deterministic ordering: name, then admission number.
         currentGrades.sort((a, b) => {
             const pa = profileMap[String(a.student_id)] || {};
             const pb = profileMap[String(b.student_id)] || {};
@@ -6333,144 +6241,68 @@ window.displayLiveFeed = function() {
                    String(pa.student_id || '').localeCompare(String(pb.student_id || ''));
         });
 
-        let html = '';
-        let pendingCount = 0;
-        let releasedCount = 0;
-        let inProgressCount = 0;
-        let noResultCount = 0;
-        let noProfileCount = 0;
-
+        let html = '', pendingCount = 0, releasedCount = 0;
         currentGrades.forEach(r => {
             const student = profileMap[String(r.student_id)] || {};
-            if (!student.full_name) noProfileCount++;
-
-            const attempt = r.attempt_info || null;
-            const status = String(attempt?.status || r.result_status || '').toUpperCase();
-            const isInProgress = status === 'IN_PROGRESS';
-            const isNoResult = status === 'NO_RESULT';
-            const releasedAt = r.id ? (r.released_at || releasedMap.get(String(r.id)) || null) : null;
-            const isReleased = !!r.released || !!releasedAt || (r.id && releasedMap.has(String(r.id)));
-
-            const scoreRaw = r.total_score ?? r.marks ?? attempt?.score;
-            const hasScore = scoreRaw !== null && scoreRaw !== undefined && scoreRaw !== '' && Number.isFinite(Number(scoreRaw));
-            const score = hasScore ? Number(scoreRaw) : 0;
-            const percentage = Number.isFinite(Number(r.percentage))
-                ? Number(r.percentage).toFixed(1)
-                : (hasScore && totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '--');
-            const isPassed = hasScore && score >= passMark;
-
-            let statusText = 'NO RESULT';
-            let statusClass = 'status-pending';
-            if (isInProgress) {
-                statusText = 'IN PROGRESS';
-            } else if (isReleased) {
-                statusText = isPassed ? 'PASS' : 'FAIL';
-            } else if (hasScore && r.id) {
-                statusText = isPassed ? 'PASS' : 'FAIL';
-            } else if (status === 'PENDING') {
-                statusText = 'PENDING';
-            }
-
-            if (isInProgress) {
-                inProgressCount++;
-            } else if (isNoResult) {
-                noResultCount++;
-            }
-
-            const studentNameRaw = student.full_name || r.student_name || 'Unknown Student';
-            const studentName = String(studentNameRaw).replace(/'/g, "\\'");
-            const studentId = r.student_id || '';
+            const attempt = r.attempt_info || {};
+            const releasedAt = r.released_at || releasedMap.get(String(r.id)) || null;
+            const isReleased = !!r.released || !!releasedAt || releasedMap.has(String(r.id));
+            const scoreValue = r.total_score ?? r.marks ?? attempt.score;
+            const score = Number.isFinite(Number(scoreValue)) ? Number(scoreValue) : 0;
+            const pctRaw = r.percentage ?? attempt.percentage;
+            const percentage = Number.isFinite(Number(pctRaw)) ? Number(pctRaw).toFixed(1) : (totalMarks > 0 ? ((score / totalMarks) * 100).toFixed(1) : '0.0');
+            const isPassed = score >= passMark;
+            const studentNameRaw = student.full_name || 'Unknown';
+            const studentName = studentNameRaw.replace(/'/g, "\\'");
+            const studentUuid = String(r.student_id || '');
             const studentIdDisplay = student.student_id || 'N/A';
-            const studentEmail = student.email || '';
             const safeExam = String(examName).replace(/'/g, "\\'");
+            let checkboxHtml = '', releasedDisplay = '', actionButtons = '';
 
-            let releasedDisplay = '';
-            let actionButtons = '';
-            let checkboxHtml = '';
-
-            if (isInProgress) {
-                releasedDisplay = '<span class="status-pending">⏳ Exam In Progress</span>';
-                checkboxHtml = '<input type="checkbox" disabled style="opacity:0.3;">';
-                actionButtons = `
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" title="View Progress"><i class="fas fa-chart-line"></i></button>
-                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${safeExam}')" title="Manage Timer"><i class="fas fa-clock"></i></button>
-                    <button class="action-btn btn-danger" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${safeExam}')" title="Reset and allow student to continue same attempt"><i class="fas fa-rotate-right"></i></button>`;
-            } else if (isReleased) {
+            if (isReleased) {
                 releasedCount++;
-                const releasedTime = releasedAt ? formatKenyaTime(releasedAt) : '';
-                releasedDisplay = `<span class="status-pass">✅ Released<br><small style="font-size:0.6rem;">${releasedTime}</small></span>`;
+                releasedDisplay = `<span class="status-pass">✅ Released<br><small style="font-size:0.6rem;">${releasedAt ? formatKenyaTime(releasedAt) : ''}</small></span>`;
                 checkboxHtml = '<input type="checkbox" disabled style="opacity:0.3;">';
-                actionButtons = `
-                    <button class="action-btn btn-success" onclick="resendReleaseEmail('${studentId}', ${examId}, '${studentName}', '${safeExam}')" title="Resend email notification"><i class="fas fa-envelope"></i></button>
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" title="View Progress"><i class="fas fa-chart-line"></i></button>
-                    <button class="action-btn btn-warning" onclick="resetSingleStudent('${studentId}', ${examId}, '${studentName}', '${safeExam}')" title="Reset and allow student to continue same attempt"><i class="fas fa-rotate-right"></i></button>`;
-            } else if (r.id) {
+                actionButtons = `<button class="action-btn btn-success" onclick="resendReleaseEmail('${studentUuid}', ${examId}, '${studentName}', '${safeExam}')" title="Resend email notification"><i class="fas fa-envelope"></i></button>
+                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentUuid}', '${studentName}', ${examId})" title="View Progress"><i class="fas fa-chart-line"></i></button>`;
+            } else {
                 pendingCount++;
                 releasedDisplay = '<span class="status-pending">🔒 Not Released</span>';
-                // IMPORTANT: data-id is the actual exam_grades ID used by release.
-                checkboxHtml = `<input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${studentId}" onchange="updateSelectedCount()" style="margin-right:8px;">`;
-                actionButtons = `
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" title="View Progress"><i class="fas fa-chart-line"></i></button>
-                    <button class="action-btn btn-warning" onclick="openTimerModal('${studentId}', '${studentName}', ${examId}, '${safeExam}')" title="Manage Timer"><i class="fas fa-clock"></i></button>`;
-            } else {
-                // Participant exists but has no releaseable sentinel grade.
-                releasedDisplay = '<span class="status-pending">⚠️ Result Not Generated</span>';
-                checkboxHtml = '<input type="checkbox" disabled style="opacity:0.3;" title="No final result record available">';
-                actionButtons = `
-                    <button class="action-btn btn-info" onclick="viewStudentProgress('${studentId}', '${studentName}', ${examId})" title="View Progress"><i class="fas fa-chart-line"></i></button>`;
+                checkboxHtml = `<input type="checkbox" class="student-checkbox" data-id="${r.id}" data-student-id="${studentUuid}" onchange="updateSelectedCount()" style="margin-right:8px;">`;
+                actionButtons = `<button class="action-btn btn-info" onclick="viewStudentProgress('${studentUuid}', '${studentName}', ${examId})" title="View Progress"><i class="fas fa-chart-line"></i></button>`;
             }
-
-            const displayScore = hasScore ? `${score}` : '--';
-            const displayPercentage = percentage === '--' ? '--' : `${percentage}%`;
 
             html += `<tr>
                 <td style="padding:8px;">${checkboxHtml}</td>
                 <td style="padding:8px;"><span class="student-id-badge">${studentIdDisplay}</span></td>
-                <td style="padding:8px;"><strong>${studentNameRaw}</strong><br><small style="color:#6b7280;">${studentEmail}</small></td>
-                <td style="padding:8px;color:#0A3D62;font-weight:600;">${displayScore} ✏️</td>
-                <td style="padding:8px;color:#0A3D62;font-weight:600;">${displayPercentage}</td>
-                <td style="padding:8px;"><span class="${statusClass}">${statusText}</span></td>
+                <td style="padding:8px;"><strong>${studentNameRaw}</strong><br><small style="color:#6b7280;">${student.email || ''}</small></td>
+                <td style="padding:8px;color:#0A3D62;font-weight:600;">${score} ✏️</td>
+                <td style="padding:8px;color:#0A3D62;font-weight:600;">${percentage}%</td>
+                <td style="padding:8px;"><span class="${isPassed ? 'status-pass' : 'status-fail'}">${isPassed ? 'PASS' : 'FAIL'}</span></td>
                 <td style="padding:8px;">${releasedDisplay}</td>
                 <td style="padding:8px;"><div style="display:flex;gap:4px;flex-wrap:wrap;align-items:center;">${actionButtons}</div></td>
             </tr>`;
         });
 
         if (body) body.innerHTML = html;
-
-        const totalParticipants = currentGrades.length;
-        const readyText = pendingCount > 0 ? `<strong>📋 Ready for Release: ${pendingCount}</strong>` : '';
-        const releasedText = releasedCount > 0 ? `<strong>✅ Already Released: ${releasedCount}</strong>` : '';
-        const progressText = inProgressCount > 0 ? `<strong>⏳ In Progress: ${inProgressCount}</strong>` : '';
-        const noResultText = noResultCount > 0 ? `<strong>⚠️ No Final Result: ${noResultCount}</strong>` : '';
-        const profileText = noProfileCount > 0 ? `<strong>👤 Profile Missing: ${noProfileCount}</strong>` : '';
-        const parts = [readyText, releasedText, progressText, noResultText, profileText].filter(Boolean);
-        if (summary) {
-            summary.innerHTML = `<strong>👥 Total Participants: ${totalParticipants}</strong>${parts.length ? ' | ' + parts.join(' | ') : ''}`;
-        }
-
+        let summaryHTML = '';
+        if (pendingCount) summaryHTML += `<strong>📋 Pending Results: ${pendingCount} student(s) ready for release</strong>`;
+        if (releasedCount) summaryHTML += `${summaryHTML ? ' | ' : ''}<strong>✅ Already Released: ${releasedCount} student(s)</strong>`;
+        if (!summaryHTML) summaryHTML = '<strong>No graded results found</strong>';
+        if (summary) summary.innerHTML = summaryHTML;
         if (releaseBtn) {
             releaseBtn.disabled = pendingCount === 0;
-            releaseBtn.innerHTML = pendingCount > 0
-                ? `<i class="fas fa-share-alt"></i> Release Selected (${pendingCount} pending)`
-                : '✅ No Pending Results';
+            releaseBtn.innerHTML = pendingCount ? `<i class="fas fa-share-alt"></i> Release Selected (${pendingCount} pending)` : '✅ All Current Results Released';
         }
-
-        // Keep Select All/count synchronized with the actual releaseable rows.
-        const selectAll = document.getElementById('selectAllCheckbox');
-        if (selectAll) selectAll.checked = false;
         updateSelectedCount();
-
-        console.log(`📊 Release preview: ${totalParticipants} participants | ${pendingCount} pending | ${releasedCount} released | ${inProgressCount} in progress | ${noResultCount} no result`);
     } catch (error) {
         console.error('❌ Release preview error:', error);
         if (body) body.innerHTML = `<tr><td colspan="8" style="color:#DC2626;text-align:center;padding:30px;">❌ Error: ${error.message}</td></tr>`;
-        if (summary) summary.innerHTML = '<strong>Unable to load exam participants</strong>';
-        if (releaseBtn) {
-            releaseBtn.disabled = true;
-            releaseBtn.innerHTML = '❌ Unable to Load Students';
-        }
+        if (summary) summary.innerHTML = '<strong>Unable to load graded results</strong>';
+        if (releaseBtn) { releaseBtn.disabled = true; releaseBtn.innerHTML = '❌ Unable to Load Results'; }
     }
 };
+    
     window.selectAllStudents = function(select) {
         const checkboxes = document.querySelectorAll('#releasePreviewBody .student-checkbox');
         checkboxes.forEach(cb => { 
