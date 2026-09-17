@@ -139,53 +139,49 @@ class UIModule {
         
         // 1. Setup app loading
         this.setupAppLoading();
-        await this.delay(300);
+        this.updateLoadingProgress(10, 'Starting secure session…');
+        await this.delay(150);
         
         // 2. Cleanup initial styles
         this.cleanupInitialStyles();
-        await this.delay(300);
+        this.updateLoadingProgress(25, 'Checking authentication…');
+        await this.delay(150);
         
         // 3. Setup all event listeners
         this.setupEventListeners();
         this.setupProfileDropdown();
-        await this.delay(400);
+        this.updateLoadingProgress(42, 'Preparing your student workspace…');
+        await this.delay(200);
         
         // 4. Setup navigation
         this.setupUrlNavigation();
         this.setupTabChangeListener();
-        await this.delay(300);
+        this.updateLoadingProgress(58, 'Loading portal navigation…');
+        await this.delay(150);
         
         // 5. Initialize time and offline
         this.initializeDateTime();
         this.setupOfflineIndicator();
         this.setupMobileMenuVisibility();
+        this.updateLoadingProgress(70, 'Loading academic data…');
         
         // 6. Load last tab
         this.loadLastTab();
         
+        this.updateLoadingProgress(78, 'Restoring your last page…');
         // 7. Start reviews badge updater
         this.startReviewsBadgeUpdater();
-        
-        // 8. Force dashboard visible
-        setTimeout(() => {
-            const dashboard = document.getElementById('dashboard');
-            if (dashboard) {
-                dashboard.style.display = 'block';
-                dashboard.classList.add('active');
-                console.log('✅ Dashboard forced visible after load');
-            }
-            document.querySelectorAll('.tab-content').forEach(tab => {
-                if (tab.id !== 'dashboard') {
-                    tab.style.display = 'none';
-                    tab.classList.remove('active');
-                }
-            });
-        }, 200);
-        
+        // 8. Restore the correct page from the URL or saved session.
+        // Do NOT force Dashboard here; this runs after refresh.
+        this.restoreInitialTab();
+
         // 9. Load user data
-        await this.delay(800);
+        await this.delay(300);
+        this.updateLoadingProgress(88, 'Loading student profile…');
         await this.loadInitialUserData();
-        await this.delay(800);
+        this.updateLoadingProgress(96, 'Finalizing your portal…');
+        await this.delay(150);
+        this.updateLoadingProgress(100, 'Ready');
         await this.hideLoadingScreen();
         
         // 10. Initialize all modules
@@ -590,37 +586,45 @@ class UIModule {
         };
         
         window.addEventListener('popstate', handleRoute);
-        setTimeout(handleRoute, 100);
     }
     
     setupTabChangeListener() {}
     
     loadLastTab() {
-        this.currentTab = 'dashboard';
-        localStorage.setItem(this.storageKey, 'dashboard');
-        
-        const dashboard = document.getElementById('dashboard');
-        if (dashboard) {
-            dashboard.style.display = 'block';
-            dashboard.classList.add('active');
-            console.log('📊 Dashboard activated on page load');
-        }
-        
-        this.tabs.forEach(tab => {
-            if (tab.id !== 'dashboard') {
-                tab.style.display = 'none';
-                tab.classList.remove('active');
-            }
-        });
-        
-        this.navLinks.forEach(link => {
-            link.classList.remove('active');
-            if (link.getAttribute('data-tab') === 'dashboard') {
-                link.classList.add('active');
-            }
-        });
+        // Backward-compatible method name.
+        // Restore the actual route/saved page instead of resetting to Dashboard.
+        return this.restoreInitialTab();
     }
-    
+
+    restoreInitialTab() {
+        let tabId = 'dashboard';
+
+        try {
+            const path = (window.location.pathname || '').replace(/\/+$/, '');
+
+            if (path.startsWith('/student/')) {
+                const routeTab = path.replace(/^\/student\//, '');
+                if (this.isValidTab(routeTab)) {
+                    tabId = routeTab;
+                } else {
+                    const saved = localStorage.getItem(this.storageKey);
+                    if (saved && this.isValidTab(saved)) tabId = saved;
+                }
+            } else {
+                const saved = localStorage.getItem(this.storageKey);
+                if (saved && this.isValidTab(saved)) tabId = saved;
+            }
+        } catch (error) {
+            console.warn('⚠️ Could not restore saved tab:', error);
+        }
+
+        this.currentTab = '';
+        this.showTab(tabId, false);
+        console.log(`✅ Restored initial tab: ${tabId}`);
+        return tabId;
+    }
+
+
     // ============================================================
     // 🖱️ EVENT LISTENERS - COMPLETE
     // ============================================================
@@ -1147,6 +1151,32 @@ class UIModule {
     // 👤 USER DATA MANAGEMENT
     // ============================================================
     
+    updateLoadingProgress(percent, message = '') {
+        const p = Math.max(0, Math.min(100, Number(percent) || 0));
+
+        if (this.progressFill) this.progressFill.style.width = `${p}%`;
+        if (this.progressText) this.progressText.textContent = `${Math.round(p)}%`;
+
+        if (this.statusSteps && message) {
+            const active = this.statusSteps.querySelector('.active, .current');
+            if (active) active.textContent = message;
+            else {
+                const textNode = this.statusSteps.querySelector('span, p, div');
+                if (textNode) textNode.textContent = message;
+            }
+        }
+
+        const bar = document.getElementById('nchsm-loading-progress');
+        const pct = document.getElementById('nchsm-loading-percent');
+        const label = document.getElementById('nchsm-loading-status-label');
+        const status = document.getElementById('nchsm-loading-status');
+
+        if (bar) bar.style.width = `${p}%`;
+        if (pct) pct.textContent = `${Math.round(p)}%`;
+        if (label && message) label.textContent = message;
+        if (status && message) status.textContent = message;
+    }
+
     setupAppLoading() {
         if (!this.loadingScreen) {
             this.createFallbackLoadingScreen();
@@ -1169,7 +1199,17 @@ class UIModule {
     }
     
     async hideLoadingScreen() {
-        if (this.loadingScreen) this.loadingScreen.style.display = 'none';
+        if (this.loadingScreen) {
+            this.loadingScreen.style.transition = 'opacity 0.28s ease, visibility 0.28s ease';
+            this.loadingScreen.style.opacity = '0';
+            this.loadingScreen.style.visibility = 'hidden';
+            this.loadingScreen.style.pointerEvents = 'none';
+
+            setTimeout(() => {
+                if (this.loadingScreen) this.loadingScreen.style.display = 'none';
+            }, 300);
+        }
+
         setTimeout(() => this.showToast('Welcome to NCHSM Student Portal!', 'success', 3000), 500);
     }
     
