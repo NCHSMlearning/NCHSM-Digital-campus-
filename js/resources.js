@@ -84,7 +84,7 @@ class ResourcesModule {
         this.userProgramCode = 'KRCHN';
         this.userBlock = 'Introductory';
         this.userTerm = null;
-        this.userIntakeYear = null;
+        this.userIntakeYear = 2025;
         this.userId = null;
         this.isTVETStudent = false;
         this.userProfile = null;
@@ -97,22 +97,6 @@ class ResourcesModule {
         this.audioStartTime = null;
         this.audioProgressInterval = null;
         this.audioVoicesLoaded = false;
-        this.podcastPauseTimer = null;
-
-        // ===== AI Podcast Engine =====
-        // Optional: set one of these in your dashboard before loading this module:
-        // window.NCHSM_AI_PODCAST_CONFIG = {
-        //     endpoint: '/api/student-podcast',
-        //     model: 'gpt-5.6'
-        // };
-        this.aiPodcastConfig = window.NCHSM_AI_PODCAST_CONFIG || {};
-        this.aiPodcastEnabled = Boolean(
-            this.aiPodcastConfig.endpoint ||
-            window.generateStudentPodcast ||
-            window.generateAIPodcast
-        );
-        this.aiPodcastAbortController = null;
-        this.podcastGenerationId = 0;
         
         // ===== Dual-Voice Podcast State =====
         this.dualVoiceEnabled = true;
@@ -126,12 +110,8 @@ class ResourcesModule {
         this.audioWaveCtx = null;
         this.podcastTopic = '';
         this.extractedContent = '';
-
-        // ===== Secure AI Podcast Edge Function =====
-        // Provider/API keys stay inside the Supabase Edge Function.
-        // The browser only invokes the function through the existing Supabase client.
+        // ===== Secure AI Podcast =====
         this.AI_PODCAST_FUNCTION = window.NCHSM_AI_PODCAST_FUNCTION || 'student-podcast';
-        this.aiPodcastAbortController = null;
         this.aiPodcastRequestId = 0;
         
         // ===== TVET Program Codes =====
@@ -204,6 +184,7 @@ class ResourcesModule {
         this.setupAudioEvents();
         this.setupSummaryEvents();
         this.detectUserProgram();
+        this.loadResources();
         this.initWaveformCanvas();
     }
     
@@ -265,15 +246,8 @@ class ResourcesModule {
                 this.userProgram = e.detail.isTVET ? 'tvet' : 'krchn';
                 this.isTVETStudent = e.detail.isTVET || false;
                 this.userProgramDisplay = e.detail.displayName || 'KRCHN Nursing';
-
-                // If the event contains a program code, keep it synchronized.
-                if (e.detail.programCode) {
-                    this.userProgramCode = String(e.detail.programCode).trim().toUpperCase();
-                }
-
                 this.updateUIForProgram();
                 this.updateBlockFilterOptions();
-                this.updateBlockDisplay();
                 this.loadResources();
             }
         });
@@ -654,457 +628,280 @@ class ResourcesModule {
     // 🎙️ GENERATE NOTEBOOKLM-STYLE PODCAST SCRIPT
     // ============================================================
     
-    // ============================================================
-    // 🤖 AI NOTEBOOKLM-STYLE PODCAST ENGINE
-    // ============================================================
-
-    async generateAIPodcastScript(sourceText, title = '', resource = null) {
-        const text = String(sourceText || '').replace(/\s+/g, ' ').trim();
-
-        if (!text || text.length < 50) {
-            throw new Error('Not enough source text to generate an AI podcast.');
-        }
-
-        const generationId = ++this.podcastGenerationId;
-
-        if (this.aiPodcastAbortController) {
-            this.aiPodcastAbortController.abort();
-        }
-        this.aiPodcastAbortController = new AbortController();
-
-        const payload = {
-            title: title || resource?.title || 'Learning Resource',
-            source: text,
-            resource: resource ? {
-                id: resource.id,
-                title: resource.title,
-                course_name: resource.course_name,
-                resource_type: resource.resource_type,
-                program_type: resource.program_type,
-                block: resource.block,
-                term: resource.term,
-                year: resource.year,
-                exam_type: resource.exam_type
-            } : null,
-            instructions: {
-                style: 'NotebookLM-style educational audio discussion',
-                speakers: ['host1', 'host2'],
-                audience: 'nursing and health-science students',
-                sourceGrounded: true,
-                doNotInventFacts: true,
-                conversational: true,
-                explainRatherThanRead: true,
-                include: [
-                    'natural introduction',
-                    'central concept',
-                    'important definitions',
-                    'major concepts',
-                    'step-by-step explanation where appropriate',
-                    'clinical or nursing relevance only when supported by the source',
-                    'exam-relevant points when supported by the source',
-                    'concise recap'
-                ],
-                avoid: [
-                    'generic filler',
-                    'repeating the same point',
-                    'invented facts',
-                    'claims not supported by the source',
-                    'reading the document word-for-word'
-                ],
-                outputFormat: 'JSON array of {speaker,text,pauseAfter}'
-            }
-        };
-
-        let result = null;
-
-        // Preferred integration: a project-specific function.
-        const generator =
-            window.generateStudentPodcast ||
-            window.generateAIPodcast;
-
-        if (typeof generator === 'function') {
-            result = await generator(payload, {
-                signal: this.aiPodcastAbortController.signal
-            });
-        } else {
-            const endpoint = this.aiPodcastConfig.endpoint;
-            if (!endpoint) {
-                throw new Error(
-                    'AI podcast endpoint is not configured. Using the built-in local podcast engine.'
-                );
-            }
-
-            const response = await fetch(endpoint, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...(this.aiPodcastConfig.headers || {})
-                },
-                body: JSON.stringify(payload),
-                signal: this.aiPodcastAbortController.signal
-            });
-
-            if (!response.ok) {
-                const message = await response.text().catch(() => '');
-                throw new Error(
-                    `AI podcast request failed (${response.status})${message ? `: ${message.substring(0, 180)}` : ''}`
-                );
-            }
-
-            result = await response.json();
-        }
-
-        if (generationId !== this.podcastGenerationId) {
-            throw new DOMException('Superseded podcast generation', 'AbortError');
-        }
-
-        const dialogue = this.normalizeAIPodcastDialogue(result);
-
-        if (!dialogue.length) {
-            throw new Error('The AI returned no usable podcast dialogue.');
-        }
-
-        return dialogue;
-    }
-
-    normalizeAIPodcastDialogue(result) {
-        let dialogue = result;
-
-        if (result?.dialogue) dialogue = result.dialogue;
-        else if (result?.script) dialogue = result.script;
-        else if (result?.podcast) dialogue = result.podcast;
-        else if (result?.choices?.[0]?.message?.content) {
-            let content = result.choices[0].message.content;
-
-            // Models sometimes wrap JSON in markdown fences.
-            content = content
-                .replace(/^```(?:json)?\s*/i, '')
-                .replace(/\s*```$/i, '')
-                .trim();
-
-            try {
-                dialogue = JSON.parse(content);
-            } catch {
-                return this.convertPlainTextToDialogue(content);
-            }
-        }
-
-        if (typeof dialogue === 'string') {
-            try {
-                dialogue = JSON.parse(dialogue);
-            } catch {
-                return this.convertPlainTextToDialogue(dialogue);
-            }
-        }
-
-        if (!Array.isArray(dialogue)) return [];
-
-        return dialogue
-            .map((line, index) => {
-                const rawSpeaker = String(
-                    line?.speaker ||
-                    line?.role ||
-                    line?.host ||
-                    ''
-                ).toLowerCase();
-
-                const speaker =
-                    rawSpeaker.includes('2') ||
-                    rawSpeaker.includes('female') ||
-                    rawSpeaker.includes('co-host') ||
-                    rawSpeaker.includes('cohost')
-                        ? 'host2'
-                        : 'host1';
-
-                const speech = String(
-                    line?.text ||
-                    line?.content ||
-                    line?.dialogue ||
-                    ''
-                ).trim();
-
-                return {
-                    speaker,
-                    text: speech,
-                    pauseAfter: Math.max(
-                        0.25,
-                        Math.min(1.5, Number(line?.pauseAfter) || 0.5)
-                    ),
-                    index
-                };
-            })
-            .filter(line => line.text.length > 0)
-            .map(({ index, ...line }) => line);
-    }
-
-    convertPlainTextToDialogue(content) {
-        const lines = String(content || '')
-            .split(/\n+/)
-            .map(line => line.trim())
-            .filter(Boolean);
-
-        return lines.map((line, index) => {
-            const isHost2 =
-                /^(host\s*2|co-?host|female)\s*:/i.test(line);
-
-            const text = line
-                .replace(/^(host\s*[12]|co-?host|male|female)\s*:\s*/i, '')
-                .trim();
-
-            return {
-                speaker: isHost2 ? 'host2' : (index % 2 === 0 ? 'host1' : 'host2'),
-                text,
-                pauseAfter: 0.5
-            };
-        });
-    }
-
-    async createBestPodcastScript(sourceText, resource = {}) {
-        const text = String(sourceText || '').trim();
-        if (!text) return [];
-
-        const requestId = ++this.aiPodcastRequestId;
-
-        // Prefer the secure Supabase Edge Function, exactly like the lecturer
-        // Academic Integrity Agent. No Gemini/OpenAI key is exposed in this JS.
-        const db = this.getSupabaseClient();
-        if (db?.functions?.invoke) {
-            try {
-                const payload = {
-                    resource_id: resource.id ?? null,
-                    title: resource.title || 'Student Resource',
-                    course_name: resource.course_name || '',
-                    resource_type: resource.resource_type || 'material',
-                    program: resource.program_type || this.userProgramCode || 'KRCHN',
-                    block: resource.block || this.userBlock || '',
-                    source_text: text.slice(0, 120000),
-                    audience: 'NCHSM nursing student',
-                    format: 'notebooklm_style_two_host_podcast',
-                    speakers: [
-                        { id: 'host1', role: 'host', style: 'clear, calm educational explainer' },
-                        { id: 'host2', role: 'cohost', style: 'curious, concise, natural follow-up questions' }
-                    ],
-                    requirements: [
-                        'Use only information supported by the supplied source.',
-                        'Explain concepts rather than simply reading the source.',
-                        'Create a natural educational conversation between two hosts.',
-                        'Define important terms and explain major concepts.',
-                        'Highlight clinical relevance only where supported by the source.',
-                        'Highlight examination/revision points only where supported by the source.',
-                        'Use short natural turns and avoid repetitive filler.',
-                        'Do not invent facts, references, statistics, diagnoses, treatment advice, or citations.',
-                        'End with a concise recap of the key learning points.'
-                    ]
-                };
-
-                const response = await db.functions.invoke(this.AI_PODCAST_FUNCTION, {
-                    body: payload
-                });
-
-                if (requestId !== this.aiPodcastRequestId) return [];
-
-                if (response.error) {
-                    console.warn('AI Podcast Edge Function error:', response.error);
-                } else {
-                    const aiData = response.data;
-                    const lines = this.normalizeAIPodcastResponse(aiData);
-                    if (lines.length) {
-                        console.log('🎙️ AI Podcast generated by Supabase Edge Function');
-                        return lines;
-                    }
-                    console.warn('AI Podcast function returned no usable dialogue; using local fallback.');
-                }
-            } catch (error) {
-                if (requestId !== this.aiPodcastRequestId) return [];
-                console.warn('AI Podcast invocation failed; using local fallback:', error);
-            }
-        } else {
-            console.warn('Supabase Functions client unavailable; using local podcast fallback.');
-        }
-
-        // Keep the portal functional even if the AI provider/function is unavailable.
-        if (typeof this.generatePodcastScript === 'function') {
-            return this.generatePodcastScript(text, resource.title || 'this resource', resource);
-        }
-
-        return [];
-    }
-
-    normalizeAIPodcastResponse(data) {
-        let raw = data?.dialogue || data?.lines || data?.script || data?.podcast || data?.result || data;
-
-        if (typeof raw === 'string') {
-            const cleaned = raw.replace(/```json|```/gi, '').trim();
-            try {
-                raw = JSON.parse(cleaned);
-            } catch {
-                // Accept simple "Host: ... / Co-host: ..." text as a final fallback.
-                return cleaned.split(/\n+/)
-                    .map(line => line.trim())
-                    .filter(Boolean)
-                    .map(line => {
-                        const match = line.match(/^(host|host1|co-?host|host2)\s*:\s*(.+)$/i);
-                        return {
-                            speaker: match?.[1]?.toLowerCase().includes('co') || match?.[1]?.toLowerCase() === 'host2' ? 'host2' : 'host1',
-                            text: match ? match[2].trim() : line,
-                            pauseAfter: 0.25
-                        };
-                    });
-            }
-        }
-
-        if (raw && !Array.isArray(raw) && Array.isArray(raw.dialogue)) raw = raw.dialogue;
-        if (raw && !Array.isArray(raw) && Array.isArray(raw.lines)) raw = raw.lines;
-
-        if (!Array.isArray(raw)) return [];
-
-        return raw
-            .map(item => {
-                const speakerRaw = String(item?.speaker || item?.role || 'host1').toLowerCase();
-                const speaker = speakerRaw.includes('co') || speakerRaw === 'host2' || speakerRaw === 'speaker2'
-                    ? 'host2'
-                    : 'host1';
-                const value = String(item?.text || item?.content || item?.message || '').trim();
-                return {
-                    speaker,
-                    text: value,
-                    pauseAfter: Math.max(0, Number(item?.pauseAfter ?? item?.pause_after ?? 0.25) || 0.25)
-                };
-            })
-            .filter(x => x.text.length > 0)
-            .slice(0, 160);
-    }
-
-
     generatePodcastScript(text, title = '') {
         const lines = [];
-        const cleanText = String(text || '').replace(/\s+/g, ' ').trim();
-
-        if (!cleanText) {
-            return [{
-                speaker: 'host1',
-                text: 'There is no readable content available in this resource to create a podcast.',
-                pauseAfter: 0.4
-            }];
-        }
-
+        
+        // Clean the text
+        const cleanText = text.replace(/\s+/g, ' ').trim();
+        
+        // ===== STEP 1: INTELLIGENTLY EXTRACT CONTENT =====
         const extracted = this.intelligentlyExtractContent(cleanText);
-        const topic = title || extracted.mainConcept || 'this learning resource';
-
-        const cleanForSpeech = (value, max = 240) => {
-            let s = String(value || '')
-                .replace(/\s+/g, ' ')
-                .replace(/https?:\/\/\S+/gi, '')
-                .replace(/[{}[\]<>]/g, '')
-                .trim();
-
-            if (s.length > max) {
-                s = s.substring(0, max);
-                const lastSpace = s.lastIndexOf(' ');
-                if (lastSpace > 120) s = s.substring(0, lastSpace);
-                s += '...';
-            }
-            return s;
-        };
-
-        const add = (speaker, speech, pause = 0.55) => {
-            speech = cleanForSpeech(speech);
-            if (!speech) return;
-            lines.push({ speaker, text: speech, pauseAfter: pause });
-        };
-
-        // Natural opening rather than generic "podcast" filler.
-        add('host1',
-            `Welcome. In this episode, we're studying ${topic}.`,
-            0.6);
-
-        if (extracted.mainDefinition) {
-            add('host2',
-                `Let's begin with the central idea. ${extracted.mainDefinition}`,
-                0.7);
-        } else {
-            add('host2',
-                `Let's start with what the resource actually tells us about this topic.`,
-                0.5);
-        }
-
-        // Key points are presented as a discussion, not as repeated "First..."
-        const points = (extracted.keyPoints || [])
-            .filter(Boolean)
-            .slice(0, 6);
-
-        if (points.length) {
-            add('host1',
-                `There are ${points.length} main points worth focusing on.`,
-                0.5);
-
-            points.forEach((point, i) => {
-                const speaker = i % 2 === 0 ? 'host1' : 'host2';
-                const responder = speaker === 'host1' ? 'host2' : 'host1';
-
-                add(speaker,
-                    `${i + 1}. ${point}`,
-                    0.45);
-
-                const explanation = extracted.explanations?.[i];
-                if (explanation && explanation.trim() && explanation.trim() !== point.trim()) {
-                    add(responder,
-                        `The important thing to understand here is this: ${explanation}`,
-                        0.5);
+        
+        console.log('📊 Extracted content:', {
+            mainConcept: extracted.mainConcept,
+            mainDefinition: extracted.mainDefinition,
+            keyPoints: extracted.keyPoints,
+            importantTerms: extracted.importantTerms
+        });
+        
+        // ===== STEP 2: GENERATE PODCAST SCRIPT =====
+        
+        // INTRO
+        lines.push({
+            speaker: 'host1',
+            text: `Welcome back to the podcast. Today we're exploring "${title || 'this topic'}".`,
+            pauseAfter: 0.7
+        });
+        lines.push({
+            speaker: 'host2',
+            text: `This is a fascinating topic. Let's dive in and really understand it.`,
+            pauseAfter: 0.6
+        });
+        lines.push({
+            speaker: 'host1',
+            text: `Absolutely. Let's start with the big picture.`,
+            pauseAfter: 0.5
+        });
+        
+        // ===== EXPLAIN MAIN CONCEPT =====
+        if (extracted.mainConcept && extracted.mainConcept.length > 5) {
+            lines.push({
+                speaker: 'host1',
+                text: `So, the core idea here is ${extracted.mainConcept}.`,
+                pauseAfter: 0.6
+            });
+            if (extracted.mainDefinition && extracted.mainDefinition.length > 10) {
+                // Shorten definition if too long
+                let def = extracted.mainDefinition;
+                if (def.length > 120) {
+                    def = def.substring(0, 120) + '...';
                 }
-            });
+                lines.push({
+                    speaker: 'host2',
+                    text: `That's right. ${def}`,
+                    pauseAfter: 0.6
+                });
+            } else {
+                lines.push({
+                    speaker: 'host2',
+                    text: `Let me explain what that means in simple terms.`,
+                    pauseAfter: 0.5
+                });
+            }
         }
-
-        // Important terms are explained only from definitions actually extracted
-        // from the source. Avoid fabricated definitions.
-        const terms = (extracted.importantTerms || [])
-            .filter(term => extracted.termDefinitions?.[term])
-            .slice(0, 5);
-
-        if (terms.length) {
-            add('host2',
-                `Now let's pause on some terminology from the resource.`,
-                0.55);
-
-            terms.forEach((term, i) => {
+        
+        // ===== EXPLAIN KEY POINTS =====
+        if (extracted.keyPoints && extracted.keyPoints.length > 0) {
+            lines.push({
+                speaker: 'host1',
+                text: `Let's break this down into the key things you need to know.`,
+                pauseAfter: 0.5
+            });
+            
+            const pointsToExplain = extracted.keyPoints.slice(0, 4);
+            for (let i = 0; i < pointsToExplain.length; i++) {
+                const point = pointsToExplain[i];
                 const speaker = i % 2 === 0 ? 'host2' : 'host1';
-                const definition = cleanForSpeech(extracted.termDefinitions[term], 220);
-
-                add(speaker,
-                    `${term}. ${definition}`,
-                    0.45);
+                const otherSpeaker = i % 2 === 0 ? 'host1' : 'host2';
+                
+                // Clean up the point for speaking
+                let cleanPoint = point.replace(/^[Ii]t\s+is\s+/, '');
+                cleanPoint = cleanPoint.replace(/^[Tt]he\s+(?:key|main|important)\s+/, '');
+                if (cleanPoint.length > 120) {
+                    cleanPoint = cleanPoint.substring(0, 120) + '...';
+                }
+                
+                lines.push({
+                    speaker: speaker,
+                    text: `First, ${cleanPoint}`,
+                    pauseAfter: 0.5
+                });
+                
+                // Add explanation
+                if (extracted.explanations && extracted.explanations[i] && extracted.explanations[i] !== point) {
+                    let exp = extracted.explanations[i];
+                    if (exp.length > 100) {
+                        exp = exp.substring(0, 100) + '...';
+                    }
+                    lines.push({
+                        speaker: otherSpeaker,
+                        text: `In other words, ${exp}`,
+                        pauseAfter: 0.5
+                    });
+                }
+            }
+        }
+        
+        // ===== EXPLAIN IMPORTANT TERMS =====
+        if (extracted.importantTerms && extracted.importantTerms.length > 0) {
+            const termsToExplain = extracted.importantTerms.filter(t => t && t.length > 2).slice(0, 3);
+            if (termsToExplain.length > 0) {
+                lines.push({
+                    speaker: 'host1',
+                    text: `Now, let's clarify some important terms.`,
+                    pauseAfter: 0.5
+                });
+                
+                for (let i = 0; i < termsToExplain.length; i++) {
+                    const term = termsToExplain[i];
+                    const definition = extracted.termDefinitions[term] || `an important concept in ${title || 'this topic'}`;
+                    const speaker = i % 2 === 0 ? 'host2' : 'host1';
+                    
+                    let cleanDef = definition;
+                    if (cleanDef.length > 100) {
+                        cleanDef = cleanDef.substring(0, 100) + '...';
+                    }
+                    
+                    lines.push({
+                        speaker: speaker,
+                        text: `${term} - ${cleanDef}`,
+                        pauseAfter: 0.4
+                    });
+                }
+            }
+        }
+        
+        // ===== SUMMARIZE =====
+        lines.push({
+            speaker: 'host2',
+            text: `So, to summarize, we've learned about ${extracted.mainConcept || 'this topic'}.`,
+            pauseAfter: 0.6
+        });
+        
+        if (extracted.keyPoints && extracted.keyPoints.length > 0) {
+            const summaryPoints = extracted.keyPoints.slice(0, 2).join(' and ');
+            let cleanSummary = summaryPoints;
+            if (cleanSummary.length > 100) {
+                cleanSummary = cleanSummary.substring(0, 100) + '...';
+            }
+            lines.push({
+                speaker: 'host1',
+                text: `The main takeaways are ${cleanSummary.toLowerCase()}.`,
+                pauseAfter: 0.6
             });
         }
+        
+        // OUTRO
+        lines.push({
+            speaker: 'host2',
+            text: `I hope this explanation helped you understand ${title || 'this topic'} better.`,
+            pauseAfter: 0.5
+        });
+        lines.push({
+            speaker: 'host1',
+            text: `Thanks for listening! If you found this helpful, check out more resources.`,
+            pauseAfter: 0.4
+        });
+        lines.push({
+            speaker: 'host2',
+            text: `Until next time, keep learning and stay curious!`,
+            pauseAfter: 0.0
+        });
+        
+        return lines;
+    }
+    
+    // ============================================================
+    // 🤖 SECURE AI PODCAST SCRIPT GENERATION
+    // ============================================================
 
-        const concepts = (extracted.nursingConcepts || []).slice(0, 5);
-        if (concepts.length) {
-            add('host1',
-                `From a nursing perspective, the resource also touches on ${concepts.join(', ')}.`,
-                0.55);
+    async createAIPodcastScript(sourceText, resource = {}) {
+        const db = this.getSupabaseClient();
+        if (!db || !db.functions || typeof db.functions.invoke !== 'function') {
+            throw new Error('Supabase Functions client is unavailable. Check that the student portal Supabase client is initialized.');
         }
 
-        // Source-grounded recap.
-        add('host2',
-            `Let's recap what we've covered from ${topic}.`,
-            0.5);
-
-        if (extracted.mainConcept) {
-            add('host1',
-                `The central concept is ${cleanForSpeech(extracted.mainConcept, 160)}.`,
-                0.45);
+        const text = String(sourceText || '').replace(/\s+/g, ' ').trim();
+        if (text.length < 80) {
+            throw new Error('Not enough readable document text was extracted for the AI podcast.');
         }
 
-        points.slice(0, 3).forEach((point, i) => {
-            add(i % 2 === 0 ? 'host2' : 'host1',
-                `Remember this point: ${point}`,
-                0.4);
+        const requestId = ++this.aiPodcastRequestId;
+        const payload = {
+            resource_id: resource.id ?? null,
+            title: resource.title || 'NCHSM Learning Resource',
+            course_name: resource.course_name || '',
+            resource_type: resource.resource_type || 'material',
+            program_type: resource.program_type || this.userProgramCode || 'KRCHN',
+            block: resource.block || this.userBlock || '',
+            term: resource.term || this.userTerm || '',
+            audience: 'NCHSM nursing student',
+            speakers: [
+                { speaker: 'host1', role: 'male educational host' },
+                { speaker: 'host2', role: 'female educational co-host' }
+            ],
+            source_text: text.slice(0, 120000),
+            instructions: 'Create a natural two-host educational podcast from the supplied source only. Explain and discuss the material rather than reading it word-for-word. Do not invent facts, references, statistics, clinical guidance, or exam points not supported by the source. Return valid JSON with title and dialogue. Each dialogue item must contain speaker, text, and optional pauseAfter.'
+        };
+
+        console.log('🤖 Requesting AI podcast from Supabase Edge Function:', {
+            function: this.AI_PODCAST_FUNCTION,
+            resourceId: resource.id,
+            sourceCharacters: text.length
         });
 
-        add('host2',
-            `That brings us to the end of this study discussion. Review the original resource for the complete details.`,
-            0.5);
+        const { data, error } = await db.functions.invoke(this.AI_PODCAST_FUNCTION, {
+            body: payload
+        });
 
-        return lines;
+        if (requestId !== this.aiPodcastRequestId) {
+            throw new Error('Podcast request was superseded by a newer request.');
+        }
+
+        if (error) {
+            console.error('❌ Student podcast Edge Function error:', error);
+            const detail = error?.context?.message || error?.message || String(error);
+            throw new Error(`AI podcast service error: ${detail}`);
+        }
+
+        if (!data || data.success === false) {
+            throw new Error(data?.error || 'The AI podcast service returned no usable response.');
+        }
+
+        let dialogue = data.dialogue || data.lines || data.script;
+        if (typeof dialogue === 'string') {
+            try {
+                const parsed = JSON.parse(dialogue);
+                dialogue = parsed.dialogue || parsed.lines || parsed.script || parsed;
+            } catch (_) {
+                dialogue = dialogue
+                    .split(/\n+/)
+                    .map((line, i) => ({
+                        speaker: i % 2 === 0 ? 'host1' : 'host2',
+                        text: line.replace(/^\s*(host1|host2|host|co-host|speaker\s*\d*)\s*[:\-]\s*/i, '').trim(),
+                        pauseAfter: 0.45
+                    }))
+                    .filter(x => x.text);
+            }
+        }
+
+        if (!Array.isArray(dialogue)) {
+            throw new Error('AI returned an invalid podcast dialogue format.');
+        }
+
+        const normalized = dialogue.map((line, index) => {
+            const rawSpeaker = String(line?.speaker || line?.role || '').toLowerCase();
+            const speaker = /host2|female|co-host|cohost|speaker\s*2/.test(rawSpeaker) ? 'host2' : 'host1';
+            const text = String(line?.text || line?.content || '').replace(/\s+/g, ' ').trim();
+            const pause = Number(line?.pauseAfter);
+            return {
+                speaker,
+                text,
+                pauseAfter: Number.isFinite(pause) ? Math.max(0, Math.min(pause, 3)) : 0.45
+            };
+        }).filter(line => line.text.length > 0);
+
+        if (normalized.length < 2) {
+            throw new Error('AI returned too little dialogue to create a podcast.');
+        }
+
+        console.log('✅ AI podcast generated:', {
+            title: data.title || resource.title,
+            lines: normalized.length,
+            model: data.model || 'configured model'
+        });
+
+        return normalized;
     }
 
     // ============================================================
@@ -1112,282 +909,157 @@ class ResourcesModule {
     // ============================================================
     
     async playPodcastDialogue(lines) {
-        if (!Array.isArray(lines) || lines.length === 0) {
+        if (!lines || lines.length === 0) {
             this.showToast('No dialogue to play', 'warning');
             return;
         }
-
-        if (!('speechSynthesis' in window)) {
-            this.showToast('Speech playback is not supported by this browser.', 'error');
-            return;
-        }
-
-        // Always start with a clean queue.
-        this.aiPodcastRequestId++;
+        
         window.speechSynthesis.cancel();
-        this.clearPodcastPauseTimer();
-
         await this.initAudioWithVoices();
-
+        
         this.maleVoice = this.getMaleVoice();
         this.femaleVoice = this.getFemaleVoice();
-
+        
+        if (!this.maleVoice || !this.femaleVoice) {
+            this.showToast('Using best available voices', 'info');
+        }
+        
         this.dialogueLines = lines;
-        this.currentDialogueIndex = Math.max(
-            0,
-            Math.min(this.currentDialogueIndex || 0, lines.length - 1)
-        );
+        this.currentDialogueIndex = 0;
         this.isPlaying = true;
         this.isAudioPaused = false;
-
         this.updateAudioUI('playing');
         this.startWaveformAnimation();
         this.updateDialogueProgress();
-
+        
         if (this.audioStatus) {
-            this.audioStatus.textContent =
-                `🎙️ Podcast · ${this.currentDialogueIndex + 1}/${lines.length}`;
+            this.audioStatus.textContent = `🎙️ Podcast - 0/${lines.length}`;
         }
-
+        
         this.playDialogueLine();
     }
-
+    
     playDialogueLine() {
-        if (!this.dialogueLines?.length) return;
-
         if (this.currentDialogueIndex >= this.dialogueLines.length) {
-            this.finishPodcast();
+            this.isPlaying = false;
+            this.updateAudioUI('stopped');
+            this.stopWaveformAnimation();
+            this.resetAudioProgress();
+            if (this.audioStatus) {
+                this.audioStatus.textContent = '✅ Podcast complete!';
+            }
+            this.showToast('✅ Podcast complete!', 'success');
             return;
         }
-
-        // Do not create another utterance while the browser is already speaking.
-        if (window.speechSynthesis.speaking) {
-            return;
-        }
-
+        
         const line = this.dialogueLines[this.currentDialogueIndex];
         const isMale = line.speaker === 'host1';
         const voice = isMale ? this.maleVoice : this.femaleVoice;
-        const speakerLabel = isMale ? '👨 Host' : '👩 Co-host';
+        const speakerLabel = isMale ? '🎙️ Host' : '🎙️ Co-host';
         const total = this.dialogueLines.length;
         const current = this.currentDialogueIndex + 1;
-
+        
         if (this.audioStatus) {
-            this.audioStatus.textContent = `${speakerLabel} · ${current}/${total}`;
+            this.audioStatus.textContent = `${speakerLabel} ${current}/${total}`;
         }
-
         if (this.audioSpeakerIndicator) {
-            this.audioSpeakerIndicator.textContent =
-                isMale ? '👨 Host speaking...' : '👩 Co-host speaking...';
-            this.audioSpeakerIndicator.style.color =
-                isMale ? '#4a90d9' : '#e84393';
+            this.audioSpeakerIndicator.textContent = isMale ? '👨 Host explaining...' : '👩 Co-host explaining...';
+            this.audioSpeakerIndicator.style.color = isMale ? '#4a90d9' : '#e84393';
         }
-
+        
         this.updateDialogueProgress();
-
+        
         const utterance = new SpeechSynthesisUtterance(line.text);
         if (voice) utterance.voice = voice;
-
-        utterance.lang = voice?.lang || 'en-US';
-        utterance.rate = this.audioDialogueSpeed || 0.95;
-        utterance.pitch = isMale ? 0.92 : 1.08;
+        utterance.rate = this.audioDialogueSpeed;
+        utterance.pitch = isMale ? 0.9 : 1.1;
         utterance.volume = 1;
-
+        
         this.audioSynth = utterance;
-
+        
         utterance.onstart = () => {
             this.isPlaying = true;
-            this.isAudioPaused = false;
             this.updateAudioUI('playing');
-            this.startWaveformAnimation();
         };
-
+        
         utterance.onend = () => {
-            // Ignore an old utterance after Stop/Close.
-            if (this.audioSynth !== utterance) return;
-
-            this.audioSynth = null;
             this.currentDialogueIndex++;
-
-            const pause = Math.max(0, Number(line.pauseAfter) || 0.4);
-            this.clearPodcastPauseTimer();
-
-            this.podcastPauseTimer = setTimeout(() => {
-                this.podcastPauseTimer = null;
-
-                if (!this.isAudioPaused && this.isPlaying) {
+            const pause = line.pauseAfter || 0.4;
+            setTimeout(() => {
+                if (!this.isAudioPaused) {
                     this.playDialogueLine();
                 }
             }, pause * 1000);
         };
-
-        utterance.onerror = (event) => {
-            if (this.audioSynth !== utterance) return;
-
-            console.warn('Podcast speech line error:', event);
-            this.audioSynth = null;
-
-            // Browser cancellation during stop/pause should not advance the script.
-            if (event.error === 'canceled' || event.error === 'interrupted') {
-                return;
-            }
-
+        
+        utterance.onerror = (e) => {
+            console.warn('Dialogue line error:', e);
             this.currentDialogueIndex++;
-
-            if (this.isPlaying && !this.isAudioPaused) {
-                this.podcastPauseTimer = setTimeout(() => {
-                    this.podcastPauseTimer = null;
+            setTimeout(() => {
+                if (!this.isAudioPaused) {
                     this.playDialogueLine();
-                }, 300);
-            }
+                }
+            }, 500);
         };
-
+        
         window.speechSynthesis.speak(utterance);
     }
-
-    clearPodcastPauseTimer() {
-        if (this.podcastPauseTimer) {
-            clearTimeout(this.podcastPauseTimer);
-            this.podcastPauseTimer = null;
-        }
-    }
-
-    finishPodcast() {
-        this.clearPodcastPauseTimer();
-        this.isPlaying = false;
-        this.isAudioPaused = false;
-        this.audioSynth = null;
-
-        this.updateAudioUI('stopped');
-        this.stopWaveformAnimation();
-        this.updateDialogueProgress();
-
-        if (this.audioProgressFill) {
-            this.audioProgressFill.style.width = '100%';
-        }
-
-        if (this.audioStatus) {
-            this.audioStatus.textContent = '✅ Podcast complete!';
-        }
-
-        if (this.audioSpeakerIndicator) {
-            this.audioSpeakerIndicator.textContent = '🎧 Podcast complete';
-            this.audioSpeakerIndicator.style.color = '#94a3b8';
-        }
-
-        this.showToast('✅ Podcast complete!', 'success');
-    }
-
+    
     updateDialogueProgress() {
         if (this.dialogueLines.length === 0) return;
-        const total = this.dialogueLines.length;
-        const progress = total
-            ? (this.currentDialogueIndex / total) * 100
-            : 0;
-
+        const progress = (this.currentDialogueIndex / this.dialogueLines.length) * 100;
         if (this.audioProgressFill) {
             this.audioProgressFill.style.width = Math.min(progress, 100) + '%';
         }
     }
     
     resumeAudio() {
-        if (!this.dialogueLines?.length) {
-            if (this.currentAudioText) {
-                const script = this.generatePodcastScript(
-                    this.currentAudioText,
-                    this.audioTitle?.textContent?.replace(/^🎙️\s*/, '') || 'Podcast'
-                );
-                this.playPodcastDialogue(script);
-            }
-            return;
-        }
-
-        this.clearPodcastPauseTimer();
-
         if (this.isAudioPaused) {
             this.isAudioPaused = false;
+            window.speechSynthesis.resume();
             this.isPlaying = true;
-
-            // SpeechSynthesis can resume the currently paused utterance.
-            if (window.speechSynthesis.paused) {
-                window.speechSynthesis.resume();
-                this.updateAudioUI('playing');
-                this.startWaveformAnimation();
-                return;
-            }
-
-            // If the browser lost the utterance, restart the current line once.
             this.updateAudioUI('playing');
             this.startWaveformAnimation();
-            this.playDialogueLine();
             return;
         }
-
-        if (!this.isPlaying) {
-            this.isPlaying = true;
-            this.updateAudioUI('playing');
-            this.startWaveformAnimation();
+        if (!this.isPlaying && this.dialogueLines.length > 0) {
+            this.currentDialogueIndex = Math.min(this.currentDialogueIndex, this.dialogueLines.length - 1);
             this.playDialogueLine();
         }
     }
-
+    
     pauseAudio() {
-        if (!this.isPlaying) return;
-
-        this.isAudioPaused = true;
-        this.isPlaying = false;
-        this.clearPodcastPauseTimer();
-
-        if (window.speechSynthesis.speaking) {
+        if (this.isPlaying) {
             window.speechSynthesis.pause();
-        }
-
-        this.updateAudioUI('paused');
-        this.stopWaveformAnimation();
-
-        if (this.audioSpeakerIndicator) {
-            this.audioSpeakerIndicator.textContent = '⏸️ Paused';
-            this.audioSpeakerIndicator.style.color = '#94a3b8';
+            this.isPlaying = false;
+            this.isAudioPaused = true;
+            this.updateAudioUI('paused');
+            this.stopWaveformAnimation();
+            if (this.audioSpeakerIndicator) {
+                this.audioSpeakerIndicator.textContent = '⏸️ Paused';
+            }
         }
     }
-
+    
     stopAudio() {
-        this.clearPodcastPauseTimer();
-
-        // Invalidate any pending AI generation.
-        this.podcastGenerationId++;
-        if (this.aiPodcastAbortController) {
-            this.aiPodcastAbortController.abort();
-            this.aiPodcastAbortController = null;
-        }
-
-        // Invalidate the active utterance before cancelling it so its
-        // onend/onerror handlers cannot advance the dialogue.
-        this.audioSynth = null;
         window.speechSynthesis.cancel();
-
         this.isPlaying = false;
         this.isAudioPaused = false;
+        this.audioSynth = null;
         this.currentDialogueIndex = 0;
         this.dialogueLines = [];
-
         this.updateAudioUI('stopped');
         this.stopWaveformAnimation();
         this.resetAudioProgress();
-
         if (this.audioSpeakerIndicator) {
             this.audioSpeakerIndicator.textContent = '🎧 Ready';
             this.audioSpeakerIndicator.style.color = '#94a3b8';
         }
-
         if (this.audioContainer) {
-            this.audioContainer.classList.remove(
-                'audio-playing',
-                'audio-paused'
-            );
+            this.audioContainer.classList.remove('audio-playing', 'audio-paused');
         }
     }
-
+    
     resetAudioProgress() {
         if (this.audioProgressInterval) {
             clearInterval(this.audioProgressInterval);
@@ -1442,9 +1114,6 @@ class ResourcesModule {
         if (!text || !this.audioContainer) return;
         
         this.currentAudioText = text;
-        this.currentDialogueIndex = 0;
-        this.dialogueLines = [];
-        this.clearPodcastPauseTimer();
         if (this.audioTitle) {
             this.audioTitle.textContent = `🎙️ ${title || 'Podcast'}`;
         }
@@ -1462,14 +1131,10 @@ class ResourcesModule {
         if (this.audioCurrentTime) this.audioCurrentTime.textContent = '0:00';
         if (this.audioProgressFill) this.audioProgressFill.style.width = '0%';
         if (this.audioDuration) {
-            // Approximate spoken duration. Actual browser TTS duration varies
-            // by voice and device, so this is intentionally labelled as an estimate.
-            const wordsPerMinute = 145 * (this.audioDialogueSpeed || 0.95);
-            const estimatedDuration = (wordCount / wordsPerMinute) * 60;
+            const estimatedDuration = wordCount * 0.15;
             const minutes = Math.floor(estimatedDuration / 60);
             const seconds = Math.floor(estimatedDuration % 60);
-            this.audioDuration.textContent =
-                `~${minutes}:${seconds.toString().padStart(2, '0')}`;
+            this.audioDuration.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
         }
     }
     
@@ -1597,8 +1262,17 @@ class ResourcesModule {
             
             fullText = fullText.replace(/\s+/g, ' ').trim();
             
-            // Generate NotebookLM-style podcast script
-            const podcastScript = this.generatePodcastScript(fullText, resource.title);
+            // Generate the podcast with the secure Supabase AI Edge Function.
+            // Only use the local script generator if the AI service fails.
+            let podcastScript;
+            try {
+                podcastScript = await this.createAIPodcastScript(fullText, resource);
+                this.showToast('🤖 AI podcast generated from the resource', 'success');
+            } catch (aiError) {
+                console.error('AI podcast generation failed:', aiError);
+                this.showToast('⚠️ AI podcast unavailable. Using local podcast fallback.', 'warning');
+                podcastScript = this.generatePodcastScript(fullText, resource.title);
+            }
             
             // Show audio player
             this.showAudioPlayer(fullText, `📚 ${resource.title}`);
@@ -1679,7 +1353,7 @@ class ResourcesModule {
             const pdf = await loadingTask.promise;
             let fullText = '';
             const totalPages = pdf.numPages;
-            const maxPages = Math.min(totalPages, 60);
+            const maxPages = Math.min(totalPages, 20);
             
             for (let i = 1; i <= maxPages; i++) {
                 try {
@@ -1967,174 +1641,97 @@ class ResourcesModule {
     // PROGRAM DETECTION
     // ============================================================
     detectUserProgram() {
-        console.log('🔍 Detecting student program from consolidated profile...');
-
+        console.log('🔍 Detecting user program...');
         let profile = null;
-
-        // Priority: the same consolidated profile used by the student portal.
         if (window.currentUserProfile) profile = window.currentUserProfile;
         else if (window.db?.currentUserProfile) profile = window.db.currentUserProfile;
         else if (window.userProfile) profile = window.userProfile;
         else if (window.profileModule?.userProfile) profile = window.profileModule.userProfile;
-
-        // Last-resort local cache.
+        
         if (!profile) {
             try {
                 const savedProfile = localStorage.getItem('userProfile');
                 if (savedProfile) profile = JSON.parse(savedProfile);
-            } catch (e) {
-                console.warn('Could not read cached userProfile:', e);
-            }
+            } catch (e) {}
         }
-
+        
         if (profile) {
             this.userProfile = profile;
             this.userId = profile.user_id || profile.id || null;
-
-            // consolidated_user_profiles_table uses `program`.
-            const programCode = String(
-                profile.program ||
-                profile.program_code ||
-                profile.course ||
-                ''
-            ).trim().toUpperCase();
-
-            const intakeValue =
-                profile.intake_year ??
-                profile.intake ??
-                profile.admission_year ??
-                '';
-
-            const blockValue =
-                profile.block ??
-                profile.current_block ??
-                profile.currentBlock ??
-                '';
-
-            const termValue =
-                profile.term ??
-                profile.current_term ??
-                profile.currentTerm ??
-                '';
-
+            const programCode = String(profile.program || profile.course || '').toUpperCase().trim();
+            
             if (this.TVET_PROGRAMS.includes(programCode)) {
                 this.userProgram = 'tvet';
                 this.isTVETStudent = true;
-                this.userProgramDisplay =
-                    window.PROGRAM_DISPLAY_NAMES?.[programCode] ||
-                    programCode ||
-                    'TVET Program';
+                this.userProgramDisplay = window.PROGRAM_DISPLAY_NAMES?.[programCode] || programCode || 'TVET Program';
                 this.userProgramCode = programCode;
-                this.userBlock = blockValue || 'Term 1';
-                this.userTerm = termValue || this.userBlock;
+                this.userBlock = profile.block || 'Term1';
+                this.userTerm = null;
+                console.log(`✅ TVET Student: ${programCode}`);
             } else {
                 this.userProgram = 'krchn';
                 this.isTVETStudent = false;
                 this.userProgramDisplay = 'KRCHN Nursing';
                 this.userProgramCode = 'KRCHN';
-                this.userBlock = blockValue || 'Introductory';
-                this.userTerm = termValue || null;
+                this.userBlock = profile.block || 'Introductory';
+                this.userTerm = null;
+                console.log(`✅ KRCHN Student: ${programCode}, Block: ${this.userBlock}`);
             }
-
-            const parsedIntake = parseInt(intakeValue, 10);
-            this.userIntakeYear = Number.isFinite(parsedIntake)
-                ? parsedIntake
-                : 2025;
-
-            console.log('✅ Consolidated student profile detected:', {
-                userId: this.userId,
-                program: programCode,
-                intakeYear: this.userIntakeYear,
-                block: this.userBlock,
-                term: this.userTerm,
-                isTVET: this.isTVETStudent
-            });
-
+            
+            this.userIntakeYear = profile.intake_year || profile.intake || 2025;
+            
             this.updateUIForProgram();
             this.updateBlockFilterOptions();
             this.updateBlockDisplay();
             return this.userProgram;
         }
-
-        // Safe defaults while authentication/profile is still loading.
+        
         this.userProgram = 'krchn';
         this.isTVETStudent = false;
         this.userProgramDisplay = 'KRCHN Nursing';
         this.userProgramCode = 'KRCHN';
         this.userBlock = 'Introductory';
         this.userTerm = null;
-        this.userIntakeYear = null;
-
+        this.userIntakeYear = 2025;
+        
         this.updateUIForProgram();
         this.updateBlockFilterOptions();
         this.updateBlockDisplay();
         return 'krchn';
     }
-
+    
     async getUserProfile() {
         if (this.userProfile) return this.userProfile;
-        if (window.currentUserProfile) {
-            this.userProfile = window.currentUserProfile;
-            this.detectUserProgram();
-            return this.userProfile;
-        }
-
+        if (window.currentUserProfile) return window.currentUserProfile;
+        
         const supabase = this.getSupabaseClient();
         if (!supabase) return {};
-
+        
         try {
-            const { data: { user }, error: authError } =
-                await supabase.auth.getUser();
-
-            if (authError || !user) {
-                console.warn('No authenticated student found.');
-                return {};
-            }
-
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) return {};
             this.userId = user.id;
-
-            // IMPORTANT:
-            // Resources are tied to the student's consolidated profile.
+            
             const { data: profile, error } = await supabase
                 .from('consolidated_user_profiles_table')
-                .select(`
-                    user_id,
-                    full_name,
-                    email,
-                    role,
-                    student_id,
-                    program,
-                    intake_year,
-                    block,
-                    term,
-                    program_type
-                `)
+                .select('program, intake_year, block, full_name, role, student_id, term, program_type')
                 .eq('user_id', user.id)
                 .maybeSingle();
-
-            if (error) {
-                console.error('Error loading consolidated student profile:', error);
-                return {};
-            }
-
+            
             if (profile) {
                 this.userProfile = profile;
-
-                if (window.db) window.db.currentUserProfile = profile;
                 window.currentUserProfile = profile;
-
+                if (window.db) window.db.currentUserProfile = profile;
                 this.detectUserProgram();
                 return profile;
             }
-
-            console.warn('No consolidated profile found for authenticated user:', user.id);
             return {};
         } catch (err) {
-            console.error('Error loading student profile:', err);
+            console.error('Error loading profile:', err);
             return {};
         }
     }
-
+    
     getSupabaseClient() {
         if (this.supabaseClient) return this.supabaseClient;
         
@@ -2281,144 +1878,63 @@ class ResourcesModule {
     // ============================================================
     async loadResources() {
         if (this.isLoading) return;
-
-        // Always refresh the program/profile before querying resources.
         this.detectUserProgram();
-        if (!this.userProfile) {
-            await this.getUserProfile();
-            this.detectUserProgram();
-        }
-
+        if (!this.userProfile) await this.getUserProfile();
+        
         const supabase = this.getSupabaseClient();
         if (!supabase) {
             this.showError('Database connection error');
             return;
         }
-
         if (!this.resourcesGrid) return;
-
+        
         this.isLoading = true;
         this.showSkeletonCards(6);
-
+        
         try {
-            const profile = this.userProfile || {};
             const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
-
-            // Resource visibility is based on the student's CURRENT PROGRAM + CURRENT BLOCK/TERM.
-            // Intake year is deliberately NOT used for resource visibility.
+            const intakeYear = this.userIntakeYear || 2025;
+            
             let query = supabase
                 .from('resources')
                 .select('*')
+                .eq('intake', String(intakeYear))
                 .order('created_at', { ascending: false });
-
+            
             if (isTVET) {
-                const studentProgram = String(this.userProfile?.program || this.userProgramCode || '').toUpperCase().trim();
-
+                const studentProgram = this.userProfile?.program || '';
                 if (studentProgram && this.TVET_PROGRAMS.includes(studentProgram)) {
                     query = query.eq('program_type', studentProgram);
                 } else {
                     query = query.in('program_type', this.TVET_PROGRAMS);
                 }
-
-                // TVET: Program + current Term.
-                const currentTerm = this.userBlock || this.userTerm;
-                if (currentTerm && currentTerm !== 'General' && currentTerm !== 'all') {
-                    const termKey = String(currentTerm).toLowerCase();
-                    const termNumber = this.getTermNumberFromKey(termKey);
-
-                    if (termNumber !== null) {
-                        query = query.or(
-                            `term.eq.${termNumber},term_text.ilike.%${termKey}%,term_name.ilike.%${termKey}%,block_term.ilike.%${termKey}%`
-                        );
-                    } else {
-                        query = query.or(
-                            `term_text.ilike.%${termKey}%,term_name.ilike.%${termKey}%,block_term.ilike.%${termKey}%`
-                        );
-                    }
-                }
             } else {
-                // KRCHN: Program + CURRENT Block ONLY.
-                // Intake is intentionally ignored so the same Block 5 resource
-                // works for every KRCHN intake currently in Block 5.
                 query = query.eq('program_type', 'KRCHN');
-
-                if (this.userBlock && this.userBlock !== 'General' && this.userBlock !== 'all') {
-                    const blockPattern = String(this.userBlock).toLowerCase();
-                    query = query.or(
-                        `block.ilike.%${blockPattern}%,block_term.ilike.%${blockPattern}%`
-                    );
+                if (this.userBlock && this.userBlock !== 'General') {
+                    const blockPattern = this.userBlock.toLowerCase();
+                    query = query.or(`block.ilike.%${blockPattern}%, block_term.ilike.%${blockPattern}%`);
                 }
             }
-
+            
             const { data: resources, error } = await query;
-
             if (error) throw error;
-
-            this.allResources = (resources || []).map(resource => {
-                // Normalize URL once so every viewer uses the same value.
-                const normalized = { ...resource };
-                if (!normalized.file_url && normalized.file_path) {
-                    normalized.file_url = this.getResourceUrl(normalized.file_path);
-                }
-                return normalized;
-            });
-
-            console.log(`✅ Loaded ${this.allResources.length} student resources`, {
-                program: this.userProgramCode || '',
-                intake: this.userIntakeYear || null,
-                block: this.userBlock || '',
-                term: this.userTerm || null
-            });
-
+            
+            this.allResources = resources || [];
+            console.log(`✅ Loaded ${this.allResources.length} resources`);
+            
             this.updatePastPaperCount();
             this.populateFilters();
             this.applyFilters();
             this.updateDashboardResourceCount();
-
+            
         } catch (err) {
-            console.error('Error loading student resources:', err);
-            this.showError(err.message || 'Unable to load resources.');
+            console.error('Error loading resources:', err);
+            this.showError(err.message);
         } finally {
             this.isLoading = false;
         }
     }
-
-    // Safely extract a numeric block from values such as:
-    // "Block 5", "Block5", "B5", 5.
-    extractBlockNumber(value) {
-        if (value === null || value === undefined) return null;
-        const match = String(value).match(/(?:block|b)\s*([1-6])/i);
-        if (match) return parseInt(match[1], 10);
-
-        const plain = String(value).trim().match(/^([1-6])$/);
-        return plain ? parseInt(plain[1], 10) : null;
-    }
-
-    // Safely extract a numeric term from values such as:
-    // "Term 3", "Term3", "Trimester 3", "Semester 3", 3.
-    extractTermNumber(value) {
-        if (value === null || value === undefined || value === '') return null;
-        const match = String(value).match(/(?:term|trimester|semester)\s*([1-7])/i);
-        if (match) return parseInt(match[1], 10);
-
-        const plain = String(value).trim().match(/^([1-7])$/);
-        return plain ? parseInt(plain[1], 10) : null;
-    }
-
-    // Alias retained for compatibility with existing code.
-    getTermNumberFromValue(value) {
-        return this.extractTermNumber(value);
-    }
-
-    // Keep Supabase .or() filters safe when values originate from a profile.
-    escapeSupabaseFilterValue(value) {
-        return String(value)
-            .replace(/[%]/g, '')
-            .replace(/[,]/g, ' ')
-            .replace(/[()]/g, ' ')
-            .trim();
-    }
-
+    
     // ============================================================
     // FILTERS & RENDERING
     // ============================================================
@@ -3022,17 +2538,7 @@ class ResourcesModule {
         const checkAndInit = async () => {
             attempts++;
             const hasDb = window.db && window.db.supabase;
-            const hasUserProfile =
-                (window.currentUserProfile && (
-                    window.currentUserProfile.program ||
-                    window.currentUserProfile.student_id ||
-                    window.currentUserProfile.user_id
-                )) ||
-                (this.userProfile && (
-                    this.userProfile.program ||
-                    this.userProfile.student_id ||
-                    this.userProfile.user_id
-                ));
+            const hasUserProfile = window.currentUserProfile || this.userProfile;
             
             if (hasDb && hasUserProfile) {
                 console.log('✅ Database and user ready, loading resources...');
