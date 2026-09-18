@@ -1,27 +1,10 @@
 // NCHSM Lecturer Dashboard — Online Learning module
 // Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
 window.LecturerOnlineLearning = (() => {
-    /*
-     * ================================================================
-     * NCHSM ONLINE LEARNING — AI CONFIGURATION
-     * ================================================================
-     *
-     * SECURITY:
-     * A real OpenAI key in browser JavaScript is visible to site users.
-     * Production should use a Supabase Edge Function.
-     *
-     * For the current development version, a direct-key fallback is
-     * supported as requested. Replace the placeholder only if you
-     * deliberately accept the client-side exposure risk.
-     */
-    const AI_CONFIG = {
-        provider: 'openai',
-        apiKey: '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',
-        model: 'gpt-5.6',
-        endpoint: 'https://api.openai.com/v1/responses',
-        maxChars: 120000,
-        enabled: true
-    };
+    // AI analysis is server-side only. No OpenAI API key is stored in this file.
+    const INTEGRITY_FUNCTION = window.NCHSM_AI_INTEGRITY_FUNCTION || 'academic-integrity-scan';
+    const MAX_INTEGRITY_CHARS = 120000;
+
     const state = { assignments: [], submissions: [], initialized:false, client:null, userId:null, profile:null, publishAfterSave:false };
     const $ = id => document.getElementById(id);
     const esc = v => String(v ?? '').replace(/[&<>'"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#39;','"':'&quot;'}[c]));
@@ -95,7 +78,6 @@ window.LecturerOnlineLearning = (() => {
     // DOCUMENT VIEWER + ACADEMIC INTEGRITY AGENT
     // ============================================================
     const integrityState = { currentSubmission:null, extractedText:'', report:null };
-    const INTEGRITY_FUNCTION = window.NCHSM_AI_INTEGRITY_FUNCTION || 'academic-integrity-scan';
     const STORAGE_BUCKET = window.NCHSM_ASSIGNMENT_BUCKET || 'assignment-submissions';
 
     function ensureStyle(){
@@ -117,8 +99,16 @@ window.LecturerOnlineLearning = (() => {
     }
     async function signedDocumentUrl(s){
         const db=client(); if(!db || !s?.file_path) throw new Error('No uploaded document is attached to this submission.');
-        const r=await db.storage.from(STORAGE_BUCKET).createSignedUrl(s.file_path,3600);
-        if(r.error) throw r.error; return r.data?.signedUrl;
+        const buckets=[...new Set([STORAGE_BUCKET,'assignment-submissions','online-learning','online_submissions'].filter(Boolean))];
+        let lastError=null;
+        for(const bucket of buckets){
+            try{
+                const r=await db.storage.from(bucket).createSignedUrl(s.file_path,3600);
+                if(!r.error && r.data?.signedUrl) return r.data.signedUrl;
+                lastError=r.error||null;
+            }catch(e){lastError=e;}
+        }
+        throw new Error(lastError?.message||'Unable to create a signed document URL. Check the storage bucket and file path.');
     }
     function extOf(name=''){ const x=name.toLowerCase().split('.').pop(); return x==='jpeg'?'jpg':x; }
     function loadScriptOnce(src,id){return new Promise((resolve,reject)=>{if(id&&document.getElementById(id))return resolve();const s=document.createElement('script');s.src=src;if(id)s.id=id;s.onload=resolve;s.onerror=()=>reject(new Error('Could not load '+src));document.head.appendChild(s);});}
@@ -167,195 +157,77 @@ window.LecturerOnlineLearning = (() => {
         }).join(' ');const osh=shingles(otherText,8);let hit=0;for(const x of osh)if(set.has(x))hit++;if(hit>=2)matches.push({submission_id:other.id,student_id:other.student_id,matched_phrases:hit});}
         matches.sort((a,b)=>b.matched_phrases-a.matched_phrases);return {score:sourceShingles.length?Math.min(100,Math.round(((matches[0]?.matched_phrases||0)/Math.max(1,sourceShingles.length))*10000)/100):0,matches:matches.slice(0,10),source:'institutional-submission-similarity'};
     }
-    async function runDirectOpenAIIntegrityScan(s, text){
-        if(!AI_CONFIG.enabled || !AI_CONFIG.apiKey ||
-           AI_CONFIG.apiKey === 'PASTE_OPENAI_API_KEY_HERE'){
-            return null;
-        }
-
-        const prompt = `
-You are NCHSM's academic-integrity review assistant.
-
-Review the supplied student submission for possible originality concerns.
-This is an ASSISTIVE SCREENING TOOL, not a plagiarism verdict.
-
-Rules:
-- Never state that plagiarism is proven.
-- Never make a disciplinary decision.
-- Do not treat AI-writing probability as proof.
-- Distinguish possible overlap from legitimate quotation/citation.
-- Identify repeated or highly formulaic wording.
-- Identify abrupt writing-style changes only as a signal.
-- Do not claim access to Turnitin, private academic databases, or the
-  entire public internet.
-- Give evidence that a lecturer can manually verify.
-
-Return ONLY valid JSON:
-{
-  "overall_signal":"low|moderate|high|insufficient_evidence",
-  "summary":"neutral summary",
-  "similarity_signal":{
-    "level":"low|moderate|high|unknown",
-    "explanation":"..."
-  },
-  "ai_writing_signal":{
-    "level":"low|moderate|high|unknown",
-    "explanation":"..."
-  },
-  "evidence":[
-    {
-      "type":"possible_overlap|repetition|citation|style_shift|formulaic|other",
-      "severity":"low|medium|high",
-      "excerpt":"short excerpt",
-      "reason":"..."
-    }
-  ],
-  "lecturer_actions":["..."],
-  "limitations":["..."]
-}
-
-Assignment:
-${s.online_assignments?.title || s.assignment_id || 'Unknown'}
-
-Student submission:
----
-${text.slice(0, AI_CONFIG.maxChars)}
----
-        `.trim();
-
-        const r = await fetch(AI_CONFIG.endpoint,{
-            method:'POST',
-            headers:{
-                'Content-Type':'application/json',
-                'Authorization':'Bearer '+AI_CONFIG.apiKey
-            },
-            body:JSON.stringify({
-                model:AI_CONFIG.model,
-                input:[
-                    {role:'system',content:'You are an academic-integrity screening assistant. Return only the requested JSON.'},
-                    {role:'user',content:prompt}
-                ],
-                max_output_tokens:5000
-            })
-        });
-
-        const data = await r.json();
-        if(!r.ok){
-            throw new Error(data?.error?.message || 'OpenAI request failed.');
-        }
-
-        let out = data?.output_text || '';
-        if(!out && Array.isArray(data?.output)){
-            out = data.output.flatMap(x=>x.content||[])
-                .map(x=>x.text||'').filter(Boolean).join('\n');
-        }
-
-        out = String(out)
-            .replace(/^```json\s*/i,'')
-            .replace(/^```\s*/i,'')
-            .replace(/\s*```$/i,'')
-            .trim();
-
-        if(!out) throw new Error('The AI service returned no analysis.');
-
-        try{
-            return {
-                source:'openai-direct',
-                model:AI_CONFIG.model,
-                ...JSON.parse(out)
-            };
-        }catch(_){
-            return {
-                source:'openai-direct',
-                model:AI_CONFIG.model,
-                overall_signal:'insufficient_evidence',
-                summary:'The AI returned an unstructured integrity response. Manual lecturer review is required.',
-                similarity_signal:{level:'unknown',explanation:'Structured similarity result was not returned.'},
-                ai_writing_signal:{level:'unknown',explanation:'Structured AI-writing result was not returned.'},
-                evidence:[],
-                lecturer_actions:['Review the complete uploaded work manually.'],
-                limitations:['The AI response could not be parsed into the expected report format.']
-            };
-        }
-    }
-
     async function runIntegrityScan(id){
         const s=state.submissions.find(x=>x.id===id);
         if(!s)return;
-
         const btn=$('olIntegrityBtn');
-        if(btn){
-            btn.disabled=true;
-            btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Scanning…';
-        }
-
+        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Scanning…';}
         try{
-            const text=await extractSubmissionText(s);
+            let text=await extractSubmissionText(s);
+            if(!text.trim() && s.answers){
+                text=Object.entries(s.answers).map(([k,v])=>`Question ${k}: ${String(v??'')}`).join('\n\n');
+            }
+            if(!text.trim()) throw new Error('No readable text could be extracted from this submission. Image-only/scanned PDFs require OCR before AI analysis.');
             integrityState.currentSubmission=s;
             integrityState.extractedText=text;
 
-            if(!text.trim()){
-                throw new Error(
-                    'No extractable text was found. Image-only/scanned PDFs require OCR before AI analysis.'
-                );
+            if(typeof window.runAcademicIntegrityScan!=='function'){
+                throw new Error('Academic integrity Edge Function bridge is not available.');
             }
 
-            let report=null;
-            const db=client();
+            const result=await window.runAcademicIntegrityScan({
+                submission_id:s.id,
+                assignment_id:s.assignment_id,
+                text:text.slice(0,MAX_INTEGRITY_CHARS),
+                assignment_title:s.online_assignments?.title||'',
+                student_name:s.__student_name||'',
+                file_name:s.file_name||'',
+                max_text_chars:MAX_INTEGRITY_CHARS
+            });
 
-            // Preferred: server-side Supabase Edge Function.
-            if(db?.functions?.invoke){
-                try{
-                    const r=await db.functions.invoke(INTEGRITY_FUNCTION,{
-                        body:{
-                            submission_id:s.id,
-                            assignment_id:s.assignment_id,
-                            student_id:s.student_id,
-                            text:text.slice(0,AI_CONFIG.maxChars),
-                            file_name:s.file_name||''
-                        }
-                    });
-                    if(!r.error && r.data) report=r.data;
-                }catch(edgeError){
-                    console.warn('Integrity Edge Function unavailable:',edgeError);
-                }
-            }
-
-            // Temporary direct OpenAI fallback.
-            if(!report && AI_CONFIG.enabled &&
-               AI_CONFIG.apiKey &&
-               AI_CONFIG.apiKey !== 'PASTE_OPENAI_API_KEY_HERE'){
-                report=await runDirectOpenAIIntegrityScan(s,text);
-            }
-
-            // Institutional submission comparison fallback.
-            if(!report){
-                report=await localSimilarity(s,text);
-                report.notice=
-                    'AI analysis was not available. This is an institutional submission-similarity screen only.';
-            }
-
-            integrityState.report=report;
-            renderIntegrityReport(report,text);
+            // Always supplement AI analysis with local institutional similarity.
+            let local=null;
+            try{local=await localSimilarity(s,text);}catch(e){console.warn('Local similarity unavailable:',e);}
+            if(local) result.institutional_similarity=local;
+            integrityState.report=result;
+            renderIntegrityReport(result,text);
         }catch(e){
             console.error('Integrity scan:',e);
             notify('Integrity scan could not be completed: '+e.message,'error');
         }finally{
-            if(btn){
-                btn.disabled=false;
-                btn.innerHTML='<i class="fas fa-shield-alt"></i> Run Integrity Scan';
-            }
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-shield-alt"></i> Run Integrity Scan';}
         }
     }
 
     function renderIntegrityReport(r,text){
-        const box=$('olIntegrityReport');if(!box)return;const sim=Number(r.similarity_score??r.similarity??r.score??0);const ai=r.ai_probability??r.ai_score??null;const matches=r.matches||r.sources||[];
-        box.innerHTML=`<div class="ol-integrity"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b><i class="fas fa-shield-alt"></i> Academic Integrity Agent</b><span class="ol-badge ${sim>=40?'ol-review':'ol-published'}">${esc(r.status||'REVIEW')}</span></div><div class="ol-integrity-grid" style="margin-top:10px"><div class="ol-integrity-stat"><small>Similarity</small><b>${sim}%</b></div><div class="ol-integrity-stat"><small>AI signal</small><b>${ai==null?'—':esc(ai)+'%'}</b></div><div class="ol-integrity-stat"><small>Words scanned</small><b>${text.trim().split(/\s+/).length.toLocaleString()}</b></div></div>${matches.length?`<div style="margin-top:12px"><b>Potential matches</b>${matches.slice(0,8).map(m=>`<div class="ol-integrity-match"><b>${esc(m.source_title||m.title||m.student_id||m.source||'Possible matching submission')}</b><div>${esc(m.matched_phrases??m.match_count??m.similarity??'')} ${m.matched_phrases?'matching phrase(s)':''}</div></div>`).join('')}</div>`:''}<p class="ol-integrity-note">This is an academic-integrity screening aid, not a final plagiarism finding. Similarity can occur because of quotations, references, assignment wording or legitimate shared material. AI-writing signals can also produce false positives; lecturer review and institutional policy remain necessary. ${r.source?'Scan source: '+esc(r.source)+'.':''}</p></div>`;
+        const box=$('olIntegrityReport');if(!box)return;
+        const analysis=r?.analysis||r||{};
+        const local=r?.institutional_similarity||{};
+        const simLevel=analysis.similarity_signal?.level||'unknown';
+        const aiLevel=analysis.ai_writing_signal?.level||'unknown';
+        const overall=analysis.overall_signal||'insufficient_evidence';
+        const matches=[...(analysis.evidence||[]),...(local.matches||[])].slice(0,10);
+        const levelClass=x=>['high','moderate'].includes(String(x).toLowerCase())?'ol-review':'ol-published';
+        box.innerHTML=`<div class="ol-integrity">
+          <div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap">
+            <b><i class="fas fa-shield-alt"></i> Academic Integrity Agent</b>
+            <span class="ol-badge ${levelClass(overall)}">${esc(String(overall).replace(/_/g,' ').toUpperCase())}</span>
+          </div>
+          <p style="margin:10px 0;color:#334155">${esc(analysis.summary||'No summary returned.')}</p>
+          <div class="ol-integrity-grid">
+            <div class="ol-integrity-stat"><small>Similarity signal</small><b>${esc(simLevel)}</b><span class="ol-integrity-note">${esc(analysis.similarity_signal?.explanation||'')}</span></div>
+            <div class="ol-integrity-stat"><small>AI-writing signal</small><b>${esc(aiLevel)}</b><span class="ol-integrity-note">${esc(analysis.ai_writing_signal?.explanation||'')}</span></div>
+            <div class="ol-integrity-stat"><small>Words scanned</small><b>${text.trim().split(/\s+/).filter(Boolean).length.toLocaleString()}</b><span class="ol-integrity-note">Institutional match score: ${esc(String(local.score??'—'))}${local.score!=null?'%':''}</span></div>
+          </div>
+          ${matches.length?`<div style="margin-top:12px"><b>Evidence / potential matches</b>${matches.map(m=>`<div class="ol-integrity-match"><b>${esc(m.type||m.source_title||m.title||m.student_id||'Potential overlap')}</b><div>${esc(m.reason||m.explanation||`${m.matched_phrases??m.match_count??''} matching phrase(s)`)}</div>${m.excerpt?`<div style="margin-top:5px;padding:7px;background:#f8fafc;border-radius:6px;font-size:12px">${esc(m.excerpt)}</div>`:''}</div>`).join('')}</div>`:''}
+          ${analysis.lecturer_actions?.length?`<div style="margin-top:12px"><b>Suggested lecturer review</b><ul style="margin:7px 0 0 18px">${analysis.lecturer_actions.map(x=>`<li>${esc(x)}</li>`).join('')}</ul></div>`:''}
+          <p class="ol-integrity-note" style="margin-top:12px">This is an academic-integrity screening aid, not a final plagiarism or misconduct determination. Similarity may arise from quotations, references, assignment wording or legitimate shared material. AI-writing signals can also produce false positives. The lecturer should review the complete work and apply institutional policy.</p>
+        </div>`;
     }
 
     async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('id,question_order,question_text,question_type,marks').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${q.marks} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT MARK</div><div class="ol-mark">${s.marks_obtained??0}/${s.max_marks??'—'}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" step="0.01" value="${s.marks_obtained??0}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').style.display='flex';}
     async function gradeSubmission(id,release){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;const marks=Number($('olReviewMarks').value);const feedback=$('olReviewFeedback').value.trim()||null;const {error}=await db.from('online_submissions').update({marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:new Date().toISOString(),result_released:release,released_at:release?new Date().toISOString():null,review_required:false}).eq('id',id);if(error){notify(error.message,'error');return;}notify(release?'Grade saved and result released.':'Grade saved.','success');closeModal('olSubmissionModal');await loadSubmissions();updateStats();}
     function closeModal(id){const m=$(id);if(m)m.style.display='none';}
-    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,getAIConfig:()=>({...AI_CONFIG,apiKey:AI_CONFIG.apiKey?'[configured]':'[not configured]')};
+    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,getAIConfig:()=>({provider:'supabase-edge-function',functionName:INTEGRITY_FUNCTION,maxChars:MAX_INTEGRITY_CHARS})};
 })();
 console.log('✅ Lecturer Online Learning module loaded');
