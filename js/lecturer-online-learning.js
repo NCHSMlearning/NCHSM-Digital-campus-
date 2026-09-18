@@ -673,6 +673,37 @@ window.LecturerOnlineLearning = (() => {
                 area.innerHTML = draft || html;
                 researchState.draftHtml = area.innerHTML;
                 updateEditorState();
+            } else if (ext === 'html' || ext === 'htm') {
+                // Corrected versions created by the lecturer are stored as HTML.
+                // Render the HTML document itself instead of displaying its source code.
+                const response = await fetch(url);
+                if (!response.ok) throw new Error(`Could not fetch corrected document (${response.status}).`);
+                let source = await response.text();
+
+                // Parse a complete HTML document and extract only its body content.
+                // This prevents <!doctype>, <html>, <head>, etc. from appearing inside the editor.
+                let parsed = new DOMParser().parseFromString(source, 'text/html');
+                let html = parsed.body ? parsed.body.innerHTML : source;
+
+                // Handle an accidentally double-escaped HTML file from an older save.
+                if (/&lt;\/?(html|body|p|h[1-6]|div|span|table|doctype)/i.test(html) || /^\s*&lt;!doctype/i.test(source)) {
+                    const decoder = document.createElement('textarea');
+                    decoder.innerHTML = source;
+                    source = decoder.value;
+                    parsed = new DOMParser().parseFromString(source, 'text/html');
+                    html = parsed.body ? parsed.body.innerHTML : source;
+                }
+
+                researchState.originalHtml = html || '<p>No readable content found.</p>';
+
+                let draft = null;
+                try { draft = localStorage.getItem('nchsm_rs_draft_' + s.id); } catch {}
+                area.innerHTML = draft || researchState.originalHtml;
+                area.contentEditable = 'false';
+                researchState.draftHtml = area.innerHTML;
+                $('rsEditDocument').disabled = false;
+                $('rsSaveCorrection').disabled = false;
+                updateEditorState();
             } else if (ext === 'pdf') {
                 researchState.originalHtml = '';
                 area.innerHTML = `<div style="height:100%;min-height:900px"><iframe title="${esc(s.document_name || 'Research PDF')}" src="${esc(url)}" style="width:100%;height:100%;min-height:900px;border:0;background:#fff"></iframe></div>`;
@@ -681,6 +712,8 @@ window.LecturerOnlineLearning = (() => {
                 $('rsEditorState').textContent = 'PDF view — use feedback/correction notes';
             } else {
                 area.innerHTML = `<div class="rs-empty"><strong>Preview unavailable</strong>Download the original document to review it.</div>`;
+                $('rsEditDocument').disabled = true;
+                $('rsSaveCorrection').disabled = true;
             }
         } catch (e) {
             console.error('Research document preview:', e);
