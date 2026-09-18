@@ -473,8 +473,7 @@ window.LecturerOnlineLearning = (() => {
             });
         }
 
-        // Do not call renderResearch() from here. renderResearch() calls researchEnsureUI(),
-        // so doing so creates an infinite recursion and causes "Maximum call stack size exceeded".
+        if (!module.querySelector('.rs-wrap')) renderResearch();
     }
 
     function filteredResearch() {
@@ -853,10 +852,41 @@ window.LecturerOnlineLearning = (() => {
         researchState.current = null;
     }
 
+    function bindResearchNavigation() {
+        if (document.documentElement.dataset.nchsmResearchNavBound === '1') return;
+        document.documentElement.dataset.nchsmResearchNavBound = '1';
+
+        document.addEventListener('click', function (e) {
+            const tab = e.target.closest('[data-rs-tab="research"], [data-ol-tab="research"], [data-ol-hub-view="research"]');
+            if (!tab) return;
+
+            e.preventDefault();
+            e.stopImmediatePropagation();
+
+            state.tab = 'research';
+
+            document.querySelectorAll('[data-rs-tab], [data-ol-tab], [data-ol-hub-view]').forEach(el => {
+                const isResearch = el.matches('[data-rs-tab="research"], [data-ol-tab="research"], [data-ol-hub-view="research"]');
+                el.classList.toggle('active', isResearch);
+            });
+
+            const hub = $('online-learning-content') || $('hub-online-learning');
+            const module = $('nchsmResearchModule');
+            const learningView = $('ol-learning-view');
+
+            if (learningView) learningView.style.display = 'none';
+            if (module) module.style.display = '';
+
+            loadResearch();
+        }, true);
+    }
+
     async function initResearch() {
+        bindResearchNavigation();
         if (researchState.initialized) return;
         researchState.initialized = true;
         researchEnsureUI();
+        bindResearchNavigation();
         await loadResearch();
     }
 
