@@ -352,24 +352,19 @@ window.LecturerOnlineLearning = (() => {
 
         researchEnsureStyles();
 
-        let tabs = hub.querySelector('.ol-hub-tabs');
-        if (!tabs) {
-            tabs = document.createElement('div');
-            tabs.className = 'ol-hub-tabs';
-            tabs.innerHTML = `<button type="button" class="ol-hub-tab active" data-rs-tab="online"><i class="fas fa-book-open"></i> Online Learning</button>
-                              <button type="button" class="ol-hub-tab" data-rs-tab="research"><i class="fas fa-flask"></i> Research Papers</button>`;
-            hub.prepend(tabs);
-            tabs.querySelector('[data-rs-tab="online"]').addEventListener('click', () => {
-                state.tab = 'online';
-                tabs.querySelectorAll('.ol-hub-tab').forEach(b => b.classList.toggle('active', b.dataset.rsTab === 'online'));
-                if (typeof renderAssignments === 'function') renderAssignments();
-            });
-            tabs.querySelector('[data-rs-tab="research"]').addEventListener('click', () => {
-                state.tab = 'research';
-                tabs.querySelectorAll('.ol-hub-tab').forEach(b => b.classList.toggle('active', b.dataset.rsTab === 'research'));
-                loadResearch();
-            });
-        }
+        // IMPORTANT:
+        // The lecturer HTML already contains the Online Learning hub tabs:
+        //   [data-ol-hub-view="learning"]
+        //   [data-ol-hub-view="research"]
+        // Do not create a second/competing tab system.
+        const hubTabs = hub.querySelector('.ol-hub-tabs');
+        if (!hubTabs) return;
+
+        const researchTab = hubTabs.querySelector('[data-ol-hub-view="research"]');
+        const learningTab = hubTabs.querySelector('[data-ol-hub-view="learning"]');
+
+        // The existing HTML uses .ol-wrap for the Online Learning view.
+        const learningView = hub.querySelector('.ol-wrap');
 
         let module = $('nchsmResearchModule');
         if (!module) {
@@ -377,6 +372,16 @@ window.LecturerOnlineLearning = (() => {
             module.id = 'nchsmResearchModule';
             module.style.display = 'none';
             hub.appendChild(module);
+        }
+
+        // Keep the existing hub tabs and expose proper accessibility state.
+        if (learningTab) {
+            learningTab.setAttribute('role', 'tab');
+            learningTab.setAttribute('aria-selected', learningTab.classList.contains('active') ? 'true' : 'false');
+        }
+        if (researchTab) {
+            researchTab.setAttribute('role', 'tab');
+            researchTab.setAttribute('aria-selected', researchTab.classList.contains('active') ? 'true' : 'false');
         }
 
         let modal = $('rsReviewModal');
@@ -394,111 +399,48 @@ window.LecturerOnlineLearning = (() => {
               <div class="rs-workspace">
                 <div class="rs-editor-pane">
                   <div class="rs-editor-toolbar">
-                    <button class="rs-tool" title="Bold" data-rs-cmd="bold"><b>B</b></button>
-                    <button class="rs-tool" title="Italic" data-rs-cmd="italic"><i>I</i></button>
-                    <button class="rs-tool" title="Underline" data-rs-cmd="underline"><u>U</u></button>
-                    <button class="rs-tool" title="Highlight" data-rs-cmd="hiliteColor">H</button>
-                    <button class="rs-tool" title="Bullet list" data-rs-cmd="insertUnorderedList">•</button>
-                    <button class="rs-tool" title="Numbered list" data-rs-cmd="insertOrderedList">1.</button>
-                    <button class="rs-tool" title="Align left" data-rs-cmd="justifyLeft">≡</button>
-                    <button class="rs-tool" title="Align center" data-rs-cmd="justifyCenter">≡</button>
-                    <button class="rs-tool" title="Undo" data-rs-cmd="undo">↶</button>
-                    <button class="rs-tool" title="Redo" data-rs-cmd="redo">↷</button>
-                    <button class="rs-tool" title="Remove formatting" data-rs-cmd="removeFormat">Tx</button>
-                    <span class="rs-editor-state" id="rsEditorState">Read only</span>
+                    <button type="button" data-cmd="bold"><b>B</b></button>
+                    <button type="button" data-cmd="italic"><i>I</i></button>
+                    <button type="button" data-cmd="underline"><u>U</u></button>
+                    <button type="button" data-cmd="insertUnorderedList">• List</button>
+                    <button type="button" data-cmd="insertOrderedList">1. List</button>
+                    <button type="button" data-cmd="justifyLeft">Left</button>
+                    <button type="button" data-cmd="justifyCenter">Center</button>
+                    <button type="button" data-cmd="justifyRight">Right</button>
+                    <button type="button" data-cmd="undo">↶</button>
+                    <button type="button" data-cmd="redo">↷</button>
+                    <button type="button" id="rsOriginal">Original</button>
                   </div>
-                  <div class="rs-document-shell"><article id="rsDocumentEditor" class="rs-document"></article></div>
+                  <div id="rsDocumentShell" class="rs-document-shell">
+                    <div id="rsDocumentEditor" class="rs-document" contenteditable="false"></div>
+                  </div>
                 </div>
                 <aside class="rs-side">
-                  <h4>Review & Corrections</h4>
-                  <div id="rsStudentMeta" class="rs-meta-box"></div>
-                  <label>Review Status</label>
+                  <div class="rs-section-title"><h4>Review</h4></div>
+                  <label>Status</label>
                   <select id="rsReviewStatus">
-                    <option value="submitted">Submitted</option>
                     <option value="under_review">Under Review</option>
                     <option value="revision_required">Revision Required</option>
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
                   </select>
-                  <label>Lecturer Feedback / Correction Notes</label>
-                  <textarea id="rsFeedback" placeholder="Write feedback, corrections, required changes or approval comments..."></textarea>
+                  <label>Feedback / Correction Notes</label>
+                  <textarea id="rsFeedback" rows="8" placeholder="Enter feedback or correction instructions..."></textarea>
                   <div class="rs-actions">
-                    <button class="rs-btn rs-primary" type="button" id="rsEditDocument"><i class="fas fa-pen"></i> Edit Document</button>
-                    <button class="rs-btn rs-secondary" type="button" id="rsOriginalDocument"><i class="fas fa-file"></i> Original</button>
-                    <button class="rs-btn rs-warning" type="button" id="rsSaveCorrection"><i class="fas fa-save"></i> Save Correction</button>
-                    <button class="rs-btn rs-secondary" type="button" id="rsDownload"><i class="fas fa-download"></i> Download</button>
-                    <button class="rs-btn rs-success" type="button" id="rsApprove"><i class="fas fa-check"></i> Approve</button>
-                    <button class="rs-btn rs-danger" type="button" id="rsRevision"><i class="fas fa-rotate-left"></i> Send Revision</button>
-                    <button class="rs-btn rs-danger wide" type="button" id="rsReject"><i class="fas fa-xmark"></i> Reject</button>
+                    <button type="button" class="rs-btn rs-secondary" id="rsEdit"><i class="fas fa-pen"></i> Edit Document</button>
+                    <button type="button" class="rs-btn rs-primary" id="rsSaveCorrection"><i class="fas fa-file-pen"></i> Save Correction</button>
+                    <button type="button" class="rs-btn rs-secondary" id="rsDownload"><i class="fas fa-download"></i> Download</button>
+                    <button type="button" class="rs-btn rs-secondary" id="rsHistory"><i class="fas fa-clock-rotate-left"></i> Version History</button>
+                    <button type="button" class="rs-btn rs-success" id="rsApprove"><i class="fas fa-check"></i> Approve</button>
+                    <button type="button" class="rs-btn rs-warning" id="rsRevision"><i class="fas fa-rotate"></i> Send Revision</button>
+                    <button type="button" class="rs-btn rs-danger wide" id="rsReject"><i class="fas fa-xmark"></i> Reject</button>
                   </div>
-                  <div class="rs-history"><h4>Version History</h4><div id="rsVersionHistory"></div></div>
+                  <div id="rsHistoryPanel" class="rs-history" style="display:none"></div>
                 </aside>
               </div>
             </div>`;
-            document.body.appendChild(modal);
-
-            $('rsClose').addEventListener('click', closeResearchModal);
-            modal.addEventListener('click', e => { if (e.target === modal) closeResearchModal(); });
-            $('rsEditDocument').addEventListener('click', toggleResearchEditor);
-            $('rsOriginalDocument').addEventListener('click', () => {
-                const ed = $('rsDocumentEditor');
-                if (ed) ed.innerHTML = researchState.originalHtml || '<p>No editable document content.</p>';
-                researchState.correctionDirty = false;
-                updateEditorState();
-            });
-            $('rsSaveCorrection').addEventListener('click', saveResearchCorrection);
-            $('rsDownload').addEventListener('click', downloadCurrentResearch);
-            $('rsApprove').addEventListener('click', () => setResearchStatusAndSave('approved'));
-            $('rsRevision').addEventListener('click', () => setResearchStatusAndSave('revision_required'));
-            $('rsReject').addEventListener('click', () => setResearchStatusAndSave('rejected'));
-
-            modal.querySelectorAll('[data-rs-cmd]').forEach(btn => btn.addEventListener('mousedown', e => {
-                e.preventDefault();
-                const cmd = btn.dataset.rsCmd;
-                if (cmd === 'hiliteColor') {
-                    document.execCommand('hiliteColor', false, '#fff59d');
-                } else {
-                    document.execCommand(cmd, false, null);
-                }
-                researchState.correctionDirty = true;
-                updateEditorState();
-            }));
-
-            $('rsDocumentEditor').addEventListener('input', () => {
-                researchState.correctionDirty = true;
-                updateEditorState();
-                if (researchState.current) {
-                    try { localStorage.setItem('nchsm_rs_draft_' + researchState.current.id, $('rsDocumentEditor').innerHTML); } catch {}
-                }
-            });
+            hub.appendChild(modal);
         }
-
-        if (!module.querySelector('.rs-wrap')) renderResearch();
-    }
-
-    function filteredResearch() {
-        const search = researchState.search;
-        return (researchState.submissions || []).filter(s => {
-            const p = researchProfile(s);
-            const hay = [
-                p.full_name, p.student_id, p.admission_number, p.email,
-                p.program, p.intake_year, s.title, s.supervisor_name,
-                researchTypeLabel(s.submission_type), researchStatusLabel(s.status)
-            ].join(' ').toLowerCase();
-
-            if (search && !hay.includes(search)) return false;
-            if (researchState.filterStatus && s.status !== researchState.filterStatus) return false;
-            if (researchState.filterType && s.submission_type !== researchState.filterType) return false;
-            if (researchState.filterProgram && String(p.program || '') !== researchState.filterProgram) return false;
-            if (researchState.filterIntake && String(p.intake_year || '') !== researchState.filterIntake) return false;
-            return true;
-        });
-    }
-
-    function researchOptions() {
-        const programs = [...new Set(researchState.submissions.map(s => researchProfile(s).program).filter(Boolean).map(String))].sort();
-        const intakes = [...new Set(researchState.submissions.map(s => researchProfile(s).intake_year).filter(Boolean).map(String))].sort();
-        return { programs, intakes };
     }
 
     function researchRow(s) {
@@ -857,36 +799,65 @@ window.LecturerOnlineLearning = (() => {
         document.documentElement.dataset.nchsmResearchNavBound = '1';
 
         document.addEventListener('click', function (e) {
-            const tab = e.target.closest('[data-rs-tab="research"], [data-ol-tab="research"], [data-ol-hub-view="research"]');
+            const tab = e.target.closest('#online-learning-content .ol-hub-tabs [data-ol-hub-view]');
             if (!tab) return;
 
-            e.preventDefault();
-            e.stopImmediatePropagation();
+            const hub = $('online-learning-content') || $('hub-online-learning');
+            if (!hub) return;
 
-            state.tab = 'research';
+            const view = tab.getAttribute('data-ol-hub-view');
+            const tabs = hub.querySelectorAll('.ol-hub-tabs [data-ol-hub-view]');
+            const learningView = hub.querySelector('.ol-wrap');
 
-            document.querySelectorAll('[data-rs-tab], [data-ol-tab], [data-ol-hub-view]').forEach(el => {
-                const isResearch = el.matches('[data-rs-tab="research"], [data-ol-tab="research"], [data-ol-hub-view="research"]');
-                el.classList.toggle('active', isResearch);
+            // Research module is injected alongside the existing .ol-wrap.
+            researchEnsureUI();
+            const module = $('nchsmResearchModule');
+
+            tabs.forEach(btn => {
+                const active = btn === tab;
+                btn.classList.toggle('active', active);
+                btn.setAttribute('aria-selected', active ? 'true' : 'false');
             });
 
-            const hub = $('online-learning-content') || $('hub-online-learning');
-            const module = $('nchsmResearchModule');
-            const learningView = $('ol-learning-view');
+            if (view === 'research') {
+                e.preventDefault();
+                e.stopPropagation();
 
-            if (learningView) learningView.style.display = 'none';
-            if (module) module.style.display = '';
+                state.tab = 'research';
 
-            loadResearch();
+                // Replace Online Learning content with Research content.
+                if (learningView) learningView.style.display = 'none';
+                if (module) {
+                    module.style.display = 'block';
+                    module.classList.add('active');
+                }
+
+                loadResearch();
+                return;
+            }
+
+            if (view === 'learning') {
+                e.preventDefault();
+                e.stopPropagation();
+
+                state.tab = 'online';
+
+                if (module) {
+                    module.style.display = 'none';
+                    module.classList.remove('active');
+                }
+                if (learningView) learningView.style.display = 'block';
+
+                if (typeof renderAssignments === 'function') renderAssignments();
+            }
         }, true);
     }
 
     async function initResearch() {
         bindResearchNavigation();
+        researchEnsureUI();
         if (researchState.initialized) return;
         researchState.initialized = true;
-        researchEnsureUI();
-        bindResearchNavigation();
         await loadResearch();
     }
 
