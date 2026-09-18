@@ -310,6 +310,57 @@ window.LecturerOnlineLearning = (() => {
         return researchState.profiles.get(s.student_id) || {};
     }
 
+    // Apply all lecturer research filters in one place.
+    // This function was missing from the previous build, which caused:
+    // "filteredResearch is not defined" when the Research tab opened.
+    function filteredResearch() {
+        const q = String(researchState.search || '').toLowerCase().trim();
+        const type = String(researchState.filterType || '').toLowerCase();
+        const status = String(researchState.filterStatus || '').toLowerCase();
+        const program = String(researchState.filterProgram || '').toLowerCase();
+        const intake = String(researchState.filterIntake || '').toLowerCase();
+
+        return (researchState.submissions || []).filter(s => {
+            const p = researchProfile(s);
+            const haystack = [
+                p.full_name, p.student_id, p.admission_number, p.email,
+                p.program, p.intake_year, p.current_block, p.block,
+                s.title, s.supervisor_name, s.submission_type, s.status,
+                s.document_name
+            ].filter(v => v !== null && v !== undefined)
+             .map(v => String(v).toLowerCase())
+             .join(' ');
+
+            if (q && !haystack.includes(q)) return false;
+            if (type && String(s.submission_type || '').toLowerCase() !== type) return false;
+            if (status && String(s.status || '').toLowerCase() !== status) return false;
+            if (program && String(p.program || '').toLowerCase() !== program) return false;
+            if (intake && String(p.intake_year || '').toLowerCase() !== intake) return false;
+            return true;
+        });
+    }
+
+    // Build filter choices from the student profiles attached to submissions.
+    function researchOptions() {
+        const programs = new Set();
+        const intakes = new Set();
+
+        (researchState.submissions || []).forEach(s => {
+            const p = researchProfile(s);
+            if (p.program !== null && p.program !== undefined && String(p.program).trim()) {
+                programs.add(String(p.program).trim());
+            }
+            if (p.intake_year !== null && p.intake_year !== undefined && String(p.intake_year).trim()) {
+                intakes.add(String(p.intake_year).trim());
+            }
+        });
+
+        return {
+            programs: [...programs].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})),
+            intakes: [...intakes].sort((a, b) => b.localeCompare(a, undefined, {numeric: true, sensitivity: 'base'}))
+        };
+    }
+
     function researchEnsureStyles() {
         if ($('rsModernStyles')) return;
         const st = document.createElement('style');
@@ -393,7 +444,7 @@ window.LecturerOnlineLearning = (() => {
             modal.innerHTML = `
             <div class="rs-dialog">
               <div class="rs-dialog-head">
-                <div><h3 id="rsModalTitle">Research Review Workspace</h3><div class="rs-meta" id="rsModalMeta"></div></div>
+                <div><h3 id="rsModalTitle">Research Review Workspace</h3><div class="rs-meta" id="rsModalMeta"></div><div class="rs-meta" id="rsStudentMeta" style="margin-top:6px"></div></div>
                 <button class="rs-btn rs-secondary" type="button" id="rsClose"><i class="fas fa-times"></i> Close</button>
               </div>
               <div class="rs-workspace">
@@ -411,6 +462,7 @@ window.LecturerOnlineLearning = (() => {
                     <button type="button" data-cmd="redo">↷</button>
                     <button type="button" id="rsOriginal">Original</button>
                   </div>
+                  <div id="rsEditorState" class="rs-editor-state">Read only</div>
                   <div id="rsDocumentShell" class="rs-document-shell">
                     <div id="rsDocumentEditor" class="rs-document" contenteditable="false"></div>
                   </div>
@@ -419,6 +471,7 @@ window.LecturerOnlineLearning = (() => {
                   <div class="rs-section-title"><h4>Review</h4></div>
                   <label>Status</label>
                   <select id="rsReviewStatus">
+                    <option value="submitted">Submitted</option>
                     <option value="under_review">Under Review</option>
                     <option value="revision_required">Revision Required</option>
                     <option value="approved">Approved</option>
@@ -427,7 +480,7 @@ window.LecturerOnlineLearning = (() => {
                   <label>Feedback / Correction Notes</label>
                   <textarea id="rsFeedback" rows="8" placeholder="Enter feedback or correction instructions..."></textarea>
                   <div class="rs-actions">
-                    <button type="button" class="rs-btn rs-secondary" id="rsEdit"><i class="fas fa-pen"></i> Edit Document</button>
+                    <button type="button" class="rs-btn rs-secondary" id="rsEditDocument"><i class="fas fa-pen"></i> Edit Document</button>
                     <button type="button" class="rs-btn rs-primary" id="rsSaveCorrection"><i class="fas fa-file-pen"></i> Save Correction</button>
                     <button type="button" class="rs-btn rs-secondary" id="rsDownload"><i class="fas fa-download"></i> Download</button>
                     <button type="button" class="rs-btn rs-secondary" id="rsHistory"><i class="fas fa-clock-rotate-left"></i> Version History</button>
@@ -435,11 +488,49 @@ window.LecturerOnlineLearning = (() => {
                     <button type="button" class="rs-btn rs-warning" id="rsRevision"><i class="fas fa-rotate"></i> Send Revision</button>
                     <button type="button" class="rs-btn rs-danger wide" id="rsReject"><i class="fas fa-xmark"></i> Reject</button>
                   </div>
-                  <div id="rsHistoryPanel" class="rs-history" style="display:none"></div>
+                  <div id="rsVersionHistory" class="rs-history" style="display:none"></div>
                 </aside>
               </div>
             </div>`;
             hub.appendChild(modal);
+        }
+
+        if (modal.dataset.researchWorkspaceBound !== '1') {
+            modal.dataset.researchWorkspaceBound = '1';
+            modal.addEventListener('click', e => {
+                if (e.target === modal) closeResearchModal();
+                const btn = e.target.closest('[data-cmd]');
+                if (!btn) return;
+                const ed = $('rsDocumentEditor');
+                if (!ed || ed.contentEditable !== 'true') return;
+                ed.focus();
+                document.execCommand(btn.dataset.cmd, false, btn.dataset.value || null);
+                researchState.correctionDirty = true;
+                researchState.draftHtml = ed.innerHTML;
+                updateEditorState();
+            });
+            $('rsClose')?.addEventListener('click', closeResearchModal);
+            $('rsEditDocument')?.addEventListener('click', toggleResearchEditor);
+            $('rsSaveCorrection')?.addEventListener('click', saveResearchCorrection);
+            $('rsDownload')?.addEventListener('click', downloadCurrentResearch);
+            $('rsHistory')?.addEventListener('click', () => {
+                const box = $('rsVersionHistory');
+                if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
+            });
+            $('rsApprove')?.addEventListener('click', () => setResearchStatusAndSave('approved'));
+            $('rsRevision')?.addEventListener('click', () => setResearchStatusAndSave('revision_required'));
+            $('rsReject')?.addEventListener('click', () => setResearchStatusAndSave('rejected'));
+            $('rsDocumentEditor')?.addEventListener('input', () => {
+                const ed = $('rsDocumentEditor');
+                if (ed && ed.contentEditable === 'true') {
+                    researchState.correctionDirty = true;
+                    researchState.draftHtml = ed.innerHTML;
+                    updateEditorState();
+                }
+            });
+            document.addEventListener('keydown', e => {
+                if (e.key === 'Escape' && $('rsReviewModal')?.getAttribute('aria-hidden') === 'false') closeResearchModal();
+            });
         }
     }
 
@@ -592,6 +683,11 @@ window.LecturerOnlineLearning = (() => {
         if (!area) return;
         area.contentEditable = 'false';
         area.innerHTML = '<div class="rs-empty">Opening document...</div>';
+        const editBtn = $('rsEditDocument');
+        const saveBtn = $('rsSaveCorrection');
+        if (editBtn) { editBtn.disabled = true; editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit Document'; }
+        if (saveBtn) saveBtn.disabled = true;
+        researchState.correctionDirty = false;
         try {
             const url = await researchSignedUrl(s);
             const ext = String(s.document_name || s.document_path || '').split('.').pop().toLowerCase();
@@ -602,31 +698,45 @@ window.LecturerOnlineLearning = (() => {
                     await new Promise((resolve, reject) => {
                         const sc = document.createElement('script');
                         sc.src = 'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
-                        sc.onload = resolve; sc.onerror = () => reject(new Error('Could not load DOCX editor library.'));
+                        sc.onload = resolve;
+                        sc.onerror = () => reject(new Error('Could not load DOCX editor library.'));
                         document.head.appendChild(sc);
                     });
                 }
                 const r = await window.mammoth.convertToHtml({arrayBuffer: await blob.arrayBuffer()});
                 const html = r.value || '<p>No readable text found.</p>';
                 researchState.originalHtml = html;
-
                 let draft = null;
                 try { draft = localStorage.getItem('nchsm_rs_draft_' + s.id); } catch {}
                 area.innerHTML = draft || html;
                 researchState.draftHtml = area.innerHTML;
-                updateEditorState();
+                if (editBtn) editBtn.disabled = false;
+                if (saveBtn) saveBtn.disabled = false;
+                if ($('rsEditorState')) $('rsEditorState').textContent = 'Read only';
+            } else if (ext === 'html' || ext === 'htm') {
+                const htmlText = await (await fetch(url)).text();
+                const doc = new DOMParser().parseFromString(htmlText, 'text/html');
+                doc.querySelectorAll('script,iframe,object,embed,form').forEach(n => n.remove());
+                const html = doc.body?.innerHTML || '<p>No readable text found.</p>';
+                researchState.originalHtml = html;
+                area.innerHTML = html;
+                researchState.draftHtml = html;
+                if (editBtn) editBtn.disabled = false;
+                if (saveBtn) saveBtn.disabled = false;
+                if ($('rsEditorState')) $('rsEditorState').textContent = 'Read only';
             } else if (ext === 'pdf') {
                 researchState.originalHtml = '';
                 area.innerHTML = `<div style="height:100%;min-height:900px"><iframe title="${esc(s.document_name || 'Research PDF')}" src="${esc(url)}" style="width:100%;height:100%;min-height:900px;border:0;background:#fff"></iframe></div>`;
-                $('rsEditDocument').disabled = true;
-                $('rsSaveCorrection').disabled = true;
-                $('rsEditorState').textContent = 'PDF view — use feedback/correction notes';
+                if ($('rsEditorState')) $('rsEditorState').textContent = 'PDF view — use feedback/correction notes';
             } else {
+                researchState.originalHtml = '';
                 area.innerHTML = `<div class="rs-empty"><strong>Preview unavailable</strong>Download the original document to review it.</div>`;
+                if ($('rsEditorState')) $('rsEditorState').textContent = 'Read only';
             }
         } catch (e) {
             console.error('Research document preview:', e);
             area.innerHTML = `<div class="rs-empty"><strong>Document could not be opened</strong>${esc(e.message || e)}</div>`;
+            if ($('rsEditorState')) $('rsEditorState').textContent = 'Unable to preview';
         }
     }
 
