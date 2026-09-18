@@ -6200,21 +6200,43 @@ window.displayLiveFeed = function() {
             if (!existing || gTime >= eTime) gradeByAttempt.set(key, g);
         });
 
-        // Build release candidates strictly from latest submitted attempts that
-        // have a completed sentinel grade. No attendance lookup is performed.
-        const releaseRows = [];
-        latestAttemptMap.forEach((attempt, studentId) => {
-            if (!isSubmittedAttempt(attempt)) return;
+       // ============================================================
+// RELAXED RELEASE MODEL
+// Release candidates come from the COMPLETED SENTINEL GRADES.
+// An attempt row is preferred when it exists, but its absence no
+// longer blocks a student from appearing in the release list.
+// This means every student with a real graded result is visible
+// to the admin — even if the parent attempt row was lost.
+// ============================================================
+const releaseRows = [];
 
-            const grade = gradeByAttempt.get(String(attempt.id));
-            if (!grade) return;
+// Index the latest attempt per student (may be empty).
+const latestAttemptByStudent = new Map();
+latestAttemptMap.forEach((attempt, studentId) => {
+    latestAttemptByStudent.set(String(studentId), attempt);
+});
 
-            releaseRows.push({
-                ...grade,
-                attempt_info: attempt,
-                is_releasable: true
-            });
-        });
+// Iterate the completed sentinel grades directly.
+completedSentinelGrades.forEach(grade => {
+    if (!grade?.student_id) return;
+
+    // Prefer the newest attempt for the same student.
+    const attempt = latestAttemptByStudent.get(String(grade.student_id)) || null;
+
+    releaseRows.push({
+        ...grade,
+        attempt_info: attempt || {
+            id: grade.attempt_id || null,
+            student_id: grade.student_id,
+            status: 'PENDING_REVIEW',
+            submitted_at: grade.graded_at || grade.updated_at || null,
+            score: grade.marks,
+            percentage: grade.percentage,
+            total_marks: grade.total_marks
+        },
+        is_releasable: true
+    });
+});
 
         if (!releaseRows.length) {
             if (body) body.innerHTML = '<tr><td colspan="8" style="text-align:center;padding:30px;">No submitted students with completed/graded results found for this exam.</td></tr>';
