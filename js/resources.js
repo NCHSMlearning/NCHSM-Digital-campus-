@@ -98,6 +98,21 @@ class ResourcesModule {
         this.audioProgressInterval = null;
         this.audioVoicesLoaded = false;
         this.podcastPauseTimer = null;
+
+        // ===== AI Podcast Engine =====
+        // Optional: set one of these in your dashboard before loading this module:
+        // window.STUDENT_AI_PODCAST_CONFIG = {
+        //     endpoint: '/api/student-podcast',
+        //     model: 'gpt-5.6'
+        // };
+        this.aiPodcastConfig = window.STUDENT_AI_PODCAST_CONFIG || {};
+        this.aiPodcastEnabled = Boolean(
+            this.aiPodcastConfig.endpoint ||
+            window.generateStudentPodcast ||
+            window.generateAIPodcast
+        );
+        this.aiPodcastAbortController = null;
+        this.podcastGenerationId = 0;
         
         // ===== Dual-Voice Podcast State =====
         this.dualVoiceEnabled = true;
@@ -632,6 +647,246 @@ class ResourcesModule {
     // 🎙️ GENERATE NOTEBOOKLM-STYLE PODCAST SCRIPT
     // ============================================================
     
+    // ============================================================
+    // 🤖 AI NOTEBOOKLM-STYLE PODCAST ENGINE
+    // ============================================================
+
+    async generateAIPodcastScript(sourceText, title = '', resource = null) {
+        const text = String(sourceText || '').replace(/\s+/g, ' ').trim();
+
+        if (!text || text.length < 50) {
+            throw new Error('Not enough source text to generate an AI podcast.');
+        }
+
+        const generationId = ++this.podcastGenerationId;
+
+        if (this.aiPodcastAbortController) {
+            this.aiPodcastAbortController.abort();
+        }
+        this.aiPodcastAbortController = new AbortController();
+
+        const payload = {
+            title: title || resource?.title || 'Learning Resource',
+            source: text,
+            resource: resource ? {
+                id: resource.id,
+                title: resource.title,
+                course_name: resource.course_name,
+                resource_type: resource.resource_type,
+                program_type: resource.program_type,
+                block: resource.block,
+                term: resource.term,
+                year: resource.year,
+                exam_type: resource.exam_type
+            } : null,
+            instructions: {
+                style: 'NotebookLM-style educational audio discussion',
+                speakers: ['host1', 'host2'],
+                audience: 'nursing and health-science students',
+                sourceGrounded: true,
+                doNotInventFacts: true,
+                conversational: true,
+                explainRatherThanRead: true,
+                include: [
+                    'natural introduction',
+                    'central concept',
+                    'important definitions',
+                    'major concepts',
+                    'step-by-step explanation where appropriate',
+                    'clinical or nursing relevance only when supported by the source',
+                    'exam-relevant points when supported by the source',
+                    'concise recap'
+                ],
+                avoid: [
+                    'generic filler',
+                    'repeating the same point',
+                    'invented facts',
+                    'claims not supported by the source',
+                    'reading the document word-for-word'
+                ],
+                outputFormat: 'JSON array of {speaker,text,pauseAfter}'
+            }
+        };
+
+        let result = null;
+
+        // Preferred integration: a project-specific function.
+        const generator =
+            window.generateStudentPodcast ||
+            window.generateAIPodcast;
+
+        if (typeof generator === 'function') {
+            result = await generator(payload, {
+                signal: this.aiPodcastAbortController.signal
+            });
+        } else {
+            const endpoint = this.aiPodcastConfig.endpoint;
+            if (!endpoint) {
+                throw new Error(
+                    'AI podcast endpoint is not configured. Using the built-in local podcast engine.'
+                );
+            }
+
+            const response = await fetch(endpoint, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...(this.aiPodcastConfig.headers || {})
+                },
+                body: JSON.stringify(payload),
+                signal: this.aiPodcastAbortController.signal
+            });
+
+            if (!response.ok) {
+                const message = await response.text().catch(() => '');
+                throw new Error(
+                    `AI podcast request failed (${response.status})${message ? `: ${message.substring(0, 180)}` : ''}`
+                );
+            }
+
+            result = await response.json();
+        }
+
+        if (generationId !== this.podcastGenerationId) {
+            throw new DOMException('Superseded podcast generation', 'AbortError');
+        }
+
+        const dialogue = this.normalizeAIPodcastDialogue(result);
+
+        if (!dialogue.length) {
+            throw new Error('The AI returned no usable podcast dialogue.');
+        }
+
+        return dialogue;
+    }
+
+    normalizeAIPodcastDialogue(result) {
+        let dialogue = result;
+
+        if (result?.dialogue) dialogue = result.dialogue;
+        else if (result?.script) dialogue = result.script;
+        else if (result?.podcast) dialogue = result.podcast;
+        else if (result?.choices?.[0]?.message?.content) {
+            let content = result.choices[0].message.content;
+
+            // Models sometimes wrap JSON in markdown fences.
+            content = content
+                .replace(/^```(?:json)?\s*/i, '')
+                .replace(/\s*```$/i, '')
+                .trim();
+
+            try {
+                dialogue = JSON.parse(content);
+            } catch {
+                return this.convertPlainTextToDialogue(content);
+            }
+        }
+
+        if (typeof dialogue === 'string') {
+            try {
+                dialogue = JSON.parse(dialogue);
+            } catch {
+                return this.convertPlainTextToDialogue(dialogue);
+            }
+        }
+
+        if (!Array.isArray(dialogue)) return [];
+
+        return dialogue
+            .map((line, index) => {
+                const rawSpeaker = String(
+                    line?.speaker ||
+                    line?.role ||
+                    line?.host ||
+                    ''
+                ).toLowerCase();
+
+                const speaker =
+                    rawSpeaker.includes('2') ||
+                    rawSpeaker.includes('female') ||
+                    rawSpeaker.includes('co-host') ||
+                    rawSpeaker.includes('cohost')
+                        ? 'host2'
+                        : 'host1';
+
+                const speech = String(
+                    line?.text ||
+                    line?.content ||
+                    line?.dialogue ||
+                    ''
+                ).trim();
+
+                return {
+                    speaker,
+                    text: speech,
+                    pauseAfter: Math.max(
+                        0.25,
+                        Math.min(1.5, Number(line?.pauseAfter) || 0.5)
+                    ),
+                    index
+                };
+            })
+            .filter(line => line.text.length > 0)
+            .map(({ index, ...line }) => line);
+    }
+
+    convertPlainTextToDialogue(content) {
+        const lines = String(content || '')
+            .split(/\n+/)
+            .map(line => line.trim())
+            .filter(Boolean);
+
+        return lines.map((line, index) => {
+            const isHost2 =
+                /^(host\s*2|co-?host|female)\s*:/i.test(line);
+
+            const text = line
+                .replace(/^(host\s*[12]|co-?host|male|female)\s*:\s*/i, '')
+                .trim();
+
+            return {
+                speaker: isHost2 ? 'host2' : (index % 2 === 0 ? 'host1' : 'host2'),
+                text,
+                pauseAfter: 0.5
+            };
+        });
+    }
+
+    async createBestPodcastScript(sourceText, title = '', resource = null) {
+        // AI is opt-in through a project endpoint/function. If unavailable,
+        // the robust local source-grounded engine remains fully functional.
+        if (this.aiPodcastEnabled) {
+            try {
+                if (this.audioStatus) {
+                    this.audioStatus.textContent = '🤖 Creating AI study discussion...';
+                }
+
+                const aiDialogue = await this.generateAIPodcastScript(
+                    sourceText,
+                    title,
+                    resource
+                );
+
+                this.showToast('🤖 AI podcast discussion ready', 'success');
+                return aiDialogue;
+            } catch (error) {
+                if (error?.name === 'AbortError') throw error;
+
+                console.warn(
+                    'AI podcast unavailable; using local source-grounded engine:',
+                    error
+                );
+
+                this.showToast(
+                    'AI podcast unavailable. Using built-in study podcast.',
+                    'info'
+                );
+            }
+        }
+
+        return this.generatePodcastScript(sourceText, title);
+    }
+
     generatePodcastScript(text, title = '') {
         const lines = [];
         const cleanText = String(text || '').replace(/\s+/g, ' ').trim();
@@ -1008,6 +1263,13 @@ class ResourcesModule {
 
     stopAudio() {
         this.clearPodcastPauseTimer();
+
+        // Invalidate any pending AI generation.
+        this.podcastGenerationId++;
+        if (this.aiPodcastAbortController) {
+            this.aiPodcastAbortController.abort();
+            this.aiPodcastAbortController = null;
+        }
 
         // Invalidate the active utterance before cancelling it so its
         // onend/onerror handlers cannot advance the dialogue.
