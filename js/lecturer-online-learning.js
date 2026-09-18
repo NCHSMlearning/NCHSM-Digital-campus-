@@ -260,68 +260,604 @@ window.LecturerOnlineLearning = (() => {
     function closeModal(id){const m=$(id);if(m)m.style.display='none';}
 
     // ============================================================
-    // RESEARCH SUBMISSIONS — LECTURER REVIEW MODULE
-    // Uses public.research_submissions and private research-papers bucket.
+    // RESEARCH SUBMISSIONS — LECTURER REVIEW + GOOGLE DOCS STYLE EDITOR
     // ============================================================
     const researchState = {
-        submissions: [], profiles: new Map(), initialized: false,
-        filterStatus: '', filterType: '', filterProgram: '', filterIntake: '', search: '',
-        activeTab: 'active', current: null, editorDirty: false
+        submissions: [],
+        profiles: new Map(),
+        initialized: false,
+        search: '',
+        filterStatus: '',
+        filterType: '',
+        filterProgram: '',
+        filterIntake: '',
+        current: null,
+        originalHtml: '',
+        draftHtml: '',
+        correctionDirty: false
     };
 
-    function researchStatusLabel(status) { return String(status || 'submitted').replace(/_/g,' ').replace(/\b\w/g,c=>c.toUpperCase()); }
-    function researchStatusClass(status) {
-        const s=String(status||'').toLowerCase();
-        if(s==='approved')return'approved'; if(s==='revision_required')return'revision';
-        if(s==='under_review')return'review'; if(s==='rejected')return'rejected'; return'submitted';
-    }
-    function researchTypeLabel(type){
-        const t=String(type||'').toLowerCase();
-        if(t==='proposal')return'Research Proposal';
-        if(t==='final_paper')return'Research Project / Final Paper';
-        if(t==='correction')return'Correction / Revised Paper';
-        return t.replace(/_/g,' ')||'Research';
-    }
-    function researchIsCompleted(s){ return ['approved','rejected'].includes(String(s.status||'').toLowerCase()); }
-
-    function researchEnsureStyles(){
-        if($('nchsmResearchStyles'))return;
-        const st=document.createElement('style');st.id='nchsmResearchStyles';st.textContent=`
-        #nchsmResearchModule{padding:20px;max-width:100%;box-sizing:border-box}.rs-head{background:linear-gradient(135deg,#0A3D62,#1a5a7a);color:#fff;border-radius:16px;padding:22px 24px;margin-bottom:18px;box-shadow:0 4px 20px rgba(10,61,98,.18)}.rs-head h2{margin:0;font-size:21px;display:flex;align-items:center;gap:10px}.rs-head p{margin:7px 0 0;opacity:.9;font-size:13px}.rs-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:15px}.rs-stat{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px;box-shadow:0 2px 8px rgba(15,23,42,.04)}.rs-stat b{display:block;font-size:24px;color:#0A3D62}.rs-stat span{font-size:11px;color:#64748b}.rs-toolbar{display:grid;grid-template-columns:minmax(220px,1.8fr) repeat(4,minmax(130px,1fr)) auto auto;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px}.rs-toolbar input,.rs-toolbar select{min-height:38px;border:1px solid #dbe3ec;border-radius:8px;padding:7px 10px;box-sizing:border-box;min-width:0}.rs-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;margin-bottom:14px}.rs-section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:13px 15px;border-bottom:1px solid #e2e8f0}.rs-section-head h3{margin:0;font-size:14px;color:#18304d}.rs-count{font-size:11px;background:#eef2f7;padding:5px 8px;border-radius:999px;color:#475569;font-weight:800}.rs-tabs{display:flex;gap:6px;margin:0 0 12px;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:6px}.rs-tab{border:0;background:transparent;border-radius:8px;padding:9px 13px;cursor:pointer;font-weight:800;font-size:11px;color:#64748b}.rs-tab.active{background:#0A3D62;color:#fff}.rs-table{width:100%;border-collapse:collapse;font-size:12px}.rs-table th{background:#f8fafc;color:#475569;text-align:left;font-size:10px;padding:11px;border-bottom:1px solid #e2e8f0;white-space:nowrap}.rs-table td{padding:11px;border-bottom:1px solid #eef2f7;vertical-align:top}.rs-table tr:hover td{background:#fafcff}.rs-badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:800;text-transform:uppercase;background:#eef2f7;color:#475569;white-space:nowrap}.rs-badge.approved{background:#dcfce7;color:#166534}.rs-badge.revision{background:#fef3c7;color:#92400e}.rs-badge.review{background:#dbeafe;color:#1d4ed8}.rs-badge.rejected{background:#fee2e2;color:#991b1b}.rs-badge.submitted{background:#e0f2fe;color:#0369a1}.rs-btn{border:0;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:11px;font-weight:700}.rs-primary{background:#0A3D62;color:#fff}.rs-secondary{background:#eef2f7;color:#334155}.rs-success{background:#166534;color:#fff}.rs-warning{background:#b45309;color:#fff}.rs-danger{background:#991b1b;color:#fff}.rs-empty{padding:35px;text-align:center;color:#64748b}.rs-modal{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:100020;display:none;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}.rs-dialog{background:#fff;width:min(1380px,100%);height:min(95vh,950px);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.35)}.rs-dialog-head{padding:13px 16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:10px;align-items:center}.rs-dialog-body{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(330px,.65fr);flex:1;min-height:0}.rs-preview{background:#eef2f7;overflow:auto;padding:12px}.rs-side{border-left:1px solid #e2e8f0;padding:16px;overflow:auto}.rs-frame{width:100%;height:100%;min-height:600px;border:0;background:#fff}.rs-docx{background:#fff;max-width:850px;margin:auto;padding:40px 50px;min-height:90%;line-height:1.65;box-shadow:0 1px 7px rgba(0,0,0,.08)}.rs-side label{display:block;font-size:11px;font-weight:700;color:#475569;margin:12px 0 5px}.rs-side select,.rs-side textarea{width:100%;box-sizing:border-box;border:1px solid #dbe3ec;border-radius:8px;padding:9px}.rs-side textarea{min-height:130px;resize:vertical}.rs-meta{font-size:12px;color:#64748b;line-height:1.6}.rs-title{font-size:17px;font-weight:800;color:#18304d;margin-bottom:5px}.rs-editor-wrap{background:#fff;border:1px solid #dbe3ec;border-radius:10px;overflow:hidden}.rs-editor-tools{display:flex;gap:4px;flex-wrap:wrap;padding:8px;border-bottom:1px solid #e2e8f0;background:#f8fafc;position:sticky;top:0;z-index:2}.rs-editor-tools button{border:1px solid #dbe3ec;background:#fff;border-radius:6px;padding:6px 8px;cursor:pointer;font-size:11px}.rs-editor-tools button:hover{background:#eef2f7}.rs-editor{min-height:650px;padding:38px 48px;outline:0;line-height:1.7;font-family:Arial,sans-serif}.rs-editor:focus{box-shadow:inset 0 0 0 2px #dbeafe}.rs-editor mark{padding:0 2px}.rs-version-list{margin-top:12px;border-top:1px solid #e2e8f0;padding-top:12px}.rs-version{display:flex;justify-content:space-between;gap:8px;padding:8px;border:1px solid #e2e8f0;border-radius:8px;margin-top:6px;background:#f8fafc;font-size:11px}.rs-correction-note{font-size:11px;color:#64748b;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:9px;margin-top:10px}@media(max-width:1050px){.rs-toolbar{grid-template-columns:repeat(3,1fr)}.rs-toolbar input{grid-column:1/-1}.rs-stats{grid-template-columns:repeat(3,1fr)}}@media(max-width:800px){.rs-stats{grid-template-columns:repeat(2,1fr)}.rs-dialog-body{grid-template-columns:1fr}.rs-side{border-left:0;border-top:1px solid #e2e8f0}.rs-preview{min-height:45vh}.rs-frame{min-height:450px}.rs-docx,.rs-editor{padding:22px}.rs-toolbar{grid-template-columns:1fr 1fr}.rs-table{min-width:1050px}.rs-card{overflow-x:auto}}@media(max-width:520px){#nchsmResearchModule{padding:10px}.rs-stats{grid-template-columns:1fr 1fr}.rs-toolbar{grid-template-columns:1fr}.rs-toolbar input{grid-column:auto}}
-        `;document.head.appendChild(st);
+    function researchTypeLabel(type) {
+        const map = {
+            proposal: 'Research Proposal',
+            final_paper: 'Research Project / Final Paper',
+            correction: 'Correction / Revised Paper'
+        };
+        return map[type] || String(type || 'Research').replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
     }
 
-    function researchEnsureUI(){
-        researchEnsureStyles();const section=$('online-learning-content');if(!section)return;
-        let hubTabs=section.querySelector('.ol-hub-tabs'),learningView=section.querySelector('#ol-learning-view'),root=$('nchsmResearchModule');
-        if(!hubTabs){hubTabs=document.createElement('div');hubTabs.className='ol-hub-tabs';hubTabs.innerHTML=`<button type="button" class="ol-hub-tab active" data-ol-hub-view="learning"><i class="fas fa-laptop-code"></i> Online Learning</button><button type="button" class="ol-hub-tab" data-ol-hub-view="research"><i class="fas fa-file-signature"></i> Research Papers</button>`;section.insertBefore(hubTabs,section.firstChild)}
-        if(!learningView){learningView=document.createElement('div');learningView.id='ol-learning-view';Array.from(section.children).filter(el=>el!==hubTabs).forEach(el=>learningView.appendChild(el));section.appendChild(learningView)}
-        if(!root){root=document.createElement('div');root.id='nchsmResearchModule';root.style.display='none';section.appendChild(root)}
-        hubTabs.querySelectorAll('[data-ol-hub-view]').forEach(btn=>{if(btn.dataset.bound==='1')return;btn.dataset.bound='1';btn.addEventListener('click',()=>{const view=btn.dataset.olHubView;hubTabs.querySelectorAll('[data-ol-hub-view]').forEach(x=>x.classList.toggle('active',x===btn));learningView.style.display=view==='learning'?'block':'none';root.style.display=view==='research'?'block':'none';if(view==='research')loadResearch()})});
-        if(root.dataset.rendered==='1')return;root.dataset.rendered='1';root.innerHTML=`
-        <div class="rs-head"><h2><i class="fas fa-file-signature"></i> Research Submissions</h2><p>Review proposals, research projects and corrected versions. Completed decisions are automatically moved to the Completed Research tab.</p></div>
-        <div class="rs-stats"><div class="rs-stat"><b id="rsTotal">0</b><span>Total Versions</span></div><div class="rs-stat"><b id="rsSubmitted">0</b><span>Submitted</span></div><div class="rs-stat"><b id="rsReview">0</b><span>Under Review</span></div><div class="rs-stat"><b id="rsRevision">0</b><span>Revision Required</span></div><div class="rs-stat"><b id="rsApproved">0</b><span>Approved</span></div></div>
-        <div class="rs-toolbar"><input id="rsSearch" placeholder="Search student, admission number or research title…"><select id="rsType"><option value="">All research types</option><option value="proposal">Research Proposal</option><option value="final_paper">Research Project / Final Paper</option><option value="correction">Correction / Revised Paper</option></select><select id="rsStatus"><option value="">All statuses</option><option value="submitted">Submitted</option><option value="under_review">Under Review</option><option value="revision_required">Revision Required</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><select id="rsProgram"><option value="">All programmes</option></select><select id="rsIntake"><option value="">All intakes</option></select><button class="rs-btn rs-secondary" type="button" id="rsReset">Reset</button><button class="rs-btn rs-secondary" type="button" id="rsRefresh"><i class="fas fa-sync"></i> Refresh</button></div>
-        <div class="rs-tabs"><button type="button" class="rs-tab active" data-rs-tab="active"><i class="fas fa-hourglass-half"></i> Active Research <span id="rsActiveCount"></span></button><button type="button" class="rs-tab" data-rs-tab="completed"><i class="fas fa-circle-check"></i> Completed Research <span id="rsCompletedCount"></span></button></div>
-        <div class="rs-card"><div class="rs-section-head"><h3 id="rsSectionTitle">Active Research</h3><span class="rs-count" id="rsSectionCount">0</span></div><div id="rsLoading" class="rs-empty">Loading research submissions…</div><div style="overflow-x:auto"><table class="rs-table" id="rsTable" style="display:none"><thead><tr><th>Student</th><th>Research Title</th><th>Type</th><th>Version</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead><tbody id="rsBody"></tbody></table></div></div>
-        <div class="rs-modal" id="rsReviewModal" aria-hidden="true"><div class="rs-dialog"><div class="rs-dialog-head"><div><div class="rs-title" id="rsModalTitle">Research Submission</div><div class="rs-meta" id="rsModalMeta"></div></div><button class="rs-btn rs-secondary" type="button" id="rsClose">Close</button></div><div class="rs-dialog-body"><div class="rs-preview" id="rsPreview"><div class="rs-empty">Select a submission.</div></div><div class="rs-side"><div id="rsStudentMeta" class="rs-meta"></div><label>Review Status</label><select id="rsReviewStatus"><option value="submitted">Submitted</option><option value="under_review">Under Review</option><option value="revision_required">Revision Required</option><option value="approved">Approved</option><option value="rejected">Rejected</option></select><label>Supervisor / Lecturer Feedback</label><textarea id="rsFeedback" placeholder="Enter feedback, required corrections, recommendations or approval comments…"></textarea><div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px"><button class="rs-btn rs-success" type="button" id="rsSaveReview">Save Review</button><button class="rs-btn rs-secondary" type="button" id="rsDownload">Download Original</button><button class="rs-btn rs-warning" type="button" id="rsOpenEditor">Open Correction Editor</button></div><div id="rsFileInfo" class="rs-meta" style="margin-top:14px"></div><div id="rsVersionHistory" class="rs-version-list"></div></div></div></div></div>`;
-        $('rsSearch').addEventListener('input',e=>{researchState.search=e.target.value.toLowerCase().trim();renderResearch()});$('rsType').addEventListener('change',e=>{researchState.filterType=e.target.value;renderResearch()});$('rsStatus').addEventListener('change',e=>{researchState.filterStatus=e.target.value;renderResearch()});$('rsProgram').addEventListener('change',e=>{researchState.filterProgram=e.target.value;renderResearch()});$('rsIntake').addEventListener('change',e=>{researchState.filterIntake=e.target.value;renderResearch()});$('rsReset').addEventListener('click',resetResearchFilters);$('rsRefresh').addEventListener('click',loadResearch);$('rsClose').addEventListener('click',closeResearchModal);$('rsReviewModal').addEventListener('click',e=>{if(e.target===$('rsReviewModal'))closeResearchModal()});$('rsSaveReview').addEventListener('click',saveResearchReview);$('rsDownload').addEventListener('click',downloadCurrentResearch);$('rsOpenEditor').addEventListener('click',openCorrectionEditor);root.querySelectorAll('[data-rs-tab]').forEach(b=>b.addEventListener('click',()=>{researchState.activeTab=b.dataset.rsTab;root.querySelectorAll('[data-rs-tab]').forEach(x=>x.classList.toggle('active',x===b));renderResearch()}));
+    function researchStatusLabel(status) {
+        const map = {
+            submitted: 'Submitted',
+            under_review: 'Under Review',
+            revision_required: 'Revision Required',
+            approved: 'Approved',
+            rejected: 'Rejected'
+        };
+        return map[status] || String(status || 'Unknown').replace(/_/g, ' ');
     }
-    function resetResearchFilters(){researchState.search='';researchState.filterType='';researchState.filterStatus='';researchState.filterProgram='';researchState.filterIntake='';$('rsSearch').value='';$('rsType').value='';$('rsStatus').value='';$('rsProgram').value='';$('rsIntake').value='';renderResearch()}
-    function populateResearchFilters(){const ps=[...new Set([...researchState.profiles.values()].map(p=>p.program).filter(Boolean))].sort();const ins=[...new Set([...researchState.profiles.values()].map(p=>p.intake_year).filter(Boolean).map(String))].sort((a,b)=>b.localeCompare(a));const p=$('rsProgram'),i=$('rsIntake');if(p){const v=p.value;p.innerHTML='<option value="">All programmes</option>'+ps.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');p.value=v}if(i){const v=i.value;i.innerHTML='<option value="">All intakes</option>'+ins.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');i.value=v}}
-    async function loadResearch(){researchEnsureUI();const db=client();if(!db)return notify('Supabase client is not available for Research.','error');const loading=$('rsLoading');if(loading)loading.style.display='block';try{const {data,error}=await db.from('research_submissions').select('id,student_id,research_group_id,version_number,title,submission_type,supervisor_name,abstract,status,document_name,document_path,feedback,reviewed_by,reviewed_at,submitted_at,created_at,updated_at').order('created_at',{ascending:false});if(error)throw error;researchState.submissions=data||[];const ids=[...new Set(researchState.submissions.map(x=>x.student_id).filter(Boolean))];researchState.profiles=new Map();if(ids.length){const r=await db.from('consolidated_user_profiles_table').select('user_id,full_name,student_id,admission_number,email,program,intake_year,current_block,block').in('user_id',ids);(r.data||[]).forEach(p=>researchState.profiles.set(p.user_id,p))}populateResearchFilters();renderResearch()}catch(e){console.error('Research load failed:',e);if(loading)loading.textContent='Research submissions could not load: '+(e.message||e);notify('Could not load Research submissions: '+(e.message||e),'error')}finally{if(loading)loading.style.display='none'}}
-    function renderResearch(){researchEnsureUI();const all=researchState.submissions||[];const q=researchState.search;const filtered=all.filter(s=>{const p=researchState.profiles.get(s.student_id)||{};const hay=`${p.full_name||''} ${p.student_id||''} ${p.admission_number||''} ${p.email||''} ${s.title||''}`.toLowerCase();return(!q||hay.includes(q))&&(!researchState.filterType||s.submission_type===researchState.filterType)&&(!researchState.filterStatus||s.status===researchState.filterStatus)&&(!researchState.filterProgram||String(p.program||'')===String(researchState.filterProgram))&&(!researchState.filterIntake||String(p.intake_year||'')===String(researchState.filterIntake))});const active=filtered.filter(s=>!researchIsCompleted(s)),completed=filtered.filter(s=>researchIsCompleted(s));const rows=researchState.activeTab==='completed'?completed:active;const allActive=all.filter(s=>!researchIsCompleted(s)),allCompleted=all.filter(researchIsCompleted);$('rsTotal').textContent=all.length;$('rsSubmitted').textContent=all.filter(s=>s.status==='submitted').length;$('rsReview').textContent=all.filter(s=>s.status==='under_review').length;$('rsRevision').textContent=all.filter(s=>s.status==='revision_required').length;$('rsApproved').textContent=all.filter(s=>s.status==='approved').length;$('rsActiveCount').textContent=`(${allActive.length})`;$('rsCompletedCount').textContent=`(${allCompleted.length})`;$('rsSectionTitle').textContent=researchState.activeTab==='completed'?'Completed Research':'Active Research';$('rsSectionCount').textContent=rows.length;const table=$('rsTable'),body=$('rsBody'),loading=$('rsLoading');if(!rows.length){table.style.display='none';loading.style.display='block';loading.innerHTML='<i class="fas fa-file-circle-check" style="font-size:24px;display:block;margin-bottom:8px"></i>No research submissions match the current filters.';return}loading.style.display='none';table.style.display='table';body.innerHTML=rows.map(s=>{const p=researchState.profiles.get(s.student_id)||{};return `<tr><td><b>${esc(p.full_name||'Student')}</b><div style="font-size:10px;color:#64748b">${esc(p.admission_number||p.student_id||s.student_id||'')}</div></td><td><b>${esc(s.title||'Untitled Research')}</b><div style="font-size:10px;color:#64748b">${esc(s.document_name||'No document')}</div></td><td>${esc(researchTypeLabel(s.submission_type))}</td><td>V${esc(s.version_number||1)}</td><td>${fmtDate(s.submitted_at||s.created_at)}</td><td><span class="rs-badge ${researchStatusClass(s.status)}">${esc(researchStatusLabel(s.status))}</span></td><td><button class="rs-btn rs-primary" type="button" data-research-review="${esc(s.id)}"><i class="fas fa-eye"></i> Review</button></td></tr>`}).join('');body.querySelectorAll('[data-research-review]').forEach(btn=>btn.addEventListener('click',()=>openResearchReview(btn.dataset.researchReview)))}
-    async function researchSignedUrl(s){const db=client();if(!db||!s?.document_path)throw new Error('No research document is attached.');const r=await db.storage.from('research-papers').createSignedUrl(s.document_path,3600);if(r.error)throw r.error;if(!r.data?.signedUrl)throw new Error('Could not create a secure document URL.');return r.data.signedUrl}
-    async function openResearchReview(id){const s=researchState.submissions.find(x=>String(x.id)===String(id));if(!s)return notify('Research submission not found.','error');researchState.current=s;const p=researchState.profiles.get(s.student_id)||{};researchEnsureUI();$('rsModalTitle').textContent=s.title||'Research Submission';$('rsModalMeta').textContent=`${p.full_name||'Student'} · ${p.admission_number||p.student_id||''} · Version ${s.version_number||1}`;$('rsStudentMeta').innerHTML=`<b>${esc(p.full_name||'Student')}</b><br>${esc(p.admission_number||p.student_id||'')}<br>${esc(p.email||'')}<br>${esc(p.program||'')}${p.intake_year?' · Intake '+esc(p.intake_year):''}${p.current_block||p.block?' · '+esc(p.current_block||p.block):''}<hr style="border:0;border-top:1px solid #e2e8f0;margin:12px 0"><b>Research Type:</b> ${esc(researchTypeLabel(s.submission_type))}<br><b>Supervisor:</b> ${esc(s.supervisor_name||'Not specified')}<br><b>Submitted:</b> ${esc(fmtDate(s.submitted_at||s.created_at))}`;$('rsReviewStatus').value=s.status||'submitted';$('rsFeedback').value=s.feedback||'';$('rsFileInfo').innerHTML=`<b>Document:</b> ${esc(s.document_name||'Not attached')}<br><b>Current status:</b> ${esc(researchStatusLabel(s.status))}`;renderResearchVersionHistory(s.student_id,s.title);$('rsReviewModal').style.display='flex';$('rsReviewModal').setAttribute('aria-hidden','false');try{const url=await researchSignedUrl(s);$('rsDownload').onclick=()=>window.open(url,'_blank','noopener');const area=document.createElement('div');area.id='rsDocumentArea';$('rsPreview').innerHTML=s.abstract?`<div style="background:#fff;border-radius:10px;padding:18px;line-height:1.65"><b>Abstract / Description</b><div style="margin-top:8px;white-space:pre-wrap">${esc(s.abstract)}</div><div id="rsDocumentArea" style="margin-top:15px"><div class="rs-empty">Opening document…</div></div></div>`:'<div id="rsDocumentArea"><div class="rs-empty">Opening document…</div></div>';const holder=$('rsDocumentArea');const ext=String(s.document_name||s.document_path||'').toLowerCase().split('.').pop();if(ext==='pdf')holder.innerHTML=`<iframe class="rs-frame" title="${esc(s.document_name||'Research PDF')}" src="${esc(url)}"></iframe>`;else if(ext==='docx'||ext==='doc'){const blob=await(await fetch(url)).blob();await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','rsMammoth');const r=await window.mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});holder.innerHTML=`<article class="rs-docx">${r.value||'<p>No readable text found.</p>'}</article>`}else if(ext==='html')holder.innerHTML=`<iframe class="rs-frame" title="Corrected research document" src="${esc(url)}"></iframe>`;else holder.innerHTML='<div class="rs-empty">Preview is not available for this file type. Use Download Original.</div>'}catch(e){console.error('Research document preview:',e);$('rsPreview').innerHTML=`<div class="rs-empty">Document could not be opened: ${esc(e.message||e)}<br>Use Download Original if available.</div>`}}
-    function renderResearchVersionHistory(studentId,title){const rows=researchState.submissions.filter(s=>s.student_id===studentId&&String(s.title||'').trim().toLowerCase()===String(title||'').trim().toLowerCase()).sort((a,b)=>Number(a.version_number||1)-Number(b.version_number||1));$('rsVersionHistory').innerHTML='<b>Version History</b>'+ (rows.length?rows.map(v=>`<div class="rs-version"><span><b>V${esc(v.version_number||1)}</b> · ${esc(researchTypeLabel(v.submission_type))}<br><span style="color:#64748b">${esc(fmtDate(v.submitted_at||v.created_at))}</span></span><span class="rs-badge ${researchStatusClass(v.status)}">${esc(researchStatusLabel(v.status))}</span></div>`).join(''):'<div class="rs-meta">No version history found.</div>')}
-    async function downloadCurrentResearch(){const s=researchState.current;if(!s)return;try{const url=await researchSignedUrl(s);const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click()}catch(e){notify('Could not download the research document: '+(e.message||e),'error')}}
-    function buildCorrectionEditorHtml(){const s=researchState.current;if(!s)return;const area=$('rsDocumentArea');if(!area)return;const editor=document.createElement('div');editor.className='rs-editor-wrap';editor.innerHTML=`<div class="rs-editor-tools"><button type="button" data-cmd="bold"><b>B</b></button><button type="button" data-cmd="italic"><i>I</i></button><button type="button" data-cmd="underline"><u>U</u></button><button type="button" data-cmd="insertUnorderedList">• List</button><button type="button" data-cmd="insertOrderedList">1. List</button><button type="button" data-highlight="1">Highlight</button><button type="button" data-cmd="justifyLeft">Left</button><button type="button" data-cmd="justifyCenter">Center</button><button type="button" data-cmd="justifyRight">Right</button><button type="button" data-cmd="removeFormat">Clear Format</button></div><article id="rsLiveEditor" class="rs-editor" contenteditable="true"><p>Loading editable correction copy…</p></article><div style="padding:9px;border-top:1px solid #e2e8f0;background:#f8fafc;display:flex;gap:7px;flex-wrap:wrap"><button class="rs-btn rs-success" id="rsSaveCorrection" type="button">Save Corrected Version</button><span class="rs-meta" id="rsEditorState">Edits are made on a new version; the student's original is preserved.</span></div>`;area.innerHTML='';area.appendChild(editor);const ed=$('rsLiveEditor');editor.querySelectorAll('[data-cmd]').forEach(b=>b.addEventListener('click',()=>{ed.focus();document.execCommand(b.dataset.cmd,false,null);researchState.editorDirty=true}));editor.querySelector('[data-highlight]').addEventListener('click',()=>{ed.focus();document.execCommand('hiliteColor',false,'yellow');researchState.editorDirty=true});ed.addEventListener('input',()=>{researchState.editorDirty=true;$('rsEditorState').textContent='Unsaved corrections…'});$('rsSaveCorrection').addEventListener('click',saveCorrectedVersion);loadEditableResearchHtml(s,ed)}
-    async function loadEditableResearchHtml(s,ed){try{const url=await researchSignedUrl(s);const ext=String(s.document_name||s.document_path||'').toLowerCase().split('.').pop();if(ext==='docx'||ext==='doc'){const blob=await(await fetch(url)).blob();await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','rsMammoth');const r=await window.mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});ed.innerHTML=r.value||'<p></p>'}else if(ext==='html'){ed.innerHTML=await(await fetch(url)).text()}else{ed.innerHTML=`<p><b>Correction workspace</b></p><p>This file type cannot be converted into editable text in the browser. Add your corrections in this workspace and save a corrected HTML version.</p><p>${esc(s.abstract||'')}</p>`}researchState.editorDirty=false;$('rsEditorState').textContent='Ready for corrections. Original document will remain unchanged.'}catch(e){ed.innerHTML='<p>Could not load editable content. You can still enter corrected text here.</p>';console.error(e)}}
-    async function openCorrectionEditor(){if(!researchState.current)return;const s=researchState.current;$('rsPreview').innerHTML='<div id="rsDocumentArea"></div>';buildCorrectionEditorHtml();}
-    async function saveCorrectedVersion(){const s=researchState.current,db=client(),ed=$('rsLiveEditor');if(!s||!db||!ed)return;const html=`<!doctype html><html><head><meta charset="utf-8"><title>${esc(s.title||'Corrected Research')}</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:20px}img{max-width:100%}mark{background:#ffeb3b}</style></head><body>${ed.innerHTML}</body></html>`;const nextVersion=Math.max(...researchState.submissions.filter(x=>x.student_id===s.student_id&&String(x.title||'').trim().toLowerCase()===String(s.title||'').trim().toLowerCase()).map(x=>Number(x.version_number)||1),Number(s.version_number)||1)+1;const safe=String(s.student_id||'student').replace(/[^a-zA-Z0-9_-]/g,'_');const path=`${safe}/research/${Date.now()}_v${nextVersion}_correction.html`;const up=await db.storage.from('research-papers').upload(path,new Blob([html],{type:'text/html'}),{contentType:'text/html',upsert:false});if(up.error)return notify('Could not upload corrected version: '+up.error.message,'error');const payload={student_id:s.student_id,research_group_id:s.research_group_id||null,version_number:nextVersion,title:s.title,submission_type:'correction',supervisor_name:s.supervisor_name||null,abstract:s.abstract||null,status:'submitted',document_name:`${String(s.title||'Research').replace(/[^a-zA-Z0-9 _-]/g,'').trim()||'Research'} - Corrected V${nextVersion}.html`,document_path:path,submitted_at:new Date().toISOString(),created_at:new Date().toISOString(),updated_at:new Date().toISOString()};const ins=await db.from('research_submissions').insert(payload).select().single();if(ins.error){await db.storage.from('research-papers').remove([path]);return notify('Correction uploaded but submission record failed: '+ins.error.message,'error')}notify(`Corrected Version V${nextVersion} saved and sent for review.`,'success');researchState.editorDirty=false;await loadResearch();openResearchReview(ins.data.id)}
-    async function saveResearchReview(){const s=researchState.current,db=client();if(!s||!db)return;await resolveUser();if(!state.userId)return notify('Lecturer user ID could not be resolved.','error');const status=$('rsReviewStatus').value,feedback=$('rsFeedback').value.trim()||null;const payload={status,feedback,reviewed_by:state.userId,reviewed_at:new Date().toISOString(),updated_at:new Date().toISOString()};const {error}=await db.from('research_submissions').update(payload).eq('id',s.id);if(error)return notify('Could not save Research review: '+error.message,'error');Object.assign(s,payload);notify('Research review saved successfully.','success');closeResearchModal();await loadResearch()}
-    function closeResearchModal(){const m=$('rsReviewModal');if(m){m.style.display='none';m.setAttribute('aria-hidden','true')}researchState.current=null;researchState.editorDirty=false}
-    async function initResearch(){if(researchState.initialized)return;researchState.initialized=true;researchEnsureUI();await loadResearch()}
+
+    function researchStatusPill(status) {
+        const cls = String(status || '').toLowerCase();
+        return `<span class="rs-pill rs-${esc(cls)}">${esc(researchStatusLabel(status))}</span>`;
+    }
+
+    function researchSafeName(value) {
+        return String(value || 'research').replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'research';
+    }
+
+    function researchProfile(s) {
+        return researchState.profiles.get(s.student_id) || {};
+    }
+
+    function researchEnsureStyles() {
+        if ($('rsModernStyles')) return;
+        const st = document.createElement('style');
+        st.id = 'rsModernStyles';
+        st.textContent = `
+        .rs-wrap{display:flex;flex-direction:column;gap:16px}
+        .rs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
+        .rs-head h3{margin:0;font-size:22px;color:#0f172a}.rs-head p{margin:5px 0 0;color:#64748b;font-size:13px}
+        .rs-stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}
+        .rs-stat,.rs-card{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:14px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+        .rs-stat strong{display:block;font-size:23px;color:#0f172a}.rs-stat span{font-size:11px;color:#64748b}
+        .rs-toolbar{display:grid;grid-template-columns:minmax(220px,1.7fr) repeat(4,minmax(130px,1fr)) auto auto;gap:8px;align-items:center}
+        .rs-toolbar input,.rs-toolbar select,.rs-side input,.rs-side select,.rs-side textarea{width:100%;box-sizing:border-box;border:1px solid #dbe3ec;border-radius:9px;padding:10px;background:#fff;color:#0f172a}
+        .rs-btn{border:0;border-radius:9px;padding:9px 12px;font-weight:700;cursor:pointer;white-space:nowrap}
+        .rs-primary{background:#2563eb;color:#fff}.rs-secondary{background:#eef2f7;color:#334155}.rs-success{background:#16a34a;color:#fff}.rs-danger{background:#dc2626;color:#fff}.rs-warning{background:#d97706;color:#fff}
+        .rs-section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.rs-section-title h4{margin:0;color:#0f172a}.rs-section-title span{font-size:12px;color:#64748b}
+        .rs-table-wrap{overflow:auto}.rs-table{width:100%;border-collapse:collapse;min-width:880px}.rs-table th{background:#f8fafc;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:11px;border-bottom:1px solid #e2e8f0}.rs-table td{padding:12px 11px;border-bottom:1px solid #eef2f7;vertical-align:middle;font-size:13px}.rs-table tr:last-child td{border-bottom:0}
+        .rs-student strong{display:block;color:#0f172a}.rs-student small{display:block;color:#64748b;margin-top:2px}.rs-title-cell strong{display:block;max-width:320px;white-space:normal}.rs-title-cell small{color:#64748b}
+        .rs-pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap;background:#e2e8f0;color:#334155}.rs-submitted{background:#e0f2fe;color:#0369a1}.rs-under_review{background:#fef3c7;color:#92400e}.rs-revision_required{background:#fee2e2;color:#991b1b}.rs-approved{background:#dcfce7;color:#166534}.rs-rejected{background:#e5e7eb;color:#374151}
+        .rs-empty{padding:28px;text-align:center;color:#64748b}.rs-empty strong{display:block;color:#334155;margin-bottom:5px}
+        .rs-modal{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:100100;display:none;align-items:center;justify-content:center;padding:12px}
+        .rs-dialog{width:min(1450px,100%);height:min(94vh,1050px);background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.3)}
+        .rs-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e2e8f0;background:#fff}.rs-dialog-head h3{margin:0;font-size:17px}.rs-dialog-head .rs-meta{font-size:12px;color:#64748b;margin-top:3px}
+        .rs-workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0;flex:1}
+        .rs-editor-pane{display:flex;flex-direction:column;min-width:0;background:#f1f5f9}.rs-editor-toolbar{display:flex;align-items:center;gap:5px;padding:8px;border-bottom:1px solid #dbe3ec;background:#fff;flex-wrap:wrap}.rs-tool{width:34px;height:32px;border:1px solid #dbe3ec;background:#fff;border-radius:7px;cursor:pointer;font-weight:700}.rs-tool:hover{background:#f1f5f9}.rs-tool.active{background:#dbeafe;border-color:#93c5fd}.rs-editor-state{margin-left:auto;font-size:11px;color:#64748b;padding:0 6px}
+        .rs-document-shell{overflow:auto;flex:1;padding:28px}.rs-document{background:#fff;max-width:850px;min-height:1050px;margin:0 auto;padding:65px 72px;box-shadow:0 2px 15px rgba(15,23,42,.12);outline:none;box-sizing:border-box;line-height:1.65;color:#1e293b;font-family:Arial,sans-serif;font-size:15px}.rs-document[contenteditable="true"]{cursor:text}.rs-document:focus{box-shadow:0 0 0 2px #93c5fd,0 2px 15px rgba(15,23,42,.12)}
+        .rs-side{border-left:1px solid #e2e8f0;background:#fff;padding:16px;overflow:auto}.rs-side h4{margin:0 0 12px}.rs-side label{display:block;font-size:11px;font-weight:800;color:#475569;margin:13px 0 6px}.rs-side textarea{min-height:150px;resize:vertical}.rs-side .rs-meta-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-size:12px;line-height:1.6;color:#475569}
+        .rs-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.rs-actions .wide{grid-column:1/-1}
+        .rs-history{margin-top:14px}.rs-history-item{padding:9px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;font-size:11px}.rs-history-item strong{display:block}.rs-history-item span{color:#64748b}
+        body.dark-mode .rs-stat,body.dark-mode .rs-card,body.dark-mode .rs-dialog,body.dark-mode .rs-dialog-head,body.dark-mode .rs-side{background:#0d1b2d!important;border-color:#263d55!important;color:#e2e8f0}body.dark-mode .rs-head h3,body.dark-mode .rs-stat strong,body.dark-mode .rs-section-title h4,body.dark-mode .rs-student strong{color:#f1f5f9}body.dark-mode .rs-toolbar input,body.dark-mode .rs-toolbar select,body.dark-mode .rs-side input,body.dark-mode .rs-side select,body.dark-mode .rs-side textarea{background:#0a1727;color:#e2e8f0;border-color:#334b63}
+        @media(max-width:1050px){.rs-stats{grid-template-columns:repeat(3,1fr)}.rs-toolbar{grid-template-columns:1fr 1fr 1fr}.rs-workspace{grid-template-columns:1fr}.rs-side{border-left:0;border-top:1px solid #e2e8f0;max-height:420px}}
+        @media(max-width:650px){.rs-stats{grid-template-columns:repeat(2,1fr)}.rs-toolbar{grid-template-columns:1fr 1fr}.rs-document-shell{padding:10px}.rs-document{padding:35px 25px;min-height:800px}.rs-actions{grid-template-columns:1fr}}
+        `;
+        document.head.appendChild(st);
+    }
+
+    function researchEnsureUI() {
+        const hub = $('online-learning-content') || $('hub-online-learning');
+        if (!hub) return;
+
+        researchEnsureStyles();
+
+        let tabs = hub.querySelector('.ol-hub-tabs');
+        if (!tabs) {
+            tabs = document.createElement('div');
+            tabs.className = 'ol-hub-tabs';
+            tabs.innerHTML = `<button type="button" class="ol-hub-tab active" data-rs-tab="online"><i class="fas fa-book-open"></i> Online Learning</button>
+                              <button type="button" class="ol-hub-tab" data-rs-tab="research"><i class="fas fa-flask"></i> Research Papers</button>`;
+            hub.prepend(tabs);
+            tabs.querySelector('[data-rs-tab="online"]').addEventListener('click', () => {
+                state.tab = 'online';
+                tabs.querySelectorAll('.ol-hub-tab').forEach(b => b.classList.toggle('active', b.dataset.rsTab === 'online'));
+                if (typeof renderAssignments === 'function') renderAssignments();
+            });
+            tabs.querySelector('[data-rs-tab="research"]').addEventListener('click', () => {
+                state.tab = 'research';
+                tabs.querySelectorAll('.ol-hub-tab').forEach(b => b.classList.toggle('active', b.dataset.rsTab === 'research'));
+                loadResearch();
+            });
+        }
+
+        let module = $('nchsmResearchModule');
+        if (!module) {
+            module = document.createElement('div');
+            module.id = 'nchsmResearchModule';
+            module.style.display = 'none';
+            hub.appendChild(module);
+        }
+
+        let modal = $('rsReviewModal');
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.className = 'rs-modal';
+            modal.id = 'rsReviewModal';
+            modal.setAttribute('aria-hidden', 'true');
+            modal.innerHTML = `
+            <div class="rs-dialog">
+              <div class="rs-dialog-head">
+                <div><h3 id="rsModalTitle">Research Review Workspace</h3><div class="rs-meta" id="rsModalMeta"></div></div>
+                <button class="rs-btn rs-secondary" type="button" id="rsClose"><i class="fas fa-times"></i> Close</button>
+              </div>
+              <div class="rs-workspace">
+                <div class="rs-editor-pane">
+                  <div class="rs-editor-toolbar">
+                    <button class="rs-tool" title="Bold" data-rs-cmd="bold"><b>B</b></button>
+                    <button class="rs-tool" title="Italic" data-rs-cmd="italic"><i>I</i></button>
+                    <button class="rs-tool" title="Underline" data-rs-cmd="underline"><u>U</u></button>
+                    <button class="rs-tool" title="Highlight" data-rs-cmd="hiliteColor">H</button>
+                    <button class="rs-tool" title="Bullet list" data-rs-cmd="insertUnorderedList">•</button>
+                    <button class="rs-tool" title="Numbered list" data-rs-cmd="insertOrderedList">1.</button>
+                    <button class="rs-tool" title="Align left" data-rs-cmd="justifyLeft">≡</button>
+                    <button class="rs-tool" title="Align center" data-rs-cmd="justifyCenter">≡</button>
+                    <button class="rs-tool" title="Undo" data-rs-cmd="undo">↶</button>
+                    <button class="rs-tool" title="Redo" data-rs-cmd="redo">↷</button>
+                    <button class="rs-tool" title="Remove formatting" data-rs-cmd="removeFormat">Tx</button>
+                    <span class="rs-editor-state" id="rsEditorState">Read only</span>
+                  </div>
+                  <div class="rs-document-shell"><article id="rsDocumentEditor" class="rs-document"></article></div>
+                </div>
+                <aside class="rs-side">
+                  <h4>Review & Corrections</h4>
+                  <div id="rsStudentMeta" class="rs-meta-box"></div>
+                  <label>Review Status</label>
+                  <select id="rsReviewStatus">
+                    <option value="submitted">Submitted</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="revision_required">Revision Required</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                  <label>Lecturer Feedback / Correction Notes</label>
+                  <textarea id="rsFeedback" placeholder="Write feedback, corrections, required changes or approval comments..."></textarea>
+                  <div class="rs-actions">
+                    <button class="rs-btn rs-primary" type="button" id="rsEditDocument"><i class="fas fa-pen"></i> Edit Document</button>
+                    <button class="rs-btn rs-secondary" type="button" id="rsOriginalDocument"><i class="fas fa-file"></i> Original</button>
+                    <button class="rs-btn rs-warning" type="button" id="rsSaveCorrection"><i class="fas fa-save"></i> Save Correction</button>
+                    <button class="rs-btn rs-secondary" type="button" id="rsDownload"><i class="fas fa-download"></i> Download</button>
+                    <button class="rs-btn rs-success" type="button" id="rsApprove"><i class="fas fa-check"></i> Approve</button>
+                    <button class="rs-btn rs-danger" type="button" id="rsRevision"><i class="fas fa-rotate-left"></i> Send Revision</button>
+                    <button class="rs-btn rs-danger wide" type="button" id="rsReject"><i class="fas fa-xmark"></i> Reject</button>
+                  </div>
+                  <div class="rs-history"><h4>Version History</h4><div id="rsVersionHistory"></div></div>
+                </aside>
+              </div>
+            </div>`;
+            document.body.appendChild(modal);
+
+            $('rsClose').addEventListener('click', closeResearchModal);
+            modal.addEventListener('click', e => { if (e.target === modal) closeResearchModal(); });
+            $('rsEditDocument').addEventListener('click', toggleResearchEditor);
+            $('rsOriginalDocument').addEventListener('click', () => {
+                const ed = $('rsDocumentEditor');
+                if (ed) ed.innerHTML = researchState.originalHtml || '<p>No editable document content.</p>';
+                researchState.correctionDirty = false;
+                updateEditorState();
+            });
+            $('rsSaveCorrection').addEventListener('click', saveResearchCorrection);
+            $('rsDownload').addEventListener('click', downloadCurrentResearch);
+            $('rsApprove').addEventListener('click', () => setResearchStatusAndSave('approved'));
+            $('rsRevision').addEventListener('click', () => setResearchStatusAndSave('revision_required'));
+            $('rsReject').addEventListener('click', () => setResearchStatusAndSave('rejected'));
+
+            modal.querySelectorAll('[data-rs-cmd]').forEach(btn => btn.addEventListener('mousedown', e => {
+                e.preventDefault();
+                const cmd = btn.dataset.rsCmd;
+                if (cmd === 'hiliteColor') {
+                    document.execCommand('hiliteColor', false, '#fff59d');
+                } else {
+                    document.execCommand(cmd, false, null);
+                }
+                researchState.correctionDirty = true;
+                updateEditorState();
+            }));
+
+            $('rsDocumentEditor').addEventListener('input', () => {
+                researchState.correctionDirty = true;
+                updateEditorState();
+                if (researchState.current) {
+                    try { localStorage.setItem('nchsm_rs_draft_' + researchState.current.id, $('rsDocumentEditor').innerHTML); } catch {}
+                }
+            });
+        }
+
+        if (!module.querySelector('.rs-wrap')) renderResearch();
+    }
+
+    function filteredResearch() {
+        const search = researchState.search;
+        return (researchState.submissions || []).filter(s => {
+            const p = researchProfile(s);
+            const hay = [
+                p.full_name, p.student_id, p.admission_number, p.email,
+                p.program, p.intake_year, s.title, s.supervisor_name,
+                researchTypeLabel(s.submission_type), researchStatusLabel(s.status)
+            ].join(' ').toLowerCase();
+
+            if (search && !hay.includes(search)) return false;
+            if (researchState.filterStatus && s.status !== researchState.filterStatus) return false;
+            if (researchState.filterType && s.submission_type !== researchState.filterType) return false;
+            if (researchState.filterProgram && String(p.program || '') !== researchState.filterProgram) return false;
+            if (researchState.filterIntake && String(p.intake_year || '') !== researchState.filterIntake) return false;
+            return true;
+        });
+    }
+
+    function researchOptions() {
+        const programs = [...new Set(researchState.submissions.map(s => researchProfile(s).program).filter(Boolean).map(String))].sort();
+        const intakes = [...new Set(researchState.submissions.map(s => researchProfile(s).intake_year).filter(Boolean).map(String))].sort();
+        return { programs, intakes };
+    }
+
+    function researchRow(s) {
+        const p = researchProfile(s);
+        return `<tr>
+          <td class="rs-student"><strong>${esc(p.full_name || s.student_id || 'Unknown Student')}</strong><small>${esc(p.admission_number || p.student_id || s.student_id || '—')}</small></td>
+          <td class="rs-title-cell"><strong>${esc(s.title || 'Untitled Research')}</strong><small>${esc(s.supervisor_name || 'Supervisor not specified')}</small></td>
+          <td>${esc(researchTypeLabel(s.submission_type))}</td>
+          <td><strong>V${esc(s.version_number || 1)}</strong></td>
+          <td>${esc(fmtDate(s.submitted_at || s.created_at))}</td>
+          <td>${researchStatusPill(s.status)}</td>
+          <td><button class="rs-btn rs-primary" type="button" data-rs-review="${esc(s.id)}"><i class="fas fa-pen-to-square"></i> Review</button></td>
+        </tr>`;
+    }
+
+    function researchTable(title, id, rows, emptyText) {
+        return `<div class="rs-card">
+          <div class="rs-section-title"><h4>${title}</h4><span>${rows.length} submission${rows.length === 1 ? '' : 's'}</span></div>
+          <div class="rs-table-wrap">
+            ${rows.length ? `<table class="rs-table" id="${id}"><thead><tr><th>Student</th><th>Research Title</th><th>Type</th><th>Version</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows.map(researchRow).join('')}</tbody></table>` : `<div class="rs-empty"><strong>${emptyText}</strong>There are no submissions matching the current filters.</div>`}
+          </div>
+        </div>`;
+    }
+
+    function renderResearch() {
+        researchEnsureUI();
+        const hub = $('online-learning-content') || $('hub-online-learning');
+        const module = $('nchsmResearchModule');
+        if (!module) return;
+
+        const arr = filteredResearch();
+        const active = arr.filter(s => !['approved', 'rejected'].includes(s.status));
+        const completed = arr.filter(s => ['approved', 'rejected'].includes(s.status));
+        const counts = {
+            total: researchState.submissions.length,
+            active: researchState.submissions.filter(s => !['approved','rejected'].includes(s.status)).length,
+            under: researchState.submissions.filter(s => s.status === 'under_review').length,
+            revision: researchState.submissions.filter(s => s.status === 'revision_required').length,
+            approved: researchState.submissions.filter(s => s.status === 'approved').length,
+            completed: researchState.submissions.filter(s => ['approved','rejected'].includes(s.status)).length
+        };
+        const {programs, intakes} = researchOptions();
+
+        module.style.display = state.tab === 'research' ? '' : 'none';
+        if (state.tab !== 'research') return;
+
+        module.innerHTML = `<div class="rs-wrap">
+          <div class="rs-head"><div><h3><i class="fas fa-flask"></i> Research Submissions</h3><p>Review, correct, return and approve student research from one workspace.</p></div>
+            <button class="rs-btn rs-secondary" type="button" id="rsRefresh"><i class="fas fa-sync"></i> Refresh</button>
+          </div>
+          <div class="rs-stats">
+            <div class="rs-stat"><strong>${counts.total}</strong><span>Total</span></div>
+            <div class="rs-stat"><strong>${counts.active}</strong><span>Active</span></div>
+            <div class="rs-stat"><strong>${counts.under}</strong><span>Under Review</span></div>
+            <div class="rs-stat"><strong>${counts.revision}</strong><span>Revision Required</span></div>
+            <div class="rs-stat"><strong>${counts.approved}</strong><span>Approved</span></div>
+            <div class="rs-stat"><strong>${counts.completed}</strong><span>Completed</span></div>
+          </div>
+          <div class="rs-card">
+            <div class="rs-toolbar">
+              <input id="rsSearch" placeholder="Search student, admission no., title or supervisor..." value="${esc(researchState.search)}">
+              <select id="rsType"><option value="">All Types</option><option value="proposal" ${researchState.filterType==='proposal'?'selected':''}>Research Proposal</option><option value="final_paper" ${researchState.filterType==='final_paper'?'selected':''}>Research Project / Final Paper</option><option value="correction" ${researchState.filterType==='correction'?'selected':''}>Correction / Revised Paper</option></select>
+              <select id="rsStatus"><option value="">All Statuses</option><option value="submitted" ${researchState.filterStatus==='submitted'?'selected':''}>Submitted</option><option value="under_review" ${researchState.filterStatus==='under_review'?'selected':''}>Under Review</option><option value="revision_required" ${researchState.filterStatus==='revision_required'?'selected':''}>Revision Required</option><option value="approved" ${researchState.filterStatus==='approved'?'selected':''}>Approved</option><option value="rejected" ${researchState.filterStatus==='rejected'?'selected':''}>Rejected</option></select>
+              <select id="rsProgram"><option value="">All Programmes</option>${programs.map(x=>`<option value="${esc(x)}" ${researchState.filterProgram===x?'selected':''}>${esc(x)}</option>`).join('')}</select>
+              <select id="rsIntake"><option value="">All Intakes</option>${intakes.map(x=>`<option value="${esc(x)}" ${researchState.filterIntake===x?'selected':''}>${esc(x)}</option>`).join('')}</select>
+              <button class="rs-btn rs-secondary" type="button" id="rsReset">Reset</button>
+            </div>
+          </div>
+          ${researchTable('<i class="fas fa-layer-group"></i> Active Research', 'rsActiveTable', active, 'No active research submissions')}
+          ${researchTable('<i class="fas fa-circle-check"></i> Completed Research', 'rsCompletedTable', completed, 'No completed research submissions')}
+        </div>`;
+
+        $('rsSearch').addEventListener('input', e => { researchState.search = e.target.value.toLowerCase().trim(); renderResearch(); });
+        $('rsType').addEventListener('change', e => { researchState.filterType = e.target.value; renderResearch(); });
+        $('rsStatus').addEventListener('change', e => { researchState.filterStatus = e.target.value; renderResearch(); });
+        $('rsProgram').addEventListener('change', e => { researchState.filterProgram = e.target.value; renderResearch(); });
+        $('rsIntake').addEventListener('change', e => { researchState.filterIntake = e.target.value; renderResearch(); });
+        $('rsReset').addEventListener('click', () => { researchState.search=''; researchState.filterType=''; researchState.filterStatus=''; researchState.filterProgram=''; researchState.filterIntake=''; renderResearch(); });
+        $('rsRefresh').addEventListener('click', loadResearch);
+        module.querySelectorAll('[data-rs-review]').forEach(btn => btn.addEventListener('click', () => openResearchReview(btn.dataset.rsReview)));
+    }
+
+    async function loadResearch() {
+        researchEnsureUI();
+        const db = client();
+        if (!db) return notify('Supabase client is not available for Research.', 'error');
+
+        try {
+            const { data, error } = await db.from('research_submissions')
+                .select('id,student_id,research_group_id,version_number,title,submission_type,supervisor_name,abstract,status,document_name,document_path,feedback,reviewed_by,reviewed_at,submitted_at,created_at,updated_at')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            researchState.submissions = data || [];
+
+            const ids = [...new Set(researchState.submissions.map(x => x.student_id).filter(Boolean))];
+            researchState.profiles = new Map();
+            if (ids.length) {
+                const r = await db.from('consolidated_user_profiles_table')
+                    .select('user_id,full_name,student_id,admission_number,email,program,intake_year,current_block,block')
+                    .in('user_id', ids);
+                if (r.error) console.warn('Research profile lookup:', r.error.message);
+                (r.data || []).forEach(p => researchState.profiles.set(p.user_id, p));
+            }
+            renderResearch();
+        } catch (e) {
+            console.error('Research load failed:', e);
+            const module = $('nchsmResearchModule');
+            if (module) module.innerHTML = `<div class="rs-card rs-empty"><strong>Research submissions could not load</strong>${esc(e.message || e)}</div>`;
+            notify('Could not load Research submissions: ' + (e.message || e), 'error');
+        }
+    }
+
+    async function researchSignedUrl(s) {
+        const db = client();
+        if (!s?.document_path) throw new Error('No document is attached to this submission.');
+        const { data, error } = await db.storage.from('research-papers').createSignedUrl(s.document_path, 3600);
+        if (error) throw error;
+        return data.signedUrl;
+    }
+
+    async function openResearchReview(id) {
+        researchEnsureUI();
+        const s = researchState.submissions.find(x => String(x.id) === String(id));
+        if (!s) return;
+        researchState.current = s;
+        researchState.correctionDirty = false;
+
+        $('rsModalTitle').textContent = s.title || 'Research Submission';
+        const p = researchProfile(s);
+        $('rsModalMeta').textContent = `${p.full_name || s.student_id || 'Student'} • ${researchTypeLabel(s.submission_type)} • V${s.version_number || 1}`;
+        $('rsStudentMeta').innerHTML = `<strong>${esc(p.full_name || 'Unknown Student')}</strong><br>
+          Admission: ${esc(p.admission_number || p.student_id || s.student_id || '—')}<br>
+          Programme: ${esc(p.program || '—')}<br>
+          Intake: ${esc(p.intake_year || '—')}<br>
+          Supervisor: ${esc(s.supervisor_name || '—')}<br>
+          Submitted: ${esc(fmtDate(s.submitted_at || s.created_at))}`;
+        $('rsReviewStatus').value = s.status || 'submitted';
+        $('rsFeedback').value = s.feedback || '';
+
+        await renderResearchDocument(s);
+        renderResearchVersionHistory(s);
+
+        $('rsReviewModal').style.display = 'flex';
+        $('rsReviewModal').setAttribute('aria-hidden', 'false');
+    }
+
+    async function renderResearchDocument(s) {
+        const area = $('rsDocumentEditor');
+        if (!area) return;
+        area.contentEditable = 'false';
+        area.innerHTML = '<div class="rs-empty">Opening document...</div>';
+        try {
+            const url = await researchSignedUrl(s);
+            const ext = String(s.document_name || s.document_path || '').split('.').pop().toLowerCase();
+
+            if (ext === 'docx' || ext === 'doc') {
+                const blob = await (await fetch(url)).blob();
+                if (!window.mammoth) {
+                    await new Promise((resolve, reject) => {
+                        const sc = document.createElement('script');
+                        sc.src = 'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
+                        sc.onload = resolve; sc.onerror = () => reject(new Error('Could not load DOCX editor library.'));
+                        document.head.appendChild(sc);
+                    });
+                }
+                const r = await window.mammoth.convertToHtml({arrayBuffer: await blob.arrayBuffer()});
+                const html = r.value || '<p>No readable text found.</p>';
+                researchState.originalHtml = html;
+
+                let draft = null;
+                try { draft = localStorage.getItem('nchsm_rs_draft_' + s.id); } catch {}
+                area.innerHTML = draft || html;
+                researchState.draftHtml = area.innerHTML;
+                updateEditorState();
+            } else if (ext === 'pdf') {
+                researchState.originalHtml = '';
+                area.innerHTML = `<div style="height:100%;min-height:900px"><iframe title="${esc(s.document_name || 'Research PDF')}" src="${esc(url)}" style="width:100%;height:100%;min-height:900px;border:0;background:#fff"></iframe></div>`;
+                $('rsEditDocument').disabled = true;
+                $('rsSaveCorrection').disabled = true;
+                $('rsEditorState').textContent = 'PDF view — use feedback/correction notes';
+            } else {
+                area.innerHTML = `<div class="rs-empty"><strong>Preview unavailable</strong>Download the original document to review it.</div>`;
+            }
+        } catch (e) {
+            console.error('Research document preview:', e);
+            area.innerHTML = `<div class="rs-empty"><strong>Document could not be opened</strong>${esc(e.message || e)}</div>`;
+        }
+    }
+
+    function toggleResearchEditor() {
+        const ed = $('rsDocumentEditor');
+        if (!ed || !researchState.current) return;
+        const editable = ed.contentEditable === 'true';
+        ed.contentEditable = editable ? 'false' : 'true';
+        if (!editable) {
+            ed.focus();
+            $('rsEditDocument').innerHTML = '<i class="fas fa-lock"></i> Finish Editing';
+            $('rsEditorState').textContent = 'Editing — changes are saved as a new correction version';
+        } else {
+            $('rsEditDocument').innerHTML = '<i class="fas fa-pen"></i> Edit Document';
+            updateEditorState();
+        }
+    }
+
+    function updateEditorState() {
+        const stateEl = $('rsEditorState');
+        if (!stateEl) return;
+        const ed = $('rsDocumentEditor');
+        if (!ed) return;
+        if (ed.contentEditable === 'true') stateEl.textContent = researchState.correctionDirty ? 'Editing • Unsaved correction' : 'Editing';
+        else stateEl.textContent = researchState.correctionDirty ? 'Draft saved locally' : 'Read only';
+    }
+
+    function nextResearchVersion(s) {
+        const key = s.research_group_id ? String(s.research_group_id) : null;
+        const versions = researchState.submissions.filter(x =>
+            key ? String(x.research_group_id || '') === key :
+            String(x.student_id) === String(s.student_id) && String(x.title || '').trim().toLowerCase() === String(s.title || '').trim().toLowerCase()
+        );
+        return Math.max(1, ...versions.map(x => Number(x.version_number) || 1)) + 1;
+    }
+
+    function renderResearchVersionHistory(current) {
+        const box = $('rsVersionHistory');
+        if (!box) return;
+        const related = researchState.submissions.filter(x => {
+            if (current.research_group_id) return String(x.research_group_id || '') === String(current.research_group_id);
+            return String(x.student_id) === String(current.student_id) && String(x.title || '').trim().toLowerCase() === String(current.title || '').trim().toLowerCase();
+        }).sort((a,b) => (Number(a.version_number)||0) - (Number(b.version_number)||0));
+
+        box.innerHTML = related.length ? related.map(v => `<div class="rs-history-item">
+          <strong>V${esc(v.version_number || 1)} — ${esc(researchTypeLabel(v.submission_type))}</strong>
+          <span>${esc(researchStatusLabel(v.status))} • ${esc(fmtDate(v.submitted_at || v.created_at))}</span>
+        </div>`).join('') : '<div class="rs-empty">No version history available.</div>';
+    }
+
+    async function saveResearchCorrection() {
+        const s = researchState.current;
+        const db = client();
+        const ed = $('rsDocumentEditor');
+        if (!s || !db || !ed || !researchState.originalHtml) return notify('Only editable DOCX documents can be saved as corrected versions.', 'warning');
+
+        await resolveUser();
+        if (!state.userId) return notify('Lecturer user ID could not be resolved.', 'error');
+
+        const html = ed.innerHTML.trim();
+        if (!html) return notify('There is no corrected content to save.', 'warning');
+
+        const next = nextResearchVersion(s);
+        const base = researchSafeName(s.title || 'research');
+        const filename = `${base}_Lecturer_Correction_V${next}.html`;
+        const path = `${researchSafeName(s.student_id || 'student')}/corrections/${Date.now()}_${filename}`;
+
+        const blob = new Blob([`<!doctype html><html><head><meta charset="utf-8"><title>${esc(s.title || 'Research Correction')}</title><style>body{font-family:Arial,sans-serif;line-height:1.65;max-width:850px;margin:40px auto;padding:0 40px;color:#1e293b}img{max-width:100%}</style></head><body>${html}</body></html>`], {type:'text/html'});
+
+        const upload = await db.storage.from('research-papers').upload(path, blob, {contentType:'text/html', upsert:false});
+        if (upload.error) return notify('Could not save corrected document: ' + upload.error.message, 'error');
+
+        const feedback = $('rsFeedback').value.trim() || null;
+        const payload = {
+            student_id: s.student_id,
+            research_group_id: s.research_group_id || null,
+            version_number: next,
+            title: s.title,
+            submission_type: 'correction',
+            supervisor_name: s.supervisor_name || null,
+            abstract: s.abstract || null,
+            status: 'revision_required',
+            document_name: filename,
+            document_path: path,
+            feedback: feedback || 'Lecturer corrections attached. Please revise and resubmit.',
+            reviewed_by: state.userId,
+            reviewed_at: new Date().toISOString(),
+            submitted_at: new Date().toISOString(),
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+
+        const { error } = await db.from('research_submissions').insert(payload);
+        if (error) {
+            try { await db.storage.from('research-papers').remove([path]); } catch {}
+            return notify('Corrected file uploaded but version could not be created: ' + error.message, 'error');
+        }
+
+        try { localStorage.removeItem('nchsm_rs_draft_' + s.id); } catch {}
+        researchState.correctionDirty = false;
+        notify(`Correction saved as V${next}. The original document remains unchanged.`, 'success');
+        await loadResearch();
+        const fresh = researchState.submissions.find(x => String(x.id) !== String(s.id) && Number(x.version_number) === next && String(x.title) === String(s.title));
+        if (fresh) {
+            researchState.current = fresh;
+            renderResearchVersionHistory(fresh);
+        }
+    }
+
+    async function setResearchStatusAndSave(status) {
+        $('rsReviewStatus').value = status;
+        await saveResearchReview();
+    }
+
+    async function saveResearchReview() {
+        const s = researchState.current;
+        const db = client();
+        if (!s || !db) return;
+        await resolveUser();
+        if (!state.userId) return notify('Lecturer user ID could not be resolved.', 'error');
+
+        const status = $('rsReviewStatus').value;
+        const feedback = $('rsFeedback').value.trim() || null;
+        const payload = {
+            status,
+            feedback,
+            reviewed_by: state.userId,
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        const { error } = await db.from('research_submissions').update(payload).eq('id', s.id);
+        if (error) return notify('Could not save Research review: ' + error.message, 'error');
+
+        Object.assign(s, payload);
+        notify(`Research status updated to ${researchStatusLabel(status)}.`, 'success');
+        closeResearchModal();
+        await loadResearch();
+    }
+
+    async function downloadCurrentResearch() {
+        const s = researchState.current;
+        if (!s) return;
+        try {
+            const url = await researchSignedUrl(s);
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.click();
+        } catch (e) {
+            notify('Could not download the research document: ' + (e.message || e), 'error');
+        }
+    }
+
+    function closeResearchModal() {
+        const m = $('rsReviewModal');
+        if (m) {
+            m.style.display = 'none';
+            m.setAttribute('aria-hidden', 'true');
+        }
+        if (researchState.current) {
+            try {
+                if (researchState.correctionDirty && $('rsDocumentEditor')?.contentEditable === 'true') {
+                    localStorage.setItem('nchsm_rs_draft_' + researchState.current.id, $('rsDocumentEditor').innerHTML);
+                }
+            } catch {}
+        }
+        researchState.current = null;
+    }
+
+    async function initResearch() {
+        if (researchState.initialized) return;
+        researchState.initialized = true;
+        researchEnsureUI();
+        await loadResearch();
+    }
 
     return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal};
 })();
