@@ -2,7 +2,11 @@
 (function () {
   'use strict';
 
-  const state = { feed: { assignments: [], submissions: [] }, current: null };
+  const state = {
+    feed: { assignments: [], submissions: [] },
+    current: null,
+    studentProfile: null
+  };
 
   function db() {
     return window.db?.supabase || window.supabase || window.sb || null;
@@ -98,15 +102,102 @@
     if (count) count.textContent = pending;
   }
 
+  function normalizeTarget(value) {
+    return String(value ?? '').trim().toLowerCase();
+  }
+
+  function targetMatchesStudent(a, profile) {
+    if (!a || !profile) return false;
+
+    const studentProgram = normalizeTarget(
+      profile.program || profile.program_type || profile.department
+    );
+    const studentIntake = normalizeTarget(
+      profile.intake_year || profile.admission_year
+    );
+    const studentBlock = normalizeTarget(
+      profile.block || profile.current_block
+    );
+
+    const assignmentProgram = normalizeTarget(
+      a.program || a.target_program
+    );
+    const assignmentIntake = normalizeTarget(
+      a.intake || a.intake_year
+    );
+    const assignmentBlock = normalizeTarget(
+      a.block || a.current_block || a.block_term
+    );
+
+    // Program and intake are mandatory targeting fields.
+    if (!assignmentProgram || !assignmentIntake) return false;
+    if (assignmentProgram !== studentProgram) return false;
+    if (assignmentIntake !== studentIntake) return false;
+
+    // A null/blank block means the assignment targets the whole
+    // program + intake. Otherwise the student's block must match.
+    if (!assignmentBlock) return true;
+
+    return assignmentBlock === studentBlock;
+  }
+
+  async function loadStudentProfile(client) {
+    const uid = userId();
+    if (!uid || !client) return null;
+
+    try {
+      const { data, error } = await client
+        .from('consolidated_user_profiles_table')
+        .select('user_id, program, program_type, department, intake_year, admission_year, block, current_block, role, status')
+        .eq('user_id', uid)
+        .eq('role', 'student')
+        .maybeSingle();
+
+      if (error) {
+        console.warn('Online Learning profile lookup failed:', error);
+        return null;
+      }
+
+      return data || null;
+    } catch (e) {
+      console.warn('Online Learning profile lookup failed:', e);
+      return null;
+    }
+  }
+
   async function load() {
     setLoading(true); showState('');
     try {
       if (!userId()) throw new Error('Please sign in again before opening Online Learning.');
       const client = db();
       if (!client?.rpc) throw new Error('Database connection is not ready.');
+      state.studentProfile = await loadStudentProfile(client);
+
       const { data, error } = await client.rpc('get_student_online_learning');
       if (error) throw error;
-      state.feed = data || { assignments: [], submissions: [] };
+
+      const feed = data || { assignments: [], submissions: [] };
+
+      // The RPC remains the primary/secure source. This additional
+      // client-side check guarantees that assignments displayed in the
+      // student UI match the student's actual program, intake and block.
+      // If the profile cannot be loaded, do not guess a target.
+      if (state.studentProfile) {
+        feed.assignments = (feed.assignments || []).filter(a =>
+          targetMatchesStudent(a, state.studentProfile)
+        );
+      } else {
+        feed.assignments = [];
+        feed.submissions = [];
+      }
+
+      // Keep submissions only for assignments that this student can see.
+      const visibleIds = new Set((feed.assignments || []).map(a => String(a.id)));
+      feed.submissions = (feed.submissions || []).filter(s =>
+        visibleIds.has(String(s.assignment_id))
+      );
+
+      state.feed = feed;
       renderAll();
     } catch (err) {
       console.error('Online Learning load failed:', err);
