@@ -84,7 +84,7 @@ class ResourcesModule {
         this.userProgramCode = 'KRCHN';
         this.userBlock = 'Introductory';
         this.userTerm = null;
-        this.userIntakeYear = 2025;
+        this.userIntakeYear = null;
         this.userId = null;
         this.isTVETStudent = false;
         this.userProfile = null;
@@ -1973,7 +1973,7 @@ class ResourcesModule {
         this.userProgramCode = 'KRCHN';
         this.userBlock = 'Introductory';
         this.userTerm = null;
-        this.userIntakeYear = 2025;
+        this.userIntakeYear = null;
 
         this.updateUIForProgram();
         this.updateBlockFilterOptions();
@@ -2214,99 +2214,48 @@ class ResourcesModule {
             const profile = this.userProfile || {};
             const isTVET = this.isTVETStudent || this.userProgram === 'tvet';
 
-            const programCode = String(
-                profile.program ||
-                profile.program_code ||
-                this.userProgramCode ||
-                ''
-            ).trim().toUpperCase();
-
-            const intakeYear =
-                profile.intake_year ??
-                profile.intake ??
-                this.userIntakeYear ??
-                '';
-
-            const block =
-                profile.block ||
-                profile.current_block ||
-                this.userBlock ||
-                '';
-
-            const term =
-                profile.term ||
-                profile.current_term ||
-                this.userTerm ||
-                '';
-
-            /*
-             * RESOURCE VISIBILITY RULE
-             * ------------------------
-             * 1. Program must match the student's program.
-             * 2. Intake must match when the resource has an intake value.
-             * 3. KRCHN resources are narrowed to the student's block where
-             *    a block is available.
-             * 4. TVET resources are narrowed to the student's term where
-             *    a term is available.
-             *
-             * We intentionally do NOT use the `students` table here.
-             * Student identity/program/intake/block comes from
-             * consolidated_user_profiles_table.
-             */
-
+            // Resource visibility is based on the student's CURRENT PROGRAM + CURRENT BLOCK/TERM.
+            // Intake year is deliberately NOT used for resource visibility.
             let query = supabase
                 .from('resources')
                 .select('*')
                 .order('created_at', { ascending: false });
 
-            // Program filter.
-            if (isTVET && programCode && this.TVET_PROGRAMS.includes(programCode)) {
-                query = query.eq('program_type', programCode);
-            } else {
-                query = query.eq('program_type', 'KRCHN');
-            }
-
-            // Intake filter.
-            if (intakeYear !== '' && intakeYear !== null && intakeYear !== undefined) {
-                const intakeText = String(intakeYear).trim();
-
-                // Resources created for a specific intake should match the
-                // student's intake. Resources marked "all/general" remain
-                // visible when supported by the database values.
-                query = query.or(
-                    `intake.eq.${intakeText},intake.is.null,intake.eq.all,intake.eq.General`
-                );
-            }
-
-            // Academic progression filter.
             if (isTVET) {
-                const termNumber = this.extractTermNumber(term);
+                const studentProgram = String(this.userProfile?.program || this.userProgramCode || '').toUpperCase().trim();
 
-                if (termNumber !== null) {
-                    query = query.or(
-                        `term.eq.${termNumber},term.is.null,term.eq.0`
-                    );
-                } else if (term) {
-                    const safeTerm = this.escapeSupabaseFilterValue(term);
-                    query = query.or(
-                        `term_text.ilike.%${safeTerm}%,term_name.ilike.%${safeTerm}%,block_term.ilike.%${safeTerm}%,term.is.null`
-                    );
-                }
-            } else if (block && block !== 'General' && block !== 'All') {
-                const blockNumber = this.extractBlockNumber(block);
-
-                if (blockNumber !== null) {
-                    const blockText = `Block ${blockNumber}`;
-                    const safeBlockText = this.escapeSupabaseFilterValue(blockText);
-
-                    query = query.or(
-                        `block.ilike.%${safeBlockText}%,block_term.ilike.%${safeBlockText}%,block.is.null`
-                    );
+                if (studentProgram && this.TVET_PROGRAMS.includes(studentProgram)) {
+                    query = query.eq('program_type', studentProgram);
                 } else {
-                    const safeBlock = this.escapeSupabaseFilterValue(block);
+                    query = query.in('program_type', this.TVET_PROGRAMS);
+                }
 
+                // TVET: Program + current Term.
+                const currentTerm = this.userBlock || this.userTerm;
+                if (currentTerm && currentTerm !== 'General' && currentTerm !== 'all') {
+                    const termKey = String(currentTerm).toLowerCase();
+                    const termNumber = this.getTermNumberFromKey(termKey);
+
+                    if (termNumber !== null) {
+                        query = query.or(
+                            `term.eq.${termNumber},term_text.ilike.%${termKey}%,term_name.ilike.%${termKey}%,block_term.ilike.%${termKey}%`
+                        );
+                    } else {
+                        query = query.or(
+                            `term_text.ilike.%${termKey}%,term_name.ilike.%${termKey}%,block_term.ilike.%${termKey}%`
+                        );
+                    }
+                }
+            } else {
+                // KRCHN: Program + CURRENT Block ONLY.
+                // Intake is intentionally ignored so the same Block 5 resource
+                // works for every KRCHN intake currently in Block 5.
+                query = query.eq('program_type', 'KRCHN');
+
+                if (this.userBlock && this.userBlock !== 'General' && this.userBlock !== 'all') {
+                    const blockPattern = String(this.userBlock).toLowerCase();
                     query = query.or(
-                        `block.ilike.%${safeBlock}%,block_term.ilike.%${safeBlock}%,block.is.null`
+                        `block.ilike.%${blockPattern}%,block_term.ilike.%${blockPattern}%`
                     );
                 }
             }
