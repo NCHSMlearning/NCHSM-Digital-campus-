@@ -72,8 +72,15 @@ window.LecturerOnlineLearning = (() => {
     async function deleteAssignment(id){if(!confirm('Delete this assignment and its questions? This should only be done before student submissions exist.'))return;const db=client();const {error}=await db.from('online_assignments').delete().eq('id',id);if(error)notify(error.message,'error');else{notify('Assignment deleted.','success');load();}}
     // ============================================================
     // DOCUMENT VIEWER + ACADEMIC INTEGRITY AGENT
+    // Submitted assignments and case studies are editable by lecturers:
+    // - DOC/DOCX/HTML/text files open in an editable browser workspace.
+    // - Save Correction uploads a new corrected file and updates the submission reference.
+    // - Structured assignment/case-study answers can be edited and saved directly.
+    // - Original browser draft is retained locally while the lecturer works.
+
     // ============================================================
     const integrityState = { currentSubmission:null, extractedText:'', report:null };
+    const assignmentEditorState = { currentSubmission:null, originalHtml:'', draftHtml:'', dirty:false, ext:'', url:'' };
     const INTEGRITY_FUNCTION = window.NCHSM_AI_INTEGRITY_FUNCTION || 'academic-integrity-scan';
     const STORAGE_BUCKET = window.NCHSM_ASSIGNMENT_BUCKET || 'assignment-submissions';
 
@@ -81,18 +88,70 @@ window.LecturerOnlineLearning = (() => {
         if(document.getElementById('olIntegrityStyles')) return;
         const st=document.createElement('style'); st.id='olIntegrityStyles';
         st.textContent=`
-        .ol-document-viewer{position:fixed;inset:0;background:rgba(15,23,42,.78);z-index:100005;display:none;align-items:center;justify-content:center;padding:12px}
-        .ol-document-card{background:#fff;width:min(1200px,100%);height:min(94vh,1000px);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.35)}
-        .ol-document-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid #e5e7eb}
-        .ol-document-body{flex:1;overflow:auto;background:#f1f5f9;padding:16px}.ol-document-frame{width:100%;height:100%;min-height:650px;border:0;background:#fff}.ol-docx{background:#fff;max-width:900px;margin:auto;padding:45px 55px;min-height:90%;box-shadow:0 1px 8px rgba(15,23,42,.08);line-height:1.65}.ol-docx img{max-width:100%}
-        .ol-integrity{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;padding:14px;background:#f8fafc}.ol-integrity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.ol-integrity-stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px}.ol-integrity-stat b{display:block;font-size:20px}.ol-integrity-match{padding:9px;border-radius:9px;background:#fff;border:1px solid #e5e7eb;margin-top:7px;font-size:13px}.ol-integrity-note{font-size:12px;color:#64748b;line-height:1.5}@media(max-width:760px){.ol-integrity-grid{grid-template-columns:1fr}.ol-document-viewer{padding:5px}.ol-document-card{height:98vh}.ol-docx{padding:22px}.ol-document-body{padding:6px}}
-        `;document.head.appendChild(st);
+        .ol-document-viewer{position:fixed;inset:0;background:rgba(15,23,42,.82);z-index:100005;display:none;align-items:center;justify-content:center;padding:8px}
+        .ol-document-card{background:#fff;width:min(1450px,100%);height:min(96vh,1100px);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.35)}
+        .ol-document-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid #e5e7eb;background:#fff;flex-wrap:wrap}
+        .ol-document-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
+        .ol-document-body{flex:1;overflow:auto;background:#eef2f7;padding:22px}
+        .ol-document-frame{width:100%;height:100%;min-height:650px;border:0;background:#fff}
+        .ol-docx{background:#fff;max-width:900px;margin:0 auto;padding:45px 55px;min-height:90%;box-shadow:0 1px 8px rgba(15,23,42,.08);line-height:1.65;color:#1e293b;font-family:Arial,sans-serif;font-size:15px;outline:none}
+        .ol-docx[contenteditable="true"]{cursor:text;box-shadow:0 0 0 2px #93c5fd,0 1px 8px rgba(15,23,42,.08)}
+        .ol-doc-toolbar{display:flex;gap:5px;flex-wrap:wrap;padding:8px;border-bottom:1px solid #dbe3ec;background:#fff;position:sticky;top:0;z-index:2}
+        .ol-doc-tool{min-width:32px;height:31px;padding:0 8px;border:1px solid #dbe3ec;background:#fff;border-radius:7px;cursor:pointer;font-weight:700}
+        .ol-doc-tool:hover{background:#f1f5f9}
+        .ol-doc-state{font-size:11px;color:#64748b;margin-left:auto;padding:7px}
+        .ol-integrity{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;padding:14px;background:#f8fafc}
+        .ol-integrity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+        .ol-integrity-stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px}.ol-integrity-stat b{display:block;font-size:20px}
+        .ol-integrity-match{padding:9px;border-radius:9px;background:#fff;border:1px solid #e5e7eb;margin-top:7px;font-size:13px}
+        .ol-integrity-note{font-size:12px;color:#64748b;line-height:1.5}
+        @media(max-width:760px){.ol-integrity-grid{grid-template-columns:1fr}.ol-document-viewer{padding:3px}.ol-document-card{height:99vh;border-radius:10px}.ol-document-body{padding:7px}.ol-docx{padding:24px 20px}.ol-doc-state{width:100%;margin-left:0;padding:2px 0}}
+        `;
+        document.head.appendChild(st);
     }
     function ensureViewer(){
         ensureStyle(); if($('olDocumentViewer')) return;
         const d=document.createElement('div'); d.id='olDocumentViewer'; d.className='ol-document-viewer';
-        d.innerHTML=`<div class="ol-document-card"><div class="ol-document-head"><div><b id="olDocumentTitle">Uploaded Work</b><div id="olDocumentMeta" style="font-size:11px;color:#64748b"></div></div><div style="display:flex;gap:6px"><button class="ol-btn ol-muted" id="olDocumentDownload">Download</button><button class="ol-btn ol-danger" onclick="LecturerOnlineLearning.closeDocumentViewer()">Close</button></div></div><div class="ol-document-body" id="olDocumentBody"><div class="ol-empty">Loading document…</div></div></div>`;
+        d.innerHTML=`<div class="ol-document-card">
+          <div class="ol-document-head">
+            <div><b id="olDocumentTitle">Uploaded Work</b><div id="olDocumentMeta" style="font-size:11px;color:#64748b"></div></div>
+            <div class="ol-document-tools">
+              <button class="ol-btn ol-primary" id="olDocumentEdit"><i class="fas fa-pen"></i> Edit</button>
+              <button class="ol-btn ol-success" id="olDocumentSave"><i class="fas fa-save"></i> Save Correction</button>
+              <button class="ol-btn ol-muted" id="olDocumentOriginal"><i class="fas fa-rotate-left"></i> Original</button>
+              <button class="ol-btn ol-muted" id="olDocumentDownload">Download</button>
+              <button class="ol-btn ol-danger" id="olDocumentClose"><i class="fas fa-times"></i> Close</button>
+            </div>
+          </div>
+          <div class="ol-doc-toolbar" id="olDocToolbar" style="display:none">
+            <button type="button" class="ol-doc-tool" data-doc-cmd="bold"><b>B</b></button>
+            <button type="button" class="ol-doc-tool" data-doc-cmd="italic"><i>I</i></button>
+            <button type="button" class="ol-doc-tool" data-doc-cmd="underline"><u>U</u></button>
+            <button type="button" class="ol-doc-tool" data-doc-cmd="insertUnorderedList">• List</button>
+            <button type="button" class="ol-doc-tool" data-doc-cmd="insertOrderedList">1. List</button>
+            <button type="button" class="ol-doc-tool" data-doc-cmd="justifyLeft">Left</button>
+            <button type="button" class="ol-doc-tool" data-doc-cmd="justifyCenter">Center</button>
+            <button type="button" class="ol-doc-tool" data-doc-cmd="justifyRight">Right</button>
+            <button type="button" class="ol-doc-tool" data-doc-cmd="undo">↶</button>
+            <button type="button" class="ol-doc-tool" data-doc-cmd="redo">↷</button>
+            <span id="olDocState" class="ol-doc-state">Read only</span>
+          </div>
+          <div class="ol-document-body" id="olDocumentBody"><div class="ol-empty">Loading document…</div></div>
+        </div>`;
         document.body.appendChild(d);
+
+        $('olDocumentClose').onclick=closeDocumentViewer;
+        $('olDocumentEdit').onclick=toggleAssignmentDocumentEditor;
+        $('olDocumentSave').onclick=saveAssignmentDocumentCorrection;
+        $('olDocumentOriginal').onclick=showOriginalAssignmentDocument;
+        d.querySelectorAll('[data-doc-cmd]').forEach(btn=>btn.addEventListener('click',()=>{
+            const ed=$('olDocumentEditor'); if(!ed || ed.contentEditable!=='true') return;
+            ed.focus(); document.execCommand(btn.dataset.docCmd,false,null);
+            markAssignmentDocumentDirty();
+        }));
+        $('olDocumentBody').addEventListener('input',()=>{
+            const ed=$('olDocumentEditor'); if(ed && ed.contentEditable==='true') markAssignmentDocumentDirty();
+        });
     }
     async function signedDocumentUrl(s){
         const db=client(); if(!db || !s?.file_path) throw new Error('No uploaded document is attached to this submission.');
@@ -101,26 +160,150 @@ window.LecturerOnlineLearning = (() => {
     }
     function extOf(name=''){ const x=name.toLowerCase().split('.').pop(); return x==='jpeg'?'jpg':x; }
     function loadScriptOnce(src,id){return new Promise((resolve,reject)=>{if(id&&document.getElementById(id))return resolve();const s=document.createElement('script');s.src=src;if(id)s.id=id;s.onload=resolve;s.onerror=()=>reject(new Error('Could not load '+src));document.head.appendChild(s);});}
-    async function renderDocument(s){
-        ensureViewer(); const url=await signedDocumentUrl(s); const body=$('olDocumentBody'); const ext=extOf(s.file_name||s.file_path||'');
-        $('olDocumentTitle').textContent=s.file_name||'Uploaded Work'; $('olDocumentMeta').textContent=`${s.online_assignments?.title||'Submission'} · ${fmtDate(s.submitted_at)}`;
-        $('olDocumentDownload').onclick=()=>{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click();};
-        body.innerHTML='<div class="ol-empty">Opening document…</div>';
-        if(['pdf'].includes(ext)){body.innerHTML=`<iframe class="ol-document-frame" title="${esc(s.file_name||'PDF')}" src="${esc(url)}"></iframe>`;return;}
-        if(['doc','docx'].includes(ext)){
-            const blob=await (await fetch(url)).blob();
-            await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');
-            const ab=await blob.arrayBuffer(); const r=await window.mammoth.convertToHtml({arrayBuffer:ab}); body.innerHTML=`<article class="ol-docx">${r.value||'<p>No readable text found.</p>'}</article>`; if(r.messages?.length) body.insertAdjacentHTML('beforeend',`<div class="ol-integrity-note" style="padding:10px">Some document formatting may not be reproduced exactly in browser preview.</div>`); return;
+    function setAssignmentEditorState(message){
+        const el=$('olDocState'); if(el) el.textContent=message;
+    }
+    function markAssignmentDocumentDirty(){
+        const ed=$('olDocumentEditor'); if(!ed) return;
+        assignmentEditorState.dirty=true;
+        assignmentEditorState.draftHtml=ed.innerHTML;
+        try{localStorage.setItem('nchsm_assignment_draft_'+assignmentEditorState.currentSubmission.id,assignmentEditorState.draftHtml);}catch{}
+        setAssignmentEditorState('Editing • Draft saved locally');
+    }
+    function toggleAssignmentDocumentEditor(){
+        const ed=$('olDocumentEditor'), toolbar=$('olDocToolbar');
+        if(!ed) return;
+        const editable=ed.contentEditable==='true';
+        if(editable){
+            ed.contentEditable='false';
+            if(toolbar) toolbar.style.display='none';
+            $('olDocumentEdit').innerHTML='<i class="fas fa-pen"></i> Edit';
+            setAssignmentEditorState(assignmentEditorState.dirty?'Draft saved locally':'Read only');
+        }else{
+            if(!['docx','doc','html','htm','txt','md','csv'].includes(assignmentEditorState.ext)){
+                notify('This file type is view-only in the browser. DOC/DOCX, HTML and text-based submissions can be edited.','warning');
+                return;
+            }
+            ed.contentEditable='true';
+            if(toolbar) toolbar.style.display='flex';
+            $('olDocumentEdit').innerHTML='<i class="fas fa-lock"></i> Finish Editing';
+            ed.focus();
+            setAssignmentEditorState(assignmentEditorState.dirty?'Editing • Draft saved locally':'Editing');
         }
-        if(['txt','csv','md'].includes(ext)){const txt=await (await fetch(url)).text();body.innerHTML=`<pre style="white-space:pre-wrap;background:#fff;padding:24px;max-width:1000px;margin:auto;line-height:1.6">${esc(txt)}</pre>`;return;}
-        if(['png','jpg','gif','webp'].includes(ext)){body.innerHTML=`<div style="text-align:center"><img src="${esc(url)}" style="max-width:100%;max-height:85vh;object-fit:contain;background:#fff;padding:8px;border-radius:10px"></div>`;return;}
-        body.innerHTML=`<div class="ol-empty">Browser preview is not available for <b>${esc(ext||'this file type')}</b>. Use Download to open the complete original document.</div>`;
+    }
+    function showOriginalAssignmentDocument(){
+        const ed=$('olDocumentEditor');
+        if(!ed || !assignmentEditorState.originalHtml) return;
+        if(assignmentEditorState.dirty && !confirm('Show the original submission? Your unsaved browser draft will remain stored locally.')) return;
+        ed.innerHTML=assignmentEditorState.originalHtml;
+        ed.contentEditable='false';
+        if($('olDocToolbar')) $('olDocToolbar').style.display='none';
+        if($('olDocumentEdit')) $('olDocumentEdit').innerHTML='<i class="fas fa-pen"></i> Edit';
+        setAssignmentEditorState('Original submission');
+    }
+    async function renderDocument(s){
+        ensureViewer();
+        const url=await signedDocumentUrl(s);
+        const body=$('olDocumentBody');
+        const ext=extOf(s.file_name||s.file_path||'');
+        assignmentEditorState.currentSubmission=s;
+        assignmentEditorState.originalHtml='';
+        assignmentEditorState.draftHtml='';
+        assignmentEditorState.dirty=false;
+        assignmentEditorState.ext=ext;
+        assignmentEditorState.url=url;
+
+        $('olDocumentTitle').textContent=s.file_name||'Uploaded Work';
+        $('olDocumentMeta').textContent=`${s.online_assignments?.title||'Submission'} · ${fmtDate(s.submitted_at)}`;
+        $('olDocumentDownload').onclick=()=>{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click();};
+        $('olDocumentBody').innerHTML='<div class="ol-empty">Opening document…</div>';
+        $('olDocumentEdit').disabled=true;
+        $('olDocumentSave').disabled=true;
+        $('olDocumentOriginal').disabled=true;
+
+        try{
+            if(ext==='pdf'){
+                body.innerHTML=`<iframe class="ol-document-frame" title="${esc(s.file_name||'PDF')}" src="${esc(url)}"></iframe>`;
+                setAssignmentEditorState('PDF view — use feedback/correction notes');
+                return;
+            }
+            if(['doc','docx'].includes(ext)){
+                const blob=await (await fetch(url)).blob();
+                await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');
+                const r=await window.mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});
+                assignmentEditorState.originalHtml=r.value||'<p>No readable text found.</p>';
+            }else if(['html','htm'].includes(ext)){
+                const htmlText=await (await fetch(url)).text();
+                const doc=new DOMParser().parseFromString(htmlText,'text/html');
+                doc.querySelectorAll('script,iframe,object,embed,form').forEach(n=>n.remove());
+                assignmentEditorState.originalHtml=doc.body?.innerHTML||'<p>No readable text found.</p>';
+            }else if(['txt','csv','md'].includes(ext)){
+                const raw=await (await fetch(url)).text();
+                assignmentEditorState.originalHtml=`<pre style="white-space:pre-wrap;font-family:Arial,sans-serif">${esc(raw)}</pre>`;
+            }else{
+                body.innerHTML=`<div class="ol-empty">Browser editing is not available for <b>${esc(ext||'this file type')}</b>. Use Download to open the complete original document.</div>`;
+                setAssignmentEditorState('Read only');
+                return;
+            }
+
+            let draft=null;
+            try{draft=localStorage.getItem('nchsm_assignment_draft_'+s.id);}catch{}
+            assignmentEditorState.draftHtml=draft||assignmentEditorState.originalHtml;
+            body.innerHTML=`<article id="olDocumentEditor" class="ol-docx" contenteditable="false">${assignmentEditorState.draftHtml}</article>`;
+            assignmentEditorState.dirty=!!draft && draft!==assignmentEditorState.originalHtml;
+            $('olDocumentEdit').disabled=false;
+            $('olDocumentSave').disabled=false;
+            $('olDocumentOriginal').disabled=false;
+            setAssignmentEditorState(assignmentEditorState.dirty?'Draft saved locally':'Read only');
+        }catch(e){
+            console.error(e);
+            body.innerHTML=`<div class="ol-empty"><strong>Document could not be opened</strong>${esc(e.message||e)}</div>`;
+            setAssignmentEditorState('Unable to preview');
+        }
+    }
+    async function saveAssignmentDocumentCorrection(){
+        const s=assignmentEditorState.currentSubmission, ed=$('olDocumentEditor'), db=client();
+        if(!s||!ed||!db||!assignmentEditorState.originalHtml) return notify('There is no editable document loaded.','warning');
+        const html=ed.innerHTML.trim();
+        if(!html) return notify('The corrected document is empty.','warning');
+        const safe=String(s.file_name||'submission').replace(/\.[^.]+$/,'').replace(/[^a-z0-9_-]+/gi,'_').slice(0,70)||'submission';
+        const filename=`${safe}_Lecturer_Correction_${Date.now()}.html`;
+        const path=`${researchSafeName(s.student_id||'student')}/assignment-corrections/${Date.now()}_${filename}`;
+        const blob=new Blob([`<!doctype html><html><head><meta charset="utf-8"><title>${esc(s.online_assignments?.title||s.file_name||'Corrected Submission')}</title><style>body{font-family:Arial,sans-serif;line-height:1.65;max-width:900px;margin:40px auto;padding:0 40px;color:#1e293b}img{max-width:100%}</style></head><body>${html}</body></html>`],{type:'text/html'});
+        const up=await db.storage.from(STORAGE_BUCKET).upload(path,blob,{contentType:'text/html',upsert:false});
+        if(up.error) return notify('Could not upload corrected assignment: '+up.error.message,'error');
+        const now=new Date().toISOString();
+        const {error}=await db.from('online_submissions').update({
+            file_path:path,
+            file_name:filename,
+            feedback:(($('olReviewFeedback')?.value||s.feedback||'').trim()) || 'Lecturer correction attached.',
+            updated_at:now
+        }).eq('id',s.id);
+        if(error){
+            try{await db.storage.from(STORAGE_BUCKET).remove([path]);}catch{}
+            return notify('Corrected file uploaded but submission could not be updated: '+error.message,'error');
+        }
+        try{localStorage.removeItem('nchsm_assignment_draft_'+s.id);}catch{}
+        assignmentEditorState.dirty=false;
+        s.file_path=path; s.file_name=filename; s.updated_at=now;
+        notify('Corrected assignment saved. The original uploaded file remains separate in storage.','success');
+        await renderDocument(s);
+        if($('olDocumentEdit')) $('olDocumentEdit').disabled=false;
     }
     async function viewSubmissionDocument(id){
-        try{const s=state.submissions.find(x=>x.id===id);if(!s)throw new Error('Submission not found.');await renderDocument(s);$('olDocumentViewer').style.display='flex';}
-        catch(e){console.error(e);notify('Could not open the uploaded document: '+e.message,'error');}
+        try{
+            const s=state.submissions.find(x=>String(x.id)===String(id));
+            if(!s) throw new Error('Submission not found.');
+            await renderDocument(s);
+            $('olDocumentViewer').style.display='flex';
+        }catch(e){console.error(e);notify('Could not open the uploaded document: '+e.message,'error');}
     }
-    function closeDocumentViewer(){if($('olDocumentViewer'))$('olDocumentViewer').style.display='none';}
+    function closeDocumentViewer(){
+        if(assignmentEditorState.currentSubmission && assignmentEditorState.dirty){
+            try{localStorage.setItem('nchsm_assignment_draft_'+assignmentEditorState.currentSubmission.id,assignmentEditorState.draftHtml||$('olDocumentEditor')?.innerHTML||'');}catch{}
+        }
+        if($('olDocumentViewer')) $('olDocumentViewer').style.display='none';
+    }
 
     function normalizeText(t){return String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();}
     function shingles(t,n=8){const w=normalizeText(t).split(' ').filter(Boolean), out=[];for(let i=0;i<=w.length-n;i++)out.push(w.slice(i,i+n).join(' '));return [...new Set(out)];}
@@ -255,7 +438,45 @@ window.LecturerOnlineLearning = (() => {
         box.innerHTML=`<div class="ol-integrity"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b><i class="fas fa-shield-alt"></i> Academic Integrity Agent</b><span class="ol-badge ${localOnly?'ol-draft':sim>=40?'ol-review':'ol-published'}">${esc(statusText)}</span></div><div class="ol-integrity-grid" style="margin-top:10px"><div class="ol-integrity-stat"><small>Similarity</small><b>${sim}%</b></div><div class="ol-integrity-stat"><small>AI signal</small><b>${ai==null?(analysisAi?esc(analysisAi):'—'):esc(ai)+'%'}</b></div><div class="ol-integrity-stat"><small>Words scanned</small><b>${text.trim().split(/\s+/).filter(Boolean).length.toLocaleString()}</b></div></div>${analysis.summary?`<div style="margin-top:12px;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:9px"><b>AI Review Summary</b><div style="margin-top:5px;line-height:1.5">${esc(analysis.summary)}</div></div>`:''}${matches.length?`<div style="margin-top:12px"><b>Potential matches</b>${matches.slice(0,8).map(m=>`<div class="ol-integrity-match"><b>${esc(m.source_title||m.title||m.student_id||m.source||'Possible matching submission')}</b><div>${esc(m.matched_phrases??m.match_count??m.similarity??'')} ${m.matched_phrases?'matching phrase(s)':''}</div></div>`).join('')}</div>`:''}${analysis.evidence?.length?`<div style="margin-top:12px"><b>AI Evidence Flags</b>${analysis.evidence.slice(0,8).map(e=>`<div class="ol-integrity-match"><b>${esc(e.type||'Review point')} · ${esc(e.severity||'')}</b><div style="margin-top:4px">${esc(e.reason||'')}</div>${e.excerpt?`<div style="margin-top:5px;color:#64748b">“${esc(e.excerpt)}”</div>`:''}</div>`).join('')}</div>`:''}<p class="ol-integrity-note">This is an academic-integrity screening aid, not a final plagiarism finding. Similarity is not proof of plagiarism, and AI-writing signals can produce false positives. ${localOnly?'The AI provider was unavailable, so this result is based only on institutional submission similarity. ':''}${r.notice?esc(r.notice):''} ${r.source?'Scan source: '+esc(r.source)+'.':''}</p></div>`;
     }
 
-    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('id,question_order,question_text,question_type,marks').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${q.marks} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT MARK</div><div class="ol-mark">${s.marks_obtained??0}/${s.max_marks??'—'}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" step="0.01" value="${s.marks_obtained??0}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').style.display='flex';}
+    async function saveStructuredSubmissionAnswers(id){
+        const db=client(), s=state.submissions.find(x=>String(x.id)===String(id));
+        if(!db||!s) return;
+        const answers={...(s.answers||{})};
+        document.querySelectorAll('[data-answer-id]').forEach(el=>{answers[el.dataset.answerId]=el.value;});
+        const {error}=await db.from('online_submissions').update({answers,updated_at:new Date().toISOString()}).eq('id',id);
+        if(error){notify('Could not save edited answers: '+error.message,'error');return;}
+        s.answers=answers;
+        notify('Assignment / case study answers saved.','success');
+    }
+    async function reviewSubmission(id){
+        const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;
+        let questions=[];const qr=await db.from('online_assignment_questions').select('id,question_order,question_text,question_type,marks').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];
+        const answers=s.answers||{};
+        const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();
+        const p=profiles.data||{};
+        const body=$('olSubmissionBody');
+        body.innerHTML=`<div class="ol-submission-grid">
+          <div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3>
+          <p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p>
+          <div>${questions.length?questions.map((q,i)=>{
+              const val=answers[q.id]??answers[String(q.id)]??'';
+              const type=String(q.question_type||'').toLowerCase();
+              const input=type.includes('multiple')||type.includes('choice')?
+                `<textarea data-answer-id="${esc(q.id)}" style="width:100%;min-height:90px;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(val)}</textarea>`:
+                `<textarea data-answer-id="${esc(q.id)}" style="width:100%;min-height:120px;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(val)}</textarea>`;
+              return `<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px">${input}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`;
+          }).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}
+          ${questions.length?`<button class="ol-btn ol-primary" style="margin-top:10px" onclick="LecturerOnlineLearning.saveStructuredSubmissionAnswers('${esc(s.id)}')"><i class="fas fa-save"></i> Save Edited Answers</button>`:''}
+          </div></div>
+          <div><div class="ol-card" style="margin:0">
+            <div style="color:#64748b;font-size:12px">CURRENT MARK</div><div class="ol-mark">${s.marks_obtained??0}/${s.max_marks??'—'}</div>
+            <label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" step="0.01" value="${s.marks_obtained??0}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">
+            <label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${esc(s.id)}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${esc(s.id)}',true)">Grade & Release</button></div>
+            ${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${esc(s.id)}')"><i class="fas fa-pen-to-square"></i> View / Edit Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${esc(s.id)}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}
+          </div></div></div>`;
+        $('olSubmissionModal').style.display='flex';
+    }
     async function gradeSubmission(id,release){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;const marks=Number($('olReviewMarks').value);const feedback=$('olReviewFeedback').value.trim()||null;const {error}=await db.from('online_submissions').update({marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:new Date().toISOString(),result_released:release,released_at:release?new Date().toISOString():null,review_required:false}).eq('id',id);if(error){notify(error.message,'error');return;}notify(release?'Grade saved and result released.':'Grade saved.','success');closeModal('olSubmissionModal');await loadSubmissions();updateStats();}
     function closeModal(id){const m=$(id);if(m)m.style.display='none';}
 
@@ -971,6 +1192,6 @@ window.LecturerOnlineLearning = (() => {
         await loadResearch();
     }
 
-    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal};
+    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,saveStructuredSubmissionAnswers,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal};
 })();
 console.log('✅ Lecturer Online Learning module loaded');
