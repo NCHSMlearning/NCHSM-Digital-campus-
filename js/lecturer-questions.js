@@ -94,9 +94,10 @@ const LecturerQuestions = {
             console.log('🔍 Filtering exams by created_by:', lecturerId);
             
             // ✅ ONLY get exams created by this lecturer
+            // NOTE: 'unit' column does not exist on exams table.
             const { data, error } = await sb
                 .from('exams')
-                .select('id, title, exam_name, unit, created_by')
+                .select('id, title, exam_name, status, created_by')
                 .eq('created_by', lecturerId)
                 .order('title');
             
@@ -115,7 +116,7 @@ const LecturerQuestions = {
                 data.forEach(exam => {
                     const option = document.createElement('option');
                     option.value = exam.id;
-                    const displayName = exam.title || exam.exam_name || exam.unit || 'Untitled Exam';
+                    const displayName = exam.title || exam.exam_name || 'Untitled Exam';
                     option.textContent = displayName;
                     select.appendChild(option);
                 });
