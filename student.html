@@ -1369,7 +1369,31 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 #loading-screen .progress-text{display:flex!important;justify-content:space-between;gap:12px;align-items:center}
 #loading-screen .progress-percent{font-weight:800;color:#fff;min-width:42px;text-align:right;text-shadow:0 1px 4px rgba(0,0,0,.18)}
 #loading-screen .progress-fill{transition:width .35s ease}
-</style><style id="nchsm-app-shell-height">#app-content{min-height:100vh;}</style></head>
+</style><style id="nchsm-app-shell-height">#app-content{min-height:100vh;}</style>
+<style id="nchsm-research-module-css">
+#hub-research .research-shell{max-width:1100px;margin:0 auto}
+#hub-research .research-head{background:linear-gradient(135deg,#18304d,#234d72);color:#fff;border-radius:16px;padding:20px;box-shadow:0 10px 30px rgba(24,48,77,.12)}
+#hub-research .research-head h2{margin:0 0 6px;font-size:20px}
+#hub-research .research-head p{margin:0;opacity:.85;font-size:12px;line-height:1.5}
+#hub-research .research-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:14px 0}
+#hub-research .research-stat{background:#fff;border:1px solid #e1eaf2;border-radius:12px;padding:14px}
+#hub-research .research-stat strong{display:block;font-size:20px;color:#18304d}.research-stat span{font-size:11px;color:#71859c}
+#hub-research .research-card{background:#fff;border:1px solid #e1eaf2;border-radius:14px;padding:16px;margin-bottom:14px}
+#hub-research .research-form{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+#hub-research .research-form .full{grid-column:1/-1}
+#hub-research .research-field label{display:block;font-size:11px;font-weight:700;color:#36516d;margin-bottom:5px}
+#hub-research .research-field input,#hub-research .research-field textarea,#hub-research .research-field select{width:100%;box-sizing:border-box;border:1px solid #d7e3ed;border-radius:9px;padding:10px;font:inherit;font-size:12px;background:#fff;color:#18304d}
+#hub-research .research-field textarea{min-height:100px;resize:vertical}
+#hub-research .research-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+#hub-research .research-status{display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:700;background:#eef4f8;color:#36516d}
+#hub-research .research-status.submitted{background:#e9f4ff}.research-status.review{background:#fff4df}.research-status.revision{background:#fff0f0}.research-status.approved{background:#eaf8ef}
+#hub-research .research-row{display:grid;grid-template-columns:2fr 1fr 1fr auto;gap:10px;align-items:center;border-top:1px solid #edf2f6;padding:12px 0}
+#hub-research .research-row:first-child{border-top:0}.research-muted{font-size:10px;color:#71859c}.research-title{font-size:12px;font-weight:700;color:#18304d}.research-empty{text-align:center;padding:28px;color:#71859c;font-size:12px}
+#hub-research .research-error{display:none;margin:10px 0;padding:10px;border-radius:9px;background:#fff0f0;color:#9b2c2c;font-size:11px}
+#hub-research .research-success{display:none;margin:10px 0;padding:10px;border-radius:9px;background:#eaf8ef;color:#25633a;font-size:11px}
+@media(max-width:700px){#hub-research .research-grid{grid-template-columns:1fr}.research-form{grid-template-columns:1fr!important}.research-row{grid-template-columns:1fr!important}.research-row .research-actions{justify-content:flex-start}}
+</style>
+</head>
 <body>
 <!-- LOADING SCREEN -->
 <div id="loading-screen">
@@ -1576,6 +1600,7 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 <li role="none"><a data-tab="nurseiq" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-brain"></i><span>NurseIQ</span></a></li>
 <li role="none"><a data-tab="resources" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-folder-open"></i><span>Resources</span></a></li>
 <li role="none"><a data-tab="hub-online-learning" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-video"></i><span>Online Learning</span></a></li>
+<li role="none"><a data-tab="hub-research" href="#" role="menuitem"><i aria-hidden="true" class="fas fa-file-signature"></i><span>Research</span></a></li>
 </ul>
 </li>
 <li role="none">
@@ -5334,33 +5359,18 @@ async function openModal(a){
   var m=document.getElementById('ol-assignment-modal'),b=document.getElementById('ol-modal-body'),title=document.getElementById('ol-modal-title'),btn=document.getElementById('ol-submit-btn');
   var existing=getSubmission(a.id);
   title.textContent=a.title||'Assignment';
-
-  /*
-   * Submission state is calculated locally from the assignment settings.
-   * The previous version referenced canSubmit before declaring it, which
-   * caused the modal to crash with ReferenceError.
-   */
-  var previousAttempts=state.submissions.filter(function(s){return String(s.assignment_id)===String(a.id)});
-  var maxAttempts=Math.max(1,Number(a.max_attempts)||1);
-  var canSubmit=!existing || (!!a.allow_resubmission && previousAttempts.length < maxAttempts);
-  if(a.due_at && new Date(a.due_at).getTime() < Date.now()) canSubmit=false;
-
-  var qs=Array.isArray(a.questions)?a.questions:[];
-  var html='<div class="ol-notice"><i class="fas fa-circle-info"></i> '+(existing&&!canSubmit?'You have already submitted this activity. Review your submission below.':'Complete the required work and submit before the due date.')+'</div>';
-
-  /* The secure student feed already contains the questions. Use that as
-     the primary source. Only fall back to the question RPC for older feeds. */
-  if(!qs.length){
-    try{
-      var qr=await client().rpc('get_online_assignment_questions',{p_assignment_id:a.id});
-      if(qr.error)throw qr.error;
-      qs=qr.data||[];
-    }catch(qe){
-      console.error('Question load failed:',qe);
-      html+='<div class="ol-error" style="display:block;margin-bottom:12px">Questions could not be loaded. Please refresh and try again.</div>';
-    }
+  var qs=[];
+  var html='<div class="ol-notice"><i class="fas fa-circle-info"></i> '+(existing?'You have already submitted this activity. Review your submission below.':'Complete the required work and submit before the due date.')+'</div>';
+  try{
+    var qr=await client().rpc('get_online_assignment_questions',{p_assignment_id:a.id});
+    if(qr.error)throw qr.error;
+    qs=qr.data||[];
+    state.currentQuestions=qs;
+  }catch(qe){
+    state.currentQuestions=[];
+    console.error('Question load failed:',qe);
+    html+='<div class="ol-error" style="display:block;margin-bottom:12px">Questions could not be loaded. Please refresh and try again.</div>';
   }
-  state.currentQuestions=qs;
   html+='<div style="font-size:10px;color:#64748b;margin-bottom:12px"><strong>Unit:</strong> '+esc(a.unit_code||'—')+' &nbsp; <strong>Due:</strong> '+esc(fmtDateTime(a.due_at))+' &nbsp; <strong>Total:</strong> '+esc(a.max_marks||'—')+' marks</div>';
   if(a.instructions)html+='<div style="padding:11px;border-radius:9px;background:#f7fafc;border:1px solid #e4edf5;font-size:11px;line-height:1.55;margin-bottom:12px"><strong>Instructions</strong><br>'+esc(a.instructions).replace(/\n/g,'<br>')+'</div>';
   if(qs.length){
@@ -5368,11 +5378,11 @@ async function openModal(a){
       var ans=existing&&existing.answers?existing.answers.find(function(x){return String(x.question_id)===String(q.id)}):null;
       html+='<div class="ol-question"><div class="ol-question-title">'+(i+1)+'. '+esc(q.question_text||q.text||'Question')+' <span style="color:#8aa0b5;font-weight:600">('+esc(q.marks||0)+' marks)</span></div>';
       if(q.question_type==='mcq'){
-        (q.options||[]).forEach(function(o,j){var val=typeof o==='object'?o.value:o;html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+esc(val)+'" '+(ans&&String(ans.answer_text||ans.answer||'')===String(val)?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+esc(val)+'</label>'});
+        (q.options||[]).forEach(function(o,j){var val=typeof o==='object'?o.value:o;html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+esc(val)+'" '+(ans&&ans.answer_text===String(val)?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+esc(val)+'</label>'});
       }else if(q.question_type==='true_false'){
-        ['True','False'].forEach(function(o){html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+o+'" '+(ans&&String(ans.answer_text||ans.answer||'')===o?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+o+'</label>'});
+        ['True','False'].forEach(function(o){html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+o+'" '+(ans&&ans.answer_text===o?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+o+'</label>'});
       }else{
-        html+='<textarea class="ol-answer-input" data-ol-question="'+esc(q.id)+'" placeholder="Enter your answer..." '+(existing&&!canSubmit?'disabled':'')+'>'+esc(ans?(ans.answer_text||ans.answer||''):'')+'</textarea>';
+        html+='<textarea class="ol-answer-input" data-ol-question="'+esc(q.id)+'" placeholder="Enter your answer..." '+(existing&&!canSubmit?'disabled':'')+'>'+esc(ans?ans.answer_text:'')+'</textarea>';
       }
       html+='</div>';
     });
@@ -5388,10 +5398,6 @@ async function openModal(a){
 async function submitCurrent(){
   var a=state.current,sb=client(),id=uid(),btn=document.getElementById('ol-submit-btn');
   if(!a||!sb||!id)return;
-  var previousAttempts=state.submissions.filter(function(s){return String(s.assignment_id)===String(a.id)});
-  var maxAttempts=Math.max(1,Number(a.max_attempts)||1);
-  var canSubmit=!previousAttempts.length || (!!a.allow_resubmission && previousAttempts.length < maxAttempts);
-  if(!canSubmit){setError('You have reached the allowed submission attempts for this assignment.');return}
   if(a.due_at&&new Date(a.due_at).getTime()<Date.now()){setError('This assignment is past its due date and can no longer be submitted.');close('assignment');return}
   if(state.file && state.file.size>10*1024*1024){setError('The selected document is larger than 10 MB.');return}
   btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';
@@ -5455,6 +5461,12 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 document.addEventListener('appReady',function(){setTimeout(function(){bind();loadData()},300)});
 })();
 </script>
+
+<!-- ==================== HUB RESEARCH SUBMISSIONS ==================== -->
+<section class="tab-content" id="hub-research" style="padding:20px;max-width:100%;overflow-x:hidden;">
+  <div id="research-module-root"></div>
+</section>
+<!-- END HUB RESEARCH SUBMISSIONS -->
 
 <!-- ==================== HUB EXAM CARD TAB ==================== -->
 <section class="tab-content" id="hub-exam-card" style="padding: 20px; max-width: 100%; overflow-x: hidden;">
@@ -11951,7 +11963,9 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
   #enrollment .enr-tab-btn{min-height:46px!important;padding:9px 12px!important;font-size:12px!important;}
 }
 </style>
-<script id="nchsm-loading-progress-controller">(function(){var p=0,t=null;function paint(n,label){p=Math.max(p,Math.min(99,n));var f=document.getElementById("progress-fill"),x=document.getElementById("nchsm-loading-percent"),s=document.getElementById("progress-text");if(f)f.style.width=p+"%";if(x)x.textContent=Math.round(p)+"%";if(s&&label)s.textContent=label}window.nchsmLoadingProgress=function(n,label){paint(n,label)};window.nchsmFinishLoading=function(){paint(100,"Portal ready");if(t)clearInterval(t);setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.style.transition="opacity .25s ease";l.style.opacity="0";setTimeout(function(){l.style.display="none"},260)}},160)};function start(){paint(8,"Starting secure session…");var a=[[20,"Checking authentication…"],[38,"Loading student profile…"],[55,"Preparing dashboard…"],[70,"Loading academic data…"],[84,"Finalizing portal…"],[94,"Almost ready"]],i=0;t=setInterval(function(){if(i<a.length){paint(a[i][0],a[i][1]);i++}else clearInterval(t)},500)}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start()})();</script></body>
+<script id="nchsm-loading-progress-controller">(function(){var p=0,t=null;function paint(n,label){p=Math.max(p,Math.min(99,n));var f=document.getElementById("progress-fill"),x=document.getElementById("nchsm-loading-percent"),s=document.getElementById("progress-text");if(f)f.style.width=p+"%";if(x)x.textContent=Math.round(p)+"%";if(s&&label)s.textContent=label}window.nchsmLoadingProgress=function(n,label){paint(n,label)};window.nchsmFinishLoading=function(){paint(100,"Portal ready");if(t)clearInterval(t);setTimeout(function(){var l=document.getElementById("loading-screen");if(l){l.style.transition="opacity .25s ease";l.style.opacity="0";setTimeout(function(){l.style.display="none"},260)}},160)};function start(){paint(8,"Starting secure session…");var a=[[20,"Checking authentication…"],[38,"Loading student profile…"],[55,"Preparing dashboard…"],[70,"Loading academic data…"],[84,"Finalizing portal…"],[94,"Almost ready"]],i=0;t=setInterval(function(){if(i<a.length){paint(a[i][0],a[i][1]);i++}else clearInterval(t)},500)}if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",start,{once:true});else start()})();</script>
+<script src="js/student-research-submissions.js"></script>
+</body>
 <style id="nchsm-final-reference-lock">
 /* FINAL VISUAL LOCK — keeps the desktop dashboard close to the supplied reference image. */
 @media (min-width: 901px){
