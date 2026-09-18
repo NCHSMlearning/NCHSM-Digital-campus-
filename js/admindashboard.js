@@ -6436,7 +6436,7 @@ window.updateSelectedCount = function() {
 };
 
    
- // ============================================
+// ============================================
 // 📝 CONFIRM RELEASE RESULTS - SIMPLE EMAIL ONLY
 // ============================================
 
@@ -6478,6 +6478,9 @@ window.confirmReleaseResults = async function() {
             return;
         }
 
+        // Attempts are looked up for informational logging only. Their
+        // absence MUST NOT block a release: the completed exam_grades row
+        // is the authoritative final result.
         const attemptIds = [...new Set(selectedGrades.map(g => g.attempt_id).filter(Boolean))];
         let attempts = [];
         if (attemptIds.length) {
@@ -6486,8 +6489,12 @@ window.confirmReleaseResults = async function() {
                 .select('id, student_id, exam_id, attempt_number, status, submitted_at, started_at, updated_at, score, percentage, total_marks')
                 .in('id', attemptIds)
                 .eq('exam_id', examId);
-            if (error) throw error;
-            attempts = data || [];
+            if (error) {
+                // Non-fatal: log and continue. Release still proceeds from grades.
+                console.warn('⚠️ Attempt lookup failed; proceeding with sentinel grades only:', error.message);
+            } else {
+                attempts = data || [];
+            }
         }
         const attemptMap = new Map(attempts.map(a => [String(a.id), a]));
         const isSubmittedAttempt = a => {
@@ -6528,11 +6535,23 @@ window.confirmReleaseResults = async function() {
                 errorMessages.push(`Missing student for result ${gradeId}`);
                 continue;
             }
-            if (!grade.attempt_id || !attempt || !isSubmittedAttempt(attempt)) {
-                failedCount++;
-                errorMessages.push(`Student ${grade.student_id}: result is not linked to a submitted attempt`);
-                continue;
+
+            // Release from the sentinel grade itself. The exam_attempts row
+            // is preferred for logging but its absence does not block release:
+            // the completed exam_grades row is the authoritative final result.
+            if (!isSubmittedAttempt(attempt)) {
+                console.warn(
+                    `⚠️ Student ${grade.student_id}: no submitted attempt row; releasing from sentinel only.`,
+                    {
+                        grade_id: grade.id,
+                        attempt_id_in_grade: grade.attempt_id,
+                        attempt_found: !!attempt,
+                        attempt_status: attempt?.status,
+                        attempt_submitted_at: attempt?.submitted_at
+                    }
+                );
             }
+
             if (alreadyReleased.has(gradeId) || grade.released === true) {
                 skippedCount++;
                 continue;
