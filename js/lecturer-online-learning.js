@@ -322,40 +322,54 @@ window.LecturerOnlineLearning = (() => {
     function researchEnsureUI() {
         researchEnsureStyles();
 
-        let section = $('hub-research');
-        if (!section) {
-            section = document.createElement('section');
-            section.id = 'hub-research';
-            section.className = 'tab-content';
-            section.style.cssText = 'padding:0;max-width:100%;overflow-x:hidden;';
-            section.innerHTML = '<div id="nchsmResearchModule"></div>';
-            document.body.appendChild(section);
-        } else if (!$('nchsmResearchModule')) {
-            const root = document.createElement('div');
+        const section = $('online-learning-content');
+        if (!section) return;
+
+        // Research is intentionally a SUB-TAB inside the existing Online Learning section.
+        // It must never become a separate sidebar/top-level dashboard section.
+        let hubTabs = section.querySelector('.ol-hub-tabs');
+        let learningView = section.querySelector('#ol-learning-view');
+        let root = $('nchsmResearchModule');
+
+        if (!hubTabs) {
+            hubTabs = document.createElement('div');
+            hubTabs.className = 'ol-hub-tabs';
+            hubTabs.innerHTML = `
+              <button type="button" class="ol-hub-tab active" data-ol-hub-view="learning"><i class="fas fa-laptop-code"></i> Online Learning</button>
+              <button type="button" class="ol-hub-tab" data-ol-hub-view="research"><i class="fas fa-file-signature"></i> Research Papers</button>
+            `;
+            section.insertBefore(hubTabs, section.firstChild);
+        }
+
+        if (!learningView) {
+            learningView = document.createElement('div');
+            learningView.id = 'ol-learning-view';
+            const children = Array.from(section.children).filter(el => el !== hubTabs);
+            children.forEach(el => learningView.appendChild(el));
+            section.appendChild(learningView);
+        }
+
+        if (!root) {
+            root = document.createElement('div');
             root.id = 'nchsmResearchModule';
+            root.style.display = 'none';
             section.appendChild(root);
         }
 
-        // Add Research to the existing lecturer navigation without replacing it.
-        const nav = document.getElementById('mainNav');
-        if (nav && !nav.querySelector('[data-tab="hub-research"]')) {
-            const link = document.createElement('a');
-            link.href = '#';
-            link.dataset.tab = 'hub-research';
-            link.innerHTML = '<i class="fas fa-file-signature"></i><span>Research</span>';
-            link.addEventListener('click', function(e) {
-                e.preventDefault();
-                if (typeof window.showTab === 'function') window.showTab('hub-research');
-                else {
-                    document.querySelectorAll('.tab-content').forEach(x => x.style.display = 'none');
-                    section.style.display = 'block';
-                }
-                loadResearch();
+        hubTabs.querySelectorAll('[data-ol-hub-view]').forEach(btn => {
+            if (btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.olHubView;
+                hubTabs.querySelectorAll('[data-ol-hub-view]').forEach(x => x.classList.toggle('active', x === btn));
+                learningView.style.display = view === 'learning' ? 'block' : 'none';
+                root.style.display = view === 'research' ? 'block' : 'none';
+                if (view === 'research') loadResearch();
             });
-            nav.appendChild(link);
-        }
+        });
 
-        const root = $('nchsmResearchModule');
+        const rootWasRendered = root.dataset.rendered === '1';
+        if (rootWasRendered) return;
         if (!root || root.dataset.rendered === '1') return;
         root.dataset.rendered = '1';
         root.innerHTML = `
