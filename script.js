@@ -12099,7 +12099,7 @@ const emailHtml = `
                     <span class="portal-icon">🔑</span>
                     <p><strong>Access Your Exam</strong><br>
                     <span style="font-weight:400; color:#475569;">Log in to your student portal to take this exam</span></p>
-                    <a href="https://nchms.co.ke/student" target="_blank" class="btn">
+                    <a href="https://nchsm.co.ke/student" target="_blank" class="btn">
                         🚪 Access Student Portal
                     </a>
                 </div>
