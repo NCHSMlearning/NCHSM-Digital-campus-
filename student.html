@@ -5334,18 +5334,33 @@ async function openModal(a){
   var m=document.getElementById('ol-assignment-modal'),b=document.getElementById('ol-modal-body'),title=document.getElementById('ol-modal-title'),btn=document.getElementById('ol-submit-btn');
   var existing=getSubmission(a.id);
   title.textContent=a.title||'Assignment';
-  var qs=[];
-  var html='<div class="ol-notice"><i class="fas fa-circle-info"></i> '+(existing?'You have already submitted this activity. Review your submission below.':'Complete the required work and submit before the due date.')+'</div>';
-  try{
-    var qr=await client().rpc('get_online_assignment_questions',{p_assignment_id:a.id});
-    if(qr.error)throw qr.error;
-    qs=qr.data||[];
-    state.currentQuestions=qs;
-  }catch(qe){
-    state.currentQuestions=[];
-    console.error('Question load failed:',qe);
-    html+='<div class="ol-error" style="display:block;margin-bottom:12px">Questions could not be loaded. Please refresh and try again.</div>';
+
+  /*
+   * Submission state is calculated locally from the assignment settings.
+   * The previous version referenced canSubmit before declaring it, which
+   * caused the modal to crash with ReferenceError.
+   */
+  var previousAttempts=state.submissions.filter(function(s){return String(s.assignment_id)===String(a.id)});
+  var maxAttempts=Math.max(1,Number(a.max_attempts)||1);
+  var canSubmit=!existing || (!!a.allow_resubmission && previousAttempts.length < maxAttempts);
+  if(a.due_at && new Date(a.due_at).getTime() < Date.now()) canSubmit=false;
+
+  var qs=Array.isArray(a.questions)?a.questions:[];
+  var html='<div class="ol-notice"><i class="fas fa-circle-info"></i> '+(existing&&!canSubmit?'You have already submitted this activity. Review your submission below.':'Complete the required work and submit before the due date.')+'</div>';
+
+  /* The secure student feed already contains the questions. Use that as
+     the primary source. Only fall back to the question RPC for older feeds. */
+  if(!qs.length){
+    try{
+      var qr=await client().rpc('get_online_assignment_questions',{p_assignment_id:a.id});
+      if(qr.error)throw qr.error;
+      qs=qr.data||[];
+    }catch(qe){
+      console.error('Question load failed:',qe);
+      html+='<div class="ol-error" style="display:block;margin-bottom:12px">Questions could not be loaded. Please refresh and try again.</div>';
+    }
   }
+  state.currentQuestions=qs;
   html+='<div style="font-size:10px;color:#64748b;margin-bottom:12px"><strong>Unit:</strong> '+esc(a.unit_code||'—')+' &nbsp; <strong>Due:</strong> '+esc(fmtDateTime(a.due_at))+' &nbsp; <strong>Total:</strong> '+esc(a.max_marks||'—')+' marks</div>';
   if(a.instructions)html+='<div style="padding:11px;border-radius:9px;background:#f7fafc;border:1px solid #e4edf5;font-size:11px;line-height:1.55;margin-bottom:12px"><strong>Instructions</strong><br>'+esc(a.instructions).replace(/\n/g,'<br>')+'</div>';
   if(qs.length){
@@ -5353,11 +5368,11 @@ async function openModal(a){
       var ans=existing&&existing.answers?existing.answers.find(function(x){return String(x.question_id)===String(q.id)}):null;
       html+='<div class="ol-question"><div class="ol-question-title">'+(i+1)+'. '+esc(q.question_text||q.text||'Question')+' <span style="color:#8aa0b5;font-weight:600">('+esc(q.marks||0)+' marks)</span></div>';
       if(q.question_type==='mcq'){
-        (q.options||[]).forEach(function(o,j){var val=typeof o==='object'?o.value:o;html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+esc(val)+'" '+(ans&&ans.answer_text===String(val)?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+esc(val)+'</label>'});
+        (q.options||[]).forEach(function(o,j){var val=typeof o==='object'?o.value:o;html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+esc(val)+'" '+(ans&&String(ans.answer_text||ans.answer||'')===String(val)?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+esc(val)+'</label>'});
       }else if(q.question_type==='true_false'){
-        ['True','False'].forEach(function(o){html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+o+'" '+(ans&&ans.answer_text===o?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+o+'</label>'});
+        ['True','False'].forEach(function(o){html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+o+'" '+(ans&&String(ans.answer_text||ans.answer||'')===o?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+o+'</label>'});
       }else{
-        html+='<textarea class="ol-answer-input" data-ol-question="'+esc(q.id)+'" placeholder="Enter your answer..." '+(existing&&!canSubmit?'disabled':'')+'>'+esc(ans?ans.answer_text:'')+'</textarea>';
+        html+='<textarea class="ol-answer-input" data-ol-question="'+esc(q.id)+'" placeholder="Enter your answer..." '+(existing&&!canSubmit?'disabled':'')+'>'+esc(ans?(ans.answer_text||ans.answer||''):'')+'</textarea>';
       }
       html+='</div>';
     });
@@ -5373,6 +5388,10 @@ async function openModal(a){
 async function submitCurrent(){
   var a=state.current,sb=client(),id=uid(),btn=document.getElementById('ol-submit-btn');
   if(!a||!sb||!id)return;
+  var previousAttempts=state.submissions.filter(function(s){return String(s.assignment_id)===String(a.id)});
+  var maxAttempts=Math.max(1,Number(a.max_attempts)||1);
+  var canSubmit=!previousAttempts.length || (!!a.allow_resubmission && previousAttempts.length < maxAttempts);
+  if(!canSubmit){setError('You have reached the allowed submission attempts for this assignment.');return}
   if(a.due_at&&new Date(a.due_at).getTime()<Date.now()){setError('This assignment is past its due date and can no longer be submitted.');close('assignment');return}
   if(state.file && state.file.size>10*1024*1024){setError('The selected document is larger than 10 MB.');return}
   btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';
