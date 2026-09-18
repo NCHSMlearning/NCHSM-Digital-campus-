@@ -367,6 +367,8 @@ const LecturerUI = {
         'academic-portfolio': 'academic-portfolio-content',
         // ===== NCK SYSTEM =====
         'nursing-system': 'nursing-system-content',
+        // ===== ONLINE LEARNING =====
+        'online-learning': 'online-learning-content',
         // ===== ✅ QUESTION BANK (LECTURER) =====
         'lecturer-questions': 'lecturer-questions-content'
     },
@@ -655,7 +657,7 @@ const LecturerUI = {
         }
         
         // Get the actual section ID from mapping
-        const sectionId = this.tabMapping[tabId] || tabId;
+        const sectionId = this.tabMapping[tabId] || (tabId + '-content') || tabId;
         console.log('📌 Looking for section:', sectionId);
         
         // Hide all tabs
@@ -898,6 +900,18 @@ const LecturerUI = {
                 }
                 break;
             
+            // ===== ONLINE LEARNING =====
+            case 'online-learning':
+                console.log('💻 Loading Online Learning...');
+                if (window.LecturerOnlineLearning && typeof window.LecturerOnlineLearning.init === 'function') {
+                    setTimeout(function() {
+                        window.LecturerOnlineLearning.init();
+                    }, 150);
+                } else {
+                    console.warn('⚠️ LecturerOnlineLearning not found. Make sure js/lecturer-online-learning.js is loaded.');
+                }
+                break;
+
             // ===== NCK SYSTEM =====
             case 'nursing-system':
                 console.log('👩‍⚕️ Loading NCK System...');
