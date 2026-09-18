@@ -2364,10 +2364,10 @@ class ResourcesModule {
             });
 
             console.log(`✅ Loaded ${this.allResources.length} student resources`, {
-                program: programCode || this.userProgramCode,
-                intake: intakeYear,
-                block,
-                term
+                program: this.userProgramCode || '',
+                intake: this.userIntakeYear || null,
+                block: this.userBlock || '',
+                term: this.userTerm || null
             });
 
             this.updatePastPaperCount();
