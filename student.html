@@ -5288,41 +5288,47 @@ function updateStats(){
 async function loadData(){
   var sb=client(), id=uid();
   setError('');
-  if(!sb||!id){setError('Your secure session is not ready yet. Please wait for the portal to finish loading, then refresh this module.');return}
+  if(!sb||!id){
+    setError('Your secure session is not ready yet. Please wait for the portal to finish loading, then refresh this module.');
+    return;
+  }
   loading();
   try{
-    var p=profile()||{}, unitCodes=[];
-    var studentProgram=String(p.program||p.program_type||'').trim();
-    var studentIntake=String(p.intake_year||p.admission_year||'').trim();
-    var studentBlock=String(p.block||p.current_block||'').trim();
-    try{
-      var ur=await sb.from('student_unit_registrations').select('unit_code,unit_name,status').eq('student_id',id);
-      if(!ur.error)(ur.data||[]).forEach(function(x){
-        if(x.unit_code && String(x.status||'').toLowerCase()!=='dropped') unitCodes.push(String(x.unit_code).trim().toLowerCase());
-      });
-    }catch(_){}
-    var aq=sb.from('online_assignments').select('*').eq('published',true).order('due_at',{ascending:true,nullsFirst:false});
-    var ar=await aq;
-    if(ar.error)throw ar.error;
-    state.assignments=(ar.data||[]).filter(function(a){
-      var okProgram=!a.program||!studentProgram||String(a.program).trim().toLowerCase()===studentProgram.toLowerCase();
-      var okBlock=!a.block||!studentBlock||String(a.block).trim().toLowerCase()===studentBlock.toLowerCase();
-      var okIntake=!a.intake||!studentIntake||String(a.intake).trim().toLowerCase()===studentIntake.toLowerCase();
-      var okUnit=!a.unit_code||unitCodes.includes(String(a.unit_code).trim().toLowerCase());
-      return okProgram&&okBlock&&okIntake&&okUnit;
+    /*
+     * IMPORTANT:
+     * The lecturer dashboard writes to online_assignments and
+     * online_assignment_questions. The secure RPC is now the single
+     * source of truth for student targeting and reads those same tables.
+     *
+     * Do NOT apply the old student_unit_registrations filter here.
+     * Lecturer targeting is Program + Intake + Block, and an assignment
+     * must not disappear merely because its unit_code is not present in
+     * the student's unit-registration list.
+     */
+    var rr=await sb.rpc('get_student_online_learning');
+    if(rr.error)throw rr.error;
+
+    var feed=rr.data||{};
+
+    state.assignments=Array.isArray(feed.assignments)?feed.assignments:[];
+    state.submissions=Array.isArray(feed.submissions)?feed.submissions:[];
+    state.results=state.submissions.filter(function(s){return !!s.result_released;});
+
+    console.log('NCHSM Online Learning loaded from secure RPC:',{
+      student:feed.student||null,
+      assignments:state.assignments.length,
+      submissions:state.submissions.length
     });
-    var sr=await sb.from('online_submissions').select('*').eq('student_id',id).order('submitted_at',{ascending:false});
-    if(sr.error && sr.error.code!=='PGRST116')throw sr.error;
-    state.submissions=sr.data||[];
-    state.results=state.submissions.filter(function(s){return s.result_released});
+
     render();
   }catch(e){
     console.error('Online Learning load failed:',e);
-    setError('Online Learning could not load. Make sure the Online Learning database setup has been applied and your session is active. Details: '+(e.message||e));
-    setContent('<div class="ol-empty"><i class="fas fa-database"></i><strong>Learning data is not available yet</strong><br>Once the Online Learning tables are configured, your assignments will appear here.</div>');
+    setError('Online Learning could not load. Details: '+(e.message||e));
+    setContent('<div class="ol-empty"><i class="fas fa-database"></i><strong>Learning data is not available yet</strong><br>Once the Online Learning database is configured, your assignments will appear here.</div>');
     updateStats();
   }
 }
+
 async function openModal(a){
   state.current=a;state.file=null;
   var m=document.getElementById('ol-assignment-modal'),b=document.getElementById('ol-modal-body'),title=document.getElementById('ol-modal-title'),btn=document.getElementById('ol-submit-btn');
