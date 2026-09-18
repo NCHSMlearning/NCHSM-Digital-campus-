@@ -166,42 +166,66 @@
   }
 
   async function load() {
-    setLoading(true); showState('');
+    setLoading(true);
+    showState('');
+
     try {
-      if (!userId()) throw new Error('Please sign in again before opening Online Learning.');
-      const client = db();
-      if (!client?.rpc) throw new Error('Database connection is not ready.');
-      state.studentProfile = await loadStudentProfile(client);
-
-      const { data, error } = await client.rpc('get_student_online_learning');
-      if (error) throw error;
-
-      const feed = data || { assignments: [], submissions: [] };
-
-      // The RPC remains the primary/secure source. This additional
-      // client-side check guarantees that assignments displayed in the
-      // student UI match the student's actual program, intake and block.
-      // If the profile cannot be loaded, do not guess a target.
-      if (state.studentProfile) {
-        feed.assignments = (feed.assignments || []).filter(a =>
-          targetMatchesStudent(a, state.studentProfile)
-        );
-      } else {
-        feed.assignments = [];
-        feed.submissions = [];
+      if (!userId()) {
+        throw new Error('Please sign in again before opening Online Learning.');
       }
 
-      // Keep submissions only for assignments that this student can see.
-      const visibleIds = new Set((feed.assignments || []).map(a => String(a.id)));
-      feed.submissions = (feed.submissions || []).filter(s =>
-        visibleIds.has(String(s.assignment_id))
-      );
+      const client = db();
 
-      state.feed = feed;
+      if (!client?.rpc) {
+        throw new Error('Database connection is not ready.');
+      }
+
+      /*
+       * IMPORTANT:
+       * Do NOT perform a second client-side target filter here.
+       *
+       * get_student_online_learning() is now the authoritative,
+       * SECURITY DEFINER source and already matches:
+       *
+       *   student.program      -> assignment.program
+       *   student.intake_year  -> assignment.intake
+       *   student.current_block/block -> assignment.block
+       *
+       * The previous JS performed another profile query and then
+       * filtered the RPC response. If that profile query was blocked
+       * by RLS, returned no row, or had a role/value mismatch, it
+       * converted a valid RPC response into an empty dashboard.
+       *
+       * Therefore the student UI uses the RPC response directly.
+       */
+      const { data, error } = await client.rpc('get_student_online_learning');
+
+      if (error) {
+        console.error('get_student_online_learning RPC error:', error);
+        throw error;
+      }
+
+      const feed = data || {};
+
+      state.feed = {
+        assignments: Array.isArray(feed.assignments)
+          ? feed.assignments
+          : [],
+        submissions: Array.isArray(feed.submissions)
+          ? feed.submissions
+          : []
+      };
+
+      state.studentProfile = feed.student || null;
+
       renderAll();
+
     } catch (err) {
       console.error('Online Learning load failed:', err);
-      showState(err?.message || 'Unable to load Online Learning.', true);
+      showState(
+        err?.message || 'Unable to load Online Learning.',
+        true
+      );
     } finally {
       setLoading(false);
     }
