@@ -19,7 +19,7 @@ window.LecturerOnlineLearning = (() => {
     function notify(msg,type='info'){ if(window.showNotification) window.showNotification(msg,type); else alert(msg); }
     function fmtDate(v){ if(!v)return '—'; const d=new Date(v); return isNaN(d)?'—':d.toLocaleString([], {dateStyle:'medium',timeStyle:'short'}); }
     function statusBadge(a){return a.published?'<span class="ol-badge ol-published">PUBLISHED</span>':'<span class="ol-badge ol-draft">DRAFT</span>';}
-    async function init(){ if(state.initialized && state.assignments.length) return load(); state.initialized=true; await resolveUser(); await load(); }
+    async function init(){ if(state.initialized && state.assignments.length){ await load(); setTimeout(initResearch,150); return; } state.initialized=true; await resolveUser(); await load(); setTimeout(initResearch,150); }
     async function load(){
         const db=client(); if(!db){ notify('Supabase client is not available. Check lecturer-database.js/config.js.','error'); return; }
         await resolveUser();
@@ -258,6 +258,366 @@ window.LecturerOnlineLearning = (() => {
     async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('id,question_order,question_text,question_type,marks').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${q.marks} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT MARK</div><div class="ol-mark">${s.marks_obtained??0}/${s.max_marks??'—'}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" step="0.01" value="${s.marks_obtained??0}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').style.display='flex';}
     async function gradeSubmission(id,release){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;const marks=Number($('olReviewMarks').value);const feedback=$('olReviewFeedback').value.trim()||null;const {error}=await db.from('online_submissions').update({marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:new Date().toISOString(),result_released:release,released_at:release?new Date().toISOString():null,review_required:false}).eq('id',id);if(error){notify(error.message,'error');return;}notify(release?'Grade saved and result released.':'Grade saved.','success');closeModal('olSubmissionModal');await loadSubmissions();updateStats();}
     function closeModal(id){const m=$(id);if(m)m.style.display='none';}
-    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan};
+
+    // ============================================================
+    // RESEARCH SUBMISSIONS — LECTURER REVIEW MODULE
+    // Uses public.research_submissions and private research-papers bucket.
+    // ============================================================
+    const researchState = {
+        submissions: [],
+        profiles: new Map(),
+        initialized: false,
+        filterStatus: '',
+        search: '',
+        current: null
+    };
+
+    function researchStatusLabel(status) {
+        return String(status || 'submitted').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    }
+
+    function researchStatusClass(status) {
+        const s = String(status || '').toLowerCase();
+        if (s === 'approved') return 'approved';
+        if (s === 'revision_required') return 'revision';
+        if (s === 'under_review') return 'review';
+        if (s === 'rejected') return 'rejected';
+        return 'submitted';
+    }
+
+    function researchEnsureStyles() {
+        if ($('nchsmResearchStyles')) return;
+        const st = document.createElement('style');
+        st.id = 'nchsmResearchStyles';
+        st.textContent = `
+          #nchsmResearchModule{padding:20px;max-width:100%;box-sizing:border-box}
+          .rs-head{background:linear-gradient(135deg,#0A3D62,#1a5a7a);color:#fff;border-radius:16px;padding:22px 24px;margin-bottom:18px;box-shadow:0 4px 20px rgba(10,61,98,.18)}
+          .rs-head h2{margin:0;font-size:21px;display:flex;align-items:center;gap:10px}
+          .rs-head p{margin:7px 0 0;opacity:.9;font-size:13px}
+          .rs-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}
+          .rs-stat{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+          .rs-stat b{display:block;font-size:24px;color:#0A3D62}.rs-stat span{font-size:11px;color:#64748b}
+          .rs-toolbar{display:flex;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px}
+          .rs-toolbar input,.rs-toolbar select{min-height:38px;border:1px solid #dbe3ec;border-radius:8px;padding:7px 10px;box-sizing:border-box}
+          .rs-toolbar input{flex:1;min-width:220px}
+          .rs-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
+          .rs-table{width:100%;border-collapse:collapse;font-size:12px}.rs-table th{background:#f8fafc;color:#475569;text-align:left;font-size:11px;padding:11px;border-bottom:1px solid #e2e8f0}.rs-table td{padding:11px;border-bottom:1px solid #eef2f7;vertical-align:top}
+          .rs-badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:800;text-transform:uppercase;background:#eef2f7;color:#475569}.rs-badge.approved{background:#dcfce7;color:#166534}.rs-badge.revision{background:#fef3c7;color:#92400e}.rs-badge.review{background:#dbeafe;color:#1d4ed8}.rs-badge.rejected{background:#fee2e2;color:#991b1b}.rs-badge.submitted{background:#e0f2fe;color:#0369a1}
+          .rs-btn{border:0;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:11px;font-weight:700}.rs-primary{background:#0A3D62;color:#fff}.rs-secondary{background:#eef2f7;color:#334155}.rs-success{background:#166534;color:#fff}.rs-warning{background:#b45309;color:#fff}.rs-danger{background:#991b1b;color:#fff}
+          .rs-empty{padding:35px;text-align:center;color:#64748b}
+          .rs-modal{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:100020;display:none;align-items:center;justify-content:center;padding:12px;box-sizing:border-box}
+          .rs-dialog{background:#fff;width:min(1180px,100%);height:min(94vh,920px);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.35)}
+          .rs-dialog-head{padding:13px 16px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:10px;align-items:center}
+          .rs-dialog-body{display:grid;grid-template-columns:minmax(0,1.45fr) minmax(300px,.7fr);flex:1;min-height:0}
+          .rs-preview{background:#f1f5f9;overflow:auto;padding:12px}.rs-side{border-left:1px solid #e2e8f0;padding:16px;overflow:auto}
+          .rs-frame{width:100%;height:100%;min-height:600px;border:0;background:#fff}.rs-docx{background:#fff;max-width:850px;margin:auto;padding:40px 50px;min-height:90%;line-height:1.65;box-shadow:0 1px 7px rgba(0,0,0,.08)}
+          .rs-side label{display:block;font-size:11px;font-weight:700;color:#475569;margin:12px 0 5px}.rs-side select,.rs-side textarea{width:100%;box-sizing:border-box;border:1px solid #dbe3ec;border-radius:8px;padding:9px}.rs-side textarea{min-height:150px;resize:vertical}
+          .rs-meta{font-size:12px;color:#64748b;line-height:1.6}.rs-title{font-size:17px;font-weight:800;color:#18304d;margin-bottom:5px}
+          @media(max-width:800px){.rs-stats{grid-template-columns:repeat(2,1fr)}.rs-dialog-body{grid-template-columns:1fr}.rs-side{border-left:0;border-top:1px solid #e2e8f0}.rs-preview{min-height:48vh}.rs-frame{min-height:450px}.rs-docx{padding:22px}}
+          @media(max-width:520px){#nchsmResearchModule{padding:10px}.rs-stats{grid-template-columns:1fr 1fr}.rs-table{min-width:900px}.rs-card{overflow-x:auto}}
+        `;
+        document.head.appendChild(st);
+    }
+
+    function researchEnsureUI() {
+        researchEnsureStyles();
+
+        let section = $('hub-research');
+        if (!section) {
+            section = document.createElement('section');
+            section.id = 'hub-research';
+            section.className = 'tab-content';
+            section.style.cssText = 'padding:0;max-width:100%;overflow-x:hidden;';
+            section.innerHTML = '<div id="nchsmResearchModule"></div>';
+            document.body.appendChild(section);
+        } else if (!$('nchsmResearchModule')) {
+            const root = document.createElement('div');
+            root.id = 'nchsmResearchModule';
+            section.appendChild(root);
+        }
+
+        // Add Research to the existing lecturer navigation without replacing it.
+        const nav = document.getElementById('mainNav');
+        if (nav && !nav.querySelector('[data-tab="hub-research"]')) {
+            const link = document.createElement('a');
+            link.href = '#';
+            link.dataset.tab = 'hub-research';
+            link.innerHTML = '<i class="fas fa-file-signature"></i><span>Research</span>';
+            link.addEventListener('click', function(e) {
+                e.preventDefault();
+                if (typeof window.showTab === 'function') window.showTab('hub-research');
+                else {
+                    document.querySelectorAll('.tab-content').forEach(x => x.style.display = 'none');
+                    section.style.display = 'block';
+                }
+                loadResearch();
+            });
+            nav.appendChild(link);
+        }
+
+        const root = $('nchsmResearchModule');
+        if (!root || root.dataset.rendered === '1') return;
+        root.dataset.rendered = '1';
+        root.innerHTML = `
+          <div class="rs-head">
+            <h2><i class="fas fa-file-signature"></i> Research Submissions</h2>
+            <p>Review student research proposals, final papers and corrected submissions. Open documents, provide feedback and update the review status.</p>
+          </div>
+          <div class="rs-stats">
+            <div class="rs-stat"><b id="rsTotal">0</b><span>Total Submissions</span></div>
+            <div class="rs-stat"><b id="rsReview">0</b><span>Under Review</span></div>
+            <div class="rs-stat"><b id="rsRevision">0</b><span>Revision Required</span></div>
+            <div class="rs-stat"><b id="rsApproved">0</b><span>Approved</span></div>
+          </div>
+          <div class="rs-toolbar">
+            <input id="rsSearch" placeholder="Search student, admission number or research title…">
+            <select id="rsStatus">
+              <option value="">All statuses</option>
+              <option value="submitted">Submitted</option>
+              <option value="under_review">Under Review</option>
+              <option value="revision_required">Revision Required</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <button class="rs-btn rs-secondary" type="button" id="rsRefresh"><i class="fas fa-sync"></i> Refresh</button>
+          </div>
+          <div class="rs-card">
+            <div id="rsLoading" class="rs-empty">Loading research submissions…</div>
+            <div style="overflow-x:auto">
+              <table class="rs-table" id="rsTable" style="display:none">
+                <thead><tr><th>Student</th><th>Research Title</th><th>Type</th><th>Version</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="rsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="rs-modal" id="rsReviewModal" aria-hidden="true">
+            <div class="rs-dialog">
+              <div class="rs-dialog-head">
+                <div><div class="rs-title" id="rsModalTitle">Research Submission</div><div class="rs-meta" id="rsModalMeta"></div></div>
+                <button class="rs-btn rs-secondary" type="button" id="rsClose">Close</button>
+              </div>
+              <div class="rs-dialog-body">
+                <div class="rs-preview" id="rsPreview"><div class="rs-empty">Select a submission.</div></div>
+                <div class="rs-side">
+                  <div id="rsStudentMeta" class="rs-meta"></div>
+                  <label>Review Status</label>
+                  <select id="rsReviewStatus">
+                    <option value="submitted">Submitted</option>
+                    <option value="under_review">Under Review</option>
+                    <option value="revision_required">Revision Required</option>
+                    <option value="approved">Approved</option>
+                    <option value="rejected">Rejected</option>
+                  </select>
+                  <label>Supervisor / Lecturer Feedback</label>
+                  <textarea id="rsFeedback" placeholder="Enter feedback, required corrections, recommendations or approval comments…"></textarea>
+                  <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+                    <button class="rs-btn rs-success" type="button" id="rsSaveReview">Save Review</button>
+                    <button class="rs-btn rs-secondary" type="button" id="rsDownload">Download</button>
+                  </div>
+                  <div id="rsFileInfo" class="rs-meta" style="margin-top:14px"></div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        $('rsSearch').addEventListener('input', e => { researchState.search = e.target.value.toLowerCase().trim(); renderResearch(); });
+        $('rsStatus').addEventListener('change', e => { researchState.filterStatus = e.target.value; renderResearch(); });
+        $('rsRefresh').addEventListener('click', loadResearch);
+        $('rsClose').addEventListener('click', closeResearchModal);
+        $('rsReviewModal').addEventListener('click', e => { if (e.target === $('rsReviewModal')) closeResearchModal(); });
+        $('rsSaveReview').addEventListener('click', saveResearchReview);
+        $('rsDownload').addEventListener('click', downloadCurrentResearch);
+    }
+
+    async function loadResearch() {
+        researchEnsureUI();
+        const db = client();
+        if (!db) return notify('Supabase client is not available for Research.', 'error');
+
+        const loading = $('rsLoading');
+        const table = $('rsTable');
+        if (loading) loading.style.display = 'block';
+        if (table) table.style.display = 'none';
+
+        try {
+            const { data, error } = await db.from('research_submissions')
+                .select('id,student_id,research_group_id,version_number,title,submission_type,supervisor_name,abstract,status,document_name,document_path,feedback,reviewed_by,reviewed_at,submitted_at,created_at,updated_at')
+                .order('created_at', { ascending: false });
+            if (error) throw error;
+            researchState.submissions = data || [];
+
+            const ids = [...new Set(researchState.submissions.map(x => x.student_id).filter(Boolean))];
+            researchState.profiles = new Map();
+            if (ids.length) {
+                const r = await db.from('consolidated_user_profiles_table')
+                    .select('user_id,full_name,student_id,admission_number,email,program,intake_year,current_block,block')
+                    .in('user_id', ids);
+                if (r.error) console.warn('Research profile lookup:', r.error.message);
+                (r.data || []).forEach(p => researchState.profiles.set(p.user_id, p));
+            }
+            renderResearch();
+        } catch (e) {
+            console.error('Research load failed:', e);
+            if (loading) loading.textContent = 'Research submissions could not load: ' + (e.message || e);
+            notify('Could not load Research submissions: ' + (e.message || e), 'error');
+            return;
+        } finally {
+            if (loading) loading.style.display = 'none';
+        }
+    }
+
+    function renderResearch() {
+        researchEnsureUI();
+        const all = researchState.submissions || [];
+        const q = researchState.search;
+        const status = researchState.filterStatus;
+        const rows = all.filter(s => {
+            const p = researchState.profiles.get(s.student_id) || {};
+            const hay = `${p.full_name || ''} ${p.student_id || ''} ${p.admission_number || ''} ${p.email || ''} ${s.title || ''}`.toLowerCase();
+            return (!status || s.status === status) && (!q || hay.includes(q));
+        });
+
+        const total = $('rsTotal'), review = $('rsReview'), revision = $('rsRevision'), approved = $('rsApproved');
+        if (total) total.textContent = all.length;
+        if (review) review.textContent = all.filter(s => s.status === 'under_review').length;
+        if (revision) revision.textContent = all.filter(s => s.status === 'revision_required').length;
+        if (approved) approved.textContent = all.filter(s => s.status === 'approved').length;
+
+        const loading = $('rsLoading'), table = $('rsTable'), body = $('rsBody');
+        if (!body) return;
+        if (!rows.length) {
+            table.style.display = 'none';
+            loading.style.display = 'block';
+            loading.innerHTML = '<i class="fas fa-file-circle-check" style="font-size:24px;display:block;margin-bottom:8px"></i>No research submissions match the current filter.';
+            return;
+        }
+        loading.style.display = 'none';
+        table.style.display = 'table';
+        body.innerHTML = rows.map(s => {
+            const p = researchState.profiles.get(s.student_id) || {};
+            return `<tr>
+              <td><b>${esc(p.full_name || 'Student')}</b><div style="font-size:10px;color:#64748b">${esc(p.admission_number || p.student_id || s.student_id || '')}</div></td>
+              <td><b>${esc(s.title || 'Untitled Research')}</b><div style="font-size:10px;color:#64748b">${esc(s.document_name || 'No document')}</div></td>
+              <td>${esc(String(s.submission_type || 'research').replace(/_/g,' '))}</td>
+              <td>V${esc(s.version_number || 1)}</td>
+              <td>${fmtDate(s.submitted_at || s.created_at)}</td>
+              <td><span class="rs-badge ${researchStatusClass(s.status)}">${esc(researchStatusLabel(s.status))}</span></td>
+              <td><button class="rs-btn rs-primary" type="button" data-research-review="${esc(s.id)}"><i class="fas fa-eye"></i> Review</button></td>
+            </tr>`;
+        }).join('');
+        body.querySelectorAll('[data-research-review]').forEach(btn => btn.addEventListener('click', () => openResearchReview(btn.dataset.researchReview)));
+    }
+
+    async function researchSignedUrl(s) {
+        const db = client();
+        if (!db || !s?.document_path) throw new Error('No research document is attached.');
+        const r = await db.storage.from('research-papers').createSignedUrl(s.document_path, 3600);
+        if (r.error) throw r.error;
+        if (!r.data?.signedUrl) throw new Error('Could not create a secure document URL.');
+        return r.data.signedUrl;
+    }
+
+    async function openResearchReview(id) {
+        const s = researchState.submissions.find(x => String(x.id) === String(id));
+        if (!s) return notify('Research submission not found.', 'error');
+        researchState.current = s;
+        const p = researchState.profiles.get(s.student_id) || {};
+        researchEnsureUI();
+        $('rsModalTitle').textContent = s.title || 'Research Submission';
+        $('rsModalMeta').textContent = `${p.full_name || 'Student'} · ${p.admission_number || p.student_id || ''} · Version ${s.version_number || 1}`;
+        $('rsStudentMeta').innerHTML =
+            `<b>${esc(p.full_name || 'Student')}</b><br>${esc(p.admission_number || p.student_id || '')}<br>${esc(p.email || '')}<br>${esc(p.program || '')}${p.intake_year ? ' · Intake ' + esc(p.intake_year) : ''}${p.current_block || p.block ? ' · ' + esc(p.current_block || p.block) : ''}` +
+            `<hr style="border:0;border-top:1px solid #e2e8f0;margin:12px 0"><b>Research Type:</b> ${esc(String(s.submission_type || 'research').replace(/_/g,' '))}<br><b>Supervisor:</b> ${esc(s.supervisor_name || 'Not specified')}<br><b>Submitted:</b> ${esc(fmtDate(s.submitted_at || s.created_at))}`;
+        $('rsReviewStatus').value = s.status || 'submitted';
+        $('rsFeedback').value = s.feedback || '';
+        $('rsFileInfo').innerHTML = `<b>Document:</b> ${esc(s.document_name || 'Not attached')}<br><b>Current status:</b> ${esc(researchStatusLabel(s.status))}`;
+        $('rsPreview').innerHTML = s.abstract ? `<div style="background:#fff;border-radius:10px;padding:18px;line-height:1.65"><b>Abstract / Description</b><div style="margin-top:8px;white-space:pre-wrap">${esc(s.abstract)}</div><div id="rsDocumentArea" style="margin-top:15px"><div class="rs-empty">Opening document…</div></div></div>` : '<div id="rsDocumentArea"><div class="rs-empty">Opening document…</div></div>';
+        $('rsReviewModal').style.display = 'flex';
+        $('rsReviewModal').setAttribute('aria-hidden', 'false');
+
+        try {
+            const url = await researchSignedUrl(s);
+            $('rsDownload').onclick = () => window.open(url, '_blank', 'noopener');
+            const area = $('rsDocumentArea');
+            const ext = String(s.document_name || s.document_path || '').toLowerCase().split('.').pop();
+            if (ext === 'pdf') {
+                area.innerHTML = `<iframe class="rs-frame" title="${esc(s.document_name || 'Research PDF')}" src="${esc(url)}"></iframe>`;
+            } else if (ext === 'docx' || ext === 'doc') {
+                const blob = await (await fetch(url)).blob();
+                if (!window.mammoth) {
+                    await new Promise((resolve, reject) => {
+                        const sc = document.createElement('script');
+                        sc.src = 'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
+                        sc.onload = resolve; sc.onerror = () => reject(new Error('Could not load DOCX preview library.'));
+                        document.head.appendChild(sc);
+                    });
+                }
+                const r = await window.mammoth.convertToHtml({arrayBuffer: await blob.arrayBuffer()});
+                area.innerHTML = `<article class="rs-docx">${r.value || '<p>No readable text found.</p>'}</article>`;
+            } else {
+                area.innerHTML = `<div class="rs-empty">Preview is not available for this file type. Use Download to open the original document.</div>`;
+            }
+        } catch (e) {
+            console.error('Research document preview:', e);
+            $('rsDocumentArea').innerHTML = `<div class="rs-empty">Document could not be opened: ${esc(e.message || e)}<br>Use Download if available.</div>`;
+        }
+    }
+
+    async function downloadCurrentResearch() {
+        const s = researchState.current;
+        if (!s) return;
+        try {
+            const url = await researchSignedUrl(s);
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            a.click();
+        } catch (e) {
+            notify('Could not download the research document: ' + (e.message || e), 'error');
+        }
+    }
+
+    async function saveResearchReview() {
+        const s = researchState.current;
+        const db = client();
+        if (!s || !db) return;
+        await resolveUser();
+        if (!state.userId) return notify('Lecturer user ID could not be resolved.', 'error');
+
+        const status = $('rsReviewStatus').value;
+        const feedback = $('rsFeedback').value.trim() || null;
+        const payload = {
+            status,
+            feedback,
+            reviewed_by: state.userId,
+            reviewed_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+        };
+        const { error } = await db.from('research_submissions').update(payload).eq('id', s.id);
+        if (error) {
+            console.error('Research review update:', error);
+            return notify('Could not save Research review: ' + error.message, 'error');
+        }
+        Object.assign(s, payload);
+        notify('Research review saved successfully.', 'success');
+        closeResearchModal();
+        await loadResearch();
+    }
+
+    function closeResearchModal() {
+        const m = $('rsReviewModal');
+        if (m) {
+            m.style.display = 'none';
+            m.setAttribute('aria-hidden', 'true');
+        }
+        researchState.current = null;
+    }
+
+    async function initResearch() {
+        if (researchState.initialized) return;
+        researchState.initialized = true;
+        researchEnsureUI();
+        await loadResearch();
+    }
+
+    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal};
 })();
 console.log('✅ Lecturer Online Learning module loaded');
