@@ -87,6 +87,11 @@ const AppState = {
     attemptId: null,
     attemptNumber: 0,
     examAutoSubmitted: false,
+
+    // ✅ NEW: built once after questions load, used by saveAnswerToDatabase()
+    // to score each answer as soon as the student picks it.
+    correctAnswerMap: {},       // { question_id: 'A' | 'B' | 'C' | 'D' | ... }
+    questionMarksMap: {},       // { question_id: 1 | 2 | 3 | ... }
 };
 
 // ============================================================
@@ -1095,13 +1100,13 @@ function startResumeAwareTimer() {
 // EXAM INITIALIZATION
 // ============================================================
 async function initExam() {
-    console.log('ðŸ“ Initializing exam...');
+    console.log('📝 Initializing exam...');
 
     try {
         const recovered = recoverExamSession();
         AppState.sessionRecovered = recovered === true;
         if (recovered) {
-            showToast(`ðŸ“‚ Session restored for Attempt ${AppState.attemptNumber || 1}. Continuing where you left off.`, 'success');
+            showToast(`📂 Session restored for Attempt ${AppState.attemptNumber || 1}. Continuing where you left off.`, 'success');
         }
 
         await getOrCreateCurrentAttempt();
@@ -1126,7 +1131,17 @@ async function initExam() {
 
         if (qResult.data && qResult.data.length > 0) {
             AppState.questions = qResult.data;
-            
+
+            // ✅ Populate lookup maps BEFORE shuffling, so scoring always works
+            //    regardless of question order. saveAnswerToDatabase() reads
+            //    these to write real marks as soon as the student answers.
+            AppState.correctAnswerMap = {};
+            AppState.questionMarksMap = {};
+            AppState.questions.forEach(q => {
+                AppState.correctAnswerMap[q.id] = q.correct_answer;
+                AppState.questionMarksMap[q.id] = Number(q.marks) || 1;
+            });
+
             const studentSeed = AppState.studentId + '_' + AppState.examId;
             AppState.questions = shuffleArrayWithSeed([...AppState.questions], studentSeed);
             
@@ -1154,7 +1169,7 @@ async function initExam() {
                 }
 
                 if (Object.keys(AppState.answers).length > 0) {
-                    showToast(`ðŸ“š Continuing from question ${AppState.currentIndex + 1}`, 'info');
+                    showToast(`📚 Continuing from question ${AppState.currentIndex + 1}`, 'info');
                 }
             }
 
@@ -1176,7 +1191,11 @@ async function initExam() {
             AppState.isExamActive = true;
             AppState.examStarted = true;
 
-            console.log(`ðŸ“ Active Attempt: #${AppState.attemptNumber} (${AppState.attemptId})`);
+            console.log(`📝 Active Attempt: #${AppState.attemptNumber} (${AppState.attemptId})`);
+            console.log(`📝 Scoring maps ready:`, {
+                correctAnswers: Object.keys(AppState.correctAnswerMap).length,
+                marks: Object.keys(AppState.questionMarksMap).length
+            });
 
             const answerCount = Object.keys(AppState.answers).length;
             if (DOM.submitBtn && (answerCount > 0 || AppState.hasAnsweredAtLeastOne)) {
@@ -1191,23 +1210,23 @@ async function initExam() {
             sessionStorage.setItem('studentId', AppState.studentId);
 
             if (AppState.isRetake) {
-                showToast(`ðŸ”„ Continuation resumed. Saved answers restored and the full exam timer restarted.`, 'success');
+                showToast(`🔄 Continuation resumed. Saved answers restored and the full exam timer restarted.`, 'success');
             } else {
-                showToast('ðŸ“ Exam started! Good luck!', 'success');
+                showToast('📝 Exam started! Good luck!', 'success');
             }
             
             await logProctoringEvent('exam_started', 'Exam started with proctoring', 'info');
 
         } else {
             if (DOM.examContainer) {
-                DOM.examContainer.innerHTML = '<div class="error-message">âŒ No questions found for this exam.</div>';
+                DOM.examContainer.innerHTML = '<div class="error-message">❌ No questions found for this exam.</div>';
             }
         }
 
     } catch (error) {
         console.error('Error initializing exam:', error);
         if (DOM.examContainer) {
-            DOM.examContainer.innerHTML = '<div class="error-message">âŒ Error loading exam: ' + error.message + '</div>';
+            DOM.examContainer.innerHTML = '<div class="error-message">❌ Error loading exam: ' + error.message + '</div>';
         }
     }
 }
@@ -1595,19 +1614,33 @@ async function saveAnswerToDatabase(questionId, answer) {
             throw new Error('No active exam attempt');
         }
 
+        // ✅ Look up the correct answer and mark value for this question.
+        // These maps are built once in initExam() right after questions load.
+        const correctAnswer = AppState.correctAnswerMap?.[questionId] ?? null;
+        const questionMark  = AppState.questionMarksMap?.[questionId] ?? 1;
+
+        const isCorrect = answer != null
+                       && correctAnswer != null
+                       && String(answer) === String(correctAnswer);
+
+        const earned = isCorrect ? questionMark : 0;
+
         await upsertAttemptGrade({
             question_id: questionId,
             selected_answer: answer,
-            marks: 0,
+            marks: earned,                // ✅ real mark, not 0
             graded_at: new Date().toISOString(),
             updated_at: new Date().toISOString()
         });
     } catch (e) {
-        console.warn('âš ï¸ Save failed, saving locally:', e);
-        saveToLocalStorage(`draft_${questionId}`, { answer, timestamp: Date.now(), attemptId: AppState.attemptId });
+        console.warn('⚠️ Save failed, saving locally:', e);
+        saveToLocalStorage(`draft_${questionId}`, {
+            answer,
+            timestamp: Date.now(),
+            attemptId: AppState.attemptId
+        });
     }
 }
-
 async function loadSavedAnswers() {
     try {
         if (!AppState.attemptId) return;
@@ -2501,19 +2534,37 @@ function yieldToBrowser() {
 // ============================================================
 // SAVE ALL ANSWERS
 // ============================================================
+// ============================================================
+// SAVE ALL ANSWERS
+// ============================================================
 async function saveAllAnswersToDatabase() {
     if (!AppState.attemptId) throw new Error('No active exam attempt');
 
     const answerEntries = Object.entries(AppState.answers);
     const total = answerEntries.length;
     const now = new Date().toISOString();
-    const rows = answerEntries.map(([questionId, answer]) => ({
-        question_id: questionId,
-        selected_answer: answer,
-        marks: 0,
-        graded_at: now,
-        updated_at: now
-    }));
+
+    // ✅ Score each answer here too. This replaces the previous `marks: 0`
+    //    which erased what saveAnswerToDatabase() had already written.
+    //    If the student crashes mid-submit, the DB keeps real marks.
+    const rows = answerEntries.map(([questionId, answer]) => {
+        const correctAnswer = AppState.correctAnswerMap?.[questionId] ?? null;
+        const questionMark  = AppState.questionMarksMap?.[questionId] ?? 1;
+
+        const isCorrect = answer != null
+                       && correctAnswer != null
+                       && String(answer) === String(correctAnswer);
+
+        const earned = isCorrect ? questionMark : 0;
+
+        return {
+            question_id: questionId,
+            selected_answer: answer,
+            marks: earned,                 // ✅ real mark, not 0
+            graded_at: now,
+            updated_at: now
+        };
+    });
 
     if (total > 0) {
         await bulkUpsertAttemptGrades(rows, 20, 45);
@@ -2525,10 +2576,9 @@ async function saveAllAnswersToDatabase() {
         AppState.pendingSubmissionDraftKeys = [];
     }
 
-    console.log('âœ… Saved ' + total + '/' + total + ` answers for Attempt ${AppState.attemptNumber} using bulk upsert`);
+    console.log('✅ Saved ' + total + '/' + total + ` answers for Attempt ${AppState.attemptNumber} using bulk upsert (with marks)`);
     return total;
 }
-
 async function calculateAndSaveGrade() {
     try {
         if (!AppState.attemptId) throw new Error('No active exam attempt');
