@@ -60,9 +60,10 @@ function renderSubmissions(){
   if(!arr.length){setContent('<div class="ol-empty"><i class="fas fa-cloud-arrow-up"></i><strong>No submissions yet</strong><br>Your submitted assignments will appear here.</div>');return}
   setContent(arr.map(function(s){
     var a=state.assignments.find(function(x){return String(x.id)===String(s.assignment_id)})||{};
-    var file=s.file_name?'<span><i class="fas fa-file"></i> '+esc(s.file_name)+'</span>':'<span>No document</span>';
-    var score=s.result_released&&s.marks_obtained!=null?esc(s.marks_obtained)+' / '+esc(s.max_marks||a.max_marks||'—'):'Not released';
-    return '<div class="ol-submission-row"><div><strong>'+esc(a.title||s.assignment_title||'Assignment')+'</strong>'+file+'</div><div><strong>Submitted</strong><span>'+esc(fmtDateTime(s.submitted_at))+'</span></div><div><strong>Status</strong><span>'+statusPill(s.result_released?'Released':(s.status||'Submitted'))+'</span></div><div><strong>Result</strong><span>'+score+'</span></div><div class="ol-actions">'+(s.result_released?'<button class="ol-btn ol-btn-secondary" data-ol-result="'+esc(s.id)+'" type="button">View Result</button>':'<span class="ol-pill">Under Review</span>')+'</div></div>';
+    var marks=s.score!=null?s.score:s.marks_obtained;
+    var max=s.total_marks!=null?s.total_marks:(s.max_marks!=null?s.max_marks:a.max_marks);
+    var score=s.result_released&&marks!=null?esc(marks)+' / '+esc(max!=null?max:'—'):'Not released';
+    return '<div class="ol-submission-row"><div><strong>'+esc(a.title||s.assignment_title||'Assignment')+'</strong>'+(s.file_name?'<span><i class="fas fa-file"></i> '+esc(s.file_name)+'</span>':'<span>No document</span>')+'</div><div><strong>Submitted</strong><span>'+esc(fmtDateTime(s.submitted_at))+'</span></div><div><strong>Status</strong><span>'+statusPill(s.result_released?'Released':(s.status||'Submitted'))+'</span></div><div><strong>Result</strong><span>'+score+'</span></div><div class="ol-actions">'+(s.result_released?'<button class="ol-btn ol-btn-secondary" data-ol-result="'+esc(s.id)+'" type="button">View Result</button>':'<span class="ol-pill">Under Review</span>')+'</div></div>';
   }).join(''));
 }
 function renderResults(){
@@ -70,8 +71,11 @@ function renderResults(){
   if(!arr.length){setContent('<div class="ol-empty"><i class="fas fa-chart-column"></i><strong>No released results</strong><br>Lecturer results will appear here after they are released.</div>');return}
   setContent(arr.map(function(r){
     var a=state.assignments.find(function(x){return String(x.id)===String(r.assignment_id)})||{};
-    var pct=r.max_marks?Math.round((Number(r.marks_obtained)/Number(r.max_marks))*100):0;
-    return '<div class="ol-result-card"><div class="ol-result-score">'+esc(r.marks_obtained)+'<small style="font-size:8px">/'+esc(r.max_marks)+'</small></div><div style="flex:1"><strong style="font-size:12px;color:#18304d">'+esc(a.title||r.assignment_title||'Assignment')+'</strong><span style="display:block;font-size:10px;color:#71859c;margin-top:4px">'+esc(a.unit_code||'')+' · '+pct+'% · Released '+esc(fmtDate(r.released_at))+'</span></div><button class="ol-btn ol-btn-secondary" data-ol-result="'+esc(r.id)+'" type="button">View</button></div>';
+    var marks=r.score!=null?r.score:r.marks_obtained;
+    var max=r.total_marks!=null?r.total_marks:(r.max_marks!=null?r.max_marks:a.max_marks);
+    var pct=r.percentage!=null?Number(r.percentage):(max!=null&&marks!=null&&Number(max)>0?(Number(marks)/Number(max))*100:null);
+    var pctText=pct!=null?Number(pct).toFixed(2)+'%':'—';
+    return '<div class="ol-result-card"><div class="ol-result-score">'+esc(marks!=null?marks:'—')+'<small style="font-size:8px">/'+esc(max!=null?max:'—')+'</small></div><div style="flex:1"><strong style="font-size:12px;color:#18304d">'+esc(a.title||r.assignment_title||'Assignment')+'</strong><span style="display:block;font-size:10px;color:#71859c;margin-top:4px">'+esc(a.unit_code||'')+' · '+esc(pctText)+' · Released '+esc(fmtDate(r.released_at))+'</span></div><button class="ol-btn ol-btn-secondary" data-ol-result="'+esc(r.id)+'" type="button">View</button></div>';
   }).join(''));
 }
 function render(){
@@ -82,7 +86,7 @@ function render(){
 }
 function updateStats(){
   var as=state.assignments, sub=state.submissions;
-  var avg=state.results.filter(function(r){return r.result_released&&r.max_marks}).map(function(r){return Number(r.marks_obtained)/Number(r.max_marks)*100});
+  var avg=state.results.filter(function(r){return r.result_released&&(r.total_marks!=null||r.max_marks!=null)&&(r.score!=null||r.marks_obtained!=null)}).map(function(r){var m=r.score!=null?r.score:r.marks_obtained;var x=r.total_marks!=null?r.total_marks:r.max_marks;return Number(x)>0?Number(m)/Number(x)*100:null}).filter(function(v){return v!=null});
   var due=as.filter(function(a){var n=daysTo(a.due_at);return !getSubmission(a.id)&&n!==null&&n>=0&&n<=7}).length;
   var set=function(id,v){var e=document.getElementById(id);if(e)e.textContent=v};
   set('ol-stat-assigned',as.length);set('ol-stat-due',due);set('ol-stat-submitted',sub.length);set('ol-stat-average',avg.length?(Math.round(avg.reduce(function(x,y){return x+y},0)/avg.length)+'%'):'—');
@@ -118,10 +122,14 @@ async function loadData(){
     // The student UI uses marks_obtained/max_marks. Normalize both shapes so
     // released marks can never render as an em dash when the RPC has the score.
     state.submissions=(Array.isArray(feed.submissions)?feed.submissions:[]).map(function(s){
-      var max=s.max_marks!=null?s.max_marks:(s.total_marks!=null?s.total_marks:null);
-      var marks=s.marks_obtained!=null?s.marks_obtained:(s.score!=null?s.score:null);
+      // The secure RPC returns: score, total_marks, percentage.
+      // Older UI code used: marks_obtained, max_marks. Normalize BOTH.
+      var marks=s.score!=null?s.score:(s.marks_obtained!=null?s.marks_obtained:null);
+      var max=s.total_marks!=null?s.total_marks:(s.max_marks!=null?s.max_marks:null);
       var pct=s.percentage!=null?s.percentage:(max!=null&&marks!=null&&Number(max)>0?(Number(marks)/Number(max))*100:null);
       return Object.assign({},s,{
+        score:marks,
+        total_marks:max,
         marks_obtained:marks,
         max_marks:max,
         percentage:pct
@@ -134,6 +142,8 @@ async function loadData(){
       assignments:state.assignments.length,
       submissions:state.submissions.length
     });
+
+    console.log('NCHSM released result mapping:', state.results.map(function(r){return {id:r.id, score:r.score, total_marks:r.total_marks, percentage:r.percentage, result_released:r.result_released};}));
 
     render();
   }catch(e){
@@ -224,16 +234,25 @@ async function viewResult(id){
   var s=state.submissions.find(function(x){return String(x.id)===String(id)})||state.results.find(function(x){return String(x.id)===String(id)});
   if(!s)return;
   var a=state.assignments.find(function(x){return String(x.id)===String(s.assignment_id)})||{};
-  // Normalize again here because a result may be opened from another
-  // component/state path that supplied the RPC's score/total_marks names.
-  var marks=s.marks_obtained!=null?s.marks_obtained:(s.score!=null?s.score:null);
-  var maxMarks=s.max_marks!=null?s.max_marks:(s.total_marks!=null?s.total_marks:(a.max_marks!=null?a.max_marks:null));
-  var pct=maxMarks!=null&&marks!=null&&Number(maxMarks)>0?Math.round(Number(marks)/Number(maxMarks)*100):null;
+
+  // IMPORTANT: get_student_online_learning() returns score/total_marks.
+  // Support the legacy names too, so the modal always receives the actual grade.
+  var marks=s.score!=null?s.score:(s.marks_obtained!=null?s.marks_obtained:null);
+  var maxMarks=s.total_marks!=null?s.total_marks:(s.max_marks!=null?s.max_marks:(a.max_marks!=null?a.max_marks:null));
+  var pct=s.percentage!=null?Number(s.percentage):(maxMarks!=null&&marks!=null&&Number(maxMarks)>0?(Number(marks)/Number(maxMarks))*100:null);
+
   var body=document.getElementById('ol-result-body');
-  body.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087bf0">'+esc(marks??'—')+'</strong><small style="display:block;color:#71859c">Marks</small></div><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087a4d">'+(pct!=null?pct+'%':'—')+'</strong><small style="display:block;color:#71859c">Percentage</small></div><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:13px;color:#18304d">'+esc(fmtDate(s.released_at))+'</strong><small style="display:block;color:#71859c">Released</small></div></div>'+
-  '<div class="ol-notice"><strong>'+esc(a.title||s.assignment_title||'Assignment')+'</strong><br>'+esc(a.unit_code||'')+'</div>'+
-  '<div style="padding:12px;border:1px solid #e1eaf2;border-radius:10px"><strong style="font-size:11px;color:#18304d">Lecturer Feedback</strong><p style="font-size:11px;line-height:1.55;color:#607994;white-space:pre-wrap">'+esc(s.feedback||'No feedback was added.')+'</p></div>';
-  var m=document.getElementById('ol-result-modal');m.classList.add('open');m.setAttribute('aria-hidden','false');
+  if(!body)return;
+  body.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px">'+
+    '<div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087bf0">'+esc(marks!=null?marks:'—')+'</strong><small style="display:block;color:#71859c">Marks</small></div>'+
+    '<div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087a4d">'+(pct!=null?Number(pct).toFixed(2)+'%':'—')+'</strong><small style="display:block;color:#71859c">Percentage</small></div>'+
+    '<div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:13px;color:#18304d">'+esc(fmtDate(s.released_at))+'</strong><small style="display:block;color:#71859c">Released</small></div>'+
+    '</div>'+
+    '<div class="ol-notice"><strong>'+esc(a.title||s.assignment_title||'Assignment')+'</strong><br>'+esc(a.unit_code||'')+'<br><span style="font-size:10px;color:#71859c">Score: '+esc(marks!=null?marks:'—')+' / '+esc(maxMarks!=null?maxMarks:'—')+'</span></div>'+
+    '<div style="padding:12px;border:1px solid #e1eaf2;border-radius:10px"><strong style="font-size:11px;color:#18304d">Lecturer Feedback</strong><p style="font-size:11px;line-height:1.55;color:#607994;white-space:pre-wrap">'+esc(s.feedback||'No feedback was added.')+'</p></div>';
+
+  var m=document.getElementById('ol-result-modal');
+  if(m){m.classList.add('open');m.setAttribute('aria-hidden','false');}
 }
 function close(which){var m=document.getElementById(which==='result'?'ol-result-modal':'ol-assignment-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}}
 function bind(){
