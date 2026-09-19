@@ -1563,7 +1563,73 @@ async function saveInlineResearchCorrection(){
   var html=editor.innerHTML.trim();if(!html)return alert('There is no corrected document content to submit.');
   var next=nextResearchVersion(base),filename=(String(base.title||'Research').replace(/[^a-zA-Z0-9 _-]/g,'').trim()||'Research')+'_Student_Correction_V'+next+'.html',path=id+'/corrections/'+Date.now()+'_'+filename;
   var now=new Date().toISOString();
-  var wrapper='<!doctype html><html><head><meta charset="utf-8"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style></head><body>'+html+'</body></html>';
+  var wrapper='<!doctype html><html><head><meta charset="utf-8"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}
+          /* NCHSM mobile Research modal close-button safety */
+          .ol-rs-modal [data-research-close],
+          .ol-research-modal [data-research-close],
+          #ol-research-modal [data-research-close]{
+            display:inline-flex!important;
+            visibility:visible!important;
+            opacity:1!important;
+            position:relative!important;
+            z-index:999!important;
+            min-width:72px;
+            min-height:40px;
+            align-items:center;
+            justify-content:center;
+            white-space:nowrap;
+            flex-shrink:0;
+          }
+          @media(max-width:700px){
+            .ol-rs-modal,.ol-research-modal{
+              align-items:flex-start!important;
+              justify-content:center!important;
+              padding:0!important;
+              overflow:hidden!important;
+            }
+            .ol-rs-modal .ol-rs-dialog,.ol-research-modal .ol-rs-dialog{
+              width:100%!important;
+              max-width:none!important;
+              height:100dvh!important;
+              max-height:100dvh!important;
+              border-radius:0!important;
+              margin:0!important;
+            }
+            .ol-rs-modal .ol-rs-head,.ol-research-modal .ol-rs-head{
+              position:sticky!important;
+              top:0!important;
+              z-index:100!important;
+              display:flex!important;
+              align-items:center!important;
+              justify-content:space-between!important;
+              min-height:56px!important;
+              padding:8px 10px!important;
+              background:#fff!important;
+            }
+            .ol-rs-modal .ol-rs-head>div:first-child,.ol-research-modal .ol-rs-head>div:first-child{
+              min-width:0;
+              overflow:hidden;
+            }
+            .ol-rs-modal .ol-rs-head [data-research-close],
+            .ol-research-modal .ol-rs-head [data-research-close]{
+              display:inline-flex!important;
+              visibility:visible!important;
+              position:sticky!important;
+              right:0;
+              z-index:101!important;
+              min-width:76px!important;
+              min-height:42px!important;
+              padding:8px 12px!important;
+              font-size:14px!important;
+              font-weight:800!important;
+              background:#fff!important;
+              border:1px solid #cbd5e1!important;
+              border-radius:10px!important;
+              color:#334155!important;
+            }
+          }
+
+</style></head><body>'+html+'</body></html>';
   var upload=await db.storage.from('research-papers').upload(path,new Blob([wrapper],{type:'text/html'}),{contentType:'text/html',upsert:false});if(upload.error)return alert('Could not upload the corrected document: '+upload.error.message);
   var payload={student_id:id,research_group_id:base.research_group_id||null,version_number:next,title:base.title,submission_type:'correction',supervisor_name:base.supervisor_name||null,abstract:base.abstract||null,status:'submitted',document_name:filename,document_path:path,feedback:null,reviewed_by:null,reviewed_at:null,submitted_at:now,created_at:now,updated_at:now};
   var ins=await db.from('research_submissions').insert(payload).select().single();
