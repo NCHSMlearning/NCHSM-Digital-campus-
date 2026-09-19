@@ -208,6 +208,26 @@ function renderResearch(){
   document.getElementById('ol-research-refresh')?.addEventListener('click',loadResearch);
   document.querySelectorAll('[data-ol-research-view]').forEach(function(b){b.addEventListener('click',function(){viewResearch(this.dataset.olResearchView)})});
 }
+async function viewResearch(id){
+  var r=state.research.find(function(x){return String(x.id)===String(id)}); if(!r)return;
+  state.researchCurrent=r;
+  var body=document.getElementById('ol-research-body'),title=document.getElementById('ol-research-title');
+  if(!body)return;
+  title.textContent=r.title||'Research Paper';
+  body.innerHTML='<div class="ol-loading"><i class="fas fa-spinner fa-spin"></i>Opening document…</div>';
+  document.getElementById('ol-research-modal').classList.add('open');
+  var html='<div class="ol-notice">'+researchStatus(r.status)+'<br><b>Version:</b> '+esc(r.version_number||1)+' · <b>Type:</b> '+esc(r.submission_type||'—')+'</div>';
+  if(r.feedback)html+='<div style="padding:11px;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:10px"><b>Lecturer Feedback</b><div style="white-space:pre-wrap;color:#526b86;margin-top:6px">'+esc(r.feedback)+'</div></div>';
+  if(r.abstract)html+='<div style="padding:11px;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:10px"><b>Abstract / Notes</b><div style="white-space:pre-wrap;color:#526b86;margin-top:6px">'+esc(r.abstract)+'</div></div>';
+  if(r.document_path){
+    var u=await sbSignedResearchUrl(r.document_path);
+    if(researchCanCorrect(r)){
+      html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="ol-btn ol-btn-primary" type="button" id="ol-start-research-correction"><i class="fas fa-pen-to-square"></i> View & Correct DOCX</button></div>';
+    }
+    html+='<div><b>Document</b><iframe src="'+esc(u)+'" style="width:100%;height:520px;border:1px solid #dbe6ef;border-radius:9px;margin-top:7px"></iframe><div style="margin-top:7px"><a href="'+esc(u)+'" target="_blank" rel="noopener" class="ol-btn ol-btn-secondary" style="display:inline-block;text-decoration:none">Open / Download</a></div></div>';
+  }else html+='<div class="ol-empty">No document attached.</div>';
+  body.innerHTML=html;
+}
 
 /* ============================================================
    RESEARCH CORRECTION WORKFLOW — DOCX ONLY
@@ -478,24 +498,6 @@ function researchIsDocx(r){
   return /\.docx?($|[?#])/.test(n) || /\.docx?($|[?#])/.test(p);
 }
 
-/* NCHSM FINAL MOBILE RESEARCH DOCUMENT STYLES */
-function researchMobileDocumentStyles(){
-  if(document.getElementById('nchsm-final-research-mobile-css'))return;
-  var s=document.createElement('style');
-  s.id='nchsm-final-research-mobile-css';
-  s.textContent=`
-    .ol-rs-view-page{background:#fff;max-width:850px;margin:0 auto;padding:30px 38px;box-sizing:border-box;line-height:1.7;color:#202b38;overflow-wrap:anywhere}
-    .ol-rs-view-page img{max-width:100%;height:auto}
-    .ol-rs-editor{background:#fff;max-width:850px;margin:0 auto;padding:30px 38px;box-sizing:border-box;line-height:1.7;color:#202b38;min-height:520px;outline:0;overflow-wrap:anywhere}
-    @media(max-width:700px){
-      .ol-rs-view-page,.ol-rs-editor{padding:20px 16px;font-size:14px;max-width:none;width:100%;box-shadow:none}
-      .ol-rs-view-page table,.ol-rs-editor table{display:block;max-width:100%;overflow-x:auto}
-      .ol-rs-view-page pre,.ol-rs-editor pre{white-space:pre-wrap;overflow-wrap:anywhere}
-    }
-  `;
-  document.head.appendChild(s);
-}
-
 function ensureResearchStyles(){
   if(document.getElementById('ol-research-styles')) return;
   var st=document.createElement('style'); st.id='ol-research-styles';
@@ -575,7 +577,6 @@ function ensureResearchStyles(){
 
 function researchEnsureUI(){
   ensureResearchStyles();
-  researchMobileDocumentStyles();
   var panel=document.querySelector('#hub-online-learning .ol-panel');
   if(!panel)return;
   var tabs=panel.querySelector('.ol-tabs');
@@ -638,6 +639,79 @@ async function ensureMammoth(){
   });
 }
 
+/* Load the browser DOCX generator only when a DOCX correction is submitted. */
+async function ensureDocxGenerator(){
+  if(window.docx&&window.docx.Document&&window.docx.Packer)return window.docx;
+  return await new Promise(function(resolve,reject){
+    var existing=document.querySelector('script[data-ol-docx-generator]');
+    if(existing){existing.addEventListener('load',function(){if(window.docx)resolve(window.docx);else reject(new Error('DOCX generator did not load.'))});existing.addEventListener('error',function(){reject(new Error('Could not load the DOCX generator.'))});return}
+    var s=document.createElement('script');
+    s.src='https://cdn.jsdelivr.net/npm/docx@9.5.1/build/index.umd.js';
+    s.dataset.olDocxGenerator='1';
+    s.onload=function(){if(window.docx&&window.docx.Document&&window.docx.Packer)resolve(window.docx);else reject(new Error('DOCX generator did not load correctly.'))};
+    s.onerror=function(){reject(new Error('Could not load the DOCX generator.'))};
+    document.head.appendChild(s);
+  });
+}
+
+function researchDocxTextRuns(node,docx){
+  var out=[];
+  function walk(n,marks){
+    if(n.nodeType===3){
+      var text=n.nodeValue||'';if(text)out.push(new docx.TextRun(Object.assign({text:text},marks)));return;
+    }
+    if(n.nodeType!==1)return;
+    var tag=n.tagName.toLowerCase(),m=Object.assign({},marks);
+    if(tag==='strong'||tag==='b')m.bold=true;
+    if(tag==='em'||tag==='i')m.italics=true;
+    if(tag==='u')m.underline={};
+    if(tag==='s'||tag==='strike'||tag==='del')m.strike=true;
+    Array.prototype.forEach.call(n.childNodes,function(c){walk(c,m)});
+  }
+  walk(node,{});return out.length?out:[new docx.TextRun({text:''})];
+}
+
+async function researchHtmlToDocxBlob(html,title){
+  var docx=await ensureDocxGenerator();
+  var parser=new DOMParser(),parsed=parser.parseFromString('<!doctype html><html><body>'+html+'</body></html>','text/html'),body=parsed.body;
+  var children=[];
+  function addNode(node){
+    if(node.nodeType===3){if((node.nodeValue||'').trim())children.push(new docx.Paragraph({children:[new docx.TextRun({text:node.nodeValue})]}));return;}
+    if(node.nodeType!==1)return;
+    var tag=node.tagName.toLowerCase();
+    if(/^h[1-6]$/.test(tag)){
+      var level=Number(tag.substring(1));
+      children.push(new docx.Paragraph({heading:docx.HeadingLevel['HEADING_'+level],children:researchDocxTextRuns(node,docx)}));return;
+    }
+    if(tag==='ul'||tag==='ol'){
+      Array.prototype.forEach.call(node.children,function(li,index){
+        var runs=researchDocxTextRuns(li,docx);
+        if(tag==='ul')runs.unshift(new docx.TextRun({text:'• '}));
+        else runs.unshift(new docx.TextRun({text:(index+1)+'. '}));
+        children.push(new docx.Paragraph({children:runs}));
+      });return;
+    }
+    if(tag==='br'){children.push(new docx.Paragraph({children:[new docx.TextRun({text:''})]}));return;}
+    if(['p','div','section','article','blockquote'].includes(tag)){
+      var runs=researchDocxTextRuns(node,docx);
+      var alignment=tag==='blockquote'?docx.AlignmentType.LEFT:undefined;
+      children.push(new docx.Paragraph({children:runs,alignment:alignment}));return;
+    }
+    var runs=researchDocxTextRuns(node,docx);
+    if(runs.length)children.push(new docx.Paragraph({children:runs}));
+  }
+  Array.prototype.forEach.call(body.children,addNode);
+  if(!children.length)children=[new docx.Paragraph({children:[new docx.TextRun({text:title||'Research Paper'})]})];
+  var documentObj=new docx.Document({sections:[{properties:{},children:children}]});
+  return await docx.Packer.toBlob(documentObj);
+}
+
+function researchCorrectionFileName(base,next,ext){
+  var original=String(base&&base.document_name||'Research Paper').split(/[\/]/).pop();
+  var stem=original.replace(/\.(docx?|html?)$/i,'').trim()||String(base&&base.title||'Research Paper').replace(/[^a-zA-Z0-9 _-]/g,'').trim()||'Research Paper';
+  return stem+'_Correction_V'+next+'.'+ext;
+}
+
 async function signedResearchUrl(r){
   var db=researchClient();if(!db||!r?.document_path)throw new Error('Document path is missing.');
   var signed=await db.storage.from('research-papers').createSignedUrl(r.document_path,3600);if(signed.error)throw signed.error;return signed.data?.signedUrl||'';
@@ -651,37 +725,15 @@ function stripHtmlDocument(raw){
 async function loadResearchInlineDocument(r,editor){
   if(!r?.document_path||!editor)throw new Error('Research document is not available.');
   var url=await signedResearchUrl(r);
-
   if(researchIsHtml(r)){
-    var response=await fetch(url,{cache:'no-store'});
-    if(!response.ok)throw new Error('Could not read the corrected document.');
-    var raw=await response.text();
-
-    // ALWAYS extract the body of a complete HTML correction before assigning it
-    // to innerHTML. This prevents <!doctype>, <head>, <style> and source markup
-    // from appearing as visible text.
-    var body=researchExtractBody(raw);
-
-    // If the uploaded file was escaped one or more times, decode/extract again.
-    for(var pass=0;pass<3 && researchHtmlIsSource(body);pass++){
-      var decoded=researchDecodeHtml(body);
-      if(decoded===body)break;
-      body=researchExtractBody(decoded);
-    }
-
-    editor.innerHTML=body||'<p>No readable content was found in this document.</p>';
-    return 'html';
+    var response=await fetch(url);if(!response.ok)throw new Error('Could not read the corrected document.');
+    editor.innerHTML=stripHtmlDocument(await response.text());return 'html';
   }
-
   if(researchIsDocx(r)){
-    var resp=await fetch(url,{cache:'no-store'});
-    if(!resp.ok)throw new Error('Could not read the Word document.');
-    var mammoth=await ensureMammoth(),ab=await resp.arrayBuffer();
-    var converted=await mammoth.convertToHtml({arrayBuffer:ab});
-    editor.innerHTML=converted.value||'<p>No editable text was found in this document.</p>';
-    return 'docx';
+    var resp=await fetch(url);if(!resp.ok)throw new Error('Could not read the Word document.');
+    var mammoth=await ensureMammoth(),ab=await resp.arrayBuffer(),converted=await mammoth.convertToHtml({arrayBuffer:ab});
+    editor.innerHTML=converted.value||'<p>No editable text was found in this document.</p>';return 'docx';
   }
-
   throw new Error('This document type cannot be edited inline. PDF files remain view-only; submit a revised PDF when needed.');
 }
 
@@ -728,76 +780,6 @@ async function openResearchViewer(id,editMode){
   openResearchModal();await renderResearchVersionHistory(r);await loadResearchDocumentForViewer(r,!!editMode);
 }
 
-
-function researchDecodeHtml(value){
-  var s=String(value==null?'':value);
-  var ta=document.createElement('textarea');
-  ta.innerHTML=s;
-  return ta.value;
-}
-
-function researchExtractBody(raw){
-  var s=String(raw==null?'':raw).replace(/^\uFEFF/,'').trim();
-
-  // Decode up to 3 layers of escaped HTML.
-  for(var i=0;i<3;i++){
-    var d=researchDecodeHtml(s).trim();
-    if(d===s)break;
-    if(/^<!doctype\s+html/i.test(d) || /^<html[\s>]/i.test(d) ||
-       /<body[\s>][\s\S]*<\/body>/i.test(d)){
-      s=d;
-    }else break;
-  }
-
-  // If the document is still source text, extract its actual body.
-  var m=s.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  if(m)return m[1];
-
-  // Handle escaped body tags after one more decode.
-  var d2=researchDecodeHtml(s);
-  var m2=d2.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  if(m2)return m2[1];
-
-  // A complete HTML document without body should still not expose its
-  // doctype/head/style/title as visible text.
-  if(/^<!doctype\s+html/i.test(s) || /^<html[\s>]/i.test(s)){
-    return s
-      .replace(/<!doctype[^>]*>/ig,'')
-      .replace(/<head[\s\S]*?<\/head>/ig,'')
-      .replace(/<\/?html[^>]*>/ig,'')
-      .trim();
-  }
-
-  return s;
-}
-
-function researchHtmlIsSource(value){
-  var s=String(value||'').trim(), d=researchDecodeHtml(s).trim();
-  return /^<!doctype\s+html/i.test(s)||/^<html[\s>]/i.test(s)||
-         /<body[\s>][\s\S]*<\/body>/i.test(s)||
-         /^<!doctype\s+html/i.test(d)||/^<html[\s>]/i.test(d)||
-         /<body[\s>][\s\S]*<\/body>/i.test(d);
-}
-
-async function researchRenderHtmlInto(host,url,editable){
-  var response=await fetch(url,{cache:'no-store'});
-  if(!response.ok)throw new Error('Could not read the research document.');
-  var raw=await response.text();
-  var body=researchExtractBody(raw);
-
-  // IMPORTANT: innerHTML is used deliberately here. The source is a document
-  // uploaded by the authenticated user/lecturer, and we strip the outer HTML
-  // document wrapper before inserting it. Never use textContent for document HTML.
-  host.innerHTML=body||'<p>No readable content was found in this document.</p>';
-
-  // If an incorrectly escaped file survived extraction, decode and render it.
-  if(researchHtmlIsSource(host.innerHTML)){
-    host.innerHTML=researchExtractBody(host.innerHTML);
-  }
-
-  return body;
-}
-
 async function loadResearchDocumentForViewer(r,editMode){
   var host=document.getElementById('ol-rs-doc-content');if(!host)return;
   if(String(r.document_name||'').toLowerCase().match(/\.pdf$/)){try{var url=await signedResearchUrl(r);host.innerHTML='<iframe class="ol-rs-pdf" src="'+researchEscape(url)+'" title="Research document"></iframe>'}catch(e){host.innerHTML='<div class="ol-research-empty">Could not open the PDF: '+researchEscape(e.message||e)+'</div>'}return}
@@ -820,26 +802,44 @@ async function loadResearchDocumentForViewer(r,editMode){
 }
 
 async function saveInlineResearchCorrection(){
-  var base=state.researchCurrent,editor=document.getElementById('ol-rs-inline-editor'),db=researchClient(),id=researchUserId();if(!base||!editor||!db||!id)return;
+  var base=state.researchCurrent,editor=document.getElementById('ol-rs-inline-editor'),db=researchClient(),id=researchUserId();
+  if(!base||!editor||!db||!id)return;
   if(String(base.status||'').toLowerCase()!=='revision_required')return alert('This research is not currently awaiting revision.');
   var html=editor.innerHTML.trim();if(!html)return alert('There is no corrected document content to submit.');
-  var next=nextResearchVersion(base),filename=(String(base.title||'Research').replace(/[^a-zA-Z0-9 _-]/g,'').trim()||'Research')+'_Student_Correction_V'+next+'.html',path=id+'/corrections/'+Date.now()+'_'+filename;
-  var now=new Date().toISOString();
-  var wrapper='<!doctype html><html><head><meta charset="utf-8"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style></head><body>'+html+'</body></html>';
-  var upload=await db.storage.from('research-papers').upload(path,new Blob([wrapper],{type:'text/html'}),{contentType:'text/html',upsert:false});if(upload.error)return alert('Could not upload the corrected document: '+upload.error.message);
-  var payload={student_id:id,research_group_id:base.research_group_id||null,version_number:next,title:base.title,submission_type:'correction',supervisor_name:base.supervisor_name||null,abstract:base.abstract||null,status:'submitted',document_name:filename,document_path:path,feedback:null,reviewed_by:null,reviewed_at:null,submitted_at:now,created_at:now,updated_at:now};
-  var ins=await db.from('research_submissions').insert(payload).select().single();
-  if(ins.error){try{await db.storage.from('research-papers').remove([path])}catch{};return alert('Document uploaded, but the new submission could not be created: '+ins.error.message)}
-  alert('Correction submitted to the lecturer for review as Version '+next+'.');
-  await loadResearch();
-  state.researchCurrent=ins.data;
-  await openResearchViewer(ins.data.id,false);
+  var next=nextResearchVersion(base),now=new Date().toISOString();
+  var original=String(base.document_name||base.document_path||'').toLowerCase();
+  var isDocx=/\.docx?$/.test(original),isHtml=/\.html?$/.test(original);
+  if(!isDocx&&!isHtml)return alert('This document type cannot be submitted through the inline editor.');
+
+  var ext=isDocx?'docx':'html';
+  var filename=researchCorrectionFileName(base,next,ext);
+  var path=id+'/'+(base.research_group_id||base.id)+'/corrections/'+Date.now()+'_'+filename;
+  var fileBlob;
+  try{
+    if(isDocx){
+      /* The browser editor is HTML, but a DOCX submission must be a real DOCX. */
+      fileBlob=await researchHtmlToDocxBlob(html,base.title||'Research Paper');
+    }else{
+      var wrapper='<!doctype html><html><head><meta charset=\"utf-8\"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style></head><body>'+html+'</body></html>';
+      fileBlob=new Blob([wrapper],{type:'text/html'});
+    }
+    var upload=await db.storage.from('research-papers').upload(path,fileBlob,{contentType:isDocx?'application/vnd.openxmlformats-officedocument.wordprocessingml.document':'text/html',upsert:false});
+    if(upload.error)throw upload.error;
+    var payload={student_id:id,research_group_id:base.research_group_id||base.id,version_number:next,title:base.title,submission_type:'correction',supervisor_name:base.supervisor_name||null,abstract:base.abstract||null,status:'submitted',document_name:filename,document_path:upload.data.path,feedback:null,reviewed_by:null,reviewed_at:null,submitted_at:now,created_at:now,updated_at:now};
+    var ins=await db.from('research_submissions').insert(payload).select().single();
+    if(ins.error){try{await db.storage.from('research-papers').remove([path])}catch{};throw ins.error;}
+    alert('Correction submitted to the lecturer for review as Version '+next+'.');
+    await loadResearch();state.researchCurrent=ins.data;await openResearchViewer(ins.data.id,false);
+  }catch(e){
+    console.error('Research correction submission failed:',e);
+    alert('Correction could not be submitted: '+(e.message||e));
+  }
 }
+
 
 async function downloadCurrentResearch(){var r=state.researchCurrent;if(!r)return;try{var url=await signedResearchUrl(r);var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click()}catch(e){alert('Could not download the document: '+(e.message||e))}}
 
 async function viewResearch(id){await openResearchViewer(id,false)}
-
 
 function bindResearch(){
   researchEnsureUI();
