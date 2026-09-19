@@ -603,11 +603,12 @@ window.LecturerOnlineLearning = (() => {
         .rs-pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap;background:#e2e8f0;color:#334155}.rs-submitted{background:#e0f2fe;color:#0369a1}.rs-under_review{background:#fef3c7;color:#92400e}.rs-revision_required{background:#fee2e2;color:#991b1b}.rs-approved{background:#dcfce7;color:#166534}.rs-rejected{background:#e5e7eb;color:#374151}
         .rs-empty{padding:28px;text-align:center;color:#64748b}.rs-empty strong{display:block;color:#334155;margin-bottom:5px}
         .rs-modal{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:100100;display:none;align-items:center;justify-content:center;padding:12px}
-        .rs-dialog{width:min(1450px,100%);height:min(94vh,1050px);background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.3)}
+        .rs-dialog{width:min(1450px,100%);height:min(94vh,1050px);max-height:94vh;background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.3)}
         .rs-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e2e8f0;background:#fff}.rs-dialog-head h3{margin:0;font-size:17px}.rs-dialog-head .rs-meta{font-size:12px;color:#64748b;margin-top:3px}
-        .rs-workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0;flex:1}
+        .rs-workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0;flex:1;overflow:hidden}.rs-review-fullscreen .rs-dialog{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}.rs-review-fullscreen{padding:0!important}.rs-review-fullscreen .rs-document-shell{padding:28px;max-height:none}.rs-review-fullscreen .rs-document{max-width:950px}.rs-fullscreen-active{background:#dbeafe!important;border-color:#93c5fd!important;color:#1d4ed8!important}
         .rs-editor-pane{display:flex;flex-direction:column;min-width:0;background:#f1f5f9}.rs-editor-toolbar{display:flex;align-items:center;gap:5px;padding:8px;border-bottom:1px solid #dbe3ec;background:#fff;flex-wrap:wrap}.rs-tool{width:34px;height:32px;border:1px solid #dbe3ec;background:#fff;border-radius:7px;cursor:pointer;font-weight:700}.rs-tool:hover{background:#f1f5f9}.rs-tool.active{background:#dbeafe;border-color:#93c5fd}.rs-editor-state{margin-left:auto;font-size:11px;color:#64748b;padding:0 6px}
         .rs-document-shell{overflow:auto;flex:1;padding:28px}.rs-document{background:#fff;max-width:850px;min-height:1050px;margin:0 auto;padding:65px 72px;box-shadow:0 2px 15px rgba(15,23,42,.12);outline:none;box-sizing:border-box;line-height:1.65;color:#1e293b;font-family:Arial,sans-serif;font-size:15px}.rs-document[contenteditable="true"]{cursor:text}.rs-document:focus{box-shadow:0 0 0 2px #93c5fd,0 2px 15px rgba(15,23,42,.12)}
+.rs-comment-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.rs-comment-list{display:grid;gap:7px;margin-top:8px}.rs-comment{border:1px solid #dbe3ec;border-radius:8px;padding:8px;background:#f8fafc}.rs-comment-meta{font-size:9px;color:#64748b;margin-bottom:4px}.rs-comment-quote{margin:4px 0;padding:6px 8px;border-left:3px solid #2563eb;background:#eff6ff;font-size:9px;color:#334155}.rs-comment-text{font-size:10px;line-height:1.5;color:#334155;white-space:pre-wrap}.rs-comment-box{display:flex;gap:6px;margin-top:7px}.rs-comment-box textarea{flex:1;min-height:58px;border:1px solid #dbe3ec;border-radius:8px;padding:7px;font-size:10px}.rs-comment-highlight{background:#fff0a8;border-radius:2px;box-shadow:0 0 0 1px #f1d36b}.rs-comment-highlight.active{background:#ffd45c}
         .rs-side{border-left:1px solid #e2e8f0;background:#fff;padding:16px;overflow:auto}.rs-side h4{margin:0 0 12px}.rs-side label{display:block;font-size:11px;font-weight:800;color:#475569;margin:13px 0 6px}.rs-side textarea{min-height:150px;resize:vertical}.rs-side .rs-meta-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-size:12px;line-height:1.6;color:#475569}
         .rs-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.rs-actions .wide{grid-column:1/-1}
         .rs-history{margin-top:14px}.rs-history-item{padding:9px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;font-size:11px}.rs-history-item strong{display:block}.rs-history-item span{color:#64748b}
@@ -616,6 +617,17 @@ window.LecturerOnlineLearning = (() => {
         @media(max-width:650px){.rs-stats{grid-template-columns:repeat(2,1fr)}.rs-toolbar{grid-template-columns:1fr 1fr}.rs-document-shell{padding:10px}.rs-document{padding:35px 25px;min-height:800px}.rs-actions{grid-template-columns:1fr}}
         `;
         document.head.appendChild(st);
+    }
+
+    function toggleResearchFullscreen(){
+        const modal=$('rsReviewModal');
+        if(!modal)return;
+        const active=modal.classList.toggle('rs-review-fullscreen');
+        const btn=$('rsFullscreen');
+        if(btn){btn.classList.toggle('rs-fullscreen-active',active);btn.innerHTML=active?'<i class="fas fa-compress"></i> Exit Full Screen':'<i class="fas fa-expand"></i> Full Screen';}
+        document.body.style.overflow=active?'hidden':'';
+        const shell=$('rsDocumentShell');
+        if(shell){shell.scrollTop=0;}
     }
 
     function researchEnsureUI() {
@@ -682,6 +694,7 @@ window.LecturerOnlineLearning = (() => {
                     <button type="button" data-cmd="undo">↶</button>
                     <button type="button" data-cmd="redo">↷</button>
                     <button type="button" id="rsOriginal">Original</button>
+                    <button type="button" id="rsFullscreen" title="Full Screen"><i class="fas fa-expand"></i> Full Screen</button>
                   </div>
                   <div id="rsEditorState" class="rs-editor-state">Read only</div>
                   <div id="rsDocumentShell" class="rs-document-shell">
@@ -700,6 +713,10 @@ window.LecturerOnlineLearning = (() => {
                   </select>
                   <label>Feedback / Correction Notes</label>
                   <textarea id="rsFeedback" rows="8" placeholder="Enter feedback or correction instructions..."></textarea>
+                  <div class="rs-comment-tools"><button type="button" class="rs-btn rs-secondary" id="rsAddComment"><i class="fas fa-comment-medical"></i> Comment on Selected Text</button></div>
+                  <div class="rs-comment-box"><textarea id="rsNewComment" placeholder="Select text in the document, then enter the lecturer comment here..."></textarea><button type="button" class="rs-btn rs-primary" id="rsPostComment"><i class="fas fa-paper-plane"></i> Post</button></div>
+                  <div class="rs-section-title" style="margin-top:14px"><h4>Inline Comments</h4></div>
+                  <div id="rsCommentList" class="rs-comment-list"></div>
                   <div class="rs-actions">
                     <button type="button" class="rs-btn rs-secondary" id="rsEditDocument"><i class="fas fa-pen"></i> Edit Document</button>
                     <button type="button" class="rs-btn rs-primary" id="rsSaveCorrection"><i class="fas fa-file-pen"></i> Save Correction</button>
@@ -731,8 +748,11 @@ window.LecturerOnlineLearning = (() => {
                 updateEditorState();
             });
             $('rsClose')?.addEventListener('click', closeResearchModal);
+            $('rsFullscreen')?.addEventListener('click', toggleResearchFullscreen);
             $('rsEditDocument')?.addEventListener('click', toggleResearchEditor);
             $('rsSaveCorrection')?.addEventListener('click', saveResearchCorrection);
+            $('rsAddComment')?.addEventListener('click', captureResearchSelection);
+            $('rsPostComment')?.addEventListener('click', postResearchComment);
             $('rsDownload')?.addEventListener('click', downloadCurrentResearch);
             $('rsHistory')?.addEventListener('click', () => {
                 const box = $('rsVersionHistory');
@@ -750,6 +770,7 @@ window.LecturerOnlineLearning = (() => {
                 }
             });
             document.addEventListener('keydown', e => {
+                if (e.key === 'Escape' && $('rsReviewModal')?.classList.contains('rs-review-fullscreen')) { toggleResearchFullscreen(); return; }
                 if (e.key === 'Escape' && $('rsReviewModal')?.getAttribute('aria-hidden') === 'false') closeResearchModal();
             });
         }
@@ -893,10 +914,41 @@ window.LecturerOnlineLearning = (() => {
         $('rsFeedback').value = s.feedback || '';
 
         await renderResearchDocument(s);
+        const comments = await loadResearchComments(s.id);
+        renderResearchComments(comments);
+        const ed = $('rsDocumentEditor');
+        if (ed) researchCommentHighlight(ed, comments);
         renderResearchVersionHistory(s);
 
         $('rsReviewModal').style.display = 'flex';
         $('rsReviewModal').setAttribute('aria-hidden', 'false');
+    }
+
+    async function loadResearchComments(submissionId){
+        const db=client(); if(!db||!submissionId)return [];
+        try{const {data,error}=await db.from('research_comments').select('id,research_submission_id,student_id,author_id,author_role,author_name,comment_text,anchor_text,anchor_prefix,anchor_suffix,status,parent_comment_id,created_at,updated_at').eq('research_submission_id',submissionId).order('created_at',{ascending:true});if(error)throw error;return data||[]}catch(e){console.warn('Research comments load:',e.message||e);return []}
+    }
+    function researchCommentHighlight(root,comments){
+        if(!root)return;root.querySelectorAll('.rs-comment-highlight').forEach(m=>m.replaceWith(document.createTextNode(m.textContent||'')));
+        (comments||[]).filter(c=>c.anchor_text&&c.status!=='resolved').forEach(c=>{const quote=String(c.anchor_text).trim();if(!quote)return;const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while(n=walker.nextNode()){if(n.parentElement?.closest('.rs-comment-highlight'))continue;const i=n.nodeValue.indexOf(quote);if(i<0)continue;const range=document.createRange();range.setStart(n,i);range.setEnd(n,i+quote.length);const mark=document.createElement('mark');mark.className='rs-comment-highlight';mark.dataset.commentId=c.id;try{range.surroundContents(mark)}catch(_){continue}break;}});
+    }
+    function renderResearchComments(comments){
+        const box=$('rsCommentList');if(!box)return;const roots=(comments||[]).filter(c=>!c.parent_comment_id),children={};(comments||[]).forEach(c=>{if(c.parent_comment_id)(children[c.parent_comment_id]||(children[c.parent_comment_id]=[])).push(c)});
+        function one(c,depth){let html=`<div class="rs-comment" style="margin-left:${depth*8}px"><div class="rs-comment-meta"><b>${esc(c.author_name||((c.author_role||'')==='lecturer'?'Lecturer':'Student'))}</b> · ${esc(fmtDateTime(c.created_at))}</div>${c.anchor_text?`<div class="rs-comment-quote">“${esc(c.anchor_text)}”</div>`:''}<div class="rs-comment-text">${esc(c.comment_text)}</div>`;(children[c.id]||[]).forEach(r=>html+=one(r,depth+1));return html+'</div>'}
+        box.innerHTML=roots.length?roots.map(c=>one(c,0)).join(''):'<div class="rs-empty" style="padding:10px">No inline comments yet.</div>';
+    }
+    function captureResearchSelection(){
+        const sel=window.getSelection?.();const ed=$('rsDocumentEditor');if(!sel||!ed||!sel.rangeCount||!ed.contains(sel.anchorNode)){return notify('Select a sentence or passage in the document first, then click Comment on Selected Text.','warning')}
+        const text=String(sel.toString()||'').trim();if(!text)return notify('Select the text you want to comment on first.','warning');
+        ed.dataset.selectedQuote=text;const box=$('rsNewComment');if(box){box.focus();box.placeholder='Comment on: “'+text.slice(0,120)+(text.length>120?'…':'')+'”';}notify('Selected text attached. Enter the comment and click Post.','success');
+    }
+    async function postResearchComment(){
+        const s=researchState.current,db=client(),text=($('rsNewComment')?.value||'').trim(),ed=$('rsDocumentEditor');if(!s||!db||!text)return notify('Enter a comment before posting.','warning');
+        await resolveUser();if(!state.userId)return notify('Lecturer user ID could not be resolved.','error');
+        const quote=String(ed?.dataset.selectedQuote||'').trim();if(!quote)return notify('Select text in the document first, then click Comment on Selected Text.','warning');
+        const row={research_submission_id:s.id,research_group_id:s.research_group_id||null,student_id:s.student_id,author_id:state.userId,author_role:'lecturer',author_name:(state.profile?.full_name||state.profile?.name||'Lecturer'),comment_text:text,anchor_text:quote,status:'open',created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
+        const {error}=await db.from('research_comments').insert(row);if(error)return notify('Could not save inline comment: '+error.message,'error');
+        if($('rsNewComment'))$('rsNewComment').value='';if(ed)delete ed.dataset.selectedQuote;const comments=await loadResearchComments(s.id);renderResearchComments(comments);researchCommentHighlight(ed,comments);notify('Inline comment added to the selected text.','success');
     }
 
     async function renderResearchDocument(s) {
@@ -1017,7 +1069,9 @@ window.LecturerOnlineLearning = (() => {
         await resolveUser();
         if (!state.userId) return notify('Lecturer user ID could not be resolved.', 'error');
 
-        const html = ed.innerHTML.trim();
+        const clean = ed.cloneNode(true);
+        clean.querySelectorAll('.rs-comment-highlight').forEach(m => m.replaceWith(document.createTextNode(m.textContent || '')));
+        const html = clean.innerHTML.trim();
         if (!html) return notify('There is no corrected content to save.', 'warning');
 
         const next = nextResearchVersion(s);
@@ -1114,7 +1168,11 @@ window.LecturerOnlineLearning = (() => {
         if (m) {
             m.style.display = 'none';
             m.setAttribute('aria-hidden', 'true');
+            m.classList.remove('rs-review-fullscreen');
         }
+        document.body.style.overflow = '';
+        const fs = $('rsFullscreen');
+        if (fs) { fs.classList.remove('rs-fullscreen-active'); fs.innerHTML = '<i class="fas fa-expand"></i> Full Screen'; }
         if (researchState.current) {
             try {
                 if (researchState.correctionDirty && $('rsDocumentEditor')?.contentEditable === 'true') {
