@@ -208,26 +208,6 @@ function renderResearch(){
   document.getElementById('ol-research-refresh')?.addEventListener('click',loadResearch);
   document.querySelectorAll('[data-ol-research-view]').forEach(function(b){b.addEventListener('click',function(){viewResearch(this.dataset.olResearchView)})});
 }
-async function viewResearch(id){
-  var r=state.research.find(function(x){return String(x.id)===String(id)}); if(!r)return;
-  state.researchCurrent=r;
-  var body=document.getElementById('ol-research-body'),title=document.getElementById('ol-research-title');
-  if(!body)return;
-  title.textContent=r.title||'Research Paper';
-  body.innerHTML='<div class="ol-loading"><i class="fas fa-spinner fa-spin"></i>Opening document…</div>';
-  document.getElementById('ol-research-modal').classList.add('open');
-  var html='<div class="ol-notice">'+researchStatus(r.status)+'<br><b>Version:</b> '+esc(r.version_number||1)+' · <b>Type:</b> '+esc(r.submission_type||'—')+'</div>';
-  if(r.feedback)html+='<div style="padding:11px;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:10px"><b>Lecturer Feedback</b><div style="white-space:pre-wrap;color:#526b86;margin-top:6px">'+esc(r.feedback)+'</div></div>';
-  if(r.abstract)html+='<div style="padding:11px;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:10px"><b>Abstract / Notes</b><div style="white-space:pre-wrap;color:#526b86;margin-top:6px">'+esc(r.abstract)+'</div></div>';
-  if(r.document_path){
-    var u=await sbSignedResearchUrl(r.document_path);
-    if(researchCanCorrect(r)){
-      html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="ol-btn ol-btn-primary" type="button" id="ol-start-research-correction"><i class="fas fa-pen-to-square"></i> View & Correct DOCX</button></div>';
-    }
-    html+='<div><b>Document</b><iframe src="'+esc(u)+'" style="width:100%;height:520px;border:1px solid #dbe6ef;border-radius:9px;margin-top:7px"></iframe><div style="margin-top:7px"><a href="'+esc(u)+'" target="_blank" rel="noopener" class="ol-btn ol-btn-secondary" style="display:inline-block;text-decoration:none">Open / Download</a></div></div>';
-  }else html+='<div class="ol-empty">No document attached.</div>';
-  body.innerHTML=html;
-}
 
 /* ============================================================
    RESEARCH CORRECTION WORKFLOW — DOCX ONLY
@@ -498,6 +478,24 @@ function researchIsDocx(r){
   return /\.docx?($|[?#])/.test(n) || /\.docx?($|[?#])/.test(p);
 }
 
+/* NCHSM FINAL MOBILE RESEARCH DOCUMENT STYLES */
+function researchMobileDocumentStyles(){
+  if(document.getElementById('nchsm-final-research-mobile-css'))return;
+  var s=document.createElement('style');
+  s.id='nchsm-final-research-mobile-css';
+  s.textContent=`
+    .ol-rs-view-page{background:#fff;max-width:850px;margin:0 auto;padding:30px 38px;box-sizing:border-box;line-height:1.7;color:#202b38;overflow-wrap:anywhere}
+    .ol-rs-view-page img{max-width:100%;height:auto}
+    .ol-rs-editor{background:#fff;max-width:850px;margin:0 auto;padding:30px 38px;box-sizing:border-box;line-height:1.7;color:#202b38;min-height:520px;outline:0;overflow-wrap:anywhere}
+    @media(max-width:700px){
+      .ol-rs-view-page,.ol-rs-editor{padding:20px 16px;font-size:14px;max-width:none;width:100%;box-shadow:none}
+      .ol-rs-view-page table,.ol-rs-editor table{display:block;max-width:100%;overflow-x:auto}
+      .ol-rs-view-page pre,.ol-rs-editor pre{white-space:pre-wrap;overflow-wrap:anywhere}
+    }
+  `;
+  document.head.appendChild(s);
+}
+
 function ensureResearchStyles(){
   if(document.getElementById('ol-research-styles')) return;
   var st=document.createElement('style'); st.id='ol-research-styles';
@@ -554,91 +552,6 @@ function ensureResearchStyles(){
     #hub-online-learning .ol-rs-tool{border:1px solid #d8e2eb;background:#f8fbfe;border-radius:6px;padding:6px 8px;font-size:10px;cursor:pointer;color:#334e68}
     #hub-online-learning .ol-rs-tool:hover{background:#edf4ff}
     #hub-online-learning .ol-rs-editor{box-sizing:border-box;background:#fff;min-height:520px;max-width:900px;margin:14px auto;padding:42px;outline:0;line-height:1.7;font-size:13px;color:#202b38;box-shadow:0 2px 12px rgba(20,40,60,.08)}
-    #ol-research-modal .ol-rs-workspace{height:100%;min-height:0;overflow:hidden}
-    #ol-research-modal #ol-rs-doc-content{min-height:0!important;overflow:auto;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
-    #ol-research-modal .ol-rs-document{min-height:0;display:flex;flex-direction:column;overflow:hidden}
-    #ol-research-modal .ol-rs-side{min-height:0;overflow:auto;overscroll-behavior:contain}
-    #ol-research-modal .ol-rs-editor{white-space:normal;overflow:visible}
-    .ol-gdocs-editor{height:100%;min-height:0;display:flex;flex-direction:column;background:#f1f3f4}
-    .ol-gdocs-topbar{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;gap:10px;padding:9px 12px;background:#fff;border-bottom:1px solid #d9e2ea}
-    .ol-gdocs-file{display:flex;align-items:center;gap:9px;min-width:0}
-    .ol-gdocs-file>i{font-size:18px;color:#4285f4}
-    .ol-gdocs-file strong{display:block;font-size:11px;color:#18304d;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:420px}
-    .ol-gdocs-file small{display:block;margin-top:2px;color:#71859c;font-size:8px}
-    .ol-gdocs-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-    .ol-gdocs-save-state{font-size:8px;color:#71859c;white-space:nowrap}
-    .ol-gdocs-save-state i{font-size:6px}
-    .ol-gdocs-toolbar{flex:0 0 auto;display:flex;align-items:center;gap:2px;flex-wrap:wrap;padding:6px 8px;background:#fff;border-bottom:1px solid #d9e2ea;box-shadow:0 1px 2px rgba(0,0,0,.04)}
-    .ol-gdocs-group{display:flex;align-items:center;gap:1px;padding-right:5px;margin-right:4px;border-right:1px solid #e4e9ee}
-    .ol-gdocs-group:last-child{border-right:0}
-    .ol-gdocs-tool{min-width:29px;height:28px;border:0;border-radius:5px;background:#fff;color:#40566f;cursor:pointer;font-size:11px}
-    .ol-gdocs-tool:hover{background:#edf3f9}
-    .ol-gdocs-tool:active{background:#e2ebf5}
-    .ol-gdocs-select{height:28px;border:1px solid #d7e0e8;border-radius:5px;background:#fff;color:#40566f;font-size:9px;padding:0 7px}
-    .ol-gdocs-canvas{flex:1 1 auto;min-height:0;overflow:auto;padding:28px 18px 40px;-webkit-overflow-scrolling:touch}
-    .ol-gdocs-page{width:min(850px,100%);min-height:1050px;box-sizing:border-box;margin:0 auto;padding:70px 72px;background:#fff;color:#202b38;outline:0;line-height:1.7;font-size:13px;box-shadow:0 1px 5px rgba(20,40,60,.16)}
-    .ol-gdocs-page:focus{box-shadow:0 1px 5px rgba(20,40,60,.16),0 0 0 2px rgba(66,133,244,.12)}
-    .ol-gdocs-page img{max-width:100%;height:auto}
-    .ol-gdocs-page table{max-width:100%;border-collapse:collapse}
-    .ol-gdocs-page td,.ol-gdocs-page th{padding:4px 6px}
-    .ol-gdocs-page h1,.ol-gdocs-page h2,.ol-gdocs-page h3{color:#18304d}
-    .ol-gdocs-footer{flex:0 0 auto;display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px 10px;background:#fff;border-top:1px solid #d9e2ea}
-    .ol-gdocs-footer>div:first-child{font-size:8px;color:#71859c}
-    .ol-gdocs-footer-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
-    .ol-gdocs-main{flex:1 1 auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr) 300px;overflow:hidden}
-    .ol-gdocs-review-panel{min-width:0;min-height:0;background:#fff;border-left:1px solid #d9e2ea;display:flex;flex-direction:column;overflow:hidden}
-    .ol-gdocs-review-tabs{display:flex;flex:0 0 auto;border-bottom:1px solid #e1e8ee}
-    .ol-gdocs-review-tabs button{flex:1;border:0;background:#fff;padding:10px 6px;font-size:9px;font-weight:800;color:#71859c;cursor:pointer}
-    .ol-gdocs-review-tabs button.active{color:#087bf0;border-bottom:2px solid #087bf0}
-    .ol-gdocs-review-content{flex:1;min-height:0;overflow:auto;padding:9px;-webkit-overflow-scrolling:touch}
-    .ol-rs-comments-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:10px;color:#18304d}
-    .ol-rs-comments-head span{background:#edf4ff;color:#087bf0;border-radius:10px;padding:2px 7px;font-size:8px}
-    .ol-rs-comment-card{border:1px solid #dbe6ef;border-radius:8px;padding:9px;margin-bottom:7px;background:#fbfdff;font-size:9px;color:#526b86}
-    .ol-rs-comment-card strong{display:block;color:#18304d;font-size:9px}
-    .ol-rs-comment-card small{display:block;color:#94a3b8;font-size:7px;margin-top:2px}
-    .ol-rs-comment-selection{margin:7px 0;padding:6px;border-left:3px solid #f5c542;background:#fffaf0;color:#526b86;font-size:8px}
-    .ol-rs-comment-text{color:#263e5b;line-height:1.5}
-    .ol-rs-comments-empty{padding:20px 8px;text-align:center;color:#94a3b8;font-size:9px;line-height:1.5}
-    .ol-gdocs-comment-action{border:1px solid #dbe6ef;background:#fff;border-radius:5px;padding:4px 7px;font-size:8px;color:#526b86;cursor:pointer;margin-top:7px}
-    .ol-gdocs-comment-action:hover{background:#edf4ff;color:#087bf0}
-    .ol-gdocs-suggestion-actions{display:flex;gap:5px}
-    .ol-rs-comment-mark{background:#fff1a8;border-bottom:2px solid #e3ad00;cursor:pointer}
-    .ol-rs-suggestion del{background:#ffe1e1;color:#a61b1b;text-decoration:line-through}
-    .ol-rs-suggestion ins{background:#dcfce7;color:#146c3a;text-decoration:none}
-    .ol-gdocs-tool.active{background:#dbeafe;color:#087bf0}
-    .ol-gdocs-collaborators{font-size:8px;color:#526b86;white-space:nowrap}
-    @media(max-width:1050px){
-      .ol-gdocs-main{grid-template-columns:minmax(0,1fr) 260px}
-    }
-    @media(max-width:800px){
-      .ol-gdocs-main{grid-template-columns:1fr}
-      .ol-gdocs-review-panel{border-left:0;border-top:1px solid #d9e2ea;max-height:30vh}
-    }
-    #ol-research-modal .ol-rs-fullscreen{
-      position:fixed!important;
-      inset:0!important;
-      width:100vw!important;
-      height:100vh!important;
-      max-height:none!important;
-      margin:0!important;
-      border-radius:0!important;
-    }
-    #ol-research-modal .ol-rs-fullscreen .ol-gdocs-main{min-height:0}
-
-
-    @media(max-width:900px){
-      .ol-gdocs-topbar{align-items:flex-start;flex-direction:column}
-      .ol-gdocs-actions{width:100%;justify-content:space-between}
-      .ol-gdocs-file strong{max-width:260px}
-      .ol-gdocs-canvas{padding:14px 8px 28px}
-      .ol-gdocs-page{min-height:850px;padding:35px 25px;font-size:12px}
-      .ol-gdocs-mobile-hide{display:none}
-      .ol-gdocs-footer{align-items:stretch;flex-direction:column}
-      .ol-gdocs-footer-actions{width:100%}
-      .ol-gdocs-footer-actions button{flex:1}
-    }
-
-
     #hub-online-learning .ol-rs-editor[contenteditable="true"]{cursor:text}
     #hub-online-learning .ol-rs-pdf{width:100%;height:560px;border:0;background:#fff}
     #hub-online-learning .ol-rs-side{border:1px solid #dbe6ef;border-radius:10px;background:#fff;padding:12px;height:max-content;position:sticky;top:0}
@@ -662,6 +575,7 @@ function ensureResearchStyles(){
 
 function researchEnsureUI(){
   ensureResearchStyles();
+  researchMobileDocumentStyles();
   var panel=document.querySelector('#hub-online-learning .ol-panel');
   if(!panel)return;
   var tabs=panel.querySelector('.ol-tabs');
@@ -704,8 +618,7 @@ function renderResearch(){
 }
 
 function openResearchModal(){var m=document.getElementById('ol-research-modal');if(m){m.classList.add('open');m.setAttribute('aria-hidden','false')}}
-function closeResearchModal(){
-  researchStopCollaboration();var m=document.getElementById('ol-research-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}state.researchCurrent=null;state.researchFile=null}
+function closeResearchModal(){var m=document.getElementById('ol-research-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}state.researchCurrent=null;state.researchFile=null}
 
 function openResearchForm(existing){
   researchEnsureUI();state.researchCurrent=existing||null;state.researchFile=null;
@@ -729,98 +642,46 @@ async function signedResearchUrl(r){
   var db=researchClient();if(!db||!r?.document_path)throw new Error('Document path is missing.');
   var signed=await db.storage.from('research-papers').createSignedUrl(r.document_path,3600);if(signed.error)throw signed.error;return signed.data?.signedUrl||'';
 }
-function decodeHtmlSourceText(value){
-  var s=String(value||'');
-  var ta=document.createElement('textarea');
-  ta.innerHTML=s;
-  return ta.value;
-}
-
-function looksLikeHtmlSource(value){
-  var s=String(value||'').trim();
-  if(!s)return false;
-  var d=decodeHtmlSourceText(s).trim();
-  return /^<!doctype\s+html/i.test(s)
-      || /^<html[\s>]/i.test(s)
-      || /<html[\s>][\s\S]*<\/html>/i.test(s)
-      || /<body[\s>][\s\S]*<\/body>/i.test(s)
-      || /^<!doctype\s+html/i.test(d)
-      || /^<html[\s>]/i.test(d)
-      || /<html[\s>][\s\S]*<\/html>/i.test(d)
-      || /<body[\s>][\s\S]*<\/body>/i.test(d);
-}
-
 function stripHtmlDocument(raw){
   var text=String(raw||'').replace(/^\uFEFF/,'').trim();
-
-  /* The lecturer saves a complete HTML document. Some older versions were
-     saved again as escaped HTML (&lt;doctype...&gt;). Decode repeatedly first. */
-  for(var pass=0;pass<3;pass++){
-    var decoded=decodeHtmlSourceText(text);
-    if(decoded===text)break;
-    if(/^<!doctype\s+html/i.test(decoded.trim()) ||
-       /^<html[\s>]/i.test(decoded.trim()) ||
-       /<body[\s>][\s\S]*<\/body>/i.test(decoded)){
-      text=decoded.trim();
-      continue;
-    }
-    break;
-  }
-
-  var bodyMatch=text.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-  if(bodyMatch){
-    var body=bodyMatch[1];
-
-    /* Handle legacy corrections where the HTML source was escaped inside body. */
-    var decodedBody=decodeHtmlSourceText(body);
-    if(looksLikeHtmlSource(decodedBody)){
-      var nested=decodedBody.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-      body=nested?nested[1]:decodedBody;
-    }
-    return body;
-  }
-
-  var cleaned=text
-    .replace(/<!doctype[^>]*>/ig,'')
-    .replace(/<\/?(?:html|head|meta|title|style)[^>]*>/ig,'');
-
-  var decodedCleaned=decodeHtmlSourceText(cleaned);
-  if(looksLikeHtmlSource(decodedCleaned)){
-    var nestedBody=decodedCleaned.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    if(nestedBody)return nestedBody[1];
-  }
-
-  return cleaned;
+  var bodyMatch=text.match(/<body[^>]*>([\s\S]*?)<\/body>/i);if(bodyMatch)return bodyMatch[1];
+  return text.replace(/<!doctype[^>]*>/ig,'').replace(/<\/?(?:html|head|meta|title|style)[^>]*>/ig,'');
 }
 
 async function loadResearchInlineDocument(r,editor){
   if(!r?.document_path||!editor)throw new Error('Research document is not available.');
   var url=await signedResearchUrl(r);
-  if(researchIsHtml(r)){
-    var response=await fetch(url);if(!response.ok)throw new Error('Could not read the corrected document.');
-    var rawHtml=await response.text();
-    var renderedHtml=stripHtmlDocument(rawHtml);
 
-    /* Final safety net for legacy escaped HTML-source corrections. */
-    for(var safety=0;safety<3 && looksLikeHtmlSource(renderedHtml);safety++){
-      var decodedHtml=decodeHtmlSourceText(renderedHtml);
-      if(decodedHtml===renderedHtml)break;
-      renderedHtml=stripHtmlDocument(decodedHtml);
+  if(researchIsHtml(r)){
+    var response=await fetch(url,{cache:'no-store'});
+    if(!response.ok)throw new Error('Could not read the corrected document.');
+    var raw=await response.text();
+
+    // ALWAYS extract the body of a complete HTML correction before assigning it
+    // to innerHTML. This prevents <!doctype>, <head>, <style> and source markup
+    // from appearing as visible text.
+    var body=researchExtractBody(raw);
+
+    // If the uploaded file was escaped one or more times, decode/extract again.
+    for(var pass=0;pass<3 && researchHtmlIsSource(body);pass++){
+      var decoded=researchDecodeHtml(body);
+      if(decoded===body)break;
+      body=researchExtractBody(decoded);
     }
 
-    /* Never display the wrapper/source itself. If extraction still failed,
-       show only the document body content. */
-    var finalBody=renderedHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
-    if(finalBody)renderedHtml=finalBody[1];
-
-    editor.innerHTML=renderedHtml||'<p>No readable content was found in this document.</p>';
+    editor.innerHTML=body||'<p>No readable content was found in this document.</p>';
     return 'html';
   }
+
   if(researchIsDocx(r)){
-    var resp=await fetch(url);if(!resp.ok)throw new Error('Could not read the Word document.');
-    var mammoth=await ensureMammoth(),ab=await resp.arrayBuffer(),converted=await mammoth.convertToHtml({arrayBuffer:ab});
-    editor.innerHTML=converted.value||'<p>No editable text was found in this document.</p>';return 'docx';
+    var resp=await fetch(url,{cache:'no-store'});
+    if(!resp.ok)throw new Error('Could not read the Word document.');
+    var mammoth=await ensureMammoth(),ab=await resp.arrayBuffer();
+    var converted=await mammoth.convertToHtml({arrayBuffer:ab});
+    editor.innerHTML=converted.value||'<p>No editable text was found in this document.</p>';
+    return 'docx';
   }
+
   throw new Error('This document type cannot be edited inline. PDF files remain view-only; submit a revised PDF when needed.');
 }
 
@@ -867,694 +728,95 @@ async function openResearchViewer(id,editMode){
   openResearchModal();await renderResearchVersionHistory(r);await loadResearchDocumentForViewer(r,!!editMode);
 }
 
+
+function researchDecodeHtml(value){
+  var s=String(value==null?'':value);
+  var ta=document.createElement('textarea');
+  ta.innerHTML=s;
+  return ta.value;
+}
+
+function researchExtractBody(raw){
+  var s=String(raw==null?'':raw).replace(/^\uFEFF/,'').trim();
+
+  // Decode up to 3 layers of escaped HTML.
+  for(var i=0;i<3;i++){
+    var d=researchDecodeHtml(s).trim();
+    if(d===s)break;
+    if(/^<!doctype\s+html/i.test(d) || /^<html[\s>]/i.test(d) ||
+       /<body[\s>][\s\S]*<\/body>/i.test(d)){
+      s=d;
+    }else break;
+  }
+
+  // If the document is still source text, extract its actual body.
+  var m=s.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if(m)return m[1];
+
+  // Handle escaped body tags after one more decode.
+  var d2=researchDecodeHtml(s);
+  var m2=d2.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if(m2)return m2[1];
+
+  // A complete HTML document without body should still not expose its
+  // doctype/head/style/title as visible text.
+  if(/^<!doctype\s+html/i.test(s) || /^<html[\s>]/i.test(s)){
+    return s
+      .replace(/<!doctype[^>]*>/ig,'')
+      .replace(/<head[\s\S]*?<\/head>/ig,'')
+      .replace(/<\/?html[^>]*>/ig,'')
+      .trim();
+  }
+
+  return s;
+}
+
+function researchHtmlIsSource(value){
+  var s=String(value||'').trim(), d=researchDecodeHtml(s).trim();
+  return /^<!doctype\s+html/i.test(s)||/^<html[\s>]/i.test(s)||
+         /<body[\s>][\s\S]*<\/body>/i.test(s)||
+         /^<!doctype\s+html/i.test(d)||/^<html[\s>]/i.test(d)||
+         /<body[\s>][\s\S]*<\/body>/i.test(d);
+}
+
+async function researchRenderHtmlInto(host,url,editable){
+  var response=await fetch(url,{cache:'no-store'});
+  if(!response.ok)throw new Error('Could not read the research document.');
+  var raw=await response.text();
+  var body=researchExtractBody(raw);
+
+  // IMPORTANT: innerHTML is used deliberately here. The source is a document
+  // uploaded by the authenticated user/lecturer, and we strip the outer HTML
+  // document wrapper before inserting it. Never use textContent for document HTML.
+  host.innerHTML=body||'<p>No readable content was found in this document.</p>';
+
+  // If an incorrectly escaped file survived extraction, decode and render it.
+  if(researchHtmlIsSource(host.innerHTML)){
+    host.innerHTML=researchExtractBody(host.innerHTML);
+  }
+
+  return body;
+}
+
 async function loadResearchDocumentForViewer(r,editMode){
   var host=document.getElementById('ol-rs-doc-content');if(!host)return;
-  host.innerHTML='<div class="ol-research-empty"><i class="fas fa-spinner fa-spin"></i><strong>Opening document…</strong></div>';
-
+  if(String(r.document_name||'').toLowerCase().match(/\.pdf$/)){try{var url=await signedResearchUrl(r);host.innerHTML='<iframe class="ol-rs-pdf" src="'+researchEscape(url)+'" title="Research document"></iframe>'}catch(e){host.innerHTML='<div class="ol-research-empty">Could not open the PDF: '+researchEscape(e.message||e)+'</div>'}return}
+  host.innerHTML='<div style="padding:30px;text-align:center;color:#71859c;font-size:10px"><i class="fas fa-spinner fa-spin"></i> Loading document...</div>';
   try{
-    var url=await signedResearchUrl(r);
-    var kind='';
-
-    if(researchIsHtml(r)){
-      var response=await fetch(url);
-      if(!response.ok)throw new Error('Could not read the research document.');
-      var rawHtml=await response.text();
-      var renderedHtml=stripHtmlDocument(rawHtml);
-      if(looksLikeHtmlSource(renderedHtml)){
-        var decodedHtml=decodeHtmlSourceText(renderedHtml);
-        if(looksLikeHtmlSource(decodedHtml))renderedHtml=stripHtmlDocument(decodedHtml);
-      }
-      kind='html';
-
-      if(editMode){
-        renderGoogleDocsEditor(host,r,renderedHtml,'html');
-      }else{
-        host.innerHTML=
-          '<div class="ol-rs-view-page">'+renderedHtml+'</div>';
-      }
-      return;
+    var editor=document.createElement('div');editor.id='ol-rs-inline-editor';editor.className='ol-rs-editor';editor.contentEditable=editMode?'true':'false';
+    var kind=await loadResearchInlineDocument(r,editor);host.innerHTML='';
+    if(editMode){
+      var toolbar=document.createElement('div');toolbar.className='ol-rs-editor-toolbar';toolbar.innerHTML='<button class="ol-rs-tool" type="button" data-cmd="bold"><b>B</b></button><button class="ol-rs-tool" type="button" data-cmd="italic"><i>I</i></button><button class="ol-rs-tool" type="button" data-cmd="underline"><u>U</u></button><button class="ol-rs-tool" type="button" data-cmd="insertUnorderedList">• List</button><button class="ol-rs-tool" type="button" data-cmd="insertOrderedList">1. List</button><button class="ol-rs-tool" type="button" data-cmd="justifyLeft">Left</button><button class="ol-rs-tool" type="button" data-cmd="justifyCenter">Center</button><button class="ol-rs-tool" type="button" data-cmd="justifyRight">Right</button><button class="ol-rs-tool" type="button" data-cmd="undo">↶</button><button class="ol-rs-tool" type="button" data-cmd="redo">↷</button>';
+      toolbar.addEventListener('mousedown',function(ev){var b=ev.target.closest('[data-cmd]');if(!b)return;ev.preventDefault();editor.focus();document.execCommand(b.dataset.cmd,false,null)});
+      host.appendChild(toolbar);
     }
-
-    if(researchIsDocx(r)){
-      var resp=await fetch(url);
-      if(!resp.ok)throw new Error('Could not read the Word document.');
-      var mammoth=await ensureMammoth();
-      var ab=await resp.arrayBuffer();
-      var converted=await mammoth.convertToHtml({arrayBuffer:ab});
-      var html=converted.value||'<p>No editable text was found in this document.</p>';
-      kind='docx';
-
-      if(editMode){
-        renderGoogleDocsEditor(host,r,html,'docx');
-      }else{
-        host.innerHTML=
-          '<div class="ol-rs-view-page">'+html+'</div>';
-      }
-      return;
+    host.appendChild(editor);
+    if(editMode){
+      var save=document.createElement('div');save.style.cssText='display:flex;justify-content:flex-end;gap:6px;padding:9px;background:#fff;border-top:1px solid #dbe6ef';save.innerHTML='<button class="ol-research-btn ol-research-muted" type="button" data-rs-view-only>View Only</button><button class="ol-research-btn ol-research-primary" type="button" data-rs-submit-correction><i class="fas fa-paper-plane"></i> Submit Correction to Lecturer</button>';host.appendChild(save);
+      editor.addEventListener('input',function(){editor.dataset.dirty='1'});
     }
-
-    if(/\.pdf($|[?#])/i.test(String(r.document_name||r.document_path||''))){
-      host.innerHTML='<iframe class="ol-rs-pdf" title="'+researchEscape(r.document_name||'Research PDF')+'" src="'+researchEscape(url)+'"></iframe>';
-      return;
-    }
-
-    throw new Error('This document type cannot be edited inline. PDF files remain view-only; submit a revised PDF when needed.');
-
-  }catch(e){
-    console.error('Research document viewer:',e);
-    host.innerHTML='<div class="ol-research-empty"><i class="fas fa-circle-exclamation"></i><strong>Could not open this document</strong><br>'+researchEscape(e.message||e)+'</div>';
-  }
-}
-
-function researchEditorDraftKey(r){
-  return 'nchsm_research_editor_draft_'+String(r.id);
-}
-
-function researchEditorSaveState(r,editor,statusEl){
-  if(!r||!editor)return;
-  try{
-    localStorage.setItem(researchEditorDraftKey(r),editor.innerHTML);
-    if(statusEl){
-      statusEl.innerHTML='<i class="fas fa-cloud-arrow-up"></i> Draft saved on this device · '+new Date().toLocaleTimeString();
-      statusEl.dataset.saved='1';
-    }
-  }catch(e){
-    if(statusEl)statusEl.textContent='Draft could not be saved locally';
-  }
-}
-
-function researchEditorRestoreDraft(r,editor,statusEl,originalHtml){
-  if(!r||!editor)return false;
-  try{
-    var saved=localStorage.getItem(researchEditorDraftKey(r));
-    if(saved && saved!==originalHtml){
-      editor.innerHTML=saved;
-      if(statusEl)statusEl.innerHTML='<i class="fas fa-clock-rotate-left"></i> Saved draft restored';
-      return true;
-    }
-  }catch(e){}
-  return false;
-}
-
-function researchEditorClearDraft(r){
-  try{localStorage.removeItem(researchEditorDraftKey(r))}catch(e){}
-}
-
-
-/* ================================================================
- * NCHSM RESEARCH — GOOGLE DOCS STYLE COLLABORATION LAYER
- * - comments
- * - suggestions / track changes
- * - live presence
- * - Supabase Realtime document sync
- * - local + broadcast draft persistence
- * - version snapshot support
- * ================================================================ */
-var researchCollabState={
-  channel:null,
-  clientId:'nchsm-'+Math.random().toString(36).slice(2)+Date.now(),
-  currentResearchId:null,
-  applyingRemote:false,
-  lastBroadcast:0,
-  presenceTimer:null,
-  commentCounter:0
-};
-
-function researchCollabKey(r){
-  return 'nchsm_research_collab_'+String(r&&r.id||'');
-}
-
-function researchCommentsKey(r){
-  return researchCollabKey(r)+':comments';
-}
-
-function researchSuggestionsKey(r){
-  return researchCollabKey(r)+':suggestions';
-}
-
-function researchGetStoredArray(key){
-  try{
-    var x=JSON.parse(localStorage.getItem(key)||'[]');
-    return Array.isArray(x)?x:[];
-  }catch(e){return []}
-}
-
-function researchSetStoredArray(key,value){
-  try{localStorage.setItem(key,JSON.stringify(value||[]))}catch(e){}
-}
-
-function researchGetComments(r){
-  return researchGetStoredArray(researchCommentsKey(r));
-}
-
-function researchGetSuggestions(r){
-  return researchGetStoredArray(researchSuggestionsKey(r));
-}
-
-function researchCommentId(){
-  researchCollabState.commentCounter++;
-  return 'c_'+Date.now()+'_'+researchCollabState.commentCounter+'_'+Math.random().toString(36).slice(2,7);
-}
-
-function researchSuggestionId(){
-  return 's_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
-}
-
-function researchSelectionText(editor){
-  var sel=window.getSelection();
-  if(!sel||!sel.rangeCount)return '';
-  var range=sel.getRangeAt(0);
-  if(!editor.contains(range.commonAncestorContainer))return '';
-  return String(sel.toString()||'').trim();
-}
-
-function researchSelectionOffset(editor){
-  var sel=window.getSelection();
-  if(!sel||!sel.rangeCount)return null;
-  var range=sel.getRangeAt(0);
-  if(!editor.contains(range.commonAncestorContainer))return null;
-  var pre=document.createRange();
-  pre.selectNodeContents(editor);
-  pre.setEnd(range.startContainer,range.startOffset);
-  var start=pre.toString().length;
-  var selected=range.toString().length;
-  return {start:start,end:start+selected};
-}
-
-function researchRestoreSelectionByOffset(editor,start,end){
-  if(!editor||start==null||end==null)return false;
-  var walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);
-  var nodes=[],node;
-  while(node=walker.nextNode())nodes.push(node);
-  var cursor=0,startNode=null,endNode=null,startOffset=0,endOffset=0;
-  for(var i=0;i<nodes.length;i++){
-    var len=nodes[i].nodeValue.length;
-    if(startNode===null && start>=cursor && start<=cursor+len){
-      startNode=nodes[i];startOffset=start-cursor;
-    }
-    if(endNode===null && end>=cursor && end<=cursor+len){
-      endNode=nodes[i];endOffset=end-cursor;
-      break;
-    }
-    cursor+=len;
-  }
-  if(!startNode||!endNode)return false;
-  var range=document.createRange();
-  range.setStart(startNode,Math.max(0,Math.min(startOffset,startNode.length)));
-  range.setEnd(endNode,Math.max(0,Math.min(endOffset,endNode.length)));
-  var sel=window.getSelection();sel.removeAllRanges();sel.addRange(range);
-  return true;
-}
-
-function researchEscapeAttr(v){
-  return researchEscape(v).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-}
-
-function researchRefreshCommentMarkers(editor,r){
-  if(!editor)return;
-  var comments=researchGetComments(r);
-  editor.querySelectorAll('[data-rs-comment]').forEach(function(n){
-    var parent=n.parentNode;
-    while(n.firstChild)parent.insertBefore(n.firstChild,n);
-    parent.removeChild(n);
-  });
-  comments.forEach(function(c){
-    if(!c||!c.text)return;
-    var walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);
-    var node,found=null;
-    while(node=walker.nextNode()){
-      var at=node.nodeValue.indexOf(c.text);
-      if(at>=0){found={node:node,at:at};break}
-    }
-    if(!found)return;
-    var range=document.createRange();
-    range.setStart(found.node,found.at);
-    range.setEnd(found.node,found.at+c.text.length);
-    var mark=document.createElement('mark');
-    mark.dataset.rsComment=c.id;
-    mark.className='ol-rs-comment-mark';
-    mark.title=c.author_name+': '+c.text_comment;
-    try{range.surroundContents(mark)}catch(e){}
-  });
-}
-
-function researchRenderCommentsPanel(r,editor){
-  var panel=document.getElementById('ol-rs-comments-panel');
-  if(!panel)return;
-  var comments=researchGetComments(r);
-  panel.innerHTML=
-    '<div class="ol-rs-comments-head"><strong>Comments</strong><span>'+comments.length+'</span></div>'+
-    (comments.length?comments.map(function(c){
-      return '<div class="ol-rs-comment-card" data-comment-card="'+researchEscapeAttr(c.id)+'">'+
-        '<div><strong>'+researchEscape(c.author_name||'User')+'</strong><small>'+researchEscape(c.created_at?new Date(c.created_at).toLocaleString():'')+'</small></div>'+
-        '<div class="ol-rs-comment-selection">“'+researchEscape(c.text||'')+'”</div>'+
-        '<div class="ol-rs-comment-text">'+researchEscape(c.text_comment||'')+'</div>'+
-        '<button type="button" class="ol-gdocs-comment-action" data-comment-delete="'+researchEscapeAttr(c.id)+'">Resolve</button>'+
-      '</div>';
-    }).join(''):'<div class="ol-rs-comments-empty">No comments yet. Select text and click Comment.</div>');
-}
-
-function researchAddComment(r,editor){
-  var selected=researchSelectionText(editor);
-  var offsets=researchSelectionOffset(editor);
-  if(!selected||!offsets)return alert('Select text in the document first.');
-  var comment=prompt('Add a comment for the selected text:');
-  if(!comment||!comment.trim())return;
-  var item={
-    id:researchCommentId(),
-    text:selected,
-    text_comment:comment.trim(),
-    start:offsets.start,
-    end:offsets.end,
-    author_name:researchProfileName(),
-    created_at:new Date().toISOString(),
-    resolved:false
-  };
-  var comments=researchGetComments(r);
-  comments.push(item);researchSetStoredArray(researchCommentsKey(r),comments);
-  researchRefreshCommentMarkers(editor,r);
-  researchRenderCommentsPanel(r,editor);
-  researchBroadcast(r,{type:'comment-add',comment:item});
-}
-
-function researchResolveComment(r,id,editor){
-  var comments=researchGetComments(r).filter(function(c){return String(c.id)!==String(id)});
-  researchSetStoredArray(researchCommentsKey(r),comments);
-  researchRefreshCommentMarkers(editor,r);
-  researchRenderCommentsPanel(r,editor);
-  researchBroadcast(r,{type:'comment-delete',id:id});
-}
-
-function researchSuggestionMode(editor,on){
-  if(!editor)return;
-  editor.dataset.suggestionMode=on?'1':'0';
-  var b=document.querySelector('[data-rs-suggest-toggle]');
-  if(b)b.classList.toggle('active',!!on);
-}
-
-function researchInsertSuggestion(r,editor){
-  var selected=researchSelectionText(editor);
-  var offsets=researchSelectionOffset(editor);
-  if(!selected||!offsets)return alert('Select text to replace first.');
-  var replacement=prompt('Suggested replacement for the selected text:',selected);
-  if(replacement===null)return;
-  var sug={
-    id:researchSuggestionId(),
-    old_text:selected,
-    new_text:String(replacement),
-    start:offsets.start,
-    end:offsets.end,
-    author_name:researchProfileName(),
-    created_at:new Date().toISOString(),
-    status:'pending'
-  };
-  var suggestions=researchGetSuggestions(r);suggestions.push(sug);
-  researchSetStoredArray(researchSuggestionsKey(r),suggestions);
-
-  var sel=window.getSelection();
-  if(sel&&sel.rangeCount){
-    var range=sel.getRangeAt(0);
-    var node=document.createElement('span');
-    node.className='ol-rs-suggestion';
-    node.dataset.rsSuggestion=sug.id;
-    node.innerHTML='<del>'+researchEscape(selected)+'</del><ins>'+researchEscape(String(replacement))+'</ins>';
-    try{range.deleteContents();range.insertNode(node)}catch(e){}
-  }
-  researchRenderSuggestionsPanel(r,editor);
-  researchBroadcast(r,{type:'suggestion-add',suggestion:sug});
-}
-
-function researchRenderSuggestionsPanel(r,editor){
-  var panel=document.getElementById('ol-rs-suggestions-panel');
-  if(!panel)return;
-  var suggestions=researchGetSuggestions(r).filter(function(s){return s.status==='pending'});
-  panel.innerHTML=
-    '<div class="ol-rs-comments-head"><strong>Suggestions</strong><span>'+suggestions.length+'</span></div>'+
-    (suggestions.length?suggestions.map(function(s){
-      return '<div class="ol-rs-comment-card">'+
-        '<div><strong>'+researchEscape(s.author_name||'User')+'</strong><small>Suggestion</small></div>'+
-        '<div><del>'+researchEscape(s.old_text)+'</del> → <ins>'+researchEscape(s.new_text)+'</ins></div>'+
-        '<div class="ol-gdocs-suggestion-actions">'+
-          '<button type="button" class="ol-gdocs-comment-action" data-suggestion-accept="'+researchEscapeAttr(s.id)+'">Accept</button>'+
-          '<button type="button" class="ol-gdocs-comment-action" data-suggestion-reject="'+researchEscapeAttr(s.id)+'">Reject</button>'+
-        '</div>'+
-      '</div>';
-    }).join(''):'<div class="ol-rs-comments-empty">No pending suggestions.</div>');
-}
-
-function researchApplySuggestion(r,id,accept,editor){
-  var list=researchGetSuggestions(r);
-  var s=list.find(function(x){return String(x.id)===String(id)});
-  if(!s)return;
-  s.status=accept?'accepted':'rejected';
-  researchSetStoredArray(researchSuggestionsKey(r),list);
-
-  if(accept){
-    var walker=document.createTreeWalker(editor,NodeFilter.SHOW_ELEMENT);
-    var node;
-    while(node=walker.nextNode()){
-      if(node.dataset&&node.dataset.rsSuggestion===String(id)){
-        node.outerHTML=researchEscape(s.new_text);
-        break;
-      }
-    }
-  }else{
-    var nodes=editor.querySelectorAll('[data-rs-suggestion="'+CSS.escape(String(id))+'"]');
-    nodes.forEach(function(n){n.outerHTML=researchEscape(s.old_text)});
-  }
-  researchRenderSuggestionsPanel(r,editor);
-  researchBroadcast(r,{type:'suggestion-status',id:id,status:s.status});
-}
-
-function researchBroadcast(r,payload){
-  var ch=researchCollabState.channel;
-  if(!ch||!payload)return;
-  try{
-    ch.send({type:'broadcast',event:'research-doc',payload:Object.assign({
-      sender:researchCollabState.clientId
-    },payload)});
-  }catch(e){}
-}
-
-function researchStartCollaboration(r,editor,statusEl){
-  researchStopCollaboration();
-  var db=researchClient();
-  if(!db||!r||!editor||!db.channel)return;
-
-  researchCollabState.currentResearchId=String(r.id);
-  var channelName='nchsm-research-live-'+String(r.id);
-  var ch=db.channel(channelName,{config:{broadcast:{self:false},presence:{key:researchCollabState.clientId}}});
-  researchCollabState.channel=ch;
-
-  ch.on('broadcast',{event:'research-doc'},function(message){
-    var p=message&&message.payload||{};
-    if(!p||p.sender===researchCollabState.clientId)return;
-
-    if(p.type==='document-state' && typeof p.html==='string'){
-      researchCollabState.applyingRemote=true;
-      var current=editor.innerHTML;
-      if(p.html!==current){
-        editor.innerHTML=p.html;
-        editor.dataset.dirty='1';
-      }
-      researchCollabState.applyingRemote=false;
-      if(statusEl)statusEl.innerHTML='<i class="fas fa-users"></i> Live update received';
-      return;
-    }
-
-    if(p.type==='comment-add'&&p.comment){
-      var comments=researchGetComments(r);
-      if(!comments.some(function(c){return String(c.id)===String(p.comment.id)})){
-        comments.push(p.comment);researchSetStoredArray(researchCommentsKey(r),comments);
-        researchRefreshCommentMarkers(editor,r);
-        researchRenderCommentsPanel(r,editor);
-      }
-      return;
-    }
-
-    if(p.type==='comment-delete'){
-      researchSetStoredArray(researchCommentsKey(r),researchGetComments(r).filter(function(c){return String(c.id)!==String(p.id)}));
-      researchRefreshCommentMarkers(editor,r);researchRenderCommentsPanel(r,editor);
-      return;
-    }
-
-    if(p.type==='suggestion-add'&&p.suggestion){
-      var ss=researchGetSuggestions(r);
-      if(!ss.some(function(s){return String(s.id)===String(p.suggestion.id)})){
-        ss.push(p.suggestion);researchSetStoredArray(researchSuggestionsKey(r),ss);
-        researchRenderSuggestionsPanel(r,editor);
-      }
-      return;
-    }
-
-    if(p.type==='suggestion-status'){
-      var ss2=researchGetSuggestions(r);
-      var found=ss2.find(function(s){return String(s.id)===String(p.id)});
-      if(found)found.status=p.status;
-      researchSetStoredArray(researchSuggestionsKey(r),ss2);
-      researchRenderSuggestionsPanel(r,editor);
-    }
-  });
-
-  ch.on('presence',{event:'sync'},function(){
-    var state=ch.presenceState();
-    var count=Object.keys(state||{}).length;
-    var el=document.getElementById('ol-gdocs-collaborators');
-    if(el)el.textContent=count>1?(count+' people editing'):'Only you editing';
-  });
-
-  ch.on('presence',{event:'join'},function(){
-    var el=document.getElementById('ol-gdocs-collaborators');
-    if(el)el.textContent='Collaborator joined';
-  });
-
-  ch.on('presence',{event:'leave'},function(){
-    var el=document.getElementById('ol-gdocs-collaborators');
-    if(el)el.textContent='Collaborator left';
-  });
-
-  ch.subscribe(function(status){
-    if(status==='SUBSCRIBED'){
-      try{
-        ch.track({user_id:researchUserId(),name:researchProfileName(),joined_at:new Date().toISOString()});
-      }catch(e){}
-      if(statusEl)statusEl.innerHTML='<i class="fas fa-circle" style="color:#18a957"></i> Live editing ready';
-    }
-  });
-
-  editor.addEventListener('input',function(){
-    if(researchCollabState.applyingRemote)return;
-    var now=Date.now();
-    if(now-researchCollabState.lastBroadcast<180)return;
-    researchCollabState.lastBroadcast=now;
-    researchBroadcast(r,{type:'document-state',html:editor.innerHTML});
-  });
-
-  return ch;
-}
-
-function researchStopCollaboration(){
-  if(researchCollabState.channel){
-    try{researchCollabState.channel.untrack()}catch(e){}
-    try{researchClient().removeChannel(researchCollabState.channel)}catch(e){}
-  }
-  researchCollabState.channel=null;
-  researchCollabState.currentResearchId=null;
-}
-
-function renderGoogleDocsEditor(host,r,html,kind){
-  var originalHtml=String(html||'');
-  host.innerHTML=`
-    <div class="ol-gdocs-editor">
-      <div class="ol-gdocs-topbar">
-        <div class="ol-gdocs-file">
-          <i class="fas fa-file-lines"></i>
-          <div>
-            <strong>${researchEscape(r.document_name||'Research Paper')}</strong>
-            <small>Version ${researchEscape(r.version_number||1)} · ${kind==='docx'?'Word document':'HTML document'}</small>
-          </div>
-        </div>
-        <div class="ol-gdocs-actions">
-          <span class="ol-gdocs-collaborators" id="ol-gdocs-collaborators">Connecting…</span>
-          <span class="ol-gdocs-save-state" id="ol-gdocs-save-state"><i class="fas fa-circle"></i> Editing</span>
-          <button type="button" class="ol-research-btn ol-research-muted" data-rs-draft-save><i class="fas fa-floppy-disk"></i> Save Draft</button>
-        </div>
-      </div>
-
-      <div class="ol-gdocs-toolbar" role="toolbar" aria-label="Document formatting toolbar">
-        <div class="ol-gdocs-group">
-          <button type="button" class="ol-gdocs-tool" data-gcmd="undo" title="Undo">↶</button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="redo" title="Redo">↷</button>
-        </div>
-
-        <div class="ol-gdocs-group">
-          <select class="ol-gdocs-select" data-gformat="formatBlock" title="Text style">
-            <option value="p">Normal text</option>
-            <option value="h1">Heading 1</option>
-            <option value="h2">Heading 2</option>
-            <option value="h3">Heading 3</option>
-            <option value="blockquote">Quote</option>
-          </select>
-        </div>
-
-        <div class="ol-gdocs-group">
-          <button type="button" class="ol-gdocs-tool" data-gcmd="bold" title="Bold"><b>B</b></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="italic" title="Italic"><i>I</i></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="underline" title="Underline"><u>U</u></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="strikeThrough" title="Strikethrough"><s>S</s></button>
-        </div>
-
-        <div class="ol-gdocs-group">
-          <button type="button" class="ol-gdocs-tool" data-gcmd="justifyLeft" title="Align left"><i class="fas fa-align-left"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="justifyCenter" title="Center"><i class="fas fa-align-center"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="justifyRight" title="Align right"><i class="fas fa-align-right"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="justifyFull" title="Justify"><i class="fas fa-align-justify"></i></button>
-        </div>
-
-        <div class="ol-gdocs-group">
-          <button type="button" class="ol-gdocs-tool" data-gcmd="insertUnorderedList" title="Bulleted list"><i class="fas fa-list-ul"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="insertOrderedList" title="Numbered list"><i class="fas fa-list-ol"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="indent" title="Increase indent"><i class="fas fa-indent"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="outdent" title="Decrease indent"><i class="fas fa-outdent"></i></button>
-        </div>
-
-        <div class="ol-gdocs-group">
-          <button type="button" class="ol-gdocs-tool" data-gcmd="removeFormat" title="Clear formatting"><i class="fas fa-eraser"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-gcmd="createLink" title="Insert link"><i class="fas fa-link"></i></button>
-        </div>
-
-        <div class="ol-gdocs-group ol-gdocs-research-tools">
-          <button type="button" class="ol-gdocs-tool" data-rs-comment-add title="Add comment"><i class="fas fa-comment"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-rs-suggest-toggle title="Suggestion mode"><i class="fas fa-pen-ruler"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-rs-suggest-add title="Suggest replacement"><i class="fas fa-highlighter"></i></button>
-          <button type="button" class="ol-gdocs-tool" data-rs-fullscreen title="Full screen"><i class="fas fa-expand"></i></button>
-        </div>
-
-        <div class="ol-gdocs-group ol-gdocs-mobile-hide">
-          <button type="button" class="ol-gdocs-tool" data-gcmd="print" title="Print"><i class="fas fa-print"></i></button>
-        </div>
-      </div>
-
-      <div class="ol-gdocs-main">
-        <div class="ol-gdocs-canvas">
-          <article id="ol-rs-inline-editor" class="ol-gdocs-page" contenteditable="true" spellcheck="true" role="textbox" aria-label="Research document editor">${originalHtml}</article>
-        </div>
-
-        <aside class="ol-gdocs-review-panel">
-          <div class="ol-gdocs-review-tabs">
-            <button type="button" class="active" data-rs-panel="comments">Comments</button>
-            <button type="button" data-rs-panel="suggestions">Suggestions</button>
-          </div>
-          <div id="ol-rs-comments-panel" class="ol-gdocs-review-content"></div>
-          <div id="ol-rs-suggestions-panel" class="ol-gdocs-review-content" style="display:none"></div>
-        </aside>
-      </div>
-
-      <div class="ol-gdocs-footer">
-        <div id="ol-gdocs-word-count">0 words</div>
-        <div class="ol-gdocs-footer-actions">
-          <button type="button" class="ol-research-btn ol-research-muted" data-rs-view-only><i class="fas fa-eye"></i> View Only</button>
-          <button type="button" class="ol-research-btn ol-research-primary" data-rs-submit-correction><i class="fas fa-paper-plane"></i> Submit Correction to Lecturer</button>
-        </div>
-      </div>
-    </div>`;
-
-  var editor=document.getElementById('ol-rs-inline-editor');
-  var statusEl=document.getElementById('ol-gdocs-save-state');
-  var countEl=document.getElementById('ol-gdocs-word-count');
-
-  function updateCount(){
-    if(!editor||!countEl)return;
-    var words=(editor.innerText||'').trim().split(/\s+/).filter(Boolean).length;
-    countEl.textContent=words+' '+(words===1?'word':'words');
-  }
-
-  var restored=researchEditorRestoreDraft(r,editor,statusEl,originalHtml);
-  updateCount();
-  researchRefreshCommentMarkers(editor,r);
-  researchRenderCommentsPanel(r,editor);
-  researchRenderSuggestionsPanel(r,editor);
-
-  editor.addEventListener('input',function(){
-    editor.dataset.dirty='1';
-    updateCount();
-    if(statusEl)statusEl.innerHTML='<i class="fas fa-pen"></i> Unsaved changes';
-  });
-
-  var autosaveTimer=null;
-  editor.addEventListener('input',function(){
-    clearTimeout(autosaveTimer);
-    autosaveTimer=setTimeout(function(){
-      researchEditorSaveState(r,editor,statusEl);
-    },1200);
-  });
-
-  host.querySelectorAll('[data-gcmd]').forEach(function(btn){
-    btn.addEventListener('mousedown',function(ev){
-      ev.preventDefault();
-      editor.focus();
-      var cmd=this.dataset.gcmd;
-      if(cmd==='createLink'){
-        var url=prompt('Enter the web address:');
-        if(url)document.execCommand('createLink',false,url);
-      }else if(cmd==='print'){
-        window.print();
-      }else{
-        document.execCommand(cmd,false,null);
-      }
-      editor.dataset.dirty='1';
-      updateCount();
-    });
-  });
-
-  host.querySelectorAll('[data-gformat]').forEach(function(sel){
-    sel.addEventListener('change',function(){
-      editor.focus();
-      document.execCommand('formatBlock',false,this.value);
-      editor.dataset.dirty='1';
-      updateCount();
-    });
-  });
-
-  var draftBtn=host.querySelector('[data-rs-draft-save]');
-  if(draftBtn){
-    draftBtn.addEventListener('click',function(){
-      researchEditorSaveState(r,editor,statusEl);
-      updateCount();
-    });
-  }
-
-  var commentBtn=host.querySelector('[data-rs-comment-add]');
-  if(commentBtn)commentBtn.addEventListener('click',function(){researchAddComment(r,editor)});
-
-  var suggestToggle=host.querySelector('[data-rs-suggest-toggle]');
-  if(suggestToggle)suggestToggle.addEventListener('click',function(){
-    var on=editor.dataset.suggestionMode!=='1';
-    researchSuggestionMode(editor,on);
-    this.title=on?'Suggestion mode ON':'Suggestion mode OFF';
-  });
-
-  var suggestBtn=host.querySelector('[data-rs-suggest-add]');
-  if(suggestBtn)suggestBtn.addEventListener('click',function(){researchInsertSuggestion(r,editor)});
-
-  host.querySelectorAll('[data-rs-fullscreen]').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      var modal=document.getElementById('ol-research-modal');
-      var dialog=modal&&modal.querySelector('.ol-research-dialog');
-      if(!dialog)return;
-      var is=dialog.classList.toggle('ol-rs-fullscreen');
-      btn.innerHTML=is?'<i class="fas fa-compress"></i>':'<i class="fas fa-expand"></i>';
-    });
-  });
-
-  host.querySelectorAll('[data-rs-panel]').forEach(function(btn){
-    btn.addEventListener('click',function(){
-      host.querySelectorAll('[data-rs-panel]').forEach(function(x){x.classList.toggle('active',x===btn)});
-      var comments=document.getElementById('ol-rs-comments-panel');
-      var suggestions=document.getElementById('ol-rs-suggestions-panel');
-      var panel=this.dataset.rsPanel;
-      if(comments)comments.style.display=panel==='comments'?'block':'none';
-      if(suggestions)suggestions.style.display=panel==='suggestions'?'block':'none';
-    });
-  });
-
-  var reviewPanel=host.querySelector('.ol-gdocs-review-panel');
-  if(reviewPanel){
-    reviewPanel.addEventListener('click',function(e){
-      var del=e.target.closest('[data-comment-delete]');
-      if(del){researchResolveComment(r,del.dataset.commentDelete,editor);return}
-      var ac=e.target.closest('[data-suggestion-accept]');
-      if(ac){researchApplySuggestion(r,ac.dataset.suggestionAccept,true,editor);return}
-      var rej=e.target.closest('[data-suggestion-reject]');
-      if(rej){researchApplySuggestion(r,rej.dataset.suggestionReject,false,editor);return}
-    });
-  }
-
-  researchStartCollaboration(r,editor,statusEl);
-
-  if(restored && statusEl){
-    statusEl.innerHTML='<i class="fas fa-clock-rotate-left"></i> Saved draft restored';
-  }
+    if(kind==='docx'&&!editMode){var note=document.createElement('div');note.className='ol-rs-note';note.style.cssText='padding:8px 14px;background:#fff;border-top:1px solid #dbe6ef';note.textContent='Word document preview converted for browser viewing.';host.appendChild(note)}
+  }catch(e){host.innerHTML='<div class="ol-research-empty"><i class="fas fa-circle-exclamation"></i><strong>Could not open this document</strong><br>'+researchEscape(e.message||e)+'</div>'}
 }
 
 async function saveInlineResearchCorrection(){
@@ -1563,73 +825,7 @@ async function saveInlineResearchCorrection(){
   var html=editor.innerHTML.trim();if(!html)return alert('There is no corrected document content to submit.');
   var next=nextResearchVersion(base),filename=(String(base.title||'Research').replace(/[^a-zA-Z0-9 _-]/g,'').trim()||'Research')+'_Student_Correction_V'+next+'.html',path=id+'/corrections/'+Date.now()+'_'+filename;
   var now=new Date().toISOString();
-  var wrapper='<!doctype html><html><head><meta charset="utf-8"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}
-          /* NCHSM mobile Research modal close-button safety */
-          .ol-rs-modal [data-research-close],
-          .ol-research-modal [data-research-close],
-          #ol-research-modal [data-research-close]{
-            display:inline-flex!important;
-            visibility:visible!important;
-            opacity:1!important;
-            position:relative!important;
-            z-index:999!important;
-            min-width:72px;
-            min-height:40px;
-            align-items:center;
-            justify-content:center;
-            white-space:nowrap;
-            flex-shrink:0;
-          }
-          @media(max-width:700px){
-            .ol-rs-modal,.ol-research-modal{
-              align-items:flex-start!important;
-              justify-content:center!important;
-              padding:0!important;
-              overflow:hidden!important;
-            }
-            .ol-rs-modal .ol-rs-dialog,.ol-research-modal .ol-rs-dialog{
-              width:100%!important;
-              max-width:none!important;
-              height:100dvh!important;
-              max-height:100dvh!important;
-              border-radius:0!important;
-              margin:0!important;
-            }
-            .ol-rs-modal .ol-rs-head,.ol-research-modal .ol-rs-head{
-              position:sticky!important;
-              top:0!important;
-              z-index:100!important;
-              display:flex!important;
-              align-items:center!important;
-              justify-content:space-between!important;
-              min-height:56px!important;
-              padding:8px 10px!important;
-              background:#fff!important;
-            }
-            .ol-rs-modal .ol-rs-head>div:first-child,.ol-research-modal .ol-rs-head>div:first-child{
-              min-width:0;
-              overflow:hidden;
-            }
-            .ol-rs-modal .ol-rs-head [data-research-close],
-            .ol-research-modal .ol-rs-head [data-research-close]{
-              display:inline-flex!important;
-              visibility:visible!important;
-              position:sticky!important;
-              right:0;
-              z-index:101!important;
-              min-width:76px!important;
-              min-height:42px!important;
-              padding:8px 12px!important;
-              font-size:14px!important;
-              font-weight:800!important;
-              background:#fff!important;
-              border:1px solid #cbd5e1!important;
-              border-radius:10px!important;
-              color:#334155!important;
-            }
-          }
-
-</style></head><body>'+html+'</body></html>';
+  var wrapper='<!doctype html><html><head><meta charset="utf-8"><title>'+researchEscape(base.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style></head><body>'+html+'</body></html>';
   var upload=await db.storage.from('research-papers').upload(path,new Blob([wrapper],{type:'text/html'}),{contentType:'text/html',upsert:false});if(upload.error)return alert('Could not upload the corrected document: '+upload.error.message);
   var payload={student_id:id,research_group_id:base.research_group_id||null,version_number:next,title:base.title,submission_type:'correction',supervisor_name:base.supervisor_name||null,abstract:base.abstract||null,status:'submitted',document_name:filename,document_path:path,feedback:null,reviewed_by:null,reviewed_at:null,submitted_at:now,created_at:now,updated_at:now};
   var ins=await db.from('research_submissions').insert(payload).select().single();
@@ -1643,6 +839,7 @@ async function saveInlineResearchCorrection(){
 async function downloadCurrentResearch(){var r=state.researchCurrent;if(!r)return;try{var url=await signedResearchUrl(r);var a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click()}catch(e){alert('Could not download the document: '+(e.message||e))}}
 
 async function viewResearch(id){await openResearchViewer(id,false)}
+
 
 function bindResearch(){
   researchEnsureUI();
