@@ -915,12 +915,13 @@ function researchEditorSaveState(r,editor,statusEl){
   try{
     localStorage.setItem(researchEditorDraftKey(r),editor.innerHTML);
     if(statusEl){
-      statusEl.innerHTML='<i class="fas fa-cloud-arrow-up"></i> Draft saved on this device · '+new Date().toLocaleTimeString();
+      statusEl.innerHTML='<i class="fas fa-hard-drive"></i> Local draft saved · '+new Date().toLocaleTimeString();
       statusEl.dataset.saved='1';
     }
   }catch(e){
     if(statusEl)statusEl.textContent='Draft could not be saved locally';
   }
+  researchSaveCloudDraft(r,editor,statusEl);
 }
 
 function researchEditorRestoreDraft(r,editor,statusEl,originalHtml){
@@ -983,6 +984,72 @@ function researchSetStoredArray(key,value){
   try{localStorage.setItem(key,JSON.stringify(value||[]))}catch(e){}
 }
 
+function researchCloudUuid(){
+  try{return crypto.randomUUID()}catch(e){return '00000000-0000-4000-8000-'+Math.random().toString(16).slice(2,14).padEnd(12,'0')}
+}
+
+async function researchLoadCloudAnnotations(r){
+  var sb=researchClient(),uid=researchUserId();
+  if(!sb||!r)return;
+  try{
+    var results=await Promise.all([
+      sb.from('research_document_comments').select('*').eq('research_submission_id',r.id).order('created_at',{ascending:true}),
+      sb.from('research_document_suggestions').select('*').eq('research_submission_id',r.id).order('created_at',{ascending:true})
+    ]);
+    var cr=results[0],sr=results[1];
+    if(!cr.error){
+      var comments=(cr.data||[]).filter(function(x){return x.status!=='resolved'}).map(function(x){return {id:x.id,text:x.selected_text,text_comment:x.comment_text,start:x.start_offset,end:x.end_offset,author_name:x.author_name||'User',created_at:x.created_at}});
+      researchSetStoredArray(researchCommentsKey(r),comments);
+    }
+    if(!sr.error){
+      var suggestions=(sr.data||[]).map(function(x){return {id:x.id,old_text:x.old_text,new_text:x.new_text,start:x.start_offset,end:x.end_offset,status:x.status,author_name:x.author_name||'User',created_at:x.created_at}});
+      researchSetStoredArray(researchSuggestionsKey(r),suggestions);
+    }
+  }catch(e){console.warn('Research cloud annotations:',e.message||e)}
+}
+
+async function researchSaveCloudDraft(r,editor,statusEl){
+  var sb=researchClient(),uid=researchUserId();
+  if(!sb||!uid||!r||!editor)return;
+  try{
+    var out=await sb.from('research_document_drafts').upsert({research_submission_id:r.id,user_id:uid,content_html:editor.innerHTML,updated_at:new Date().toISOString()},{onConflict:'research_submission_id,user_id'});
+    if(out.error)throw out.error;
+    if(statusEl)statusEl.innerHTML='<i class="fas fa-cloud-arrow-up"></i> Saved to Supabase · '+new Date().toLocaleTimeString();
+  }catch(e){if(statusEl)statusEl.innerHTML='<i class="fas fa-hard-drive"></i> Local draft saved · cloud save unavailable'}
+}
+
+async function researchRestoreCloudDraft(r,editor,statusEl){
+  var sb=researchClient(),uid=researchUserId();
+  if(!sb||!uid||!r||!editor)return false;
+  try{
+    var out=await sb.from('research_document_drafts').select('content_html,updated_at').eq('research_submission_id',r.id).eq('user_id',uid).maybeSingle();
+    if(out.error||!out.data||!out.data.content_html)return false;
+    editor.innerHTML=out.data.content_html;
+    if(statusEl)statusEl.innerHTML='<i class="fas fa-cloud"></i> Cloud draft restored · '+new Date(out.data.updated_at).toLocaleTimeString();
+    return true;
+  }catch(e){return false}
+}
+
+async function researchPersistComment(r,item){
+  var sb=researchClient(),uid=researchUserId();if(!sb||!uid||!r)return;
+  try{var out=await sb.from('research_document_comments').upsert({id:item.id,research_submission_id:r.id,user_id:uid,author_name:item.author_name||researchProfileName(),selected_text:item.text,comment_text:item.text_comment,start_offset:item.start,end_offset:item.end,status:'open'});if(out.error)console.warn('Research comment cloud save:',out.error.message)}catch(e){}
+}
+
+async function researchResolveCloudComment(r,id){
+  var sb=researchClient();if(!sb||!r)return;
+  try{var out=await sb.from('research_document_comments').update({status:'resolved',updated_at:new Date().toISOString()}).eq('id',id);if(out.error)console.warn('Research comment resolve:',out.error.message)}catch(e){}
+}
+
+async function researchPersistSuggestion(r,item){
+  var sb=researchClient(),uid=researchUserId();if(!sb||!uid||!r)return;
+  try{var out=await sb.from('research_document_suggestions').upsert({id:item.id,research_submission_id:r.id,user_id:uid,author_name:item.author_name||researchProfileName(),old_text:item.old_text,new_text:item.new_text,start_offset:item.start,end_offset:item.end,status:item.status||'pending'});if(out.error)console.warn('Research suggestion cloud save:',out.error.message)}catch(e){}
+}
+
+async function researchPersistSuggestionStatus(r,id,status){
+  var sb=researchClient();if(!sb)return;
+  try{var out=await sb.from('research_document_suggestions').update({status:status,updated_at:new Date().toISOString()}).eq('id',id);if(out.error)console.warn('Research suggestion status:',out.error.message)}catch(e){}
+}
+
 function researchGetComments(r){
   return researchGetStoredArray(researchCommentsKey(r));
 }
@@ -991,14 +1058,9 @@ function researchGetSuggestions(r){
   return researchGetStoredArray(researchSuggestionsKey(r));
 }
 
-function researchCommentId(){
-  researchCollabState.commentCounter++;
-  return 'c_'+Date.now()+'_'+researchCollabState.commentCounter+'_'+Math.random().toString(36).slice(2,7);
-}
+function researchCommentId(){return researchCloudUuid();}
 
-function researchSuggestionId(){
-  return 's_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
-}
+function researchSuggestionId(){return researchCloudUuid();}
 
 function researchSelectionText(editor){
   var sel=window.getSelection();
@@ -1111,13 +1173,13 @@ function researchAddComment(r,editor){
     resolved:false
   };
   var comments=researchGetComments(r);
-  comments.push(item);researchSetStoredArray(researchCommentsKey(r),comments);
+  comments.push(item);researchSetStoredArray(researchCommentsKey(r),comments);researchPersistComment(r,item);
   researchRefreshCommentMarkers(editor,r);
   researchRenderCommentsPanel(r,editor);
   researchBroadcast(r,{type:'comment-add',comment:item});
 }
 
-function researchResolveComment(r,id,editor){
+async function researchResolveComment(r,id,editor){
   var comments=researchGetComments(r).filter(function(c){return String(c.id)!==String(id)});
   researchSetStoredArray(researchCommentsKey(r),comments);
   researchRefreshCommentMarkers(editor,r);
@@ -1150,6 +1212,7 @@ function researchInsertSuggestion(r,editor){
   };
   var suggestions=researchGetSuggestions(r);suggestions.push(sug);
   researchSetStoredArray(researchSuggestionsKey(r),suggestions);
+  researchPersistSuggestion(r,sug);
 
   var sel=window.getSelection();
   if(sel&&sel.rangeCount){
@@ -1182,12 +1245,13 @@ function researchRenderSuggestionsPanel(r,editor){
     }).join(''):'<div class="ol-rs-comments-empty">No pending suggestions.</div>');
 }
 
-function researchApplySuggestion(r,id,accept,editor){
+async function researchApplySuggestion(r,id,accept,editor){
   var list=researchGetSuggestions(r);
   var s=list.find(function(x){return String(x.id)===String(id)});
   if(!s)return;
   s.status=accept?'accepted':'rejected';
   researchSetStoredArray(researchSuggestionsKey(r),list);
+  researchPersistSuggestionStatus(r,id,s.status);
 
   if(accept){
     var walker=document.createTreeWalker(editor,NodeFilter.SHOW_ELEMENT);
@@ -1430,6 +1494,14 @@ function renderGoogleDocsEditor(host,r,html,kind){
   }
 
   var restored=researchEditorRestoreDraft(r,editor,statusEl,originalHtml);
+  researchLoadCloudAnnotations(r).then(function(){
+    researchRefreshCommentMarkers(editor,r);
+    researchRenderCommentsPanel(r,editor);
+    researchRenderSuggestionsPanel(r,editor);
+  });
+  researchRestoreCloudDraft(r,editor,statusEl).then(function(cloudRestored){
+    if(cloudRestored){editor.dataset.dirty='1';updateCount();}
+  });
   updateCount();
   researchRefreshCommentMarkers(editor,r);
   researchRenderCommentsPanel(r,editor);
