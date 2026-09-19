@@ -599,6 +599,85 @@ window.LecturerOnlineLearning = (() => {
         try{localStorage.setItem(key,JSON.stringify(value||[]))}catch(e){}
     }
 
+    function lecturerResearchUuid(){
+        try{return crypto.randomUUID()}catch(e){return '00000000-0000-4000-8000-'+Math.random().toString(16).slice(2,14).padEnd(12,'0')}
+    }
+
+    async function lecturerLoadPersistentAnnotations(s){
+        const db=client();
+        if(!db||!s)return;
+        try{
+            const [cr,sr]=await Promise.all([
+                db.from('research_document_comments').select('*').eq('research_submission_id',s.id).order('created_at',{ascending:true}),
+                db.from('research_document_suggestions').select('*').eq('research_submission_id',s.id).order('created_at',{ascending:true})
+            ]);
+            if(!cr.error){
+                const comments=(cr.data||[]).filter(x=>x.status!=='resolved').map(x=>({id:x.id,text:x.selected_text,comment:x.comment_text,start:x.start_offset,end:x.end_offset,author_name:x.author_name||'User',created_at:x.created_at}));
+                lecturerSaveArray(lecturerResearchCommentsKey(s),comments);
+            }
+            if(!sr.error){
+                const suggestions=(sr.data||[]).map(x=>({id:x.id,old_text:x.old_text,new_text:x.new_text,start:x.start_offset,end:x.end_offset,status:x.status,author_name:x.author_name||'User',created_at:x.created_at}));
+                lecturerSaveArray(lecturerResearchSuggestionsKey(s),suggestions);
+            }
+        }catch(e){console.warn('Research collaboration data load:',e.message||e)}
+    }
+
+    async function lecturerSaveDraftCloud(s,editor){
+        const db=client();
+        if(!db||!s||!editor||!state.userId)return;
+        try{
+            const {error}=await db.from('research_document_drafts').upsert({
+                research_submission_id:s.id,
+                user_id:state.userId,
+                content_html:editor.innerHTML,
+                updated_at:new Date().toISOString()
+            },{onConflict:'research_submission_id,user_id'});
+            if(error)console.warn('Research draft cloud save:',error.message);
+        }catch(e){console.warn('Research draft cloud save:',e.message||e)}
+    }
+
+    async function lecturerRestoreDraftCloud(s,editor,statusEl){
+        const db=client();
+        if(!db||!s||!editor||!state.userId)return false;
+        try{
+            const {data,error}=await db.from('research_document_drafts').select('content_html,updated_at').eq('research_submission_id',s.id).eq('user_id',state.userId).maybeSingle();
+            if(error||!data||!data.content_html)return false;
+            editor.innerHTML=data.content_html;
+            if(statusEl)statusEl.textContent='Cloud draft restored · '+new Date(data.updated_at).toLocaleTimeString();
+            return true;
+        }catch(e){return false}
+    }
+
+    async function lecturerPersistComment(s,item){
+        const db=client(); if(!db||!s||!state.userId)return;
+        const {error}=await db.from('research_document_comments').upsert({
+            id:item.id,research_submission_id:s.id,user_id:state.userId,author_name:item.author_name||lecturerResearchName(),
+            selected_text:item.text,comment_text:item.comment,start_offset:item.start,end_offset:item.end,status:'open'
+        });
+        if(error)console.warn('Research comment save:',error.message);
+    }
+
+    async function lecturerPersistCommentResolve(s,id){
+        const db=client(); if(!db||!s)return;
+        const {error}=await db.from('research_document_comments').update({status:'resolved',updated_at:new Date().toISOString()}).eq('id',id);
+        if(error)console.warn('Research comment resolve:',error.message);
+    }
+
+    async function lecturerPersistSuggestion(s,item){
+        const db=client(); if(!db||!s||!state.userId)return;
+        const {error}=await db.from('research_document_suggestions').upsert({
+            id:item.id,research_submission_id:s.id,user_id:state.userId,author_name:item.author_name||lecturerResearchName(),
+            old_text:item.old_text,new_text:item.new_text,start_offset:item.start,end_offset:item.end,status:item.status||'pending'
+        });
+        if(error)console.warn('Research suggestion save:',error.message);
+    }
+
+    async function lecturerPersistSuggestionStatus(s,id,status){
+        const db=client(); if(!db)return;
+        const {error}=await db.from('research_document_suggestions').update({status:status,updated_at:new Date().toISOString()}).eq('id',id);
+        if(error)console.warn('Research suggestion status:',error.message);
+    }
+
     function lecturerSelection(editor){
         const sel=window.getSelection();
         if(!sel||!sel.rangeCount)return null;
@@ -619,13 +698,9 @@ window.LecturerOnlineLearning = (() => {
         return {start:start,end:start+range.toString().length};
     }
 
-    function lecturerCommentId(){
-        return 'lc_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
-    }
+    function lecturerCommentId(){return lecturerResearchUuid();}
 
-    function lecturerSuggestionId(){
-        return 'ls_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
-    }
+    function lecturerSuggestionId(){return lecturerResearchUuid();}
 
     function lecturerBroadcast(payload){
         if(!lecturerResearchCollab.channel)return;
@@ -683,13 +758,15 @@ window.LecturerOnlineLearning = (() => {
         const item={id:lecturerCommentId(),text:sel.text,comment:comment.trim(),start:offsets.start,end:offsets.end,author_name:lecturerResearchName(),created_at:new Date().toISOString()};
         const list=lecturerStoredArray(lecturerResearchCommentsKey(s));
         list.push(item);lecturerSaveArray(lecturerResearchCommentsKey(s),list);
+        lecturerPersistComment(s,item);
         lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
         lecturerBroadcast({type:'comment-add',comment:item});
     }
 
-    function lecturerResolveComment(s,id,editor){
+    async function lecturerResolveComment(s,id,editor){
         lecturerSaveArray(lecturerResearchCommentsKey(s),lecturerStoredArray(lecturerResearchCommentsKey(s)).filter(function(c){return String(c.id)!==String(id)}));
         lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
+        lecturerPersistCommentResolve(s,id);
         lecturerBroadcast({type:'comment-delete',id:id});
     }
 
@@ -701,6 +778,7 @@ window.LecturerOnlineLearning = (() => {
         if(replacement===null)return;
         const item={id:lecturerSuggestionId(),old_text:sel.text,new_text:String(replacement),start:offsets.start,end:offsets.end,status:'pending',author_name:lecturerResearchName(),created_at:new Date().toISOString()};
         const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));list.push(item);lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
+        lecturerPersistSuggestion(s,item);
         const range=sel.range;
         const span=document.createElement('span');span.className='rs-suggestion';span.dataset.rsSuggestion=item.id;span.innerHTML='<del>'+esc(sel.text)+'</del><ins>'+esc(String(replacement))+'</ins>';
         try{range.deleteContents();range.insertNode(span)}catch(e){}
@@ -716,12 +794,13 @@ window.LecturerOnlineLearning = (() => {
         }).join(''):'<div class="rs-empty" style="padding:16px;font-size:9px">No pending suggestions.</div>';
     }
 
-    function lecturerApplySuggestion(s,id,accept,editor){
+    async function lecturerApplySuggestion(s,id,accept,editor){
         const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));
         const item=list.find(function(x){return String(x.id)===String(id)});
         if(!item)return;
         item.status=accept?'accepted':'rejected';
         lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
+        lecturerPersistSuggestionStatus(s,id,item.status);
         const nodes=Array.from(editor.querySelectorAll('[data-rs-suggestion]')).filter(function(n){return String(n.dataset.rsSuggestion)===String(id)});
         nodes.forEach(function(n){n.outerHTML=accept?esc(item.new_text):esc(item.old_text)});
         lecturerRenderSuggestions(s,editor);
@@ -789,8 +868,11 @@ window.LecturerOnlineLearning = (() => {
             }
         });
 
+        let cloudDraftTimer=null;
         editor.addEventListener('input',function(){
             if(lecturerResearchCollab.applyingRemote)return;
+            clearTimeout(cloudDraftTimer);
+            cloudDraftTimer=setTimeout(function(){lecturerSaveDraftCloud(s,editor)},1000);
             const now=Date.now();
             if(now-lecturerResearchCollab.lastBroadcast<180)return;
             lecturerResearchCollab.lastBroadcast=now;
@@ -959,7 +1041,9 @@ window.LecturerOnlineLearning = (() => {
 
         try{
             const kind=await lecturerLoadDocument(s,editor);
-            if(statusEl)statusEl.textContent='Loaded · '+kind.toUpperCase();
+            await lecturerLoadPersistentAnnotations(s);
+            const cloudDraft=await lecturerRestoreDraftCloud(s,editor,statusEl);
+            if(statusEl && !cloudDraft)statusEl.textContent='Loaded · '+kind.toUpperCase();
             lecturerRefreshCommentMarks(editor,s);
             lecturerRenderComments(s,editor);
             lecturerRenderSuggestions(s,editor);
