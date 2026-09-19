@@ -602,32 +602,25 @@ window.LecturerOnlineLearning = (() => {
         .rs-student strong{display:block;color:#0f172a}.rs-student small{display:block;color:#64748b;margin-top:2px}.rs-title-cell strong{display:block;max-width:320px;white-space:normal}.rs-title-cell small{color:#64748b}
         .rs-pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap;background:#e2e8f0;color:#334155}.rs-submitted{background:#e0f2fe;color:#0369a1}.rs-under_review{background:#fef3c7;color:#92400e}.rs-revision_required{background:#fee2e2;color:#991b1b}.rs-approved{background:#dcfce7;color:#166534}.rs-rejected{background:#e5e7eb;color:#374151}
         .rs-empty{padding:28px;text-align:center;color:#64748b}.rs-empty strong{display:block;color:#334155;margin-bottom:5px}
-        .rs-modal{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:100100;display:none;align-items:center;justify-content:center;padding:12px}
-        .rs-dialog{width:min(1450px,100%);height:min(94vh,1050px);max-height:94vh;background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.3)}
-        .rs-dialog-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #e2e8f0;background:#fff}.rs-dialog-head h3{margin:0;font-size:17px}.rs-dialog-head .rs-meta{font-size:12px;color:#64748b;margin-top:3px}
-        .rs-workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0;flex:1;overflow:hidden}.rs-review-fullscreen .rs-dialog{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}.rs-review-fullscreen{padding:0!important}.rs-review-fullscreen .rs-document-shell{padding:28px;max-height:none}.rs-review-fullscreen .rs-document{max-width:950px}.rs-fullscreen-active{background:#dbeafe!important;border-color:#93c5fd!important;color:#1d4ed8!important}
-        .rs-editor-pane{display:flex;flex-direction:column;min-width:0;background:#f1f5f9}.rs-editor-toolbar{display:flex;align-items:center;gap:5px;padding:8px;border-bottom:1px solid #dbe3ec;background:#fff;flex-wrap:wrap}.rs-tool{width:34px;height:32px;border:1px solid #dbe3ec;background:#fff;border-radius:7px;cursor:pointer;font-weight:700}.rs-tool:hover{background:#f1f5f9}.rs-tool.active{background:#dbeafe;border-color:#93c5fd}.rs-editor-state{margin-left:auto;font-size:11px;color:#64748b;padding:0 6px}
-        .rs-document-shell{overflow:auto;flex:1;padding:28px}.rs-document{background:#fff;max-width:850px;min-height:1050px;margin:0 auto;padding:65px 72px;box-shadow:0 2px 15px rgba(15,23,42,.12);outline:none;box-sizing:border-box;line-height:1.65;color:#1e293b;font-family:Arial,sans-serif;font-size:15px}.rs-document[contenteditable="true"]{cursor:text}.rs-document:focus{box-shadow:0 0 0 2px #93c5fd,0 2px 15px rgba(15,23,42,.12)}
+        .rs-modal{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:100100;display:none;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;overflow:hidden}
+        .rs-dialog{width:min(1450px,100%);height:min(94vh,1050px);max-width:100%;max-height:100%;min-height:0;background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.3)}
+        .rs-dialog-head{display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;padding:14px 18px;border-bottom:1px solid #e2e8f0;background:#fff;position:relative;z-index:20}.rs-dialog-head h3{margin:0;font-size:17px}.rs-dialog-head .rs-meta{font-size:12px;color:#64748b;margin-top:3px}
+        .rs-workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0;height:100%;flex:1;overflow:hidden}
+        .rs-editor-pane{display:flex;flex-direction:column;min-width:0;min-height:0;background:#f1f5f9;overflow:hidden}.rs-editor-toolbar{display:flex;align-items:center;gap:5px;flex:0 0 auto;padding:8px;border-bottom:1px solid #dbe3ec;background:#fff;flex-wrap:wrap;position:relative;z-index:10}.rs-tool{width:34px;height:32px;border:1px solid #dbe3ec;background:#fff;border-radius:7px;cursor:pointer;font-weight:700}.rs-tool:hover{background:#f1f5f9}.rs-tool.active{background:#dbeafe;border-color:#93c5fd}.rs-editor-state{flex:0 0 auto;margin-left:auto;font-size:11px;color:#64748b;padding:0 6px}
+        .rs-document-shell{overflow:auto;flex:1 1 auto;min-height:0;height:100%;padding:28px;box-sizing:border-box;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.rs-document{background:#fff;width:min(850px,100%);max-width:850px;min-height:1050px;margin:0 auto;padding:65px 72px;box-shadow:0 2px 15px rgba(15,23,42,.12);outline:none;box-sizing:border-box;line-height:1.65;color:#1e293b;font-family:Arial,sans-serif;font-size:15px}.rs-document[contenteditable="true"]{cursor:text}.rs-document:focus{box-shadow:0 0 0 2px #93c5fd,0 2px 15px rgba(15,23,42,.12)}
 .rs-comment-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.rs-comment-list{display:grid;gap:7px;margin-top:8px}.rs-comment{border:1px solid #dbe3ec;border-radius:8px;padding:8px;background:#f8fafc}.rs-comment-meta{font-size:9px;color:#64748b;margin-bottom:4px}.rs-comment-quote{margin:4px 0;padding:6px 8px;border-left:3px solid #2563eb;background:#eff6ff;font-size:9px;color:#334155}.rs-comment-text{font-size:10px;line-height:1.5;color:#334155;white-space:pre-wrap}.rs-comment-box{display:flex;gap:6px;margin-top:7px}.rs-comment-box textarea{flex:1;min-height:58px;border:1px solid #dbe3ec;border-radius:8px;padding:7px;font-size:10px}.rs-comment-highlight{background:#fff0a8;border-radius:2px;box-shadow:0 0 0 1px #f1d36b}.rs-comment-highlight.active{background:#ffd45c}
-        .rs-side{border-left:1px solid #e2e8f0;background:#fff;padding:16px;overflow:auto}.rs-side h4{margin:0 0 12px}.rs-side label{display:block;font-size:11px;font-weight:800;color:#475569;margin:13px 0 6px}.rs-side textarea{min-height:150px;resize:vertical}.rs-side .rs-meta-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-size:12px;line-height:1.6;color:#475569}
+        .rs-side{border-left:1px solid #e2e8f0;background:#fff;padding:16px;overflow:auto;min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.rs-side h4{margin:0 0 12px}.rs-side label{display:block;font-size:11px;font-weight:800;color:#475569;margin:13px 0 6px}.rs-side textarea{min-height:150px;resize:vertical}.rs-side .rs-meta-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-size:12px;line-height:1.6;color:#475569}
         .rs-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.rs-actions .wide{grid-column:1/-1}
         .rs-history{margin-top:14px}.rs-history-item{padding:9px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;font-size:11px}.rs-history-item strong{display:block}.rs-history-item span{color:#64748b}
+        .rs-modal.rs-modal-fullscreen{padding:0}
+        .rs-dialog.rs-fullscreen{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}
+        .rs-fullscreen-btn{font-weight:800;display:inline-flex;align-items:center;gap:5px}
+        body.rs-review-scroll-lock{overflow:hidden!important}
         body.dark-mode .rs-stat,body.dark-mode .rs-card,body.dark-mode .rs-dialog,body.dark-mode .rs-dialog-head,body.dark-mode .rs-side{background:#0d1b2d!important;border-color:#263d55!important;color:#e2e8f0}body.dark-mode .rs-head h3,body.dark-mode .rs-stat strong,body.dark-mode .rs-section-title h4,body.dark-mode .rs-student strong{color:#f1f5f9}body.dark-mode .rs-toolbar input,body.dark-mode .rs-toolbar select,body.dark-mode .rs-side input,body.dark-mode .rs-side select,body.dark-mode .rs-side textarea{background:#0a1727;color:#e2e8f0;border-color:#334b63}
-        @media(max-width:1050px){.rs-stats{grid-template-columns:repeat(3,1fr)}.rs-toolbar{grid-template-columns:1fr 1fr 1fr}.rs-workspace{grid-template-columns:1fr}.rs-side{border-left:0;border-top:1px solid #e2e8f0;max-height:420px}}
-        @media(max-width:650px){.rs-stats{grid-template-columns:repeat(2,1fr)}.rs-toolbar{grid-template-columns:1fr 1fr}.rs-document-shell{padding:10px}.rs-document{padding:35px 25px;min-height:800px}.rs-actions{grid-template-columns:1fr}}
+        @media(max-width:1050px){.rs-stats{grid-template-columns:repeat(3,1fr)}.rs-toolbar{grid-template-columns:1fr 1fr 1fr}.rs-workspace{grid-template-columns:1fr;overflow:auto}.rs-editor-pane{min-height:58vh}.rs-side{border-left:0;border-top:1px solid #e2e8f0;max-height:42vh;min-height:240px}}
+        @media(max-width:650px){.rs-stats{grid-template-columns:repeat(2,1fr)}.rs-toolbar{grid-template-columns:1fr 1fr}.rs-dialog-head{padding:10px 12px}.rs-dialog-head h3{font-size:14px}.rs-document-shell{padding:10px;min-height:0}.rs-document{padding:35px 25px;min-height:800px}.rs-actions{grid-template-columns:1fr}.rs-fullscreen-btn{font-size:10px;padding:7px 8px}}
         `;
         document.head.appendChild(st);
-    }
-
-    function toggleResearchFullscreen(){
-        const modal=$('rsReviewModal');
-        if(!modal)return;
-        const active=modal.classList.toggle('rs-review-fullscreen');
-        const btn=$('rsFullscreen');
-        if(btn){btn.classList.toggle('rs-fullscreen-active',active);btn.innerHTML=active?'<i class="fas fa-compress"></i> Exit Full Screen':'<i class="fas fa-expand"></i> Full Screen';}
-        document.body.style.overflow=active?'hidden':'';
-        const shell=$('rsDocumentShell');
-        if(shell){shell.scrollTop=0;}
     }
 
     function researchEnsureUI() {
@@ -694,7 +687,7 @@ window.LecturerOnlineLearning = (() => {
                     <button type="button" data-cmd="undo">↶</button>
                     <button type="button" data-cmd="redo">↷</button>
                     <button type="button" id="rsOriginal">Original</button>
-                    <button type="button" id="rsFullscreen" title="Full Screen"><i class="fas fa-expand"></i> Full Screen</button>
+                    <button type="button" id="rsFullscreen" class="rs-fullscreen-btn"><i class="fas fa-expand"></i> Full Screen</button>
                   </div>
                   <div id="rsEditorState" class="rs-editor-state">Read only</div>
                   <div id="rsDocumentShell" class="rs-document-shell">
@@ -770,8 +763,14 @@ window.LecturerOnlineLearning = (() => {
                 }
             });
             document.addEventListener('keydown', e => {
-                if (e.key === 'Escape' && $('rsReviewModal')?.classList.contains('rs-review-fullscreen')) { toggleResearchFullscreen(); return; }
-                if (e.key === 'Escape' && $('rsReviewModal')?.getAttribute('aria-hidden') === 'false') closeResearchModal();
+                if (e.key !== 'Escape' || $('rsReviewModal')?.getAttribute('aria-hidden') !== 'false') return;
+                const dialog = document.querySelector('#rsReviewModal .rs-dialog');
+                if (dialog?.classList.contains('rs-fullscreen')) {
+                    e.preventDefault();
+                    toggleResearchFullscreen(false);
+                    return;
+                }
+                closeResearchModal();
             });
         }
     }
@@ -920,8 +919,17 @@ window.LecturerOnlineLearning = (() => {
         if (ed) researchCommentHighlight(ed, comments);
         renderResearchVersionHistory(s);
 
-        $('rsReviewModal').style.display = 'flex';
-        $('rsReviewModal').setAttribute('aria-hidden', 'false');
+        const reviewModal = $('rsReviewModal');
+        const reviewDialog = reviewModal?.querySelector('.rs-dialog');
+        if (reviewDialog) reviewDialog.classList.remove('rs-fullscreen');
+        if (reviewModal) {
+            reviewModal.classList.remove('rs-modal-fullscreen');
+            reviewModal.style.display = 'flex';
+            reviewModal.setAttribute('aria-hidden', 'false');
+        }
+        document.body.classList.add('rs-review-scroll-lock');
+        if ($('rsFullscreen')) $('rsFullscreen').innerHTML = '<i class="fas fa-expand"></i> Full Screen';
+        requestAnimationFrame(() => { if ($('rsDocumentShell')) $('rsDocumentShell').scrollTop = 0; });
     }
 
     async function loadResearchComments(submissionId){
@@ -1163,16 +1171,35 @@ window.LecturerOnlineLearning = (() => {
         }
     }
 
+    function toggleResearchFullscreen(force) {
+        const modal = $('rsReviewModal');
+        const dialog = modal?.querySelector('.rs-dialog');
+        const button = $('rsFullscreen');
+        if (!modal || !dialog) return;
+        const active = typeof force === 'boolean' ? force : !dialog.classList.contains('rs-fullscreen');
+        dialog.classList.toggle('rs-fullscreen', active);
+        modal.classList.toggle('rs-modal-fullscreen', active);
+        document.body.classList.toggle('rs-review-scroll-lock', active);
+        if (button) {
+            button.innerHTML = active
+                ? '<i class="fas fa-compress"></i> Exit Full Screen'
+                : '<i class="fas fa-expand"></i> Full Screen';
+            button.setAttribute('aria-label', active ? 'Exit Full Screen' : 'Full Screen');
+        }
+    }
+
     function closeResearchModal() {
         const m = $('rsReviewModal');
+        const dialog = m?.querySelector('.rs-dialog');
+        if (dialog) dialog.classList.remove('rs-fullscreen');
         if (m) {
+            m.classList.remove('rs-modal-fullscreen');
             m.style.display = 'none';
             m.setAttribute('aria-hidden', 'true');
-            m.classList.remove('rs-review-fullscreen');
         }
-        document.body.style.overflow = '';
+        document.body.classList.remove('rs-review-scroll-lock');
         const fs = $('rsFullscreen');
-        if (fs) { fs.classList.remove('rs-fullscreen-active'); fs.innerHTML = '<i class="fas fa-expand"></i> Full Screen'; }
+        if (fs) fs.innerHTML = '<i class="fas fa-expand"></i> Full Screen';
         if (researchState.current) {
             try {
                 if (researchState.correctionDirty && $('rsDocumentEditor')?.contentEditable === 'true') {
