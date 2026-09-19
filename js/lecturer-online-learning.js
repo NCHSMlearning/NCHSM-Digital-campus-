@@ -72,15 +72,8 @@ window.LecturerOnlineLearning = (() => {
     async function deleteAssignment(id){if(!confirm('Delete this assignment and its questions? This should only be done before student submissions exist.'))return;const db=client();const {error}=await db.from('online_assignments').delete().eq('id',id);if(error)notify(error.message,'error');else{notify('Assignment deleted.','success');load();}}
     // ============================================================
     // DOCUMENT VIEWER + ACADEMIC INTEGRITY AGENT
-    // Submitted assignments and case studies are editable by lecturers:
-    // - DOC/DOCX/HTML/text files open in an editable browser workspace.
-    // - Save Correction uploads a new corrected file and updates the submission reference.
-    // - Structured assignment/case-study answers can be edited and saved directly.
-    // - Original browser draft is retained locally while the lecturer works.
-
     // ============================================================
     const integrityState = { currentSubmission:null, extractedText:'', report:null };
-    const assignmentEditorState = { currentSubmission:null, originalHtml:'', draftHtml:'', dirty:false, ext:'', url:'' };
     const INTEGRITY_FUNCTION = window.NCHSM_AI_INTEGRITY_FUNCTION || 'academic-integrity-scan';
     const STORAGE_BUCKET = window.NCHSM_ASSIGNMENT_BUCKET || 'assignment-submissions';
 
@@ -88,70 +81,18 @@ window.LecturerOnlineLearning = (() => {
         if(document.getElementById('olIntegrityStyles')) return;
         const st=document.createElement('style'); st.id='olIntegrityStyles';
         st.textContent=`
-        .ol-document-viewer{position:fixed;inset:0;background:rgba(15,23,42,.82);z-index:100005;display:none;align-items:center;justify-content:center;padding:8px}
-        .ol-document-card{background:#fff;width:min(1450px,100%);height:min(96vh,1100px);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.35)}
-        .ol-document-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 14px;border-bottom:1px solid #e5e7eb;background:#fff;flex-wrap:wrap}
-        .ol-document-tools{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
-        .ol-document-body{flex:1;overflow:auto;background:#eef2f7;padding:22px}
-        .ol-document-frame{width:100%;height:100%;min-height:650px;border:0;background:#fff}
-        .ol-docx{background:#fff;max-width:900px;margin:0 auto;padding:45px 55px;min-height:90%;box-shadow:0 1px 8px rgba(15,23,42,.08);line-height:1.65;color:#1e293b;font-family:Arial,sans-serif;font-size:15px;outline:none}
-        .ol-docx[contenteditable="true"]{cursor:text;box-shadow:0 0 0 2px #93c5fd,0 1px 8px rgba(15,23,42,.08)}
-        .ol-doc-toolbar{display:flex;gap:5px;flex-wrap:wrap;padding:8px;border-bottom:1px solid #dbe3ec;background:#fff;position:sticky;top:0;z-index:2}
-        .ol-doc-tool{min-width:32px;height:31px;padding:0 8px;border:1px solid #dbe3ec;background:#fff;border-radius:7px;cursor:pointer;font-weight:700}
-        .ol-doc-tool:hover{background:#f1f5f9}
-        .ol-doc-state{font-size:11px;color:#64748b;margin-left:auto;padding:7px}
-        .ol-integrity{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;padding:14px;background:#f8fafc}
-        .ol-integrity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
-        .ol-integrity-stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px}.ol-integrity-stat b{display:block;font-size:20px}
-        .ol-integrity-match{padding:9px;border-radius:9px;background:#fff;border:1px solid #e5e7eb;margin-top:7px;font-size:13px}
-        .ol-integrity-note{font-size:12px;color:#64748b;line-height:1.5}
-        @media(max-width:760px){.ol-integrity-grid{grid-template-columns:1fr}.ol-document-viewer{padding:3px}.ol-document-card{height:99vh;border-radius:10px}.ol-document-body{padding:7px}.ol-docx{padding:24px 20px}.ol-doc-state{width:100%;margin-left:0;padding:2px 0}}
-        `;
-        document.head.appendChild(st);
+        .ol-document-viewer{position:fixed;inset:0;background:rgba(15,23,42,.78);z-index:100005;display:none;align-items:center;justify-content:center;padding:12px}
+        .ol-document-card{background:#fff;width:min(1200px,100%);height:min(94vh,1000px);border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.35)}
+        .ol-document-head{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 16px;border-bottom:1px solid #e5e7eb}
+        .ol-document-body{flex:1;overflow:auto;background:#f1f5f9;padding:16px}.ol-document-frame{width:100%;height:100%;min-height:650px;border:0;background:#fff}.ol-docx{background:#fff;max-width:900px;margin:auto;padding:45px 55px;min-height:90%;box-shadow:0 1px 8px rgba(15,23,42,.08);line-height:1.65}.ol-docx img{max-width:100%}
+        .ol-integrity{margin-top:14px;border:1px solid #e2e8f0;border-radius:12px;padding:14px;background:#f8fafc}.ol-integrity-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}.ol-integrity-stat{background:#fff;border:1px solid #e5e7eb;border-radius:10px;padding:10px}.ol-integrity-stat b{display:block;font-size:20px}.ol-integrity-match{padding:9px;border-radius:9px;background:#fff;border:1px solid #e5e7eb;margin-top:7px;font-size:13px}.ol-integrity-note{font-size:12px;color:#64748b;line-height:1.5}@media(max-width:760px){.ol-integrity-grid{grid-template-columns:1fr}.ol-document-viewer{padding:5px}.ol-document-card{height:98vh}.ol-docx{padding:22px}.ol-document-body{padding:6px}}
+        `;document.head.appendChild(st);
     }
     function ensureViewer(){
         ensureStyle(); if($('olDocumentViewer')) return;
         const d=document.createElement('div'); d.id='olDocumentViewer'; d.className='ol-document-viewer';
-        d.innerHTML=`<div class="ol-document-card">
-          <div class="ol-document-head">
-            <div><b id="olDocumentTitle">Uploaded Work</b><div id="olDocumentMeta" style="font-size:11px;color:#64748b"></div></div>
-            <div class="ol-document-tools">
-              <button class="ol-btn ol-primary" id="olDocumentEdit"><i class="fas fa-pen"></i> Edit</button>
-              <button class="ol-btn ol-success" id="olDocumentSave"><i class="fas fa-save"></i> Save Correction</button>
-              <button class="ol-btn ol-muted" id="olDocumentOriginal"><i class="fas fa-rotate-left"></i> Original</button>
-              <button class="ol-btn ol-muted" id="olDocumentDownload">Download</button>
-              <button class="ol-btn ol-danger" id="olDocumentClose"><i class="fas fa-times"></i> Close</button>
-            </div>
-          </div>
-          <div class="ol-doc-toolbar" id="olDocToolbar" style="display:none">
-            <button type="button" class="ol-doc-tool" data-doc-cmd="bold"><b>B</b></button>
-            <button type="button" class="ol-doc-tool" data-doc-cmd="italic"><i>I</i></button>
-            <button type="button" class="ol-doc-tool" data-doc-cmd="underline"><u>U</u></button>
-            <button type="button" class="ol-doc-tool" data-doc-cmd="insertUnorderedList">• List</button>
-            <button type="button" class="ol-doc-tool" data-doc-cmd="insertOrderedList">1. List</button>
-            <button type="button" class="ol-doc-tool" data-doc-cmd="justifyLeft">Left</button>
-            <button type="button" class="ol-doc-tool" data-doc-cmd="justifyCenter">Center</button>
-            <button type="button" class="ol-doc-tool" data-doc-cmd="justifyRight">Right</button>
-            <button type="button" class="ol-doc-tool" data-doc-cmd="undo">↶</button>
-            <button type="button" class="ol-doc-tool" data-doc-cmd="redo">↷</button>
-            <span id="olDocState" class="ol-doc-state">Read only</span>
-          </div>
-          <div class="ol-document-body" id="olDocumentBody"><div class="ol-empty">Loading document…</div></div>
-        </div>`;
+        d.innerHTML=`<div class="ol-document-card"><div class="ol-document-head"><div><b id="olDocumentTitle">Uploaded Work</b><div id="olDocumentMeta" style="font-size:11px;color:#64748b"></div></div><div style="display:flex;gap:6px"><button class="ol-btn ol-muted" id="olDocumentDownload">Download</button><button class="ol-btn ol-danger" onclick="LecturerOnlineLearning.closeDocumentViewer()">Close</button></div></div><div class="ol-document-body" id="olDocumentBody"><div class="ol-empty">Loading document…</div></div></div>`;
         document.body.appendChild(d);
-
-        $('olDocumentClose').onclick=closeDocumentViewer;
-        $('olDocumentEdit').onclick=toggleAssignmentDocumentEditor;
-        $('olDocumentSave').onclick=saveAssignmentDocumentCorrection;
-        $('olDocumentOriginal').onclick=showOriginalAssignmentDocument;
-        d.querySelectorAll('[data-doc-cmd]').forEach(btn=>btn.addEventListener('click',()=>{
-            const ed=$('olDocumentEditor'); if(!ed || ed.contentEditable!=='true') return;
-            ed.focus(); document.execCommand(btn.dataset.docCmd,false,null);
-            markAssignmentDocumentDirty();
-        }));
-        $('olDocumentBody').addEventListener('input',()=>{
-            const ed=$('olDocumentEditor'); if(ed && ed.contentEditable==='true') markAssignmentDocumentDirty();
-        });
     }
     async function signedDocumentUrl(s){
         const db=client(); if(!db || !s?.file_path) throw new Error('No uploaded document is attached to this submission.');
@@ -160,150 +101,26 @@ window.LecturerOnlineLearning = (() => {
     }
     function extOf(name=''){ const x=name.toLowerCase().split('.').pop(); return x==='jpeg'?'jpg':x; }
     function loadScriptOnce(src,id){return new Promise((resolve,reject)=>{if(id&&document.getElementById(id))return resolve();const s=document.createElement('script');s.src=src;if(id)s.id=id;s.onload=resolve;s.onerror=()=>reject(new Error('Could not load '+src));document.head.appendChild(s);});}
-    function setAssignmentEditorState(message){
-        const el=$('olDocState'); if(el) el.textContent=message;
-    }
-    function markAssignmentDocumentDirty(){
-        const ed=$('olDocumentEditor'); if(!ed) return;
-        assignmentEditorState.dirty=true;
-        assignmentEditorState.draftHtml=ed.innerHTML;
-        try{localStorage.setItem('nchsm_assignment_draft_'+assignmentEditorState.currentSubmission.id,assignmentEditorState.draftHtml);}catch{}
-        setAssignmentEditorState('Editing • Draft saved locally');
-    }
-    function toggleAssignmentDocumentEditor(){
-        const ed=$('olDocumentEditor'), toolbar=$('olDocToolbar');
-        if(!ed) return;
-        const editable=ed.contentEditable==='true';
-        if(editable){
-            ed.contentEditable='false';
-            if(toolbar) toolbar.style.display='none';
-            $('olDocumentEdit').innerHTML='<i class="fas fa-pen"></i> Edit';
-            setAssignmentEditorState(assignmentEditorState.dirty?'Draft saved locally':'Read only');
-        }else{
-            if(!['docx','doc','html','htm','txt','md','csv'].includes(assignmentEditorState.ext)){
-                notify('This file type is view-only in the browser. DOC/DOCX, HTML and text-based submissions can be edited.','warning');
-                return;
-            }
-            ed.contentEditable='true';
-            if(toolbar) toolbar.style.display='flex';
-            $('olDocumentEdit').innerHTML='<i class="fas fa-lock"></i> Finish Editing';
-            ed.focus();
-            setAssignmentEditorState(assignmentEditorState.dirty?'Editing • Draft saved locally':'Editing');
-        }
-    }
-    function showOriginalAssignmentDocument(){
-        const ed=$('olDocumentEditor');
-        if(!ed || !assignmentEditorState.originalHtml) return;
-        if(assignmentEditorState.dirty && !confirm('Show the original submission? Your unsaved browser draft will remain stored locally.')) return;
-        ed.innerHTML=assignmentEditorState.originalHtml;
-        ed.contentEditable='false';
-        if($('olDocToolbar')) $('olDocToolbar').style.display='none';
-        if($('olDocumentEdit')) $('olDocumentEdit').innerHTML='<i class="fas fa-pen"></i> Edit';
-        setAssignmentEditorState('Original submission');
-    }
     async function renderDocument(s){
-        ensureViewer();
-        const url=await signedDocumentUrl(s);
-        const body=$('olDocumentBody');
-        const ext=extOf(s.file_name||s.file_path||'');
-        assignmentEditorState.currentSubmission=s;
-        assignmentEditorState.originalHtml='';
-        assignmentEditorState.draftHtml='';
-        assignmentEditorState.dirty=false;
-        assignmentEditorState.ext=ext;
-        assignmentEditorState.url=url;
-
-        $('olDocumentTitle').textContent=s.file_name||'Uploaded Work';
-        $('olDocumentMeta').textContent=`${s.online_assignments?.title||'Submission'} · ${fmtDate(s.submitted_at)}`;
+        ensureViewer(); const url=await signedDocumentUrl(s); const body=$('olDocumentBody'); const ext=extOf(s.file_name||s.file_path||'');
+        $('olDocumentTitle').textContent=s.file_name||'Uploaded Work'; $('olDocumentMeta').textContent=`${s.online_assignments?.title||'Submission'} · ${fmtDate(s.submitted_at)}`;
         $('olDocumentDownload').onclick=()=>{const a=document.createElement('a');a.href=url;a.target='_blank';a.rel='noopener';a.click();};
-        $('olDocumentBody').innerHTML='<div class="ol-empty">Opening document…</div>';
-        $('olDocumentEdit').disabled=true;
-        $('olDocumentSave').disabled=true;
-        $('olDocumentOriginal').disabled=true;
-
-        try{
-            if(ext==='pdf'){
-                body.innerHTML=`<iframe class="ol-document-frame" title="${esc(s.file_name||'PDF')}" src="${esc(url)}"></iframe>`;
-                setAssignmentEditorState('PDF view — use feedback/correction notes');
-                return;
-            }
-            if(['doc','docx'].includes(ext)){
-                const blob=await (await fetch(url)).blob();
-                await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');
-                const r=await window.mammoth.convertToHtml({arrayBuffer:await blob.arrayBuffer()});
-                assignmentEditorState.originalHtml=r.value||'<p>No readable text found.</p>';
-            }else if(['html','htm'].includes(ext)){
-                const htmlText=await (await fetch(url)).text();
-                const doc=new DOMParser().parseFromString(htmlText,'text/html');
-                doc.querySelectorAll('script,iframe,object,embed,form').forEach(n=>n.remove());
-                assignmentEditorState.originalHtml=doc.body?.innerHTML||'<p>No readable text found.</p>';
-            }else if(['txt','csv','md'].includes(ext)){
-                const raw=await (await fetch(url)).text();
-                assignmentEditorState.originalHtml=`<pre style="white-space:pre-wrap;font-family:Arial,sans-serif">${esc(raw)}</pre>`;
-            }else{
-                body.innerHTML=`<div class="ol-empty">Browser editing is not available for <b>${esc(ext||'this file type')}</b>. Use Download to open the complete original document.</div>`;
-                setAssignmentEditorState('Read only');
-                return;
-            }
-
-            let draft=null;
-            try{draft=localStorage.getItem('nchsm_assignment_draft_'+s.id);}catch{}
-            assignmentEditorState.draftHtml=draft||assignmentEditorState.originalHtml;
-            body.innerHTML=`<article id="olDocumentEditor" class="ol-docx" contenteditable="false">${assignmentEditorState.draftHtml}</article>`;
-            assignmentEditorState.dirty=!!draft && draft!==assignmentEditorState.originalHtml;
-            $('olDocumentEdit').disabled=false;
-            $('olDocumentSave').disabled=false;
-            $('olDocumentOriginal').disabled=false;
-            setAssignmentEditorState(assignmentEditorState.dirty?'Draft saved locally':'Read only');
-        }catch(e){
-            console.error(e);
-            body.innerHTML=`<div class="ol-empty"><strong>Document could not be opened</strong>${esc(e.message||e)}</div>`;
-            setAssignmentEditorState('Unable to preview');
+        body.innerHTML='<div class="ol-empty">Opening document…</div>';
+        if(['pdf'].includes(ext)){body.innerHTML=`<iframe class="ol-document-frame" title="${esc(s.file_name||'PDF')}" src="${esc(url)}"></iframe>`;return;}
+        if(['doc','docx'].includes(ext)){
+            const blob=await (await fetch(url)).blob();
+            await loadScriptOnce('https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js','olMammoth');
+            const ab=await blob.arrayBuffer(); const r=await window.mammoth.convertToHtml({arrayBuffer:ab}); body.innerHTML=`<article class="ol-docx">${r.value||'<p>No readable text found.</p>'}</article>`; if(r.messages?.length) body.insertAdjacentHTML('beforeend',`<div class="ol-integrity-note" style="padding:10px">Some document formatting may not be reproduced exactly in browser preview.</div>`); return;
         }
-    }
-    async function saveAssignmentDocumentCorrection(){
-        const s=assignmentEditorState.currentSubmission, ed=$('olDocumentEditor'), db=client();
-        if(!s||!ed||!db||!assignmentEditorState.originalHtml) return notify('There is no editable document loaded.','warning');
-        const html=ed.innerHTML.trim();
-        if(!html) return notify('The corrected document is empty.','warning');
-        const safe=String(s.file_name||'submission').replace(/\.[^.]+$/,'').replace(/[^a-z0-9_-]+/gi,'_').slice(0,70)||'submission';
-        const filename=`${safe}_Lecturer_Correction_${Date.now()}.html`;
-        const path=`${researchSafeName(s.student_id||'student')}/assignment-corrections/${Date.now()}_${filename}`;
-        const blob=new Blob([`<!doctype html><html><head><meta charset="utf-8"><title>${esc(s.online_assignments?.title||s.file_name||'Corrected Submission')}</title><style>body{font-family:Arial,sans-serif;line-height:1.65;max-width:900px;margin:40px auto;padding:0 40px;color:#1e293b}img{max-width:100%}</style></head><body>${html}</body></html>`],{type:'text/html'});
-        const up=await db.storage.from(STORAGE_BUCKET).upload(path,blob,{contentType:'text/html',upsert:false});
-        if(up.error) return notify('Could not upload corrected assignment: '+up.error.message,'error');
-        const now=new Date().toISOString();
-        const {error}=await db.from('online_submissions').update({
-            file_path:path,
-            file_name:filename,
-            feedback:(($('olReviewFeedback')?.value||s.feedback||'').trim()) || 'Lecturer correction attached.',
-            updated_at:now
-        }).eq('id',s.id);
-        if(error){
-            try{await db.storage.from(STORAGE_BUCKET).remove([path]);}catch{}
-            return notify('Corrected file uploaded but submission could not be updated: '+error.message,'error');
-        }
-        try{localStorage.removeItem('nchsm_assignment_draft_'+s.id);}catch{}
-        assignmentEditorState.dirty=false;
-        s.file_path=path; s.file_name=filename; s.updated_at=now;
-        notify('Corrected assignment saved. The original uploaded file remains separate in storage.','success');
-        await renderDocument(s);
-        if($('olDocumentEdit')) $('olDocumentEdit').disabled=false;
+        if(['txt','csv','md'].includes(ext)){const txt=await (await fetch(url)).text();body.innerHTML=`<pre style="white-space:pre-wrap;background:#fff;padding:24px;max-width:1000px;margin:auto;line-height:1.6">${esc(txt)}</pre>`;return;}
+        if(['png','jpg','gif','webp'].includes(ext)){body.innerHTML=`<div style="text-align:center"><img src="${esc(url)}" style="max-width:100%;max-height:85vh;object-fit:contain;background:#fff;padding:8px;border-radius:10px"></div>`;return;}
+        body.innerHTML=`<div class="ol-empty">Browser preview is not available for <b>${esc(ext||'this file type')}</b>. Use Download to open the complete original document.</div>`;
     }
     async function viewSubmissionDocument(id){
-        try{
-            const s=state.submissions.find(x=>String(x.id)===String(id));
-            if(!s) throw new Error('Submission not found.');
-            await renderDocument(s);
-            $('olDocumentViewer').style.display='flex';
-        }catch(e){console.error(e);notify('Could not open the uploaded document: '+e.message,'error');}
+        try{const s=state.submissions.find(x=>x.id===id);if(!s)throw new Error('Submission not found.');await renderDocument(s);$('olDocumentViewer').style.display='flex';}
+        catch(e){console.error(e);notify('Could not open the uploaded document: '+e.message,'error');}
     }
-    function closeDocumentViewer(){
-        if(assignmentEditorState.currentSubmission && assignmentEditorState.dirty){
-            try{localStorage.setItem('nchsm_assignment_draft_'+assignmentEditorState.currentSubmission.id,assignmentEditorState.draftHtml||$('olDocumentEditor')?.innerHTML||'');}catch{}
-        }
-        if($('olDocumentViewer')) $('olDocumentViewer').style.display='none';
-    }
+    function closeDocumentViewer(){if($('olDocumentViewer'))$('olDocumentViewer').style.display='none';}
 
     function normalizeText(t){return String(t||'').toLowerCase().replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();}
     function shingles(t,n=8){const w=normalizeText(t).split(' ').filter(Boolean), out=[];for(let i=0;i<=w.length-n;i++)out.push(w.slice(i,i+n).join(' '));return [...new Set(out)];}
@@ -438,265 +255,204 @@ window.LecturerOnlineLearning = (() => {
         box.innerHTML=`<div class="ol-integrity"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b><i class="fas fa-shield-alt"></i> Academic Integrity Agent</b><span class="ol-badge ${localOnly?'ol-draft':sim>=40?'ol-review':'ol-published'}">${esc(statusText)}</span></div><div class="ol-integrity-grid" style="margin-top:10px"><div class="ol-integrity-stat"><small>Similarity</small><b>${sim}%</b></div><div class="ol-integrity-stat"><small>AI signal</small><b>${ai==null?(analysisAi?esc(analysisAi):'—'):esc(ai)+'%'}</b></div><div class="ol-integrity-stat"><small>Words scanned</small><b>${text.trim().split(/\s+/).filter(Boolean).length.toLocaleString()}</b></div></div>${analysis.summary?`<div style="margin-top:12px;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:9px"><b>AI Review Summary</b><div style="margin-top:5px;line-height:1.5">${esc(analysis.summary)}</div></div>`:''}${matches.length?`<div style="margin-top:12px"><b>Potential matches</b>${matches.slice(0,8).map(m=>`<div class="ol-integrity-match"><b>${esc(m.source_title||m.title||m.student_id||m.source||'Possible matching submission')}</b><div>${esc(m.matched_phrases??m.match_count??m.similarity??'')} ${m.matched_phrases?'matching phrase(s)':''}</div></div>`).join('')}</div>`:''}${analysis.evidence?.length?`<div style="margin-top:12px"><b>AI Evidence Flags</b>${analysis.evidence.slice(0,8).map(e=>`<div class="ol-integrity-match"><b>${esc(e.type||'Review point')} · ${esc(e.severity||'')}</b><div style="margin-top:4px">${esc(e.reason||'')}</div>${e.excerpt?`<div style="margin-top:5px;color:#64748b">“${esc(e.excerpt)}”</div>`:''}</div>`).join('')}</div>`:''}<p class="ol-integrity-note">This is an academic-integrity screening aid, not a final plagiarism finding. Similarity is not proof of plagiarism, and AI-writing signals can produce false positives. ${localOnly?'The AI provider was unavailable, so this result is based only on institutional submission similarity. ':''}${r.notice?esc(r.notice):''} ${r.source?'Scan source: '+esc(r.source)+'.':''}</p></div>`;
     }
 
-    async function saveStructuredSubmissionAnswers(id){
-        const db=client(), s=state.submissions.find(x=>String(x.id)===String(id));
-        if(!db||!s) return;
-        const answers={...(s.answers||{})};
-        document.querySelectorAll('[data-answer-id]').forEach(el=>{answers[el.dataset.answerId]=el.value;});
-        const {error}=await db.from('online_submissions').update({answers,updated_at:new Date().toISOString()}).eq('id',id);
-        if(error){notify('Could not save edited answers: '+error.message,'error');return;}
-        s.answers=answers;
-        notify('Assignment / case study answers saved.','success');
-    }
-    async function reviewSubmission(id){
-        const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;
-        let questions=[];const qr=await db.from('online_assignment_questions').select('id,question_order,question_text,question_type,marks').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];
-        const answers=s.answers||{};
-        const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();
-        const p=profiles.data||{};
-        const body=$('olSubmissionBody');
-        body.innerHTML=`<div class="ol-submission-grid">
-          <div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3>
-          <p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p>
-          <div>${questions.length?questions.map((q,i)=>{
-              const val=answers[q.id]??answers[String(q.id)]??'';
-              const type=String(q.question_type||'').toLowerCase();
-              const input=type.includes('multiple')||type.includes('choice')?
-                `<textarea data-answer-id="${esc(q.id)}" style="width:100%;min-height:90px;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(val)}</textarea>`:
-                `<textarea data-answer-id="${esc(q.id)}" style="width:100%;min-height:120px;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(val)}</textarea>`;
-              return `<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px">${input}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`;
-          }).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}
-          ${questions.length?`<button class="ol-btn ol-primary" style="margin-top:10px" onclick="LecturerOnlineLearning.saveStructuredSubmissionAnswers('${esc(s.id)}')"><i class="fas fa-save"></i> Save Edited Answers</button>`:''}
-          </div></div>
-          <div><div class="ol-card" style="margin:0">
-            <div style="color:#64748b;font-size:12px">CURRENT MARK</div><div class="ol-mark">${s.marks_obtained??0}/${s.max_marks??'—'}</div>
-            <label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" step="0.01" value="${s.marks_obtained??0}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">
-            <label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea>
-            <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${esc(s.id)}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${esc(s.id)}',true)">Grade & Release</button></div>
-            ${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${esc(s.id)}')"><i class="fas fa-pen-to-square"></i> View / Edit Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${esc(s.id)}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}
-          </div></div></div>`;
-        $('olSubmissionModal').style.display='flex';
-    }
+    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('id,question_order,question_text,question_type,marks').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${q.marks} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT MARK</div><div class="ol-mark">${s.marks_obtained??0}/${s.max_marks??'—'}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" step="0.01" value="${s.marks_obtained??0}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').style.display='flex';}
     async function gradeSubmission(id,release){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;const marks=Number($('olReviewMarks').value);const feedback=$('olReviewFeedback').value.trim()||null;const {error}=await db.from('online_submissions').update({marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:new Date().toISOString(),result_released:release,released_at:release?new Date().toISOString():null,review_required:false}).eq('id',id);if(error){notify(error.message,'error');return;}notify(release?'Grade saved and result released.':'Grade saved.','success');closeModal('olSubmissionModal');await loadSubmissions();updateStats();}
     function closeModal(id){const m=$(id);if(m)m.style.display='none';}
 
     // ============================================================
-    // RESEARCH SUBMISSIONS — LECTURER REVIEW + GOOGLE DOCS STYLE EDITOR
+    // RESEARCH SUBMISSIONS — LECTURER REVIEW MODULE
+    // Uses public.research_submissions and private research-papers bucket.
     // ============================================================
     const researchState = {
         submissions: [],
         profiles: new Map(),
         initialized: false,
-        search: '',
         filterStatus: '',
-        filterType: '',
-        filterProgram: '',
-        filterIntake: '',
-        current: null,
-        originalHtml: '',
-        draftHtml: '',
-        correctionDirty: false
+        search: '',
+        current: null
     };
 
-    function researchTypeLabel(type) {
-        const map = {
-            proposal: 'Research Proposal',
-            final_paper: 'Research Project / Final Paper',
-            correction: 'Correction / Revised Paper'
-        };
-        return map[type] || String(type || 'Research').replace(/_/g, ' ').replace(/\b\w/g, m => m.toUpperCase());
-    }
-
     function researchStatusLabel(status) {
-        const map = {
-            submitted: 'Submitted',
-            under_review: 'Under Review',
-            revision_required: 'Revision Required',
-            approved: 'Approved',
-            rejected: 'Rejected'
-        };
-        return map[status] || String(status || 'Unknown').replace(/_/g, ' ');
+        return String(status || 'submitted').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
     }
 
-    function researchStatusPill(status) {
-        const cls = String(status || '').toLowerCase();
-        return `<span class="rs-pill rs-${esc(cls)}">${esc(researchStatusLabel(status))}</span>`;
-    }
-
-    function researchSafeName(value) {
-        return String(value || 'research').replace(/[^a-z0-9_-]+/gi, '_').replace(/^_+|_+$/g, '').slice(0, 80) || 'research';
-    }
-
-    function researchProfile(s) {
-        return researchState.profiles.get(s.student_id) || {};
-    }
-
-    // Apply all lecturer research filters in one place.
-    // This function was missing from the previous build, which caused:
-    // "filteredResearch is not defined" when the Research tab opened.
-    function filteredResearch() {
-        const q = String(researchState.search || '').toLowerCase().trim();
-        const type = String(researchState.filterType || '').toLowerCase();
-        const status = String(researchState.filterStatus || '').toLowerCase();
-        const program = String(researchState.filterProgram || '').toLowerCase();
-        const intake = String(researchState.filterIntake || '').toLowerCase();
-
-        return (researchState.submissions || []).filter(s => {
-            const p = researchProfile(s);
-            const haystack = [
-                p.full_name, p.student_id, p.admission_number, p.email,
-                p.program, p.intake_year, p.current_block, p.block,
-                s.title, s.supervisor_name, s.submission_type, s.status,
-                s.document_name
-            ].filter(v => v !== null && v !== undefined)
-             .map(v => String(v).toLowerCase())
-             .join(' ');
-
-            if (q && !haystack.includes(q)) return false;
-            if (type && String(s.submission_type || '').toLowerCase() !== type) return false;
-            if (status && String(s.status || '').toLowerCase() !== status) return false;
-            if (program && String(p.program || '').toLowerCase() !== program) return false;
-            if (intake && String(p.intake_year || '').toLowerCase() !== intake) return false;
-            return true;
-        });
-    }
-
-    // Build filter choices from the student profiles attached to submissions.
-    function researchOptions() {
-        const programs = new Set();
-        const intakes = new Set();
-
-        (researchState.submissions || []).forEach(s => {
-            const p = researchProfile(s);
-            if (p.program !== null && p.program !== undefined && String(p.program).trim()) {
-                programs.add(String(p.program).trim());
-            }
-            if (p.intake_year !== null && p.intake_year !== undefined && String(p.intake_year).trim()) {
-                intakes.add(String(p.intake_year).trim());
-            }
-        });
-
-        return {
-            programs: [...programs].sort((a, b) => a.localeCompare(b, undefined, {numeric: true, sensitivity: 'base'})),
-            intakes: [...intakes].sort((a, b) => b.localeCompare(a, undefined, {numeric: true, sensitivity: 'base'}))
-        };
+    function researchStatusClass(status) {
+        const s = String(status || '').toLowerCase();
+        if (s === 'approved') return 'approved';
+        if (s === 'revision_required') return 'revision';
+        if (s === 'under_review') return 'review';
+        if (s === 'rejected') return 'rejected';
+        return 'submitted';
     }
 
     function researchEnsureStyles() {
-        if ($('rsModernStyles')) return;
+        if ($('nchsmResearchStyles')) return;
         const st = document.createElement('style');
-        st.id = 'rsModernStyles';
+        st.id = 'nchsmResearchStyles';
         st.textContent = `
-        .rs-wrap{display:flex;flex-direction:column;gap:16px}
-        .rs-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap}
-        .rs-head h3{margin:0;font-size:22px;color:#0f172a}.rs-head p{margin:5px 0 0;color:#64748b;font-size:13px}
-        .rs-stats{display:grid;grid-template-columns:repeat(6,minmax(120px,1fr));gap:10px}
-        .rs-stat,.rs-card{background:#fff;border:1px solid #e2e8f0;border-radius:13px;padding:14px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
-        .rs-stat strong{display:block;font-size:23px;color:#0f172a}.rs-stat span{font-size:11px;color:#64748b}
-        .rs-toolbar{display:grid;grid-template-columns:minmax(220px,1.7fr) repeat(4,minmax(130px,1fr)) auto auto;gap:8px;align-items:center}
-        .rs-toolbar input,.rs-toolbar select,.rs-side input,.rs-side select,.rs-side textarea{width:100%;box-sizing:border-box;border:1px solid #dbe3ec;border-radius:9px;padding:10px;background:#fff;color:#0f172a}
-        .rs-btn{border:0;border-radius:9px;padding:9px 12px;font-weight:700;cursor:pointer;white-space:nowrap}
-        .rs-primary{background:#2563eb;color:#fff}.rs-secondary{background:#eef2f7;color:#334155}.rs-success{background:#16a34a;color:#fff}.rs-danger{background:#dc2626;color:#fff}.rs-warning{background:#d97706;color:#fff}
-        .rs-section-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}.rs-section-title h4{margin:0;color:#0f172a}.rs-section-title span{font-size:12px;color:#64748b}
-        .rs-table-wrap{overflow:auto}.rs-table{width:100%;border-collapse:collapse;min-width:880px}.rs-table th{background:#f8fafc;color:#64748b;font-size:11px;text-transform:uppercase;letter-spacing:.04em;text-align:left;padding:11px;border-bottom:1px solid #e2e8f0}.rs-table td{padding:12px 11px;border-bottom:1px solid #eef2f7;vertical-align:middle;font-size:13px}.rs-table tr:last-child td{border-bottom:0}
-        .rs-student strong{display:block;color:#0f172a}.rs-student small{display:block;color:#64748b;margin-top:2px}.rs-title-cell strong{display:block;max-width:320px;white-space:normal}.rs-title-cell small{color:#64748b}
-        .rs-pill{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:10px;font-weight:800;white-space:nowrap;background:#e2e8f0;color:#334155}.rs-submitted{background:#e0f2fe;color:#0369a1}.rs-under_review{background:#fef3c7;color:#92400e}.rs-revision_required{background:#fee2e2;color:#991b1b}.rs-approved{background:#dcfce7;color:#166534}.rs-rejected{background:#e5e7eb;color:#374151}
-        .rs-empty{padding:28px;text-align:center;color:#64748b}.rs-empty strong{display:block;color:#334155;margin-bottom:5px}
-        .rs-modal{position:fixed;inset:0;background:rgba(15,23,42,.72);z-index:100100;display:none;align-items:center;justify-content:center;padding:12px;box-sizing:border-box;overflow:hidden}
-        .rs-dialog{width:min(1450px,100%);height:min(94vh,1050px);max-width:100%;max-height:100%;min-height:0;background:#fff;border-radius:16px;overflow:hidden;display:flex;flex-direction:column;box-shadow:0 25px 80px rgba(0,0,0,.3)}
-        .rs-dialog-head{display:flex;align-items:center;justify-content:space-between;flex:0 0 auto;padding:14px 18px;border-bottom:1px solid #e2e8f0;background:#fff;position:relative;z-index:20}.rs-dialog-head h3{margin:0;font-size:17px}.rs-dialog-head .rs-meta{font-size:12px;color:#64748b;margin-top:3px}
-        .rs-workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;min-height:0;height:100%;flex:1;overflow:hidden}
-        .rs-editor-pane{display:flex;flex-direction:column;min-width:0;min-height:0;background:#f1f5f9;overflow:hidden}.rs-editor-toolbar{display:flex;align-items:center;gap:5px;flex:0 0 auto;padding:8px;border-bottom:1px solid #dbe3ec;background:#fff;flex-wrap:wrap;position:relative;z-index:10}.rs-tool{width:34px;height:32px;border:1px solid #dbe3ec;background:#fff;border-radius:7px;cursor:pointer;font-weight:700}.rs-tool:hover{background:#f1f5f9}.rs-tool.active{background:#dbeafe;border-color:#93c5fd}.rs-editor-state{flex:0 0 auto;margin-left:auto;font-size:11px;color:#64748b;padding:0 6px}
-        .rs-document-shell{overflow:auto;flex:1 1 auto;min-height:0;height:100%;padding:28px;box-sizing:border-box;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.rs-document{background:#fff;width:min(850px,100%);max-width:850px;min-height:1050px;margin:0 auto;padding:65px 72px;box-shadow:0 2px 15px rgba(15,23,42,.12);outline:none;box-sizing:border-box;line-height:1.65;color:#1e293b;font-family:Arial,sans-serif;font-size:15px}.rs-document[contenteditable="true"]{cursor:text}.rs-document:focus{box-shadow:0 0 0 2px #93c5fd,0 2px 15px rgba(15,23,42,.12)}
-.rs-comment-tools{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.rs-comment-list{display:grid;gap:7px;margin-top:8px}.rs-comment{border:1px solid #dbe3ec;border-radius:8px;padding:8px;background:#f8fafc}.rs-comment-meta{font-size:9px;color:#64748b;margin-bottom:4px}.rs-comment-quote{margin:4px 0;padding:6px 8px;border-left:3px solid #2563eb;background:#eff6ff;font-size:9px;color:#334155}.rs-comment-text{font-size:10px;line-height:1.5;color:#334155;white-space:pre-wrap}.rs-comment-box{display:flex;gap:6px;margin-top:7px}.rs-comment-box textarea{flex:1;min-height:58px;border:1px solid #dbe3ec;border-radius:8px;padding:7px;font-size:10px}.rs-comment-highlight{background:#fff0a8;border-radius:2px;box-shadow:0 0 0 1px #f1d36b}.rs-comment-highlight.active{background:#ffd45c}
-        .rs-side{border-left:1px solid #e2e8f0;background:#fff;padding:16px;overflow:auto;min-height:0;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}.rs-side h4{margin:0 0 12px}.rs-side label{display:block;font-size:11px;font-weight:800;color:#475569;margin:13px 0 6px}.rs-side textarea{min-height:150px;resize:vertical}.rs-side .rs-meta-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:10px;padding:10px;font-size:12px;line-height:1.6;color:#475569}
-        .rs-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}.rs-actions .wide{grid-column:1/-1}
-        .rs-history{margin-top:14px}.rs-history-item{padding:9px;border:1px solid #e2e8f0;border-radius:8px;margin-bottom:6px;font-size:11px}.rs-history-item strong{display:block}.rs-history-item span{color:#64748b}
-        .rs-modal.rs-modal-fullscreen{padding:0}
-        .rs-dialog.rs-fullscreen{width:100vw;height:100vh;max-width:none;max-height:none;border-radius:0}
-        .rs-fullscreen-btn{font-weight:800;display:inline-flex;align-items:center;gap:5px}
-        body.rs-review-scroll-lock{overflow:hidden!important}
-        body.dark-mode .rs-stat,body.dark-mode .rs-card,body.dark-mode .rs-dialog,body.dark-mode .rs-dialog-head,body.dark-mode .rs-side{background:#0d1b2d!important;border-color:#263d55!important;color:#e2e8f0}body.dark-mode .rs-head h3,body.dark-mode .rs-stat strong,body.dark-mode .rs-section-title h4,body.dark-mode .rs-student strong{color:#f1f5f9}body.dark-mode .rs-toolbar input,body.dark-mode .rs-toolbar select,body.dark-mode .rs-side input,body.dark-mode .rs-side select,body.dark-mode .rs-side textarea{background:#0a1727;color:#e2e8f0;border-color:#334b63}
-        @media(max-width:1050px){.rs-stats{grid-template-columns:repeat(3,1fr)}.rs-toolbar{grid-template-columns:1fr 1fr 1fr}.rs-workspace{grid-template-columns:1fr;overflow:auto}.rs-editor-pane{min-height:58vh}.rs-side{border-left:0;border-top:1px solid #e2e8f0;max-height:42vh;min-height:240px}}
-        @media(max-width:650px){.rs-stats{grid-template-columns:repeat(2,1fr)}.rs-toolbar{grid-template-columns:1fr 1fr}.rs-dialog-head{padding:10px 12px}.rs-dialog-head h3{font-size:14px}.rs-document-shell{padding:10px;min-height:0}.rs-document{padding:35px 25px;min-height:800px}.rs-actions{grid-template-columns:1fr}.rs-fullscreen-btn{font-size:10px;padding:7px 8px}}
+          #nchsmResearchModule{padding:20px;max-width:100%;box-sizing:border-box}
+          .rs-head{background:linear-gradient(135deg,#0A3D62,#1a5a7a);color:#fff;border-radius:16px;padding:22px 24px;margin-bottom:18px;box-shadow:0 4px 20px rgba(10,61,98,.18)}
+          .rs-head h2{margin:0;font-size:21px;display:flex;align-items:center;gap:10px}
+          .rs-head p{margin:7px 0 0;opacity:.9;font-size:13px}
+          .rs-stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:15px}
+          .rs-stat{background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:15px;box-shadow:0 2px 8px rgba(15,23,42,.04)}
+          .rs-stat b{display:block;font-size:24px;color:#0A3D62}.rs-stat span{font-size:11px;color:#64748b}
+          .rs-toolbar{display:flex;gap:8px;flex-wrap:wrap;background:#fff;border:1px solid #e2e8f0;border-radius:12px;padding:12px;margin-bottom:12px}
+          .rs-toolbar input,.rs-toolbar select{min-height:38px;border:1px solid #dbe3ec;border-radius:8px;padding:7px 10px;box-sizing:border-box}
+          .rs-toolbar input{flex:1;min-width:220px}
+          .rs-card{background:#fff;border:1px solid #e2e8f0;border-radius:12px;overflow:hidden}
+          .rs-table{width:100%;border-collapse:collapse;font-size:12px}.rs-table th{background:#f8fafc;color:#475569;text-align:left;font-size:11px;padding:11px;border-bottom:1px solid #e2e8f0}.rs-table td{padding:11px;border-bottom:1px solid #eef2f7;vertical-align:top}
+          .rs-badge{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:9px;font-weight:800;text-transform:uppercase;background:#eef2f7;color:#475569}.rs-badge.approved{background:#dcfce7;color:#166534}.rs-badge.revision{background:#fef3c7;color:#92400e}.rs-badge.review{background:#dbeafe;color:#1d4ed8}.rs-badge.rejected{background:#fee2e2;color:#991b1b}.rs-badge.submitted{background:#e0f2fe;color:#0369a1}
+          .rs-btn{border:0;border-radius:8px;padding:8px 10px;cursor:pointer;font-size:11px;font-weight:700}.rs-primary{background:#0A3D62;color:#fff}.rs-secondary{background:#eef2f7;color:#334155}.rs-success{background:#166534;color:#fff}.rs-warning{background:#b45309;color:#fff}.rs-danger{background:#991b1b;color:#fff}
+          .rs-empty{padding:35px;text-align:center;color:#64748b}
+          .rs-modal{position:fixed;inset:0;background:rgba(15,23,42,.76);z-index:100020;display:none;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;overflow:hidden}
+          .rs-dialog{background:#fff;width:min(1500px,100%);height:min(95vh,980px);max-height:95vh;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.35)}
+          .rs-dialog.rs-fullscreen{width:100vw;height:100vh;max-height:none;border-radius:0}
+          .rs-dialog-head{flex:0 0 auto;padding:11px 14px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:10px;align-items:center;background:#fff;z-index:3}
+          .rs-dialog-body{display:grid;grid-template-columns:minmax(0,1fr) 340px;flex:1;min-height:0;overflow:hidden}
+          .rs-preview{background:#f1f5f9;min-width:0;min-height:0;overflow:hidden;padding:0;display:flex;flex-direction:column}
+          .rs-side{min-width:0;min-height:0;border-left:1px solid #e2e8f0;padding:14px;overflow:auto;background:#fff}
+          .rs-frame{width:100%;height:100%;min-height:600px;border:0;background:#fff}
+          .rs-docx{background:#fff;max-width:850px;margin:14px auto;padding:40px 50px;min-height:90%;line-height:1.65;box-shadow:0 1px 7px rgba(0,0,0,.08)}
+          .rs-side label{display:block;font-size:11px;font-weight:700;color:#475569;margin:12px 0 5px}.rs-side select,.rs-side textarea{width:100%;box-sizing:border-box;border:1px solid #dbe3ec;border-radius:8px;padding:9px}.rs-side textarea{min-height:150px;resize:vertical}
+          .rs-meta{font-size:12px;color:#64748b;line-height:1.6}.rs-title{font-size:17px;font-weight:800;color:#18304d;margin-bottom:5px}
+
+          .rs-review-toolbar{flex:0 0 auto;display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:6px 8px;background:#fff;border-bottom:1px solid #dbe3ec}
+          .rs-review-toolbar button{min-width:29px;height:28px;border:0;border-radius:5px;background:#fff;color:#40566f;cursor:pointer;font-size:11px}
+          .rs-review-toolbar button:hover{background:#edf3f9}
+          .rs-review-toolbar button.active{background:#dbeafe;color:#087bf0}
+          .rs-review-toolbar select{height:28px;border:1px solid #d7e0e8;border-radius:5px;background:#fff;color:#40566f;font-size:9px;padding:0 7px}
+          .rs-review-status{margin-left:auto;font-size:8px;color:#71859c;white-space:nowrap}
+          .rs-editor-wrap{flex:1;min-height:0;overflow:auto;padding:26px 18px 40px;background:#f1f3f4;-webkit-overflow-scrolling:touch}
+          .rs-editor-page{width:min(850px,100%);min-height:1050px;margin:0 auto;padding:70px 72px;box-sizing:border-box;background:#fff;color:#202b38;outline:0;line-height:1.7;font-size:13px;box-shadow:0 1px 6px rgba(20,40,60,.16)}
+          .rs-editor-page:focus{box-shadow:0 1px 6px rgba(20,40,60,.16),0 0 0 2px rgba(66,133,244,.12)}
+          .rs-editor-page img{max-width:100%;height:auto}.rs-editor-page table{max-width:100%;border-collapse:collapse}.rs-editor-page td,.rs-editor-page th{padding:4px 6px}
+          .rs-editor-page h1,.rs-editor-page h2,.rs-editor-page h3{color:#18304d}
+          .rs-review-main{flex:1;min-height:0;display:flex;flex-direction:column}
+          .rs-comments-panel{border-top:1px solid #e2e8f0;max-height:34vh;overflow:auto;padding:8px;background:#fff}
+          .rs-comment-tabs{display:flex;border-bottom:1px solid #e2e8f0;margin:-8px -8px 8px}
+          .rs-comment-tabs button{flex:1;border:0;background:#fff;padding:8px;font-size:9px;font-weight:800;color:#71859c;cursor:pointer}
+          .rs-comment-tabs button.active{color:#087bf0;border-bottom:2px solid #087bf0}
+          .rs-comment-card{border:1px solid #dbe6ef;border-radius:8px;padding:8px;margin-bottom:6px;background:#fbfdff;font-size:9px;color:#526b86}
+          .rs-comment-card strong{display:block;color:#18304d}.rs-comment-card small{display:block;color:#94a3b8;font-size:7px;margin-top:2px}
+          .rs-comment-selection{margin:6px 0;padding:5px;border-left:3px solid #f5c542;background:#fffaf0}
+          .rs-comment-action{border:1px solid #dbe6ef;background:#fff;border-radius:5px;padding:4px 7px;font-size:8px;color:#526b86;cursor:pointer;margin-top:6px}
+          .rs-comment-mark{background:#fff1a8;border-bottom:2px solid #e3ad00}
+          .rs-suggestion del{background:#ffe1e1;color:#a61b1b}.rs-suggestion ins{background:#dcfce7;color:#146c3a;text-decoration:none}
+          .rs-bottom-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
+          .rs-bottom-actions .rs-btn{flex:1}
+          @media(max-width:900px){
+            .rs-stats{grid-template-columns:repeat(2,1fr)}
+            .rs-dialog-body{grid-template-columns:1fr}
+            .rs-side{border-left:0;border-top:1px solid #e2e8f0;max-height:36vh}
+            .rs-editor-page{padding:35px 25px;font-size:12px;min-height:850px}
+            .rs-editor-wrap{padding:14px 8px 28px}
+          }
+          @media(max-width:520px){
+            #nchsmResearchModule{padding:10px}.rs-table{min-width:900px}.rs-card{overflow-x:auto}
+            .rs-dialog{height:100vh;max-height:none;border-radius:0}.rs-modal{padding:0}
+            .rs-side{max-height:42vh}
+          }
         `;
         document.head.appendChild(st);
     }
 
     function researchEnsureUI() {
-        const hub = $('online-learning-content') || $('hub-online-learning');
-        if (!hub) return;
-
         researchEnsureStyles();
 
-        // IMPORTANT:
-        // The lecturer HTML already contains the Online Learning hub tabs:
-        //   [data-ol-hub-view="learning"]
-        //   [data-ol-hub-view="research"]
-        // Do not create a second/competing tab system.
-        const hubTabs = hub.querySelector('.ol-hub-tabs');
-        if (!hubTabs) return;
+        const section = $('online-learning-content');
+        if (!section) return;
 
-        const researchTab = hubTabs.querySelector('[data-ol-hub-view="research"]');
-        const learningTab = hubTabs.querySelector('[data-ol-hub-view="learning"]');
+        // Research is intentionally a SUB-TAB inside the existing Online Learning section.
+        // It must never become a separate sidebar/top-level dashboard section.
+        let hubTabs = section.querySelector('.ol-hub-tabs');
+        let learningView = section.querySelector('#ol-learning-view');
+        let root = $('nchsmResearchModule');
 
-        // The existing HTML uses .ol-wrap for the Online Learning view.
-        const learningView = hub.querySelector('.ol-wrap');
-
-        let module = $('nchsmResearchModule');
-        if (!module) {
-            module = document.createElement('div');
-            module.id = 'nchsmResearchModule';
-            module.style.display = 'none';
-            hub.appendChild(module);
+        if (!hubTabs) {
+            hubTabs = document.createElement('div');
+            hubTabs.className = 'ol-hub-tabs';
+            hubTabs.innerHTML = `
+              <button type="button" class="ol-hub-tab active" data-ol-hub-view="learning"><i class="fas fa-laptop-code"></i> Online Learning</button>
+              <button type="button" class="ol-hub-tab" data-ol-hub-view="research"><i class="fas fa-file-signature"></i> Research Papers</button>
+            `;
+            section.insertBefore(hubTabs, section.firstChild);
         }
 
-        // Keep the existing hub tabs and expose proper accessibility state.
-        if (learningTab) {
-            learningTab.setAttribute('role', 'tab');
-            learningTab.setAttribute('aria-selected', learningTab.classList.contains('active') ? 'true' : 'false');
-        }
-        if (researchTab) {
-            researchTab.setAttribute('role', 'tab');
-            researchTab.setAttribute('aria-selected', researchTab.classList.contains('active') ? 'true' : 'false');
+        if (!learningView) {
+            learningView = document.createElement('div');
+            learningView.id = 'ol-learning-view';
+            const children = Array.from(section.children).filter(el => el !== hubTabs);
+            children.forEach(el => learningView.appendChild(el));
+            section.appendChild(learningView);
         }
 
-        let modal = $('rsReviewModal');
-        if (!modal) {
-            modal = document.createElement('div');
-            modal.className = 'rs-modal';
-            modal.id = 'rsReviewModal';
-            modal.setAttribute('aria-hidden', 'true');
-            modal.innerHTML = `
+        if (!root) {
+            root = document.createElement('div');
+            root.id = 'nchsmResearchModule';
+            root.style.display = 'none';
+            section.appendChild(root);
+        }
+
+        hubTabs.querySelectorAll('[data-ol-hub-view]').forEach(btn => {
+            if (btn.dataset.bound === '1') return;
+            btn.dataset.bound = '1';
+            btn.addEventListener('click', () => {
+                const view = btn.dataset.olHubView;
+                hubTabs.querySelectorAll('[data-ol-hub-view]').forEach(x => x.classList.toggle('active', x === btn));
+                learningView.style.display = view === 'learning' ? 'block' : 'none';
+                root.style.display = view === 'research' ? 'block' : 'none';
+                if (view === 'research') loadResearch();
+            });
+        });
+
+        const rootWasRendered = root.dataset.rendered === '1';
+        if (rootWasRendered) return;
+        if (!root || root.dataset.rendered === '1') return;
+        root.dataset.rendered = '1';
+        root.innerHTML = `
+          <div class="rs-head">
+            <h2><i class="fas fa-file-signature"></i> Research Submissions</h2>
+            <p>Review student research proposals, final papers and corrected submissions. Open documents, provide feedback and update the review status.</p>
+          </div>
+          <div class="rs-stats">
+            <div class="rs-stat"><b id="rsTotal">0</b><span>Total Submissions</span></div>
+            <div class="rs-stat"><b id="rsReview">0</b><span>Under Review</span></div>
+            <div class="rs-stat"><b id="rsRevision">0</b><span>Revision Required</span></div>
+            <div class="rs-stat"><b id="rsApproved">0</b><span>Approved</span></div>
+          </div>
+          <div class="rs-toolbar">
+            <input id="rsSearch" placeholder="Search student, admission number or research title…">
+            <select id="rsStatus">
+              <option value="">All statuses</option>
+              <option value="submitted">Submitted</option>
+              <option value="under_review">Under Review</option>
+              <option value="revision_required">Revision Required</option>
+              <option value="approved">Approved</option>
+              <option value="rejected">Rejected</option>
+            </select>
+            <button class="rs-btn rs-secondary" type="button" id="rsRefresh"><i class="fas fa-sync"></i> Refresh</button>
+          </div>
+          <div class="rs-card">
+            <div id="rsLoading" class="rs-empty">Loading research submissions…</div>
+            <div style="overflow-x:auto">
+              <table class="rs-table" id="rsTable" style="display:none">
+                <thead><tr><th>Student</th><th>Research Title</th><th>Type</th><th>Version</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead>
+                <tbody id="rsBody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div class="rs-modal" id="rsReviewModal" aria-hidden="true">
             <div class="rs-dialog">
               <div class="rs-dialog-head">
-                <div><h3 id="rsModalTitle">Research Review Workspace</h3><div class="rs-meta" id="rsModalMeta"></div><div class="rs-meta" id="rsStudentMeta" style="margin-top:6px"></div></div>
-                <button class="rs-btn rs-secondary" type="button" id="rsClose"><i class="fas fa-times"></i> Close</button>
+                <div><div class="rs-title" id="rsModalTitle">Research Submission</div><div class="rs-meta" id="rsModalMeta"></div></div>
+                <button class="rs-btn rs-secondary" type="button" id="rsClose">Close</button>
               </div>
-              <div class="rs-workspace">
-                <div class="rs-editor-pane">
-                  <div class="rs-editor-toolbar">
-                    <button type="button" data-cmd="bold"><b>B</b></button>
-                    <button type="button" data-cmd="italic"><i>I</i></button>
-                    <button type="button" data-cmd="underline"><u>U</u></button>
-                    <button type="button" data-cmd="insertUnorderedList">• List</button>
-                    <button type="button" data-cmd="insertOrderedList">1. List</button>
-                    <button type="button" data-cmd="justifyLeft">Left</button>
-                    <button type="button" data-cmd="justifyCenter">Center</button>
-                    <button type="button" data-cmd="justifyRight">Right</button>
-                    <button type="button" data-cmd="undo">↶</button>
-                    <button type="button" data-cmd="redo">↷</button>
-                    <button type="button" id="rsOriginal">Original</button>
-                    <button type="button" id="rsFullscreen" class="rs-fullscreen-btn"><i class="fas fa-expand"></i> Full Screen</button>
-                  </div>
-                  <div id="rsEditorState" class="rs-editor-state">Read only</div>
-                  <div id="rsDocumentShell" class="rs-document-shell">
-                    <div id="rsDocumentEditor" class="rs-document" contenteditable="false"></div>
-                  </div>
-                </div>
-                <aside class="rs-side">
-                  <div class="rs-section-title"><h4>Review</h4></div>
-                  <label>Status</label>
+              <div class="rs-dialog-body">
+                <div class="rs-preview" id="rsPreview"><div class="rs-empty">Select a submission.</div></div>
+                <div class="rs-side">
+                  <div id="rsStudentMeta" class="rs-meta"></div>
+                  <label>Review Status</label>
                   <select id="rsReviewStatus">
                     <option value="submitted">Submitted</option>
                     <option value="under_review">Under Review</option>
@@ -704,161 +460,37 @@ window.LecturerOnlineLearning = (() => {
                     <option value="approved">Approved</option>
                     <option value="rejected">Rejected</option>
                   </select>
-                  <label>Feedback / Correction Notes</label>
-                  <textarea id="rsFeedback" rows="8" placeholder="Enter feedback or correction instructions..."></textarea>
-                  <div class="rs-comment-tools"><button type="button" class="rs-btn rs-secondary" id="rsAddComment"><i class="fas fa-comment-medical"></i> Comment on Selected Text</button></div>
-                  <div class="rs-comment-box"><textarea id="rsNewComment" placeholder="Select text in the document, then enter the lecturer comment here..."></textarea><button type="button" class="rs-btn rs-primary" id="rsPostComment"><i class="fas fa-paper-plane"></i> Post</button></div>
-                  <div class="rs-section-title" style="margin-top:14px"><h4>Inline Comments</h4></div>
-                  <div id="rsCommentList" class="rs-comment-list"></div>
-                  <div class="rs-actions">
-                    <button type="button" class="rs-btn rs-secondary" id="rsEditDocument"><i class="fas fa-pen"></i> Edit Document</button>
-                    <button type="button" class="rs-btn rs-primary" id="rsSaveCorrection"><i class="fas fa-file-pen"></i> Save Correction</button>
-                    <button type="button" class="rs-btn rs-secondary" id="rsDownload"><i class="fas fa-download"></i> Download</button>
-                    <button type="button" class="rs-btn rs-secondary" id="rsHistory"><i class="fas fa-clock-rotate-left"></i> Version History</button>
-                    <button type="button" class="rs-btn rs-success" id="rsApprove"><i class="fas fa-check"></i> Approve</button>
-                    <button type="button" class="rs-btn rs-warning" id="rsRevision"><i class="fas fa-rotate"></i> Send Revision</button>
-                    <button type="button" class="rs-btn rs-danger wide" id="rsReject"><i class="fas fa-xmark"></i> Reject</button>
+                  <label>Supervisor / Lecturer Feedback</label>
+                  <textarea id="rsFeedback" placeholder="Enter feedback, required corrections, recommendations or approval comments…"></textarea>
+                  <div style="display:flex;gap:7px;flex-wrap:wrap;margin-top:12px">
+                    <button class="rs-btn rs-success" type="button" id="rsSaveReview">Save Review</button>
+                    <button class="rs-btn rs-warning" type="button" id="rsSendCorrection">Send Correction to Student</button>
+                    <button class="rs-btn rs-secondary" type="button" id="rsDownload">Download</button>
                   </div>
-                  <div id="rsVersionHistory" class="rs-history" style="display:none"></div>
-                </aside>
+                  <div id="rsFileInfo" class="rs-meta" style="margin-top:14px"></div>
+                </div>
               </div>
-            </div>`;
-            hub.appendChild(modal);
-        }
-
-        if (modal.dataset.researchWorkspaceBound !== '1') {
-            modal.dataset.researchWorkspaceBound = '1';
-            modal.addEventListener('click', e => {
-                if (e.target === modal) closeResearchModal();
-                const btn = e.target.closest('[data-cmd]');
-                if (!btn) return;
-                const ed = $('rsDocumentEditor');
-                if (!ed || ed.contentEditable !== 'true') return;
-                ed.focus();
-                document.execCommand(btn.dataset.cmd, false, btn.dataset.value || null);
-                researchState.correctionDirty = true;
-                researchState.draftHtml = ed.innerHTML;
-                updateEditorState();
-            });
-            $('rsClose')?.addEventListener('click', closeResearchModal);
-            $('rsFullscreen')?.addEventListener('click', toggleResearchFullscreen);
-            $('rsEditDocument')?.addEventListener('click', toggleResearchEditor);
-            $('rsSaveCorrection')?.addEventListener('click', saveResearchCorrection);
-            $('rsAddComment')?.addEventListener('click', captureResearchSelection);
-            $('rsPostComment')?.addEventListener('click', postResearchComment);
-            $('rsDownload')?.addEventListener('click', downloadCurrentResearch);
-            $('rsHistory')?.addEventListener('click', () => {
-                const box = $('rsVersionHistory');
-                if (box) box.style.display = box.style.display === 'none' ? 'block' : 'none';
-            });
-            $('rsApprove')?.addEventListener('click', () => setResearchStatusAndSave('approved'));
-            $('rsRevision')?.addEventListener('click', () => setResearchStatusAndSave('revision_required'));
-            $('rsReject')?.addEventListener('click', () => setResearchStatusAndSave('rejected'));
-            $('rsDocumentEditor')?.addEventListener('input', () => {
-                const ed = $('rsDocumentEditor');
-                if (ed && ed.contentEditable === 'true') {
-                    researchState.correctionDirty = true;
-                    researchState.draftHtml = ed.innerHTML;
-                    updateEditorState();
-                }
-            });
-            document.addEventListener('keydown', e => {
-                if (e.key !== 'Escape' || $('rsReviewModal')?.getAttribute('aria-hidden') !== 'false') return;
-                const dialog = document.querySelector('#rsReviewModal .rs-dialog');
-                if (dialog?.classList.contains('rs-fullscreen')) {
-                    e.preventDefault();
-                    toggleResearchFullscreen(false);
-                    return;
-                }
-                closeResearchModal();
-            });
-        }
-    }
-
-    function researchRow(s) {
-        const p = researchProfile(s);
-        return `<tr>
-          <td class="rs-student"><strong>${esc(p.full_name || s.student_id || 'Unknown Student')}</strong><small>${esc(p.admission_number || p.student_id || s.student_id || '—')}</small></td>
-          <td class="rs-title-cell"><strong>${esc(s.title || 'Untitled Research')}</strong><small>${esc(s.supervisor_name || 'Supervisor not specified')}</small></td>
-          <td>${esc(researchTypeLabel(s.submission_type))}</td>
-          <td><strong>V${esc(s.version_number || 1)}</strong></td>
-          <td>${esc(fmtDate(s.submitted_at || s.created_at))}</td>
-          <td>${researchStatusPill(s.status)}</td>
-          <td><button class="rs-btn rs-primary" type="button" data-rs-review="${esc(s.id)}"><i class="fas fa-pen-to-square"></i> Review</button></td>
-        </tr>`;
-    }
-
-    function researchTable(title, id, rows, emptyText) {
-        return `<div class="rs-card">
-          <div class="rs-section-title"><h4>${title}</h4><span>${rows.length} submission${rows.length === 1 ? '' : 's'}</span></div>
-          <div class="rs-table-wrap">
-            ${rows.length ? `<table class="rs-table" id="${id}"><thead><tr><th>Student</th><th>Research Title</th><th>Type</th><th>Version</th><th>Submitted</th><th>Status</th><th>Action</th></tr></thead><tbody>${rows.map(researchRow).join('')}</tbody></table>` : `<div class="rs-empty"><strong>${emptyText}</strong>There are no submissions matching the current filters.</div>`}
-          </div>
-        </div>`;
-    }
-
-    function renderResearch() {
-        researchEnsureUI();
-        const hub = $('online-learning-content') || $('hub-online-learning');
-        const module = $('nchsmResearchModule');
-        if (!module) return;
-
-        const arr = filteredResearch();
-        const active = arr.filter(s => !['approved', 'rejected'].includes(s.status));
-        const completed = arr.filter(s => ['approved', 'rejected'].includes(s.status));
-        const counts = {
-            total: researchState.submissions.length,
-            active: researchState.submissions.filter(s => !['approved','rejected'].includes(s.status)).length,
-            under: researchState.submissions.filter(s => s.status === 'under_review').length,
-            revision: researchState.submissions.filter(s => s.status === 'revision_required').length,
-            approved: researchState.submissions.filter(s => s.status === 'approved').length,
-            completed: researchState.submissions.filter(s => ['approved','rejected'].includes(s.status)).length
-        };
-        const {programs, intakes} = researchOptions();
-
-        module.style.display = state.tab === 'research' ? '' : 'none';
-        if (state.tab !== 'research') return;
-
-        module.innerHTML = `<div class="rs-wrap">
-          <div class="rs-head"><div><h3><i class="fas fa-flask"></i> Research Submissions</h3><p>Review, correct, return and approve student research from one workspace.</p></div>
-            <button class="rs-btn rs-secondary" type="button" id="rsRefresh"><i class="fas fa-sync"></i> Refresh</button>
-          </div>
-          <div class="rs-stats">
-            <div class="rs-stat"><strong>${counts.total}</strong><span>Total</span></div>
-            <div class="rs-stat"><strong>${counts.active}</strong><span>Active</span></div>
-            <div class="rs-stat"><strong>${counts.under}</strong><span>Under Review</span></div>
-            <div class="rs-stat"><strong>${counts.revision}</strong><span>Revision Required</span></div>
-            <div class="rs-stat"><strong>${counts.approved}</strong><span>Approved</span></div>
-            <div class="rs-stat"><strong>${counts.completed}</strong><span>Completed</span></div>
-          </div>
-          <div class="rs-card">
-            <div class="rs-toolbar">
-              <input id="rsSearch" placeholder="Search student, admission no., title or supervisor..." value="${esc(researchState.search)}">
-              <select id="rsType"><option value="">All Types</option><option value="proposal" ${researchState.filterType==='proposal'?'selected':''}>Research Proposal</option><option value="final_paper" ${researchState.filterType==='final_paper'?'selected':''}>Research Project / Final Paper</option><option value="correction" ${researchState.filterType==='correction'?'selected':''}>Correction / Revised Paper</option></select>
-              <select id="rsStatus"><option value="">All Statuses</option><option value="submitted" ${researchState.filterStatus==='submitted'?'selected':''}>Submitted</option><option value="under_review" ${researchState.filterStatus==='under_review'?'selected':''}>Under Review</option><option value="revision_required" ${researchState.filterStatus==='revision_required'?'selected':''}>Revision Required</option><option value="approved" ${researchState.filterStatus==='approved'?'selected':''}>Approved</option><option value="rejected" ${researchState.filterStatus==='rejected'?'selected':''}>Rejected</option></select>
-              <select id="rsProgram"><option value="">All Programmes</option>${programs.map(x=>`<option value="${esc(x)}" ${researchState.filterProgram===x?'selected':''}>${esc(x)}</option>`).join('')}</select>
-              <select id="rsIntake"><option value="">All Intakes</option>${intakes.map(x=>`<option value="${esc(x)}" ${researchState.filterIntake===x?'selected':''}>${esc(x)}</option>`).join('')}</select>
-              <button class="rs-btn rs-secondary" type="button" id="rsReset">Reset</button>
             </div>
-          </div>
-          ${researchTable('<i class="fas fa-layer-group"></i> Active Research', 'rsActiveTable', active, 'No active research submissions')}
-          ${researchTable('<i class="fas fa-circle-check"></i> Completed Research', 'rsCompletedTable', completed, 'No completed research submissions')}
-        </div>`;
-
+          </div>`;
         $('rsSearch').addEventListener('input', e => { researchState.search = e.target.value.toLowerCase().trim(); renderResearch(); });
-        $('rsType').addEventListener('change', e => { researchState.filterType = e.target.value; renderResearch(); });
         $('rsStatus').addEventListener('change', e => { researchState.filterStatus = e.target.value; renderResearch(); });
-        $('rsProgram').addEventListener('change', e => { researchState.filterProgram = e.target.value; renderResearch(); });
-        $('rsIntake').addEventListener('change', e => { researchState.filterIntake = e.target.value; renderResearch(); });
-        $('rsReset').addEventListener('click', () => { researchState.search=''; researchState.filterType=''; researchState.filterStatus=''; researchState.filterProgram=''; researchState.filterIntake=''; renderResearch(); });
         $('rsRefresh').addEventListener('click', loadResearch);
-        module.querySelectorAll('[data-rs-review]').forEach(btn => btn.addEventListener('click', () => openResearchReview(btn.dataset.rsReview)));
+        $('rsClose').addEventListener('click', closeResearchModal);
+        $('rsReviewModal').addEventListener('click', e => { if (e.target === $('rsReviewModal')) closeResearchModal(); });
+        $('rsSaveReview').addEventListener('click', saveResearchReview);
+        $('rsSendCorrection').addEventListener('click', saveLecturerCorrection);
+        $('rsDownload').addEventListener('click', downloadCurrentResearch);
     }
 
     async function loadResearch() {
         researchEnsureUI();
         const db = client();
         if (!db) return notify('Supabase client is not available for Research.', 'error');
+
+        const loading = $('rsLoading');
+        const table = $('rsTable');
+        if (loading) loading.style.display = 'block';
+        if (table) table.style.display = 'none';
 
         try {
             const { data, error } = await db.from('research_submissions')
@@ -879,259 +511,514 @@ window.LecturerOnlineLearning = (() => {
             renderResearch();
         } catch (e) {
             console.error('Research load failed:', e);
-            const module = $('nchsmResearchModule');
-            if (module) module.innerHTML = `<div class="rs-card rs-empty"><strong>Research submissions could not load</strong>${esc(e.message || e)}</div>`;
+            if (loading) loading.textContent = 'Research submissions could not load: ' + (e.message || e);
             notify('Could not load Research submissions: ' + (e.message || e), 'error');
+            return;
+        } finally {
+            if (loading) loading.style.display = 'none';
         }
+    }
+
+    function renderResearch() {
+        researchEnsureUI();
+        const all = researchState.submissions || [];
+        const q = researchState.search;
+        const status = researchState.filterStatus;
+        const rows = all.filter(s => {
+            const p = researchState.profiles.get(s.student_id) || {};
+            const hay = `${p.full_name || ''} ${p.student_id || ''} ${p.admission_number || ''} ${p.email || ''} ${s.title || ''}`.toLowerCase();
+            return (!status || s.status === status) && (!q || hay.includes(q));
+        });
+
+        const total = $('rsTotal'), review = $('rsReview'), revision = $('rsRevision'), approved = $('rsApproved');
+        if (total) total.textContent = all.length;
+        if (review) review.textContent = all.filter(s => s.status === 'under_review').length;
+        if (revision) revision.textContent = all.filter(s => s.status === 'revision_required').length;
+        if (approved) approved.textContent = all.filter(s => s.status === 'approved').length;
+
+        const loading = $('rsLoading'), table = $('rsTable'), body = $('rsBody');
+        if (!body) return;
+        if (!rows.length) {
+            table.style.display = 'none';
+            loading.style.display = 'block';
+            loading.innerHTML = '<i class="fas fa-file-circle-check" style="font-size:24px;display:block;margin-bottom:8px"></i>No research submissions match the current filter.';
+            return;
+        }
+        loading.style.display = 'none';
+        table.style.display = 'table';
+        body.innerHTML = rows.map(s => {
+            const p = researchState.profiles.get(s.student_id) || {};
+            return `<tr>
+              <td><b>${esc(p.full_name || 'Student')}</b><div style="font-size:10px;color:#64748b">${esc(p.admission_number || p.student_id || s.student_id || '')}</div></td>
+              <td><b>${esc(s.title || 'Untitled Research')}</b><div style="font-size:10px;color:#64748b">${esc(s.document_name || 'No document')}</div></td>
+              <td>${esc(String(s.submission_type || 'research').replace(/_/g,' '))}</td>
+              <td>V${esc(s.version_number || 1)}</td>
+              <td>${fmtDate(s.submitted_at || s.created_at)}</td>
+              <td><span class="rs-badge ${researchStatusClass(s.status)}">${esc(researchStatusLabel(s.status))}</span></td>
+              <td><button class="rs-btn rs-primary" type="button" data-research-review="${esc(s.id)}"><i class="fas fa-eye"></i> Review</button></td>
+            </tr>`;
+        }).join('');
+        body.querySelectorAll('[data-research-review]').forEach(btn => btn.addEventListener('click', () => openResearchReview(btn.dataset.researchReview)));
     }
 
     async function researchSignedUrl(s) {
         const db = client();
-        if (!s?.document_path) throw new Error('No document is attached to this submission.');
-        const { data, error } = await db.storage.from('research-papers').createSignedUrl(s.document_path, 3600);
-        if (error) throw error;
-        return data.signedUrl;
+        if (!db || !s?.document_path) throw new Error('No research document is attached.');
+        const r = await db.storage.from('research-papers').createSignedUrl(s.document_path, 3600);
+        if (r.error) throw r.error;
+        if (!r.data?.signedUrl) throw new Error('Could not create a secure document URL.');
+        return r.data.signedUrl;
+    }
+
+
+    const lecturerResearchCollab = {
+        channel:null,
+        clientId:'lecturer-'+Math.random().toString(36).slice(2)+Date.now(),
+        currentId:null,
+        applyingRemote:false,
+        lastBroadcast:0
+    };
+
+    function lecturerResearchName(){
+        const p=state.profile||{};
+        return p.full_name||p.name||state.userEmail||'Lecturer';
+    }
+
+    function lecturerResearchKey(s){
+        return 'nchsm_lecturer_research_'+String(s&&s.id||'');
+    }
+
+    function lecturerResearchCommentsKey(s){return lecturerResearchKey(s)+':comments'}
+    function lecturerResearchSuggestionsKey(s){return lecturerResearchKey(s)+':suggestions'}
+
+    function lecturerStoredArray(key){
+        try{const x=JSON.parse(localStorage.getItem(key)||'[]');return Array.isArray(x)?x:[]}catch(e){return []}
+    }
+
+    function lecturerSaveArray(key,value){
+        try{localStorage.setItem(key,JSON.stringify(value||[]))}catch(e){}
+    }
+
+    function lecturerSelection(editor){
+        const sel=window.getSelection();
+        if(!sel||!sel.rangeCount)return null;
+        const range=sel.getRangeAt(0);
+        if(!editor.contains(range.commonAncestorContainer))return null;
+        return {text:String(sel.toString()||'').trim(),range:range};
+    }
+
+    function lecturerSelectionOffsets(editor){
+        const sel=window.getSelection();
+        if(!sel||!sel.rangeCount)return null;
+        const range=sel.getRangeAt(0);
+        if(!editor.contains(range.commonAncestorContainer))return null;
+        const pre=document.createRange();
+        pre.selectNodeContents(editor);
+        pre.setEnd(range.startContainer,range.startOffset);
+        const start=pre.toString().length;
+        return {start:start,end:start+range.toString().length};
+    }
+
+    function lecturerCommentId(){
+        return 'lc_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+    }
+
+    function lecturerSuggestionId(){
+        return 'ls_'+Date.now()+'_'+Math.random().toString(36).slice(2,9);
+    }
+
+    function lecturerBroadcast(payload){
+        if(!lecturerResearchCollab.channel)return;
+        try{
+            lecturerResearchCollab.channel.send({
+                type:'broadcast',
+                event:'research-doc',
+                payload:Object.assign({sender:lecturerResearchCollab.clientId},payload)
+            });
+        }catch(e){}
+    }
+
+    function lecturerRefreshCommentMarks(editor,s){
+        if(!editor)return;
+        editor.querySelectorAll('[data-rs-comment]').forEach(function(n){
+            const p=n.parentNode;
+            while(n.firstChild)p.insertBefore(n.firstChild,n);
+            p.removeChild(n);
+        });
+        lecturerStoredArray(lecturerResearchCommentsKey(s)).forEach(function(c){
+            if(!c.text)return;
+            const walker=document.createTreeWalker(editor,NodeFilter.SHOW_TEXT);
+            let node,found=null;
+            while(node=walker.nextNode()){
+                const at=node.nodeValue.indexOf(c.text);
+                if(at>=0){found={node:node,at:at};break}
+            }
+            if(!found)return;
+            const range=document.createRange();
+            range.setStart(found.node,found.at);
+            range.setEnd(found.node,found.at+c.text.length);
+            const mark=document.createElement('mark');
+            mark.className='rs-comment-mark';
+            mark.dataset.rsComment=c.id;
+            mark.title=(c.author_name||'Lecturer')+': '+c.comment;
+            try{range.surroundContents(mark)}catch(e){}
+        });
+    }
+
+    function lecturerRenderComments(s,editor){
+        const panel=document.getElementById('rsCommentsList');
+        if(!panel)return;
+        const comments=lecturerStoredArray(lecturerResearchCommentsKey(s));
+        panel.innerHTML=comments.length?comments.map(function(c){
+            return '<div class="rs-comment-card"><strong>'+esc(c.author_name||'Lecturer')+'</strong><small>'+esc(c.created_at?new Date(c.created_at).toLocaleString():'')+'</small><div class="rs-comment-selection">“'+esc(c.text||'')+'”</div><div>'+esc(c.comment||'')+'</div><button type="button" class="rs-comment-action" data-rs-comment-resolve="'+esc(c.id)+'">Resolve</button></div>';
+        }).join(''):'<div class="rs-empty" style="padding:16px;font-size:9px">No comments. Select text and click Comment.</div>';
+    }
+
+    function lecturerAddComment(s,editor){
+        const sel=lecturerSelection(editor);
+        const offsets=lecturerSelectionOffsets(editor);
+        if(!sel||!sel.text||!offsets)return notify('Select text in the document first.','warning');
+        const comment=prompt('Add a comment for the selected text:');
+        if(!comment||!comment.trim())return;
+        const item={id:lecturerCommentId(),text:sel.text,comment:comment.trim(),start:offsets.start,end:offsets.end,author_name:lecturerResearchName(),created_at:new Date().toISOString()};
+        const list=lecturerStoredArray(lecturerResearchCommentsKey(s));
+        list.push(item);lecturerSaveArray(lecturerResearchCommentsKey(s),list);
+        lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
+        lecturerBroadcast({type:'comment-add',comment:item});
+    }
+
+    function lecturerResolveComment(s,id,editor){
+        lecturerSaveArray(lecturerResearchCommentsKey(s),lecturerStoredArray(lecturerResearchCommentsKey(s)).filter(function(c){return String(c.id)!==String(id)}));
+        lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
+        lecturerBroadcast({type:'comment-delete',id:id});
+    }
+
+    function lecturerAddSuggestion(s,editor){
+        const sel=lecturerSelection(editor);
+        const offsets=lecturerSelectionOffsets(editor);
+        if(!sel||!sel.text||!offsets)return notify('Select text to suggest a replacement.','warning');
+        const replacement=prompt('Suggested replacement:',sel.text);
+        if(replacement===null)return;
+        const item={id:lecturerSuggestionId(),old_text:sel.text,new_text:String(replacement),start:offsets.start,end:offsets.end,status:'pending',author_name:lecturerResearchName(),created_at:new Date().toISOString()};
+        const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));list.push(item);lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
+        const range=sel.range;
+        const span=document.createElement('span');span.className='rs-suggestion';span.dataset.rsSuggestion=item.id;span.innerHTML='<del>'+esc(sel.text)+'</del><ins>'+esc(String(replacement))+'</ins>';
+        try{range.deleteContents();range.insertNode(span)}catch(e){}
+        lecturerRenderSuggestions(s,editor);lecturerBroadcast({type:'suggestion-add',suggestion:item});
+    }
+
+    function lecturerRenderSuggestions(s,editor){
+        const panel=document.getElementById('rsSuggestionsList');
+        if(!panel)return;
+        const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s)).filter(function(x){return x.status==='pending'});
+        panel.innerHTML=list.length?list.map(function(x){
+            return '<div class="rs-comment-card"><strong>'+esc(x.author_name||'Lecturer')+'</strong><small>Suggestion</small><div><del>'+esc(x.old_text)+'</del> → <ins>'+esc(x.new_text)+'</ins></div><div style="display:flex;gap:5px"><button type="button" class="rs-comment-action" data-rs-suggestion-accept="'+esc(x.id)+'">Accept</button><button type="button" class="rs-comment-action" data-rs-suggestion-reject="'+esc(x.id)+'">Reject</button></div></div>';
+        }).join(''):'<div class="rs-empty" style="padding:16px;font-size:9px">No pending suggestions.</div>';
+    }
+
+    function lecturerApplySuggestion(s,id,accept,editor){
+        const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));
+        const item=list.find(function(x){return String(x.id)===String(id)});
+        if(!item)return;
+        item.status=accept?'accepted':'rejected';
+        lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);
+        const nodes=Array.from(editor.querySelectorAll('[data-rs-suggestion]')).filter(function(n){return String(n.dataset.rsSuggestion)===String(id)});
+        nodes.forEach(function(n){n.outerHTML=accept?esc(item.new_text):esc(item.old_text)});
+        lecturerRenderSuggestions(s,editor);
+        lecturerBroadcast({type:'suggestion-status',id:id,status:item.status});
+    }
+
+    function lecturerStartCollab(s,editor,statusEl){
+        lecturerStopCollab();
+        const db=client();
+        if(!db||!db.channel||!s||!editor)return;
+        lecturerResearchCollab.currentId=String(s.id);
+        const channel=db.channel('nchsm-research-live-'+String(s.id),{config:{broadcast:{self:false},presence:{key:lecturerResearchCollab.clientId}}});
+        lecturerResearchCollab.channel=channel;
+
+        channel.on('broadcast',{event:'research-doc'},function(message){
+            const p=message&&message.payload||{};
+            if(!p||p.sender===lecturerResearchCollab.clientId)return;
+
+            if(p.type==='document-state'&&typeof p.html==='string'){
+                lecturerResearchCollab.applyingRemote=true;
+                if(editor.innerHTML!==p.html)editor.innerHTML=p.html;
+                lecturerResearchCollab.applyingRemote=false;
+                if(statusEl)statusEl.textContent='Live update received';
+                return;
+            }
+            if(p.type==='comment-add'&&p.comment){
+                const list=lecturerStoredArray(lecturerResearchCommentsKey(s));
+                if(!list.some(function(x){return String(x.id)===String(p.comment.id)})){
+                    list.push(p.comment);lecturerSaveArray(lecturerResearchCommentsKey(s),list);
+                    lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
+                }
+                return;
+            }
+            if(p.type==='comment-delete'){
+                lecturerSaveArray(lecturerResearchCommentsKey(s),lecturerStoredArray(lecturerResearchCommentsKey(s)).filter(function(x){return String(x.id)!==String(p.id)}));
+                lecturerRefreshCommentMarks(editor,s);lecturerRenderComments(s,editor);
+                return;
+            }
+            if(p.type==='suggestion-add'&&p.suggestion){
+                const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));
+                if(!list.some(function(x){return String(x.id)===String(p.suggestion.id)})){
+                    list.push(p.suggestion);lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);lecturerRenderSuggestions(s,editor);
+                }
+                return;
+            }
+            if(p.type==='suggestion-status'){
+                const list=lecturerStoredArray(lecturerResearchSuggestionsKey(s));
+                const found=list.find(function(x){return String(x.id)===String(p.id)});
+                if(found)found.status=p.status;
+                lecturerSaveArray(lecturerResearchSuggestionsKey(s),list);lecturerRenderSuggestions(s,editor);
+            }
+        });
+
+        channel.on('presence',{event:'sync'},function(){
+            const stateNow=channel.presenceState();
+            const count=Object.keys(stateNow||{}).length;
+            const el=document.getElementById('rsCollaborators');
+            if(el)el.textContent=count>1?count+' people editing':'Only you editing';
+        });
+
+        channel.subscribe(function(status){
+            if(status==='SUBSCRIBED'){
+                try{channel.track({user_id:state.userId,name:lecturerResearchName(),joined_at:new Date().toISOString()})}catch(e){}
+                if(statusEl)statusEl.innerHTML='<i class="fas fa-circle" style="color:#18a957"></i> Live editing ready';
+            }
+        });
+
+        editor.addEventListener('input',function(){
+            if(lecturerResearchCollab.applyingRemote)return;
+            const now=Date.now();
+            if(now-lecturerResearchCollab.lastBroadcast<180)return;
+            lecturerResearchCollab.lastBroadcast=now;
+            lecturerBroadcast({type:'document-state',html:editor.innerHTML});
+        });
+    }
+
+    function lecturerStopCollab(){
+        if(lecturerResearchCollab.channel){
+            try{lecturerResearchCollab.channel.untrack()}catch(e){}
+            try{client().removeChannel(lecturerResearchCollab.channel)}catch(e){}
+        }
+        lecturerResearchCollab.channel=null;
+        lecturerResearchCollab.currentId=null;
+    }
+
+    async function lecturerLoadDocument(s,editor){
+        const url=await researchSignedUrl(s);
+        const ext=String(s.document_name||s.document_path||'').toLowerCase().split('.').pop();
+        if(ext==='pdf'){
+            throw new Error('PDF documents are view-only for inline editing. Upload/send a revised PDF when correction is required.');
+        }
+        if(ext==='docx'||ext==='doc'){
+            const resp=await fetch(url);
+            if(!resp.ok)throw new Error('Could not read the Word document.');
+            if(!window.mammoth){
+                await new Promise((resolve,reject)=>{
+                    const sc=document.createElement('script');
+                    sc.src='https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
+                    sc.onload=resolve;sc.onerror=()=>reject(new Error('Could not load DOCX editor library.'));
+                    document.head.appendChild(sc);
+                });
+            }
+            const out=await window.mammoth.convertToHtml({arrayBuffer:await resp.arrayBuffer()});
+            editor.innerHTML=out.value||'<p></p>';
+            return 'docx';
+        }
+        if(ext==='html'){
+            const resp=await fetch(url);
+            if(!resp.ok)throw new Error('Could not read the HTML document.');
+            const raw=await resp.text();
+            const match=raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+            editor.innerHTML=match?match[1]:raw;
+            return 'html';
+        }
+        throw new Error('This file type cannot be edited inline.');
+    }
+
+    async function saveLecturerCorrection(){
+        const s=researchState.current;
+        const editor=document.getElementById('rsInlineEditor');
+        const db=client();
+        if(!s||!editor||!db)return;
+        const html=editor.innerHTML.trim();
+        if(!html||html==='<br>')return notify('There is no corrected document content to send.','warning');
+        const feedback=($('rsFeedback')?.value||'').trim()||null;
+        const btn=$('rsSendCorrection');
+        if(btn)btn.disabled=true;
+        try{
+            await resolveUser();
+            if(!state.userId)throw new Error('Lecturer user ID could not be resolved.');
+            const group=s.research_group_id||s.id;
+            const rows=researchState.submissions.filter(function(x){
+                return String(x.research_group_id||x.id)===String(group);
+            });
+            const next=rows.reduce(function(mx,x){return Math.max(mx,Number(x.version_number)||1)},Number(s.version_number)||1)+1;
+            const safe=(String(s.title||'Research').replace(/[^a-zA-Z0-9 _-]/g,'').trim()||'Research');
+            const filename=safe+'_Lecturer_Correction_V'+next+'.html';
+            const path=state.userId+'/'+group+'/lecturer-corrections/'+Date.now()+'_'+filename;
+            const wrapper='<!doctype html><html><head><meta charset="utf-8"><title>'+esc(s.title||'Research Correction')+'</title><style>body{font-family:Arial,sans-serif;line-height:1.7;max-width:850px;margin:40px auto;padding:0 40px;color:#202b38}img{max-width:100%}</style></head><body>'+html+'</body></html>';
+            const upload=await db.storage.from('research-papers').upload(path,new Blob([wrapper],{type:'text/html'}),{upsert:false,contentType:'text/html'});
+            if(upload.error)throw upload.error;
+            const now=new Date().toISOString();
+            const payload={
+                student_id:s.student_id,
+                research_group_id:group,
+                version_number:next,
+                title:s.title,
+                submission_type:'correction',
+                supervisor_name:s.supervisor_name||null,
+                abstract:s.abstract||null,
+                status:'revision_required',
+                document_name:filename,
+                document_path:path,
+                feedback:feedback,
+                reviewed_by:state.userId,
+                reviewed_at:now,
+                submitted_at:now,
+                created_at:now,
+                updated_at:now
+            };
+            const ins=await db.from('research_submissions').insert(payload).select().single();
+            if(ins.error){
+                try{await db.storage.from('research-papers').remove([path])}catch(e){}
+                throw ins.error;
+            }
+            notify('Correction sent to the student as Version '+next+'.','success');
+            await loadResearch();
+            closeResearchModal();
+        }catch(e){
+            console.error('Lecturer correction failed:',e);
+            notify('Could not send correction: '+(e.message||e),'error');
+        }finally{
+            if(btn)btn.disabled=false;
+        }
     }
 
     async function openResearchReview(id) {
-        researchEnsureUI();
         const s = researchState.submissions.find(x => String(x.id) === String(id));
-        if (!s) return;
+        if (!s) return notify('Research submission not found.', 'error');
         researchState.current = s;
-        researchState.correctionDirty = false;
+        const p = researchState.profiles.get(s.student_id) || {};
+        researchEnsureUI();
 
         $('rsModalTitle').textContent = s.title || 'Research Submission';
-        const p = researchProfile(s);
-        $('rsModalMeta').textContent = `${p.full_name || s.student_id || 'Student'} • ${researchTypeLabel(s.submission_type)} • V${s.version_number || 1}`;
-        $('rsStudentMeta').innerHTML = `<strong>${esc(p.full_name || 'Unknown Student')}</strong><br>
-          Admission: ${esc(p.admission_number || p.student_id || s.student_id || '—')}<br>
-          Programme: ${esc(p.program || '—')}<br>
-          Intake: ${esc(p.intake_year || '—')}<br>
-          Supervisor: ${esc(s.supervisor_name || '—')}<br>
-          Submitted: ${esc(fmtDate(s.submitted_at || s.created_at))}`;
+        $('rsModalMeta').textContent = `${p.full_name || 'Student'} · ${p.admission_number || p.student_id || ''} · Version ${s.version_number || 1}`;
+        $('rsStudentMeta').innerHTML =
+            `<b>${esc(p.full_name || 'Student')}</b><br>${esc(p.admission_number || p.student_id || '')}<br>${esc(p.email || '')}<br>${esc(p.program || '')}${p.intake_year ? ' · Intake ' + esc(p.intake_year) : ''}${p.current_block || p.block ? ' · ' + esc(p.current_block || p.block) : ''}` +
+            `<hr style="border:0;border-top:1px solid #e2e8f0;margin:12px 0"><b>Research Type:</b> ${esc(String(s.submission_type || 'research').replace(/_/g,' '))}<br><b>Supervisor:</b> ${esc(s.supervisor_name || 'Not specified')}<br><b>Submitted:</b> ${esc(fmtDate(s.submitted_at || s.created_at))}`;
+
         $('rsReviewStatus').value = s.status || 'submitted';
         $('rsFeedback').value = s.feedback || '';
+        $('rsFileInfo').innerHTML = `<b>Document:</b> ${esc(s.document_name || 'Not attached')}<br><b>Current status:</b> ${esc(researchStatusLabel(s.status))}`;
 
-        await renderResearchDocument(s);
-        const comments = await loadResearchComments(s.id);
-        renderResearchComments(comments);
-        const ed = $('rsDocumentEditor');
-        if (ed) researchCommentHighlight(ed, comments);
-        renderResearchVersionHistory(s);
+        $('rsPreview').innerHTML = `
+          <div class="rs-review-main">
+            <div class="rs-review-toolbar">
+              <button type="button" data-rs-cmd="undo" title="Undo">↶</button>
+              <button type="button" data-rs-cmd="redo" title="Redo">↷</button>
+              <select data-rs-format title="Text style">
+                <option value="p">Normal text</option><option value="h1">Heading 1</option><option value="h2">Heading 2</option><option value="h3">Heading 3</option><option value="blockquote">Quote</option>
+              </select>
+              <button type="button" data-rs-cmd="bold"><b>B</b></button>
+              <button type="button" data-rs-cmd="italic"><i>I</i></button>
+              <button type="button" data-rs-cmd="underline"><u>U</u></button>
+              <button type="button" data-rs-cmd="justifyLeft"><i class="fas fa-align-left"></i></button>
+              <button type="button" data-rs-cmd="justifyCenter"><i class="fas fa-align-center"></i></button>
+              <button type="button" data-rs-cmd="justifyRight"><i class="fas fa-align-right"></i></button>
+              <button type="button" data-rs-cmd="insertUnorderedList"><i class="fas fa-list-ul"></i></button>
+              <button type="button" data-rs-cmd="insertOrderedList"><i class="fas fa-list-ol"></i></button>
+              <button type="button" data-rs-comment-add title="Comment"><i class="fas fa-comment"></i></button>
+              <button type="button" data-rs-suggestion-add title="Suggest change"><i class="fas fa-pen-ruler"></i></button>
+              <button type="button" data-rs-fullscreen title="Full Screen"><i class="fas fa-expand"></i></button>
+              <span class="rs-review-status" id="rsCollaborators">Connecting…</span>
+            </div>
+            <div class="rs-editor-wrap">
+              <article id="rsInlineEditor" class="rs-editor-page" contenteditable="true" spellcheck="true"></article>
+            </div>
+            <div class="rs-comments-panel">
+              <div class="rs-comment-tabs">
+                <button type="button" class="active" data-rs-comment-tab="comments">Comments</button>
+                <button type="button" data-rs-comment-tab="suggestions">Suggestions</button>
+              </div>
+              <div id="rsCommentsList"></div>
+              <div id="rsSuggestionsList" style="display:none"></div>
+            </div>
+          </div>`;
 
-        const reviewModal = $('rsReviewModal');
-        const reviewDialog = reviewModal?.querySelector('.rs-dialog');
-        if (reviewDialog) reviewDialog.classList.remove('rs-fullscreen');
-        if (reviewModal) {
-            reviewModal.classList.remove('rs-modal-fullscreen');
-            reviewModal.style.display = 'flex';
-            reviewModal.setAttribute('aria-hidden', 'false');
+        const modal=$('rsReviewModal');
+        const dialog=modal.querySelector('.rs-dialog');
+        modal.style.display='flex';
+        modal.setAttribute('aria-hidden','false');
+
+        const editor=$('rsInlineEditor');
+        const statusEl=$('rsCollaborators');
+
+        try{
+            const kind=await lecturerLoadDocument(s,editor);
+            if(statusEl)statusEl.textContent='Loaded · '+kind.toUpperCase();
+            lecturerRefreshCommentMarks(editor,s);
+            lecturerRenderComments(s,editor);
+            lecturerRenderSuggestions(s,editor);
+            lecturerStartCollab(s,editor,statusEl);
+        }catch(e){
+            console.error('Research document editor:',e);
+            editor.innerHTML='<p style="color:#b42318">'+esc(e.message||e)+'</p>';
+            if(statusEl)statusEl.textContent='View only';
         }
-        document.body.classList.add('rs-review-scroll-lock');
-        if ($('rsFullscreen')) $('rsFullscreen').innerHTML = '<i class="fas fa-expand"></i> Full Screen';
-        requestAnimationFrame(() => { if ($('rsDocumentShell')) $('rsDocumentShell').scrollTop = 0; });
-    }
 
-    async function loadResearchComments(submissionId){
-        const db=client(); if(!db||!submissionId)return [];
-        try{const {data,error}=await db.from('research_comments').select('id,research_submission_id,student_id,author_id,author_role,author_name,comment_text,anchor_text,anchor_prefix,anchor_suffix,status,parent_comment_id,created_at,updated_at').eq('research_submission_id',submissionId).order('created_at',{ascending:true});if(error)throw error;return data||[]}catch(e){console.warn('Research comments load:',e.message||e);return []}
-    }
-    function researchCommentHighlight(root,comments){
-        if(!root)return;root.querySelectorAll('.rs-comment-highlight').forEach(m=>m.replaceWith(document.createTextNode(m.textContent||'')));
-        (comments||[]).filter(c=>c.anchor_text&&c.status!=='resolved').forEach(c=>{const quote=String(c.anchor_text).trim();if(!quote)return;const walker=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;while(n=walker.nextNode()){if(n.parentElement?.closest('.rs-comment-highlight'))continue;const i=n.nodeValue.indexOf(quote);if(i<0)continue;const range=document.createRange();range.setStart(n,i);range.setEnd(n,i+quote.length);const mark=document.createElement('mark');mark.className='rs-comment-highlight';mark.dataset.commentId=c.id;try{range.surroundContents(mark)}catch(_){continue}break;}});
-    }
-    function renderResearchComments(comments){
-        const box=$('rsCommentList');if(!box)return;const roots=(comments||[]).filter(c=>!c.parent_comment_id),children={};(comments||[]).forEach(c=>{if(c.parent_comment_id)(children[c.parent_comment_id]||(children[c.parent_comment_id]=[])).push(c)});
-        function one(c,depth){let html=`<div class="rs-comment" style="margin-left:${depth*8}px"><div class="rs-comment-meta"><b>${esc(c.author_name||((c.author_role||'')==='lecturer'?'Lecturer':'Student'))}</b> · ${esc(fmtDateTime(c.created_at))}</div>${c.anchor_text?`<div class="rs-comment-quote">“${esc(c.anchor_text)}”</div>`:''}<div class="rs-comment-text">${esc(c.comment_text)}</div>`;(children[c.id]||[]).forEach(r=>html+=one(r,depth+1));return html+'</div>'}
-        box.innerHTML=roots.length?roots.map(c=>one(c,0)).join(''):'<div class="rs-empty" style="padding:10px">No inline comments yet.</div>';
-    }
-    function captureResearchSelection(){
-        const sel=window.getSelection?.();const ed=$('rsDocumentEditor');if(!sel||!ed||!sel.rangeCount||!ed.contains(sel.anchorNode)){return notify('Select a sentence or passage in the document first, then click Comment on Selected Text.','warning')}
-        const text=String(sel.toString()||'').trim();if(!text)return notify('Select the text you want to comment on first.','warning');
-        ed.dataset.selectedQuote=text;const box=$('rsNewComment');if(box){box.focus();box.placeholder='Comment on: “'+text.slice(0,120)+(text.length>120?'…':'')+'”';}notify('Selected text attached. Enter the comment and click Post.','success');
-    }
-    async function postResearchComment(){
-        const s=researchState.current,db=client(),text=($('rsNewComment')?.value||'').trim(),ed=$('rsDocumentEditor');if(!s||!db||!text)return notify('Enter a comment before posting.','warning');
-        await resolveUser();if(!state.userId)return notify('Lecturer user ID could not be resolved.','error');
-        const quote=String(ed?.dataset.selectedQuote||'').trim();if(!quote)return notify('Select text in the document first, then click Comment on Selected Text.','warning');
-        const row={research_submission_id:s.id,research_group_id:s.research_group_id||null,student_id:s.student_id,author_id:state.userId,author_role:'lecturer',author_name:(state.profile?.full_name||state.profile?.name||'Lecturer'),comment_text:text,anchor_text:quote,status:'open',created_at:new Date().toISOString(),updated_at:new Date().toISOString()};
-        const {error}=await db.from('research_comments').insert(row);if(error)return notify('Could not save inline comment: '+error.message,'error');
-        if($('rsNewComment'))$('rsNewComment').value='';if(ed)delete ed.dataset.selectedQuote;const comments=await loadResearchComments(s.id);renderResearchComments(comments);researchCommentHighlight(ed,comments);notify('Inline comment added to the selected text.','success');
-    }
+        modal.querySelectorAll('[data-rs-cmd]').forEach(btn=>{
+            btn.addEventListener('mousedown',e=>{
+                e.preventDefault();editor.focus();document.execCommand(btn.dataset.rsCmd,false,null);
+            });
+        });
 
-    async function renderResearchDocument(s) {
-        const area = $('rsDocumentEditor');
-        if (!area) return;
-        area.contentEditable = 'false';
-        area.innerHTML = '<div class="rs-empty">Opening document...</div>';
-        const editBtn = $('rsEditDocument');
-        const saveBtn = $('rsSaveCorrection');
-        if (editBtn) { editBtn.disabled = true; editBtn.innerHTML = '<i class="fas fa-pen"></i> Edit Document'; }
-        if (saveBtn) saveBtn.disabled = true;
-        researchState.correctionDirty = false;
-        try {
-            const url = await researchSignedUrl(s);
-            const ext = String(s.document_name || s.document_path || '').split('.').pop().toLowerCase();
+        const fmt=modal.querySelector('[data-rs-format]');
+        if(fmt)fmt.addEventListener('change',function(){editor.focus();document.execCommand('formatBlock',false,this.value)});
 
-            if (ext === 'docx' || ext === 'doc') {
-                const blob = await (await fetch(url)).blob();
-                if (!window.mammoth) {
-                    await new Promise((resolve, reject) => {
-                        const sc = document.createElement('script');
-                        sc.src = 'https://cdn.jsdelivr.net/npm/mammoth@1.8.0/mammoth.browser.min.js';
-                        sc.onload = resolve;
-                        sc.onerror = () => reject(new Error('Could not load DOCX editor library.'));
-                        document.head.appendChild(sc);
-                    });
-                }
-                const r = await window.mammoth.convertToHtml({arrayBuffer: await blob.arrayBuffer()});
-                const html = r.value || '<p>No readable text found.</p>';
-                researchState.originalHtml = html;
-                let draft = null;
-                try { draft = localStorage.getItem('nchsm_rs_draft_' + s.id); } catch {}
-                area.innerHTML = draft || html;
-                researchState.draftHtml = area.innerHTML;
-                if (editBtn) editBtn.disabled = false;
-                if (saveBtn) saveBtn.disabled = false;
-                if ($('rsEditorState')) $('rsEditorState').textContent = 'Read only';
-            } else if (ext === 'html' || ext === 'htm') {
-                const htmlText = await (await fetch(url)).text();
-                const doc = new DOMParser().parseFromString(htmlText, 'text/html');
-                doc.querySelectorAll('script,iframe,object,embed,form').forEach(n => n.remove());
-                const html = doc.body?.innerHTML || '<p>No readable text found.</p>';
-                researchState.originalHtml = html;
-                area.innerHTML = html;
-                researchState.draftHtml = html;
-                if (editBtn) editBtn.disabled = false;
-                if (saveBtn) saveBtn.disabled = false;
-                if ($('rsEditorState')) $('rsEditorState').textContent = 'Read only';
-            } else if (ext === 'pdf') {
-                researchState.originalHtml = '';
-                area.innerHTML = `<div style="height:100%;min-height:900px"><iframe title="${esc(s.document_name || 'Research PDF')}" src="${esc(url)}" style="width:100%;height:100%;min-height:900px;border:0;background:#fff"></iframe></div>`;
-                if ($('rsEditorState')) $('rsEditorState').textContent = 'PDF view — use feedback/correction notes';
-            } else {
-                researchState.originalHtml = '';
-                area.innerHTML = `<div class="rs-empty"><strong>Preview unavailable</strong>Download the original document to review it.</div>`;
-                if ($('rsEditorState')) $('rsEditorState').textContent = 'Read only';
-            }
-        } catch (e) {
-            console.error('Research document preview:', e);
-            area.innerHTML = `<div class="rs-empty"><strong>Document could not be opened</strong>${esc(e.message || e)}</div>`;
-            if ($('rsEditorState')) $('rsEditorState').textContent = 'Unable to preview';
-        }
-    }
+        const commentBtn=modal.querySelector('[data-rs-comment-add]');
+        if(commentBtn)commentBtn.onclick=()=>lecturerAddComment(s,editor);
 
-    function toggleResearchEditor() {
-        const ed = $('rsDocumentEditor');
-        if (!ed || !researchState.current) return;
-        const editable = ed.contentEditable === 'true';
-        ed.contentEditable = editable ? 'false' : 'true';
-        if (!editable) {
-            ed.focus();
-            $('rsEditDocument').innerHTML = '<i class="fas fa-lock"></i> Finish Editing';
-            $('rsEditorState').textContent = 'Editing — changes are saved as a new correction version';
-        } else {
-            $('rsEditDocument').innerHTML = '<i class="fas fa-pen"></i> Edit Document';
-            updateEditorState();
-        }
-    }
+        const suggestionBtn=modal.querySelector('[data-rs-suggestion-add]');
+        if(suggestionBtn)suggestionBtn.onclick=()=>lecturerAddSuggestion(s,editor);
 
-    function updateEditorState() {
-        const stateEl = $('rsEditorState');
-        if (!stateEl) return;
-        const ed = $('rsDocumentEditor');
-        if (!ed) return;
-        if (ed.contentEditable === 'true') stateEl.textContent = researchState.correctionDirty ? 'Editing • Unsaved correction' : 'Editing';
-        else stateEl.textContent = researchState.correctionDirty ? 'Draft saved locally' : 'Read only';
-    }
-
-    function nextResearchVersion(s) {
-        const key = s.research_group_id ? String(s.research_group_id) : null;
-        const versions = researchState.submissions.filter(x =>
-            key ? String(x.research_group_id || '') === key :
-            String(x.student_id) === String(s.student_id) && String(x.title || '').trim().toLowerCase() === String(s.title || '').trim().toLowerCase()
-        );
-        return Math.max(1, ...versions.map(x => Number(x.version_number) || 1)) + 1;
-    }
-
-    function renderResearchVersionHistory(current) {
-        const box = $('rsVersionHistory');
-        if (!box) return;
-        const related = researchState.submissions.filter(x => {
-            if (current.research_group_id) return String(x.research_group_id || '') === String(current.research_group_id);
-            return String(x.student_id) === String(current.student_id) && String(x.title || '').trim().toLowerCase() === String(current.title || '').trim().toLowerCase();
-        }).sort((a,b) => (Number(a.version_number)||0) - (Number(b.version_number)||0));
-
-        box.innerHTML = related.length ? related.map(v => `<div class="rs-history-item">
-          <strong>V${esc(v.version_number || 1)} — ${esc(researchTypeLabel(v.submission_type))}</strong>
-          <span>${esc(researchStatusLabel(v.status))} • ${esc(fmtDate(v.submitted_at || v.created_at))}</span>
-        </div>`).join('') : '<div class="rs-empty">No version history available.</div>';
-    }
-
-    async function saveResearchCorrection() {
-        const s = researchState.current;
-        const db = client();
-        const ed = $('rsDocumentEditor');
-        if (!s || !db || !ed || !researchState.originalHtml) return notify('Only editable DOCX documents can be saved as corrected versions.', 'warning');
-
-        await resolveUser();
-        if (!state.userId) return notify('Lecturer user ID could not be resolved.', 'error');
-
-        const clean = ed.cloneNode(true);
-        clean.querySelectorAll('.rs-comment-highlight').forEach(m => m.replaceWith(document.createTextNode(m.textContent || '')));
-        const html = clean.innerHTML.trim();
-        if (!html) return notify('There is no corrected content to save.', 'warning');
-
-        const next = nextResearchVersion(s);
-        const base = researchSafeName(s.title || 'research');
-        const filename = `${base}_Lecturer_Correction_V${next}.html`;
-        const path = `${researchSafeName(s.student_id || 'student')}/corrections/${Date.now()}_${filename}`;
-
-        const blob = new Blob([`<!doctype html><html><head><meta charset="utf-8"><title>${esc(s.title || 'Research Correction')}</title><style>body{font-family:Arial,sans-serif;line-height:1.65;max-width:850px;margin:40px auto;padding:0 40px;color:#1e293b}img{max-width:100%}</style></head><body>${html}</body></html>`], {type:'text/html'});
-
-        const upload = await db.storage.from('research-papers').upload(path, blob, {contentType:'text/html', upsert:false});
-        if (upload.error) return notify('Could not save corrected document: ' + upload.error.message, 'error');
-
-        const feedback = $('rsFeedback').value.trim() || null;
-        const payload = {
-            student_id: s.student_id,
-            research_group_id: s.research_group_id || null,
-            version_number: next,
-            title: s.title,
-            submission_type: 'correction',
-            supervisor_name: s.supervisor_name || null,
-            abstract: s.abstract || null,
-            status: 'revision_required',
-            document_name: filename,
-            document_path: path,
-            feedback: feedback || 'Lecturer corrections attached. Please revise and resubmit.',
-            reviewed_by: state.userId,
-            reviewed_at: new Date().toISOString(),
-            submitted_at: new Date().toISOString(),
-            created_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
+        const fullBtn=modal.querySelector('[data-rs-fullscreen]');
+        if(fullBtn)fullBtn.onclick=()=>{
+            const on=dialog.classList.toggle('rs-fullscreen');
+            fullBtn.innerHTML=on?'<i class="fas fa-compress"></i>':'<i class="fas fa-expand"></i>';
         };
 
-        const { error } = await db.from('research_submissions').insert(payload);
-        if (error) {
-            try { await db.storage.from('research-papers').remove([path]); } catch {}
-            return notify('Corrected file uploaded but version could not be created: ' + error.message, 'error');
-        }
+        modal.querySelectorAll('[data-rs-comment-tab]').forEach(btn=>btn.onclick=function(){
+            modal.querySelectorAll('[data-rs-comment-tab]').forEach(x=>x.classList.toggle('active',x===btn));
+            $('rsCommentsList').style.display=btn.dataset.rsCommentTab==='comments'?'block':'none';
+            $('rsSuggestionsList').style.display=btn.dataset.rsCommentTab==='suggestions'?'block':'none';
+        });
 
-        try { localStorage.removeItem('nchsm_rs_draft_' + s.id); } catch {}
-        researchState.correctionDirty = false;
-        notify(`Correction saved as V${next}. The original document remains unchanged.`, 'success');
-        await loadResearch();
-        const fresh = researchState.submissions.find(x => String(x.id) !== String(s.id) && Number(x.version_number) === next && String(x.title) === String(s.title));
-        if (fresh) {
-            researchState.current = fresh;
-            renderResearchVersionHistory(fresh);
-        }
+        const panel=modal.querySelector('.rs-comments-panel');
+        if(panel)panel.onclick=function(e){
+            const resolve=e.target.closest('[data-rs-comment-resolve]');
+            if(resolve){lecturerResolveComment(s,resolve.dataset.rsCommentResolve,editor);return}
+            const accept=e.target.closest('[data-rs-suggestion-accept]');
+            if(accept){lecturerApplySuggestion(s,accept.dataset.rsSuggestionAccept,true,editor);return}
+            const reject=e.target.closest('[data-rs-suggestion-reject]');
+            if(reject){lecturerApplySuggestion(s,reject.dataset.rsSuggestionReject,false,editor);return}
+        };
     }
 
-    async function setResearchStatusAndSave(status) {
-        $('rsReviewStatus').value = status;
-        await saveResearchReview();
+    async function downloadCurrentResearch() {
+        const s = researchState.current;
+        if (!s) return;
+        try {
+            const url = await researchSignedUrl(s);
+            const a = document.createElement('a');
+            a.href = url; a.target = '_blank'; a.rel = 'noopener';
+            a.click();
+        } catch (e) {
+            notify('Could not download the research document: ' + (e.message || e), 'error');
+        }
     }
 
     async function saveResearchReview() {
@@ -1151,132 +1038,54 @@ window.LecturerOnlineLearning = (() => {
             updated_at: new Date().toISOString()
         };
         const { error } = await db.from('research_submissions').update(payload).eq('id', s.id);
-        if (error) return notify('Could not save Research review: ' + error.message, 'error');
-
+        if (error) {
+            console.error('Research review update:', error);
+            return notify('Could not save Research review: ' + error.message, 'error');
+        }
         Object.assign(s, payload);
-        notify(`Research status updated to ${researchStatusLabel(status)}.`, 'success');
+        notify('Research review saved successfully.', 'success');
         closeResearchModal();
         await loadResearch();
     }
 
-    async function downloadCurrentResearch() {
-        const s = researchState.current;
-        if (!s) return;
-        try {
-            const url = await researchSignedUrl(s);
-            const a = document.createElement('a');
-            a.href = url; a.target = '_blank'; a.rel = 'noopener'; a.click();
-        } catch (e) {
-            notify('Could not download the research document: ' + (e.message || e), 'error');
-        }
-    }
-
-    function toggleResearchFullscreen(force) {
-        const modal = $('rsReviewModal');
-        const dialog = modal?.querySelector('.rs-dialog');
-        const button = $('rsFullscreen');
-        if (!modal || !dialog) return;
-        const active = typeof force === 'boolean' ? force : !dialog.classList.contains('rs-fullscreen');
-        dialog.classList.toggle('rs-fullscreen', active);
-        modal.classList.toggle('rs-modal-fullscreen', active);
-        document.body.classList.toggle('rs-review-scroll-lock', active);
-        if (button) {
-            button.innerHTML = active
-                ? '<i class="fas fa-compress"></i> Exit Full Screen'
-                : '<i class="fas fa-expand"></i> Full Screen';
-            button.setAttribute('aria-label', active ? 'Exit Full Screen' : 'Full Screen');
-        }
-    }
-
     function closeResearchModal() {
+        lecturerStopCollab();
         const m = $('rsReviewModal');
-        const dialog = m?.querySelector('.rs-dialog');
-        if (dialog) dialog.classList.remove('rs-fullscreen');
+        const dialog=m&&m.querySelector('.rs-dialog');
+        if(dialog)dialog.classList.remove('rs-fullscreen');
         if (m) {
-            m.classList.remove('rs-modal-fullscreen');
             m.style.display = 'none';
             m.setAttribute('aria-hidden', 'true');
-        }
-        document.body.classList.remove('rs-review-scroll-lock');
-        const fs = $('rsFullscreen');
-        if (fs) fs.innerHTML = '<i class="fas fa-expand"></i> Full Screen';
-        if (researchState.current) {
-            try {
-                if (researchState.correctionDirty && $('rsDocumentEditor')?.contentEditable === 'true') {
-                    localStorage.setItem('nchsm_rs_draft_' + researchState.current.id, $('rsDocumentEditor').innerHTML);
-                }
-            } catch {}
         }
         researchState.current = null;
     }
 
-    function bindResearchNavigation() {
-        if (document.documentElement.dataset.nchsmResearchNavBound === '1') return;
-        document.documentElement.dataset.nchsmResearchNavBound = '1';
-
-        document.addEventListener('click', function (e) {
-            const tab = e.target.closest('#online-learning-content .ol-hub-tabs [data-ol-hub-view]');
-            if (!tab) return;
-
-            const hub = $('online-learning-content') || $('hub-online-learning');
-            if (!hub) return;
-
-            const view = tab.getAttribute('data-ol-hub-view');
-            const tabs = hub.querySelectorAll('.ol-hub-tabs [data-ol-hub-view]');
-            const learningView = hub.querySelector('.ol-wrap');
-
-            // Research module is injected alongside the existing .ol-wrap.
-            researchEnsureUI();
-            const module = $('nchsmResearchModule');
-
-            tabs.forEach(btn => {
-                const active = btn === tab;
-                btn.classList.toggle('active', active);
-                btn.setAttribute('aria-selected', active ? 'true' : 'false');
-            });
-
-            if (view === 'research') {
+    if(!window.__nchsmLecturerResearchEscBound){
+        window.__nchsmLecturerResearchEscBound=true;
+        document.addEventListener('keydown',function(e){
+            if(e.key!=='Escape')return;
+            const m=$('rsReviewModal');
+            const d=m&&m.querySelector('.rs-dialog');
+            if(!m||m.style.display==='none')return;
+            if(d&&d.classList.contains('rs-fullscreen')){
+                d.classList.remove('rs-fullscreen');
+                const b=m.querySelector('[data-rs-fullscreen]');
+                if(b)b.innerHTML='<i class="fas fa-expand"></i>';
                 e.preventDefault();
-                e.stopPropagation();
-
-                state.tab = 'research';
-
-                // Replace Online Learning content with Research content.
-                if (learningView) learningView.style.display = 'none';
-                if (module) {
-                    module.style.display = 'block';
-                    module.classList.add('active');
-                }
-
-                loadResearch();
-                return;
-            }
-
-            if (view === 'learning') {
+            }else{
+                closeResearchModal();
                 e.preventDefault();
-                e.stopPropagation();
-
-                state.tab = 'online';
-
-                if (module) {
-                    module.style.display = 'none';
-                    module.classList.remove('active');
-                }
-                if (learningView) learningView.style.display = 'block';
-
-                if (typeof renderAssignments === 'function') renderAssignments();
             }
-        }, true);
+        });
     }
 
     async function initResearch() {
-        bindResearchNavigation();
-        researchEnsureUI();
         if (researchState.initialized) return;
         researchState.initialized = true;
+        researchEnsureUI();
         await loadResearch();
     }
 
-    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,saveStructuredSubmissionAnswers,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal};
+    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal};
 })();
 console.log('✅ Lecturer Online Learning module loaded');
