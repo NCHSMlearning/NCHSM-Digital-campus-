@@ -325,6 +325,9 @@ window.LecturerOnlineLearning = (() => {
           .rs-review-status{margin-left:auto;font-size:8px;color:#71859c;white-space:nowrap}
           .rs-editor-wrap{flex:1;min-height:0;overflow:auto;padding:26px 18px 40px;background:#f1f3f4;-webkit-overflow-scrolling:touch}
           .rs-editor-page{width:min(850px,100%);min-height:1050px;margin:0 auto;padding:70px 72px;box-sizing:border-box;background:#fff;color:#202b38;outline:0;line-height:1.7;font-size:13px;box-shadow:0 1px 6px rgba(20,40,60,.16)}
+          .rs-editor-page[contenteditable="true"]{cursor:text;user-select:text;-webkit-user-select:text;pointer-events:auto;-webkit-user-modify:read-write;touch-action:auto}
+          .rs-editor-page[contenteditable="true"]:focus{caret-color:#087bf0}
+          .rs-editor-page *{user-select:text;-webkit-user-select:text}
           .rs-editor-page:focus{box-shadow:0 1px 6px rgba(20,40,60,.16),0 0 0 2px rgba(66,133,244,.12)}
           .rs-editor-page img{max-width:100%;height:auto}.rs-editor-page table{max-width:100%;border-collapse:collapse}.rs-editor-page td,.rs-editor-page th{padding:4px 6px}
           .rs-editor-page h1,.rs-editor-page h2,.rs-editor-page h3{color:#18304d}
@@ -820,9 +823,14 @@ window.LecturerOnlineLearning = (() => {
             if(!p||p.sender===lecturerResearchCollab.clientId)return;
 
             if(p.type==='document-state'&&typeof p.html==='string'){
+                if(document.activeElement===editor || editor.dataset.dirty==='1'){
+                    if(statusEl)statusEl.textContent='Editing · local changes protected';
+                    return;
+                }
                 lecturerResearchCollab.applyingRemote=true;
                 if(editor.innerHTML!==p.html)editor.innerHTML=p.html;
                 lecturerResearchCollab.applyingRemote=false;
+                lecturerForceEditorEditable(editor);
                 if(statusEl)statusEl.textContent='Live update received';
                 return;
             }
@@ -871,6 +879,8 @@ window.LecturerOnlineLearning = (() => {
         let cloudDraftTimer=null;
         editor.addEventListener('input',function(){
             if(lecturerResearchCollab.applyingRemote)return;
+            lecturerForceEditorEditable(editor);
+            editor.dataset.dirty='1';
             clearTimeout(cloudDraftTimer);
             cloudDraftTimer=setTimeout(function(){lecturerSaveDraftCloud(s,editor)},1000);
             const now=Date.now();
@@ -887,6 +897,33 @@ window.LecturerOnlineLearning = (() => {
         }
         lecturerResearchCollab.channel=null;
         lecturerResearchCollab.currentId=null;
+    }
+
+    function lecturerForceEditorEditable(editor){
+        if(!editor)return;
+        try{
+            editor.setAttribute('contenteditable','true');
+            editor.contentEditable='true';
+            editor.setAttribute('spellcheck','true');
+            editor.setAttribute('role','textbox');
+            editor.setAttribute('aria-multiline','true');
+            editor.tabIndex=0;
+            editor.style.pointerEvents='auto';
+            editor.style.userSelect='text';
+            editor.style.webkitUserSelect='text';
+            editor.style.webkitUserModify='read-write';
+            editor.style.cursor='text';
+            editor.removeAttribute('disabled');
+            editor.removeAttribute('readonly');
+            editor.querySelectorAll('[contenteditable="false"]').forEach(function(n){n.removeAttribute('contenteditable');});
+            if(!editor.__nchsmEditableBound){
+                editor.__nchsmEditableBound=true;
+                editor.addEventListener('pointerdown',function(e){e.stopPropagation();});
+                editor.addEventListener('click',function(e){e.stopPropagation();editor.focus();});
+                editor.addEventListener('touchstart',function(e){e.stopPropagation();},{passive:true});
+                editor.addEventListener('beforeinput',function(){editor.contentEditable='true';});
+            }
+        }catch(e){console.warn('Could not force research editor editable:',e);}
     }
 
     async function lecturerLoadDocument(s,editor){
@@ -908,6 +945,7 @@ window.LecturerOnlineLearning = (() => {
             }
             const out=await window.mammoth.convertToHtml({arrayBuffer:await resp.arrayBuffer()});
             editor.innerHTML=out.value||'<p></p>';
+            lecturerForceEditorEditable(editor);
             return 'docx';
         }
         if(ext==='html'){
@@ -916,6 +954,7 @@ window.LecturerOnlineLearning = (() => {
             const raw=await resp.text();
             const match=raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
             editor.innerHTML=match?match[1]:raw;
+            lecturerForceEditorEditable(editor);
             return 'html';
         }
         throw new Error('This file type cannot be edited inline.');
@@ -1018,8 +1057,9 @@ window.LecturerOnlineLearning = (() => {
               <button type="button" data-rs-fullscreen title="Full Screen"><i class="fas fa-expand"></i></button>
               <span class="rs-review-status" id="rsCollaborators">Connecting…</span>
             </div>
+            <div style="padding:5px 10px;background:#f8fafc;border-bottom:1px solid #e2e8f0;color:#64748b;font-size:8px">Tap inside the document and type to edit. Your changes are saved automatically.</div>
             <div class="rs-editor-wrap">
-              <article id="rsInlineEditor" class="rs-editor-page" contenteditable="true" spellcheck="true"></article>
+              <article id="rsInlineEditor" class="rs-editor-page" contenteditable="true" spellcheck="true" role="textbox" aria-multiline="true" tabindex="0" style="pointer-events:auto;user-select:text;-webkit-user-select:text;"></article>
             </div>
             <div class="rs-comments-panel">
               <div class="rs-comment-tabs">
@@ -1038,12 +1078,14 @@ window.LecturerOnlineLearning = (() => {
 
         const editor=$('rsInlineEditor');
         const statusEl=$('rsCollaborators');
+        lecturerForceEditorEditable(editor);
 
         try{
             const kind=await lecturerLoadDocument(s,editor);
+            lecturerForceEditorEditable(editor);
             await lecturerLoadPersistentAnnotations(s);
             const cloudDraft=await lecturerRestoreDraftCloud(s,editor,statusEl);
-            if(statusEl && !cloudDraft)statusEl.textContent='Loaded · '+kind.toUpperCase();
+            if(statusEl && !cloudDraft)statusEl.textContent='Editing · '+kind.toUpperCase();
             lecturerRefreshCommentMarks(editor,s);
             lecturerRenderComments(s,editor);
             lecturerRenderSuggestions(s,editor);
@@ -1051,7 +1093,8 @@ window.LecturerOnlineLearning = (() => {
         }catch(e){
             console.error('Research document editor:',e);
             editor.innerHTML='<p style="color:#b42318">'+esc(e.message||e)+'</p>';
-            if(statusEl)statusEl.textContent='View only';
+            lecturerForceEditorEditable(editor);
+            if(statusEl)statusEl.textContent='Editor ready · document load warning';
         }
 
         modal.querySelectorAll('[data-rs-cmd]').forEach(btn=>{
