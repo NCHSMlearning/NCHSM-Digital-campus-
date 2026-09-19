@@ -716,10 +716,32 @@ async function signedResearchUrl(r){
   var db=researchClient();if(!db||!r?.document_path)throw new Error('Document path is missing.');
   var signed=await db.storage.from('research-papers').createSignedUrl(r.document_path,3600);if(signed.error)throw signed.error;return signed.data?.signedUrl||'';
 }
+function researchDecodeHtmlSource(raw){
+  var text=String(raw==null?'':raw).replace(/^\uFEFF/,'').trim();
+  for(var pass=0;pass<4;pass++){
+    var probe=text.replace(/&nbsp;/gi,' ');
+    if(/&lt;\/?(?:!doctype|html|head|body|meta|title|style|p|div|h[1-6])\b/i.test(probe)){
+      var ta=document.createElement('textarea');ta.innerHTML=text;
+      var decoded=ta.value;
+      if(decoded===text)break;
+      text=decoded.trim();
+    }else break;
+  }
+  return text;
+}
 function stripHtmlDocument(raw){
-  var text=String(raw||'').replace(/^\uFEFF/,'').trim();
-  var bodyMatch=text.match(/<body[^>]*>([\s\S]*?)<\/body>/i);if(bodyMatch)return bodyMatch[1];
-  return text.replace(/<!doctype[^>]*>/ig,'').replace(/<\/?(?:html|head|meta|title|style)[^>]*>/ig,'');
+  var text=researchDecodeHtmlSource(raw);
+  var bodyMatch=text.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if(bodyMatch)return researchDecodeHtmlSource(bodyMatch[1]);
+  text=text.replace(/^\s*<!doctype[^>]*>/i,'').replace(/<\/?(?:html|head|meta|title|style)[^>]*>/ig,'');
+  return researchDecodeHtmlSource(text);
+}
+function researchNormalizeEditorHtml(html){
+  var text=researchDecodeHtmlSource(html);
+  var bodyMatch=text.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+  if(bodyMatch)text=bodyMatch[1];
+  text=text.replace(/^\s*<!doctype[^>]*>/i,'').trim();
+  return researchDecodeHtmlSource(text);
 }
 
 async function loadResearchInlineDocument(r,editor){
@@ -805,7 +827,7 @@ async function saveInlineResearchCorrection(){
   var base=state.researchCurrent,editor=document.getElementById('ol-rs-inline-editor'),db=researchClient(),id=researchUserId();
   if(!base||!editor||!db||!id)return;
   if(String(base.status||'').toLowerCase()!=='revision_required')return alert('This research is not currently awaiting revision.');
-  var html=editor.innerHTML.trim();if(!html)return alert('There is no corrected document content to submit.');
+  var html=researchNormalizeEditorHtml(editor.innerHTML);if(!html)return alert('There is no corrected document content to submit.');
   var next=nextResearchVersion(base),now=new Date().toISOString();
   var original=String(base.document_name||base.document_path||'').toLowerCase();
   var isDocx=/\.docx?$/.test(original),isHtml=/\.html?$/.test(original);
