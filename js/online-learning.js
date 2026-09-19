@@ -79,7 +79,6 @@ function renderResults(){
 function render(){
   if(state.tab==='assignments'||state.tab==='case-studies')renderAssignments();
   else if(state.tab==='submissions')renderSubmissions();
-  else if(state.tab==='research')renderResearch();
   else renderResults();
   updateStats();
 }
@@ -138,7 +137,6 @@ async function openModal(a){
   state.current=a;state.file=null;
   var m=document.getElementById('ol-assignment-modal'),b=document.getElementById('ol-modal-body'),title=document.getElementById('ol-modal-title'),btn=document.getElementById('ol-submit-btn');
   var existing=getSubmission(a.id);
-  var canSubmit=!existing && (!a.due_at || new Date(a.due_at).getTime()>=Date.now());
   title.textContent=a.title||'Assignment';
   var qs=[];
   var html='<div class="ol-notice"><i class="fas fa-circle-info"></i> '+(existing?'You have already submitted this activity. Review your submission below.':'Complete the required work and submit before the due date.')+'</div>';
@@ -169,235 +167,18 @@ async function openModal(a){
     });
   }
   if(a.allow_document_upload!==false){
-    html+='<div class="ol-upload"><i class="fas fa-file-arrow-up"></i><strong>Upload your completed work</strong><small>Accepted: Microsoft Word (.docx) only. Maximum 10 MB.</small><input id="ol-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" '+(existing&&!canSubmit?'disabled':'')+'><div class="ol-file-name" id="ol-file-name"></div></div>';
+    html+='<div class="ol-upload"><i class="fas fa-file-arrow-up"></i><strong>Upload your completed work</strong><small>Accepted: Word (.doc, .docx) or PDF (.pdf). Maximum 10 MB.</small><input id="ol-file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" '+(existing&&!canSubmit?'disabled':'')+'><div class="ol-file-name" id="ol-file-name"></div></div>';
   }
   b.innerHTML=html;
   btn.style.display=canSubmit?'inline-flex':'none';
   m.classList.add('open');m.setAttribute('aria-hidden','false');
   var fi=document.getElementById('ol-file');if(fi)fi.onchange=function(){state.file=this.files&&this.files[0]||null;var n=document.getElementById('ol-file-name');if(n)n.textContent=state.file?state.file.name:''};
 }
-
-/* ============================================================
-   RESEARCH PAPERS — STUDENT SIDE
-   ============================================================ */
-function researchStatus(s){
-  var x=String(s||'submitted').toLowerCase();
-  var label={submitted:'Submitted',under_review:'Under Review',revision_required:'Revision Required',approved:'Approved',rejected:'Rejected'}[x]||x.replace(/_/g,' ');
-  var cls=x==='approved'?'success':(x==='revision_required'||x==='rejected'?'danger':(x==='under_review'?'review':''));
-  return '<span class="ol-pill '+cls+'">'+esc(label)+'</span>';
-}
-async function loadResearch(){
-  var sb=client(),id=uid(); if(!sb||!id)return;
-  var r=await sb.from('research_submissions')
-    .select('id,student_id,research_group_id,version_number,title,submission_type,supervisor_name,abstract,status,document_name,document_path,feedback,reviewed_at,submitted_at,created_at,updated_at')
-    .eq('student_id',id).order('created_at',{ascending:false});
-  if(r.error){console.error('Research load failed:',r.error);return;}
-  state.research=r.data||[];
-  if(state.tab==='research')renderResearch();
-}
-function renderResearch(){
-  var rows=state.research||[];
-  var html='<div class="ol-card" style="padding:14px"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><div><h3 style="margin:0">Research Papers</h3><p style="font-size:11px;color:#64748b;margin:5px 0">Track proposals, final papers, revisions and lecturer corrections.</p></div><button class="ol-btn ol-btn-secondary" type="button" id="ol-research-refresh"><i class="fas fa-sync"></i> Refresh</button></div>';
-  if(!rows.length){html+='<div class="ol-empty" style="margin-top:12px"><i class="fas fa-file-signature"></i><strong>No research submissions yet</strong></div></div>';setContent(html);return;}
-  html+='<div style="overflow:auto;margin-top:12px"><table style="width:100%;border-collapse:collapse;font-size:11px"><thead><tr><th style="text-align:left;padding:8px">Title</th><th>Type</th><th>Version</th><th>Status</th><th>Action</th></tr></thead><tbody>';
-  rows.forEach(function(r){
-    html+='<tr style="border-top:1px solid #e5e7eb"><td style="padding:9px"><b>'+esc(r.title||'Untitled Research')+'</b><div style="font-size:10px;color:#64748b">'+esc(r.document_name||'No document')+'</div></td><td>'+esc(r.submission_type||'—')+'</td><td>v'+esc(r.version_number||1)+'</td><td>'+researchStatus(r.status)+'</td><td><button class="ol-btn ol-btn-secondary" data-ol-research-view="'+esc(r.id)+'" type="button">View</button></td></tr>';
-  });
-  html+='</tbody></table></div></div>';
-  setContent(html);
-  document.getElementById('ol-research-refresh')?.addEventListener('click',loadResearch);
-  document.querySelectorAll('[data-ol-research-view]').forEach(function(b){b.addEventListener('click',function(){viewResearch(this.dataset.olResearchView)})});
-}
-async function viewResearch(id){
-  var r=state.research.find(function(x){return String(x.id)===String(id)}); if(!r)return;
-  state.researchCurrent=r;
-  var body=document.getElementById('ol-research-body'),title=document.getElementById('ol-research-title');
-  if(!body)return;
-  title.textContent=r.title||'Research Paper';
-  body.innerHTML='<div class="ol-loading"><i class="fas fa-spinner fa-spin"></i>Opening document…</div>';
-  document.getElementById('ol-research-modal').classList.add('open');
-  var html='<div class="ol-notice">'+researchStatus(r.status)+'<br><b>Version:</b> '+esc(r.version_number||1)+' · <b>Type:</b> '+esc(r.submission_type||'—')+'</div>';
-  if(r.feedback)html+='<div style="padding:11px;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:10px"><b>Lecturer Feedback</b><div style="white-space:pre-wrap;color:#526b86;margin-top:6px">'+esc(r.feedback)+'</div></div>';
-  if(r.abstract)html+='<div style="padding:11px;border:1px solid #e2e8f0;border-radius:9px;margin-bottom:10px"><b>Abstract / Notes</b><div style="white-space:pre-wrap;color:#526b86;margin-top:6px">'+esc(r.abstract)+'</div></div>';
-  if(r.document_path){
-    var u=await sbSignedResearchUrl(r.document_path);
-    if(researchCanCorrect(r)){
-      html+='<div style="display:flex;gap:8px;flex-wrap:wrap;margin:10px 0"><button class="ol-btn ol-btn-primary" type="button" id="ol-start-research-correction"><i class="fas fa-pen-to-square"></i> View & Correct DOCX</button></div>';
-    }
-    html+='<div><b>Document</b><iframe src="'+esc(u)+'" style="width:100%;height:520px;border:1px solid #dbe6ef;border-radius:9px;margin-top:7px"></iframe><div style="margin-top:7px"><a href="'+esc(u)+'" target="_blank" rel="noopener" class="ol-btn ol-btn-secondary" style="display:inline-block;text-decoration:none">Open / Download</a></div></div>';
-  }else html+='<div class="ol-empty">No document attached.</div>';
-  body.innerHTML=html;
-}
-
-/* ============================================================
-   RESEARCH CORRECTION WORKFLOW — DOCX ONLY
-   ============================================================ */
-function researchCanCorrect(r){
-  return String(r.status||'').toLowerCase()==='revision_required';
-}
-function ensureResearchCorrectionModal(){
-  if(document.getElementById('ol-research-correction-modal'))return;
-  var m=document.createElement('div');
-  m.id='ol-research-correction-modal';m.className='ol-modal';m.setAttribute('aria-hidden','true');
-  m.innerHTML='<div class="ol-modal-dialog" style="width:98vw;max-width:1400px;height:94vh">'+
-    '<div class="ol-modal-head"><div><h3 id="ol-research-correction-title" style="margin:0">Correct Research Paper</h3>'+
-    '<small id="ol-research-correction-state" style="color:#64748b">Loading…</small></div>'+
-    '<button class="ol-close" type="button" id="ol-research-correction-close"><i class="fas fa-times"></i></button></div>'+
-    '<div style="display:flex;gap:7px;flex-wrap:wrap;padding:8px 12px;border-bottom:1px solid #e5edf4">'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="bold"><b>B</b></button>'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="italic"><i>I</i></button>'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="underline"><u>U</u></button>'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="insertUnorderedList">• List</button>'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="insertOrderedList">1. List</button>'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="justifyLeft">Left</button>'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="justifyCenter">Center</button>'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="justifyRight">Right</button>'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="undo">Undo</button>'+
-    '<button type="button" class="ol-btn ol-btn-secondary" data-rce-cmd="redo">Redo</button>'+
-    '</div>'+
-    '<div id="ol-research-correction-editor" contenteditable="true" spellcheck="true" style="height:calc(94vh - 180px);overflow:auto;padding:35px;max-width:900px;margin:0 auto;background:#fff;line-height:1.6;font-size:14px;outline:none"></div>'+
-    '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;padding:10px 12px;border-top:1px solid #e5edf4;background:#f8fafc">'+
-    '<span id="ol-rce-file-label" style="font-size:11px;color:#64748b">DOCX only</span>'+
-    '<div style="display:flex;gap:7px"><button type="button" class="ol-btn ol-btn-secondary" id="ol-rce-save"><i class="fas fa-floppy-disk"></i> Save Draft</button>'+
-    '<button type="button" class="ol-btn ol-btn-primary" id="ol-rce-submit"><i class="fas fa-paper-plane"></i> Submit Correction for Review</button></div></div>'+
-    '</div>';
-  document.body.appendChild(m);
-  document.getElementById('ol-research-correction-close').onclick=function(){m.classList.remove('open');m.setAttribute('aria-hidden','true')};
-  m.querySelectorAll('[data-rce-cmd]').forEach(function(b){
-    b.onclick=function(){var e=document.getElementById('ol-research-correction-editor');e.focus();document.execCommand(this.dataset.rceCmd,false,null);markResearchCorrectionDirty()};
-  });
-  document.getElementById('ol-rce-save').onclick=function(){saveResearchCorrection(false)};
-  document.getElementById('ol-rce-submit').onclick=function(){saveResearchCorrection(true)};
-}
-function researchDraftKey(r){
-  return 'nchsm_research_correction_draft_'+String(r.id);
-}
-async function openResearchCorrection(id){
-  var r=state.research.find(function(x){return String(x.id)===String(id)});if(!r)return;
-  if(!researchCanCorrect(r)){alert('This research paper is not currently marked Revision Required.');return}
-  if(!/\.docx$/i.test(String(r.document_name||''))){
-    alert('Only Microsoft Word (.docx) research documents can be corrected online.');
-    return;
-  }
-  ensureResearchCorrectionModal();
-  state.researchCurrent=r;
-  var m=document.getElementById('ol-research-correction-modal');
-  var ed=document.getElementById('ol-research-correction-editor');
-  document.getElementById('ol-research-correction-title').textContent=(r.title||'Research Paper')+' — Correction';
-  document.getElementById('ol-rce-file-label').textContent='DOCX only · Current version V'+(r.version_number||1);
-  document.getElementById('ol-research-correction-state').textContent='Opening document…';
-  m.classList.add('open');m.setAttribute('aria-hidden','false');
-  try{
-    var draft=localStorage.getItem(researchDraftKey(r));
-    if(draft){ed.innerHTML=draft;document.getElementById('ol-research-correction-state').textContent='Saved draft restored';return}
-    var url=await sbSignedResearchUrl(r.document_path);
-    if(window.mammoth){
-      var resp=await fetch(url);var ab=await resp.arrayBuffer();
-      var out=await window.mammoth.convertToHtml({arrayBuffer:ab});
-      ed.innerHTML=out.value||'<p></p>';
-    }else{
-      ed.innerHTML='<p>Mammoth.js is required to edit DOCX documents. Please load Mammoth before opening the editor.</p>';
-    }
-    document.getElementById('ol-research-correction-state').textContent='Editing V'+(r.version_number||1)+' · DOCX';
-  }catch(e){
-    console.error('Research correction open failed:',e);
-    ed.innerHTML='<p style="color:#b42318">Could not open this DOCX document. '+esc(e.message||e)+'</p>';
-    document.getElementById('ol-research-correction-state').textContent='Unable to open document';
-  }
-  ed.oninput=markResearchCorrectionDirty;
-}
-function markResearchCorrectionDirty(){
-  var r=state.researchCurrent,ed=document.getElementById('ol-research-correction-editor');if(!r||!ed)return;
-  localStorage.setItem(researchDraftKey(r),ed.innerHTML);
-  var st=document.getElementById('ol-research-correction-state');if(st)st.textContent='Draft saved locally · unsent changes';
-}
-async function saveResearchCorrection(submit){
-  var r=state.researchCurrent,sb=client(),id=uid(),ed=document.getElementById('ol-research-correction-editor');
-  if(!r||!sb||!id||!ed)return;
-  var html=ed.innerHTML.trim();
-  if(!html||html==='<br>'){alert('Please make the required corrections before submitting.');return}
-  var btn=document.getElementById(submit?'ol-rce-submit':'ol-rce-save');
-  if(btn)btn.disabled=true;
-  try{
-    localStorage.setItem(researchDraftKey(r),html);
-    if(!submit){
-      var st=document.getElementById('ol-research-correction-state');if(st)st.textContent='Draft saved locally';
-      alert('Correction draft saved on this device. You can continue editing later.');
-      return;
-    }
-    /*
-      A new immutable version is inserted. The original row/document is never
-      overwritten. This requires the research_submissions table to permit a
-      correction row linked through research_group_id and version_number.
-    */
-    var next=state.research.filter(function(x){
-      return String(x.research_group_id||'')===String(r.research_group_id||r.id);
-    }).reduce(function(mx,x){return Math.max(mx,Number(x.version_number)||1)},Number(r.version_number)||1)+1;
-    var fileName=(String(r.title||'research').replace(/[^a-zA-Z0-9_-]+/g,'_')+'_V'+next+'.html');
-    var path=id+'/'+(r.research_group_id||r.id)+'/'+Date.now()+'_'+fileName;
-    var blob=new Blob(['<!doctype html><html><head><meta charset="utf-8"><title>'+esc(r.title||'Research Paper')+'</title></head><body>'+html+'</body></html>'],{type:'text/html'});
-    var up=await sb.storage.from('research-papers').upload(path,blob,{upsert:false,contentType:'text/html'});
-    if(up.error)throw up.error;
-    var payload={
-      student_id:id,
-      research_group_id:r.research_group_id||r.id,
-      version_number:next,
-      title:r.title,
-      submission_type:'correction',
-      supervisor_name:r.supervisor_name||null,
-      abstract:r.abstract||null,
-      status:'submitted',
-      document_name:fileName,
-      document_path:path,
-      submitted_at:new Date().toISOString(),
-      created_at:new Date().toISOString()
-    };
-    var ins=await sb.from('research_submissions').insert(payload).select().single();
-    if(ins.error){
-      await sb.storage.from('research-papers').remove([path]);
-      throw ins.error;
-    }
-    localStorage.removeItem(researchDraftKey(r));
-    state.research.unshift(ins.data);
-    state.researchCurrent=ins.data;
-    document.getElementById('ol-research-correction-modal').classList.remove('open');
-    document.getElementById('ol-research-correction-modal').setAttribute('aria-hidden','true');
-    renderResearch();
-    alert('Correction submitted successfully as V'+next+' and sent back for lecturer review.');
-  }catch(e){
-    console.error('Research correction submission failed:',e);
-    alert('Correction could not be submitted: '+(e.message||e));
-  }finally{if(btn)btn.disabled=false}
-}
-async function sbSignedResearchUrl(path){
-  var sb=client();var r=await sb.storage.from('research-papers').createSignedUrl(path,3600);
-  if(r.error)throw r.error;return r.data.signedUrl;
-}
-function ensureResearchModal(){
-  if(document.getElementById('ol-research-modal'))return;
-  var m=document.createElement('div');m.id='ol-research-modal';m.className='ol-modal';m.setAttribute('aria-hidden','true');
-  m.innerHTML='<div class="ol-modal-dialog" style="max-width:1200px;width:96vw"><div class="ol-modal-head"><h3 id="ol-research-title">Research Paper</h3><button class="ol-close" type="button" id="ol-research-close"><i class="fas fa-times"></i></button></div><div class="ol-modal-body" id="ol-research-body"></div></div>';
-  document.body.appendChild(m);
-  document.getElementById('ol-research-close').onclick=function(){m.classList.remove('open');m.setAttribute('aria-hidden','true')};
-}
-function addResearchTab(){
-  var tabs=document.querySelectorAll('#hub-online-learning [data-ol-tab]');
-  if(!tabs.length)return;
-  var parent=tabs[0].parentElement;
-  if(parent && !parent.querySelector('[data-ol-tab="research"]')){
-    var b=document.createElement('button');b.type='button';b.className='ol-tab';b.dataset.olTab='research';b.innerHTML='<i class="fas fa-file-signature"></i> Research Papers';parent.appendChild(b);
-  }
-  ensureResearchModal();
-}
 async function submitCurrent(){
   var a=state.current,sb=client(),id=uid(),btn=document.getElementById('ol-submit-btn');
   if(!a||!sb||!id)return;
   if(a.due_at&&new Date(a.due_at).getTime()<Date.now()){setError('This assignment is past its due date and can no longer be submitted.');close('assignment');return}
   if(state.file && state.file.size>10*1024*1024){setError('The selected document is larger than 10 MB.');return}
-  if(state.file){
-    var isDocx=/\.docx$/i.test(state.file.name) || state.file.type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    if(!isDocx){setError('Only Microsoft Word (.docx) documents are allowed.');return}
-  }
   btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';
   try{
     var payload={assignment_id:a.id,student_id:id,status:'submitted',submitted_at:new Date().toISOString(),result_released:false};
@@ -441,7 +222,7 @@ async function viewResult(id){
 function close(which){var m=document.getElementById(which==='result'?'ol-result-modal':'ol-assignment-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}}
 function bind(){
   if(state.bound)return;state.bound=true;
-  document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(b){b.addEventListener('click',function(){state.tab=this.dataset.olTab;document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(x){x.classList.toggle('active',x===b)});if(state.tab==='research')loadResearch();render()})});
+  document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(b){b.addEventListener('click',function(){state.tab=this.dataset.olTab;document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(x){x.classList.toggle('active',x===b)});render()})});
   document.getElementById('ol-search')?.addEventListener('input',render);
   document.getElementById('ol-status-filter')?.addEventListener('change',render);
   document.getElementById('ol-refresh')?.addEventListener('click',loadData);
@@ -530,12 +311,12 @@ function ensureResearchStyles(){
     #hub-online-learning .ol-research-muted{background:#eef2f5;color:#536b84}
     #hub-online-learning .ol-research-success{background:#0b875b;color:#fff}
     #hub-online-learning .ol-research-empty{padding:38px 15px;text-align:center;color:#71859c;font-size:10px}
-    #hub-online-learning .ol-research-modal{position:fixed;inset:0;background:rgba(5,20,35,.62);z-index:10001;display:none;align-items:center;justify-content:center;padding:15px}
+    #hub-online-learning .ol-research-modal{position:fixed;inset:0;background:rgba(5,20,35,.62);z-index:10001;display:none;align-items:center;justify-content:center;padding:10px;box-sizing:border-box}
     #hub-online-learning .ol-research-modal.open{display:flex}
-    #hub-online-learning .ol-research-dialog{width:min(1180px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 25px 70px rgba(0,0,0,.25)}
+    #hub-online-learning .ol-research-dialog{width:min(1280px,100%);height:min(94vh,920px);max-height:94vh;display:flex;flex-direction:column;overflow:hidden;background:#fff;border-radius:14px;box-shadow:0 25px 70px rgba(0,0,0,.25)}
     #hub-online-learning .ol-research-dialog-head{padding:13px 16px;border-bottom:1px solid #e5edf5;display:flex;justify-content:space-between;gap:10px;align-items:center;position:sticky;top:0;background:#fff;z-index:5}
     #hub-online-learning .ol-research-dialog-head h3{margin:0;font-size:14px;color:#132b48}
-    #hub-online-learning .ol-research-body{padding:16px}
+    #hub-online-learning .ol-research-body{padding:16px;overflow:auto;min-height:0;flex:1;box-sizing:border-box}
     #hub-online-learning .ol-research-field{margin-bottom:10px}
     #hub-online-learning .ol-research-field label{display:block;font-size:10px;font-weight:800;color:#526b86;margin-bottom:5px}
     #hub-online-learning .ol-research-field input,#hub-online-learning .ol-research-field select,#hub-online-learning .ol-research-field textarea{width:100%;box-sizing:border-box;border:1px solid #dbe6ef;border-radius:8px;background:#f8fbfe;padding:9px 10px;font-size:10px;color:#263e5b;outline:0}
@@ -546,21 +327,27 @@ function ensureResearchStyles(){
     #hub-online-learning .ol-research-file strong{display:block;margin-top:6px;font-size:11px;color:#18304d}
     #hub-online-learning .ol-research-file small{display:block;margin-top:3px;color:#71859c;font-size:9px}
     #hub-online-learning .ol-research-feedback{padding:11px;border-radius:9px;background:#f7fafc;border:1px solid #e1eaf2;font-size:10px;line-height:1.55;color:#526b86;white-space:pre-wrap}
-    #hub-online-learning .ol-rs-workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:12px;min-height:600px}
-    #hub-online-learning .ol-rs-document{border:1px solid #dbe6ef;border-radius:10px;background:#f4f7fa;overflow:hidden;min-height:560px}
-    #hub-online-learning .ol-rs-document-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 11px;background:#fff;border-bottom:1px solid #dbe6ef;position:sticky;top:0;z-index:3}
+    #hub-online-learning .ol-rs-workspace{display:grid;grid-template-columns:minmax(0,1fr) 330px;gap:12px;min-height:0;height:100%}
+    #hub-online-learning .ol-rs-document{border:1px solid #dbe6ef;border-radius:10px;background:#f4f7fa;overflow:hidden;min-height:0;height:100%;display:flex;flex-direction:column}
+    #hub-online-learning .ol-rs-document-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:9px 11px;background:#fff;border-bottom:1px solid #dbe6ef;position:sticky;top:0;z-index:3;flex:0 0 auto}
     #hub-online-learning .ol-rs-document-head strong{font-size:10px;color:#18304d}
     #hub-online-learning .ol-rs-editor-toolbar{display:flex;gap:4px;flex-wrap:wrap;padding:7px;background:#fff;border-bottom:1px solid #dbe6ef}
     #hub-online-learning .ol-rs-tool{border:1px solid #d8e2eb;background:#f8fbfe;border-radius:6px;padding:6px 8px;font-size:10px;cursor:pointer;color:#334e68}
     #hub-online-learning .ol-rs-tool:hover{background:#edf4ff}
     #hub-online-learning .ol-rs-editor{box-sizing:border-box;background:#fff;min-height:520px;max-width:900px;margin:14px auto;padding:42px;outline:0;line-height:1.7;font-size:13px;color:#202b38;box-shadow:0 2px 12px rgba(20,40,60,.08)}
     #hub-online-learning .ol-rs-editor[contenteditable="true"]{cursor:text}
-    #hub-online-learning .ol-rs-pdf{width:100%;height:560px;border:0;background:#fff}
-    #hub-online-learning .ol-rs-side{border:1px solid #dbe6ef;border-radius:10px;background:#fff;padding:12px;height:max-content;position:sticky;top:0}
+    #hub-online-learning #ol-rs-doc-content{flex:1;min-height:0;overflow:auto;scroll-behavior:smooth}
+    #hub-online-learning .ol-rs-modal-actions{display:flex;justify-content:flex-end;gap:7px;padding:9px 12px;background:#fff;border-top:1px solid #dbe6ef;position:sticky;bottom:0;z-index:6;flex:0 0 auto}
+    #hub-online-learning .ol-rs-fullscreen{position:fixed!important;inset:0!important;padding:0!important}
+    #hub-online-learning .ol-rs-fullscreen .ol-research-dialog{width:100%;height:100%;max-height:none;border-radius:0}
+    #hub-online-learning .ol-rs-fullscreen .ol-research-body{padding:12px}
+    @media(max-width:850px){#hub-online-learning .ol-research-modal{padding:0}#hub-online-learning .ol-research-dialog{width:100%;height:100%;max-height:none;border-radius:0}#hub-online-learning .ol-rs-workspace{grid-template-columns:1fr;overflow:auto}#hub-online-learning .ol-rs-document{min-height:650px;height:650px}#hub-online-learning .ol-rs-side{height:auto;min-height:0;overflow:visible}#hub-online-learning .ol-rs-editor{padding:22px;font-size:12px}#hub-online-learning .ol-rs-pdf{min-height:600px}}
+    #hub-online-learning .ol-rs-pdf{width:100%;height:100%;min-height:560px;border:0;background:#fff;display:block}
+    #hub-online-learning .ol-rs-side{border:1px solid #dbe6ef;border-radius:10px;background:#fff;padding:12px;height:100%;min-height:0;box-sizing:border-box;overflow:auto;position:relative}
     #hub-online-learning .ol-rs-side h4{margin:0 0 9px;color:#18304d;font-size:11px}
     #hub-online-learning .ol-rs-side-section{padding:10px 0;border-top:1px solid #edf2f7}
     #hub-online-learning .ol-rs-side-section:first-of-type{border-top:0}
-    #hub-online-learning .ol-rs-history{display:grid;gap:6px}
+    #hub-online-learning .ol-rs-history{display:grid;gap:6px;max-height:260px;overflow:auto}
     #hub-online-learning .ol-rs-history-item{padding:8px;border:1px solid #e1eaf2;border-radius:8px;background:#f8fbfe;cursor:pointer}
     #hub-online-learning .ol-rs-history-item.active{border-color:#087bf0;background:#edf4ff}
     #hub-online-learning .ol-rs-history-item strong{display:block;font-size:10px;color:#18304d}
@@ -585,7 +372,7 @@ function researchEnsureUI(){
   }
   if(document.getElementById('ol-research-modal'))return;
   var modal=document.createElement('div');modal.className='ol-research-modal';modal.id='ol-research-modal';modal.setAttribute('aria-hidden','true');
-  modal.innerHTML='<div class="ol-research-dialog"><div class="ol-research-dialog-head"><h3 id="ol-research-modal-title">Research Paper</h3><button class="ol-close" type="button" data-research-close><i class="fas fa-times"></i></button></div><div class="ol-research-body" id="ol-research-modal-body"></div></div>';
+  modal.innerHTML='<div class="ol-research-dialog"><div class="ol-research-dialog-head"><h3 id="ol-research-modal-title">Research Paper</h3><div style="display:flex;align-items:center;gap:6px"><button class="ol-research-btn ol-research-secondary" type="button" data-research-fullscreen title="Full Screen"><i class="fas fa-expand"></i> Full Screen</button><button class="ol-close" type="button" data-research-close title="Close"><i class="fas fa-times"></i></button></div></div><div class="ol-research-body" id="ol-research-modal-body"></div></div>';
   document.body.appendChild(modal);
 }
 
@@ -618,14 +405,15 @@ function renderResearch(){
   document.getElementById('ol-research-status')?.addEventListener('change',function(){state.researchStatus=this.value;renderResearch()});
 }
 
-function openResearchModal(){var m=document.getElementById('ol-research-modal');if(m){m.classList.add('open');m.setAttribute('aria-hidden','false')}}
-function closeResearchModal(){var m=document.getElementById('ol-research-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}state.researchCurrent=null;state.researchFile=null}
+function openResearchModal(){var m=document.getElementById('ol-research-modal');if(m){m.classList.add('open');m.setAttribute('aria-hidden','false');document.body.classList.add('ol-research-modal-open')}}
+function closeResearchModal(){var m=document.getElementById('ol-research-modal');if(m){m.classList.remove('open','ol-rs-fullscreen');m.setAttribute('aria-hidden','true')}document.body.classList.remove('ol-research-modal-open');state.researchCurrent=null;state.researchFile=null}
+function toggleResearchFullscreen(){var m=document.getElementById('ol-research-modal');if(!m)return;var on=m.classList.toggle('ol-rs-fullscreen');m.setAttribute('data-fullscreen',on?'1':'0');m.querySelectorAll('[data-research-fullscreen]').forEach(function(b){b.innerHTML=on?'<i class="fas fa-compress"></i> Exit Full Screen':'<i class="fas fa-expand"></i> Full Screen'});}
 
 function openResearchForm(existing){
   researchEnsureUI();state.researchCurrent=existing||null;state.researchFile=null;
   var body=document.getElementById('ol-research-modal-body'),title=document.getElementById('ol-research-modal-title');if(!body||!title)return;
   title.textContent=existing?'Submit Research Revision':'Submit Research Paper';
-  body.innerHTML=`<form id="ol-research-form"><div class="ol-research-grid"><div class="ol-research-field"><label>Research Type</label><select id="ol-research-type" required><option value="proposal">Research Proposal</option><option value="final_paper">Research Project / Final Paper</option><option value="correction">Correction / Revised Paper</option></select></div><div class="ol-research-field"><label>Version</label><input id="ol-research-version" type="number" min="1" value="${researchEscape(existing?(Number(existing.version_number||1)+1):1)}" required></div></div><div class="ol-research-field"><label>Research Title</label><input id="ol-research-title" type="text" value="${researchEscape(existing?.title||'')}" required></div><div class="ol-research-field"><label>Supervisor Name</label><input id="ol-research-supervisor" type="text" value="${researchEscape(existing?.supervisor_name||'')}" placeholder="Supervisor name"></div><div class="ol-research-field"><label>Abstract / Notes</label><textarea id="ol-research-abstract" placeholder="Brief abstract or submission notes...">${researchEscape(existing?.abstract||'')}</textarea></div><div class="ol-research-field"><label>Research Document ${existing?'(upload the revised document)':''}</label><div class="ol-research-file"><i class="fas fa-file-arrow-up"></i><strong>Choose PDF or Word document</strong><small>Accepted: PDF, DOC, DOCX</small><input id="ol-research-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required><div id="ol-research-file-name" style="margin-top:7px;font-size:9px;font-weight:800;color:#0870d6"></div></div></div><div style="display:flex;justify-content:flex-end;gap:7px;margin-top:12px"><button class="ol-research-btn ol-research-muted" type="button" data-research-close>Cancel</button><button class="ol-research-btn ol-research-primary" type="submit"><i class="fas fa-paper-plane"></i> Submit to Lecturer</button></div></form>`;
+  body.innerHTML=`<form id="ol-research-form"><div class="ol-research-grid"><div class="ol-research-field"><label>Research Type</label><select id="ol-research-type" required><option value="proposal">Research Proposal</option><option value="final_paper">Research Project / Final Paper</option><option value="correction">Correction / Revised Paper</option></select></div><div class="ol-research-field"><label>Version</label><input id="ol-research-version" type="number" min="1" value="${researchEscape(existing?(Number(existing.version_number||1)+1):1)}" required></div></div><div class="ol-research-field"><label>Research Title</label><input id="ol-research-title" type="text" value="${researchEscape(existing?.title||'')}" required></div><div class="ol-research-field"><label>Supervisor Name</label><input id="ol-research-supervisor" type="text" value="${researchEscape(existing?.supervisor_name||'')}" placeholder="Supervisor name"></div><div class="ol-research-field"><label>Abstract / Notes</label><textarea id="ol-research-abstract" placeholder="Brief abstract or submission notes...">${researchEscape(existing?.abstract||'')}</textarea></div><div class="ol-research-field"><label>Research Document ${existing?'(upload the revised document)':''}</label><div class="ol-research-file"><i class="fas fa-file-arrow-up"></i><strong>Choose PDF or Word document</strong><small>Accepted: PDF, DOC, DOCX</small><input id="ol-research-file" type="file" accept=".pdf,.doc,.docx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" required><div id="ol-research-file-name" style="margin-top:7px;font-size:9px;font-weight:800;color:#0870d6"></div></div></div><div style="display:flex;justify-content:flex-end;gap:7px;margin-top:12px"><button class="ol-research-btn ol-research-muted" type="button" data-research-close>Cancel</button><button class="ol-research-btn ol-research-primary" type="submit"><i class="fas fa-paper-plane"></i> Submit to Lecturer</button></div></form>`;
   var type=document.getElementById('ol-research-type');if(existing?.submission_type&&type)type.value=existing.submission_type==='correction'?'correction':existing.submission_type;
   document.getElementById('ol-research-file')?.addEventListener('change',function(){state.researchFile=this.files?.[0]||null;var n=document.getElementById('ol-research-file-name');if(n)n.textContent=state.researchFile?state.researchFile.name:''});
   document.getElementById('ol-research-form')?.addEventListener('submit',submitResearch);openResearchModal();
@@ -703,7 +491,7 @@ async function openResearchViewer(id,editMode){
   var r=state.research.find(function(x){return String(x.id)===String(id)});if(!r)return;
   state.researchCurrent=r;researchEnsureUI();var body=document.getElementById('ol-research-modal-body'),title=document.getElementById('ol-research-modal-title');if(!body||!title)return;
   title.textContent=(r.title||'Research Paper')+' · Version '+(r.version_number||1);
-  body.innerHTML=`<div class="ol-rs-workspace"><section class="ol-rs-document"><div class="ol-rs-document-head"><strong id="ol-rs-doc-name">${researchEscape(r.document_name||'Research Document')}</strong><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="ol-research-btn ol-research-secondary" type="button" data-rs-download><i class="fas fa-download"></i> Download</button>${String(r.status||'').toLowerCase()==='revision_required'&&researchIsEditableDocument(r)?'<button class="ol-research-btn ol-research-primary" type="button" data-rs-edit><i class="fas fa-pen-to-square"></i> Edit Inline</button>':''}</div></div><div id="ol-rs-doc-content" style="min-height:520px"></div></section><aside class="ol-rs-side"><h4>Research Review</h4><div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c">Status</div><div style="margin-top:5px">${researchStatusPill(r.status)}</div></div><div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c">Research Type</div><div style="font-size:10px;font-weight:800;color:#18304d;margin-top:4px">${researchEscape(researchTypeLabel(r.submission_type))}</div></div><div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c">Supervisor</div><div style="font-size:10px;font-weight:800;color:#18304d;margin-top:4px">${researchEscape(r.supervisor_name||'—')}</div></div>${r.feedback?`<div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c;font-weight:800">LECTURER FEEDBACK</div><div class="ol-research-feedback" style="margin-top:6px">${researchEscape(r.feedback)}</div></div>`:''}<div class="ol-rs-side-section"><h4 style="margin-bottom:7px">Version History</h4><div class="ol-rs-history" id="ol-rs-history"></div></div><div class="ol-rs-side-section"><div class="ol-rs-note">When a lecturer requests revision, edit the document here and submit the new version. The previous version remains unchanged.</div></div><div id="ol-rs-submit-area"></div></aside></div>`;
+  body.innerHTML=`<div class="ol-rs-workspace"><section class="ol-rs-document"><div class="ol-rs-document-head"><strong id="ol-rs-doc-name">${researchEscape(r.document_name||'Research Document')}</strong><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="ol-research-btn ol-research-secondary" type="button" data-rs-download><i class="fas fa-download"></i> Download</button>${String(r.status||'').toLowerCase()==='revision_required'&&researchIsEditableDocument(r)?'<button class="ol-research-btn ol-research-primary" type="button" data-rs-edit><i class="fas fa-pen-to-square"></i> Edit Inline</button>':''}</div></div><div id="ol-rs-doc-content" style="min-height:520px"></div></section><aside class="ol-rs-side"><h4>Research Review</h4><div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c">Status</div><div style="margin-top:5px">${researchStatusPill(r.status)}</div></div><div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c">Research Type</div><div style="font-size:10px;font-weight:800;color:#18304d;margin-top:4px">${researchEscape(researchTypeLabel(r.submission_type))}</div></div><div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c">Supervisor</div><div style="font-size:10px;font-weight:800;color:#18304d;margin-top:4px">${researchEscape(r.supervisor_name||'—')}</div></div>${r.feedback?`<div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c;font-weight:800">LECTURER FEEDBACK</div><div class="ol-research-feedback" style="margin-top:6px">${researchEscape(r.feedback)}</div></div>`:''}<div class="ol-rs-side-section"><h4 style="margin-bottom:7px">Version History</h4><div class="ol-rs-history" id="ol-rs-history"></div></div><div class="ol-rs-side-section"><div class="ol-rs-note">When a lecturer requests revision, edit the document here and submit the new version. The previous version remains unchanged.</div></div><div id="ol-rs-submit-area"></div></aside></div><div class="ol-rs-modal-actions"><button class="ol-research-btn ol-research-secondary" type="button" data-research-fullscreen><i class="fas fa-expand"></i> Full Screen</button><button class="ol-research-btn ol-research-muted" type="button" data-research-close><i class="fas fa-times"></i> Close Research Paper</button></div>`;
   openResearchModal();await renderResearchVersionHistory(r);await loadResearchDocumentForViewer(r,!!editMode);
 }
 
@@ -762,6 +550,7 @@ function bindResearch(){
       var rv=e.target.closest('[data-research-revise]');if(rv){var r=state.research.find(function(x){return String(x.id)===String(rv.dataset.researchRevise)});if(r)openResearchForm(r);return}
       var rf=e.target.closest('[data-research-refresh]');if(rf){loadResearch().then(renderResearch);return}
       var c=e.target.closest('[data-research-close]');if(c){closeResearchModal();return}
+      var fs=e.target.closest('[data-research-fullscreen]');if(fs){toggleResearchFullscreen();return}
       var dl=e.target.closest('[data-rs-download]');if(dl){downloadCurrentResearch();return}
       var ie=e.target.closest('[data-rs-edit]');if(ie){if(state.researchCurrent)loadResearchDocumentForViewer(state.researchCurrent,true);return}
       var so=e.target.closest('[data-rs-submit-correction]');if(so){saveInlineResearchCorrection();return}
@@ -770,6 +559,7 @@ function bindResearch(){
     });
   }
   var modal=document.getElementById('ol-research-modal');if(modal&&!modal.dataset.researchModalBound){modal.dataset.researchModalBound='1';modal.addEventListener('click',function(e){if(e.target===modal)closeResearchModal()})}
+  if(!document.body.dataset.researchEscapeBound){document.body.dataset.researchEscapeBound='1';document.addEventListener('keydown',function(e){if(e.key==='Escape'){var m=document.getElementById('ol-research-modal');if(m&&m.classList.contains('open')){if(m.classList.contains('ol-rs-fullscreen'))toggleResearchFullscreen();else closeResearchModal()}}})}
 }
 
 function initResearch(){researchEnsureUI();bindResearch();loadResearch()}
