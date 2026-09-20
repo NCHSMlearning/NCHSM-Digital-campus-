@@ -665,6 +665,275 @@ function ensureResearchStyles(){
     #hub-online-learning .ol-research-empty{padding:38px 15px;text-align:center;color:#71859c;font-size:10px}
     #hub-online-learning .ol-research-modal{position:fixed;inset:0;background:rgba(5,20,35,.62);z-index:10001;display:none;align-items:center;justify-content:center;padding:15px}
     #hub-online-learning .ol-research-modal.open{display:flex}
+
+    /* ============================================================
+       RESEARCH PAPER VIEWER — TARGET LAYOUT
+       Matches the approved visual mockup: centered dialog, large
+       document canvas, centered paper, clean right review panel.
+       ============================================================ */
+    body > #ol-research-modal > #ol-research-dialog{
+      width:min(1190px,calc(100vw - 40px))!important;
+      max-width:min(1190px,calc(100vw - 40px))!important;
+      height:min(92vh,calc(100vh - 40px))!important;
+      max-height:calc(100vh - 40px)!important;
+      background:#fff!important;
+      border-radius:12px!important;
+      box-shadow:0 22px 65px rgba(8,32,58,.28)!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head{
+      min-height:68px!important;
+      padding:12px 16px!important;
+      background:#fff!important;
+      border-bottom:1px solid #e2eaf2!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head h3{
+      font-size:16px!important;
+      font-weight:800!important;
+      color:#102d4e!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-view-actions{
+      gap:8px!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online,
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn{
+      height:38px!important;
+      padding:0 13px!important;
+      border-radius:8px!important;
+      font-size:11px!important;
+      font-weight:800!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      gap:6px!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-close-paper{
+      width:38px!important;
+      height:38px!important;
+      border-radius:8px!important;
+      background:#edf2f7!important;
+      color:#334e68!important;
+      font-size:15px!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog > #ol-research-modal-body{
+      padding:12px 16px 16px!important;
+      background:#fff!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-workspace{
+      grid-template-columns:minmax(0,1fr) 320px!important;
+      gap:12px!important;
+      min-height:0!important;
+      height:100%!important;
+      align-items:stretch!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-document{
+      background:#f3f6f9!important;
+      border:1px solid #dbe5ee!important;
+      border-radius:10px!important;
+      min-height:0!important;
+      height:100%!important;
+      overflow:auto!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-document-head{
+      min-height:48px!important;
+      padding:8px 11px!important;
+      background:#fff!important;
+      border-bottom:1px solid #dbe5ee!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-document-head strong{
+      font-size:10px!important;
+      color:#173452!important;
+      font-weight:800!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-editor-toolbar{
+      min-height:43px!important;
+      padding:6px 8px!important;
+      background:#fff!important;
+      border-bottom:1px solid #dbe5ee!important;
+      position:sticky!important;
+      top:0!important;
+      z-index:20!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-tool{
+      min-width:30px!important;
+      height:30px!important;
+      padding:0 8px!important;
+      display:inline-flex!important;
+      align-items:center!important;
+      justify-content:center!important;
+      font-size:11px!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-editor{
+      width:min(900px,calc(100% - 54px))!important;
+      max-width:900px!important;
+      min-height:650px!important;
+      margin:18px auto 24px!important;
+      padding:58px 68px!important;
+      background:#fff!important;
+      color:#202b38!important;
+      box-shadow:0 2px 16px rgba(20,40,60,.09)!important;
+      border:1px solid #edf1f5!important;
+      line-height:1.7!important;
+      font-size:13px!important;
+      box-sizing:border-box!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-side{
+      background:#fff!important;
+      border:1px solid #dbe5ee!important;
+      border-radius:10px!important;
+      padding:11px!important;
+      height:100%!important;
+      min-height:0!important;
+      overflow:auto!important;
+      position:relative!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-side-section{
+      padding:10px 0!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-history-item{
+      padding:8px!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-document::after{
+      content:"";
+      display:block;
+      height:4px;
+    }
+    @media(max-width:1050px){
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-workspace{
+        grid-template-columns:minmax(0,1fr) 285px!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-editor{
+        width:min(860px,calc(100% - 30px))!important;
+        padding:45px 52px!important;
+      }
+    }
+    @media(max-width:850px){
+      body > #ol-research-modal > #ol-research-dialog{
+        width:calc(100vw - 16px)!important;
+        max-width:calc(100vw - 16px)!important;
+        height:calc(100vh - 16px)!important;
+        max-height:calc(100vh - 16px)!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-workspace{
+        grid-template-columns:1fr!important;
+        height:auto!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-side{
+        height:auto!important;
+        max-height:260px!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-editor{
+        width:calc(100% - 20px)!important;
+        min-height:600px!important;
+        padding:30px 24px!important;
+      }
+    }
+    @media(max-width:620px){
+      body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head{
+        align-items:flex-start!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-view-actions{
+        flex-wrap:wrap!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online{
+        font-size:0!important;
+        width:38px!important;
+        padding:0!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online i{
+        font-size:13px!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn{
+        font-size:0!important;
+        width:38px!important;
+        padding:0!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn i{
+        font-size:13px!important;
+      }
+    }
+
+    /* FINAL RESEARCH VIEWER POSITIONING — viewport centered, independent of sidebar/main */
+    body > #ol-research-modal{
+      position:fixed!important;
+      inset:0!important;
+      left:0!important;
+      top:0!important;
+      right:0!important;
+      bottom:0!important;
+      width:100vw!important;
+      height:100vh!important;
+      max-width:100vw!important;
+      max-height:100vh!important;
+      margin:0!important;
+      padding:18px!important;
+      box-sizing:border-box!important;
+      transform:none!important;
+      z-index:2147483000!important;
+      align-items:center!important;
+      justify-content:center!important;
+      overflow:hidden!important;
+    }
+    body > #ol-research-modal.open{
+      display:flex!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog{
+      position:relative!important;
+      left:auto!important;
+      right:auto!important;
+      top:auto!important;
+      margin:0 auto!important;
+      width:min(1480px,calc(100vw - 36px))!important;
+      max-width:min(1480px,calc(100vw - 36px))!important;
+      height:min(94vh,calc(100vh - 36px))!important;
+      max-height:calc(100vh - 36px)!important;
+      min-height:0!important;
+      overflow:hidden!important;
+      transform:none!important;
+      box-sizing:border-box!important;
+      display:flex!important;
+      flex-direction:column!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head{
+      position:relative!important;
+      flex:0 0 auto!important;
+      width:100%!important;
+      box-sizing:border-box!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog > #ol-research-modal-body{
+      flex:1 1 auto!important;
+      min-height:0!important;
+      overflow:auto!important;
+      width:100%!important;
+      box-sizing:border-box!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-workspace{
+      width:100%!important;
+      max-width:100%!important;
+      margin:0 auto!important;
+      box-sizing:border-box!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-document{
+      min-width:0!important;
+      width:100%!important;
+      box-sizing:border-box!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-editor{
+      width:min(100%,1000px)!important;
+      max-width:1000px!important;
+      margin:14px auto!important;
+      box-sizing:border-box!important;
+    }
+    @media(max-width:850px){
+      body > #ol-research-modal{padding:8px!important}
+      body > #ol-research-modal > #ol-research-dialog{
+        width:calc(100vw - 16px)!important;
+        max-width:calc(100vw - 16px)!important;
+        height:calc(100vh - 16px)!important;
+        max-height:calc(100vh - 16px)!important;
+        border-radius:10px!important;
+      }
+    }
+
     #hub-online-learning .ol-research-dialog{width:min(1180px,100%);max-height:94vh;overflow:auto;background:#fff;border-radius:14px;box-shadow:0 25px 70px rgba(0,0,0,.25)}
     #hub-online-learning .ol-research-dialog-head{padding:13px 16px;border-bottom:1px solid #e5edf5;display:flex;justify-content:space-between;gap:10px;align-items:center;position:sticky;top:0;background:#fff;z-index:5}
     #hub-online-learning .ol-research-dialog-head h3{margin:0;font-size:14px;color:#132b48}
@@ -1018,6 +1287,8 @@ async function openResearchViewer(id,editMode){
   var r=state.research.find(function(x){return String(x.id)===String(id)});if(!r)return;
   state.researchCurrent=r;researchEnsureUI();var body=document.getElementById('ol-research-modal-body'),title=document.getElementById('ol-research-modal-title');if(!body||!title)return;
   title.textContent=(r.title||'Research Paper')+' · Version '+(r.version_number||1);
+  var sub=document.getElementById('ol-research-modal-subtitle');
+  if(sub)sub.textContent=(r.student_name||r.student_full_name||'Student')+' · '+(r.admission_number||r.student_admission_number||'Research Paper')+' · Version '+(r.version_number||1);
   body.innerHTML=`<div class="ol-rs-workspace"><section class="ol-rs-document"><div class="ol-rs-document-head"><strong id="ol-rs-doc-name">${researchEscape(r.document_name||'Research Document')}</strong><div style="display:flex;gap:5px;flex-wrap:wrap"><button class="ol-research-btn ol-research-secondary" type="button" data-rs-download><i class="fas fa-download"></i> Download</button>${String(r.status||'').toLowerCase()==='revision_required'&&researchIsEditableDocument(r)?'<button class="ol-research-btn ol-research-primary" type="button" data-rs-edit><i class="fas fa-pen-to-square"></i> Edit Inline</button>':''}</div></div><div id="ol-rs-doc-content" style="min-height:520px"></div></section><aside class="ol-rs-side"><h4>Research Review</h4><div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c">Status</div><div style="margin-top:5px">${researchStatusPill(r.status)}</div></div><div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c">Research Type</div><div style="font-size:10px;font-weight:800;color:#18304d;margin-top:4px">${researchEscape(researchTypeLabel(r.submission_type))}</div></div><div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c">Supervisor</div><div style="font-size:10px;font-weight:800;color:#18304d;margin-top:4px">${researchEscape(r.supervisor_name||'—')}</div></div>${r.feedback?`<div class="ol-rs-side-section"><div style="font-size:9px;color:#71859c;font-weight:800">LECTURER FEEDBACK</div><div class="ol-research-feedback" style="margin-top:6px">${researchEscape(r.feedback)}</div></div>`:''}<div class="ol-rs-side-section"><h4 style="margin-bottom:7px">Version History</h4><div class="ol-rs-history" id="ol-rs-history"></div></div><div class="ol-rs-side-section"><div class="ol-rs-note">When a lecturer requests revision, edit the document here and submit the new version. The previous version remains unchanged.</div></div><div id="ol-rs-submit-area"></div></aside></div>`;
   openResearchModal();await renderResearchVersionHistory(r);await loadResearchDocumentForViewer(r,!!editMode);
 }
@@ -1050,6 +1321,15 @@ async function loadResearchDocumentForViewer(r,editMode){
       var save=document.createElement('div');save.style.cssText='display:flex;justify-content:flex-end;gap:6px;padding:9px;background:#fff;border-top:1px solid #dbe6ef';save.innerHTML='<button class="ol-research-btn ol-research-muted" type="button" data-rs-view-only>View Only</button><button class="ol-research-btn ol-research-primary" type="button" data-rs-submit-correction><i class="fas fa-paper-plane"></i> Submit Correction to Lecturer</button>';host.appendChild(save);
       editor.addEventListener('input',function(){editor.dataset.dirty='1'});
     }
+    
+    if(!editMode){
+      var viewFooter=document.createElement('div');
+      viewFooter.className='ol-rs-view-footer';
+      viewFooter.style.cssText='display:flex;justify-content:center;align-items:center;gap:18px;padding:8px 10px;background:#fff;border-top:1px solid #dbe5ee;color:#18304d;font-size:10px;font-weight:800;position:sticky;bottom:0;z-index:15';
+      viewFooter.innerHTML='<span>Research Paper View</span><span style="font-weight:500;color:#71859c">Use the scroll bar to read the full document</span>';
+      host.appendChild(viewFooter);
+    }
+
     if(kind==='docx'&&!editMode){var note=document.createElement('div');note.className='ol-rs-note';note.style.cssText='padding:8px 14px;background:#fff;border-top:1px solid #dbe6ef';note.textContent='Word document preview converted for browser viewing.';host.appendChild(note)}
   }catch(e){host.innerHTML='<div class="ol-research-empty"><i class="fas fa-circle-exclamation"></i><strong>Could not open this document</strong><br>'+researchEscape(e.message||e)+'</div>'}
 }
