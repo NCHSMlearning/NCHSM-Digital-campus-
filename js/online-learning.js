@@ -688,6 +688,37 @@ function ensureResearchStyles(){
     #hub-online-learning .ol-rs-tool:hover{background:#edf4ff}
     #hub-online-learning .ol-rs-editor{box-sizing:border-box;background:#fff;min-height:520px;max-width:900px;margin:14px auto;padding:42px;outline:0;line-height:1.7;font-size:13px;color:#202b38;box-shadow:0 2px 12px rgba(20,40,60,.08)}
     #hub-online-learning .ol-rs-editor[contenteditable="true"]{cursor:text}
+    #hub-online-learning .ol-rs-view-actions{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    #hub-online-learning .ol-rs-fullscreen-btn{background:#0b5ed7;color:#fff;border:0;border-radius:7px;padding:7px 10px;font-size:10px;font-weight:800;cursor:pointer}
+    #hub-online-learning .ol-rs-back-online{background:#edf4ff;color:#075fb7;border:1px solid #cfe0f1;border-radius:7px;padding:7px 10px;font-size:10px;font-weight:800;cursor:pointer}
+    #hub-online-learning .ol-rs-close-paper{background:#eef2f6;color:#334e68;border:0;border-radius:7px;width:32px;height:32px;font-size:14px;cursor:pointer}
+    #hub-online-learning .ol-rs-fullscreen-dialog{
+      width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;
+      border-radius:0!important;margin:0!important;overflow:hidden!important;
+    }
+    #hub-online-learning .ol-rs-fullscreen-dialog .ol-research-body{
+      height:calc(100vh - 62px)!important;max-height:none!important;overflow:hidden!important;padding:10px!important;
+    }
+    #hub-online-learning .ol-rs-fullscreen-dialog .ol-rs-workspace{
+      height:100%!important;min-height:0!important;grid-template-columns:minmax(0,1fr)!important;
+    }
+    #hub-online-learning .ol-rs-fullscreen-dialog .ol-rs-document{
+      height:100%!important;min-height:0!important;overflow:auto!important;
+    }
+    #hub-online-learning .ol-rs-fullscreen-dialog .ol-rs-side{display:none!important}
+    #hub-online-learning .ol-rs-fullscreen-dialog .ol-rs-editor{
+      min-height:calc(100vh - 150px)!important;max-width:1000px!important;margin:10px auto!important;
+    }
+    #hub-online-learning .ol-rs-fullscreen-dialog .ol-rs-pdf{height:calc(100vh - 125px)!important}
+    #hub-online-learning .ol-rs-fullscreen-dialog .ol-rs-editor-toolbar{
+      position:sticky!important;top:0!important;z-index:20!important;
+    }
+    :fullscreen.ol-research-modal .ol-research-dialog{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;border-radius:0!important}
+    :fullscreen.ol-research-modal{padding:0!important}
+    @media(max-width:700px){
+      #hub-online-learning .ol-rs-view-actions{width:100%;justify-content:flex-start}
+      #hub-online-learning .ol-rs-fullscreen-dialog .ol-rs-document-head{flex-direction:column;align-items:flex-start}
+    }
     #hub-online-learning .ol-rs-pdf{width:100%;height:560px;border:0;background:#fff}
     #hub-online-learning .ol-rs-side{border:1px solid #dbe6ef;border-radius:10px;background:#fff;padding:12px;height:max-content;position:sticky;top:0}
     #hub-online-learning .ol-rs-side h4{margin:0 0 9px;color:#18304d;font-size:11px}
@@ -718,7 +749,7 @@ function researchEnsureUI(){
   }
   if(document.getElementById('ol-research-modal'))return;
   var modal=document.createElement('div');modal.className='ol-research-modal';modal.id='ol-research-modal';modal.setAttribute('aria-hidden','true');
-  modal.innerHTML='<div class="ol-research-dialog"><div class="ol-research-dialog-head"><h3 id="ol-research-modal-title">Research Paper</h3><button class="ol-close" type="button" data-research-close><i class="fas fa-times"></i></button></div><div class="ol-research-body" id="ol-research-modal-body"></div></div>';
+  modal.innerHTML='<div class="ol-research-dialog" id="ol-research-dialog"><div class="ol-research-dialog-head"><div style="min-width:0"><h3 id="ol-research-modal-title">Research Paper</h3><div id="ol-research-modal-subtitle" style="font-size:9px;color:#71859c;margin-top:3px">Online Learning · Research Papers</div></div><div class="ol-rs-view-actions"><button class="ol-rs-back-online" type="button" data-rs-back-online><i class="fas fa-arrow-left"></i> Back to Online Learning</button><button class="ol-rs-fullscreen-btn" type="button" data-rs-fullscreen><i class="fas fa-expand"></i> Full Screen</button><button class="ol-rs-close-paper" type="button" data-research-close title="Close"><i class="fas fa-times"></i></button></div></div><div class="ol-research-body" id="ol-research-modal-body"></div></div>';
   document.body.appendChild(modal);
 }
 
@@ -931,6 +962,58 @@ async function renderResearchVersionHistory(current){
   box.innerHTML=list.map(function(x){return `<button type="button" class="ol-rs-history-item ${String(x.id)===String(current.id)?'active':''}" data-rs-history="${researchEscape(x.id)}"><strong>V${researchEscape(x.version_number||1)} · ${researchEscape(researchTypeLabel(x.submission_type))}</strong><small>${researchEscape(fmtDateTime(x.submitted_at||x.created_at))} · ${researchEscape(researchStatusLabel(x.status))}</small></button>`}).join('')||'<div class="ol-rs-note">No version history available.</div>';
 }
 
+
+async function researchEnterBrowserFullscreen(){
+  var modal=document.getElementById('ol-research-modal');
+  var dialog=document.getElementById('ol-research-dialog');
+  if(!modal||!dialog)return;
+  modal.classList.add('research-browser-fullscreen');
+  dialog.classList.add('ol-rs-fullscreen-dialog');
+  document.body.classList.add('ol-rs-browser-fullscreen');
+  try{
+    if(document.fullscreenElement!==modal && modal.requestFullscreen){
+      await modal.requestFullscreen({navigationUI:'hide'});
+    }
+  }catch(e){}
+  researchUpdateFullscreenButton();
+}
+
+async function researchExitBrowserFullscreen(){
+  try{
+    if(document.fullscreenElement&&document.exitFullscreen)await document.exitFullscreen();
+  }catch(e){}
+  var modal=document.getElementById('ol-research-modal');
+  var dialog=document.getElementById('ol-research-dialog');
+  if(modal)modal.classList.remove('research-browser-fullscreen');
+  if(dialog)dialog.classList.remove('ol-rs-fullscreen-dialog');
+  document.body.classList.remove('ol-rs-browser-fullscreen');
+  researchUpdateFullscreenButton();
+}
+
+function researchToggleFullscreen(){
+  var dialog=document.getElementById('ol-research-dialog');
+  if(document.fullscreenElement || dialog?.classList.contains('ol-rs-fullscreen-dialog')) researchExitBrowserFullscreen();
+  else researchEnterBrowserFullscreen();
+}
+
+function researchUpdateFullscreenButton(){
+  var b=document.querySelector('#ol-research-modal [data-rs-fullscreen]');
+  if(!b)return;
+  var active=!!document.fullscreenElement || !!document.querySelector('#ol-research-dialog.ol-rs-fullscreen-dialog');
+  b.innerHTML=active?'<i class="fas fa-compress"></i> Exit Full Screen':'<i class="fas fa-expand"></i> Full Screen';
+}
+
+function researchBackToOnlineLearning(){
+  if(document.fullscreenElement) researchExitBrowserFullscreen();
+  closeResearchModal();
+  state.tab='assignments';
+  var tabs=document.querySelectorAll('#hub-online-learning [data-ol-tab]');
+  tabs.forEach(function(t){t.classList.toggle('active',t.dataset.olTab==='assignments')});
+  render();
+  var hub=document.getElementById('hub-online-learning');
+  if(hub)hub.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
 async function openResearchViewer(id,editMode){
   var r=state.research.find(function(x){return String(x.id)===String(id)});if(!r)return;
   state.researchCurrent=r;researchEnsureUI();var body=document.getElementById('ol-research-modal-body'),title=document.getElementById('ol-research-modal-title');if(!body||!title)return;
@@ -947,8 +1030,19 @@ async function loadResearchDocumentForViewer(r,editMode){
     var editor=document.createElement('div');editor.id='ol-rs-inline-editor';editor.className='ol-rs-editor';editor.contentEditable=editMode?'true':'false';
     var kind=await loadResearchInlineDocument(r,editor);host.innerHTML='';
     if(editMode){
-      var toolbar=document.createElement('div');toolbar.className='ol-rs-editor-toolbar';toolbar.innerHTML='<button class="ol-rs-tool" type="button" data-cmd="bold"><b>B</b></button><button class="ol-rs-tool" type="button" data-cmd="italic"><i>I</i></button><button class="ol-rs-tool" type="button" data-cmd="underline"><u>U</u></button><button class="ol-rs-tool" type="button" data-cmd="insertUnorderedList">• List</button><button class="ol-rs-tool" type="button" data-cmd="insertOrderedList">1. List</button><button class="ol-rs-tool" type="button" data-cmd="justifyLeft">Left</button><button class="ol-rs-tool" type="button" data-cmd="justifyCenter">Center</button><button class="ol-rs-tool" type="button" data-cmd="justifyRight">Right</button><button class="ol-rs-tool" type="button" data-cmd="undo">↶</button><button class="ol-rs-tool" type="button" data-cmd="redo">↷</button>';
-      toolbar.addEventListener('mousedown',function(ev){var b=ev.target.closest('[data-cmd]');if(!b)return;ev.preventDefault();editor.focus();document.execCommand(b.dataset.cmd,false,null)});
+      var toolbar=document.createElement('div');toolbar.className='ol-rs-editor-toolbar';toolbar.innerHTML='<button class="ol-rs-tool" type="button" data-cmd="bold"><b>B</b></button><button class="ol-rs-tool" type="button" data-cmd="italic"><i>I</i></button><button class="ol-rs-tool" type="button" data-cmd="underline"><u>U</u></button><button class="ol-rs-tool" type="button" data-rce-color>A</button><input type="color" data-rce-color-picker value="#000000" title="Text color" style="width:30px;height:28px;padding:2px"><button class="ol-rs-tool" type="button" data-rce-highlight>▰</button><input type="color" data-rce-highlight-picker value="#ffff00" title="Highlight color" style="width:30px;height:28px;padding:2px"><button class="ol-rs-tool" type="button" data-cmd="insertUnorderedList">• List</button><button class="ol-rs-tool" type="button" data-cmd="insertOrderedList">1. List</button><button class="ol-rs-tool" type="button" data-cmd="justifyLeft">Left</button><button class="ol-rs-tool" type="button" data-cmd="justifyCenter">Center</button><button class="ol-rs-tool" type="button" data-cmd="justifyRight">Right</button><button class="ol-rs-tool" type="button" data-cmd="undo">↶</button><button class="ol-rs-tool" type="button" data-cmd="redo">↷</button>';
+      var savedRange=null;
+      function saveRange(){var s=window.getSelection();if(s&&s.rangeCount&&editor.contains(s.getRangeAt(0).commonAncestorContainer))savedRange=s.getRangeAt(0).cloneRange()}
+      function restoreRange(){editor.focus({preventScroll:true});if(savedRange){var s=window.getSelection();s.removeAllRanges();s.addRange(savedRange)}}
+      editor.addEventListener('mouseup',saveRange);editor.addEventListener('keyup',saveRange);editor.addEventListener('touchend',saveRange,{passive:true});
+      toolbar.addEventListener('mousedown',function(ev){
+        var b=ev.target.closest('[data-cmd]');
+        if(b){ev.preventDefault();restoreRange();document.execCommand(b.dataset.cmd,false,null);saveRange();return}
+        if(ev.target.closest('[data-rce-color]')||ev.target.closest('[data-rce-highlight]')){ev.preventDefault();saveRange()}
+      });
+      var cp=toolbar.querySelector('[data-rce-color-picker]'),hp=toolbar.querySelector('[data-rce-highlight-picker]');
+      if(cp)cp.addEventListener('input',function(){restoreRange();document.execCommand('foreColor',false,this.value);saveRange()});
+      if(hp)hp.addEventListener('input',function(){restoreRange();document.execCommand('hiliteColor',false,this.value);saveRange()});
       host.appendChild(toolbar);
     }
     host.appendChild(editor);
@@ -1002,6 +1096,34 @@ async function viewResearch(id){await openResearchViewer(id,false)}
 
 function bindResearch(){
   researchEnsureUI();
+  var modal=document.getElementById('ol-research-modal');
+  if(modal&&!modal.dataset.researchViewerControls){
+    modal.dataset.researchViewerControls='1';
+    modal.addEventListener('click',function(e){
+      var fs=e.target.closest('[data-rs-fullscreen]');
+      if(fs){e.preventDefault();researchToggleFullscreen();return}
+      var back=e.target.closest('[data-rs-back-online]');
+      if(back){e.preventDefault();researchBackToOnlineLearning();return}
+    });
+  }
+  if(!document.documentElement.dataset.researchFullscreenKeys){
+    document.documentElement.dataset.researchFullscreenKeys='1';
+    document.addEventListener('fullscreenchange',function(){
+      var d=document.getElementById('ol-research-dialog');
+      if(d&&!document.fullscreenElement)d.classList.remove('ol-rs-fullscreen-dialog');
+      researchUpdateFullscreenButton();
+    });
+    document.addEventListener('keydown',function(e){
+      if(e.key!=='Escape')return;
+      var d=document.getElementById('ol-research-dialog');
+      if(document.fullscreenElement){
+        e.preventDefault();researchExitBrowserFullscreen();return;
+      }
+      if(d&&d.classList.contains('ol-rs-fullscreen-dialog')){
+        e.preventDefault();researchExitBrowserFullscreen();
+      }
+    },true);
+  }
   document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(b){if(b.dataset.researchBound)return;b.dataset.researchBound='1';b.addEventListener('click',function(){if(this.dataset.olTab==='research'){state.tab='research';document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(x){x.classList.toggle('active',x===b)});loadResearch().then(renderResearch)}})});
   var hub=document.getElementById('hub-online-learning');
   if(hub&&!hub.dataset.researchClicks){
