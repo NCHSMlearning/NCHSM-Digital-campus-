@@ -19,7 +19,7 @@ window.LecturerOnlineLearning = (() => {
     function notify(msg,type='info'){ if(window.showNotification) window.showNotification(msg,type); else alert(msg); }
     function fmtDate(v){ if(!v)return '—'; const d=new Date(v); return isNaN(d)?'—':d.toLocaleString([], {dateStyle:'medium',timeStyle:'short'}); }
     function statusBadge(a){return a.published?'<span class="ol-badge ol-published">PUBLISHED</span>':'<span class="ol-badge ol-draft">DRAFT</span>';}
-    async function init(){ if(state.initialized && state.assignments.length){ await load(); setTimeout(initResearch,150); return; } state.initialized=true; await resolveUser(); await load(); setTimeout(initResearch,150); }
+    async function init(){ if(state.initialized && state.assignments.length){ wireAssignmentTargeting(); await load(); setTimeout(initResearch,150); return; } state.initialized=true; await resolveUser(); wireAssignmentTargeting(); await load(); setTimeout(initResearch,150); }
     async function load(){
         const db=client(); if(!db){ notify('Supabase client is not available. Check lecturer-database.js/config.js.','error'); return; }
         await resolveUser();
@@ -58,8 +58,138 @@ window.LecturerOnlineLearning = (() => {
     function addQuestionEditor(q={}){const c=$('olQuestions');if(!c)return;const n=c.children.length+1;const d=document.createElement('div');d.className='ol-q';d.dataset.index=n;d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b>Question ${n}</b><button type="button" class="ol-btn ol-danger" onclick="this.closest('.ol-q').remove();LecturerOnlineLearning.renumberQuestions()"><i class="fas fa-trash"></i></button></div><div class="ol-form" style="margin-top:10px"><div class="ol-full"><label>Question *</label><textarea class="ol-q-text" rows="3" required>${esc(q.question_text||'')}</textarea></div><div><label>Type *</label><select class="ol-q-type"><option value="mcq" ${q.question_type==='mcq'?'selected':''}>MCQ</option><option value="true_false" ${q.question_type==='true_false'?'selected':''}>True / False</option><option value="short_answer" ${q.question_type==='short_answer'?'selected':''}>Short Answer</option><option value="case_study" ${q.question_type==='case_study'?'selected':''}>Case Study</option></select></div><div><label>Marks *</label><input class="ol-q-marks" type="number" min="0.1" step="0.1" value="${esc(q.marks??1)}"></div><div class="ol-full"><label>Options (MCQ only, one per line)</label><textarea class="ol-q-options" rows="3" placeholder="A. ...\nB. ...\nC. ...\nD. ...">${esc(Array.isArray(q.options)?q.options.join('\n'):(q.options||''))}</textarea></div><div><label>Correct Answer / Expected Answer</label><input class="ol-q-correct" value="${esc(q.correct_answer||'')}"></div><div><label>Accepted Answers (comma separated)</label><input class="ol-q-accepted" value="${esc(Array.isArray(q.accepted_answers)?q.accepted_answers.join(', '):(q.accepted_answers||''))}"></div><div><label>Keywords (comma separated)</label><input class="ol-q-keywords" value="${esc(Array.isArray(q.keywords)?q.keywords.join(', '):(q.keywords||''))}"></div><div><label>Keyword Marks</label><input class="ol-q-keywordmarks" type="number" min="0" step="0.1" value="${esc(q.keyword_marks??0)}"></div></div>`;c.appendChild(d);}
     function renumberQuestions(){document.querySelectorAll('#olQuestions .ol-q').forEach((q,i)=>q.querySelector('b').textContent='Question '+(i+1));}
     function collectQuestions(){return [...document.querySelectorAll('#olQuestions .ol-q')].map((el,i)=>{const type=el.querySelector('.ol-q-type').value;const opts=el.querySelector('.ol-q-options').value.split('\n').map(x=>x.trim()).filter(Boolean);return {question_order:i+1,question_text:el.querySelector('.ol-q-text').value.trim(),question_type:type,marks:Number(el.querySelector('.ol-q-marks').value)||1,options:type==='mcq'?opts:null,correct_answer:el.querySelector('.ol-q-correct').value.trim()||null,accepted_answers:el.querySelector('.ol-q-accepted').value.split(',').map(x=>x.trim()).filter(Boolean),keywords:el.querySelector('.ol-q-keywords').value.split(',').map(x=>x.trim()).filter(Boolean),keyword_marks:Number(el.querySelector('.ol-q-keywordmarks').value)||0};}).filter(q=>q.question_text);}
-    function fillProfileDefaults(){const p=state.profile||{};$('olProgram').value=p.program||p.program_type||'';$('olIntake').value=p.intake_year||p.admission_year||'';$('olBlock').value=p.block||p.current_block||'';}
-    function openAssignmentModal(a=null){$('olAssignmentId').value=a?.id||'';$('olAssignmentModalTitle').textContent=a?'Edit Assignment':'Create Assignment';$('olTitle').value=a?.title||'';$('olType').value=a?.assignment_type||'assignment';$('olUnitCode').value=a?.unit_code||'';$('olUnitName').value=a?.unit_name||'';$('olProgram').value=a?.program||'';$('olIntake').value=a?.intake||a?.intake_year||'';$('olBlock').value=a?.block||'';$('olDueAt').value=a?.due_at?new Date(a.due_at).toISOString().slice(0,16):'';$('olMaxMarks').value=a?.max_marks||20;$('olMaxAttempts').value=a?.max_attempts||1;$('olInstructions').value=a?.instructions||'';$('olAllowUpload').checked=a?.allow_document_upload!==false;$('olAllowResubmit').checked=!!a?.allow_resubmission;resetQuestionEditors([]);if(!a)fillProfileDefaults();$('olAssignmentModal').style.display='flex';}
+    // ============================================================
+    // ASSIGNMENT TARGETING — PROGRAM / INTAKE / BLOCK
+    // Loads real active student targeting data from
+    // consolidated_user_profiles_table instead of relying on the
+    // lecturer profile. Program, intake and block are cascading.
+    // ============================================================
+    const targetingState = { rows: [], programs: [], intakes: [], blocks: [], loaded:false };
+
+    function normalizeTarget(v){ return String(v ?? '').trim(); }
+    function uniqueSorted(values){
+        return [...new Set(values.map(normalizeTarget).filter(Boolean))].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true,sensitivity:'base'}));
+    }
+    function populateSelect(id, values, placeholder, selected=''){
+        const el=$(id); if(!el) return;
+        const current=normalizeTarget(selected || el.value);
+        el.innerHTML=`<option value="">${esc(placeholder)}</option>`+values.map(v=>`<option value="${esc(v)}">${esc(v)}</option>`).join('');
+        if(current && values.some(v=>normalizeTarget(v)===current)) el.value=current;
+    }
+    function getStudentTargetRows(){ return Array.isArray(targetingState.rows) ? targetingState.rows : []; }
+    function refreshIntakesForProgram(selectedIntake=''){
+        const program=normalizeTarget($('olProgram')?.value);
+        const rows=getStudentTargetRows().filter(r=>!program || normalizeTarget(r.program)===program);
+        const values=uniqueSorted(rows.map(r=>r.intake_year));
+        targetingState.intakes=values;
+        populateSelect('olIntake',values,values.length?'Select intake':'No intakes found',selectedIntake);
+        refreshBlocksForProgramIntake('');
+    }
+    function refreshBlocksForProgramIntake(selectedBlock=''){
+        const program=normalizeTarget($('olProgram')?.value);
+        const intake=normalizeTarget($('olIntake')?.value);
+        const rows=getStudentTargetRows().filter(r=>(!program || normalizeTarget(r.program)===program)&&(!intake || normalizeTarget(r.intake_year)===intake));
+        const values=uniqueSorted(rows.map(r=>r.block));
+        targetingState.blocks=values;
+        populateSelect('olBlock',values,'All blocks / terms',selectedBlock);
+    }
+    async function loadAssignmentTargeting(preferred={}){
+        const db=client(); if(!db) return false;
+        const programEl=$('olProgram'), intakeEl=$('olIntake'), blockEl=$('olBlock');
+        if(!programEl || !intakeEl || !blockEl) return false;
+        programEl.disabled=true; intakeEl.disabled=true; blockEl.disabled=true;
+        programEl.innerHTML='<option value="">Loading programs...</option>';
+        intakeEl.innerHTML='<option value="">Loading intakes...</option>';
+        blockEl.innerHTML='<option value="">Loading blocks...</option>';
+        try{
+            // Do not assume a separate students table. This is the same
+            // consolidated profile source used by the Online Learning UI.
+            let result=await db.from('consolidated_user_profiles_table')
+                .select('program,intake_year,block,role,is_active');
+            if(result.error){
+                console.warn('Targeting query with is_active failed; retrying without optional status columns:',result.error.message);
+                result=await db.from('consolidated_user_profiles_table').select('program,intake_year,block,role');
+            }
+            if(result.error) throw result.error;
+            let rows=(result.data||[]).map(r=>({
+                program:normalizeTarget(r.program),
+                intake_year:normalizeTarget(r.intake_year),
+                block:normalizeTarget(r.block),
+                role:normalizeTarget(r.role).toLowerCase(),
+                is_active:r.is_active
+            })).filter(r=>r.program || r.intake_year || r.block);
+            // Prefer active student rows when role/status data is available.
+            const studentRows=rows.filter(r=>!r.role || r.role==='student' || r.role==='learner');
+            const activeRows=studentRows.filter(r=>r.is_active===undefined || r.is_active===null || r.is_active===true || String(r.is_active).toLowerCase()==='active');
+            if(activeRows.length) rows=activeRows; else if(studentRows.length) rows=studentRows;
+            targetingState.rows=rows;
+            targetingState.loaded=true;
+            targetingState.programs=uniqueSorted(rows.map(r=>r.program));
+            const preferredProgram=normalizeTarget(preferred.program);
+            const preferredIntake=normalizeTarget(preferred.intake);
+            const preferredBlock=normalizeTarget(preferred.block);
+            populateSelect('olProgram',targetingState.programs,targetingState.programs.length?'Select program':'No programs found',preferredProgram);
+            if(preferredProgram && targetingState.programs.includes(preferredProgram)) $('olProgram').value=preferredProgram;
+            refreshIntakesForProgram(preferredIntake);
+            if(preferredIntake) $('olIntake').value=preferredIntake;
+            refreshBlocksForProgramIntake(preferredBlock);
+            if(preferredBlock) $('olBlock').value=preferredBlock;
+            programEl.disabled=false; intakeEl.disabled=false; blockEl.disabled=false;
+            return true;
+        }catch(err){
+            console.error('Assignment targeting load failed:',err);
+            programEl.disabled=false; intakeEl.disabled=false; blockEl.disabled=false;
+            programEl.innerHTML='<option value="">Unable to load programs</option>';
+            intakeEl.innerHTML='<option value="">Unable to load intakes</option>';
+            blockEl.innerHTML='<option value="">All blocks / terms</option>';
+            notify('Could not load Program / Intake / Block from student records: '+(err.message||err),'error');
+            return false;
+        }
+    }
+    function wireAssignmentTargeting(){
+        const p=$('olProgram'), i=$('olIntake');
+        if(p && !p.dataset.targetingBound){
+            p.dataset.targetingBound='1';
+            p.addEventListener('change',()=>{ refreshIntakesForProgram(); });
+        }
+        if(i && !i.dataset.targetingBound){
+            i.dataset.targetingBound='1';
+            i.addEventListener('change',()=>{ refreshBlocksForProgramIntake(); });
+        }
+    }
+    function fillProfileDefaults(){
+        const p=state.profile||{};
+        const program=normalizeTarget(p.program||p.program_type||p.department||'');
+        const intake=normalizeTarget(p.intake_year||p.admission_year||'');
+        const block=normalizeTarget(p.block||p.current_block||'');
+        if($('olProgram') && program) $('olProgram').value=program;
+        if($('olIntake') && intake) $('olIntake').value=intake;
+        if($('olBlock') && block) $('olBlock').value=block;
+    }
+    async function openAssignmentModal(a=null){
+        await resolveUser();
+        wireAssignmentTargeting();
+        const preferred={
+            program:a?.program||state.profile?.program||state.profile?.program_type||state.profile?.department||'',
+            intake:a?.intake||a?.intake_year||state.profile?.intake_year||state.profile?.admission_year||'',
+            block:a?.block||state.profile?.block||state.profile?.current_block||''
+        };
+        $('olAssignmentId').value=a?.id||'';
+        $('olAssignmentModalTitle').textContent=a?'Edit Assignment':'Create Assignment';
+        $('olTitle').value=a?.title||'';
+        $('olType').value=a?.assignment_type||'assignment';
+        $('olUnitCode').value=a?.unit_code||'';
+        $('olUnitName').value=a?.unit_name||'';
+        $('olDueAt').value=a?.due_at?new Date(a.due_at).toISOString().slice(0,16):'';
+        $('olMaxMarks').value=a?.max_marks||20;
+        $('olMaxAttempts').value=a?.max_attempts||1;
+        $('olInstructions').value=a?.instructions||'';
+        $('olAllowUpload').checked=a?.allow_document_upload!==false;
+        $('olAllowResubmit').checked=!!a?.allow_resubmission;
+        resetQuestionEditors([]);
+        $('olAssignmentModal').style.display='flex';
+        await loadAssignmentTargeting(preferred);
+    }
     async function editAssignment(id){const a=state.assignments.find(x=>x.id===id);if(!a)return;const db=client();const {data}=await db.from('online_assignment_questions').select('*').eq('assignment_id',id).order('question_order');openAssignmentModal(a);resetQuestionEditors(data||[]);}
     async function saveAssignment(e,forcePublish=false){e?.preventDefault();const db=client();if(!db)return false;await resolveUser();if(!state.userId){notify('Lecturer user ID could not be resolved.','error');return false;}
         const id=$('olAssignmentId').value;const payload={title:$('olTitle').value.trim(),assignment_type:$('olType').value,unit_code:$('olUnitCode').value.trim(),unit_name:$('olUnitName').value.trim()||null,program:$('olProgram').value.trim(),intake:$('olIntake').value.trim(),block:$('olBlock').value.trim()||null,due_at:new Date($('olDueAt').value).toISOString(),max_marks:Number($('olMaxMarks').value),max_attempts:Number($('olMaxAttempts').value)||1,instructions:$('olInstructions').value.trim()||null,allow_document_upload:$('olAllowUpload').checked,allow_resubmission:$('olAllowResubmit').checked,created_by:state.userId,published:!!forcePublish};
@@ -1562,6 +1692,6 @@ window.LecturerOnlineLearning = (() => {
         await loadResearch();
     }
 
-    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal};
+    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
 console.log('✅ Lecturer Online Learning module loaded');
