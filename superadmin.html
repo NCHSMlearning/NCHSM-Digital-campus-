@@ -10921,7 +10921,7 @@ textarea:focus-visible{
         <!-- Past Paper Toggle Checkbox -->
         <div style="margin-bottom: 15px; padding: 10px; background: white; border-radius: 8px;">
             <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
-                <input type="checkbox" id="resource_is_pastpaper" onchange="togglePastPaperFields()">
+                <input type="checkbox" id="resource_is_pastpaper" onchange="togglePastPaperFields(); var n=document.getElementById('resource-email-notification-settings'); if(n)n.style.display=this.checked?'none':'block';">
                 <i class="fas fa-history"></i>
                 <span><strong>This is a Past Paper</strong> (Check this if uploading exam papers from previous years)</span>
             </label>
@@ -11021,7 +11021,98 @@ textarea:focus-visible{
                 <small style="color: #6b7280;"><i class="fas fa-info-circle"></i> These fields are only needed for past papers</small>
             </div>
             
-            <div style="display: flex; gap: 10px; margin-top: 10px; flex-wrap: wrap;">
+            <!-- EMAIL NOTIFICATION PANEL -->
+            <div id="resource-email-notification-settings" style="margin-top: 18px; border: 1px solid #a7f3d0; border-radius: 14px; overflow: hidden; background: linear-gradient(135deg, #ecfdf5 0%, #f0fdf4 55%, #ffffff 100%); box-shadow: 0 8px 24px rgba(16, 185, 129, 0.08);">
+                <div style="padding: 16px 18px; border-bottom: 1px solid #d1fae5; display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap;">
+                    <div style="display: flex; align-items: center; gap: 12px; min-width: 240px;">
+                        <div style="width: 44px; height: 44px; border-radius: 12px; background: linear-gradient(135deg, #10b981, #059669); color: white; display: flex; align-items: center; justify-content: center; box-shadow: 0 6px 14px rgba(16,185,129,.22);">
+                            <i class="fas fa-envelope" style="font-size: 18px;"></i>
+                        </div>
+                        <div>
+                            <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <strong style="font-size: 15px; color: #064e3b;">Email Notification to Students</strong>
+                                <span id="resource-notification-status" style="display: inline-flex; align-items: center; gap: 5px; background: #d1fae5; color: #047857; border: 1px solid #a7f3d0; padding: 4px 9px; border-radius: 999px; font-size: 11px; font-weight: 700;">
+                                    <i class="fas fa-check-circle"></i> Notifications Enabled
+                                </span>
+                            </div>
+                            <div style="margin-top: 3px; color: #047857; font-size: 12px;">Notify selected students automatically when this new learning material is published.</div>
+                        </div>
+                    </div>
+
+                    <label style="display: inline-flex; align-items: center; gap: 9px; cursor: pointer; user-select: none;">
+                        <input type="checkbox" id="resource_notify_students" checked onchange="updateResourceNotificationCount(); var t=document.getElementById('resource-notification-toggle'),l=document.getElementById('resource-notification-toggle-label'),st=document.getElementById('resource-notification-status'); if(this.checked){t.style.background='#10b981';t.style.justifyContent='flex-end';l.textContent='ON';l.style.color='#047857';st.innerHTML='<i class="fas fa-check-circle"></i> Notifications Enabled';}else{t.style.background='#94a3b8';t.style.justifyContent='flex-start';l.textContent='OFF';l.style.color='#64748b';st.innerHTML='<i class="fas fa-bell-slash"></i> Notifications Disabled';}" style="position: absolute; opacity: 0; pointer-events: none;">
+                        <span id="resource-notification-toggle" style="width: 48px; height: 26px; border-radius: 999px; background: #10b981; padding: 3px; display: inline-flex; justify-content: flex-end; align-items: center; transition: .2s; box-shadow: inset 0 1px 3px rgba(0,0,0,.12);">
+                            <span style="width: 20px; height: 20px; background: white; border-radius: 50%; box-shadow: 0 2px 5px rgba(0,0,0,.18);"></span>
+                        </span>
+                        <span id="resource-notification-toggle-label" style="font-size: 12px; font-weight: 700; color: #047857;">ON</span>
+                    </label>
+                </div>
+
+                <div style="padding: 16px 18px; background: rgba(255,255,255,.72);">
+                    <div style="display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(220px, .8fr); gap: 18px; align-items: stretch;">
+                        <div>
+                            <select id="resource_notify_target" aria-hidden="true" tabindex="-1" style="position:absolute;left:-9999px;width:1px;height:1px;opacity:0;pointer-events:none;">
+                            <option value="all" selected>All Students (Program + Block/Term)</option>
+                            <option value="program">All Students in Program</option>
+                            <option value="block">Students in Block/Term</option>
+                            <option value="specific">Specific Students</option>
+                        </select>
+                        <div style="font-size: 12px; font-weight: 800; color: #334155; text-transform: uppercase; letter-spacing: .04em; margin-bottom: 10px;">Send to</div>
+                            <div style="display: grid; gap: 8px;">
+                                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #c4b5fd; border-radius: 10px; background: #faf5ff; cursor: pointer;">
+                                    <input type="radio" name="resource_notify_target" id="resource_notify_target_all" value="all" checked onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='none';" style="margin-top: 3px; accent-color: #7c3aed;">
+                                    <span style="display: block;">
+                                        <strong style="font-size: 13px; color: #312e81;">All students in Program + Block</strong>
+                                        <span style="display: block; font-size: 11px; color: #64748b; margin-top: 2px;">Students matching the selected program and block/term.</span>
+                                    </span>
+                                    <span style="margin-left: auto; white-space: nowrap; background: #7c3aed; color: white; padding: 3px 7px; border-radius: 999px; font-size: 9px; font-weight: 800;">RECOMMENDED</span>
+                                </label>
+
+                                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; cursor: pointer;">
+                                    <input type="radio" name="resource_notify_target" value="program" onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='none';" style="margin-top: 3px; accent-color: #7c3aed;">
+                                    <span><strong style="font-size: 13px; color: #334155;">All students in Program</strong><span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">Every approved student in the selected program.</span></span>
+                                </label>
+
+                                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; cursor: pointer;">
+                                    <input type="radio" name="resource_notify_target" value="block" onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='none';" style="margin-top: 3px; accent-color: #7c3aed;">
+                                    <span><strong style="font-size: 13px; color: #334155;">Students in this Block/Term</strong><span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">Students matching the selected block/term.</span></span>
+                                </label>
+
+                                <label style="display: flex; align-items: flex-start; gap: 10px; padding: 10px 12px; border: 1px solid #e2e8f0; border-radius: 10px; background: white; cursor: pointer;">
+                                    <input type="radio" name="resource_notify_target" value="specific" onchange="var s=document.getElementById('resource_notify_target');s.value=this.value;s.dispatchEvent(new Event('change'));updateResourceNotificationCount();document.getElementById('resource-specific-students').style.display='block';" style="margin-top: 3px; accent-color: #7c3aed;">
+                                    <span><strong style="font-size: 13px; color: #334155;">Specific students only</strong><span style="display:block;font-size:11px;color:#64748b;margin-top:2px;">Choose individual students from the list.</span></span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div style="display: flex; flex-direction: column; gap: 10px;">
+                            <div style="padding: 15px; border-radius: 12px; background: linear-gradient(135deg,#ecfdf5,#f0fdf4); border: 1px solid #d1fae5; min-height: 92px;">
+                                <div style="font-size: 11px; font-weight: 800; color: #047857; text-transform: uppercase; letter-spacing: .04em;">Recipient Count</div>
+                                <div style="display:flex;align-items:center;gap:10px;margin-top:8px;">
+                                    <div style="width:38px;height:38px;border-radius:10px;background:#d1fae5;color:#059669;display:flex;align-items:center;justify-content:center;"><i class="fas fa-users"></i></div>
+                                    <div><strong id="resource_notify_count" style="font-size:24px;line-height:1;color:#065f46;">0</strong><div style="font-size:11px;color:#64748b;margin-top:3px;">students will receive this email</div></div>
+                                </div>
+                            </div>
+                            <div style="padding: 11px 12px; border-radius: 10px; background: #eff6ff; border: 1px solid #bfdbfe; color: #1d4ed8; font-size: 11px; line-height: 1.5;">
+                                <i class="fas fa-info-circle" style="margin-right:5px;"></i>
+                                Emails are sent only for <strong>new learning materials</strong>. Editing an existing resource will not send another notification.
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="resource-specific-students" style="display:none; margin-top:14px; padding:14px; border:1px solid #ddd6fe; border-radius:12px; background:#faf5ff;">
+                        <div style="display:flex;align-items:center;gap:8px;margin-bottom:9px;color:#4c1d95;font-weight:800;font-size:13px;"><i class="fas fa-user-check"></i> Select Specific Students</div>
+                        <div style="position:relative;">
+                            <input type="text" id="resource_student_search" placeholder="Search by student name, admission number or email..." oninput="searchStudentsForResourceNotification()" style="width:100%;box-sizing:border-box;padding:10px 12px 10px 38px;border:1px solid #c4b5fd;border-radius:9px;background:white;outline:none;">
+                            <i class="fas fa-search" style="position:absolute;left:13px;top:12px;color:#8b5cf6;font-size:13px;"></i>
+                        </div>
+                        <div id="resource_student_results" style="display:none;max-height:190px;overflow:auto;margin-top:8px;background:white;border:1px solid #e2e8f0;border-radius:9px;"></div>
+                        <div id="resource_selected_students" style="display:flex;flex-wrap:wrap;gap:6px;margin-top:9px;min-height:22px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div style="display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap;">
                 <button type="submit" id="form-submit-btn">
                     <i class="fas fa-upload"></i> Upload Resource
                 </button>
