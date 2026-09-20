@@ -15,8 +15,9 @@
 // ✅ CAPTURES BOTH user_id (UUID) AND admission_number
 // ✅ STUDENT-FRIENDLY - No distance warnings
 // ✅ READS FROM DATABASE ONLY - NO localStorage!
-// ✅ NEW: Active Sessions panel filtered by student's block + intake year
-// ✅ NEW: Quick check-in from session card
+// ✅ Active Sessions panel filtered by student's block + intake year
+// ✅ One-click check-in from session card
+// ✅ Duplicate check-in prevention
 // ============================================
 
 (function() {
@@ -53,7 +54,7 @@
     let selectedTarget = null;
     let currentStudent = null;
     let activeSessions = [];
-    let currentSession = null;   // ✅ NEW: which session student is checking into
+    let currentSession = null;
     let attendanceStats = {
         present: 0,
         pending: 0,
@@ -85,7 +86,7 @@
     }
     
     // ============================================
-    // ✅ GET CURRENT STUDENT INFO - LIKE EXAMS.JS
+    // ✅ GET CURRENT STUDENT INFO
     // ============================================
     
     async function getCurrentStudentInfo() {
@@ -93,7 +94,6 @@
         let source = 'none';
         const supabase = getSupabase();
         
-        // ✅ 1. FIRST: Try from Supabase Auth (like exams.js)
         if (supabase) {
             try {
                 const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -123,55 +123,42 @@
             }
         }
         
-        // ✅ 2. SECOND: Try from window.db.currentUser (fallback)
         if (!profile && window.db?.currentUser) {
             profile = window.db.currentUser;
             source = 'window.db.currentUser';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 3. THIRD: Try from window.currentUser
         if (!profile && window.currentUser) {
             profile = window.currentUser;
             source = 'window.currentUser';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 4. FOURTH: Try from window.db.currentUserProfile
         if (!profile && window.db?.currentUserProfile) {
             profile = window.db.currentUserProfile;
             source = 'window.db.currentUserProfile';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 5. FIFTH: Try from window.currentUserProfile
         if (!profile && window.currentUserProfile) {
             profile = window.currentUserProfile;
             source = 'window.currentUserProfile';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 6. SIXTH: Try from window.dashboardModule
         if (!profile && window.dashboardModule?.userData) {
             profile = window.dashboardModule.userData;
             source = 'window.dashboardModule.userData';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 7. SEVENTH: Try from window.userData
         if (!profile && window.userData) {
             profile = window.userData;
             source = 'window.userData';
             console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-            console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
         }
         
-        // ✅ 8. EIGHTH: Check if we have a user ID from anywhere
         if (!profile) {
             const userId = window.userId || window.currentUserId || 
                           window.db?.currentUser?.id || 
@@ -193,7 +180,6 @@
                             profile = profileData;
                             source = 'database by userId';
                             console.log(`📋 Found profile in ${source}:`, profileData);
-                            console.log(`📋 Admission Number:`, profileData.admission_number);
                         }
                     } catch(e) {
                         console.warn('⚠️ Could not fetch by userId:', e);
@@ -202,7 +188,6 @@
             }
         }
         
-        // ✅ 9. ABSOLUTE LAST RESORT: Try localStorage
         if (!profile) {
             try {
                 const stored = localStorage.getItem('userProfile');
@@ -211,8 +196,6 @@
                     if (localProfile.user_id) {
                         profile = localProfile;
                         source = 'localStorage (ABSOLUTE LAST RESORT)';
-                        console.log(`📋 Found profile in ${source}:`, profile.block, profile.intake_year);
-                        console.log(`📋 Admission Number in ${source}:`, profile.admission_number);
                     }
                 }
             } catch(e) {
@@ -593,10 +576,6 @@
         }
     }
 
-    // ============================================
-    // 🎯 CREATE GPS INSTANCE
-    // ============================================
-    
     const ultraGPS = new UltraAccurateGPS();
 
     // ============================================
@@ -640,7 +619,7 @@
     }
 
     // ============================================
-    // 📚 LOAD DATA WITH BLOCK & INTAKE YEAR FILTERING
+    // 📚 LOAD DATA
     // ============================================
     
     async function loadApprovedUnits() {
@@ -714,7 +693,7 @@
     }
     
     // ============================================
-    // 🎓 LOAD ACTIVE SESSIONS (FILTERED BY BLOCK + INTAKE + PROGRAM)
+    // 🎓 LOAD ACTIVE SESSIONS
     // ============================================
     
     async function loadActiveSessions() {
@@ -743,15 +722,12 @@
                 .gte('session_date', new Date().toISOString().split('T')[0])
                 .order('session_date', { ascending: true });
             
-            // ✅ Filter by block (matches lecturer's block_term)
             query = query.eq('block_term', studentBlock);
             
-            // ✅ Filter by intake year if available
             if (studentIntake) {
                 query = query.eq('intake_year', String(studentIntake));
             }
             
-            // ✅ Filter by program
             query = query.eq('target_program', studentProgram);
             
             const { data: sessions, error } = await query;
@@ -839,55 +815,117 @@
     }
     
     // ============================================
-    // ⚡ QUICK CHECK-IN — pre-fills form from session card
+    // ⚡ QUICK CHECK-IN — DIRECT CHECK-IN FLOW
     // ============================================
     
     async function quickCheckIn(sessionId, sessionType, unitName, locationName) {
         console.log(`⚡ Quick check-in for session ${sessionId}`);
         
-        currentSession = activeSessions.find(s => s.id === sessionId) || null;
-        
-        if (!currentSession) {
+        const session = activeSessions.find(s => s.id === sessionId);
+        if (!session) {
             showToast('Session not found — refreshing...', 'warning');
             await renderActiveSessions();
             return;
         }
         
+        currentSession = session;
+        
+        const sessionInfo = await getCurrentStudentInfo();
+        if (!sessionInfo?.user_id) {
+            showToast('Please log in first', 'error');
+            return;
+        }
+        
+        // ✅ Duplicate check-in prevention
+        const supabase = getSupabase();
+        if (supabase) {
+            try {
+                const { data: existing } = await supabase
+                    .from('geo_attendance_logs')
+                    .select('id, check_in_time')
+                    .eq('user_id', sessionInfo.user_id)
+                    .eq('session_id', sessionId)
+                    .limit(1);
+                
+                if (existing && existing.length > 0) {
+                    const time = new Date(existing[0].check_in_time).toLocaleTimeString('en-KE', {
+                        hour: '2-digit', minute: '2-digit'
+                    });
+                    showToast(`✅ You already checked in at ${time}`, 'success', 4000);
+                    return;
+                }
+            } catch(e) {
+                console.warn('⚠️ Could not check existing logs:', e);
+            }
+        }
+        
+        const targetType = (session.session_type || 'class').toLowerCase();
+        const sessionType_normalized = 
+            targetType === 'clinical' ? 'clinical' :
+            targetType === 'lab' ? 'lab' :
+            targetType === 'tutorial' ? 'tutorial' :
+            'class';
+        
+        showToast(`📍 Preparing check-in for ${unitName}...`, 'info', 2000);
+        
         const typeSelect = document.getElementById('session-type');
         if (typeSelect) {
-            typeSelect.value = sessionType === 'clinical' ? 'clinical' : 
-                              sessionType === 'lab' ? 'lab' : 
-                              sessionType === 'tutorial' ? 'tutorial' : 'class';
+            typeSelect.value = sessionType_normalized;
             typeSelect.dispatchEvent(new Event('change'));
         }
         
-        setTimeout(() => {
+        setTimeout(async () => {
             const targetSelect = document.getElementById('attendance-target');
-            if (targetSelect) {
-                const lowerUnit = unitName.toLowerCase();
-                const lowerLoc = (locationName || '').toLowerCase();
-                
-                const match = Array.from(targetSelect.options).find(o => {
-                    const text = o.textContent.toLowerCase();
-                    return text.includes(lowerUnit) || (lowerLoc && text.includes(lowerLoc));
-                });
-                
-                if (match) {
-                    targetSelect.value = match.value;
-                    targetSelect.dispatchEvent(new Event('change'));
-                    console.log('✅ Auto-selected target:', match.textContent);
-                    showToast(`Ready to check in: ${unitName}`, 'info', 2500);
-                } else {
-                    console.warn('⚠️ No matching target found');
-                    showToast('Please select the target manually', 'warning');
-                }
+            if (!targetSelect) {
+                showToast('Target list not available', 'error');
+                return;
             }
             
-            document.getElementById('check-in-button')?.scrollIntoView({ 
-                behavior: 'smooth', 
-                block: 'center' 
-            });
-        }, 600);
+            const lowerUnit = unitName.toLowerCase();
+            const lowerLoc = (locationName || '').toLowerCase();
+            
+            const options = Array.from(targetSelect.options);
+            let match = null;
+            
+            match = options.find(o => o.textContent.toLowerCase().includes(lowerUnit));
+            
+            if (!match && lowerLoc) {
+                match = options.find(o => o.textContent.toLowerCase().includes(lowerLoc));
+            }
+            
+            if (!match) {
+                match = options.find(o => o.value && o.value !== '');
+            }
+            
+            if (!match) {
+                showToast('No matching target found. Please select manually.', 'warning');
+                document.getElementById('check-in-button')?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            
+            targetSelect.value = match.value;
+            targetSelect.dispatchEvent(new Event('change'));
+            
+            const parts = match.value.split('|');
+            if (parts.length >= 6) {
+                selectedTarget = {
+                    id: parts[0],
+                    name: parts[1],
+                    type: parts[2],
+                    latitude: parseFloat(parts[3]),
+                    longitude: parseFloat(parts[4]),
+                    radius: parseFloat(parts[5])
+                };
+            }
+            
+            console.log('✅ Auto-selected target:', match.textContent);
+            showToast(`✅ Ready: ${match.textContent}`, 'success', 2000);
+            
+            setTimeout(() => {
+                doCheckIn(session);
+            }, 400);
+            
+        }, 800);
     }
 
     // ============================================
@@ -973,7 +1011,7 @@
     }
 
     // ============================================
-    // 📊 LOAD HISTORY - COMPLETE FIX
+    // 📊 LOAD HISTORY
     // ============================================
     
     async function loadHistory() {
@@ -1005,7 +1043,6 @@
             
             let allRecords = [];
             
-            // ✅ 1. Get by user_id (NEW records)
             if (userId) {
                 const { data, error } = await supabase
                     .from('geo_attendance_logs')
@@ -1019,7 +1056,6 @@
                 }
             }
             
-            // ✅ 2. Get by registration_number
             if (admissionNumber) {
                 const { data, error } = await supabase
                     .from('geo_attendance_logs')
@@ -1035,7 +1071,6 @@
                 }
             }
             
-            // ✅ 3. Get by student_name (fallback)
             if (studentName) {
                 const { data, error } = await supabase
                     .from('geo_attendance_logs')
@@ -1051,7 +1086,6 @@
                 }
             }
             
-            // ✅ 4. Get by student_id (admission number)
             if (admissionNumber) {
                 const { data, error } = await supabase
                     .from('geo_attendance_logs')
@@ -1067,7 +1101,6 @@
                 }
             }
             
-            // ✅ 5. Get by student_id (UUID) - for OLD records
             if (userId) {
                 const { data, error } = await supabase
                     .from('geo_attendance_logs')
@@ -1083,7 +1116,6 @@
                 }
             }
             
-            // ✅ Remove duplicates and sort
             const seenIds = new Set();
             const uniqueRecords = allRecords
                 .filter(r => {
@@ -1368,7 +1400,7 @@
     }
 
     // ============================================
-    // ✅ SUCCESS MODAL (Full version)
+    // ✅ SUCCESS MODAL
     // ============================================
     
     function showSuccessModal(data) {
@@ -1445,10 +1477,6 @@
         };
     }
 
-    // ============================================
-    // ✅ SIMPLE SUCCESS MODAL - No distance warnings
-    // ============================================
-    
     function showSimpleSuccessModal(data) {
         const existing = document.getElementById('successModal');
         if (existing) existing.remove();
@@ -1837,13 +1865,18 @@
     }
 
     // ============================================
-    // ✅ DO CHECK-IN - STUDENT FRIENDLY
+    // ✅ DO CHECK-IN - ACCEPTS OPTIONAL SESSION
     // ============================================
     
-    async function doCheckIn() {
+    async function doCheckIn(sessionArg) {
         const btn = document.getElementById('check-in-button');
         const targetSelect = document.getElementById('attendance-target');
         const sessionTypeSelect = document.getElementById('session-type');
+        
+        // ✅ If called with session argument (from quickCheckIn), use it
+        if (sessionArg) {
+            currentSession = sessionArg;
+        }
         
         if (!selectedTarget && targetSelect?.value) {
             const parts = targetSelect.value.split('|');
@@ -1891,7 +1924,8 @@
                 admission_number: admissionNumber,
                 full_name: studentFullName,
                 block: studentBlock,
-                intake_year: studentIntakeYear
+                intake_year: studentIntakeYear,
+                session_id: currentSession?.id || null
             });
             
             updateStudentInfoBadge(studentBlock, studentIntakeYear, admissionNumber || 'N/A');
@@ -2035,9 +2069,6 @@
             
             console.log('📝 Saving record:', {
                 user_id: record.user_id,
-                student_id: record.student_id,
-                registration_number: record.registration_number,
-                student_name: record.student_name,
                 session_id: record.session_id,
                 status: record.attendance_status,
                 distance: record.distance_meters
@@ -2070,10 +2101,8 @@
                 time: new Date().toLocaleTimeString('en-KE', { timeZone: 'Africa/Nairobi' })
             });
             
-            // ✅ Award points (fire-and-forget)
             awardAttendancePoints(userId, selectedTarget.name, distance).catch(() => {});
             
-            // ✅ Reset session after successful check-in
             currentSession = null;
             
             await loadHistory();
@@ -2105,7 +2134,7 @@
     }
 
     // ============================================
-    // ✅ WAIT FOR PROFILE TO LOAD (like exams.js)
+    // ✅ WAIT FOR PROFILE TO LOAD
     // ============================================
     
     async function waitForProfile(maxAttempts = MAX_PROFILE_ATTEMPTS) {
@@ -2131,13 +2160,11 @@
     }
 
     // ============================================
-    // 🚀 INIT (like exams.js)
+    // 🚀 INIT
     // ============================================
     
     async function init() {
         console.log('🚀 Initializing ULTRA-ACCURATE attendance system...');
-        console.log('🏥 Clinical radius: Nakuru = 250m, Others = 200m');
-        console.log('📚 Classroom radius: 50m for classes/labs');
         
         const studentInfo = await waitForProfile(MAX_PROFILE_ATTEMPTS);
         
@@ -2146,11 +2173,6 @@
             showToast('Please log in to check in', 'warning', 5000);
         } else {
             console.log('👤 Student logged in:', studentInfo.full_name);
-            console.log('📋 Student ID (UUID):', studentInfo.user_id);
-            console.log('📋 Registration Number:', studentInfo.admission_number || studentInfo.student_id || 'N/A');
-            console.log('📋 Block:', studentInfo.block);
-            console.log('📋 Intake Year:', studentInfo.intake_year);
-            
             updateStudentInfoBadge(studentInfo.block, studentInfo.intake_year, studentInfo.admission_number || studentInfo.student_id || 'N/A');
         }
         
@@ -2163,14 +2185,12 @@
         await loadClinicalLocations();
         await loadApprovedUnits();
         await loadActiveSessions();
-        await renderActiveSessions();    // ✅ Render the Active Sessions panel
+        await renderActiveSessions();
         
-        // Setup event listeners
         const sessionType = document.getElementById('session-type');
         if (sessionType) {
             sessionType.addEventListener('change', function() {
                 const value = this.value;
-                console.log(`📋 Session type changed to: ${value}`);
                 const targetGroup = document.getElementById('target-control-group');
                 
                 if (value && value !== '') {
@@ -2203,8 +2223,6 @@
                             longitude: parseFloat(parts[4]),
                             radius: parseFloat(parts[5])
                         };
-                        console.log('✅ Target selected:', selectedTarget.name);
-                        console.log(`📏 Radius: ${selectedTarget.radius}m`);
                     }
                 } else {
                     selectedTarget = null;
@@ -2220,10 +2238,9 @@
         
         const checkBtn = document.getElementById('check-in-button');
         if (checkBtn) {
-            checkBtn.onclick = doCheckIn;
+            checkBtn.onclick = () => doCheckIn();
         }
         
-        // Get initial location
         const location = await getAccurateLocation();
         currentLocation = location;
         await updateLocationDisplay(location);
@@ -2233,25 +2250,20 @@
         
         setInterval(updateStats, 30000);
         
-        // ✅ Auto-refresh sessions when tab regains focus
         window.addEventListener('focus', () => {
             renderActiveSessions();
         });
         
-        // ✅ Refresh sessions every 60 seconds
         setInterval(() => {
             renderActiveSessions();
         }, 60000);
         
-        // Listen for profile updates
-        document.addEventListener('profileLoaded', function(event) {
-            console.log('🔄 Profile updated, reloading clinical locations...');
+        document.addEventListener('profileLoaded', function() {
             loadClinicalLocations();
             renderActiveSessions();
         });
         
-        document.addEventListener('appReady', function(event) {
-            console.log('🔄 App ready, refreshing clinical locations...');
+        document.addEventListener('appReady', function() {
             setTimeout(() => {
                 loadClinicalLocations();
                 renderActiveSessions();
@@ -2260,8 +2272,6 @@
         
         isInitialized = true;
         console.log('✅ Ultra-accurate attendance system ready!');
-        console.log(`🏥 Clinical radius: Nakuru = 250m, Others = 200m`);
-        console.log(`📚 Classroom radius: ${ACCURACY_CONFIG.CLASSROOM_RADIUS}m`);
         showToast(`🎯 Ultra-accurate attendance ready!`, 'success', 3000);
         
         const event = new CustomEvent('attendanceModuleReady', {
@@ -2274,7 +2284,7 @@
     }
     
     // ============================================
-    // 🌐 EXPOSE GLOBALLY (like exams.js)
+    // 🌐 EXPOSE GLOBALLY
     // ============================================
     
     window.loadAttendanceHistory = loadHistory;
@@ -2289,11 +2299,11 @@
     window.getCurrentStudentIntakeYear = getCurrentStudentIntakeYear;
     window.updateStudentInfoBadge = updateStudentInfoBadge;
     window.waitForProfile = waitForProfile;
-    window.renderActiveSessions = renderActiveSessions;   // ✅ NEW
-    window.quickCheckIn = quickCheckIn;                   // ✅ NEW
+    window.renderActiveSessions = renderActiveSessions;
+    window.quickCheckIn = quickCheckIn;
     
     // ============================================
-    // 🏁 START (like exams.js)
+    // 🏁 START
     // ============================================
     
     if (document.readyState === 'loading') {
@@ -2303,15 +2313,7 @@
     }
     
     console.log('✅ ULTRA-ACCURATE attendance system module loaded!');
-    console.log('🎯 5-point GPS verification enabled!');
-    console.log('📡 Multi-reading averaging active!');
-    console.log('🏥 Clinical radius: Nakuru = 250m, Others = 200m');
-    console.log('📚 Classroom radius: 50m (classes/labs)');
-    console.log('📋 Filtering by Block & Intake Year enabled!');
-    console.log('👤 Student ID capture: FIXED!');
-    console.log('⏳ Waiting for profile to load before initializing...');
-    console.log('❌ NO localStorage - Reading from database only!');
-    console.log('🎓 Active Sessions panel enabled!');
+    console.log('🎓 Active Sessions panel enabled with one-click check-in!');
     
 })();
 
@@ -2319,18 +2321,12 @@
 // 🔄 FORCE DISPATCH ATTENDANCE READY EVENT
 // ============================================
 (function ensureAttendanceReadyEvent() {
-    console.log('📣 Ensuring attendanceModuleReady event...');
-    
     const dispatchEvent = () => {
         if (window.attendanceSystemReady) {
             const event = new CustomEvent('attendanceModuleReady', {
-                detail: { 
-                    ready: true,
-                    timestamp: new Date().toISOString()
-                }
+                detail: { ready: true, timestamp: new Date().toISOString() }
             });
             document.dispatchEvent(event);
-            console.log('✅ attendanceModuleReady event dispatched');
             return true;
         }
         return false;
