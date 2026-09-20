@@ -448,7 +448,7 @@ window.NCHSMLogin = {
                 return secret;
             }
             
-            const secret = otplib.authenticator.generateSecret();
+            const secret = otplib.generateSecret();
             
             await this.supabase
                 .from('consolidated_user_profiles_table')
@@ -484,14 +484,15 @@ window.NCHSMLogin = {
         }
     },
 
-    verifyTOTP: function(secret, token) {
+    verifyTOTP: async function(secret, token) {
         try {
-            if (typeof otplib !== 'undefined') {
-                return otplib.authenticator.check(token, secret);
+            if (typeof otplib === 'undefined' || typeof otplib.verify !== 'function') {
+                console.error('OTPLib is unavailable or incompatible.');
+                return false;
             }
-            
-            console.warn('OTPLib not available - using basic verification');
-            return token.length === 6 && /^\d{6}$/.test(token);
+
+            const result = await otplib.verify({ secret, token });
+            return result === true || result?.valid === true;
         } catch (error) {
             console.error('Error verifying TOTP:', error);
             return false;
@@ -550,7 +551,7 @@ window.NCHSMLogin = {
                 return false;
             }
             
-            const isValid = this.verifyTOTP(result.two_factor_secret, token);
+            const isValid = await this.verifyTOTP(result.two_factor_secret, token);
             
             if (isValid) {
                 await this.supabase
@@ -626,7 +627,7 @@ window.NCHSMLogin = {
                 return;
             }
             
-            const isValid = this.verifyTOTP(result.two_factor_secret, code);
+            const isValid = await this.verifyTOTP(result.two_factor_secret, code);
             
             if (isValid) {
                 trackGALogin('2fa_verified', {
@@ -3092,7 +3093,7 @@ window.verifyAndEnable2FA = async function() {
         verifyBtn.disabled = true;
     }
     
-    const isValid = window.NCHSMLogin.verifyTOTP(secret, code);
+    const isValid = await window.NCHSMLogin.verifyTOTP(secret, code);
     
     if (isValid) {
         const { error } = await window.NCHSMLogin.supabase
