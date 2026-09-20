@@ -5953,7 +5953,7 @@ async function sbSignedResearchUrl(path){
 }
 function ensureResearchModal(){
   if(document.getElementById('ol-research-modal'))return;
-  var m=document.createElement('div');m.id='ol-research-modal';m.className='ol-modal';m.setAttribute('aria-hidden','true');
+  var m=document.createElement('div');m.id='ol-research-modal';m.className='ol-modal';m.setAttribute('aria-hidden','true');m.style.display='none';
   m.innerHTML='<div class="ol-modal-dialog" style="max-width:1200px;width:96vw"><div class="ol-modal-head"><h3 id="ol-research-title">Research Paper</h3><button class="ol-close" type="button" id="ol-research-close"><i class="fas fa-times"></i></button></div><div class="ol-modal-body" id="ol-research-body"></div></div>';
   document.body.appendChild(m);
   document.getElementById('ol-research-close').onclick=function(){m.classList.remove('open');m.setAttribute('aria-hidden','true')};
@@ -6198,6 +6198,30 @@ function ensureResearchStyles(){
       top:0!important;
       z-index:20!important;
     }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions{
+      min-height:48px!important;
+      box-sizing:border-box!important;
+    }
+    body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions .ol-research-btn{
+      min-height:34px!important;
+      white-space:nowrap!important;
+    }
+    @media(max-width:760px){
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions{
+        top:43px!important;
+        align-items:flex-start!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions > div:first-child{
+        width:100%!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions > div:last-child{
+        width:100%!important;
+        margin-left:0!important;
+      }
+      body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions .ol-research-btn{
+        flex:1 1 auto!important;
+      }
+    }
     body > #ol-research-modal > #ol-research-dialog .ol-rs-tool{
       min-width:30px!important;
       height:30px!important;
@@ -6298,8 +6322,14 @@ function ensureResearchStyles(){
     }
 
     /* FINAL RESEARCH VIEWER POSITIONING — viewport centered, independent of sidebar/main */
-    body > #ol-research-modal{
+    /* IMPORTANT: the modal is appended directly to <body>, not inside #hub-online-learning.
+       Keep it completely hidden until openResearchModal() explicitly adds .open. */
+    body > #ol-research-modal:not(.open){
       display:none!important;
+      visibility:hidden!important;
+      pointer-events:none!important;
+    }
+    body > #ol-research-modal{
       position:fixed!important;
       inset:0!important;
       left:0!important;
@@ -6463,7 +6493,7 @@ function researchEnsureUI(){
     var b=document.createElement('button');b.className='ol-tab';b.type='button';b.dataset.olTab='research';b.innerHTML='<i class="fas fa-file-signature"></i> Research Papers';tabs.appendChild(b);
   }
   if(document.getElementById('ol-research-modal'))return;
-  var modal=document.createElement('div');modal.className='ol-research-modal';modal.id='ol-research-modal';modal.setAttribute('aria-hidden','true');
+  var modal=document.createElement('div');modal.className='ol-research-modal';modal.id='ol-research-modal';modal.setAttribute('aria-hidden','true');modal.style.display='none';
   modal.innerHTML='<div class="ol-research-dialog" id="ol-research-dialog"><div class="ol-research-dialog-head"><div style="min-width:0"><h3 id="ol-research-modal-title">Research Paper</h3><div id="ol-research-modal-subtitle" style="font-size:9px;color:#71859c;margin-top:3px">Online Learning · Research Papers</div></div><div class="ol-rs-view-actions"><button class="ol-rs-back-online" type="button" data-rs-back-online><i class="fas fa-arrow-left"></i> Back to Online Learning</button><button class="ol-rs-fullscreen-btn" type="button" data-rs-fullscreen><i class="fas fa-expand"></i> Full Screen</button><button class="ol-rs-close-paper" type="button" data-research-close title="Close"><i class="fas fa-times"></i></button></div></div><div class="ol-research-body" id="ol-research-modal-body"></div></div>';
   document.body.appendChild(modal);
 }
@@ -6762,10 +6792,16 @@ async function loadResearchDocumentForViewer(r,editMode){
       if(hp)hp.addEventListener('input',function(){restoreRange();document.execCommand('hiliteColor',false,this.value);saveRange()});
       host.appendChild(toolbar);
     }
-    host.appendChild(editor);
     if(editMode){
-      var save=document.createElement('div');save.style.cssText='display:flex;justify-content:flex-end;gap:6px;padding:9px;background:#fff;border-top:1px solid #dbe6ef';save.innerHTML='<button class="ol-research-btn ol-research-muted" type="button" data-rs-view-only>View Only</button><button class="ol-research-btn ol-research-primary" type="button" data-rs-submit-correction><i class="fas fa-paper-plane"></i> Submit Correction to Lecturer</button>';host.appendChild(save);
+      var save=document.createElement('div');
+      save.className='ol-rs-correction-actions';
+      save.style.cssText='position:sticky;top:43px;z-index:19;display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:8px 10px;background:#fff;border-bottom:1px solid #cbd8e5;box-shadow:0 2px 6px rgba(20,40,60,.08)';
+      save.innerHTML='<div style="display:flex;align-items:center;gap:7px;font-size:11px;font-weight:800;color:#173452"><i class="fas fa-pen-to-square"></i><span>Correction Mode</span><span style="font-size:9px;font-weight:600;color:#71859c">Edit the paper, then submit your corrected version.</span></div><div style="display:flex;gap:7px;flex-wrap:wrap;margin-left:auto"><button class="ol-research-btn ol-research-muted" type="button" data-rs-view-only>View Only</button><button class="ol-research-btn ol-research-primary" type="button" data-rs-submit-correction><i class="fas fa-paper-plane"></i> Submit Correction to Lecturer</button></div>';
+      host.appendChild(save);
+      host.appendChild(editor);
       editor.addEventListener('input',function(){editor.dataset.dirty='1'});
+    }else{
+      host.appendChild(editor);
     }
     
     if(!editMode){
@@ -6880,6 +6916,7 @@ function boot(){bind();initResearch();loadData()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 document.addEventListener('appReady',function(){setTimeout(function(){bind();initResearch();loadData()},300)});
 })();
+
 </script>
 
 <!-- ==================== HUB EXAM CARD TAB ==================== -->
