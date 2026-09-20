@@ -1,11 +1,11 @@
-// js/lecturer-sessions.js - COMPLETE WITH TVET SUPPORT + STUDENT BLOCK/INTAKE FILTERING
+// js/lecturer-sessions.js - COMPLETE WITH TVET SUPPORT + INTAKE YEAR SELECTION
 /**
  * NCHSM Lecturer Sessions Module
  * Uses scheduled_sessions table with correct column names
  * Includes session open/close for student attendance sign-in
  * STRICT UNIT ASSIGNMENT FILTERING - Same as Resources and Marks
  * Supports both Nursing (KRCHN) and TVET programs
- * ✅ FIXED: intake_year now pulled from lecturer_subject_assignments.academic_year
+ * ✅ FIXED: intake_year now taken from lecturer's dropdown selection
  * ✅ FIXED: lecturer_id populated for proper joins
  */
 
@@ -242,7 +242,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // POPULATE UNIT DROPDOWNS - WITH TVET BLOCKS
+    // POPULATE UNIT DROPDOWNS
     // ============================================
     populateUnitDropdowns() {
         const unitSelect = document.getElementById('sessionUnit');
@@ -250,7 +250,6 @@ const LecturerSessions = {
         
         const units = this.assignedUnits;
         const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
         
         if (units && units.length > 0) {
             unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
@@ -262,7 +261,7 @@ const LecturerSessions = {
                         ${this.isTVET ? ' 🔧' : ''}
                     </option>`;
                 }).join('');
-            console.log(`📚 Populated ${units.length} assigned units in dropdown (${typeLabel})`);
+            console.log(`📚 Populated ${units.length} assigned units (${typeLabel})`);
         } else {
             unitSelect.innerHTML = '<option value="">-- No units assigned --</option>';
             console.warn('⚠️ No assigned units to populate');
@@ -270,14 +269,13 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // POPULATE BLOCK DROPDOWN - WITH TVET BLOCKS
+    // POPULATE BLOCK DROPDOWN
     // ============================================
     populateBlockDropdown() {
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (!blockSelect) return;
         
         const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
-        const typeLabel = this.getProgramTypeLabel();
         
         if (blocks.length > 0) {
             blockSelect.innerHTML = '<option value="">-- Select Block --</option>' +
@@ -342,7 +340,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // RENDER SESSIONS - WITH TVET SUPPORT
+    // RENDER SESSIONS
     // ============================================
     renderSessions() {
         const tbody = document.getElementById('sessionsTable');
@@ -350,12 +348,11 @@ const LecturerSessions = {
         
         const sessions = this.sessions;
         const typeLabel = this.getProgramTypeLabel();
-        const emoji = this.getProgramEmoji();
         
         if (!sessions || sessions.length === 0) {
             tbody.innerHTML = `
                 <tr>
-                    <td colspan="9" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
+                    <td colspan="8" style="padding: 50px 20px; text-align: center; color: #94a3b8;">
                         <i class="fas fa-calendar-plus" style="font-size: 48px; display: block; margin-bottom: 15px; color: #e2e8f0;"></i>
                         <h3 style="color: #475569; margin: 0 0 8px 0;">No Sessions Scheduled</h3>
                         <p style="margin: 0; font-size: 14px;">Schedule your first session using the form above. (${typeLabel})</p>
@@ -455,7 +452,7 @@ const LecturerSessions = {
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
                         ${this.escapeHtml(session.target_program || 'N/A')}
-                        <div style="font-size: 10px; color: #94a3b8;">${blockDisplay}</div>
+                        <div style="font-size: 10px; color: #94a3b8;">${blockDisplay} • Intake ${session.intake_year || 'N/A'}</div>
                     </td>
                     <td style="padding: 14px 18px; text-align: center;">
                         ${statusBadge}
@@ -647,7 +644,7 @@ const LecturerSessions = {
             const { data: attendees, error } = await supabase
                 .from('geo_attendance_logs')
                 .select('*')
-                .eq('target_id', sessionId)
+                .eq('session_id', sessionId)
                 .order('check_in_time', { ascending: false });
             
             if (error) throw error;
@@ -837,7 +834,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // POPULATE SESSION FORM - WITH TVET SUPPORT
+    // POPULATE SESSION FORM
     // ============================================
     populateSessionForm() {
         const profile = window.lecturerDB?.getCurrentUserProfile();
@@ -937,7 +934,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // HANDLE ADD SESSION - WITH INTAKE YEAR FROM ASSIGNMENT
+    // HANDLE ADD SESSION - WITH INTAKE YEAR FROM FORM
     // ============================================
     async handleAddSession(e) {
         if (this.isProcessing) return;
@@ -964,11 +961,13 @@ const LecturerSessions = {
             unit: document.getElementById('sessionUnit')?.value,
             type: document.getElementById('sessionType')?.value || 'Class',
             location: document.getElementById('sessionLocation')?.value || 'Lecture Hall',
-            capacity: document.getElementById('sessionCapacity')?.value || 0
+            capacity: document.getElementById('sessionCapacity')?.value || 0,
+            intakeYear: document.getElementById('sessionIntakeYear')?.value   // ✅ NEW
         };
         
-        if (!formData.title || !formData.date || !formData.program || !formData.block || !formData.unit) {
-            window.showNotification('Please fill all required fields.', 'error');
+        // ✅ Validate intake year too
+        if (!formData.title || !formData.date || !formData.program || !formData.block || !formData.unit || !formData.intakeYear) {
+            window.showNotification('Please fill all required fields including Intake Year.', 'error');
             if (btn) {
                 btn.disabled = false;
                 btn.innerHTML = originalText;
@@ -987,16 +986,15 @@ const LecturerSessions = {
                 throw new Error('Database connection not available');
             }
             
-            // ✅ Look up the assigned unit to get its academic year (intake year)
+            // ✅ Use intake year the lecturer selected
+            const intakeYear = formData.intakeYear;
+            console.log('🎓 Using intake_year from form dropdown:', intakeYear);
+            
+            // ✅ Find matched unit (for audit)
             const matchedUnit = this.assignedUnits.find(
                 u => u.subject_name === formData.unit && u.block === formData.block
             );
-            const intakeYear = matchedUnit?.academic_year 
-                || profile?.intake_year 
-                || new Date().getFullYear().toString();
-            
-            console.log(`🎓 Resolved intake_year: ${intakeYear} (from ${matchedUnit?.academic_year ? 'assignment' : 'profile/fallback'})`);
-            console.log(`🎓 Matched unit:`, matchedUnit);
+            console.log('🎓 Matched assignment:', matchedUnit);
             
             const blockDisplay = this.getBlockDisplay(formData.block);
             
@@ -1093,9 +1091,6 @@ const LecturerSessions = {
         
         const upcomingEl = document.getElementById('upcomingSessionsStat');
         if (upcomingEl) upcomingEl.textContent = upcoming;
-        
-        const pastEl = document.getElementById('pastSessionsStat');
-        if (pastEl) pastEl.textContent = past;
         
         const badge = document.getElementById('sessionsCount');
         if (badge) badge.textContent = upcoming;
@@ -1252,5 +1247,5 @@ console.log('✅ LecturerSessions module loaded - Complete with TVET support');
 console.log('🔒 Lecturers can only see and manage their own sessions');
 console.log('📚 Unit filtering matches Resources and Marks modules');
 console.log('📊 TVET Support: Enabled (Year X Term Y format)');
-console.log('🎓 intake_year now pulled from lecturer_subject_assignments.academic_year');
-console.log('🔗 lecturer_id now populated for proper joins');
+console.log('🎓 Intake Year: Now selected by lecturer from dropdown');
+console.log('🔗 lecturer_id: Populated for proper joins');
