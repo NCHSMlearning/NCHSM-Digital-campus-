@@ -1,3 +1,8 @@
+/* NCHSM Lecturer Online Learning — integrated latest Research workflow + Assignment Targeting */
+// NCHSM Lecturer Dashboard — Online Learning module
+// Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
+// NCHSM Lecturer Dashboard — Online Learning module
+// Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
 window.LecturerOnlineLearning = (() => {
     const state = { assignments: [], submissions: [], initialized:false, client:null, userId:null, profile:null, publishAfterSave:false };
     const $ = id => document.getElementById(id);
@@ -1195,12 +1200,22 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f
 
     function lecturerExec(command,value){
         const editor = lecturerGetEditor();
-        if(!editor) return;
-        lecturerRestoreSelection();
-        try{ document.execCommand(command,false,value); }catch(e){}
+        if(!editor) return false;
+        if(!lecturerRestoreSelection()) return false;
+        let applied=false;
+        try{
+            document.execCommand('styleWithCSS',false,true);
+            applied=document.execCommand(command,false,value);
+            if(!applied && command==='hiliteColor') applied=document.execCommand('backColor',false,value);
+        }catch(e){
+            if(command==='hiliteColor'){
+                try{ applied=document.execCommand('backColor',false,value); }catch(_e){}
+            }
+        }
         editor.focus({preventScroll:true});
         editor.dispatchEvent(new Event('input',{bubbles:true}));
         lecturerSaveSelection();
+        return applied!==false;
     }
 
     const NCHSM_RESEARCH_COLORS = [
@@ -1406,6 +1421,19 @@ body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f
         if(toolbar) lecturerInstallColorTools(toolbar);
         lecturerInstallEditorProtection();
         lecturerInstallTrueFullscreen();
+        const editor=lecturerGetEditor();
+        if(editor && editor.dataset.nchsmSelectionBound!=='1'){
+            editor.dataset.nchsmSelectionBound='1';
+            editor.addEventListener('mouseup',lecturerSaveSelection);
+            editor.addEventListener('keyup',lecturerSaveSelection);
+            editor.addEventListener('touchend',lecturerSaveSelection,{passive:true});
+            document.addEventListener('selectionchange',function(){
+                const active=lecturerGetEditor();
+                if(!active) return;
+                const sel=window.getSelection();
+                if(sel && sel.rangeCount && active.contains(sel.getRangeAt(0).commonAncestorContainer)) lecturerSavedSelection=sel.getRangeAt(0).cloneRange();
+            });
+        }
     }
 
     const lecturerResearchCollab = {
@@ -2126,11 +2154,6 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
         const suggestionBtn=modal.querySelector('[data-rs-suggestion-add]');
         if(suggestionBtn)suggestionBtn.onclick=()=>lecturerAddSuggestion(s,editor);
 
-        const fullBtn=modal.querySelector('[data-rs-fullscreen]');
-        if(fullBtn)fullBtn.onclick=()=>{
-            const on=dialog.classList.toggle('rs-fullscreen');
-            fullBtn.innerHTML=on?'<i class="fas fa-compress"></i>':'<i class="fas fa-expand"></i>';
-        };
 
         modal.querySelectorAll('[data-rs-comment-tab]').forEach(btn=>btn.onclick=function(){
             modal.querySelectorAll('[data-rs-comment-tab]').forEach(x=>x.classList.toggle('active',x===btn));
@@ -2239,3 +2262,4 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
 
     return {loadMarkingKeys,getAssignmentGradingConfig,fetchSubmissionMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
+;
