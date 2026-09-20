@@ -656,27 +656,156 @@ window.LecturerOnlineLearning = (() => {
         }
         return {earned,max,grades};
     }
+    // ============================================================
+    // DETERMINISTIC SUPABASE MARKING-KEY ENGINE
+    // ============================================================
+    // This is the primary "Automatically Grade" engine. It does NOT
+    // call Gemini/OpenAI. The authoritative rubric comes from
+    // public.online_marking_keys and the student's extracted submission.
+    // It behaves like Online Exams: configured answers/rubric -> score.
+    // ============================================================
+    function markKeyArray(value){
+        if(Array.isArray(value)) return value;
+        return parseJsonArray(value);
+    }
+
+    function keyWords(text){
+        return normalizeText(text).split(' ').filter(w=>w.length>=4);
+    }
+
+    function uniqueWords(text){
+        return [...new Set(keyWords(text))];
+    }
+
+    function criterionNodes(criteria, parent=''){
+        const out=[];
+        for(const c of (Array.isArray(criteria)?criteria:[])){
+            if(!c || typeof c!=='object') continue;
+            const name=String(c.criterion||c.title||c.name||c.description||'').trim();
+            const description=String(c.description||'').trim();
+            const ownMarks=Number(c.max_marks ?? c.marks ?? c.score);
+            const path=parent ? `${parent} > ${name}` : name;
+            const subs=Array.isArray(c.subcriteria)?c.subcriteria:[];
+            if(Number.isFinite(ownMarks) && ownMarks>0){
+                out.push({criterion:name||path,description,max_marks:ownMarks,path,source:c});
+            }else if(subs.length){
+                out.push(...criterionNodes(subs,path));
+            }
+        }
+        return out;
+    }
+
+    function deriveCriterionSignals(node,key){
+        const globalKeywords=markKeyArray(key?.keywords).flatMap(v=>keyWords(v));
+        const globalTopics=markKeyArray(key?.expected_topics).flatMap(v=>keyWords(v));
+        const local=uniqueWords(`${node.criterion} ${node.description}`);
+        // Prefer words from the criterion/description. Global topics are
+        // added only when they are distinctive enough to provide evidence.
+        const stop=new Set(['case','study','student','family','health','care','assessment','management','information','description','general','introduction','actual','ideal','marks','marking']);
+        const distinctive=[...new Set(local.filter(w=>!stop.has(w)))];
+        const signals=[...new Set([...distinctive,...globalTopics,...globalKeywords])];
+        return signals.filter(w=>w.length>=4).slice(0,80);
+    }
+
+    function findCriterionEvidence(text,node,key){
+        const normalized=normalizeText(text);
+        const words=new Set(keyWords(normalized));
+        const signals=deriveCriterionSignals(node,key);
+        const matched=signals.filter(w=>words.has(w));
+        const headingTokens=uniqueWords(node.criterion).filter(w=>w.length>=4);
+        const headingHits=headingTokens.filter(w=>words.has(w));
+        const headingScore=headingTokens.length ? headingHits.length/headingTokens.length : 0;
+        const signalScore=signals.length ? matched.length/signals.length : 0;
+        // A heading alone must never award full marks. Content coverage is
+        // required; heading evidence contributes only a small boost.
+        const coverage=Math.min(1,signalScore*0.82+headingScore*0.18);
+        return {signals,matched,headingHits,coverage};
+    }
+
+    function deterministicGradeMarkingKey(text,key,maxMarks){
+        const criteria=criterionNodes(markKeyArray(key?.criteria));
+        if(!criteria.length) throw new Error('The Supabase marking key has no numeric criteria to grade against.');
+        const totalRubricMarks=criteria.reduce((sum,c)=>sum+Number(c.max_marks||0),0);
+        if(totalRubricMarks<=0) throw new Error('The Supabase marking key has no usable mark allocation.');
+
+        const rubricGrades=criteria.map(node=>{
+            const evidence=findCriterionEvidence(text,node,key);
+            // Deterministic proportional scoring. A criterion earns marks only
+            // when its configured content signals occur in the submission.
+            // Round to 0.5 marks for consistency with nursing rubrics.
+            let earned=Math.round((Number(node.max_marks)*evidence.coverage)*2)/2;
+            earned=Math.max(0,Math.min(Number(node.max_marks),earned));
+            const evidenceText=evidence.matched.length
+              ? `Matched configured content signals: ${evidence.matched.slice(0,12).join(', ')}.`
+              : 'No configured content signals were found in the submitted text.';
+            return {
+                criterion:node.path||node.criterion,
+                max_marks:Number(node.max_marks),
+                marks_awarded:earned,
+                evidence:evidenceText,
+                rationale:`Coverage ${(evidence.coverage*100).toFixed(1)}%; ${evidence.matched.length} configured signal(s) matched.`,
+                matched_signals:evidence.matched.slice(0,30)
+            };
+        });
+
+        let earned=rubricGrades.reduce((sum,g)=>sum+g.marks_awarded,0);
+        // If a supplied key allocates fewer marks than its declared maximum,
+        // do not invent marks. Report the allocated total separately.
+        earned=Math.min(earned,totalRubricMarks,maxMarks);
+        const percentage=maxMarks>0 ? Math.round((earned/maxMarks)*10000)/100 : 0;
+        const allocatedPercentage=maxMarks>0 ? Math.round((totalRubricMarks/maxMarks)*10000)/100 : 0;
+        return {
+            marks_awarded:earned,
+            max_marks:maxMarks,
+            percentage,
+            rubric_allocated_marks:totalRubricMarks,
+            rubric_allocated_percentage:allocatedPercentage,
+            confidence:Math.round(Math.min(100,Math.max(0,(rubricGrades.filter(g=>g.marks_awarded>0).length/criteria.length)*100))),
+            rubric_grades:rubricGrades,
+            feedback:`Deterministic Supabase marking-key score. ${rubricGrades.filter(g=>g.marks_awarded>0).length} of ${criteria.length} configured criteria received evidence-based marks.`,
+            note:totalRubricMarks===maxMarks?'All declared marking-key marks are allocated.':`The supplied marking key allocates ${totalRubricMarks} of ${maxMarks} marks. No unallocated marks were invented.`,
+            grading_mode:'SUPABASE_MARKING_KEY_DETERMINISTIC',
+            provider:'supabase-marking-key-engine',
+            marking_key_id:key?.id||null,
+            marking_key_title:key?.title||null,
+            marking_key_version:key?.version||null
+        };
+    }
+
+    function renderDeterministicGradeReport(report){
+        const box=$('olAIGradeReport'); if(!box)return;
+        const rows=(report.rubric_grades||[]).map(g=>`<div style="padding:8px 0;border-bottom:1px solid #e5e7eb"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(g.criterion)}</b><b>${esc(g.marks_awarded)}/${esc(g.max_marks)}</b></div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(g.evidence)}</div><div style="font-size:10px;color:#94a3b8;margin-top:2px">${esc(g.rationale)}</div></div>`).join('');
+        box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Supabase Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(report.marks_awarded)}/${esc(report.max_marks)} (${esc(report.percentage)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Marking evidence (${esc((report.rubric_grades||[]).length)} criteria)</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
+    }
+
     async function autoGradeUsingMarkingKey(id){
-        const db=client();
-        const sub=state.submissions.find(x=>x.id===id);
-        if(!sub)return;
-        const assignment=state.assignments.find(x=>x.id===sub.assignment_id)||{};
+        const s=state.submissions.find(x=>x.id===id);
+        if(!s)return;
+        const assignment=state.assignments.find(x=>x.id===s.assignment_id)||{};
         const btn=$('olAutoGradeBtn');
-        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Fetching Key & Grading…';}
+        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Reading Work & Marking…';}
         try{
             let key=window._activeSubmissionMarkingKey;
-            if(!key || String(window._activeSubmissionMarkingKeyId)!==String(assignment.marking_key_id||'')){
-                key=await fetchSubmissionMarkingKey(id);
-            }
-            if(!key)throw new Error('No marking key is linked to this assignment. Select a marking key in the assignment first.');
-            const graded=await aiGradeSubmission(id);
-            if(!graded) throw new Error('Automatic grading did not produce a grade.');
-            notify('Work automatically graded using the Supabase marking key. Review the suggested mark before saving or releasing.','success');
+            if(!key || String(window._activeSubmissionMarkingKeyId)!==String(assignment.marking_key_id||'')) key=await fetchSubmissionMarkingKey(id);
+            if(!key)throw new Error('No active Supabase marking key is linked to this assignment.');
+            const text=await extractSubmissionText(s);
+            if(!String(text||'').trim()) throw new Error('No readable text was extracted from the submitted document.');
+            const maxMarks=Number(key.max_marks||assignment.max_marks||s.max_marks||0);
+            if(!maxMarks)throw new Error('The Supabase marking key has no maximum mark configured.');
+            const report=deterministicGradeMarkingKey(text,key,maxMarks);
+            $('olReviewMarks').value=report.marks_awarded;
+            if($('olReviewPercentage')) $('olReviewPercentage').textContent=formatPercentage(report.marks_awarded,report.max_marks);
+            if($('olReviewFeedback')) $('olReviewFeedback').value=report.feedback||'';
+            renderDeterministicGradeReport(report);
+            window._activeDeterministicGrade=report;
+            notify(`Automatic marking completed: ${report.marks_awarded}/${report.max_marks} (${report.percentage}%). Review before saving or releasing.`,'success');
+            return report;
         }catch(e){
-            console.error('Automatic marking-key grading:',e);
-            notify(e.message||'Automatic grading failed.','error');
+            console.error('Deterministic Supabase marking:',e);
+            notify(e.message||'Automatic marking failed.','error');
+            return null;
         }finally{
-            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Marking Key';}
+            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Supabase Marking Key';}
         }
     }
 
@@ -766,7 +895,7 @@ window.LecturerOnlineLearning = (() => {
             if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i> AI Grade Work';}
         }
     }
-    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><div id="olSubmissionMarkingKey" style="margin-top:14px;padding:12px;border:1px solid #dbe3ee;border-radius:10px;background:#f8fafc"><div style="font-weight:700;color:#475569">Marking Key</div><div style="font-size:11px;color:#64748b;margin-top:3px">Fetch the institutional marking key directly from Supabase before grading.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px"><button id="olFetchMarkingKeyBtn" class="ol-btn" style="background:#0f766e;color:#fff" onclick="LecturerOnlineLearning.fetchSubmissionMarkingKey('${s.id}')"><i class="fas fa-database"></i> Fetch Marking Key from Supabase</button></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAutoGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.autoGradeUsingMarkingKey('${s.id}')"><i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Marking Key</button><button id="olAIGradeBtn" class="ol-btn" style="background:#64748b;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> AI Grade Work</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
+    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><div id="olSubmissionMarkingKey" style="margin-top:14px;padding:12px;border:1px solid #dbe3ee;border-radius:10px;background:#f8fafc"><div style="font-weight:700;color:#475569">Marking Key</div><div style="font-size:11px;color:#64748b;margin-top:3px">Fetch the institutional marking key directly from Supabase before grading.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px"><button id="olFetchMarkingKeyBtn" class="ol-btn" style="background:#0f766e;color:#fff" onclick="LecturerOnlineLearning.fetchSubmissionMarkingKey('${s.id}')"><i class="fas fa-database"></i> Fetch Marking Key from Supabase</button></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAutoGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.autoGradeUsingMarkingKey('${s.id}')"><i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Supabase Marking Key</button><button id="olAIGradeBtn" class="ol-btn" style="background:#64748b;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> AI Grade Work</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
     function updateGradePercentage(){const s=state.submissions.find(x=>x.id===$('olSubmissionModal')?.dataset?.submissionId);const max=Number(s?.max_marks||state.assignments.find(a=>a.id===s?.assignment_id)?.max_marks||0);const pct=formatPercentage($('olReviewMarks')?.value,max);if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;}
     // ============================================================
     // 📧 ASSIGNMENT RESULT EMAIL NOTIFICATION
