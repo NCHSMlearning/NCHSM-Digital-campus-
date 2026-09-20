@@ -1,5 +1,3 @@
-// NCHSM Lecturer Dashboard — Online Learning module
-// Externalized from the lecturer dashboard; uses the existing Supabase client and RLS policies.
 window.LecturerOnlineLearning = (() => {
     const state = { assignments: [], submissions: [], initialized:false, client:null, userId:null, profile:null, publishAfterSave:false };
     const $ = id => document.getElementById(id);
@@ -18,6 +16,8 @@ window.LecturerOnlineLearning = (() => {
     }
     function notify(msg,type='info'){ if(window.showNotification) window.showNotification(msg,type); else alert(msg); }
     function fmtDate(v){ if(!v)return '—'; const d=new Date(v); return isNaN(d)?'—':d.toLocaleString([], {dateStyle:'medium',timeStyle:'short'}); }
+    function formatPercentage(marks,maxMarks){const m=Number(marks),mx=Number(maxMarks);if(!Number.isFinite(m)||!Number.isFinite(mx)||mx<=0)return '—';return `${Math.round(Math.max(0,Math.min(100,(m/mx)*100))*100)/100}%`;}
+    function clampMarks(marks,maxMarks){const m=Number(marks),mx=Number(maxMarks);return Number.isFinite(mx)&&mx>0?Math.max(0,Math.min(Number.isFinite(m)?m:0,mx)):Math.max(0,Number.isFinite(m)?m:0);}
     function statusBadge(a){return a.published?'<span class="ol-badge ol-published">PUBLISHED</span>':'<span class="ol-badge ol-draft">DRAFT</span>';}
     async function init(){ if(state.initialized && state.assignments.length){ wireAssignmentTargeting(); await load(); setTimeout(initResearch,150); return; } state.initialized=true; await resolveUser(); wireAssignmentTargeting(); await load(); setTimeout(initResearch,150); }
     async function load(){
@@ -52,7 +52,7 @@ window.LecturerOnlineLearning = (() => {
         const ids=[...new Set(state.submissions.map(s=>s.student_id).filter(Boolean))]; let profiles=[];
         if(ids.length){const r=await db.from('consolidated_user_profiles_table').select('user_id,full_name,student_id,admission_number,email').in('user_id',ids);profiles=r.data||[];}
         const map=new Map(profiles.map(p=>[p.user_id,p]));
-        body.innerHTML=state.submissions.map(s=>{const p=map.get(s.student_id)||{};const mark=s.marks_obtained==null?'—':`${s.marks_obtained}/${s.max_marks||'?'}`;return `<tr><td><b>${esc(p.full_name||'Student')}</b><div style="font-size:11px;color:#64748b">${esc(p.admission_number||p.student_id||s.student_id||'')}</div></td><td>${esc(s.online_assignments?.title||s.assignment_id)}</td><td>${fmtDate(s.submitted_at)}</td><td>${esc(s.attempt_number||1)}</td><td><b>${mark}</b></td><td><span class="ol-badge ${s.result_released?'ol-returned':s.review_required?'ol-review':'ol-draft'}">${s.result_released?'RELEASED':s.review_required?'REVIEW':'SUBMITTED'}</span></td><td><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.reviewSubmission('${s.id}')">Review</button></td></tr>`}).join('');updateStats();
+        body.innerHTML=state.submissions.map(s=>{const p=map.get(s.student_id)||{};const mark=s.marks_obtained==null?'—':`${s.marks_obtained}/${s.max_marks||'?'}`;const pct=s.marks_obtained==null?'—':formatPercentage(s.marks_obtained,s.max_marks);return `<tr><td><b>${esc(p.full_name||'Student')}</b><div style="font-size:11px;color:#64748b">${esc(p.admission_number||p.student_id||s.student_id||'')}</div></td><td>${esc(s.online_assignments?.title||s.assignment_id)}</td><td>${fmtDate(s.submitted_at)}</td><td>${esc(s.attempt_number||1)}</td><td><b>${mark}</b><div style="font-size:11px;color:#64748b;margin-top:2px">${pct}</div></td><td><span class="ol-badge ${s.result_released?'ol-returned':s.review_required?'ol-review':'ol-draft'}">${s.result_released?'RELEASED':s.review_required?'REVIEW':'SUBMITTED'}</span></td><td><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.reviewSubmission('${s.id}')">Review</button></td></tr>`}).join('');updateStats();
     }
     function resetQuestionEditors(questions=[]){const c=$('olQuestions');if(!c)return;c.innerHTML='';(questions.length?questions:[{}]).forEach(q=>addQuestionEditor(q));}
     function addQuestionEditor(q={}){const c=$('olQuestions');if(!c)return;const n=c.children.length+1;const d=document.createElement('div');d.className='ol-q';d.dataset.index=n;d.innerHTML=`<div style="display:flex;justify-content:space-between;align-items:center"><b>Question ${n}</b><button type="button" class="ol-btn ol-danger" onclick="this.closest('.ol-q').remove();LecturerOnlineLearning.renumberQuestions()"><i class="fas fa-trash"></i></button></div><div class="ol-form" style="margin-top:10px"><div class="ol-full"><label>Question *</label><textarea class="ol-q-text" rows="3" required>${esc(q.question_text||'')}</textarea></div><div><label>Type *</label><select class="ol-q-type"><option value="mcq" ${q.question_type==='mcq'?'selected':''}>MCQ</option><option value="true_false" ${q.question_type==='true_false'?'selected':''}>True / False</option><option value="short_answer" ${q.question_type==='short_answer'?'selected':''}>Short Answer</option><option value="case_study" ${q.question_type==='case_study'?'selected':''}>Case Study</option></select></div><div><label>Marks *</label><input class="ol-q-marks" type="number" min="0.1" step="0.1" value="${esc(q.marks??1)}"></div><div class="ol-full"><label>Options (MCQ only, one per line)</label><textarea class="ol-q-options" rows="3" placeholder="A. ...\nB. ...\nC. ...\nD. ...">${esc(Array.isArray(q.options)?q.options.join('\n'):(q.options||''))}</textarea></div><div><label>Correct Answer / Expected Answer</label><input class="ol-q-correct" value="${esc(q.correct_answer||'')}"></div><div><label>Accepted Answers (comma separated)</label><input class="ol-q-accepted" value="${esc(Array.isArray(q.accepted_answers)?q.accepted_answers.join(', '):(q.accepted_answers||''))}"></div><div><label>Keywords (comma separated)</label><input class="ol-q-keywords" value="${esc(Array.isArray(q.keywords)?q.keywords.join(', '):(q.keywords||''))}"></div><div><label>Keyword Marks</label><input class="ol-q-keywordmarks" type="number" min="0" step="0.1" value="${esc(q.keyword_marks??0)}"></div></div>`;c.appendChild(d);}
@@ -385,8 +385,66 @@ window.LecturerOnlineLearning = (() => {
         box.innerHTML=`<div class="ol-integrity"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center"><b><i class="fas fa-shield-alt"></i> Academic Integrity Agent</b><span class="ol-badge ${localOnly?'ol-draft':sim>=40?'ol-review':'ol-published'}">${esc(statusText)}</span></div><div class="ol-integrity-grid" style="margin-top:10px"><div class="ol-integrity-stat"><small>Similarity</small><b>${sim}%</b></div><div class="ol-integrity-stat"><small>AI signal</small><b>${ai==null?(analysisAi?esc(analysisAi):'—'):esc(ai)+'%'}</b></div><div class="ol-integrity-stat"><small>Words scanned</small><b>${text.trim().split(/\s+/).filter(Boolean).length.toLocaleString()}</b></div></div>${analysis.summary?`<div style="margin-top:12px;padding:10px;background:#fff;border:1px solid #e5e7eb;border-radius:9px"><b>AI Review Summary</b><div style="margin-top:5px;line-height:1.5">${esc(analysis.summary)}</div></div>`:''}${matches.length?`<div style="margin-top:12px"><b>Potential matches</b>${matches.slice(0,8).map(m=>`<div class="ol-integrity-match"><b>${esc(m.source_title||m.title||m.student_id||m.source||'Possible matching submission')}</b><div>${esc(m.matched_phrases??m.match_count??m.similarity??'')} ${m.matched_phrases?'matching phrase(s)':''}</div></div>`).join('')}</div>`:''}${analysis.evidence?.length?`<div style="margin-top:12px"><b>AI Evidence Flags</b>${analysis.evidence.slice(0,8).map(e=>`<div class="ol-integrity-match"><b>${esc(e.type||'Review point')} · ${esc(e.severity||'')}</b><div style="margin-top:4px">${esc(e.reason||'')}</div>${e.excerpt?`<div style="margin-top:5px;color:#64748b">“${esc(e.excerpt)}”</div>`:''}</div>`).join('')}</div>`:''}<p class="ol-integrity-note">This is an academic-integrity screening aid, not a final plagiarism finding. Similarity is not proof of plagiarism, and AI-writing signals can produce false positives. ${localOnly?'The AI provider was unavailable, so this result is based only on institutional submission similarity. ':''}${r.notice?esc(r.notice):''} ${r.source?'Scan source: '+esc(r.source)+'.':''}</p></div>`;
     }
 
-    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('id,question_order,question_text,question_type,marks').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${q.marks} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT MARK</div><div class="ol-mark">${s.marks_obtained??0}/${s.max_marks??'—'}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" step="0.01" value="${s.marks_obtained??0}" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').style.display='flex';}
-    async function gradeSubmission(id,release){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;const marks=Number($('olReviewMarks').value);const feedback=$('olReviewFeedback').value.trim()||null;const {error}=await db.from('online_submissions').update({marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:new Date().toISOString(),result_released:release,released_at:release?new Date().toISOString():null,review_required:false}).eq('id',id);if(error){notify(error.message,'error');return;}notify(release?'Grade saved and result released.':'Grade saved.','success');closeModal('olSubmissionModal');await loadSubmissions();updateStats();}
+    function collectSubmissionQuestions(questions,answers){
+        return (questions||[]).map((q,i)=>({
+            id:q.id, question_order:q.question_order||i+1, question_text:q.question_text||'', question_type:q.question_type||'short_answer',
+            marks:Number(q.marks)||0, correct_answer:q.correct_answer||null, accepted_answers:q.accepted_answers||[], keywords:q.keywords||[], keyword_marks:Number(q.keyword_marks)||0,
+            answer:answers?.[q.id] ?? answers?.[String(q.id)] ?? ''
+        }));
+    }
+    function localObjectiveGrade(items){
+        let earned=0,max=0; const grades=[];
+        for(const q of items){
+            const qm=Number(q.marks)||0; max+=qm; const a=String(q.answer??'').trim().toLowerCase();
+            let e=null;
+            if(['mcq','true_false'].includes(String(q.question_type).toLowerCase()) && q.correct_answer){
+                const c=String(q.correct_answer).trim().toLowerCase(); e=(a&&c&&a===c)?qm:0;
+                grades.push({question_id:q.id,marks_awarded:e,max_marks:qm,method:'objective',reason:e?'Correct answer matched.':'Answer did not match the configured correct answer.'}); earned+=e;
+            }
+        }
+        return {earned,max,grades};
+    }
+    async function aiGradeSubmission(id){
+        const db=client(); const s=state.submissions.find(x=>x.id===id); if(!s)return;
+        const btn=$('olAIGradeBtn'); if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> AI Grading…';}
+        try{
+            let questions=[]; const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');
+            if(qr.error)throw qr.error; questions=qr.data||[]; const answers=s.answers||{};
+            const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+            let documentText='';
+            if(s.file_path){
+                try{documentText=await extractSubmissionText(s);}catch(e){console.warn('AI grade document extraction:',e);}
+            }
+            const payload={
+                mode:'assignment_grading', submission_id:s.id, assignment_id:s.assignment_id, student_id:s.student_id,
+                assignment:{title:assignment.title||s.online_assignments?.title||'',unit_code:assignment.unit_code||'',instructions:assignment.instructions||'',max_marks:Number(assignment.max_marks||s.max_marks)||0},
+                questions:collectSubmissionQuestions(questions,answers), extracted_text:String(documentText||'').slice(0,120000),
+                existing_feedback:s.feedback||''
+            };
+            let report=null;
+            if(typeof window.runAIAssignmentGrade==='function') report=await window.runAIAssignmentGrade(payload);
+            else if(db?.functions?.invoke){const r=await db.functions.invoke('ai-grade-assignment',{body:payload});if(r.error)throw r.error;report=r.data;}
+            else throw new Error('Secure AI grading service is unavailable.');
+            if(!report || !Number.isFinite(Number(report.marks_awarded))) throw new Error('AI grading service returned no valid marks.');
+            const maxMarks=Number(assignment.max_marks||s.max_marks||report.max_marks); const marks=clampMarks(report.marks_awarded,maxMarks);
+            $('olReviewMarks').value=marks; const pct=formatPercentage(marks,maxMarks);
+            if($('olReviewPercentage')) $('olReviewPercentage').textContent=pct;
+            if($('olReviewFeedback') && report.feedback) $('olReviewFeedback').value=report.feedback;
+            const box=$('olAIGradeReport'); if(box){box.innerHTML=`<div style="margin-top:10px;padding:10px 12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;color:#3730a3"><b>AI grading suggestion:</b> ${esc(marks)}/${esc(maxMarks||'?')} (${esc(pct)})${report.confidence!=null?` · Confidence ${esc(report.confidence)}%`:''}. ${esc(report.note||'Review the suggested grade before saving.')}</div>`;}
+            notify('AI grade generated. Review it and click Save Grade or Grade & Release.','success');
+        }catch(e){console.error('AI grading:',e);notify('AI grading could not be completed: '+(e?.message||String(e)),'error');}
+        finally{if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i> AI Grade Work';}}
+    }
+    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAIGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> AI Grade Work</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
+    function updateGradePercentage(){const s=state.submissions.find(x=>x.id===$('olSubmissionModal')?.dataset?.submissionId);const max=Number(s?.max_marks||state.assignments.find(a=>a.id===s?.assignment_id)?.max_marks||0);const pct=formatPercentage($('olReviewMarks')?.value,max);if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;}
+    async function gradeSubmission(id,release){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};const maxMarks=Number(s.max_marks||assignment.max_marks||0);const marks=clampMarks($('olReviewMarks').value,maxMarks);const feedback=$('olReviewFeedback').value.trim()||null;const percentage=Number(formatPercentage(marks,maxMarks).replace('%',''));let payload={marks_obtained:marks,feedback,status:'graded',graded_by:state.userId,graded_at:new Date().toISOString(),result_released:release,released_at:release?new Date().toISOString():null,review_required:false};let {error}=await db.from('online_submissions').update({...payload,percentage}).eq('id',id);if(error){const retry=await db.from('online_submissions').update(payload).eq('id',id);error=retry.error;}if(error){notify(error.message,'error');return;}notify(release?`Grade saved and result released (${percentage}%).`:`Grade saved (${percentage}%).`,'success');closeModal('olSubmissionModal');await loadSubmissions();updateStats();}
+    async function runAIAssignmentGrade(payload){
+        const db=client();
+        if(typeof window.runAIAssignmentGrade==='function' && window.runAIAssignmentGrade!==runAIAssignmentGrade) return window.runAIAssignmentGrade(payload);
+        if(db?.functions?.invoke){const r=await db.functions.invoke('ai-grade-assignment',{body:payload});if(r.error)throw r.error;return r.data;}
+        throw new Error('Secure AI grading service is unavailable.');
+    }
+
     function closeModal(id){const m=$(id);if(m)m.style.display='none';}
 
     // ============================================================
@@ -1396,6 +1454,76 @@ window.LecturerOnlineLearning = (() => {
         return await docx.Packer.toBlob(document);
     }
 
+    // ============================================================
+    // 📧 RESEARCH REVISION EMAIL NOTIFICATION
+    // Sends a notification only — no grades/scores are included.
+    // Uses the existing Supabase Edge Function: send-email.
+    // ============================================================
+    async function sendResearchRevisionNotification(submission, profile, feedback){
+        try{
+            const db=client();
+            if(!db) return false;
+
+            let student=profile||{};
+            if(!student.email && submission?.student_id){
+                const lookup=await db.from('consolidated_user_profiles_table')
+                    .select('user_id,full_name,student_id,admission_number,email,program,intake_year,current_block,block')
+                    .eq('user_id',submission.student_id)
+                    .maybeSingle();
+                if(!lookup.error && lookup.data) student=lookup.data;
+            }
+
+            if(!student?.email){
+                console.warn('⚠️ No email found for research student:',submission?.student_id);
+                return false;
+            }
+
+            const name=esc(student.full_name||'Student');
+            const title=esc(submission.title||'Research Paper');
+            const type=esc(String(submission.submission_type||'research').replace(/_/g,' '));
+            const version=esc(submission.version_number||1);
+            const safeFeedback=feedback ? esc(feedback) : '';
+            const portalUrl='https://nchsm.co.ke';
+
+            const html=`<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Research Revision Required</title>
+<style>
+body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8;color:#243447}.container{max-width:580px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.1)}
+.header{background:linear-gradient(135deg,#0A3D62,#1a5276);padding:30px 35px;text-align:center;color:#fff}.header img{width:70px;height:70px;border-radius:50%;background:#fff;padding:5px;margin-bottom:10px}.header h1{margin:0;font-size:24px}.header p{margin:4px 0 0;opacity:.82}.body{padding:30px 35px}.notice{background:#FFF7ED;border:2px solid #F59E0B;border-radius:16px;padding:22px;text-align:center;margin:18px 0}.notice .icon{font-size:2.6rem;display:block;margin-bottom:8px}.notice .message{font-size:1.08rem;color:#92400E;font-weight:700}.notice .sub{color:#7C5A2B;font-size:.94rem;margin-top:5px}.info{background:#f8fafc;border-radius:14px;padding:20px 24px;margin:18px 0;border-left:4px solid #0A3D62}.info p{margin:7px 0;font-size:14px}.label{color:#64748b;font-weight:500}.value{color:#0A3D62;font-weight:650}.feedback{background:#EFF6FF;border:1px solid #BFDBFE;border-radius:12px;padding:16px;margin:18px 0}.feedback h3{margin:0 0 8px;color:#1E40AF;font-size:14px}.feedback p{margin:0;white-space:pre-wrap;line-height:1.6;font-size:14px;color:#334155}.btn{display:inline-block;background:linear-gradient(135deg,#0A3D62,#1a5276);color:#fff!important;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;margin:8px 0}.footer{background:#f8fafc;padding:22px 35px;text-align:center;border-top:1px solid #eef2f7}.footer p{font-size:12px;color:#8a9aa8;margin:4px 0}@media(max-width:480px){.header{padding:22px 18px}.body{padding:22px 18px}.footer{padding:18px}}
+</style></head><body><div class="container"><div class="card">
+<div class="header"><img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo"><h1>📝 Revision Required</h1><p>Nakuru College of Health Sciences and Management</p></div>
+<div class="body"><p>Dear <strong>${name}</strong>,</p><p>Your lecturer has reviewed your research submission and has requested <strong>revisions</strong>.</p>
+<div class="notice"><span class="icon">📝</span><div class="message">Please Review and Correct Your Research Paper</div><div class="sub">Log in to the NCHSM Student Portal to view the requested corrections and submit your revised document.</div></div>
+<div class="info"><p><span class="label">📚 Research Title</span><br><span class="value">${title}</span></p><p><span class="label">📄 Submission Type</span><br><span class="value">${type}</span></p><p><span class="label">🔢 Version</span><br><span class="value">V${version}</span></p>${student.program?`<p><span class="label">🎓 Program</span><br><span class="value">${esc(student.program)}</span></p>`:''}</div>
+${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFeedback}</p></div>`:''}
+<div style="text-align:center;margin:25px 0 10px"><a class="btn" href="${portalUrl}">🔑 Open Student Portal</a></div>
+<p style="font-size:12px;color:#64748b;text-align:center">Please make the requested corrections and submit the revised version through the Research Papers section of the Online Learning portal.</p>
+</div><div class="footer"><p><strong>Nakuru College of Health Sciences and Management</strong></p><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p>This is an automated notification. Please do not reply to this email.</p></div>
+</div></div></body></html>`;
+
+            const result=await db.functions.invoke('send-email',{body:{
+                to:student.email,
+                subject:`📝 Research Revision Required - ${submission.title||'Research Paper'}`,
+                html,
+                from:'NCHSM Research Office <admin@nchsm.co.ke>'
+            }});
+            if(result.error){
+                console.error('❌ Research revision email failed:',result.error);
+                return false;
+            }
+            if(result.data && result.data.success===false){
+                console.error('❌ Research revision email failed:',result.data.error||result.data);
+                return false;
+            }
+            console.log(`✅ Research revision notification sent to ${student.email}`);
+            return true;
+        }catch(error){
+            console.error('❌ Research revision email error:',error);
+            return false;
+        }
+    }
+
     async function saveLecturerCorrection(){
         const s=researchState.current;
         const editor=document.getElementById('rsInlineEditor');
@@ -1458,7 +1586,13 @@ window.LecturerOnlineLearning = (() => {
                 try{await db.storage.from('research-papers').remove([path])}catch(e){}
                 throw ins.error;
             }
-            notify('Correction sent to the student as Version '+next+' ('+ext.toUpperCase()+').','success');
+            const insertedSubmission=ins.data||payload;
+            const studentProfile=researchState.profiles.get(s.student_id)||{};
+            const emailSent=await sendResearchRevisionNotification(insertedSubmission,studentProfile,feedback);
+            notify(emailSent
+                ? 'Correction sent to the student as Version '+next+' ('+ext.toUpperCase()+'). Email notification sent.'
+                : 'Correction sent to the student as Version '+next+' ('+ext.toUpperCase()+'). The document was saved, but the email notification could not be sent.',
+                emailSent?'success':'warning');
             await loadResearch();
             closeResearchModal();
         }catch(e){
@@ -1648,8 +1782,18 @@ window.LecturerOnlineLearning = (() => {
             console.error('Research review update:', error);
             return notify('Could not save Research review: ' + error.message, 'error');
         }
+        const previousStatus=s.status;
         Object.assign(s, payload);
-        notify('Research review saved successfully.', 'success');
+        if(status==='revision_required' && previousStatus!=='revision_required'){
+            const studentProfile=researchState.profiles.get(s.student_id)||{};
+            const emailSent=await sendResearchRevisionNotification(s,studentProfile,feedback);
+            notify(emailSent
+                ? 'Research review saved. Revision notification sent to the student.'
+                : 'Research review saved, but the revision email notification could not be sent.',
+                emailSent?'success':'warning');
+        }else{
+            notify('Research review saved successfully.', 'success');
+        }
         closeResearchModal();
         await loadResearch();
     }
@@ -1692,6 +1836,5 @@ window.LecturerOnlineLearning = (() => {
         await loadResearch();
     }
 
-    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
+    return {init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
-console.log('✅ Lecturer Online Learning module loaded');
