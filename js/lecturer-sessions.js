@@ -1,10 +1,12 @@
-// js/lecturer-sessions.js - COMPLETE WITH TVET SUPPORT
+// js/lecturer-sessions.js - COMPLETE WITH TVET SUPPORT + STUDENT BLOCK/INTAKE FILTERING
 /**
  * NCHSM Lecturer Sessions Module
  * Uses scheduled_sessions table with correct column names
  * Includes session open/close for student attendance sign-in
  * STRICT UNIT ASSIGNMENT FILTERING - Same as Resources and Marks
  * Supports both Nursing (KRCHN) and TVET programs
+ * ✅ FIXED: intake_year now pulled from lecturer_subject_assignments.academic_year
+ * ✅ FIXED: lecturer_id populated for proper joins
  */
 
 const LecturerSessions = {
@@ -32,7 +34,6 @@ const LecturerSessions = {
         
         const programType = this.getProgramType();
         if (programType === 'TVET') {
-            // TVET: Y1T1 → Year 1 Term 1
             const match = blockValue.match(/^Y(\d)T(\d)$/);
             if (match) {
                 const year = parseInt(match[1]);
@@ -44,7 +45,6 @@ const LecturerSessions = {
             if (blockValue === 'Introductory') return '🌟 Introductory Term';
             return blockValue;
         } else {
-            // Nursing: Block 1, Block 2, etc.
             if (blockValue.startsWith('Block ')) return blockValue;
             if (blockValue === 'Introductory') return '🌟 Introductory Block';
             if (blockValue === 'Final') return '🏆 Final Block';
@@ -56,7 +56,7 @@ const LecturerSessions = {
         if (!blockValue) return 'N/A';
         const programType = this.getProgramType();
         if (programType === 'TVET') {
-            return blockValue; // Keep Y1T1 format
+            return blockValue;
         } else {
             if (blockValue.startsWith('Block ')) return blockValue;
             if (blockValue === 'Introductory') return 'Introductory';
@@ -202,7 +202,6 @@ const LecturerSessions = {
                 return;
             }
             
-            // Filter by current program
             const programUnits = assignments?.filter(u => u.program === program) || [];
             const allUnits = assignments || [];
             
@@ -210,7 +209,7 @@ const LecturerSessions = {
             
             console.log(`📚 Loaded ${this.assignedUnits.length} assigned units for ${program}`);
             console.log('📚 Units:', this.assignedUnits.map(u => 
-                `${u.subject_name} (${u.block}) - ${this.getBlockDisplay(u.block)}`
+                `${u.subject_name} (${u.block}) - ${this.getBlockDisplay(u.block)} [${u.academic_year}]`
             ));
             
             const lecturerIds = [...new Set(this.assignedUnits.map(u => u.lecturer_id))];
@@ -257,7 +256,7 @@ const LecturerSessions = {
             unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
                 units.map(u => {
                     const blockDisplay = this.getBlockDisplay(u.block);
-                    return `<option value="${u.subject_name}" data-block="${u.block || ''}">
+                    return `<option value="${u.subject_name}" data-block="${u.block || ''}" data-year="${u.academic_year || ''}">
                         ${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name} 
                         (${blockDisplay})
                         ${this.isTVET ? ' 🔧' : ''}
@@ -291,7 +290,6 @@ const LecturerSessions = {
             blockSelect.innerHTML = '<option value="">-- No blocks assigned --</option>';
         }
         
-        // Update block filter label
         const label = document.getElementById('blockFilterLabel');
         if (label) {
             const blockType = this.isTVET ? 'Term' : 'Block';
@@ -404,9 +402,8 @@ const LecturerSessions = {
             const sessionType = session.session_type || 'Class';
             const sessionTypeLabel = sessionTypeLabels[sessionType] || sessionType;
             
-            // ✅ Display unit name with block display
             const unitDisplay = session.unit_name || session.course_name || 'N/A';
-            const blockDisplay = session.block_term ? this.getBlockDisplay(session.block_term) : 'N/A';
+            const blockDisplay = session.block_display || (session.block_term ? this.getBlockDisplay(session.block_term) : 'N/A');
             
             const rowStyle = isActive ? 'background: #d1fae5;' : (isToday ? 'background: #dbeafe;' : '');
             const rowClass = isPast && !isActive ? 'opacity: 0.7;' : '';
@@ -454,7 +451,7 @@ const LecturerSessions = {
                     </td>
                     <td style="padding: 14px 18px; color: #475569; font-weight: 500;">
                         ${this.escapeHtml(unitDisplay)}
-                        ${session.unit_name ? `<div style="font-size: 10px; color: #94a3b8;">${blockDisplay}</div>` : ''}
+                        ${session.block_term ? `<div style="font-size: 10px; color: #94a3b8;">${blockDisplay}</div>` : ''}
                     </td>
                     <td style="padding: 14px 18px; color: #475569;">
                         ${this.escapeHtml(session.target_program || 'N/A')}
@@ -551,7 +548,8 @@ const LecturerSessions = {
                 .update({
                     status: 'active',
                     is_active: true,
-                    opened_at: new Date().toISOString()
+                    opened_at: new Date().toISOString(),
+                    opened_by: profile?.full_name || this.lecturerUuid
                 })
                 .eq('id', sessionId)
                 .eq('created_by', this.lecturerUuid);
@@ -648,8 +646,8 @@ const LecturerSessions = {
             
             const { data: attendees, error } = await supabase
                 .from('geo_attendance_logs')
-                .select('*, student:student_id(full_name, student_id)')
-                .eq('session_id', sessionId)
+                .select('*')
+                .eq('target_id', sessionId)
                 .order('check_in_time', { ascending: false });
             
             if (error) throw error;
@@ -660,9 +658,10 @@ const LecturerSessions = {
             }
             
             const attendeeList = attendees.map((a, i) => {
-                const name = a.student?.full_name || a.student_name || 'Unknown';
+                const name = a.student_name || 'Unknown';
                 const time = a.check_in_time ? new Date(a.check_in_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : 'N/A';
-                return `${i + 1}. ${name} - ${time}`;
+                const status = a.attendance_status || 'Pending';
+                return `${i + 1}. ${name} - ${status} - ${time}`;
             }).join('\n');
             
             alert(`📋 Attendance for: ${session.session_title || session.title}\n\n${attendeeList}\n\nTotal: ${attendees.length} students`);
@@ -717,7 +716,8 @@ const LecturerSessions = {
                 .update({
                     status: 'active',
                     is_active: true,
-                    opened_at: new Date().toISOString()
+                    opened_at: new Date().toISOString(),
+                    opened_by: profile?.full_name || lecturerId
                 })
                 .eq('id', session.id)
                 .eq('created_by', lecturerId);
@@ -845,13 +845,11 @@ const LecturerSessions = {
         const typeLabel = this.getProgramTypeLabel();
         const emoji = this.getProgramEmoji();
         
-        // Program select
         const programSelect = document.getElementById('sessionProgram');
         if (programSelect && program) {
             programSelect.innerHTML = `<option value="${program}">${program} (${typeLabel})</option>`;
         }
         
-        // Block select with TVET display
         const blocks = [...new Set(this.assignedUnits.map(u => u.block).filter(Boolean))];
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (blockSelect) {
@@ -866,16 +864,13 @@ const LecturerSessions = {
             }
         }
         
-        // Update block label
         const blockLabel = document.getElementById('sessionBlockLabel');
         if (blockLabel) {
             blockLabel.innerHTML = `<i class="fas fa-layer-group" style="color: #4C1D95; width: 18px;"></i> ${this.isTVET ? 'Term' : 'Block'} *`;
         }
         
-        // Unit dropdown
         this.populateUnitDropdowns();
         
-        // Session type
         const typeSelect = document.getElementById('sessionType');
         if (typeSelect) {
             typeSelect.innerHTML = `
@@ -887,7 +882,6 @@ const LecturerSessions = {
             `;
         }
         
-        // Set default date to tomorrow
         const dateInput = document.getElementById('sessionDate');
         if (dateInput) {
             const tomorrow = new Date();
@@ -895,13 +889,11 @@ const LecturerSessions = {
             dateInput.value = tomorrow.toISOString().split('T')[0];
         }
         
-        // Set default time
         const timeInput = document.getElementById('sessionTime');
         if (timeInput) {
             timeInput.value = '09:00';
         }
         
-        // Update form subtitle
         const formSubtitle = document.querySelector('#addSessionForm .form-subtitle');
         if (formSubtitle) {
             formSubtitle.textContent = `${emoji} ${typeLabel} - Schedule sessions for your assigned units`;
@@ -923,7 +915,6 @@ const LecturerSessions = {
             });
         }
         
-        // Block filter change - filter units by block
         const blockSelect = document.getElementById('sessionBlockTerm');
         if (blockSelect) {
             blockSelect.addEventListener('change', () => {
@@ -935,7 +926,7 @@ const LecturerSessions = {
                         unitSelect.innerHTML = '<option value="">-- Select Unit --</option>' +
                             filtered.map(u => {
                                 const blockDisplay = this.getBlockDisplay(u.block);
-                                return `<option value="${u.subject_name}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name} (${blockDisplay})</option>`;
+                                return `<option value="${u.subject_name}" data-year="${u.academic_year || ''}">${u.subject_code ? u.subject_code + ' - ' : ''}${u.subject_name} (${blockDisplay})</option>`;
                             }).join('');
                     } else {
                         unitSelect.innerHTML = '<option value="">-- No units in this block --</option>';
@@ -946,7 +937,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // HANDLE ADD SESSION - WITH TVET SUPPORT
+    // HANDLE ADD SESSION - WITH INTAKE YEAR FROM ASSIGNMENT
     // ============================================
     async handleAddSession(e) {
         if (this.isProcessing) return;
@@ -996,7 +987,17 @@ const LecturerSessions = {
                 throw new Error('Database connection not available');
             }
             
-            // Get block display for the session
+            // ✅ Look up the assigned unit to get its academic year (intake year)
+            const matchedUnit = this.assignedUnits.find(
+                u => u.subject_name === formData.unit && u.block === formData.block
+            );
+            const intakeYear = matchedUnit?.academic_year 
+                || profile?.intake_year 
+                || new Date().getFullYear().toString();
+            
+            console.log(`🎓 Resolved intake_year: ${intakeYear} (from ${matchedUnit?.academic_year ? 'assignment' : 'profile/fallback'})`);
+            console.log(`🎓 Matched unit:`, matchedUnit);
+            
             const blockDisplay = this.getBlockDisplay(formData.block);
             
             const sessionData = {
@@ -1011,11 +1012,12 @@ const LecturerSessions = {
                 session_type: formData.type,
                 location_name: formData.location || 'Lecture Hall',
                 created_by: lecturerUuid,
+                lecturer_id: this.lecturerUuid || lecturerUuid,
                 approval_status: 'pending',
                 status: 'scheduled',
                 is_active: false,
                 capacity: parseInt(formData.capacity) || 0,
-                intake_year: new Date().getFullYear().toString(),
+                intake_year: intakeYear,
                 unit_name: formData.unit,
                 is_tvet: this.isTVET,
                 program_type_label: typeLabel,
@@ -1104,7 +1106,6 @@ const LecturerSessions = {
         const countDisplay = document.getElementById('sessionCountDisplay');
         if (countDisplay) countDisplay.textContent = sessions.length;
         
-        // Update title
         const titleEl = document.querySelector('#sessions-content h3');
         if (titleEl) {
             titleEl.textContent = `${emoji} My Sessions (${typeLabel})`;
@@ -1112,7 +1113,7 @@ const LecturerSessions = {
     },
     
     // ============================================
-    // EXPORT SESSIONS - WITH TVET SUPPORT
+    // EXPORT SESSIONS
     // ============================================
     exportSessions() {
         const sessions = this.sessions;
@@ -1123,9 +1124,9 @@ const LecturerSessions = {
         
         const typeLabel = this.getProgramTypeLabel();
         
-        const headers = ['Topic', 'Date', 'Time', 'Type', 'Program', 'Block', 'Unit', 'Block Display', 'Status', 'Approval', 'Program Type'];
+        const headers = ['Topic', 'Date', 'Time', 'Type', 'Program', 'Block', 'Intake Year', 'Unit', 'Block Display', 'Status', 'Approval', 'Program Type'];
         const rows = sessions.map(s => {
-            const blockDisplay = s.block_term ? this.getBlockDisplay(s.block_term) : 'N/A';
+            const blockDisplay = s.block_display || (s.block_term ? this.getBlockDisplay(s.block_term) : 'N/A');
             return [
                 s.session_title || s.title || 'N/A',
                 s.session_date || 'N/A',
@@ -1133,6 +1134,7 @@ const LecturerSessions = {
                 s.session_type || 'Class',
                 s.target_program || 'N/A',
                 s.block_term || 'N/A',
+                s.intake_year || 'N/A',
                 s.unit_name || 'N/A',
                 blockDisplay,
                 s.status || 'scheduled',
@@ -1250,3 +1252,5 @@ console.log('✅ LecturerSessions module loaded - Complete with TVET support');
 console.log('🔒 Lecturers can only see and manage their own sessions');
 console.log('📚 Unit filtering matches Resources and Marks modules');
 console.log('📊 TVET Support: Enabled (Year X Term Y format)');
+console.log('🎓 intake_year now pulled from lecturer_subject_assignments.academic_year');
+console.log('🔗 lecturer_id now populated for proper joins');
