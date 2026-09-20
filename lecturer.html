@@ -6593,11 +6593,12 @@ window.LecturerOnlineLearning = (() => {
         if(!state.userId){notify('Lecturer user ID could not be resolved.','error');return false;}
 
         const id=$('olAssignmentId').value;
-        const gradingMode=$('olGradingMode')?.value||'topic_keywords';
-        const markingKeyId=$('olMarkingKeyId')?.value||null;
-        const keywords=parseJsonArray($('olGradingKeywords')?.value||'');
-        const expectedTopics=String($('olExpectedTopics')?.value||'').split(/\r?\n/).map(x=>x.trim()).filter(Boolean);
-        const guidance=$('olGradingGuidance')?.value.trim()||null;
+        const localKey=LOCAL_MARKING_KEYS.find(k=>k.id===$('olMarkingKeyLocal')?.value)||resolveLocalMarkingKey({title:$('olTitle').value,assignment_type:$('olType').value,instructions:$('olInstructions').value});
+        const gradingMode=localKey?'marking_key':'topic_keywords';
+        const markingKeyId=null;
+        const keywords=localKey?.keywords||[];
+        const expectedTopics=localKey?.expected_topics||[];
+        const guidance=localKey?.grading_guidance||null;
 
         const dueValue=$('olDueAt').value;
         const dueDate=dueValue?new Date(dueValue):null;
@@ -6618,7 +6619,7 @@ window.LecturerOnlineLearning = (() => {
             allow_document_upload:$('olAllowUpload').checked,
             allow_resubmission:$('olAllowResubmit').checked,
             grading_mode:gradingMode,
-            marking_key_id:gradingMode==='marking_key'?markingKeyId:null,
+            marking_key_id:null,
             grading_keywords:keywords,
             expected_topics:expectedTopics,
             grading_guidance:guidance,
@@ -6626,8 +6627,8 @@ window.LecturerOnlineLearning = (() => {
             published:!!forcePublish
         };
 
-        if(gradingMode==='marking_key' && !markingKeyId){
-            notify('Select a formal marking key or switch Grading Mode to Topic / Keywords.','error');
+        if(gradingMode==='marking_key' && !localKey){
+            notify('No institutional marking key matches this assignment.','error');
             return false;
         }
 
@@ -6849,188 +6850,252 @@ window.LecturerOnlineLearning = (() => {
         }));
     }
     // ============================================================
-    // SUPABASE-DRIVEN ASSIGNMENT GRADING
-    // Formal marking keys are stored in online_marking_keys.
-    // Ordinary assignments use topic/keywords/expected topics.
+    // LOCAL INSTITUTIONAL MARKING KEYS
     // ============================================================
-    const markingKeyState = { keys: [], loaded:false };
+    // Automatic grading uses the institutional marking key embedded in this
+    // lecturer module. It does NOT fetch the marking key from Supabase.
+    // Supabase remains only the application database for assignments,
+    // submissions and grades; the grading rubric itself is local here.
+    // ============================================================
+    const LOCAL_MARKING_KEYS = [
+      {
+        id:'local-community-health-v1', title:'Community Health Nursing Case Study', version:1,
+        max_marks:100, source_document:'Case_Study_Guidelines.pdf',
+        description:'Marking Key: Community Health Nursing Case Study',
+        keywords:['family assessment','home visiting','health problems','prioritization','health needs','health education','health promotion','intervention','evaluation','follow up','lesson plan'],
+        expected_topics:['Cover page','Table of contents','Acknowledgement','Rationale','Family description','Family bio data','Family case study','Student assessment','Health care evaluation','Health education','Home visits','Summary','Conclusion','Recommendations','Lesson plan'],
+        grading_guidance:'Use the institutional marking key as the controlling rubric. Award marks only against the listed criteria and requirements. Generic keyword occurrence is not evidence. Require actual content from the submitted work. Lecturer must review the suggested score before release.',
+        criteria:[
+          {sno:0,criterion:'Cover page',max_marks:1,requirements:[
+            {description:'Title',evidence_terms:['title of case study','community health nursing case study'],weight:1},
+            {description:'Name of student',evidence_terms:['name of student','student name'],weight:1},
+            {description:'College number',evidence_terms:['college no','college number','college number:'],weight:1},
+            {description:'Class',evidence_terms:['class'],weight:1},
+            {description:'Date of completion',evidence_terms:['date of completion','completion date'],weight:1}
+          ]},
+          {sno:1,criterion:'Table of contents',max_marks:2,requirements:[
+            {description:'Actual table of contents listing the major sections of the case study',evidence_terms:['table of contents','contents'],weight:1}
+          ]},
+          {sno:2,criterion:'Acknowledgement',max_marks:2,requirements:[
+            {description:'Actual acknowledgement section expressing acknowledgement/gratitude',evidence_terms:['acknowledgement','acknowledgment'],weight:1}
+          ]},
+          {sno:4,criterion:'Rationale / Reason(s) for selection of the client home visiting',max_marks:3,requirements:[
+            {description:'Reasons for selecting the client for home visiting',evidence_terms:['reason for selection','reasons for selection','rationale for selecting','selected for home visit','reason for home visiting'],weight:1}
+          ]},
+          {sno:5,criterion:'General description of the family',max_marks:4,requirements:[
+            {description:'Occupation of family members/household',evidence_terms:['occupation of the family','family occupation','occupation of head of household'],weight:1},
+            {description:'Health status of the family',evidence_terms:['health status of the family','family health status'],weight:1},
+            {description:'Environmental sanitation',evidence_terms:['environmental sanitation','sanitation'],weight:1},
+            {description:'Health services available',evidence_terms:['health services available','available health services','health services'],weight:1}
+          ]},
+          {sno:6,criterion:'Family Bio data',max_marks:3,requirements:[
+            {description:"Adults' age",evidence_terms:["adults age","age of adults","adult age"],weight:1},
+            {description:"Adults' state of health",evidence_terms:["adults state of health","adult state of health"],weight:1},
+            {description:"Adults' occupation",evidence_terms:["adults occupation","adult occupation"],weight:1},
+            {description:"Children's date of birth",evidence_terms:["children date of birth","child date of birth","date of birth"],weight:1},
+            {description:"Children's state of health",evidence_terms:["children state of health","child state of health"],weight:1},
+            {description:"Children's immunization status",evidence_terms:["immunization status","immunization","vaccination status"],weight:1},
+            {description:'Family history',evidence_terms:['family history'],weight:1},
+            {description:'Family background',evidence_terms:['family background'],weight:1}
+          ]},
+          {sno:7,criterion:'Introduction to Family Case study',max_marks:16,requirements:[
+            {description:'Urban/rural address',evidence_terms:['urban address','rural address','residential address','village','location','sub county','county'],weight:2},
+            {description:'Housing',evidence_terms:['housing','house type','state of repair','cleanliness of home','house owned','number of rooms','rooms occupied'],weight:2},
+            {description:'Source of water',evidence_terms:['source of water','sources of water','water source'],weight:2},
+            {description:'Family main food and source',evidence_terms:['main food','source of food','basic diet','food bought','food grown by family'],weight:2},
+            {description:'Refuse disposal',evidence_terms:['refuse disposal','disposal of refuse','waste disposal'],weight:2},
+            {description:'Excreta disposal',evidence_terms:['excreta disposal','latrine','lavatory arrangements','toilet'],weight:2},
+            {description:'Vector control',evidence_terms:['vector control','mosquito control','pest control'],weight:2},
+            {description:'General condition of compound',evidence_terms:['condition of compound','compound condition'],weight:2}
+          ]},
+          {sno:8,criterion:"Students Assessment of the family",max_marks:20,requirements:[
+            {description:'Identification of health problems',evidence_terms:['identification of health problems','health problems identified','identified health problems'],weight:10},
+            {description:'Prioritization of health needs',evidence_terms:['prioritization of health needs','prioritisation of health needs','priority health needs','prioritizing health needs','prioritising health needs'],weight:10}
+          ]},
+          {sno:9,criterion:'Evaluation of the health care, health education/promotional messages to the family',max_marks:32,requirements:[
+            {description:'1st Visit: Familiarization',evidence_terms:['first visit familiarization','1st visit familiarization','familiarization'],weight:1},
+            {description:'1st Visit: Assessment of home environment',evidence_terms:['assessment of home environment','home environment assessment'],weight:1},
+            {description:'1st Visit: Assessment of family health status',evidence_terms:['assessment of family health status','family health status assessment'],weight:2},
+            {description:'1st Visit: Identification of health needs',evidence_terms:['identification of health needs','identified health needs'],weight:3},
+            {description:'1st Visit: Prioritizing health needs',evidence_terms:['prioritizing health needs','prioritising health needs','priority health needs'],weight:3},
+            {description:'1st Visit: Planning for intervention',evidence_terms:['planning for intervention','intervention plan','planned intervention'],weight:3},
+            {description:'2nd Visit: Intervention of the first identified priority health needs',evidence_terms:['second visit','2nd visit','first identified priority health needs','intervention of the first priority'],weight:2},
+            {description:'3rd Visit: Evaluation of 2nd visit intervention',evidence_terms:['third visit','3rd visit','evaluation of 2nd visit intervention','evaluation of second visit intervention'],weight:2},
+            {description:'3rd Visit: Intervention of another identified health needs',evidence_terms:['intervention of another identified health needs','another identified health need'],weight:3},
+            {description:'3rd Visit: Prepare client for termination of follow-up',evidence_terms:['prepare client for termination','termination of follow-up','termination of follow up'],weight:2},
+            {description:'4th Visit: Evaluation of all interventions',evidence_terms:['fourth visit','4th visit','evaluation of all interventions'],weight:2},
+            {description:'4th Visit: Plan for way forward',evidence_terms:['plan for way forward','way forward'],weight:2},
+            {description:'4th Visit: Terminate the follow-up',evidence_terms:['terminate the follow-up','terminate follow up','termination of follow-up'],weight:2}
+          ]},
+          {sno:10,criterion:'Summary of the care',max_marks:5,requirements:[
+            {description:'Summary of care provided to the family/client',evidence_terms:['summary of the care','summary of care'],weight:1}
+          ]},
+          {sno:11,criterion:'Study Conclusions',max_marks:3,requirements:[
+            {description:'Conclusions drawn from the case study and care provided',evidence_terms:['study conclusions','conclusion of the study','conclusion'],weight:1}
+          ]},
+          {sno:12,criterion:'Recommendations',max_marks:5,requirements:[
+            {description:'Recommendations for the family/future care',evidence_terms:['recommendations','recommendations for the future'],weight:1}
+          ]},
+          {sno:13,criterion:'Appendices: Lesson plan',max_marks:4,requirements:[
+            {description:'Lesson plan included as an appendix',evidence_terms:['lesson plan','appendix lesson plan'],weight:1}
+          ]}
+        ]
+      },
+      {
+        id:'local-general-nursing-v1', title:'General Nursing Case Study', version:1, max_marks:100,
+        source_document:'Case_Study_Guidelines.pdf', description:'Sample Marking Key for General Nursing Case Study',
+        keywords:['patient information','history','physical examination','investigations','admission','medical surgical management','nursing care plan','pharmacology','discharge plan','literature review','summary','conclusion','references'],
+        expected_topics:['Introduction','Patient information','Admission details','Subsequent management','Literature review','Summary','Conclusion','References'],
+        grading_guidance:'Use the General Nursing Case Study marking key. Judge actual content, not isolated keyword occurrence. The PDF contains detailed requirements for history, management, pharmacology and care planning.',
+        criteria:[
+          {criterion:'Introduction',max_marks:5,requirements:[{description:"Brief overview of the patient's condition",evidence_terms:['patient condition','overview of the patient','introduction to the patient'],weight:1}]},
+          {criterion:'Patient information - Biodata',max_marks:5,requirements:[{description:'Patient biodata/personal data',evidence_terms:['biodata','personal data','patient information'],weight:1}]},
+          {criterion:'Patient information - History',max_marks:10,requirements:[{description:'Comprehensive patient history including relevant history components',evidence_terms:['comprehensive history','chief complaint','history of present illness','past medical history','past surgical history','family social history'],weight:1}]},
+          {criterion:'Patient information - Physical examination',max_marks:10,requirements:[{description:'Head-to-toe physical examination',evidence_terms:['physical examination','head to toe examination','head-to-toe'],weight:1}]},
+          {criterion:'Patient information - Investigations',max_marks:5,requirements:[{description:'Investigations/findings',evidence_terms:['investigations','laboratory investigations','investigation findings'],weight:1}]},
+          {criterion:'Admission details',max_marks:5,requirements:[{description:'Condition, diagnosis, immediate management and coping with hospitalization',evidence_terms:['condition on admission','medical diagnosis','immediate management on admission','coping with hospitalization'],weight:1}]},
+          {criterion:'Subsequent management - Medical/Surgical management',max_marks:15,requirements:[{description:'Detailed medical/surgical management',evidence_terms:['medical management','surgical management','medical surgical management'],weight:1}]},
+          {criterion:'Subsequent management - Nursing management (Nursing care plan)',max_marks:2,requirements:[{description:'Comprehensive nursing care plan covering 24 hours',evidence_terms:['nursing care plan','nursing management','24 hour nursing care plan'],weight:1}]},
+          {criterion:'Subsequent management - Supportive management',max_marks:5,requirements:[{description:'Supportive management',evidence_terms:['supportive management','supportive care'],weight:1}]},
+          {criterion:'Subsequent management - Pharmacology',max_marks:3,requirements:[{description:'Drug classification, action, dosage/route, indications/contraindications, side effects and nursing responsibilities',evidence_terms:['drug classification','mode of action','dosage and route','indications and contraindications','side effects','nursing responsibilities'],weight:1}]},
+          {criterion:'Subsequent management - Discharge plan',max_marks:5,requirements:[{description:'Discharge plan',evidence_terms:['discharge plan','discharge planning'],weight:1}]},
+          {criterion:'Literature review - Description of the disorder',max_marks:10,requirements:[{description:'Disease description including aetiology, pathophysiology and clinical features',evidence_terms:['aetiology','etiology','pathophysiology','clinical features','description of the disease','description of the disorder'],weight:1}]},
+          {criterion:'Literature review - Comparison of actual and ideal management',max_marks:10,requirements:[{description:'Comparison of actual management with ideal management',evidence_terms:['comparison of actual and ideal management','actual management','ideal management'],weight:1}]},
+          {criterion:'Summary',max_marks:5,requirements:[{description:'Summary of the case/care',evidence_terms:['summary'],weight:1}]},
+          {criterion:'Conclusion',max_marks:2,requirements:[{description:'Conclusion',evidence_terms:['conclusion'],weight:1}]},
+          {criterion:'References',max_marks:3,requirements:[{description:'Bibliography/references using recommended institutional style',evidence_terms:['references','bibliography','referencing style'],weight:1}]}
+        ]
+      },
+      {
+        id:'local-midwifery-v1', title:'Midwifery Case Study', version:1, max_marks:100,
+        source_document:'Case_Study_Guidelines.pdf', description:'Midwifery Case Study Marking Key',
+        keywords:['antenatal','intrapartum','postpartum','mother','baby','follow up','referral','literature review','newborn'],
+        expected_topics:['Introduction','Patient information','Antenatal Period','Intrapartum period','Post-partum period','Follow up and referral','Literature review','Summary','Conclusion','References'],
+        grading_guidance:'Use the Midwifery Case Study marking key. The PDF specifies the detailed clinical areas expected in antenatal, intrapartum and postpartum care.',
+        criteria:[
+          {criterion:'Introduction',max_marks:2,requirements:[{description:'Introduction',evidence_terms:['introduction'],weight:1}]},
+          {criterion:"Patient's information",max_marks:3,requirements:[{description:"Patient's information",evidence_terms:["patient's information",'patient information'],weight:1}]},
+          {criterion:'Antenatal Period - History',max_marks:5,requirements:[{description:'Antenatal history',evidence_terms:['antenatal history','history during pregnancy'],weight:1}]},
+          {criterion:'Antenatal Period - Physical examination',max_marks:5,requirements:[{description:'Head-to-toe and focused breast/abdominal examination',evidence_terms:['physical examination','head to toe','breast examination','abdominal examination','focused examination'],weight:1}]},
+          {criterion:'Antenatal Period - Investigations',max_marks:5,requirements:[{description:'Antenatal investigations',evidence_terms:['antenatal investigations','investigations'],weight:1}]},
+          {criterion:'Antenatal Period - Care provided',max_marks:10,requirements:[{description:'Care provided during antenatal period',evidence_terms:['care provided','antenatal care'],weight:1}]},
+          {criterion:'Antenatal Period - Follow-up',max_marks:5,requirements:[{description:'Antenatal follow-up',evidence_terms:['follow-up','follow up','antenatal follow up'],weight:1}]},
+          {criterion:'Intrapartum period - Care of the mother',max_marks:10,requirements:[{description:'Management of labour and care of mother through stages',evidence_terms:['management of labour','first stage','second stage','third stage','fourth stage','care of the mother'],weight:1}]},
+          {criterion:'Intrapartum period - Care of the baby',max_marks:10,requirements:[{description:'Mode of birth, resuscitation/complications and essential newborn care',evidence_terms:['mode of birth','resuscitation','essential newborn care','care of the baby'],weight:1}]},
+          {criterion:'Post-partum period - Care of the mother',max_marks:10,requirements:[{description:'Maternal physical examination, vital signs, investigations and midwifery care',evidence_terms:['physical examination','vital signs','investigations','midwifery care','postpartum care'],weight:1}]},
+          {criterion:'Post-partum period - Care of the baby',max_marks:10,requirements:[{description:'Baby physical examination, vital signs, investigations where applicable and newborn care',evidence_terms:['baby physical examination','vital signs','newborn care','care provided to the newborn'],weight:1}]},
+          {criterion:'Follow up and referral',max_marks:2,requirements:[{description:'Discharge condition, postnatal visits and referral',evidence_terms:['discharge','post-natal care visits','postnatal care visits','referral','community follow up'],weight:1}]},
+          {criterion:'Literature review - Description of the condition',max_marks:5,requirements:[{description:'Description of the condition',evidence_terms:['description of the condition','literature review'],weight:1}]},
+          {criterion:'Literature review - Comparison of actual and ideal management',max_marks:10,requirements:[{description:'Comparison of actual and ideal management',evidence_terms:['comparison of the actual and ideal management','actual management','ideal management'],weight:1}]},
+          {criterion:'Summary',max_marks:3,requirements:[{description:"Summary of patient's present condition, prognosis and recommendation",evidence_terms:['summary','present condition','prognosis'],weight:1}]},
+          {criterion:'Conclusion',max_marks:2,requirements:[{description:'Conclusion',evidence_terms:['conclusion'],weight:1}]},
+          {criterion:'References',max_marks:3,requirements:[{description:'Bibliography/references',evidence_terms:['references','bibliography'],weight:1}]}
+        ]
+      },
+      {
+        id:'local-mental-health-v1', title:'Mental Health and Psychiatry Nursing Case Study', version:1, max_marks:100,
+        source_document:'Case_Study_Guidelines.pdf', description:'Marking Key for Mental Health and Psychiatry Nursing Case Study',
+        keywords:['mental status','patient history','management','nursing process','follow up','literature review','evaluation','recommendations','bibliography'],
+        expected_topics:['Introduction','Patient history','Mental status assessment','Management','Nursing process','Follow up care','Literature review','Evaluation','Conclusion','Recommendations','Bibliography'],
+        grading_guidance:'Use the Mental Health and Psychiatry Nursing Case Study marking key. Evaluate the actual documented psychiatric assessment and management components.',
+        criteria:[
+          {criterion:'Introduction',max_marks:5,requirements:[{description:'Particulars of patient and reason for admission',evidence_terms:['patient information','particulars of the patient','reason for admission','presenting complaint'],weight:1}]},
+          {criterion:'Patient history',max_marks:15,requirements:[
+            {description:'Family history',evidence_terms:['family history'],weight:1},{description:'Social history',evidence_terms:['social history'],weight:1},{description:'Education/childhood history',evidence_terms:['education','childhood experiences','school attended'],weight:1},{description:'Past medical history',evidence_terms:['past medical history','past illness'],weight:1},{description:'Premorbid personality',evidence_terms:['premorbid personality'],weight:1},{description:'Present illness',evidence_terms:['present illness','history of present illness'],weight:1}
+          ]},
+          {criterion:'Mental status assessment and documentation of report',max_marks:15,requirements:[
+            {description:'Appearance and behaviour/motor activity',evidence_terms:['appearance and behaviour','motor activity'],weight:1},{description:'Speech',evidence_terms:['speech'],weight:1},{description:'Mood and affect',evidence_terms:['mood and affect','mood','affect'],weight:1},{description:'Thought process and content',evidence_terms:['thought process','thought content'],weight:1},{description:'Orientation',evidence_terms:['orientation'],weight:1},{description:'Memory',evidence_terms:['memory'],weight:1},{description:'Concentration',evidence_terms:['concentration'],weight:1},{description:'Perception',evidence_terms:['perception'],weight:1},{description:'Judgement',evidence_terms:['judgement','judgment'],weight:1},{description:'Insight',evidence_terms:['insight'],weight:1}
+          ]},
+          {criterion:'Management of the patient condition',max_marks:15,requirements:[{description:'Physical examination and findings',evidence_terms:['physical examination findings','physical examination'],weight:1},{description:'Investigations and medical findings',evidence_terms:['investigation and medical findings','investigations'],weight:1},{description:'Treatment including drug details and response',evidence_terms:['treatment given','dosage','side effects','patient response'],weight:1},{description:'Nursing care during stay',evidence_terms:['nursing care','care given throughout'],weight:1},{description:'Therapeutic interaction',evidence_terms:['interaction with the patient','therapeutic interaction'],weight:1},{description:'Discharge and follow-up preparation',evidence_terms:['preparation for discharge','follow up','home visit','mental status assessment before discharge'],weight:1}]},
+          {criterion:'Application of the nursing process in managing the patient',max_marks:15,requirements:[{description:'Nursing process applied to patient management',evidence_terms:['nursing process','nursing care plan','assessment','nursing diagnosis','planning','implementation','evaluation'],weight:1}]},
+          {criterion:'Follow up care',max_marks:5,requirements:[{description:'Follow-up care',evidence_terms:['follow up care','follow-up care','home visit','parole'],weight:1}]},
+          {criterion:'Literature review: Comparison of the actual and ideal management',max_marks:10,requirements:[{description:'Actual versus ideal management comparison',evidence_terms:['comparison of the actual and ideal management','actual management','ideal management'],weight:1}]},
+          {criterion:'Evaluation',max_marks:5,requirements:[{description:'Evaluation of care/outcome',evidence_terms:['evaluation'],weight:1}]},
+          {criterion:'Conclusion',max_marks:5,requirements:[{description:'Conclusion',evidence_terms:['conclusion'],weight:1}]},
+          {criterion:'Recommendations',max_marks:5,requirements:[{description:'Recommendations',evidence_terms:['recommendations','recommendation'],weight:1}]},
+          {criterion:'Bibliography',max_marks:5,requirements:[{description:'Bibliography/references',evidence_terms:['bibliography','references'],weight:1}]}
+        ]
+      }
+      ,{
+        id:'local-research-proposal-v1', title:'Sample Research Proposal Outline and Marking Key', version:1, max_marks:100,
+        source_document:'Case_Study_Guidelines.pdf', description:'Sample Research Proposal Outline and Marking Key (Appendix V)',
+        keywords:['researchable topic','abstract','introduction','background information','research problem','research questions','objectives','rationale','significance','literature review','methodology','references','appendices','presentation'],
+        expected_topics:['Topic','Table of content','Acknowledgements','Abstract','Introduction','Background information','Research problem','Research questions','Objectives','Rationale and significance','Literature review','Methodology','References','Appendices','Presentation of the write up'],
+        grading_guidance:'Use the institutional Research Proposal marking key. The source states TOTAL 100, while the visible line-item marks sum to 95. Do not invent the missing 5 marks; report the 95 allocated marks and flag the rubric for institutional review.',
+        criteria:[
+          {criterion:'Topic',max_marks:2,requirements:[{description:'Topic is researchable',evidence_terms:['researchable topic','researchable'],weight:1}]},
+          {criterion:'Table of content',max_marks:2,requirements:[{description:'Table of content',evidence_terms:['table of content','table of contents'],weight:1}]},
+          {criterion:'Acknowledgements',max_marks:1,requirements:[{description:'Acknowledgements',evidence_terms:['acknowledgements','acknowledgement'],weight:1}]},
+          {criterion:'Abstract',max_marks:5,requirements:[{description:'Abstract contains all major aspects and is not more than 300 words',evidence_terms:['abstract','background','problem','objectives','methodology','significance'],weight:1}]},
+          {criterion:'Introduction',max_marks:3,requirements:[{description:'Explains topic, scope and who is affected',evidence_terms:['scope of the topic','who is affected','introduction'],weight:1}]},
+          {criterion:'Background information',max_marks:10,requirements:[{description:'Historical perspective and global, regional and study-area progression',evidence_terms:['historical perspective','global','regional','study area'],weight:1}]},
+          {criterion:'Research problem',max_marks:5,requirements:[{description:'Research problem is precise and focused',evidence_terms:['research problem','problem statement','precise and focused'],weight:1}]},
+          {criterion:'Research questions',max_marks:4,requirements:[{description:'Research questions',evidence_terms:['research questions'],weight:1}]},
+          {criterion:'Objectives',max_marks:6,requirements:[{description:'Broad objective clearly states the core problem',evidence_terms:['broad objective','general objective'],weight:1},{description:'Specific objectives are 3-5 and SMART',evidence_terms:['specific objectives','smart objectives','specific objectives should be smart'],weight:1}]},
+          {criterion:'Rationale (justification) and Significance of the study',max_marks:5,requirements:[{description:'Reasons for studying the problem',evidence_terms:['rationale','justification','reasons for studying'],weight:1},{description:'Significance to participants, institution, health policy and guideline procedures',evidence_terms:['significance of the study','study participants','participating institution','health policy'],weight:1}]},
+          {criterion:'Literature review',max_marks:12,requirements:[{description:'Literature relevant to the research and current',evidence_terms:['literature review','relevant literature','current literature'],weight:1}]},
+          {criterion:'Methodology',max_marks:23,requirements:[
+            {description:'Study design',evidence_terms:['study design'],weight:1},{description:'Sampling target population, location and strategy',evidence_terms:['target population','sampling strategy','sampling'],weight:1},{description:'Sample size determination',evidence_terms:['sample size','sample size determination'],weight:1},{description:'Inclusion and exclusion criteria',evidence_terms:['inclusion criteria','exclusion criteria'],weight:1},{description:'Data collection methods and instruments',evidence_terms:['data collection methods','data collection instruments','research instrument'],weight:1},{description:'Pretesting, reliability and validity',evidence_terms:['pretesting','reliability','validity'],weight:1},{description:'Data collection procedure',evidence_terms:['data collection procedure'],weight:1},{description:'Timeline and budget',evidence_terms:['timeline','budget'],weight:1},{description:'Data analysis and presentation',evidence_terms:['data analysis','data presentation','presentation of data'],weight:1},{description:'Ethical consideration',evidence_terms:['ethical consideration','ethics','ethical considerations'],weight:1}
+          ]},
+          {criterion:'References',max_marks:2,requirements:[{description:'All cited references listed using recommended institutional format',evidence_terms:['references','referencing style','institutional format'],weight:1}]},
+          {criterion:'Appendices',max_marks:10,requirements:[{description:'Relevant supporting documents such as questionnaires, interview schedule, authorization letters, maps, photos, budget and workplan',evidence_terms:['questionnaire','interview schedule','authorization letters','maps','photos','budget','workplan','appendices'],weight:1}]},
+          {criterion:'Presentation of the write up',max_marks:5,requirements:[{description:'Presentation of the write up',evidence_terms:['presentation of the write up','presentation'],weight:1}]
+          }
+        ]
+      }
 
+    ];
+
+    const markingKeyState={keys:LOCAL_MARKING_KEYS,loaded:true};
     function parseJsonArray(value){
-        if(Array.isArray(value)) return value;
-        if(value == null || value === '') return [];
-        try{
-            const parsed=JSON.parse(value);
-            return Array.isArray(parsed)?parsed:[];
-        }catch(e){
-            return String(value).split(',').map(x=>x.trim()).filter(Boolean);
-        }
+      if(Array.isArray(value)) return value;
+      if(value==null||value==='') return [];
+      try{const p=JSON.parse(value);return Array.isArray(p)?p:[];}catch(e){return String(value).split(',').map(x=>x.trim()).filter(Boolean);}
     }
-
-    async function loadMarkingKeys(){
-        const db=client(); if(!db) return [];
-        const r=await db.from('online_marking_keys')
-            .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,created_by,grading_schema_version,source_document,source_notes,allocated_marks,validation_status')
-            .eq('is_active',true)
-            .order('title',{ascending:true});
-        if(r.error){
-            console.warn('Marking keys could not load:',r.error.message);
-            markingKeyState.keys=[];
-            return [];
-        }
-        markingKeyState.keys=r.data||[];
-        markingKeyState.loaded=true;
-        return markingKeyState.keys;
+    function loadMarkingKeys(){ return LOCAL_MARKING_KEYS; }
+    function resolveLocalMarkingKey(assignment){
+      const hay=normalizeText(`${assignment?.title||''} ${assignment?.description||''} ${assignment?.instructions||''} ${assignment?.type||assignment?.assignment_type||''}`);
+      const rules=[
+        [LOCAL_MARKING_KEYS[0],['community health','community case study','community nursing','family case study']],
+        [LOCAL_MARKING_KEYS[1],['general nursing','general case study','medical nursing case study','surgical nursing case study']],
+        [LOCAL_MARKING_KEYS[2],['midwifery','midwifery case study','maternity case study']],
+        [LOCAL_MARKING_KEYS[3],['mental health','psychiatry','psychiatric case study']],
+        [LOCAL_MARKING_KEYS[4],['research proposal','research proposal outline','research project proposal']]
+      ];
+      for(const [key,terms] of rules) if(terms.some(t=>hay.includes(normalizeText(t)))) return key;
+      return null;
     }
-
     async function ensureAssignmentGradingFields(){
-        let wrap=$('olAssignmentGradingFields');
-        if(wrap) return wrap;
-
-        const anchor=$('olInstructions');
-        if(!anchor) return null;
-        const host=anchor.closest('.ol-form') || anchor.parentElement?.parentElement || anchor.parentElement;
-        if(!host) return null;
-
-        wrap=document.createElement('div');
-        wrap.id='olAssignmentGradingFields';
-        wrap.className='ol-full';
-        wrap.style.cssText='margin-top:12px;padding:14px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc';
-        wrap.innerHTML=`
-          <div style="font-weight:800;color:#18304d;margin-bottom:4px">
-            <i class="fas fa-robot"></i> AI Grading Configuration
-          </div>
-          <div style="font-size:11px;color:#64748b;margin-bottom:12px">
-            Use a formal marking key when one applies. Otherwise the AI grades from the assignment topic, instructions, keywords and expected topics.
-          </div>
-          <div class="ol-form">
-            <div>
-              <label>Grading Mode</label>
-              <select id="olGradingMode">
-                <option value="topic_keywords">Topic / Keywords</option>
-                <option value="marking_key">Formal Marking Key</option>
-              </select>
-            </div>
-            <div>
-              <label>Formal Marking Key</label>
-              <select id="olMarkingKeyId">
-                <option value="">No marking key</option>
-              </select>
-            </div>
-            <div class="ol-full">
-              <label>Keywords / Key Concepts <span style="font-weight:400;color:#64748b">(comma separated)</span></label>
-              <textarea id="olGradingKeywords" rows="2" placeholder="e.g. family assessment, home visiting, health education, intervention, evaluation"></textarea>
-            </div>
-            <div class="ol-full">
-              <label>Expected Topics / Areas <span style="font-weight:400;color:#64748b">(one per line)</span></label>
-              <textarea id="olExpectedTopics" rows="3" placeholder="Family health status&#10;Identification of health needs&#10;Planning interventions&#10;Evaluation"></textarea>
-            </div>
-            <div class="ol-full">
-              <label>Grading Guidance</label>
-              <textarea id="olGradingGuidance" rows="2" placeholder="Explain what a good answer should demonstrate and any special marking instructions."></textarea>
-            </div>
-          </div>`;
-        host.parentElement?.insertBefore(wrap,host.nextSibling) || host.appendChild(wrap);
-
-        const mode=$('olGradingMode'), key=$('olMarkingKeyId');
-        mode?.addEventListener('change',()=>{
-            const formal=mode.value==='marking_key';
-            if(key) key.disabled=!formal;
-        });
-        key?.addEventListener('change',()=>{
-            const selected=markingKeyState.keys.find(k=>String(k.id)===String(key.value));
-            if(!selected) return;
-            if(mode) mode.value='marking_key';
-            $('olMaxMarks').value=selected.max_marks||$('olMaxMarks').value;
-            const criteria=Array.isArray(selected.criteria)?selected.criteria:[];
-            $('olGradingKeywords').value=(Array.isArray(selected.keywords)?selected.keywords:[]).join(', ');
-            $('olExpectedTopics').value=(Array.isArray(selected.expected_topics)?selected.expected_topics:[]).join('\n');
-            $('olGradingGuidance').value=selected.grading_guidance||'';
-        });
-        await loadMarkingKeys();
-        key.innerHTML='<option value="">No marking key</option>'+markingKeyState.keys.map(k=>`<option value="${esc(k.id)}">${esc(k.title)}${k.version?` — v${esc(k.version)}`:''}</option>`).join('');
-        return wrap;
+      let wrap=$('olAssignmentGradingFields'); if(wrap)return wrap;
+      const anchor=$('olInstructions'); if(!anchor)return null;
+      const host=anchor.closest('.ol-form')||anchor.parentElement?.parentElement||anchor.parentElement; if(!host)return null;
+      wrap=document.createElement('div');wrap.id='olAssignmentGradingFields';wrap.className='ol-full';
+      wrap.style.cssText='margin-top:12px;padding:14px;border:1px solid #dbe3ee;border-radius:12px;background:#f8fafc';
+      wrap.innerHTML=`<div style="font-weight:800;color:#18304d;margin-bottom:4px"><i class="fas fa-clipboard-check"></i> Institutional Marking Key</div><div style="font-size:11px;color:#64748b;margin-bottom:12px">Automatic grading uses the institutional marking key built into the lecturer module. No marking-key lookup is made in Supabase.</div><div class="ol-form"><div class="ol-full"><label>Marking Key</label><select id="olMarkingKeyLocal"><option value="">Auto-detect from assignment</option>${LOCAL_MARKING_KEYS.map(k=>`<option value="${esc(k.id)}">${esc(k.title)} — v${esc(k.version)}</option>`).join('')}</select></div><div class="ol-full"><label>Grading Guidance</label><textarea id="olLocalGradingGuidance" rows="3" readonly></textarea></div></div>`;
+      host.parentElement?.insertBefore(wrap,host.nextSibling)||host.appendChild(wrap);
+      const sel=$('olMarkingKeyLocal');sel?.addEventListener('change',()=>{const k=LOCAL_MARKING_KEYS.find(x=>x.id===sel.value);if($('olLocalGradingGuidance'))$('olLocalGradingGuidance').value=k?.grading_guidance||'';});
+      return wrap;
     }
-
     async function populateAssignmentGradingFields(a=null){
-        await ensureAssignmentGradingFields();
-        const mode=$('olGradingMode'), key=$('olMarkingKeyId');
-        if(!mode||!key)return;
-        mode.value=a?.grading_mode||((a?.marking_key_id)?'marking_key':'topic_keywords');
-        key.value=a?.marking_key_id||'';
-        key.disabled=mode.value!=='marking_key';
-        $('olGradingKeywords').value=parseJsonArray(a?.grading_keywords||a?.keywords).join(', ');
-        $('olExpectedTopics').value=parseJsonArray(a?.expected_topics).join('\n');
-        $('olGradingGuidance').value=a?.grading_guidance||'';
+      await ensureAssignmentGradingFields();
+      const sel=$('olMarkingKeyLocal');if(!sel)return;
+      const k=resolveLocalMarkingKey(a||{});sel.value=k?.id||'';
+      if($('olLocalGradingGuidance'))$('olLocalGradingGuidance').value=k?.grading_guidance||'';
     }
-
     async function getAssignmentGradingConfig(assignment){
-        const db=client();
-        let markingKey=null;
-        if(assignment?.marking_key_id){
-            const r=await db.from('online_marking_keys')
-                .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,grading_schema_version,source_document,source_notes,allocated_marks,validation_status')
-                .eq('id',assignment.marking_key_id)
-                .maybeSingle();
-            if(r.error) console.warn('Marking key lookup:',r.error.message);
-            markingKey=r.data||null;
-        }
-        return {
-            mode:assignment?.grading_mode||'topic_keywords',
-            markingKey,
-            keywords:parseJsonArray(assignment?.grading_keywords||assignment?.keywords),
-            expectedTopics:parseJsonArray(assignment?.expected_topics),
-            guidance:String(assignment?.grading_guidance||'')
-        };
+      const key=resolveLocalMarkingKey(assignment||{});
+      return {mode:key?'marking_key':'topic_keywords',markingKey:key,keywords:key?.keywords||[],expectedTopics:key?.expected_topics||[],guidance:key?.grading_guidance||''};
     }
-
-    // ============================================================
-    // DIRECT SUPABASE MARKING-KEY FETCH FOR SUBMISSION REVIEW
-    // ============================================================
     async function fetchSubmissionMarkingKey(id){
-        const db=client();
-        const s=state.submissions.find(x=>x.id===id);
-        if(!s) throw new Error('Submission could not be found.');
-        const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
-        const box=$('olSubmissionMarkingKey');
-        const btn=$('olFetchMarkingKeyBtn');
-        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Fetching…';}
-        try{
-            if(!assignment.marking_key_id){
-                throw new Error('No marking key is attached to this assignment. Edit the assignment and select a Formal Marking Key first.');
-            }
-            const r=await db.from('online_marking_keys')
-                .select('id,title,description,max_marks,criteria,keywords,expected_topics,grading_guidance,version,is_active,created_by,grading_schema_version,source_document,source_notes,allocated_marks,validation_status')
-                .eq('id',assignment.marking_key_id)
-                .eq('is_active',true)
-                .maybeSingle();
-            if(r.error) throw r.error;
-            const key=r.data;
-            if(!key) throw new Error('The attached marking key was not found or is inactive.');
-            if(box){
-                const criteria=Array.isArray(key.criteria)?key.criteria:parseJsonArray(key.criteria);
-                const keywords=Array.isArray(key.keywords)?key.keywords:parseJsonArray(key.keywords);
-                const topics=Array.isArray(key.expected_topics)?key.expected_topics:parseJsonArray(key.expected_topics);
-                box.innerHTML=`<div style="font-weight:800;color:#18304d;font-size:14px"><i class="fas fa-clipboard-check"></i> ${esc(key.title||'Marking Key')}</div>
-                  <div style="font-size:12px;color:#64748b;margin-top:3px">Version ${esc(key.version||'1')} · Maximum ${esc(key.max_marks||100)} marks</div>
-                  ${key.description?`<div style="margin-top:8px">${esc(key.description)}</div>`:''}
-                  <details open style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Marking Criteria (${esc(criteria.length)})</summary><div style="margin-top:7px">${criteria.length?criteria.map((c,i)=>{const title=c?.criterion||c?.title||c?.description||c?.name||String(c);const marks=c?.marks??c?.max_marks??c?.score??'';return `<div style="padding:7px 0;border-bottom:1px solid #e5e7eb"><b>${esc(i+1)}. ${esc(title)}</b>${marks!==''?` <span style="color:#64748b">(${esc(marks)} marks)</span>`:''}</div>`}).join(''):'<span style="color:#64748b">No structured criteria stored.</span>'}</div></details>
-                  ${keywords.length?`<div style="margin-top:9px"><b>Keywords:</b> ${esc(keywords.join(', '))}</div>`:''}
-                  ${topics.length?`<div style="margin-top:7px"><b>Expected topics:</b> ${esc(topics.join(' · '))}</div>`:''}
-                  ${key.grading_guidance?`<div style="margin-top:9px"><b>Grading guidance:</b><div style="white-space:pre-wrap;margin-top:3px">${esc(key.grading_guidance)}</div></div>`:''}`;
-                box.dataset.keyId=key.id;
-            }
-            window._activeSubmissionMarkingKey=key;
-            window._activeSubmissionMarkingKeyId=key.id;
-            notify(`Marking key fetched from Supabase: ${key.title}`,'success');
-            return key;
-        }catch(e){
-            console.error('Fetch marking key:',e);
-            if(box) box.innerHTML=`<div style="color:#b91c1c"><b>Could not fetch marking key.</b><div style="margin-top:4px">${esc(e.message||e)}</div></div>`;
-            notify(e.message||'Could not fetch marking key.','error');
-            return null;
-        }finally{
-            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-database"></i> Fetch Marking Key from Supabase';}
-        }
+      const s=state.submissions.find(x=>x.id===id);if(!s)throw new Error('Submission could not be found.');
+      const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
+      const key=resolveLocalMarkingKey(assignment);
+      const box=$('olSubmissionMarkingKey');
+      if(!key)throw new Error('No institutional marking key matches this assignment title/type.');
+      if(box){
+        box.innerHTML=`<div style="font-weight:800;color:#18304d;font-size:14px"><i class="fas fa-clipboard-check"></i> ${esc(key.title)}</div><div style="font-size:12px;color:#64748b;margin-top:3px">Version ${esc(key.version)} · Maximum ${esc(key.max_marks)} marks · Source: ${esc(key.source_document)}</div><div style="margin-top:8px">${esc(key.description||'')}</div><details open style="margin-top:10px"><summary style="cursor:pointer;font-weight:700">Marking Criteria (${esc(key.criteria.length)})</summary><div style="margin-top:7px">${key.criteria.map((c,i)=>`<div style="padding:7px 0;border-bottom:1px solid #e5e7eb"><b>${esc(i+1)}. ${esc(c.criterion)}</b> <span style="color:#64748b">(${esc(c.max_marks)} marks)</span></div>`).join('')}</div></details><div style="margin-top:9px"><b>Grading guidance:</b><div style="white-space:pre-wrap;margin-top:3px">${esc(key.grading_guidance||'')}</div></div>`;
+      }
+      window._activeSubmissionMarkingKey=key;window._activeSubmissionMarkingKeyId=key.id;return key;
     }
 
     function localObjectiveGrade(items){
@@ -7049,14 +7114,14 @@ window.LecturerOnlineLearning = (() => {
     // DETERMINISTIC SUPABASE MARKING-KEY ENGINE
     // ============================================================
     // This is the primary "Automatically Grade" engine. It does NOT
-    // call Gemini/OpenAI. The authoritative rubric comes from
-    // public.online_marking_keys and the student's extracted submission.
+    // call Gemini/OpenAI. The authoritative rubric comes from the institutional marking key
+    // embedded in this module and the student's extracted submission.
     // It behaves like Online Exams: configured answers/rubric -> score.
     // ============================================================
     // ============================================================
     // DETERMINISTIC SUPABASE MARKING-KEY ENGINE V2
     // ============================================================
-    // The rubric in Supabase is authoritative. Each criterion contains
+    // The embedded institutional rubric is authoritative. Each criterion contains
     // criterion-specific requirements. The engine NEVER awards marks from
     // global keyword frequency. It evaluates the requirements belonging to
     // the current criterion only and records the evidence used.
@@ -7272,12 +7337,12 @@ window.LecturerOnlineLearning = (() => {
             rubric_allocated_percentage:maxMarks>0?Math.round((totalRubricMarks/maxMarks)*10000)/100:0,
             confidence,
             rubric_grades:rubricGrades,
-            feedback:`Automatic evidence-based grading against the Supabase marking key. ${criteriaWithEvidence} of ${criteria.length} criteria contain qualifying evidence. Review each criterion before saving or releasing.`,
+            feedback:`Automatic evidence-based grading against the institutional marking key. ${criteriaWithEvidence} of ${criteria.length} criteria contain qualifying evidence. Review each criterion before saving or releasing.`,
             note:totalRubricMarks===maxMarks
                 ? 'All declared marking-key marks are allocated.'
                 : `The supplied marking key allocates ${totalRubricMarks} of ${maxMarks} marks. No unallocated marks were invented.`,
-            grading_mode:'SUPABASE_MARKING_KEY_DETERMINISTIC_V2',
-            provider:'supabase-marking-key-engine-v2',
+            grading_mode:'LOCAL_INSTITUTIONAL_MARKING_KEY_DETERMINISTIC_V3',
+            provider:'local-institutional-marking-key-engine-v3',
             marking_key_id:key?.id||null,
             marking_key_title:key?.title||null,
             marking_key_version:key?.version||null,
@@ -7297,7 +7362,7 @@ window.LecturerOnlineLearning = (() => {
             const reqRows=(g.requirements||[]).map(r=>`<div style="margin:4px 0;padding:5px 7px;border-left:3px solid #ddd"><b>${esc(r.description||r.id)}</b> — ${esc(Math.round(r.score*100))}%<br><span style="color:#64748b">${r.matched?.length?esc(r.matched.join(', ')):'No direct configured phrase match'}</span></div>`).join('');
             return `<div style="padding:10px 0;border-bottom:1px solid #e5e7eb"><div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(g.criterion)}</b><b>${esc(g.marks_awarded)}/${esc(g.max_marks)}</b></div><div style="font-size:11px;color:#475569;margin-top:4px">${esc(g.evidence)}</div><div style="font-size:10px;color:#64748b;margin-top:3px">${esc(g.rationale)}</div><details style="margin-top:5px"><summary style="cursor:pointer;font-size:11px">Requirement evidence</summary><div style="margin-top:4px">${reqRows||'No requirements configured.'}</div></details></div>`;
         }).join('');
-        box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Supabase Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(marks)}/${esc(max)} (${esc(pct)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Criterion evidence (${esc((report.rubric_grades||[]).length)})</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
+        box.innerHTML=`<div style="margin-top:12px;padding:12px;border:1px solid #c4b5fd;border-radius:10px;background:#faf5ff"><div style="font-weight:800;color:#5b21b6">Automatic Marking-Key Grade</div><div style="font-size:20px;font-weight:900;color:#4c1d95;margin-top:5px">${esc(marks)}/${esc(max)} (${esc(pct)}%)</div><div style="font-size:11px;color:#64748b;margin-top:3px">${esc(report.note||'')} Confidence: ${esc(report.confidence)}%</div><details open style="margin-top:9px"><summary style="cursor:pointer;font-weight:700">Criterion evidence (${esc((report.rubric_grades||[]).length)})</summary><div style="margin-top:6px">${rows||'<span>No rubric evidence.</span>'}</div></details></div>`;
     }
 
     async function autoGradeUsingMarkingKey(id){
@@ -7307,9 +7372,8 @@ window.LecturerOnlineLearning = (() => {
         const btn=$('olAutoGradeBtn');
         if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Reading Work & Marking…';}
         try{
-            let key=window._activeSubmissionMarkingKey;
-            if(!key || String(window._activeSubmissionMarkingKeyId)!==String(assignment.marking_key_id||'')) key=await fetchSubmissionMarkingKey(id);
-            if(!key)throw new Error('No active Supabase marking key is linked to this assignment.');
+            const key=resolveLocalMarkingKey(assignment);
+            if(!key)throw new Error('No institutional marking key matches this assignment. Select or rename the assignment to identify its marking key.');
             const text=await extractSubmissionText(s);
             if(!String(text||'').trim()) throw new Error('No readable text was extracted from the submitted document.');
             const maxMarks=Number(key.max_marks||assignment.max_marks||s.max_marks||0);
@@ -7332,156 +7396,8 @@ window.LecturerOnlineLearning = (() => {
     }
 
     async function aiGradeSubmission(id){
-        const db=client(); const s=state.submissions.find(x=>x.id===id); if(!s)return;
-        const btn=$('olAIGradeBtn');
-        if(btn){btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> AI Grading…';}
-        try{
-            let questions=[];
-            const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');
-            if(qr.error)throw qr.error;
-            questions=qr.data||[];
-            const answers=s.answers||{};
-            const assignment=state.assignments.find(a=>a.id===s.assignment_id)||{};
-
-            let documentText='';
-            if(s.file_path){
-                try{documentText=await extractSubmissionText(s);}catch(e){console.warn('AI grade document extraction:',e);}
-            }
-
-            let grading=await getAssignmentGradingConfig(assignment);
-            let markingKey=grading.markingKey;
-            if(window._activeSubmissionMarkingKey && String(window._activeSubmissionMarkingKeyId)===String(assignment.marking_key_id||'')) markingKey=window._activeSubmissionMarkingKey;
-            if(assignment.marking_key_id && !markingKey) markingKey=await fetchSubmissionMarkingKey(id);
-            if(markingKey){
-                grading={...grading,mode:'marking_key',markingKey,keywords:parseJsonArray(markingKey.keywords),expectedTopics:parseJsonArray(markingKey.expected_topics),guidance:String(markingKey.grading_guidance||'')};
-            }
-            const maxMarks=Number(assignment.max_marks||s.max_marks||markingKey?.max_marks||0);
-            if(!maxMarks)throw new Error('Assignment maximum marks are not configured.');
-
-            const payload={
-                mode:'assignment_grading',
-                submission_id:s.id,
-                assignment_id:s.assignment_id,
-                student_id:s.student_id,
-                grading_mode:grading.mode,
-                marking_key_id:markingKey?.id||assignment.marking_key_id||null,
-                assignment:{
-                    title:String(assignment.title||s.online_assignments?.title||''),
-                    unit_code:assignment.unit_code||'',
-                    instructions:assignment.instructions||'',
-                    max_marks:maxMarks,
-                    grading_mode:grading.mode,
-                    grading_keywords:grading.keywords,
-                    expected_topics:grading.expectedTopics,
-                    grading_guidance:grading.guidance
-                },
-                questions:collectSubmissionQuestions(questions,answers),
-                extracted_text:String(documentText||'').slice(0,120000),
-                existing_feedback:s.feedback||''
-            };
-
-            let report=null;
-            if(typeof window.runAIAssignmentGrade==='function') report=await window.runAIAssignmentGrade(payload);
-            else if(db?.functions?.invoke){
-                const r=await db.functions.invoke('ai-grade-assignment',{body:payload});
-                if(r.error)throw r.error;
-                report=r.data;
-            }else throw new Error('Secure AI grading service is unavailable.');
-
-            if(!report || !Number.isFinite(Number(report.marks_awarded)))throw new Error('AI grading service returned no valid marks.');
-
-            const marks=clampMarks(report.marks_awarded,maxMarks);
-            const pct=formatPercentage(marks,maxMarks);
-            $('olReviewMarks').value=marks;
-            if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;
-            if($('olReviewFeedback') && report.feedback)$('olReviewFeedback').value=report.feedback;
-
-            const box=$('olAIGradeReport');
-            if(box){
-                const evidence=Array.isArray(report.rubric_grades)?report.rubric_grades:
-                    Array.isArray(report.topic_grades)?report.topic_grades:[];
-                box.innerHTML=`<div style="margin-top:10px;padding:12px;background:#eef2ff;border:1px solid #c7d2fe;border-radius:9px;font-size:12px;color:#3730a3">
-                  <b>AI grading suggestion:</b> ${esc(marks)}/${esc(maxMarks)} (${esc(pct)})
-                  ${report.confidence!=null?` · Confidence ${esc(report.confidence)}%`:''}
-                  <div style="margin-top:7px;color:#475569">${esc(report.note||'Review the score and marking evidence before saving or releasing.')}</div>
-                  ${evidence.length?`<div style="margin-top:9px;color:#334155"><b>Marking evidence:</b><ul style="margin:5px 0 0 18px">${evidence.slice(0,20).map(x=>`<li>${esc(x.criterion||x.topic||'Area')}: ${esc(x.marks_awarded??x.marks??0)}/${esc(x.max_marks??x.maximum??0)} — ${esc(x.evidence||x.reason||'')}</li>`).join('')}</ul></div>`:''}
-                </div>`;
-            }
-            notify(`AI score: ${marks}/${maxMarks} (${pct}). Review the score and marking evidence before saving or releasing.`,'success');
-            return true;
-        }catch(e){
-            console.error('AI grading:',e);
-            notify('AI grading could not be completed: '+(e?.message||String(e)),'error');
-            return false;
-        }finally{
-            if(btn){btn.disabled=false;btn.innerHTML='<i class="fas fa-robot"></i> AI Grade Work';}
-        }
-    }
-    async function reviewSubmission(id){const db=client();const s=state.submissions.find(x=>x.id===id);if(!s)return;let questions=[];const qr=await db.from('online_assignment_questions').select('*').eq('assignment_id',s.assignment_id).order('question_order');questions=qr.data||[];const answers=s.answers||{};const profiles=await db.from('consolidated_user_profiles_table').select('full_name,student_id,admission_number,email').eq('user_id',s.student_id).maybeSingle();const p=profiles.data||{};const maxMarks=Number(s.max_marks||state.assignments.find(a=>a.id===s.assignment_id)?.max_marks||0);const currentPct=formatPercentage(s.marks_obtained,maxMarks);const body=$('olSubmissionBody');body.innerHTML=`<div class="ol-submission-grid"><div><h3 style="margin-top:0">${esc(s.online_assignments?.title||'Submission')}</h3><p style="color:#64748b">${esc(p.full_name||'Student')} · ${esc(p.admission_number||p.student_id||'')}</p><div>${questions.length?questions.map((q,i)=>`<div class="ol-q"><b>Q${i+1}. ${esc(q.question_text)}</b><div style="margin-top:8px;background:#f8fafc;padding:10px;border-radius:8px;white-space:pre-wrap">${esc(answers[q.id]??answers[String(q.id)]??'No answer')}</div><small style="color:#64748b">${esc(q.marks)} marks</small></div>`).join(''):'<div class="ol-empty">No structured questions. Review the uploaded document if provided.</div>'}</div></div><div><div class="ol-card" style="margin:0"><div style="color:#64748b;font-size:12px">CURRENT RESULT</div><div class="ol-mark">${esc(s.marks_obtained??0)}/${esc(maxMarks||'—')}</div><div id="olReviewPercentage" style="font-size:18px;font-weight:800;color:#4C1D95;margin-top:4px">${esc(currentPct)}</div><label>Marks Awarded</label><input id="olReviewMarks" type="number" min="0" max="${esc(maxMarks||'')}" step="0.01" value="${esc(s.marks_obtained??0)}" oninput="LecturerOnlineLearning.updateGradePercentage()" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px"><div id="olAIGradeReport"></div><div id="olSubmissionMarkingKey" style="margin-top:14px;padding:12px;border:1px solid #dbe3ee;border-radius:10px;background:#f8fafc"><div style="font-weight:700;color:#475569">Marking Key</div><div style="font-size:11px;color:#64748b;margin-top:3px">Fetch the institutional marking key directly from Supabase before grading.</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:9px"><button id="olFetchMarkingKeyBtn" class="ol-btn" style="background:#0f766e;color:#fff" onclick="LecturerOnlineLearning.fetchSubmissionMarkingKey('${s.id}')"><i class="fas fa-database"></i> Fetch Marking Key from Supabase</button></div><label style="display:block;margin-top:12px">Feedback</label><textarea id="olReviewFeedback" rows="6" style="width:100%;box-sizing:border-box;padding:10px;border:1px solid #dbe1ea;border-radius:9px">${esc(s.feedback||'')}</textarea><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px"><button id="olAutoGradeBtn" class="ol-btn" style="background:#7c3aed;color:#fff" onclick="LecturerOnlineLearning.autoGradeUsingMarkingKey('${s.id}')"><i class="fas fa-wand-magic-sparkles"></i> Automatically Grade Using Supabase Marking Key</button><button id="olAIGradeBtn" class="ol-btn" style="background:#64748b;color:#fff" onclick="LecturerOnlineLearning.aiGradeSubmission('${s.id}')"><i class="fas fa-robot"></i> AI Grade Work</button><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',false)">Save Grade</button><button class="ol-btn ol-success" onclick="LecturerOnlineLearning.gradeSubmission('${s.id}',true)">Grade & Release</button></div>${s.file_path?`<div style="margin-top:15px;padding:12px;border:1px solid #e2e8f0;border-radius:10px;background:#f8fafc"><div style="font-size:12px;color:#64748b;margin-bottom:8px"><i class="fas fa-paperclip"></i> ${esc(s.file_name||'Uploaded document')}</div><div style="display:flex;gap:7px;flex-wrap:wrap"><button class="ol-btn ol-primary" onclick="LecturerOnlineLearning.viewSubmissionDocument('${s.id}')"><i class="fas fa-eye"></i> View Entire Work</button><button id="olIntegrityBtn" class="ol-btn ol-muted" onclick="LecturerOnlineLearning.runIntegrityScan('${s.id}')"><i class="fas fa-shield-alt"></i> Run Integrity Scan</button></div><div id="olIntegrityReport"></div></div>`:''}</div></div></div>`;$('olSubmissionModal').dataset.submissionId=id;$('olSubmissionModal').style.display='flex';}
-    function updateGradePercentage(){const s=state.submissions.find(x=>x.id===$('olSubmissionModal')?.dataset?.submissionId);const max=Number(s?.max_marks||state.assignments.find(a=>a.id===s?.assignment_id)?.max_marks||0);const pct=formatPercentage($('olReviewMarks')?.value,max);if($('olReviewPercentage'))$('olReviewPercentage').textContent=pct;}
-    // ============================================================
-    // 📧 ASSIGNMENT RESULT EMAIL NOTIFICATION
-    // Sends only when the lecturer RELEASES the graded result.
-    // The email intentionally contains no marks/percentage.
-    // ============================================================
-    async function sendAssignmentResultNotification(submission, assignment){
-        try{
-            const db=client();
-            if(!db || !submission?.student_id) return false;
-
-            let student=null;
-            const lookup=await db.from('consolidated_user_profiles_table')
-                .select('user_id,full_name,student_id,admission_number,email,program,intake_year,current_block,block')
-                .eq('user_id',submission.student_id)
-                .maybeSingle();
-            if(!lookup.error) student=lookup.data;
-
-            if(!student?.email){
-                console.warn('⚠️ No email found for assignment student:',submission.student_id);
-                return false;
-            }
-
-            const name=esc(student.full_name||'Student');
-            const title=esc(assignment?.title||submission?.online_assignments?.title||'Assignment');
-            const unit=esc(assignment?.unit_code||submission?.online_assignments?.unit_code||'');
-            const portalUrl='https://nchsm.co.ke';
-
-            const html=`<!DOCTYPE html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Assignment Result Released</title>
-<style>
-body{font-family:'Segoe UI',Tahoma,sans-serif;margin:0;padding:0;background:#f0f4f8;color:#243447}.container{max-width:580px;margin:0 auto;padding:20px}.card{background:#fff;border-radius:20px;overflow:hidden;box-shadow:0 10px 40px rgba(0,0,0,.1)}
-.header{background:linear-gradient(135deg,#0A3D62,#1a5276);padding:30px 35px;text-align:center;color:#fff}.header img{width:70px;height:70px;border-radius:50%;background:#fff;padding:5px;margin-bottom:10px}.header h1{margin:0;font-size:24px}.header p{margin:4px 0 0;opacity:.82}.body{padding:30px 35px}.notice{background:#EFF6FF;border:2px solid #3B82F6;border-radius:16px;padding:22px;text-align:center;margin:18px 0}.notice .icon{font-size:2.6rem;display:block;margin-bottom:8px}.notice .message{font-size:1.08rem;color:#0A3D62;font-weight:700}.notice .sub{color:#5a6c7d;font-size:.94rem;margin-top:5px}.info{background:#f8fafc;border-radius:14px;padding:20px 24px;margin:18px 0;border-left:4px solid #0A3D62}.info p{margin:7px 0;font-size:14px}.label{color:#64748b;font-weight:500}.value{color:#0A3D62;font-weight:650}.btn{display:inline-block;background:linear-gradient(135deg,#0A3D62,#1a5276);color:#fff!important;padding:14px 32px;border-radius:12px;text-decoration:none;font-weight:600;margin:8px 0}.footer{background:#f8fafc;padding:22px 35px;text-align:center;border-top:1px solid #eef2f7}.footer p{font-size:12px;color:#8a9aa8;margin:4px 0}@media(max-width:480px){.header{padding:22px 18px}.body{padding:22px 18px}.footer{padding:18px}}
-</style></head><body><div class="container"><div class="card">
-<div class="header"><img src="https://raw.githubusercontent.com/NCHSMlearning/e-learning/main/images/Logo_NCHSM.png" alt="NCHSM Logo"><h1>📊 Assignment Result Released</h1><p>Nakuru College of Health Sciences and Management</p></div>
-<div class="body"><p>Dear <strong>${name}</strong>,</p><p>Your lecturer has completed grading your assignment and your result is now available on the NCHSM Student Portal.</p>
-<div class="notice"><span class="icon">🔐</span><div class="message">Your Assignment Result Is Ready</div><div class="sub">Log in to the Student Portal to view your result and lecturer feedback securely.</div></div>
-<div class="info"><p><span class="label">📝 Assignment</span><br><span class="value">${title}</span></p>${unit?`<p><span class="label">📚 Unit</span><br><span class="value">${unit}</span></p>`:''}${student.program?`<p><span class="label">🎓 Program</span><br><span class="value">${esc(student.program)}</span></p>`:''}<p><span class="label">👤 Student</span><br><span class="value">${name}</span></p></div>
-<div style="text-align:center;margin:25px 0 10px"><a class="btn" href="${portalUrl}">🔑 View Assignment Result</a></div>
-<div style="background:#fef9e7;border-left:4px solid #f39c12;border-radius:10px;padding:13px 16px;margin-top:18px"><p style="margin:0;font-size:13px;color:#7d6608">💡 <strong>Note:</strong> This is a result notification only. Your marks and lecturer feedback are available securely in the Student Portal.</p></div>
-</div><div class="footer"><p><strong>Nakuru College of Health Sciences and Management</strong></p><p>📞 +254 790 969 743 &nbsp;|&nbsp; 📧 admin@nchsm.co.ke</p><p>This is an automated notification. Please do not reply to this email.</p></div>
-</div></div></body></html>`;
-
-            const result=await db.functions.invoke('send-email',{body:{
-                to:student.email,
-                subject:`📊 Assignment Result Released - ${assignment?.title||submission?.online_assignments?.title||'Assignment'}`,
-                html,
-                from:'NCHSM Academic Office <admin@nchsm.co.ke>'
-            }});
-            if(result.error){
-                console.error('❌ Assignment result email failed:',result.error);
-                return false;
-            }
-            if(result.data && result.data.success===false){
-                console.error('❌ Assignment result email rejected:',result.data.error||result.data);
-                return false;
-            }
-            console.log(`✅ Assignment result notification sent to ${student.email}`);
-            return true;
-        }catch(e){
-            console.error('❌ Assignment result notification error:',e);
-            return false;
-        }
+        notify('AI Grade Work is disabled in this configuration. Use Automatically Grade Using Marking Key.','warning');
+        return autoGradeUsingMarkingKey(id);
     }
 
     async function gradeSubmission(id,release){
@@ -8939,6 +8855,8 @@ ${safeFeedback?`<div class="feedback"><h3>💬 Lecturer Feedback</h3><p>${safeFe
 
     return {loadMarkingKeys,getAssignmentGradingConfig,fetchSubmissionMarkingKey,autoGradeUsingMarkingKey,init,load,renderAssignments,loadSubmissions,openAssignmentModal,editAssignment,saveAssignment,saveAndPublish,addQuestionEditor,renumberQuestions,togglePublish,deleteAssignment,reviewSubmission,aiGradeSubmission,updateGradePercentage,gradeSubmission,closeModal,viewSubmissionDocument,closeDocumentViewer,runIntegrityScan,initResearch,loadResearch,openResearchReview,saveResearchReview,closeResearchModal,loadAssignmentTargeting,refreshIntakesForProgram,refreshBlocksForProgramIntake};
 })();
+;
+
 ;
 ;
 ;
