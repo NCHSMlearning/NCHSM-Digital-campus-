@@ -138,43 +138,76 @@ async function openModal(a){
   state.current=a;state.file=null;
   var m=document.getElementById('ol-assignment-modal'),b=document.getElementById('ol-modal-body'),title=document.getElementById('ol-modal-title'),btn=document.getElementById('ol-submit-btn');
   var existing=getSubmission(a.id);
-  var canSubmit=!existing && (!a.due_at || new Date(a.due_at).getTime()>=Date.now());
+  var released=!!(existing&&existing.result_released);
+  var locked=!!(existing&&(existing.status==='graded'||existing.status==='released'||released));
+  var canEdit=!!(existing&&!locked);
+  var canSubmit=(!existing&&!a.due_at||!existing&&(!a.due_at||new Date(a.due_at).getTime()>=Date.now())) || canEdit;
+  if(a.due_at&&new Date(a.due_at).getTime()<Date.now()&&!canEdit) canSubmit=false;
   title.textContent=a.title||'Assignment';
   var qs=[];
-  var html='<div class="ol-notice"><i class="fas fa-circle-info"></i> '+(existing?'You have already submitted this activity. Review your submission below.':'Complete the required work and submit before the due date.')+'</div>';
+  var html='<div class="ol-notice"><i class="fas fa-circle-info"></i> '+(released?'This result has been released. You can view the complete submitted document from View Result.':(existing?'Your current submission is editable until the lecturer grades/releases it. You can replace or delete the document and submit again.':'Complete the required work and submit before the due date. You can drag and drop your document below.'))+'</div>';
   try{
     var qr=await client().rpc('get_online_assignment_questions',{p_assignment_id:a.id});
     if(qr.error)throw qr.error;
-    qs=qr.data||[];
-    state.currentQuestions=qs;
-  }catch(qe){
-    state.currentQuestions=[];
-    console.error('Question load failed:',qe);
-    html+='<div class="ol-error" style="display:block;margin-bottom:12px">Questions could not be loaded. Please refresh and try again.</div>';
-  }
+    qs=qr.data||[];state.currentQuestions=qs;
+  }catch(qe){state.currentQuestions=[];console.error('Question load failed:',qe);html+='<div class="ol-error" style="display:block;margin-bottom:12px">Questions could not be loaded. Please refresh and try again.</div>';}
   html+='<div style="font-size:10px;color:#64748b;margin-bottom:12px"><strong>Unit:</strong> '+esc(a.unit_code||'—')+' &nbsp; <strong>Due:</strong> '+esc(fmtDateTime(a.due_at))+' &nbsp; <strong>Total:</strong> '+esc(a.max_marks||'—')+' marks</div>';
   if(a.instructions)html+='<div style="padding:11px;border-radius:9px;background:#f7fafc;border:1px solid #e4edf5;font-size:11px;line-height:1.55;margin-bottom:12px"><strong>Instructions</strong><br>'+esc(a.instructions).replace(/\n/g,'<br>')+'</div>';
-  if(qs.length){
-    qs.forEach(function(q,i){
-      var ans=existing&&existing.answers?existing.answers.find(function(x){return String(x.question_id)===String(q.id)}):null;
-      html+='<div class="ol-question"><div class="ol-question-title">'+(i+1)+'. '+esc(q.question_text||q.text||'Question')+' <span style="color:#8aa0b5;font-weight:600">('+esc(q.marks||0)+' marks)</span></div>';
-      if(q.question_type==='mcq'){
-        (q.options||[]).forEach(function(o,j){var val=typeof o==='object'?o.value:o;html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+esc(val)+'" '+(ans&&ans.answer_text===String(val)?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+esc(val)+'</label>'});
-      }else if(q.question_type==='true_false'){
-        ['True','False'].forEach(function(o){html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+o+'" '+(ans&&ans.answer_text===o?'checked':'')+' '+(existing&&!canSubmit?'disabled':'')+'> '+o+'</label>'});
-      }else{
-        html+='<textarea class="ol-answer-input" data-ol-question="'+esc(q.id)+'" placeholder="Enter your answer..." '+(existing&&!canSubmit?'disabled':'')+'>'+esc(ans?ans.answer_text:'')+'</textarea>';
-      }
-      html+='</div>';
-    });
-  }
+  if(qs.length){qs.forEach(function(q,i){
+    var ans=existing&&existing.answers?existing.answers.find(function(x){return String(x.question_id)===String(q.id)}):null;
+    html+='<div class="ol-question"><div class="ol-question-title">'+(i+1)+'. '+esc(q.question_text||q.text||'Question')+' <span style="color:#8aa0b5;font-weight:600">('+esc(q.marks||0)+' marks)</span></div>';
+    if(q.question_type==='mcq'){
+      (q.options||[]).forEach(function(o){var val=typeof o==='object'?o.value:o;html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+esc(val)+'" '+(ans&&ans.answer_text===String(val)?'checked':'')+' '+(existing&&!canEdit?'disabled':'')+'> '+esc(val)+'</label>'});
+    }else if(q.question_type==='true_false'){
+      ['True','False'].forEach(function(o){html+='<label class="ol-option"><input type="radio" name="olq_'+esc(q.id)+'" value="'+o+'" '+(ans&&ans.answer_text===o?'checked':'')+' '+(existing&&!canEdit?'disabled':'')+'> '+o+'</label>'});
+    }else html+='<textarea class="ol-answer-input" data-ol-question="'+esc(q.id)+'" placeholder="Enter your answer..." '+(existing&&!canEdit?'disabled':'')+'>'+esc(ans?ans.answer_text:'')+'</textarea>';
+    html+='</div>';
+  });}
   if(a.allow_document_upload!==false){
-    html+='<div class="ol-upload"><i class="fas fa-file-arrow-up"></i><strong>Upload your completed work</strong><small>Accepted: Microsoft Word (.docx) only. Maximum 10 MB.</small><input id="ol-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" '+(existing&&!canSubmit?'disabled':'')+'><div class="ol-file-name" id="ol-file-name"></div></div>';
+    html+='<div class="ol-upload ol-dropzone" id="ol-dropzone" tabindex="0"><i class="fas fa-cloud-arrow-up"></i><strong>Drag & Drop your completed work here</strong><small>or click to choose · Microsoft Word (.docx) · Maximum 10 MB</small><input id="ol-file" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" '+(!canSubmit?'disabled':'')+'><div class="ol-file-name" id="ol-file-name">'+esc(existing&&existing.file_name?existing.file_name:'')+'</div></div>';
+  }
+  if(existing){
+    html+='<div class="ol-existing-file"><i class="fas fa-file-word"></i><div><strong>Current submitted document</strong><span>'+esc(existing.file_name||'Document')+'</span></div><button type="button" class="ol-btn ol-btn-danger" data-ol-delete-submission="'+esc(existing.id)+'" '+(locked?'disabled':'')+'><i class="fas fa-trash"></i> Delete Document</button></div>';
+    if(locked)html+='<div class="ol-notice" style="background:#f0fdf4;border-color:#bbf7d0;color:#166534"><i class="fas fa-lock"></i> This submission is locked because the lecturer has graded or released the result.</div>';
   }
   b.innerHTML=html;
   btn.style.display=canSubmit?'inline-flex':'none';
+  btn.innerHTML=existing?'<i class="fas fa-rotate"></i> Replace & Submit Again':'<i class="fas fa-paper-plane"></i> Submit Work';
   m.classList.add('open');m.setAttribute('aria-hidden','false');
-  var fi=document.getElementById('ol-file');if(fi)fi.onchange=function(){state.file=this.files&&this.files[0]||null;var n=document.getElementById('ol-file-name');if(n)n.textContent=state.file?state.file.name:''};
+  setupAssignmentDropzone();
+}
+
+function setupAssignmentDropzone(){
+  var zone=document.getElementById('ol-dropzone'),input=document.getElementById('ol-file');if(!zone||!input||input.disabled)return;
+  function setFile(file){
+    if(!file)return;
+    if(file.size>10*1024*1024){setError('The selected document is larger than 10 MB.');return;}
+    var ok=/\.docx$/i.test(file.name)||file.type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+    if(!ok){setError('Only Microsoft Word (.docx) documents are allowed.');return;}
+    state.file=file;var n=document.getElementById('ol-file-name');if(n)n.textContent=file.name;
+  }
+  input.onchange=function(){setFile(this.files&&this.files[0])};
+  ['dragenter','dragover'].forEach(function(ev){zone.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();zone.classList.add('dragover')})});
+  ['dragleave','drop'].forEach(function(ev){zone.addEventListener(ev,function(e){e.preventDefault();e.stopPropagation();zone.classList.remove('dragover')})});
+  zone.addEventListener('drop',function(e){setFile(e.dataTransfer&&e.dataTransfer.files&&e.dataTransfer.files[0])});
+  zone.addEventListener('click',function(e){if(e.target!==input)input.click()});
+  zone.addEventListener('keydown',function(e){if(e.key==='Enter'||e.key===' '){e.preventDefault();input.click()}});
+}
+
+async function deleteSubmissionDocument(id){
+  var sb=client(),studentId=uid(),s=state.submissions.find(function(x){return String(x.id)===String(id)});
+  if(!sb||!studentId||!s)return;
+  if(s.result_released||s.status==='graded'||s.status==='released'){alert('This submission is locked because it has already been graded or released.');return;}
+  if(!confirm('Delete this submitted document? You will be able to upload and submit a new document again.'))return;
+  try{
+    if(s.file_path){var rm=await sb.storage.from('assignment-submissions').remove([s.file_path]);if(rm.error)console.warn('Storage delete warning:',rm.error)}
+    var del=await sb.from('online_submissions').delete().eq('id',s.id).eq('student_id',studentId);
+    if(del.error)throw del.error;
+    state.submissions=state.submissions.filter(function(x){return String(x.id)!==String(id)});
+    state.results=state.submissions.filter(function(x){return !!x.result_released});
+    close('assignment');render();
+    alert('Submitted document deleted. You can now submit a new document.');
+  }catch(e){console.error('Delete submission failed:',e);alert('Could not delete the submission: '+(e.message||e))}
 }
 
 /* ============================================================
@@ -525,55 +558,91 @@ function addResearchTab(){
 async function submitCurrent(){
   var a=state.current,sb=client(),id=uid(),btn=document.getElementById('ol-submit-btn');
   if(!a||!sb||!id)return;
-  if(a.due_at&&new Date(a.due_at).getTime()<Date.now()){setError('This assignment is past its due date and can no longer be submitted.');close('assignment');return}
-  if(state.file && state.file.size>10*1024*1024){setError('The selected document is larger than 10 MB.');return}
-  if(state.file){
-    var isDocx=/\.docx$/i.test(state.file.name) || state.file.type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-    if(!isDocx){setError('Only Microsoft Word (.docx) documents are allowed.');return}
-  }
+  var existing=getSubmission(a.id);
+  var locked=!!(existing&&(existing.result_released||existing.status==='graded'||existing.status==='released'));
+  var canEdit=!!(existing&&!locked);
+  if(a.due_at&&new Date(a.due_at).getTime()<Date.now()&&!canEdit){setError('This assignment is past its due date and can no longer be submitted.');close('assignment');return}
+  if(!state.file){setError('Please choose or drag and drop a .docx document before submitting.');return}
+  if(state.file.size>10*1024*1024){setError('The selected document is larger than 10 MB.');return}
+  var isDocx=/\.docx$/i.test(state.file.name)||state.file.type==='application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+  if(!isDocx){setError('Only Microsoft Word (.docx) documents are allowed.');return}
   btn.disabled=true;btn.innerHTML='<i class="fas fa-spinner fa-spin"></i> Submitting...';
+  var newPath=null,oldPath=existing&&existing.file_path?existing.file_path:null;
   try{
-    var payload={assignment_id:a.id,student_id:id,status:'submitted',submitted_at:new Date().toISOString(),result_released:false};
-    if(state.file){
-      var safe=state.file.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=id+'/'+a.id+'/'+Date.now()+'_'+safe;
-      var up=await sb.storage.from('assignment-submissions').upload(path,state.file,{upsert:false,contentType:state.file.type||undefined});
-      if(up.error)throw up.error;
-      payload.file_path=path;payload.file_name=state.file.name;payload.file_type=state.file.type;payload.file_size=state.file.size;
-    }
-    var answers=[];
-    (state.currentQuestions||[]).forEach(function(q){
+    var safe=state.file.name.replace(/[^a-zA-Z0-9._-]/g,'_'),path=id+'/'+a.id+'/'+Date.now()+'_'+safe;
+    var up=await sb.storage.from('assignment-submissions').upload(path,state.file,{upsert:false,contentType:state.file.type||'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    if(up.error)throw up.error;newPath=path;
+    var answers=[];(state.currentQuestions||[]).forEach(function(q){
       var value='';
-      if(q.question_type==='mcq'||q.question_type==='true_false'){
-        var r=document.querySelector('input[name="olq_'+CSS.escape(String(q.id))+'"]:checked');value=r?r.value:'';
-      }else{
-        var t=document.querySelector('[data-ol-question="'+CSS.escape(String(q.id))+'"]');value=t?t.value:'';
-      }
+      if(q.question_type==='mcq'||q.question_type==='true_false'){var r=document.querySelector('input[name="olq_'+CSS.escape(String(q.id))+'"]:checked');value=r?r.value:''}
+      else{var t=document.querySelector('[data-ol-question="'+CSS.escape(String(q.id))+'"]');value=t?t.value:''}
       answers.push({question_id:q.id,answer_text:value});
     });
-    payload.answers=answers;
-    var ins=await sb.from('online_submissions').insert(payload).select().single();
-    if(ins.error)throw ins.error;
-    state.submissions.unshift(ins.data);
+    var now=new Date().toISOString();
+    var payload={assignment_id:a.id,student_id:id,status:'submitted',submitted_at:now,result_released:false,marks_obtained:null,percentage:null,feedback:null,answers:answers,file_path:path,file_name:state.file.name,file_type:state.file.type||'application/vnd.openxmlformats-officedocument.wordprocessingml.document',file_size:state.file.size,graded_by:null,graded_at:null,released_at:null,review_required:false};
+    var result;
+    if(existing){
+      var upd=await sb.from('online_submissions').update(payload).eq('id',existing.id).eq('student_id',id).select().single();
+      if(upd.error)throw upd.error;result=upd.data;
+    }else{
+      var ins=await sb.from('online_submissions').insert(payload).select().single();
+      if(ins.error)throw ins.error;result=ins.data;
+    }
+    if(oldPath&&oldPath!==newPath){try{await sb.storage.from('assignment-submissions').remove([oldPath])}catch(ignore){}}
+    state.submissions=state.submissions.filter(function(x){return String(x.id)!==String(result.id)});state.submissions.unshift(result);state.results=state.submissions.filter(function(x){return !!x.result_released});
     close('assignment');render();
-    alert('Your work has been submitted successfully. The result will appear after the lecturer grades and releases it.');
+    alert(existing?'Your assignment has been replaced and resubmitted successfully.':'Your work has been submitted successfully. The result will appear after the lecturer grades and releases it.');
   }catch(e){
-    console.error('Submission failed:',e);
-    setError('Submission failed: '+(e.message||e));
-  }finally{btn.disabled=false;btn.innerHTML='<i class="fas fa-paper-plane"></i> Submit Work'}
+    if(newPath){try{await sb.storage.from('assignment-submissions').remove([newPath])}catch(ignore){}}
+    console.error('Submission failed:',e);setError('Submission failed: '+(e.message||e));
+  }finally{btn.disabled=false;btn.innerHTML=existing?'<i class="fas fa-rotate"></i> Replace & Submit Again':'<i class="fas fa-paper-plane"></i> Submit Work'}
 }
+
+async function signedAssignmentUrl(s){
+  if(!s?.file_path)throw new Error('No submitted document is attached to this assignment.');
+  var db=client(),r=await db.storage.from('assignment-submissions').createSignedUrl(s.file_path,3600);if(r.error)throw r.error;return r.data.signedUrl;
+}
+async function loadAssignmentDocument(s){
+  var host=document.getElementById('ol-result-document');if(!host)return;
+  host.innerHTML='<div class="ol-doc-loading"><i class="fas fa-spinner fa-spin"></i> Loading submitted document…</div>';
+  if(!s.file_path){host.innerHTML='<div class="ol-doc-empty">No uploaded document was attached to this submission.</div>';return}
+  try{
+    var url=await signedAssignmentUrl(s),ext=String(s.file_name||s.file_path||'').toLowerCase().split('.').pop();
+    if(ext==='pdf'){
+      host.innerHTML='<iframe class="ol-result-pdf" src="'+esc(url)+'#toolbar=1&navpanes=0" title="Submitted PDF"></iframe>';
+    }else if(ext==='docx'){
+      if(!window.mammoth)throw new Error('Document viewer is not ready. Please refresh the page.');
+      var resp=await fetch(url);if(!resp.ok)throw new Error('Could not download the submitted document.');
+      var ab=await resp.arrayBuffer(),out=await mammoth.convertToHtml({arrayBuffer:ab});
+      host.innerHTML='<div class="ol-result-paper">'+(out.value||'<p>No readable document content was found.</p>')+'</div>';
+    }else if(ext==='html'||ext==='htm'){
+      var hr=await fetch(url);if(!hr.ok)throw new Error('Could not load the submitted HTML document.');
+      var text=await hr.text();host.innerHTML='<iframe class="ol-result-html" sandbox="allow-same-origin" title="Submitted document"></iframe>';
+      var frame=host.querySelector('iframe');frame.srcdoc=text;
+    }else{
+      host.innerHTML='<div class="ol-doc-empty">Preview is not available for this file type. <a href="'+esc(url)+'" target="_blank" rel="noopener">Open document</a></div>';
+    }
+  }catch(e){console.error('Assignment document viewer failed:',e);host.innerHTML='<div class="ol-doc-empty">Could not display the submitted document. <button type="button" class="ol-btn ol-btn-secondary" data-ol-download-result>Download Document</button></div>'}
+}
+async function downloadAssignmentDocument(s){try{var u=await signedAssignmentUrl(s),a=document.createElement('a');a.href=u;a.target='_blank';a.rel='noopener';a.download=s.file_name||'submitted-work';a.click()}catch(e){alert('Could not download the document: '+(e.message||e))}}
+
 async function viewResult(id){
-  var s=state.submissions.find(function(x){return String(x.id)===String(id)})||state.results.find(function(x){return String(x.id)===String(id)});
-  if(!s)return;
+  var s=state.submissions.find(function(x){return String(x.id)===String(id)})||state.results.find(function(x){return String(x.id)===String(id)});if(!s)return;
   var a=state.assignments.find(function(x){return String(x.id)===String(s.assignment_id)})||{};
+  if(!s.result_released){alert('This result has not been released yet.');return}
   var body=document.getElementById('ol-result-body'),pct=s.max_marks?Math.round(Number(s.marks_obtained)/Number(s.max_marks)*100):0;
-  body.innerHTML='<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px"><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087bf0">'+esc(s.marks_obtained??'—')+'</strong><small style="display:block;color:#71859c">Marks</small></div><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:20px;color:#087a4d">'+(s.max_marks?pct+'%':'—')+'</strong><small style="display:block;color:#71859c">Percentage</small></div><div style="padding:12px;border:1px solid #e1eaf2;border-radius:9px;text-align:center"><strong style="font-size:13px;color:#18304d">'+esc(fmtDate(s.released_at))+'</strong><small style="display:block;color:#71859c">Released</small></div></div>'+
-  '<div class="ol-notice"><strong>'+esc(a.title||'Assignment')+'</strong><br>'+esc(a.unit_code||'')+'</div>'+
-  '<div style="padding:12px;border:1px solid #e1eaf2;border-radius:10px"><strong style="font-size:11px;color:#18304d">Lecturer Feedback</strong><p style="font-size:11px;line-height:1.55;color:#607994;white-space:pre-wrap">'+esc(s.feedback||'No feedback was added.')+'</p></div>';
+  body.innerHTML='<div class="ol-result-viewer-head"><div><strong>'+esc(a.title||s.assignment_title||'Assignment Result')+'</strong><span>'+esc(a.unit_code||'')+' · Released '+esc(fmtDate(s.released_at))+'</span></div><button type="button" class="ol-btn ol-btn-secondary" data-ol-download-result><i class="fas fa-download"></i> Download Submitted Work</button></div>'+
+  '<div class="ol-result-score-grid"><div><strong>'+esc(s.marks_obtained??'—')+'</strong><small>Marks / '+esc(s.max_marks||a.max_marks||'—')+'</small></div><div><strong>'+pct+'%</strong><small>Percentage</small></div><div><strong>'+esc(fmtDate(s.released_at))+'</strong><small>Released</small></div></div>'+
+  '<div class="ol-result-layout"><div><div class="ol-result-section-title"><i class="fas fa-file-lines"></i> Complete Submitted Work</div><div id="ol-result-document" class="ol-result-document"><div class="ol-doc-loading"><i class="fas fa-spinner fa-spin"></i> Loading…</div></div></div><aside class="ol-result-side"><div class="ol-result-feedback"><h4><i class="fas fa-comment-dots"></i> Lecturer Corrections & Feedback</h4><div>'+esc(s.feedback||'No lecturer corrections or feedback were added.')+'</div></div><div class="ol-result-history"><h4><i class="fas fa-clock-rotate-left"></i> Submission Record</h4><p><b>Submitted:</b> '+esc(fmtDateTime(s.submitted_at))+'</p><p><b>Released:</b> '+esc(fmtDateTime(s.released_at))+'</p><p><b>Document:</b> '+esc(s.file_name||'—')+'</p></div><div class="ol-result-note"><i class="fas fa-circle-info"></i> Your complete submitted document is shown here. Lecturer corrections/feedback are displayed beside it.</div></aside></div>';
   var m=document.getElementById('ol-result-modal');m.classList.add('open');m.setAttribute('aria-hidden','false');
+  body.querySelector('[data-ol-download-result]')?.addEventListener('click',function(){downloadAssignmentDocument(s)});
+  await loadAssignmentDocument(s);
 }
+
 function close(which){var m=document.getElementById(which==='result'?'ol-result-modal':'ol-assignment-modal');if(m){m.classList.remove('open');m.setAttribute('aria-hidden','true')}}
 function bind(){
   if(state.bound)return;state.bound=true;
+  ensureAssignmentEnhancementStyles();
   document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(b){b.addEventListener('click',function(){state.tab=this.dataset.olTab;document.querySelectorAll('#hub-online-learning [data-ol-tab]').forEach(function(x){x.classList.toggle('active',x===b)});if(state.tab==='research')loadResearch();render()})});
   document.getElementById('ol-search')?.addEventListener('input',render);
   document.getElementById('ol-status-filter')?.addEventListener('change',render);
@@ -581,6 +650,7 @@ function bind(){
   document.getElementById('ol-submit-btn')?.addEventListener('click',submitCurrent);
   document.querySelectorAll('#hub-online-learning [data-ol-close]').forEach(function(b){b.addEventListener('click',function(){close(this.dataset.olClose)})});
   document.getElementById('hub-online-learning').addEventListener('click',function(e){
+    var del=e.target.closest('[data-ol-delete-submission]');if(del){deleteSubmissionDocument(del.dataset.olDeleteSubmission);return}
     var o=e.target.closest('[data-ol-open]');if(o){var a=state.assignments.find(function(x){return String(x.id)===String(o.dataset.olOpen)});if(a)openModal(a);return}
     var r=e.target.closest('[data-ol-result]');if(r)viewResult(r.dataset.olResult);
   });
@@ -1469,6 +1539,25 @@ function bindResearch(){
   var modal=document.getElementById('ol-research-modal');if(modal&&!modal.dataset.researchModalBound){modal.dataset.researchModalBound='1';modal.addEventListener('click',function(e){if(e.target===modal)closeResearchModal()})}
 }
 
+
+function ensureAssignmentEnhancementStyles(){
+  if(document.getElementById('ol-assignment-enhancement-styles'))return;
+  var st=document.createElement('style');st.id='ol-assignment-enhancement-styles';st.textContent=`
+    #hub-online-learning .ol-dropzone{position:relative;border:2px dashed #b9d2e6;transition:.18s ease;cursor:pointer}
+    #hub-online-learning .ol-dropzone:hover,#hub-online-learning .ol-dropzone.dragover{border-color:#087bf0;background:#eef7ff;transform:translateY(-1px)}
+    #hub-online-learning .ol-dropzone input{position:absolute;inset:0;width:100%;height:100%;opacity:0;cursor:pointer}
+    #hub-online-learning .ol-existing-file{display:flex;align-items:center;gap:10px;margin-top:10px;padding:10px 12px;border:1px solid #e1eaf2;border-radius:9px;background:#f8fbfe}
+    #hub-online-learning .ol-existing-file>i{font-size:20px;color:#087bf0}.ol-existing-file div{flex:1;min-width:0}.ol-existing-file strong,.ol-existing-file span{display:block}.ol-existing-file strong{font-size:10px;color:#18304d}.ol-existing-file span{font-size:9px;color:#71859c;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+    #hub-online-learning .ol-btn-danger{background:#fff0f1!important;color:#b42338!important;border:1px solid #fecdd3!important}
+    #ol-result-modal .ol-result-viewer-head{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:10px 12px;border:1px solid #e1eaf2;border-radius:10px;background:#f8fbfe;margin-bottom:10px}.ol-result-viewer-head strong,.ol-result-viewer-head span{display:block}.ol-result-viewer-head strong{font-size:12px;color:#18304d}.ol-result-viewer-head span{font-size:9px;color:#71859c;margin-top:3px}
+    #ol-result-modal .ol-result-score-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:10px}.ol-result-score-grid>div{padding:10px;border:1px solid #e1eaf2;border-radius:9px;text-align:center;background:#fff}.ol-result-score-grid strong{display:block;font-size:19px;color:#087bf0}.ol-result-score-grid small{display:block;font-size:9px;color:#71859c;margin-top:2px}
+    #ol-result-modal .ol-result-layout{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:10px;min-height:560px}.ol-result-section-title{font-size:11px;font-weight:800;color:#18304d;margin:0 0 6px}.ol-result-document{height:540px;overflow:auto;border:1px solid #dbe6ef;border-radius:10px;background:#f3f6f9;padding:12px}.ol-result-paper{max-width:820px;min-height:500px;margin:0 auto;background:#fff;padding:42px 48px;box-shadow:0 3px 14px rgba(15,23,42,.08);color:#202b38;line-height:1.7;font-size:12px}.ol-result-paper img{max-width:100%;height:auto}.ol-result-paper table{max-width:100%;border-collapse:collapse}.ol-result-paper td,.ol-result-paper th{border:1px solid #dbe6ef;padding:5px}.ol-result-pdf,.ol-result-html{width:100%;height:100%;min-height:510px;border:0;background:#fff;border-radius:7px}.ol-result-side{display:flex;flex-direction:column;gap:9px}.ol-result-feedback,.ol-result-history,.ol-result-note{padding:12px;border:1px solid #e1eaf2;border-radius:10px;background:#fff}.ol-result-feedback h4,.ol-result-history h4{margin:0 0 8px;font-size:10px;color:#18304d}.ol-result-feedback>div{font-size:10px;line-height:1.65;color:#526b86;white-space:pre-wrap}.ol-result-history p{margin:5px 0;font-size:9px;color:#64748b}.ol-result-note{font-size:9px;line-height:1.55;color:#607994;background:#f8fbfe}
+    .ol-doc-loading,.ol-doc-empty{height:100%;min-height:300px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:8px;color:#71859c;font-size:10px;text-align:center}.ol-doc-loading i{font-size:20px;color:#087bf0}
+    @media(max-width:800px){#ol-result-modal .ol-result-layout{grid-template-columns:1fr}.ol-result-side{display:grid;grid-template-columns:1fr 1fr}.ol-result-note{grid-column:1/-1}.ol-result-document{height:480px}.ol-result-paper{padding:25px 22px}.ol-result-viewer-head{flex-wrap:wrap}}
+    @media(max-width:560px){#ol-result-modal .ol-result-score-grid{grid-template-columns:1fr 1fr}.ol-result-score-grid>div:last-child{grid-column:1/-1}.ol-result-side{display:block}.ol-result-side>*{margin-bottom:8px}.ol-result-viewer-head .ol-btn{width:100%}}
+  `;document.head.appendChild(st);
+}
+
 function initResearch(){researchEnsureUI();bindResearch();loadResearch()}
 
 var _originalRender=render;
@@ -1478,3 +1567,5 @@ function boot(){bind();initResearch();loadData()}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 document.addEventListener('appReady',function(){setTimeout(function(){bind();initResearch();loadData()},300)});
 })();
+
+window.NCHSMStudentOnlineLearning=window.NCHSMStudentOnlineLearning||{};window.NCHSMStudentOnlineLearning.deleteSubmissionDocument=deleteSubmissionDocument;window.NCHSMStudentOnlineLearning.viewResult=viewResult;
