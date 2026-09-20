@@ -307,7 +307,7 @@ window.LecturerOnlineLearning = (() => {
           .rs-empty{padding:35px;text-align:center;color:#64748b}
           .rs-modal{position:fixed;inset:0;background:rgba(15,23,42,.76);z-index:100020;display:none;align-items:center;justify-content:center;padding:10px;box-sizing:border-box;overflow:hidden}
           .rs-dialog{background:#fff;width:min(1500px,100%);height:min(95vh,980px);max-height:95vh;border-radius:16px;display:flex;flex-direction:column;overflow:hidden;box-shadow:0 25px 80px rgba(0,0,0,.35)}
-          .rs-dialog.rs-fullscreen{width:100vw;height:100vh;max-height:none;border-radius:0}
+          .rs-dialog.rs-fullscreen{width:100vw;height:100vh;max-height:none;border-radius:0}\n           :fullscreen.rs-dialog{width:100vw!important;height:100vh!important;max-width:none!important;max-height:none!important;border-radius:0!important;margin:0!important}.rs-browser-research-fullscreen body{overflow:hidden!important}.rs-browser-research-fullscreen #rsReviewModal{z-index:999999!important}
           .rs-dialog-head{flex:0 0 auto;padding:11px 14px;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;gap:10px;align-items:center;background:#fff;z-index:3}
           .rs-dialog-body{display:grid;grid-template-columns:minmax(0,1fr) 340px;flex:1;min-height:0;overflow:hidden}
           .rs-preview{background:#f1f5f9;min-width:0;min-height:0;overflow:hidden;padding:0;display:flex;flex-direction:column}
@@ -319,7 +319,7 @@ window.LecturerOnlineLearning = (() => {
 
           .rs-review-toolbar{flex:0 0 auto;display:flex;align-items:center;gap:4px;flex-wrap:wrap;padding:6px 8px;background:#fff;border-bottom:1px solid #dbe3ec}
           .rs-review-toolbar button{min-width:29px;height:28px;border:0;border-radius:5px;background:#fff;color:#40566f;cursor:pointer;font-size:11px}
-          .rs-review-toolbar button:hover{background:#edf3f9}
+          .rs-review-toolbar button:hover{background:#edf3f9}\n           .rs-review-toolbar .rs-color-btn{display:inline-flex;align-items:center;justify-content:center;gap:3px;padding:0 5px!important}.rs-review-toolbar .rs-highlight-btn{min-width:34px!important}.rs-review-toolbar .rs-color-indicator{flex:0 0 auto}
           .rs-review-toolbar button.active{background:#dbeafe;color:#087bf0}
           .rs-review-toolbar .rs-color-btn{min-width:31px;height:28px;border:1px solid #d7e0e8;border-radius:5px;background:#fff;color:#40566f;cursor:pointer;font-size:11px;font-weight:700}.rs-color-btn .rs-color-indicator{display:inline-block;width:16px;height:3px;vertical-align:middle;margin-left:3px;border-radius:2px}.rs-highlight-btn .rs-color-indicator{height:8px}.rs-color-popover{position:absolute;z-index:100060;background:#fff;border:1px solid #d7e0e8;border-radius:8px;padding:7px;box-shadow:0 10px 30px rgba(0,0,0,.18);display:grid;grid-template-columns:repeat(8,22px);gap:5px}.rs-color-swatch{width:22px;height:22px;border:1px solid #cbd5e1;border-radius:4px;cursor:pointer;padding:0}.rs-color-swatch:hover{outline:2px solid #2563eb;outline-offset:1px}.rs-review-toolbar select{height:28px;border:1px solid #d7e0e8;border-radius:5px;background:#fff;color:#40566f;font-size:9px;padding:0 7px}
           .rs-review-status{margin-left:auto;font-size:8px;color:#71859c;white-space:nowrap}
@@ -657,26 +657,49 @@ window.LecturerOnlineLearning = (() => {
         if(!toolbar || toolbar.dataset.colorsInstalled==='1') return;
         toolbar.dataset.colorsInstalled='1';
 
-        const makeButton=function(title,label,command,highlight){
-            const b=document.createElement('button');
-            b.type='button';
-            b.className='rs-color-btn '+(highlight?'rs-highlight-btn':'');
-            b.title=title;
-            b.innerHTML=label+' <span class="rs-color-indicator" style="background:'+ (highlight?'#ffff00':'#000000') +'"></span>';
-            b.addEventListener('mousedown',function(e){
+        function bindButton(button,command){
+            if(!button || button.dataset.colorBound==='1') return;
+            button.dataset.colorBound='1';
+            button.addEventListener('mousedown',function(e){
                 e.preventDefault();
                 e.stopPropagation();
-                lecturerOpenColorPopover(b,command);
+                lecturerOpenColorPopover(button,command);
             });
-            return b;
-        };
+        }
 
-        toolbar.appendChild(makeButton('Text color','A','foreColor',false));
-        toolbar.appendChild(makeButton('Highlight color','▰','hiliteColor',true));
+        bindButton(toolbar.querySelector('[data-rs-text-color]'),'foreColor');
+        bindButton(toolbar.querySelector('[data-rs-highlight-color]'),'hiliteColor');
 
-        document.addEventListener('mousedown',function(e){
-            if(!e.target.closest('.rs-color-popover') && !e.target.closest('.rs-color-btn')) lecturerCloseColorPopovers();
-        });
+        // Fallback for an older cached toolbar without the new buttons.
+        if(!toolbar.querySelector('[data-rs-text-color]')){
+            const b=document.createElement('button');
+            b.type='button';
+            b.className='rs-color-btn';
+            b.dataset.rsTextColor='1';
+            b.title='Text color';
+            b.innerHTML='<b>A</b><span class="rs-color-indicator" style="background:#000"></span>';
+            toolbar.appendChild(b);
+            bindButton(b,'foreColor');
+        }
+        if(!toolbar.querySelector('[data-rs-highlight-color]')){
+            const b=document.createElement('button');
+            b.type='button';
+            b.className='rs-color-btn rs-highlight-btn';
+            b.dataset.rsHighlightColor='1';
+            b.title='Highlight color';
+            b.innerHTML='<i class="fas fa-highlighter"></i><span class="rs-color-indicator" style="background:#ffff00"></span>';
+            toolbar.appendChild(b);
+            bindButton(b,'hiliteColor');
+        }
+
+        if(!document.documentElement.dataset.nchsmColorPopoverClose){
+            document.documentElement.dataset.nchsmColorPopoverClose='1';
+            document.addEventListener('mousedown',function(e){
+                if(!e.target.closest('.rs-color-popover') && !e.target.closest('.rs-color-btn')){
+                    lecturerCloseColorPopovers();
+                }
+            });
+        }
     }
 
     function lecturerInstallEditorProtection(){
@@ -698,10 +721,102 @@ window.LecturerOnlineLearning = (() => {
         });
     }
 
+
+    function lecturerResearchDialog(){
+        return document.querySelector('#rsReviewModal .rs-dialog') ||
+               document.querySelector('.rs-dialog.rs-research-dialog') ||
+               document.querySelector('.rs-dialog');
+    }
+
+    async function lecturerEnterResearchFullscreen(){
+        const dialog=lecturerResearchDialog();
+        if(!dialog) return;
+        dialog.classList.add('rs-fullscreen');
+        document.documentElement.classList.add('rs-browser-research-fullscreen');
+        document.body.classList.add('rs-browser-research-fullscreen');
+        try{
+            if(document.fullscreenElement!==dialog && dialog.requestFullscreen){
+                await dialog.requestFullscreen({navigationUI:'hide'});
+            }
+        }catch(e){
+            // CSS fullscreen remains active as a reliable fallback.
+        }
+        lecturerUpdateResearchFullscreenButton();
+    }
+
+    async function lecturerExitResearchFullscreen(){
+        try{
+            if(document.fullscreenElement && document.exitFullscreen){
+                await document.exitFullscreen();
+            }
+        }catch(e){}
+        const dialog=lecturerResearchDialog();
+        if(dialog) dialog.classList.remove('rs-fullscreen');
+        document.documentElement.classList.remove('rs-browser-research-fullscreen');
+        document.body.classList.remove('rs-browser-research-fullscreen');
+        lecturerUpdateResearchFullscreenButton();
+    }
+
+    function lecturerToggleResearchFullscreen(){
+        const dialog=lecturerResearchDialog();
+        if(!dialog) return;
+        if(document.fullscreenElement || dialog.classList.contains('rs-fullscreen')){
+            lecturerExitResearchFullscreen();
+        }else{
+            lecturerEnterResearchFullscreen();
+        }
+    }
+
+    function lecturerUpdateResearchFullscreenButton(){
+        const btn=document.querySelector('#rsReviewModal [data-rs-fullscreen], #rsReviewModal .rs-fullscreen-btn');
+        if(!btn) return;
+        const active=!!document.fullscreenElement ||
+          !!document.querySelector('#rsReviewModal .rs-dialog.rs-fullscreen');
+        btn.innerHTML=active
+          ? '<i class="fas fa-compress"></i> Exit Full Screen'
+          : '<i class="fas fa-expand"></i> Full Screen';
+        btn.title=active?'Exit full screen':'Open research paper full screen';
+    }
+
+    function lecturerInstallTrueFullscreen(){
+        const btn=document.querySelector('#rsReviewModal [data-rs-fullscreen], #rsReviewModal .rs-fullscreen-btn');
+        if(btn && btn.dataset.trueFullscreenBound!=='1'){
+            btn.dataset.trueFullscreenBound='1';
+            btn.addEventListener('click',function(e){
+                e.preventDefault();
+                e.stopPropagation();
+                lecturerToggleResearchFullscreen();
+            },true);
+        }
+        if(!document.documentElement.dataset.nchsmFullscreenBound){
+            document.documentElement.dataset.nchsmFullscreenBound='1';
+            document.addEventListener('fullscreenchange',function(){
+                const dialog=lecturerResearchDialog();
+                if(dialog && !document.fullscreenElement) dialog.classList.remove('rs-fullscreen');
+                lecturerUpdateResearchFullscreenButton();
+            });
+            document.addEventListener('keydown',function(e){
+                if(e.key!=='Escape') return;
+                if(document.fullscreenElement){
+                    e.preventDefault();
+                    lecturerExitResearchFullscreen();
+                    return;
+                }
+                const dialog=lecturerResearchDialog();
+                if(dialog && dialog.classList.contains('rs-fullscreen')){
+                    e.preventDefault();
+                    lecturerExitResearchFullscreen();
+                }
+            },true);
+        }
+        lecturerUpdateResearchFullscreenButton();
+    }
+
     function lecturerInstallResearchEditorEnhancements(){
         const toolbar=document.querySelector('#rsReviewModal .rs-review-toolbar');
         if(toolbar) lecturerInstallColorTools(toolbar);
         lecturerInstallEditorProtection();
+        lecturerInstallTrueFullscreen();
     }
 
     const lecturerResearchCollab = {
@@ -1253,6 +1368,8 @@ window.LecturerOnlineLearning = (() => {
               <button type="button" data-rs-cmd="bold"><b>B</b></button>
               <button type="button" data-rs-cmd="italic"><i>I</i></button>
               <button type="button" data-rs-cmd="underline"><u>U</u></button>
+              <button type="button" class="rs-color-btn" data-rs-text-color title="Text color"><b>A</b><span class="rs-color-indicator" style="background:#000"></span></button>
+              <button type="button" class="rs-color-btn rs-highlight-btn" data-rs-highlight-color title="Highlight color"><i class="fas fa-highlighter"></i><span class="rs-color-indicator" style="background:#ffff00"></span></button>
               <button type="button" data-rs-cmd="justifyLeft"><i class="fas fa-align-left"></i></button>
               <button type="button" data-rs-cmd="justifyCenter"><i class="fas fa-align-center"></i></button>
               <button type="button" data-rs-cmd="justifyRight"><i class="fas fa-align-right"></i></button>
@@ -1427,7 +1544,7 @@ window.LecturerOnlineLearning = (() => {
             const d=m&&m.querySelector('.rs-dialog');
             if(!m||m.style.display==='none')return;
             if(d&&d.classList.contains('rs-fullscreen')){
-                d.classList.remove('rs-fullscreen');
+                lecturerExitResearchFullscreen();
                 const b=m.querySelector('[data-rs-fullscreen]');
                 if(b)b.innerHTML='<i class="fas fa-expand"></i>';
                 e.preventDefault();
