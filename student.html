@@ -1371,7 +1371,309 @@ body.dark-mode .calendar-stat,body.dark-mode .calendar-toolbar,body.dark-mode .c
 #loading-screen .progress-text{display:flex!important;justify-content:space-between;gap:12px;align-items:center}
 #loading-screen .progress-percent{font-weight:800;color:#fff;min-width:42px;text-align:right;text-shadow:0 1px 4px rgba(0,0,0,.18)}
 #loading-screen .progress-fill{transition:width .35s ease}
-</style><style id="nchsm-app-shell-height">#app-content{min-height:100vh;}</style></head>
+</style><style id="nchsm-app-shell-height">#app-content{min-height:100vh;}</style>
+<style id="ol-research-polish-v2">
+/* NCHSM RESEARCH PAPERS — visual polish only.
+   Uses the existing Online Learning tab, existing cards, existing viewer,
+   existing review panel and existing JS. No second dashboard/sidebar is added. */
+#hub-online-learning #ol-research-content,
+#hub-online-learning .ol-research-wrap{box-sizing:border-box}
+#hub-online-learning #ol-research-content{padding:0 2px 12px}
+#hub-online-learning .ol-research-wrap{padding:0}
+
+/* Research landing area */
+#hub-online-learning .ol-research-head{
+  position:relative; overflow:hidden; margin:12px 0 12px; padding:18px 18px;
+  border:1px solid #dce8f3; border-radius:14px;
+  background:linear-gradient(135deg,#f8fbff 0%,#ffffff 58%,#f4f9ff 100%);
+  box-shadow:0 5px 18px rgba(16,45,78,.05);
+}
+#hub-online-learning .ol-research-head:after{
+  content:""; position:absolute; width:170px; height:170px; right:-70px; top:-85px;
+  border-radius:50%; background:rgba(8,123,240,.06); pointer-events:none;
+}
+#hub-online-learning .ol-research-head h3{font-size:16px!important;font-weight:850!important;letter-spacing:-.2px}
+#hub-online-learning .ol-research-head p{font-size:10px!important;line-height:1.55;max-width:650px}
+#hub-online-learning .ol-research-notice{
+  max-width:390px; padding:9px 11px; border:1px solid #d9e8f7; border-radius:10px;
+  background:#f4f9ff; color:#486581; font-size:9px; line-height:1.45;
+  display:flex; align-items:flex-start; gap:8px;
+}
+#hub-online-learning .ol-research-notice i{color:#087bf0;margin-top:1px}
+
+/* Sub-navigation remains INSIDE Online Learning */
+#hub-online-learning .ol-research-tabs{
+  display:flex;gap:4px;padding:4px;margin:0 0 10px;background:#f3f7fb;
+  border:1px solid #e0e9f1;border-radius:10px;width:max-content;max-width:100%;
+}
+#hub-online-learning .ol-research-subtab{
+  border:0;background:transparent;color:#5b7188;border-radius:7px;padding:8px 11px;
+  font-size:9px;font-weight:800;cursor:pointer;transition:.18s ease;
+}
+#hub-online-learning .ol-research-subtab.active{background:#fff;color:#086ecf;box-shadow:0 2px 8px rgba(16,45,78,.08)}
+#hub-online-learning .ol-research-subtab:hover{color:#087bf0}
+
+/* Summary cards */
+#hub-online-learning .ol-research-stats{gap:10px;margin-bottom:12px}
+#hub-online-learning .ol-research-stat{
+  position:relative;overflow:hidden;padding:13px 14px;border-radius:12px;
+  background:#fff;box-shadow:0 3px 12px rgba(16,45,78,.035);transition:.18s ease;
+}
+#hub-online-learning .ol-research-stat:hover{transform:translateY(-1px);box-shadow:0 6px 16px rgba(16,45,78,.07)}
+#hub-online-learning .ol-research-stat:before{content:"";position:absolute;left:0;top:0;bottom:0;width:3px;background:#087bf0}
+#hub-online-learning .ol-research-stat.review:before{background:#d99500}
+#hub-online-learning .ol-research-stat.revision:before{background:#d63d55}
+#hub-online-learning .ol-research-stat.approved:before{background:#0b875b}
+#hub-online-learning .ol-research-stat strong{font-size:21px;line-height:1.05}
+#hub-online-learning .ol-research-stat span{font-size:9px;margin-top:5px}
+
+/* Search/filter bar */
+#hub-online-learning .ol-research-toolbar{
+  margin-bottom:10px;padding:9px;border:1px solid #e1eaf2;border-radius:11px;
+  background:#fbfdff;display:flex;align-items:center;gap:7px;border-bottom:1px solid #e1eaf2;
+}
+#hub-online-learning .ol-research-toolbar input,
+#hub-online-learning .ol-research-toolbar select{
+  min-height:36px;border-radius:8px!important;background:#fff!important;
+  border-color:#d6e2ec!important;font-size:10px!important;box-shadow:none!important;
+}
+#hub-online-learning .ol-research-toolbar input{padding-left:12px}
+#hub-online-learning .ol-research-toolbar input:focus,
+#hub-online-learning .ol-research-toolbar select:focus{border-color:#83bdf2!important;box-shadow:0 0 0 3px rgba(8,123,240,.08)!important}
+
+/* Submission cards */
+#hub-online-learning .ol-research-list{padding:0;gap:10px}
+#hub-online-learning .ol-research-card{
+  position:relative;padding:15px;border-radius:12px;background:#fff;
+  border:1px solid #dfe8f0;box-shadow:0 3px 12px rgba(16,45,78,.035);transition:.18s ease;
+}
+#hub-online-learning .ol-research-card:hover{border-color:#c5d9ea;box-shadow:0 8px 22px rgba(16,45,78,.075);transform:translateY(-1px)}
+#hub-online-learning .ol-research-card-top h4{font-size:12px!important;line-height:1.45}
+#hub-online-learning .ol-research-meta{gap:5px;margin-top:7px}
+#hub-online-learning .ol-research-pill{border:1px solid #e3eaf0;padding:4px 7px;font-size:8px;letter-spacing:.1px}
+#hub-online-learning .ol-research-actions{padding-top:9px;margin-top:11px;border-top:1px solid #edf2f7}
+#hub-online-learning .ol-research-btn{min-height:34px;padding:8px 11px;border-radius:8px;font-size:9px;transition:.15s ease}
+#hub-online-learning .ol-research-btn:hover{transform:translateY(-1px);filter:brightness(.98)}
+#hub-online-learning .ol-research-feedback{border-radius:9px;background:#f8fbfe;padding:10px 11px}
+#hub-online-learning .ol-research-empty{border:1px dashed #cbd9e5;border-radius:12px;background:#fbfdff;padding:48px 15px}
+
+/* Research document viewer — this is a review panel, NOT a dashboard sidebar. */
+body > #ol-research-modal{backdrop-filter:blur(3px);background:rgba(6,24,42,.66)!important}
+body > #ol-research-modal > #ol-research-dialog{
+  width:min(1240px,calc(100vw - 34px))!important;
+  max-width:min(1240px,calc(100vw - 34px))!important;
+  height:min(94vh,calc(100vh - 30px))!important;
+  max-height:calc(100vh - 30px)!important;
+  border-radius:14px!important;overflow:hidden!important;
+  box-shadow:0 30px 90px rgba(3,20,37,.35)!important;
+}
+body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head{
+  min-height:64px!important;padding:10px 14px!important;background:#fff!important;
+  border-bottom:1px solid #e1e9f1!important;
+}
+body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head h3{font-size:15px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-view-actions{gap:6px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online,
+body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn,
+body > #ol-research-modal > #ol-research-dialog .ol-rs-close-paper{box-shadow:none!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online{background:#f1f6fb!important;border-color:#d7e4ef!important;color:#315775!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn{background:#087bf0!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-close-paper{background:#f1f4f7!important}
+body > #ol-research-modal > #ol-research-dialog > #ol-research-modal-body{padding:10px!important;background:#eef3f7!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-workspace{grid-template-columns:minmax(0,1fr) 315px!important;gap:10px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-document{border-radius:11px!important;border-color:#d4e0e9!important;background:#eaf0f5!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-document-head{padding:9px 11px!important;background:#fff!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-document-head strong{font-size:10px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-editor-toolbar{padding:5px 7px!important;gap:4px!important;background:#fafdff!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-tool{height:29px!important;min-width:29px!important;border-radius:6px!important;background:#fff!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-tool:hover{border-color:#9fc7ea!important;background:#f1f7fd!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-editor{
+  width:min(850px,calc(100% - 48px))!important;max-width:850px!important;
+  min-height:720px!important;margin:16px auto 24px!important;padding:62px 70px!important;
+  border:1px solid #e0e6eb!important;border-radius:2px!important;background:#fff!important;
+  box-shadow:0 4px 22px rgba(16,45,78,.10)!important;font-size:13px!important;line-height:1.72!important;
+}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-side{
+  border-radius:11px!important;border-color:#d5e1ea!important;padding:12px!important;
+  background:#fff!important;box-shadow:0 2px 10px rgba(16,45,78,.035)!important;
+}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-side h4{font-size:11px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-side-section{padding:11px 0!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-history-item{border-radius:8px!important;background:#f8fbfe!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-history-item.active{border-color:#82b8e8!important;background:#eef6ff!important}
+
+/* Mobile: keep one coherent Online Learning view, stack the review panel. */
+@media(max-width:850px){
+  #hub-online-learning .ol-research-tabs{width:100%;overflow:auto}
+  #hub-online-learning .ol-research-subtab{flex:1;white-space:nowrap}
+  #hub-online-learning .ol-research-toolbar{align-items:stretch}
+  #hub-online-learning .ol-research-toolbar input{min-width:100%;flex-basis:100%}
+  body > #ol-research-modal{padding:7px!important}
+  body > #ol-research-modal > #ol-research-dialog{
+    width:calc(100vw - 14px)!important;max-width:calc(100vw - 14px)!important;
+    height:calc(100vh - 14px)!important;max-height:calc(100vh - 14px)!important;border-radius:10px!important;
+  }
+  body > #ol-research-modal > #ol-research-dialog > #ol-research-modal-body{padding:7px!important}
+  body > #ol-research-modal > #ol-research-dialog .ol-rs-workspace{grid-template-columns:1fr!important}
+  body > #ol-research-modal > #ol-research-dialog .ol-rs-side{position:static!important;max-height:none!important}
+  body > #ol-research-modal > #ol-research-dialog .ol-rs-editor{width:calc(100% - 20px)!important;min-height:600px!important;padding:35px 24px!important;font-size:12px!important}
+}
+@media(max-width:560px){
+  #hub-online-learning .ol-research-head{padding:14px}
+  #hub-online-learning .ol-research-stats{gap:7px}
+  #hub-online-learning .ol-research-stat{padding:11px}
+  #hub-online-learning .ol-research-stat strong{font-size:18px}
+  #hub-online-learning .ol-research-head .ol-research-notice{max-width:none}
+  body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head{align-items:flex-start!important;flex-direction:column!important}
+  body > #ol-research-modal > #ol-research-dialog .ol-rs-view-actions{width:100%!important}
+  body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online,
+  body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn{flex:1!important}
+  body > #ol-research-modal > #ol-research-dialog .ol-rs-editor{padding:28px 18px!important}
+}
+</style>
+
+
+<style id="nchsm-research-papers-premium-mobile">
+/* ==========================================================
+   NCHSM RESEARCH PAPERS — PREMIUM UI LAYER
+   Presentation-only: no JS workflow or database logic changed.
+   ========================================================== */
+body > #ol-research-modal{background:rgba(10,27,47,.68)!important;backdrop-filter:blur(4px)!important;-webkit-backdrop-filter:blur(4px)!important}
+body > #ol-research-modal > #ol-research-dialog{background:#f7faff!important;border:1px solid rgba(215,228,241,.95)!important;border-radius:18px!important;box-shadow:0 30px 90px rgba(5,25,48,.30)!important;overflow:hidden!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head{padding:15px 18px!important;background:linear-gradient(180deg,#ffffff 0%,#f8fbff 100%)!important;border-bottom:1px solid #dce8f3!important;min-height:64px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head h3{font-size:18px!important;line-height:1.2!important;font-weight:850!important;color:#132f4e!important;letter-spacing:-.2px!important}
+body > #ol-research-modal > #ol-research-dialog #ol-research-modal-subtitle{font-size:10px!important;color:#71859c!important;margin-top:5px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-view-actions{gap:7px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online,
+body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn,
+body > #ol-research-modal > #ol-research-dialog .ol-rs-close-paper{height:38px!important;min-height:38px!important;border-radius:10px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;font-weight:850!important;box-sizing:border-box!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online{padding:0 12px!important;background:#f0f6fc!important;border:1px solid #d2e1ee!important;color:#234766!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn{padding:0 13px!important;background:#0b73e6!important;box-shadow:0 5px 13px rgba(11,115,230,.22)!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-close-paper{width:38px!important;padding:0!important;background:#f2f5f8!important;border:1px solid #d7e1ea!important;color:#28445f!important}
+body > #ol-research-modal > #ol-research-dialog > #ol-research-modal-body{background:#f7faff!important;padding:0!important}
+
+/* Submission form */
+body > #ol-research-modal > #ol-research-dialog #ol-research-modal-body > form#ol-research-form,
+body > #ol-research-modal > #ol-research-dialog #ol-research-form{max-width:760px!important;margin:0 auto!important;padding:24px!important;box-sizing:border-box!important;background:#fff!important;border:1px solid #e0eaf3!important;border-radius:0 0 16px 16px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-field{margin:0 0 17px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-field label{display:block!important;margin:0 0 7px!important;font-size:11px!important;line-height:1.25!important;font-weight:850!important;color:#1e3b5b!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-field label::after{content:''}
+body > #ol-research-modal > #ol-research-dialog .ol-research-grid{display:grid!important;grid-template-columns:1fr 1fr!important;gap:16px!important;margin-bottom:0!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-field input,
+body > #ol-research-modal > #ol-research-dialog .ol-research-field select,
+body > #ol-research-modal > #ol-research-dialog .ol-research-field textarea{width:100%!important;display:block!important;box-sizing:border-box!important;border:1px solid #cbdbea!important;border-radius:10px!important;background:#fbfdff!important;color:#193653!important;padding:12px 13px!important;font:600 13px/1.35 Inter,system-ui,sans-serif!important;outline:none!important;box-shadow:inset 0 1px 2px rgba(20,45,70,.025)!important;transition:border-color .15s,box-shadow .15s,background .15s!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-field input:focus,
+body > #ol-research-modal > #ol-research-dialog .ol-research-field select:focus,
+body > #ol-research-modal > #ol-research-dialog .ol-research-field textarea:focus{border-color:#2b82e6!important;background:#fff!important;box-shadow:0 0 0 3px rgba(43,130,230,.11)!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-field textarea{min-height:120px!important;resize:vertical!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-field input::placeholder,
+body > #ol-research-modal > #ol-research-dialog .ol-research-field textarea::placeholder{color:#8aa0b5!important;font-weight:500!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-file{position:relative!important;border:1.5px dashed #9fc6ed!important;border-radius:13px!important;padding:24px 16px!important;background:linear-gradient(180deg,#f7fbff,#fafdff)!important;min-height:140px!important;display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;box-sizing:border-box!important;overflow:hidden!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-file i{font-size:30px!important;color:#147ce5!important;margin-bottom:5px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-file strong{font-size:13px!important;color:#153b60!important;margin-top:2px!important;text-align:center!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-file small{font-size:10px!important;color:#71869c!important;margin-top:5px!important;text-align:center!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-file input[type=file]{width:100%!important;max-width:360px!important;margin-top:13px!important;border:1px solid #cbdbea!important;background:#fff!important;border-radius:9px!important;padding:7px!important;font:600 11px Inter,sans-serif!important;color:#385570!important;box-sizing:border-box!important}
+body > #ol-research-modal > #ol-research-dialog #ol-research-form > div:last-child{display:flex!important;justify-content:flex-end!important;gap:10px!important;margin-top:20px!important;padding-top:17px!important;border-top:1px solid #e6eef5!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-btn{min-height:42px!important;border-radius:10px!important;padding:0 17px!important;border:1px solid transparent!important;font:850 12px/1 Inter,system-ui,sans-serif!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:8px!important;cursor:pointer!important;box-sizing:border-box!important;transition:transform .15s,box-shadow .15s,filter .15s!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-btn:hover{transform:translateY(-1px)!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-primary{background:#0b73e6!important;color:#fff!important;box-shadow:0 7px 17px rgba(11,115,230,.22)!important}
+body > #ol-research-modal > #ol-research-dialog .ol-research-muted{background:#fff!important;color:#35516c!important;border-color:#ccd9e5!important}
+
+/* Research workspace / document viewer */
+body > #ol-research-modal > #ol-research-dialog .ol-rs-workspace{display:grid!important;grid-template-columns:minmax(0,1fr) 340px!important;gap:16px!important;padding:16px!important;background:#f4f8fc!important;box-sizing:border-box!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-document{border:1px solid #d8e5f0!important;border-radius:14px!important;background:#edf3f8!important;box-shadow:0 8px 24px rgba(25,55,85,.07)!important;overflow:hidden!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-document-head{padding:13px 15px!important;background:#fff!important;border-bottom:1px solid #dce7f0!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-document-head strong{font-size:12px!important;color:#153653!important;font-weight:850!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-side{border:1px solid #d8e5f0!important;border-radius:14px!important;background:#fff!important;padding:16px!important;box-shadow:0 8px 24px rgba(25,55,85,.06)!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-side h4{font-size:13px!important;color:#163653!important;font-weight:850!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-side-section{padding:13px 0!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-editor-toolbar{gap:5px!important;padding:9px!important;background:#fff!important;border-bottom:1px solid #d8e5f0!important;position:sticky!important;top:0!important;z-index:20!important;box-shadow:0 2px 8px rgba(20,45,70,.06)!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-tool{min-height:34px!important;border:1px solid #d2dfea!important;background:#f8fbfe!important;border-radius:8px!important;padding:0 9px!important;font:800 11px Inter,sans-serif!important;color:#294965!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-tool:hover{background:#edf5ff!important;border-color:#9fc7ee!important;color:#0b68c9!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-editor{max-width:900px!important;min-height:620px!important;margin:18px auto!important;padding:54px 58px!important;background:#fff!important;color:#202b38!important;border:1px solid #dbe4ec!important;box-shadow:0 8px 26px rgba(20,45,70,.12)!important;font-size:13px!important;line-height:1.75!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions{background:#fff!important;border-bottom:1px solid #d9e5ef!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions .ol-research-btn{min-height:38px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-history-item{padding:10px!important;border-radius:9px!important}
+body > #ol-research-modal > #ol-research-dialog .ol-rs-note{border-radius:10px!important}
+
+/* Main research list */
+#hub-online-learning .ol-research-content{padding:18px!important;background:#f7faff!important}
+#hub-online-learning .ol-research-head{padding:5px 2px 16px!important}
+#hub-online-learning .ol-research-head h3{font-size:20px!important;font-weight:850!important}
+#hub-online-learning .ol-research-head p{font-size:11px!important;line-height:1.5!important}
+#hub-online-learning .ol-research-btn{min-height:40px!important;border-radius:10px!important;font-weight:850!important}
+#hub-online-learning .ol-research-stat{border-radius:13px!important;padding:14px!important;background:#fff!important;box-shadow:0 4px 15px rgba(25,55,85,.05)!important}
+#hub-online-learning .ol-research-row{padding:14px!important;min-height:66px!important}
+#hub-online-learning .ol-research-list{border-radius:13px!important;box-shadow:0 5px 18px rgba(25,55,85,.05)!important}
+
+/* Mobile: true single-column form and viewer */
+@media(max-width:700px){
+ body > #ol-research-modal{padding:8px!important}
+ body > #ol-research-modal > #ol-research-dialog{width:calc(100vw - 16px)!important;max-width:calc(100vw - 16px)!important;height:calc(100vh - 16px)!important;max-height:calc(100vh - 16px)!important;border-radius:16px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head{padding:14px 14px 12px!important;min-height:58px!important;flex-wrap:wrap!important;align-items:flex-start!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head h3{font-size:17px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-view-actions{width:100%!important;display:grid!important;grid-template-columns:1fr 46px 46px!important;gap:7px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online{width:100%!important;font-size:0!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-back-online i{font-size:15px!important;margin:0!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn{width:46px!important;padding:0!important;font-size:0!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-fullscreen-btn i{font-size:15px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-close-paper{width:46px!important}
+ body > #ol-research-modal > #ol-research-dialog #ol-research-modal-body{overflow:auto!important}
+ body > #ol-research-modal > #ol-research-dialog #ol-research-form{padding:18px 14px 20px!important;border:0!important;border-radius:0!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-research-grid{grid-template-columns:1fr!important;gap:0!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-research-field{margin-bottom:15px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-research-field label{font-size:11px!important;margin-bottom:7px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-research-field input,
+ body > #ol-research-modal > #ol-research-dialog .ol-research-field select,
+ body > #ol-research-modal > #ol-research-dialog .ol-research-field textarea{font-size:13px!important;padding:12px!important;border-radius:10px!important;min-height:44px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-research-field textarea{min-height:120px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-research-file{min-height:145px!important;padding:18px 12px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-research-file input[type=file]{max-width:100%!important;font-size:10px!important}
+ body > #ol-research-modal > #ol-research-dialog #ol-research-form > div:last-child{display:grid!important;grid-template-columns:1fr 1.45fr!important;gap:8px!important;margin-top:5px!important;padding-top:15px!important}
+ body > #ol-research-modal > #ol-research-dialog #ol-research-form > div:last-child .ol-research-btn{width:100%!important;min-height:45px!important;padding:0 10px!important;font-size:11px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-workspace{grid-template-columns:1fr!important;padding:9px!important;gap:10px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-side{order:2!important;position:static!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-document{order:1!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-document-head{padding:11px!important;flex-wrap:wrap!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-editor-toolbar{overflow-x:auto!important;flex-wrap:nowrap!important;white-space:nowrap!important;scrollbar-width:thin!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-tool{flex:0 0 auto!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-editor{min-height:620px!important;padding:30px 24px!important;margin:10px auto!important;font-size:12px!important;line-height:1.65!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions{position:sticky!important;top:0!important;z-index:25!important;padding:10px!important;box-shadow:0 3px 10px rgba(20,45,70,.08)!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions>div:first-child{display:none!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions>div:last-child{width:100%!important;margin-left:0!important;display:grid!important;grid-template-columns:1fr 1.6fr!important;gap:7px!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions .ol-research-btn{width:100%!important;min-height:42px!important;font-size:10px!important}
+ #hub-online-learning .ol-research-content{padding:12px 8px!important}
+ #hub-online-learning .ol-research-head h3{font-size:18px!important}
+ #hub-online-learning .ol-research-toolbar{gap:7px!important}
+ #hub-online-learning .ol-research-search{min-width:100%!important}
+ #hub-online-learning .ol-research-select{width:100%!important}
+}
+
+@media(max-width:390px){
+ body > #ol-research-modal > #ol-research-dialog #ol-research-form{padding-left:12px!important;padding-right:12px!important}
+ body > #ol-research-modal > #ol-research-dialog #ol-research-form > div:last-child{grid-template-columns:1fr!important}
+ body > #ol-research-modal > #ol-research-dialog .ol-rs-correction-actions>div:last-child{grid-template-columns:1fr!important}
+}
+
+/* Dark mode */
+body.dark-mode > #ol-research-modal > #ol-research-dialog,
+body.dark-mode > #ol-research-modal > #ol-research-dialog #ol-research-form,
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-side{background:#0d1b2d!important;color:#e8eef7!important;border-color:#263d55!important}
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head,
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-document-head,
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-editor-toolbar{background:#102238!important;border-color:#263d55!important}
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-research-field label,
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-research-dialog-head h3,
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-document-head strong,
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-side h4{color:#edf5ff!important}
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-research-field input,
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-research-field select,
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-research-field textarea{background:#0a1727!important;color:#e8eef7!important;border-color:#35516b!important}
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-research-file{background:#0b1b2c!important;border-color:#3b6f9d!important}
+body.dark-mode > #ol-research-modal > #ol-research-dialog .ol-rs-tool{background:#0d1b2d!important;color:#dbe8f5!important;border-color:#35516b!important}
+</style>
+
+</head>
 <body>
 <!-- LOADING SCREEN -->
 <div id="loading-screen">
